@@ -1494,6 +1494,87 @@ commits that follow this note; the conclusions stand at
 the end of this section when the packet lands, stating
 that the sweep is empty-by-construction and re-verified
 against a fresh `ls-files` at the packet's close.
+## The documentation overview, Packet 5: suppositions recorded before the check (2026-11-10)
+
+Packet 5 of the overview takes the infrastructure
+shelves that parallel Packets 3 and 4: the 1 file
+under `docs/infrastructure-documents/use/`, the 2
+under `docs/infrastructure-documents/extend/`, the 1
+under `docs/infrastructure-documents/oracle/`, the 5
+under `docs/infrastructure-documents/security/` and
+the 5 under `docs/infrastructure-documents/design/`
+— 14 files, each checked sentence by sentence against
+the code and the current facts (the 3.16 line; the 3
+confinement backends as field-proven on Linux,
+Windows and FreeBSD; the secure-by-default enforce
+posture; the audit log's tamper-evident hash chain),
+and cross-checked against the steady shelf Packets 3
+and 4 cover for duplicate or divergent descriptions
+of the same facts. Suppositions, written before the
+fix pass:
+
+- **P5-S1.** The security shelf's confinement
+  accounts still predate the platform backends:
+  `threat-model.md` will say the Oracle does not
+  contain a job unless Linux bubblewrap engages,
+  `safeguards.md` will say a sandbox exists only
+  where Linux bubblewrap can engage and that on
+  Windows "there is no sandbox," and
+  `security-gaps.md` will frame its cage step and
+  its FreeBSD row as if no FreeBSD jail and no
+  Windows backend exist — each against the
+  3-backend fact Packets 1 to 3 established.
+- **P5-S2.** `security-gaps.md`'s audit-log
+  inventory item will say the audit log has "no
+  hash chain" and mark audit integrity absent; the
+  audit log carries the tamper-evident chain in
+  `runner/guard/security.py`, verified through
+  `runner/ops/auditreport.py` — the same correction
+  Packet 2 made in FUTURE.md. What remains open
+  there is an append-only flag and a remote copy.
+- **P5-S3.** `security-gaps.md`'s network-egress
+  inventory item will say only bwrap in enforce
+  mode blocks a job's egress; the FreeBSD jail
+  denies all network, and the Windows backend has
+  no network control — the shape Packet 3's
+  networking page now states.
+- **P5-S4.** The packet's files will carry paths
+  from the retired layout throughout:
+  `docs/security/`, `docs/use/`, `docs/design/`,
+  `docs/oracle/`, `docs/extend/`, `docs/proofs/`,
+  `docs/project/`, `docs/reports/` and
+  `docs/archive/` pointers in the threat model, the
+  safeguards, the security gaps, the Oracle
+  configuration page, the transports page, the
+  model-and-proof map and the version 3 plan,
+  where the files now live under `docs/steady/` and
+  `docs/infrastructure-documents/`. Two relative
+  links will be broken by the same move: the
+  safeguards' link to SECURITY.md and the Oracle
+  configuration page's link to the live-examples
+  page.
+- **P5-S5.** `configuring-oracle.md`'s key entries
+  and defaults will otherwise check out against
+  the code and the defaults registry that pins
+  them, and its present-but-invalid account will
+  match the decision the steady shelf records.
+- **P5-S6.** The design shelf's 3 sentence reviews
+  and the version 3 carriage review pass are dated
+  records of their passes and will stand as
+  records; the version 3 plan is a build record
+  whose own addenda already correct its early
+  text, and only its retired-layout pointers (in
+  P5-S4) will need correcting.
+- **P5-S7.** `scripts.md`, `worker-agents.md`,
+  `owasp-reference.md` and
+  `model-and-proof-testing.md`'s model account
+  will check out against the code, apart from the
+  proof map's retired `docs/proofs/` pointers in
+  P5-S4.
+
+Each supposition is settled against the code in the
+commits that follow this note; the conclusions stand
+at the end of this section when the packet lands.
 
 ## The documentation overview, Packet 6: suppositions recorded before the check (2026-11-10)
 
