@@ -230,6 +230,93 @@ Q150's re-test stands as: the filed scope passes
 whole; the guard's residual polarity shapes are
 this question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now judges a governed noun
+phrase by what it is to its verb in full wherever
+the clause judgement meets it — a noun complement
+still crossed whether it stands bare ("holds
+clearance to ..."), determiner-led ("holds a duty
+to ...", "holds the clearance to ..."),
+adjective-led ("holds full clearance to ...") or
+plural ("holds duties to ...") — rather than
+letting a determiner-led branch read the phrase as
+the infinitive's object phrase first or a closed
+complement set bound the judgement, while an object
+phrase ahead of the infinitive is still the
+clause's own ("prompts a team to ...", "prompts the
+team to ...", "holds operators to ..."); and opens
+a new ledger segment at the remaining clause
+separators (the caret, the percent sign, the dollar
+sign, the backtick, the exclamation mark, the
+question mark, the broken bar, the two-dot leader
+and the non-breaking hyphen), reading the
+fold-erased whitespace shapes (the tab, the form
+feed, the vertical tab, the Unicode line separator,
+the Unicode paragraph separator and the next-line
+character) as boundaries before the whitespace fold
+can erase them, beside the line break read since
+Q150, and the full stop between the clauses as a
+sentence boundary for this check, beside the
+standing separators and dash forms, so an evidence
+word in an earlier clause no longer swallows a
+later instruction complement under those separators
+either — while ordinary two-sentence briefings stay
+silent, pinned both ways. The guard stays per
+match, the mark's placement, the audit shape, the
+7 rules' subjects, and the no-refusal /
+no-warning behaviour are unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(5:49 AM PST, 2026-11-11), the fix commit of
+6:02 AM PST ("Q151: the briefing guard judges a
+governed noun phrase in full and opens a ledger
+segment at the last separators (option 1)") —
+`runner/ops/briefing.py` (the widened guard) and
+`runner/tests/test_briefing_contradiction.py` (the
+Q151PolarityGuardTest family: item 1's complement
+prohibitions silent on both layers plain and
+bookended with its determiner-closed object
+clauses and object phrase firing and its bare and
+passive controls silent, item 2's
+remaining-separator shapes firing on both layers
+plain and bookended with its evidence-only twins
+silent and the ordinary two-sentence shapes
+silent, beside the filed Q143, Q144, Q145, Q146,
+Q147, Q148, Q149 and Q150 corpora, the standing
+contradiction family, and the unrelated-negation
+and negated-then-contradicting pins) — and the
+figures commit of 6:08 AM PST re-measuring the
+core over `briefing.py`'s 124-line growth.
+Red-before: item 1's shapes marked on the current
+head, item 2's shapes read nothing on the current
+head, measured first-hand by this lane on the
+fixture layer and the shipped layer (item 1's 13
+sentences marking whole on the current head and
+on both earlier trees, the representative in 73
+of 75 bookended variants, item 2's 16 shapes
+firing on the pre-Q143-fix detector only, the
+controls holding on the current head), and the
+new family reads 2223 subtest failures against
+the unpatched detector, every one of them in the
+new family. Green after: the guard family stands
+at 131 tests, the neighbour batteries
+(`test_oracle_briefing`, `test_posture_stamp`,
+`test_protocol_v2*`, `test_v2_consult`,
+`test_v2_replay`, `test_security_config`) read
+305 green beside it, and item 1's representative
+sentence assembled into a briefing carries no
+mark and writes no startup audit row while item
+2's representative sentences (the caret shape, a
+fold-erased whitespace shape and the full-stop
+shape) each carry the mark and write exactly
+their one audit row. The filing seat's re-test is
+still owed under rule 8: Q151 is not closed by
+this lane, and neither are Q150, Q149, Q148,
+Q147, Q146, Q145, Q144 and Q143 — all close only
+after that re-test passes whole.
+
 ---
 
 ## Q150 (Muse, to the desk, 2026-11-11): the Q149 guard's residual polarity shapes — a doubled clause-head parenthetical and a noun-complement object phrase are still marked, an adjective-carried predicate, a tailed by-phrase and a base-form verb are still missed, and the ledger's mixed sentence under its remaining clause separators is still missed

@@ -8839,3 +8839,97 @@ verdict on a head carrying this re-pack, under
 rule 8, with the version-rot family cleared by
 that cut's bump judged separately from the
 wall-clock question.
+
+## Q151: conclusions of the fix lane (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded in the desk
+before the fix (the Q151 section above), each measured
+on the current head and on the landing tree. The lane
+started from the remote main carrying the Q150
+re-test and the Q151 filing.
+
+- **Q151-S1 confirmed** — the filed defect reproduced
+  whole before the fix, on this lane's own probe over
+  the fixture layer and the shipped layer and over
+  both earlier trees (each verified from its own
+  history before it was trusted: the pre-Q150-fix
+  tree at the Q150 fix commit's parent, the
+  pre-Q143-fix tree at the Q143 fix commit's parent):
+  item 1's 13 sentences marking whole on all three
+  trees (73 of 75 bookended variants for the
+  representative, its mark and 1 audit row end to
+  end), item 2's 16 shapes silent on the current head
+  and on the pre-Q150-fix detector and firing whole
+  on the pre-Q143-fix detector (0 of 75 bookended
+  variants on the current head for both
+  representatives, against 75 of 75 pre-Q143), the
+  controls and both-ways pins holding among the
+  checks.
+- **Q151-S2 confirmed** — a governed noun phrase is
+  judged by what it is to its verb in full, wherever
+  the clause judgement meets it: item 1's 13
+  sentences and the raw-output twin are silent on
+  both layers, plain and bookended (the
+  representative in 0 of 75 bookended variants), its
+  bare and passive controls stay silent ("holds
+  clearance", "is assigned a duty", "is given a
+  duty"), its determiner-closed object clauses and
+  object phrase keep firing ("prompts a team",
+  "prompts the team", "holds operators"), and the
+  object-phrase pins and subject clauses of the
+  Q148, Q149 and Q150 families read as they did.
+- **Q151-S3 confirmed** — the caret, the percent
+  sign, the dollar sign, the backtick, the
+  exclamation mark, the question mark, the broken
+  bar, the two-dot leader and the non-breaking
+  hyphen open a ledger segment; the fold-erased
+  whitespace shapes (the tab, the form feed, the
+  vertical tab, the Unicode line separator, the
+  Unicode paragraph separator and the next-line
+  character) are read as boundaries before the
+  whitespace fold erases them, beside the line
+  break read since Q150; and the full stop between
+  the clauses is a sentence boundary for this
+  check: the mixed sentence fires under every one
+  of the 16 shapes on both layers, plain and
+  bookended (the representatives in 75 of 75
+  bookended variants), the evidence-only twins
+  under the new separators stay silent, and the
+  ordinary two-sentence shapes stay silent, pinned
+  both ways beside the firing two-sentence shape.
+- **Q151-S4 confirmed** — end to end, item 1's
+  representative sentence assembled into a briefing
+  carries no tension mark, `briefing_report` names
+  no tensions for it, and the startup pass writes no
+  audit row, and item 2's representative sentences
+  (the caret shape, the tab shape and the full-stop
+  shape) each carry the mark and write exactly one
+  audit row (feature `briefing`, decision `marked`,
+  the rule id as the detail), all pinned in the
+  family's end-to-end test.
+- **Q151-S5 confirmed** — nothing else moved: the
+  guard family stands at 131 tests (the
+  Q151PolarityGuardTest family's 12 beside the filed
+  Q143, Q144, Q145, Q146, Q147, Q148, Q149 and Q150
+  families, the standing 7-rule family, the
+  unrelated-negation pins and the
+  negated-then-contradicting shapes), red-before at
+  2223 subtest failures against the unpatched
+  detector, every one of them in the new family; the
+  neighbour batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2*`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read 305 green beside it;
+  and the core was re-measured over `briefing.py`'s
+  124-line growth in the figures commit of
+  6:08 AM PST (as-assembled 62,189 lines, 56,162
+  non-blank, zip 785,378 bytes; canonical 61,342
+  lines over 135 files).
+
+Q151 is answered under option 1 in the questions
+file in this landing. It is NOT closed: the filing
+seat's rule-8 re-test is still owed, and Q150, Q149,
+Q148, Q147, Q146, Q145, Q144 and Q143 close only if
+that re-test passes whole.
