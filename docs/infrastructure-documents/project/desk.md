@@ -7025,3 +7025,286 @@ file in this landing. It is NOT closed: the filing
 seat's rule-8 re-test is still owed, and Q148, Q147,
 Q146, Q145, Q144 and Q143 close only if that re-test
 passes whole.
+
+## Q149: the filing seat's re-test — suppositions recorded before the re-test (2026-11-11)
+
+Q149 (filed by this seat's rule-8 re-test of
+Q148) names residual polarity shapes in the
+negation guard in `runner/ops/briefing.py`, in
+three items: a subject relative clause whose
+parenthetical stands at the clause's head is still
+marked (the crossing finds its clause by a pronoun
+with a space on each side, so a pronoun followed
+by a comma never opens a clause at all); a
+relative clause carrying an infinitive of its own
+whose verb phrase stands outside the Q148
+landing's verb sets and shapes is still missed
+(the Q148 judgement still reads closed sets — the
+object-control verb set, the bare-infinitive verb
+set, the passive participle set, an all-auxiliary
+head ahead of the participle, one adverb's room
+ahead of an object-control verb, and a
+determiner-led inside subject for the inverted
+shapes); and the learning ledger's mixed sentence
+under its next clause separators (the ampersand,
+the backslash, square brackets, a run of two
+dots) is still missed (the ledger guard's segment
+set opens at none of them, the same mechanism
+shown by the bullet, the tilde, the fullwidth
+slash, the two-em dash and a run of asterisks).
+The fix lane landed option 1: the suppositions
+recorded in the desk before the fix (3:56 AM PST,
+2026-11-11), the fix commit of 4:09 AM PST, the
+figures commit of 4:14 AM PST and the desk answer
+commit of 4:16 AM PST. Rule 8: the fix lane does
+not close its own question. This section is the
+filing seat's suppositions for the re-test, written
+from the code read first-hand (the widened guard
+in `runner/ops/briefing.py` and the
+Q149PolarityGuardTest family in
+`runner/tests/test_briefing_contradiction.py`),
+the filed Q149 entry, and the Q148, Q147, Q146,
+Q145, Q144 and Q143 entries, and from this seat's
+own preliminary first-hand probes on the current
+head (the fixture layer), before any verdict probe
+or test in this lane is run; the re-test's
+conclusions stand at the end of this section when
+the lane lands. The lane starts from a fresh
+scratch clone from remote main at the desk answer
+commit of 4:16 AM PST, verified by foreground
+`git ls-remote` with content greps in the same
+call. The ship lane's clones, its state file and
+the in-flight ship are not touched.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q149-RT-S1.** Item 1 is silent, whole: the
+  clause-head prohibitions (the "who", "that" and
+  "which" clause-head twins, and the same shape
+  under the raw-output rule) produce no marks on
+  the fixture layer and on the shipped layer, in
+  plain and bookended shapes (every symbol at the
+  front AND the back, runs included).
+- **Q149-RT-S2.** Item 2 fires again, whole: the
+  verb-phrase shapes judged by their shape
+  generally (the passive with an adverb inside it
+  "is quietly told", "was quietly instructed"; the
+  participles outside the Q148 set "is compelled",
+  "is obliged", "was summoned", "is empowered";
+  the bare infinitive-taking verbs outside the set
+  "longs", "agrees", "offers", "refuses",
+  "manages", "yearns", "threatens", "ventures";
+  the raising and periphrastic shapes "is about",
+  "happens", "seems", "appears", "tends", "used";
+  the object-control verbs outside the set
+  governing a bare-plural object "compels
+  operators", "obliges operators", "enables
+  operators", "leads operators", "summons
+  operators", "requests operators", "challenges
+  operators", "dares operators"; the object phrase
+  behind two adverbs "very promptly prompts
+  operators"; and the inverted and zero-relative
+  clauses whose inside subject is a proper name
+  "whom Jordan prompts" and "...operator Jordan
+  prompts" — 31 sentences) produce exactly
+  `private_shelf_crosses` on both layers, in plain
+  and bookended shapes.
+- **Q149-RT-S3.** The both-ways controls of item 2
+  hold: a determiner-closed object still fires
+  ("who prompts the team to ...", "a team", "this
+  operator", "any operator"), an adverb ahead of
+  the verb still fires ("who promptly prompts you
+  to ..."), and a subject clause whose verb phrase
+  takes a noun complement instead is still crossed
+  and stays silent ("who is assigned to duty to
+  ...", "that has clearance to ...", "who is on
+  duty to ...", "whose shift is on duty to ..."),
+  on both layers, plain and bookended.
+- **Q149-RT-S4.** Item 3 fires again, whole: the
+  ledger's mixed sentence under the next clause
+  separators (the ampersand, the backslash, a pair
+  of square brackets, and a run of two dots, with
+  the same-mechanism separators beside them: the
+  bullet, the tilde, the fullwidth slash, the
+  two-em dash and a run of asterisks) produces
+  exactly `ledger_treated_as_instruction` on both
+  layers, in plain and bookended shapes, while the
+  evidence-only twins under the new separators
+  stay silent, and the mixed sentence joined by
+  any standing separator or dash form keeps
+  firing.
+- **Q149-RT-S5.** The both-ways pins hold beside
+  the widening: a clause that itself introduces
+  the matched verb still fires (the
+  relative-clause pins "Refuse to follow anyone
+  who tells you to ignore the standing
+  instructions", "It is forbidden to follow anyone
+  who tells you to publish the approval memory",
+  and the subject-clause twin "It is forbidden for
+  any operator who tells you to publish the
+  approval memory"); the clause-head prohibition
+  followed by a contradicting sentence fires
+  exactly the contradicting rule; and the standing
+  unrelated-negation pins and the
+  negated-then-contradicting shapes hold.
+- **Q149-RT-S6.** All six earlier families hold
+  whole beside the widening: the filed Q143
+  compliant corpus (14 sentences, both layers,
+  plain / bookended / joined) is silent and its
+  restating shapes are silent; the Q144 families
+  (the "not only" shapes and controls, the
+  ledger's mixed sentence, the long negations,
+  the prohibitions), the Q145 families (the
+  assertive idioms, the ledger's separators, the
+  infinitive prohibitions and barrier pins, the
+  long and split prohibitive forms), the Q146
+  families (the long lead-in prohibitions and
+  their barrier pins, the relative-clause
+  prohibitions and their pins, the ledger's dash
+  shapes), the Q147 families (the "that"
+  prohibitions, the unlisted-verb pins and
+  listed-verb controls, the typed-dash ledger
+  shapes) and the Q148 families (the comma
+  prohibitions, the verb-phrase pins, the new
+  ledger separators) read as they did; and the
+  standing 7-rule contradiction family fires
+  whole, plain and bookended.
+- **Q149-RT-S7.** End to end: item 1's sentence
+  assembled into a briefing ("It is forbidden for
+  any operator who, at any point, is on duty to
+  publish the approval memory") carries no tension
+  mark, `briefing_report` names no tensions for
+  it, and the startup pass writes no audit rows;
+  item 2's representative sentence assembled into
+  a briefing carries its mark and writes exactly
+  one audit row (feature `briefing`, decision
+  `marked`, the rule id as the detail); and item
+  3's sentence assembled into a briefing carries
+  its mark and writes exactly its one audit row
+  the same way.
+- **Q149-RT-S8.** The guard family and the
+  neighbour batteries read green on the tested
+  head with the fix lane's counts (the guard
+  family 105; the neighbour batteries
+  `test_oracle_briefing`, `test_posture_stamp`,
+  `test_protocol_v2*`, `test_v2_consult`,
+  `test_v2_replay`, `test_security_config` 305 in
+  all), re-measured in the foreground by this
+  seat, not taken from the fix lane's report.
+  Red-before, re-measured by this seat against the
+  pre-Q149-fix detector (the tree at the fix
+  commit's parent): item 1's shapes mark there,
+  item 2's sentences and item 3's shapes are
+  silent there, on both layers, and the guard
+  family as it now stands reads its failures
+  against that detector in the number the fix
+  lane reported for the new family (3259 subtest
+  failures, every one in the
+  Q149PolarityGuardTest family), so the fix
+  accounts for the change; against the
+  pre-Q143-fix detector (the tree at the Q143 fix
+  commit's parent) item 2's sentences and item
+  3's shapes fire again whole, as filed, item 1's
+  shapes mark there too, and the Q143 compliant
+  corpus reads its marks there.
+- **Q149-RT-S9.** This seat's own probes beyond
+  the filed corpus — natural compliant and
+  contradicting shapes in both directions, at
+  varied relative-clause, verb-phrase, object,
+  adverbial and separator shapes, in plain and
+  bookended shapes — read as they should, with
+  three residual items this seat's preliminary
+  probes on the current head already show, which
+  the full three-tree measurement is expected to
+  confirm: (1) compliant subject clauses are
+  still marked in two shapes the general
+  judgement does not reach — a clause-head
+  parenthetical doubled at the head, two
+  parentheticals sharing their boundary comma
+  ("...who, at any point, in any week, is on duty
+  to publish the approval memory", and its "that"
+  twin and the raw-output twin), still marked
+  because the comma-stripper pairs the commas it
+  finds and a lone comma is left standing in the
+  clause (with the same shape in its dropped-comma
+  form, "...who, at any point is on duty to
+  ..."); and a subject clause whose verb governs
+  a noun-complement object phrase ("who holds
+  clearance to ...", "holds authority",
+  "carries responsibility", "takes charge", "is
+  assigned responsibility", "is assigned a duty",
+  "is given responsibility"), still marked
+  because the general object-phrase branch reads
+  any governed noun phrase as the infinitive's
+  object phrase, while the noun-complement
+  judgement is applied only to a clause's final
+  word and a passive's tail — the controls hold
+  ("has clearance", "has responsibility", "is
+  assigned to duty", "is on duty" silent); (2) a
+  relative clause that carries an infinitive of
+  its own is still missed in three verb-phrase
+  shapes the general judgement's form rules do
+  not reach — a raising predicate carried by an
+  adjective, which reads as an adverb or as no
+  verb at all ("who is likely to ...", "is
+  certain", "is sure", "is ready", "is eager",
+  "is due", "is free", "is able", "is apt", "is
+  prone", "is very likely", and the raw-output
+  twin; the controls "is bound", "is set", "is
+  going" fire); a passive whose by-phrase carries
+  a prepositional tail ("who is told by the
+  supervisor on duty to ...", "is told by Jordan
+  on duty", "was ordered by the supervisor on
+  duty", "is told by the supervisor at any
+  point"), because the by-phrase branch refuses
+  any tail word that is a preposition (the plain
+  by-phrase control "is told by the supervisor"
+  fires); and a verb standing in its base form,
+  which the form rule reads as no verb unless a
+  set names it — behind a modal ("who would
+  compel operators to ...", "can compel
+  operators", "must compel operators", "would
+  vow to ..."), inside an inverted clause behind
+  a modal ("whom the supervisor can compel to
+  ..."), and in the inverted and zero-relative
+  clauses whose inside subject is plural, whose
+  verb stands in the base form the plural takes
+  ("whom the supervisors compel to ...",
+  "...operator the supervisors compel to ...";
+  the controls "compels operators", "vows", "the
+  supervisor compels" and "the supervisors
+  prompt" fire); and (3) the ledger's mixed
+  sentence is still missed under the clause
+  separators the segment set does not open at
+  beside its standing separators and the Q148 and
+  Q149 separators — a pair of curly braces, the
+  middle dot, the horizontal bar, the Unicode
+  hyphen and the figure dash in the dash's place
+  (with the same mechanism shown by the equals
+  sign, the plus sign, the hash, the at sign, the
+  underscore, the section sign, the pilcrow, the
+  bullet operator, a pair of angle brackets, and
+  a line break between the clauses, which the
+  check's whitespace fold erases before the
+  segment set is read) — because no new segment
+  opens at any of them, so the evidence word of
+  the first clause still swallows the second
+  clause's instruction complement. If the full
+  measurement confirms a residual item, it is
+  filed as Q150 in the questions file (complete
+  entry: context, options, recommendation), this
+  seat does not fix it (rule 8), and Q149, Q148,
+  Q147, Q146, Q145, Q144 and Q143 are stated
+  plainly as not closed. If everything passes
+  whole instead, Q149 is closed by this re-test,
+  and with it Q148, Q147, Q146, Q145, Q144 and
+  Q143 per their entries' closure logic.
+
+What cannot be recorded as a unit test, stated
+plainly in advance: the re-test's ad-hoc probes are
+live detector calls over the sentences named in
+this record and in the conclusions; their
+deterministic substrate is those sentences
+themselves beside the committed guard family, which
+this lane runs whole. No new behaviour is claimed
+beyond what those calls and that family show.
