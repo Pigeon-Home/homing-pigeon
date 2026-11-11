@@ -14429,3 +14429,316 @@ behaviour is claimed beyond what those calls
 and that family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q156 re-test: suppositions of the filing seat, recorded before the re-test (2026-11-11)
+
+Q156 (filed by this seat's rule-8 re-test of
+Q155) was answered under option 1 by a fix lane
+(the suppositions recorded in the desk before
+the fix at 11:36 AM PST, 2026-11-11, the fix
+commit of 12:02 PM PST, the figures commit of
+12:07 PM PST and the desk answer commit of
+12:11 PM PST). Rule 8: the fix lane does not
+close its own question. This section is the
+filing seat's suppositions for the re-test,
+written from the code read first-hand (the
+widened guard in `runner/ops/briefing.py` --
+`_clause_carries_infinitive`'s verb branch
+judging the phrase standing ahead of a relative
+pronoun in (who, whom, which, that, whose), so
+a phrase carrying a "whose" clause of its own
+is judged by its own shape ahead of "whose";
+`_fold` reading the Arabic number signs, the
+Arabic end of ayah, the Arabic pound and
+piastre marks above and the Arabic disputed
+end of ayah as boundaries beside the ranges it
+already read; and `_LEDGER_SEGMENTS` gaining
+the single and double high-reversed-9
+quotation marks, the double prime, the
+question exclamation mark, the exclamation
+question mark, the inverted interrobang, the
+reversed question mark, the Greek question
+mark, the angle brackets, the fullwidth
+number sign, percent sign and hyphen-minus,
+and the fullwidth curly brackets -- and the
+Q156PolarityGuardTest family in
+`runner/tests/test_briefing_contradiction.py`),
+the filed Q156 entry, and this seat's own code
+read, before any verdict probe or test in this
+lane is run; the re-test's conclusions stand
+at the end of this section when the lane
+lands. The lane starts from a fresh scratch
+clone from remote main at a head carrying the
+Q156 landing (the desk answer commit of
+12:11 PM PST in its history, the remote head
+verified by foreground `git ls-remote` in the
+same call as the clone). The four trees of
+the measurement: the current head; the
+pre-Q156-fix detector (the tree at the fix
+commit's parent); the pre-Q155-fix detector
+(the tree at the Q155 fix commit's parent)
+beside it; and the pre-Q143-fix detector (the
+tree at the Q143 fix commit's parent), each
+verified from its own history. The ship
+lane's clones, its state file and the
+in-flight ship are not touched, and neither
+are the Q156 fix lane's clone and probes, the
+Q155 lanes' clones, the windows-durations
+lanes' clones or the Q136 lanes' files.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q156-RT-S1.** Item 1 fires again, whole:
+  the 3 object phrases carrying a "whose"
+  clause of their own ("compels a clerk whose
+  record is on file", "deploys a crew whose
+  members are on duty", "summons a clerk whose
+  name is on file") produce exactly
+  `private_shelf_crosses` on the fixture layer
+  and on the shipped layer, in plain and
+  bookended shapes (every symbol at the front
+  AND the back, runs included), beside their
+  composed shapes (an adjective lead, a
+  possessive lead, a numeral lead with a
+  plural head, a crew phrase carrying the
+  same "whose" clause, a listed verb -- 5
+  sentences, plain and bookended).
+- **Q156-RT-S2.** Items 2 and 3 fire again,
+  whole: the ledger's mixed sentence under
+  the format characters of the Arabic block
+  beyond the marks the fold read (the Arabic
+  number signs, the Arabic end of ayah, the
+  Arabic pound and piastre marks above and
+  the Arabic disputed end of ayah -- 10
+  shapes) and under the punctuation
+  separators beyond the widened segment set
+  (a single high-reversed-9 quotation mark, a
+  double high-reversed-9 quotation mark, a
+  double prime, a question exclamation mark,
+  an exclamation question mark, an inverted
+  interrobang, a reversed question mark, a
+  Greek question mark, an angle bracket in
+  each direction, a fullwidth number sign, a
+  fullwidth percent sign, a fullwidth
+  hyphen-minus, and a fullwidth curly
+  bracket in each direction -- 15 shapes) --
+  25 shapes in all -- produces exactly
+  `ledger_treated_as_instruction` on both
+  layers, in plain and bookended shapes,
+  while the evidence-only twins under the
+  new shapes (one twin per firing shape, 25
+  in all) stay silent.
+- **Q156-RT-S3.** Item 1's, item 2's and item
+  3's both-ways controls hold: the filed
+  controls fire whole beside the widening
+  (Q155's filed item 1 in its 8 sentences,
+  the plain object phrase and "compels
+  operators" -- 10 sentences, plain and
+  bookended, both layers); and the silent
+  controls stay silent, plain and bookended,
+  on both layers -- the Q153 Answer's bound
+  edge under the unlisted verbs ("compels a
+  duty", "sends a clearance"), Q155's 15
+  silent controls (the bound edge "prompts a
+  duty", the complements under complement
+  verbs, the passive shape, the
+  same-standing control, and the
+  relative-clause complements beside the
+  plain subject clause), and a complement
+  carrying a "whose" clause of its own
+  beside them ("holds a credential whose
+  record is on file", "prompts a duty whose
+  record is on file") -- 17 sentences in all.
+- **Q156-RT-S4.** The both-ways pins hold
+  beside the widening: the bound prohibition
+  followed by a contradicting sentence fires
+  exactly the contradicting rule, and the
+  standing unrelated-negation pins and the
+  negated-then-contradicting shapes hold,
+  the last two verified through the
+  committed guard family beside this seat's
+  own probes.
+- **Q156-RT-S5.** All thirteen earlier
+  families hold whole beside the widening:
+  the filed Q143 compliant corpus (14
+  sentences, both layers, plain / bookended
+  / joined) is silent and its restating
+  shapes are silent; the Q144, Q145, Q146,
+  Q147, Q148, Q149, Q150, Q151, Q152, Q153,
+  Q154 and Q155 families read as they did;
+  and the standing 7-rule contradiction
+  family fires whole, plain and bookended.
+- **Q156-RT-S6.** End to end: item 1's
+  representative sentence ("compels a clerk
+  whose record is on file"), item 2's
+  representative sentence (the first
+  Arabic-number-sign shape) and item 3's
+  representative sentence (the
+  single-high-reversed-9-quote shape)
+  assembled into briefings each carry their
+  mark, `briefing_report` names their
+  tensions, and the startup pass writes
+  exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id
+  as the detail); and the bound shape
+  ("compels a duty") assembled into a
+  briefing carries no tension mark, names
+  no tensions, and writes no audit row.
+- **Q156-RT-S7.** The guard family and the
+  neighbour batteries read green on the
+  tested head with the fix lane's counts
+  (the guard family 190; the neighbour
+  batteries `test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2*`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config` 305 in all),
+  re-measured in the foreground by this
+  seat, not taken from the fix lane's
+  report. Red-before, re-measured by this
+  seat against the pre-Q156-fix detector
+  (the tree at the fix commit's parent):
+  item 1's, item 2's and item 3's shapes are
+  silent there, on both layers, plain and
+  bookended, beside their silence on the
+  pre-Q155-fix detector, and the guard
+  family as it now stands reads its
+  failures against the pre-Q156-fix
+  detector in the new Q156PolarityGuardTest
+  family alone (the count stated in the
+  conclusions; the fix lane reported 2443
+  subtest failures for the new family
+  against that detector); against the
+  pre-Q143-fix detector (the tree at the
+  Q143 fix commit's parent) item 1's, item
+  2's and item 3's shapes fire again whole,
+  as filed, and the Q143 compliant corpus
+  reads its marks there.
+- **Q156-RT-S8.** This seat's own probes
+  beyond the filed corpus, in the shapes
+  the widening itself composes, hold as the
+  Answer states, in the first group: object
+  phrases through a "whose" clause composed
+  -- a past form of the governing verb
+  ("compelled a clerk whose record was on
+  file"), a bare plural head ("compels
+  clerks whose records are on file"), a
+  possessive lead under a listed verb
+  ("tells her clerk whose record is on
+  file"), a past inside clause ("compels a
+  clerk whose record was filed"), an adverb
+  inside the clause ("compels a clerk whose
+  record is currently on file") and stacked
+  "whose" clauses ("compels a clerk whose
+  record is on file and whose name is
+  listed"), and a "whose" clause stacked
+  with a relative clause ("compels a clerk
+  whose record is on file and who is on
+  duty") -- fire exactly
+  `private_shelf_crosses` on both layers,
+  plain and bookended; the filed ledger
+  shapes in their other spacings fire (an
+  Arabic number sign standing spaced
+  between the clauses, a
+  single-high-reversed-9 quotation mark
+  standing unspaced between them); and the
+  evidence-only twin under a spaced Arabic
+  number sign stays silent.
+- **Q156-RT-S9.** This seat's own probes
+  beyond the filed corpus, in the
+  directions that are shapes of the filed
+  judgement, read as they should, in a
+  second group that names the residual
+  directions this seat will measure in
+  advance of any finding. (1) A true object
+  phrase carrying a modifying clause in
+  the shapes the judgement's relative-
+  pronoun lists do not name: a pied-piped
+  relative clause, where the phrase stands
+  ahead of a determiner-led phrase carrying
+  the pronoun at its end ("compels a crew
+  the members of which are on duty to
+  ...", "compels a clerk the record of
+  whom is on file to ..."); a comma-set
+  "whose" clause ("compels a clerk, whose
+  record is on file, to ..."), standing
+  between the phrase and its infinitive
+  behind its commas; a zero relative on
+  the phrase ("compels a clerk the
+  supervisor trusts to ..."), where no
+  pronoun stands between the phrase and
+  the inside clause's verb; a
+  prepositional phrase modifying the
+  phrase ("compels a clerk on the night
+  shift to ..."); and a "whose" clause
+  modifying a compound object phrase
+  ("compels a clerk and a crew whose
+  records are on file to ...") -- 6 shapes
+  in all, which may still be crossed the
+  way item 1 was crossed before the
+  landing. (2) The ledger's mixed sentence
+  under the format characters standing
+  beyond the blocks the fold reads -- the
+  Egyptian hieroglyph format controls
+  (U+13430 to U+1343F) -- 16 shapes in all,
+  standing between the clauses the way the
+  filed boundary shapes stand -- the fold's
+  character ranges name none of these, so
+  these shapes may still be missed the way
+  item 2 was missed before the landing.
+  (3) The ledger's mixed sentence under
+  punctuation separators that stand beyond
+  the widened segment set, beside the
+  separators Q148 to Q156 filed -- a
+  double vertical line, a per mille sign,
+  a reversed prime, a reversed double
+  prime, a quadruple prime, a reversed
+  semicolon, a Greek ano teleia, an
+  Armenian exclamation mark, a Hebrew sof
+  pasuq, an Arabic triple dot punctuation
+  mark, a double corner bracket in each
+  direction (beside the corner brackets
+  Q154 filed), a black lenticular bracket
+  in each direction, a fullwidth vertical
+  line and a fullwidth tilde (beside the
+  fullwidth signs Q153 to Q156 filed), and
+  a halfwidth ideographic full stop
+  (beside the ideographic full stop Q152
+  filed) -- 16 shapes in all, standing
+  spaced between the clauses the way the
+  filed separators stand -- the segment set
+  opens at none of these, so these shapes
+  may still be missed the same way. And a
+  bound pin beside them, expected to hold
+  as a bound: a complement carrying a
+  pied-piped relative clause of its own
+  ("holds a credential the record of which
+  is on file") stays silent, the
+  complement's standing judged through its
+  clause the way the filed "whose"-clause
+  complements are judged, beside the Q153
+  Answer's bound edge re-pinned in S3. If
+  the full measurement confirms a residual
+  item in this second group, it is filed
+  as Q157 in the questions file (complete
+  entry: context, options,
+  recommendation), this seat does not fix
+  it (rule 8), and Q156, Q155, Q154, Q153,
+  Q152, Q151, Q150, Q149, Q148, Q147, Q146,
+  Q145, Q144 and Q143 are stated plainly
+  as not closed. If everything passes
+  whole instead, Q156 is closed by this
+  re-test, and with it Q155, Q154, Q153,
+  Q152, Q151, Q150, Q149, Q148, Q147, Q146,
+  Q145, Q144 and Q143 per their entries'
+  closure logic.
+
+What cannot be recorded as a unit test,
+stated plainly in advance: the re-test's
+ad-hoc probes are live detector calls over
+the sentences named in this record and in
+the conclusions; their deterministic
+substrate is those sentences themselves
+beside the committed guard family, which
+this lane runs whole. No new behaviour is
+claimed beyond what those calls and that
+family show.
