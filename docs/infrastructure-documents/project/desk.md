@@ -1341,6 +1341,100 @@ and added none, and the 17 that remain are the
 pre-existing grep max-matches family this cell's
 runs have carried throughout.
 
+## The documentation overview, Packet 7: suppositions recorded before the check (2026-11-10)
+
+Packet 7 of the overview takes the IETF shelf, source
+only: the living version 1 and version 2 drafts
+(`docs/ietf/draft-slutsky-homing-pigeon/source/draft-homing-pigeon-00.md`,
+`docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-pigeon-v2-00.md`),
+the local -04 working drafts beside them
+(`draft-slutsky-homing-pigeon-04.md`,
+`draft-slutsky-homing-pigeon-v2-04.md`), the version 3
+source
+(`docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md`),
+the cover sheet `docs/ietf/status.md`, and the 3 notes
+(`docs/ietf/notes/checklist-04-applied.md`,
+`docs/ietf/notes/delta-deferred-items-for-approval.md`,
+`docs/ietf/notes/trim-02.md`). The mirror rule binds
+this packet: the living version 1 and version 2 texts
+match the posted IETF texts exactly and are never
+edited here; any change worth making is recorded as a
+finding, and the cover sheet and the notes may be
+corrected only for plain factual errors about the
+current state (both drafts stand at -03, ISE
+publication pending). The submitted copies are
+spot-checked for identity with the sources, not
+re-read. Suppositions, written before the identity
+and count checks ran:
+
+- **P7-S1.** The mirror holds byte for byte: the
+  living version 1 source is identical to the frozen
+  `submitted/` -03 markdown, and the living version 2
+  source is identical to its frozen -03 markdown.
+- **P7-S2.** The cover sheet's posting facts check
+  out against the frozen copies' own records: the
+  current revision of each draft is -03, version 1
+  -03 expires 1 May 2027 and version 2 -03 expires
+  6 May 2027, and the per-draft status files agree
+  with the cover sheet on revision, submission
+  numbers (171771 and 171786) and expiry.
+- **P7-S3.** The cover sheet's Next section and Known
+  nits section are stale in tense: they speak of -02
+  as the revision still to come ("The known nits
+  below are the text of -02", "These are the edits
+  for -02") though -02 and -03 are both posted and
+  the nits were applied in -02; and the Next
+  section's "due before 3 May 2027" matches neither
+  -03 expiry date the same file states (1 May and
+  6 May 2027).
+- **P7-S4.** The deferred-items note is stale in the
+  opposite direction: it still presents its item S4
+  (the `job-id` rule) as the one proposed change
+  awaiting a single yes, though the checklist-applied
+  note records that change as approved on 2026-11-07
+  and applied to the -04 working draft after the cut,
+  and the -04 source will show `job-id = 1*128
+  word-char` with no `job-id-char` rule standing.
+- **P7-S5.** The deferred-items note's em dash counts
+  verify exactly: the living drafts hold 6 (version 1)
+  and 4 (version 2) em dash characters, and the -04
+  working drafts and the posted -02 and -03 sources
+  hold 0 each.
+- **P7-S6.** The cover sheet's version 3 paragraph
+  carries a garbled duplication (the idnits report
+  stands "beside the source as
+  `draft-slutsky-homing-pigeon-v3-00.idnits.txt`
+  beside it in the same folder"), and its statement
+  that the renders match the source was written of
+  the 2 November final-pass text, before the
+  2026-11-06 source correction the same paragraph
+  records next.
+- **P7-S7.** The checklist-applied note's render
+  claims verify against the idnits records beside
+  the -04 sources: 0 errors on each draft's text and
+  XML runs.
+- **P7-S8.** The trim list's quoted phrases verify
+  against the submitted -02 sources it names, and
+  its negative claims hold for both: neither -02
+  source names `PROTOCOL.md`, a path into the
+  repository, or a GitHub URL.
+- **P7-S9.** The checklist-applied note's account of
+  the -04 cut checks out: the -04 sources were cut
+  from the posted -03 texts, stand unsubmitted in
+  each draft's `source/` folder with their renders
+  and idnits records, and the living drafts were not
+  edited to make them.
+- **P7-S10.** Outside those points the cover sheet
+  and the notes are current: the ISE request record,
+  the waiting-on list, version 3's local-only state,
+  and the -04 checklist's applied, guarded and
+  no-change items as the applied note records them.
+
+Each supposition is settled against the records in
+the commits that follow this note; the conclusions
+stand at the end of this section when the packet
+lands.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
