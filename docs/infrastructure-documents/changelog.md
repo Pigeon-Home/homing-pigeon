@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.20.4 - 2026-11-11
+
+- The fourth release on the 3.16 line: everything that landed on main after 3.16.20.3 ships here.
+- The Oracle briefing's contradiction guard completes another two rounds of polarity shapes: the assertive idioms, the ledger's separators, the governed infinitive, and the prohibitive reach (Q145), then the long adverbial lead-in, the subject relative clause, and the ledger's dash (Q146) — each filed by the previous round's re-test, answered under option 1, and recorded at the desk with its suppositions written before the work and its conclusions after; the Q146 re-test stands recorded at this head and files Q147 for the guard's residual shapes, which rides a later release.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,603,074 tokens, 1,356,050 tracked lines, 5,328 commits.
+
 ## 3.16.20.3 - 2026-11-11
 
 - The third release on the 3.16 line, cut as a practice run of the release train at the conductor's word, with no new content beyond what had already landed on main since 3.16.20.2.
