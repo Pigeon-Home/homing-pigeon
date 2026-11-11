@@ -358,6 +358,21 @@ arriving on a job is never read. The remaining producers
 (the run record, the ledger entry, the log line) stay
 follow-on work, one producer at a time, as before.
 
+The startup resolution has a second consumer: the
+determination decision point. A deployment may name, in
+`v2_question_postures`, the posture ids under which a
+version 2 question may leave the box; the decision point
+reads the posture id off the same startup resolution —
+it does not re-resolve, and it does not invent one — and
+the security mode `v2_question` decides whether that
+allowlist is applied, audited, or off. The gate reads
+the posture's identity only, never its `say` or `shelf`
+prose: what may be said where is operator language, and
+no machine gate parses it honestly. A deployment the
+resolution left unstamped fails the gate closed, and
+the consult degrades to its local sources; no job is
+refused over a question that was not sent.
+
 ## What the Oracle is to understand by a posture
 
 The Oracle renders opinions inside this suite, so its

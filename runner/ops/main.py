@@ -214,6 +214,24 @@ def main() -> int:
         R.log(f"disclosure posture: no assignment for project "
               f"{_posture_project}; results are recorded "
               f"unstamped", "WARN")
+    # The determination decision point's keys resolve here too,
+    # beside the posture gate they read: a bad v2_consult value
+    # or a question allowlist naming an undeclared or retired
+    # posture is a configuration problem named before any job
+    # work. The default (remote) announces nothing and changes
+    # nothing; a chosen consult mode is named once, here.
+    try:
+        R._validate_v2_consult(
+            cfg, R._base_dir_for(cfg, args.config))
+    except RuntimeError as e:
+        print(e, file=sys.stderr)
+        return 2
+    if R._protocol_v2 is not None:
+        _consult_mode = R._protocol_v2.consult_mode_of(cfg)
+        if _consult_mode != "remote":
+            R.log(f"version 2 consult: mode {_consult_mode}; "
+                  f"the determination decision point consults "
+                  f"in {_consult_mode} mode")
     # F2: a present-but-invalid oracle tool mode stops startup here
     # too. The value decides what the Oracle's run tool may do on
     # this box, so a bad one is refused naming the key, never

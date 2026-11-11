@@ -2335,6 +2335,54 @@ def _stamp_result_posture(base_dir, result, job_id, key_id="", cfg=None):
             base_dir, "posture", decision, reason,
             key_id=key_id, job_id=job_id, detail=detail, cfg=cfg)
 
+
+def _posture_id():
+    """The posture id this process resolved at startup, or None.
+
+    Read off the startup stamp (the stamp carries the id), so
+    the decision point's posture gate reads the same resolution
+    the producer computed -- it never re-resolves, and never
+    reads an inbound stamp."""
+    stamp = _POSTURE_STAMP
+    if not stamp or _disclosure is None:
+        return None
+    try:
+        return _disclosure.parse_stamp(stamp).posture_id
+    except Exception:
+        return None
+
+
+def _validate_v2_consult(cfg, base_dir):
+    """Startup validation for the consult keys (the decision
+    point): a bad v2_consult value, or a v2_question_postures
+    allowlist naming an undeclared or retired posture, is a
+    configuration problem named before any job work, in the
+    posture producer's refuse class. The registry ids are read
+    from the deployment's own registry file when a posture
+    block is declared."""
+    if _protocol_v2 is None:
+        return
+    active_ids = None
+    retired_ids = None
+    block = cfg.get("disclosure_posture") if isinstance(cfg, dict) \
+        else None
+    if isinstance(block, dict) and block and _disclosure is not None:
+        raw = block.get("registry")
+        if isinstance(raw, str) and raw:
+            path = raw if os.path.isabs(raw) \
+                else os.path.join(base_dir, raw)
+            try:
+                registry = _disclosure.load_registry(path)
+            except Exception:
+                registry = None
+            if registry is not None:
+                active_ids = {p.id for p in registry.postures
+                              if p.status == "active"}
+                retired_ids = {p.id for p in registry.postures
+                               if p.status == "retired"}
+    _protocol_v2.validate_consult_config(
+        cfg, active_ids=active_ids, retired_ids=retired_ids)
+
 # ---- the result's size, and what a permanent refusal gets instead
 MAX_RESULT_BYTES = 5 * 1024 * 1024   # 5 MiB on the wire; providers allow 10-25 for the whole message
 _TAIL_KEEP = 2048
@@ -4889,6 +4937,15 @@ def _v2_hand_off(cfg, smtp, base_dir, subject, body, target):
     return []
 
 
+def _v2_model_consult(cfg, job, base_dir=None):
+    """The decision point's local model consult: the opinion
+    model tier, asked through its existing note, so the local
+    and remote sources answer one question. The note itself
+    keeps its home in the opinion member; the consult record
+    references only that the tier answered."""
+    return _opinion_model_note(cfg, job, base_dir)
+
+
 def _v2_before_execute(cfg, job, op_plan, secret, key_id, encrypted,
                        base_dir, send, pump=None):
     """Send a determination and, on Pi Light, a question.
@@ -4897,9 +4954,20 @@ def _v2_before_execute(cfg, job, op_plan, secret, key_id, encrypted,
     answer that arrives before the deadline. The returned
     segments ride the version 1 result. They do not change
     what runs.
+
+    In the consult modes (v2_consult "both" / "local") the
+    determination decision point runs instead: the routing is
+    consult_plan's, the question goes out first, the local
+    consult runs inside the deadline window, and the combined
+    picture rides home as a consult segment with its audit
+    row. Legacy "remote" mode is the path below, unchanged.
     """
     if _protocol_v2 is None:
         return []
+    if _protocol_v2.consult_mode_of(cfg) != "remote":
+        return _v2_consult_before_execute(
+            cfg, job, op_plan, secret, key_id, encrypted,
+            base_dir, send, pump=pump)
     outbound = _protocol_v2.outbound_for(cfg, job, op_plan)
     segments = []
     question = None
@@ -4923,6 +4991,147 @@ def _v2_before_execute(cfg, job, op_plan, secret, key_id, encrypted,
             base_dir, question, time.time(), pump=pump,
             pending=still_out if question_paths else None))
     return segments
+
+
+def _v2_consult_before_execute(cfg, job, op_plan, secret, key_id,
+                               encrypted, base_dir, send, pump=None):
+    """The determination decision point, in consult mode.
+
+    The question is sent first, so the remote clock starts
+    immediately; the local consult (the tier-1 stance off the
+    plan, and the model tier where it is engaged) runs inside
+    the wait the deadline already bounds; the combined picture
+    is formed here, at the result seam, and recorded as a
+    consult segment plus one audit row. The wire
+    determination keeps its frozen shape, and the execution
+    decision is untouched: an answer never admits a job.
+
+    No arm raises: a failed hand-off degrades the remote
+    source to the local picture, a failed model consult
+    leaves the tier-1 stance standing, and no arm stalls the
+    worker past the deadline cap.
+    """
+    V = _protocol_v2
+    job_id = job.get("job_id") if isinstance(job, dict) else ""
+    if not isinstance(job_id, str):
+        job_id = ""
+    model_available = False
+    try:
+        model_available = bool(
+            _opinion is not None and _opinion.model_enabled(cfg)) \
+            and inference_config(cfg) is not None
+    except Exception:
+        model_available = False
+    cplan = V.consult_plan(
+        cfg, job, op_plan, posture_id=_posture_id(),
+        posture_declared=_POSTURE_DECLARED,
+        model_available=model_available)
+    if cplan["reason"] == "clean_pass_settled":
+        return []
+    sources = cplan["sources"]
+    reason = cplan["reason"]
+    segments = []
+    try:
+        outbound = V.outbound_for(cfg, job, op_plan)
+    except Exception:
+        outbound = []
+    question = None
+    question_subject = None
+    question_paths = []
+    remote_segments = []
+    remote_stance = "not_asked"
+    send_failed = False
+    for subj, obj in outbound:
+        if obj.get("type") == "determination":
+            try:
+                send(subj, _seal_reply(
+                    obj, secret, obj["msg_id"], key_id, encrypted))
+                segments.append(V.segment(
+                    "runner", "determination", obj.get("why") or ""))
+            except Exception as e:
+                log(f"version 2 determination hand-off failed for "
+                    f"{job_id}: {e}", "WARN")
+        elif obj.get("type") == "question":
+            question = obj
+            question_subject = subj
+    if "remote" in sources and question is None:
+        # outbound_for asks only in deterministic mode; the
+        # decision point asks wherever its routing says remote,
+        # with the same question the draft defines.
+        try:
+            question = V.question_for(cfg, job)
+            question_subject = ("[HOMING-PIGEON] question "
+                                + question["msg_id"])
+        except Exception:
+            question = None
+    if "remote" in sources and question is not None:
+        try:
+            sent_paths = send(question_subject, _seal_reply(
+                question, secret, question["msg_id"], key_id,
+                encrypted))
+            if isinstance(sent_paths, (list, tuple)):
+                question_paths.extend(
+                    p for p in sent_paths if isinstance(p, str) and p)
+        except Exception as e:
+            log(f"version 2 question hand-off failed for "
+                f"{job_id}: {e}", "WARN")
+            send_failed = True
+    # The local consult runs inside the wait window, after the
+    # question has gone out. The tier-1 stance is read off the
+    # plan (already computed, no cost); the model tier, where
+    # engaged, is asked the opinion tier's own question.
+    local_model = None
+    if "oracle_model" in sources:
+        try:
+            note = _v2_model_consult(cfg, job, base_dir)
+            local_model = "ok" if note else "unavailable"
+        except Exception:
+            local_model = "error"
+    elif cplan["model_skipped_deadline_zero"]:
+        local_model = "skipped_deadline_zero"
+    late = False
+    if "remote" in sources and question is not None \
+            and not send_failed:
+        def still_out(paths=tuple(question_paths)):
+            return any(os.path.exists(p) for p in paths)
+
+        remote_segments = V.await_answer(
+            base_dir, question, time.time(), pump=pump,
+            pending=still_out if question_paths else None)
+        remote_stance, late = V.remote_stance_of(
+            remote_segments, question)
+        segments.extend(remote_segments)
+    elif send_failed:
+        remote_stance = "send_failed"
+    local = cplan["local_stance"]
+    outcome, split = V.combined_outcome(
+        local, remote_stance if remote_stance != "not_asked"
+        else "none")
+    gate_token = None
+    if cplan["gate_reason"]:
+        if cplan["gate_would_block"] and "remote" in sources:
+            gate_token = "audit_would_block:" + cplan["gate_reason"]
+        elif cplan["gate_would_block"]:
+            gate_token = cplan["gate_reason"]
+    if send_failed:
+        outcome = "local_only" if local in (
+            "fail", "unknown", "proceed") else "none"
+        split = False
+        reason = "send_failed"
+    elif "remote" in sources and remote_stance == "no_answer":
+        reason = "deadline_zero_remote" if cplan["deadline"] == 0 \
+            else "no_answer"
+    text = V.consult_record_text(
+        cplan["mode"], sources, local, remote_stance, outcome,
+        split, cplan["deadline"], gate=gate_token,
+        local_model=local_model, late=late)
+    segments.append(V.segment("runner", "consult", text))
+    if _security is not None:
+        _security.write_audit_entry(
+            base_dir, "v2_consult", outcome, reason,
+            key_id=key_id, job_id=job_id, detail=text, cfg=cfg)
+    return segments
+
 
 def _auth_reject_event(base_dir, reason, **extra):
     """Record one auth_rejection in security-events.jsonl."""

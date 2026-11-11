@@ -62,6 +62,12 @@ FEATURES = (
     # lets the guard stop a commit carrying agent permission or
     # config state (docs/steady/security/privacy-design.md).
     "agent_state_guard",
+    # The version 2 question gate: whether a version 2 question
+    # may leave the box at the determination decision point.
+    # off disables the remote consult, audit sends the question
+    # and records what enforce would have decided, enforce
+    # applies the posture allowlist (v2_question_postures).
+    "v2_question",
 )
 
 DEFAULT_AUDIT_MAX_LINES = 20000

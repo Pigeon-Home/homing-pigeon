@@ -346,6 +346,331 @@ def outbound_for(cfg, job, plan):
     return out
 
 
+# ---- the determination decision point (consult) ----
+#
+# A determination can be formed from the Oracle, from a remote
+# answerer, or from both. Which sources are consulted is a
+# routing decision made once per job by consult_plan: a pure
+# function of config + job + the already-formed opinion plan.
+# It never raises and never does I/O. The combined picture is
+# recorded on the result (a consult segment) and in the audit;
+# the wire determination keeps its frozen pre-execution shape,
+# and nothing here changes what runs.
+
+CONSULT_MODES = ("remote", "both", "local")
+CONSULT_REASONS = (
+    "v2_off", "legacy_remote", "legacy_no_ask",
+    "clean_pass_settled", "both_deterministic", "both_llm_model",
+    "both_det_remote", "local_only_mode", "kind_not_exec",
+    "no_plan", "deadline_zero_remote", "send_failed", "no_answer",
+    "posture_not_listed", "posture_unstamped",
+    "posture_state_unavailable", "v2_question_off",
+)
+_SOURCE_TOKENS = {"oracle_det": "det", "oracle_model": "model",
+                  "remote": "remote"}
+
+
+def consult_mode_of(cfg) -> str:
+    """The deployment's consult mode. Absent is "remote" --
+    today's behaviour, byte-identical for existing deployments.
+    An unrecognized shape also reads as "remote" here; startup
+    validation refuses it, so the reader never has to."""
+    if not isinstance(cfg, dict):
+        return "remote"
+    raw = cfg.get("v2_consult", "remote")
+    return raw if raw in CONSULT_MODES else "remote"
+
+
+def validate_consult_config(cfg, active_ids=None, retired_ids=None):
+    """Raise RuntimeError for a malformed consult config.
+
+    Names the key and the bad value, in the refuse class of the
+    posture producer's startup errors: a deployment that wrote
+    a consult mode the runner cannot honour, or a question
+    allowlist that cannot be read against a registry, has a
+    config mistake, surfaced at startup, not per job. A missing
+    key is fine: v2_consult defaults to "remote" and an absent
+    allowlist does not gate. active_ids / retired_ids, when
+    given, are the posture ids the deployment's registry
+    declares; an allowlist entry naming an undeclared or a
+    retired posture refuses here.
+    """
+    if not isinstance(cfg, dict):
+        return
+    if "v2_consult" in cfg:
+        raw = cfg["v2_consult"]
+        if raw not in CONSULT_MODES:
+            raise RuntimeError(
+                "config error: v2_consult must be one of remote, "
+                "both, local (got %r)" % (raw,))
+    if "v2_question_postures" in cfg:
+        raw = cfg["v2_question_postures"]
+        if not isinstance(raw, list) or not all(
+                isinstance(x, str) and x for x in raw):
+            raise RuntimeError(
+                "config error: v2_question_postures must be a "
+                "list of posture id strings (got %r)" % (raw,))
+        if len(set(raw)) != len(raw):
+            raise RuntimeError(
+                "config error: v2_question_postures names a "
+                "posture id twice; each id is named once")
+        block = cfg.get("disclosure_posture")
+        if not isinstance(block, dict) or not block:
+            raise RuntimeError(
+                "config error: v2_question_postures is set but "
+                "no disclosure_posture block is declared; the "
+                "allowlist has no posture resolution to read")
+        for pid in raw:
+            if retired_ids is not None and pid in retired_ids:
+                raise RuntimeError(
+                    "config error: v2_question_postures names "
+                    "posture %r, which is retired; a retired "
+                    "posture cannot permit new disclosures" % (pid,))
+            if active_ids is not None and pid not in active_ids \
+                    and not (retired_ids is not None
+                             and pid in retired_ids):
+                raise RuntimeError(
+                    "config error: v2_question_postures names "
+                    "posture %r, which the registry does not "
+                    "declare" % (pid,))
+
+
+def local_stance(plan) -> str:
+    """The local source's stance, read off the opinion plan:
+    fail (findings), unknown (a repair proposed, no findings),
+    proceed (a clean pass), none (no plan, or a plan that did
+    not run). Structured only; the plan's text is never read."""
+    if not isinstance(plan, dict):
+        return "none"
+    if plan.get("active") is False:
+        return "none"
+    findings = plan.get("findings") or []
+    if findings:
+        return "fail"
+    if plan.get("repair_action"):
+        return "unknown"
+    return "proceed"
+
+
+def _det_available(plan) -> bool:
+    return isinstance(plan, dict) and plan.get("active") is not False \
+        and local_stance(plan) != "none"
+
+
+def _security_mode(cfg, feature):
+    try:
+        from runner.guard import security as _sec
+    except ImportError:
+        try:
+            from guard import security as _sec  # type: ignore
+        except ImportError:
+            _sec = None
+    if _sec is None:
+        return "enforce"
+    return _sec.sec_mode(cfg, feature)
+
+
+def question_gate(cfg, posture_id=None, posture_declared=False):
+    """Whether a question may leave the box: (may_ask,
+    would_block, reason).
+
+    Three layers, each owned by machinery that already exists.
+    The answerer list (v2_answerers) gates who may answer and
+    is not touched here. The v2_question security mode governs
+    whether a question may leave at all: off disables the
+    remote consult, audit sends and records what enforce
+    would have decided, enforce applies the gate. The posture
+    layer reads identity, never prose: when v2_question_postures
+    names the posture ids under which questions are permitted,
+    the startup-resolved posture id must be among them; an
+    honestly unstamped deployment fails closed. An absent
+    allowlist does not gate. reason is None when the gate
+    passes outright; a malformed allowlist (startup refuses
+    the shape, so this is defensive only) reports
+    posture_state_unavailable and does not block.
+    """
+    mode = _security_mode(cfg, "v2_question")
+    if mode == "off":
+        return (False, True, "v2_question_off")
+    block_reason = None
+    if isinstance(cfg, dict) and "v2_question_postures" in cfg:
+        allowed = cfg.get("v2_question_postures")
+        if not isinstance(allowed, list) or not all(
+                isinstance(x, str) for x in allowed):
+            return (True, False, "posture_state_unavailable")
+        if not posture_declared or not posture_id:
+            block_reason = "posture_unstamped"
+        elif posture_id not in allowed:
+            block_reason = "posture_not_listed"
+    if block_reason is None:
+        return (True, False, None)
+    if mode == "audit":
+        return (True, True, block_reason)
+    return (False, True, block_reason)
+
+
+def consult_plan(cfg, job, plan, posture_id=None,
+                 posture_declared=False, model_available=False):
+    """The routing decision for one job. Pure; never raises.
+
+    Returns a dict: mode, sources (a tuple drawn from
+    oracle_det, oracle_model, remote), reason (a code from
+    CONSULT_REASONS), local_stance, deadline, gate_reason,
+    gate_would_block, and model_skipped_deadline_zero. The
+    routing is made from the deployment's configuration and
+    the plan's structure, never from job text.
+    """
+    out = {
+        "mode": consult_mode_of(cfg),
+        "sources": (),
+        "reason": "v2_off",
+        "local_stance": local_stance(plan),
+        "deadline": deadline_of(cfg),
+        "gate_reason": None,
+        "gate_would_block": False,
+        "model_skipped_deadline_zero": False,
+    }
+    if not enabled(cfg) or answer_only(cfg):
+        return out
+    mode = out["mode"]
+    if mode == "remote":
+        ask = should_ask(cfg, job)
+        out["sources"] = ("remote",) if ask else ()
+        out["reason"] = "legacy_remote" if ask else "legacy_no_ask"
+        return out
+    kind = job.get("kind") if isinstance(job, dict) else None
+    deadline = out["deadline"]
+    model_engaged = bool(model_available) and deadline > 0
+    out["model_skipped_deadline_zero"] = bool(model_available) \
+        and deadline == 0
+    local_sources = []
+    if _det_available(plan):
+        local_sources.append("oracle_det")
+    if model_engaged:
+        local_sources.append("oracle_model")
+    if mode == "local":
+        out["sources"] = tuple(local_sources)
+        out["reason"] = "local_only_mode" if local_sources \
+            else "no_plan"
+        return out
+    # mode == "both"
+    if not local_sources:
+        # No local picture at all: the remote consult proceeds
+        # alone where the gate and the kind allow it.
+        if kind != "exec":
+            out["reason"] = "no_plan"
+            return out
+        may_ask, would_block, gate_reason = question_gate(
+            cfg, posture_id, posture_declared)
+        out["gate_reason"] = gate_reason
+        out["gate_would_block"] = would_block
+        if not may_ask:
+            out["reason"] = gate_reason or "no_plan"
+            return out
+        out["sources"] = ("remote",)
+        out["reason"] = "no_plan"
+        return out
+    if clean_pass(plan) and not model_engaged:
+        # A clean pass sends nothing, and stays nothing.
+        out["sources"] = ()
+        out["reason"] = "clean_pass_settled"
+        return out
+    if kind != "exec":
+        # The reference asks on exec only; widening the remote
+        # question to other kinds is a follow-on, not this build.
+        out["sources"] = tuple(local_sources)
+        out["reason"] = "kind_not_exec"
+        return out
+    may_ask, would_block, gate_reason = question_gate(
+        cfg, posture_id, posture_declared)
+    out["gate_reason"] = gate_reason
+    out["gate_would_block"] = would_block
+    sources = list(local_sources)
+    if may_ask:
+        sources.append("remote")
+    out["sources"] = tuple(sources)
+    if not may_ask and gate_reason:
+        out["reason"] = gate_reason
+    elif model_engaged:
+        out["reason"] = "both_llm_model"
+    elif isinstance(cfg, dict) \
+            and cfg.get("oracle_mode") == "deterministic":
+        out["reason"] = "both_deterministic"
+    else:
+        out["reason"] = "both_det_remote"
+    return out
+
+
+def combined_outcome(local, remote):
+    """(outcome, split) for two stances, recorded, never voted.
+
+    split is true only in the one mechanically decidable case:
+    the local stance is fail and the timely answer's stance is
+    proceed -- the answerer said proceed where the runner
+    expected fail. Every other combination records both
+    stances side by side with split false.
+    """
+    local_present = local in ("fail", "unknown", "proceed")
+    remote_present = remote in ("proceed", "stated")
+    if local_present and remote_present:
+        outcome = "both"
+    elif local_present:
+        outcome = "local_only"
+    elif remote_present:
+        outcome = "remote_only"
+    else:
+        outcome = "none"
+    return outcome, (local == "fail" and remote == "proceed")
+
+
+def remote_stance_of(segments, question):
+    """(stance, late) read off the answer segments, mechanically.
+
+    The answer is data and is never parsed: its stance is
+    proceed only when its text, trimmed and case-folded, equals
+    the question's local default; any other timely text is
+    stated, preserved verbatim in its own segment. No timely
+    answer is no_answer. A late answer is flagged, never the
+    stance: split is evaluated only on the timely winner.
+    """
+    default = local_answer_text(question)
+    timely = None
+    late = False
+    for seg in segments or []:
+        if not isinstance(seg, dict):
+            continue
+        if seg.get("kind") == "answer":
+            timely = seg.get("text")
+        elif seg.get("kind") == "late_answer":
+            late = True
+    if not isinstance(timely, str):
+        return ("no_answer", late)
+    stance = "proceed" if timely.strip().casefold() \
+        == default.strip().casefold() else "stated"
+    return (stance, late)
+
+
+def consult_record_text(mode, sources, local, remote, outcome,
+                        split, deadline, gate=None, local_model=None,
+                        late=False):
+    """The consult record: one structured line, greppable, no
+    free text from any source. This exact text is both the
+    consult segment's text and the audit row's detail."""
+    tokens = ",".join(_SOURCE_TOKENS.get(s, str(s))
+                      for s in sources or ()) or "none"
+    text = ("v2_consult mode=%s sources=%s local=%s remote=%s "
+            "outcome=%s split=%s deadline=%s"
+            % (mode, tokens, local, remote, outcome,
+               "true" if split else "false", deadline))
+    if gate:
+        text += " gate=%s" % gate
+    if local_model:
+        text += " local_model=%s" % local_model
+    if late:
+        text += " late=true"
+    return text[:_TEXT_CAP]
+
+
 def _answer_path(base_dir, question_id):
     _safe_id(question_id, "question_id")
     folder = os.path.join(base_dir, "v2", "answers")

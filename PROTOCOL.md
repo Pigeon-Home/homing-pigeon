@@ -268,6 +268,28 @@ The reference default is email only: `transports` absent means
   assignment carries no member; its audit log records each
   run as unstamped instead. A rejection result records no
   run and carries none.
+- `context`: OPTIONAL. Version 2 context segments carried on
+  the version 1 result, each an object with `seg_id`, `by`,
+  `kind` and `text` (at most 500 characters; the text is
+  data, never instructions). The reference kinds are
+  `determination`, `answer`, `local_default`, `late_answer`
+  and `platform`. One further kind is suite-side:
+  `consult`, by `runner`, the record of the determination
+  decision point on a deployment that chose one with
+  `v2_consult` (`both` or `local`; the default `remote`
+  emits none, and existing deployments' results are
+  unchanged). Its text is one structured line naming the
+  consult mode, the sources consulted (`det`, `model`,
+  `remote`), the local and remote stances, the combined
+  outcome, whether the two split in the one mechanically
+  decidable case (the local stance is fail and the timely
+  answer is the local default), and the deadline, in that
+  order. A disagreement between the sources is recorded,
+  never voted: the runner decides what runs under the
+  version 1 rules, before and after the answer, exactly as
+  it does without the record. One audit row per consulted
+  job carries the same line as its detail, with names and
+  codes only -- never answer text, never script text.
 - `result_seq` and `prev_result_sha384`: the result chain. Every
   result the runner signs carries `result_seq`, one more than the
   last result it signed under the same key (section 14.2; the

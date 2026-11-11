@@ -93,7 +93,8 @@
       "confinement": "enforce",
       "job_user": "enforce",
       "personal_docs_shelter": "enforce",
-      "agent_state_guard": "enforce"
+      "agent_state_guard": "enforce",
+      "v2_question": "enforce"
     },
     "audit_max_lines": 20000,
     "require_posture": false
@@ -122,6 +123,9 @@
   },
   "oracle_mode": "llm",
   "_oracle_mode": "llm (the default) lets the Oracle use the local model in the inference block below. deterministic is the Pi Light mode: no model is installed or ever called, and the Oracle's duties still run -- wake briefs, the watch, answers -- with briefs and answers assembled from the box's own records (the job index, retained jobs, notable lines, the log tail) instead of a model's narration. The pi-light install profile sets this. Flip it back to llm and set up inference to give the same install a model later; nothing else changes.",
+  "v2_consult": "remote",
+  "_v2_consult": "the determination decision point (PROTOCOL.md 3.2): which sources form a version 2 determination. remote (the default, and the behaviour when the key is absent) consults the remote answerer exactly as before. both consults the Oracle (its deterministic plan, and its model tier where one is configured and the deadline is above 0) and the remote answerer both, the question sent first and the local consult inside the deadline window; a clean pass with no model tier engaged consults nothing. local consults the Oracle alone and sends no question. The combined picture rides home as a consult segment on the result and as one audit row per job; it never changes what runs. Any other value is a startup config error.",
+  "_v2_question_postures": "an optional list of disclosure posture ids under which a version 2 question may leave the box, read against the startup posture resolution: the resolved posture's id must be in the list, an unstamped deployment is refused the question (the consult degrades to local-only, never a job refusal), and an empty list permits no posture. The security mode v2_question governs the gate (enforce applies it, audit sends and records what enforce would have decided, off disables the remote consult). Naming an undeclared or retired posture, or setting the list with no disclosure_posture block declared, is a startup config error. Absent: posture does not gate questions.",
   "oracle_tool_mode": "full",
   "_oracle_tool_mode": "the interactive Oracle run tool's mode (the nested spelling oracle.tool_mode in an oracle object is also read; the flat key wins, and the runner flag --oracle-tool-mode overrides both for one process): full (the default, the Oracle's charter: commands run) | confirm (each command needs an explicit yes at the runner's own terminal; no terminal means refused) | confined (not available in this build: the job sandbox confines staged job scripts and cannot be applied to the interactive run tool, so the tool refuses rather than run unconfined) | readonly (the run tool refuses; the file tools still work). In every mode that runs a command, the child gets a scrubbed minimal environment -- PATH, HOME, LANG/LC_* and the Windows shell essentials only -- never the runner's inherited environment and never a variable whose name carries KEY, TOKEN, SECRET, PASSWORD, AUTH or CREDENTIAL or the runner's own PIGEON_ prefix. Changing it requires a restart. The mode is printed by --posture.",
   "oracle_opinion_mode": "repair",
