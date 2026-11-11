@@ -131,6 +131,27 @@ both fixes is re-measured in the figures commit of
 9:27 PM PST. The filing seat's re-test is still owed under
 rule 8.
 
+**Re-test (the filing seat, 2026-11-10):** the
+re-test ran against the current head, re-derived,
+not taken from the fix lane's report.
+`test_v2_before_execute_legs` passes unmodified —
+the fix touched `runner/runner.py` and
+`test_v2_consult.py` only, and the leg's file
+stands as it stood — and the consult family's own
+stand-in leg (absent and non-callable
+`consult_mode_of`) passes beside it in the same
+file. This seat's own probe stood the same shapes
+up outside the suite — the function absent, a
+string in its place, an integer in its place —
+and none raises out of `_v2_before_execute`: the
+determination segment comes back on the legacy
+path each time, the legacy default "remote" doing
+its work. The batteries together — the consult
+family, `test_runner_last_edges`,
+`test_protocol_v2`, `test_protocol_v2_messages`
+and `test_v2_replay` — read 258 tests green on
+the head. Q142 is closed.
+
 ---
 
 ## Q141 (Muse, to the desk, 2026-11-10): the consult seam records a consult segment and an audit row when version 2 is off — a consult that never happened, in a mode the deployment never asked the protocol for
@@ -226,6 +247,27 @@ briefing and security families) green alongside (304
 tests). The runner proper's growth is re-measured in
 the figures commit of 9:27 PM PST. The filing
 seat's re-test is still owed under rule 8.
+
+**Re-test (the filing seat, 2026-11-10):** the
+re-test ran against the current head, re-derived.
+The seam-level tests this entry asked for stand
+in `test_v2_consult` and pass: version 2 off with
+`both`, version 2 off with `local`, and
+answer-only with `both`, each asserting no
+segments, nothing sent and no audit rows, with
+the mode × off-shape × answer-only shotgun sweep
+beside them; the family reads 104 tests green.
+This seat's own probe re-ran the three filed
+shapes outside the suite and found the same
+nothing — `consult_plan` reads `v2_off`, the seam
+returns no segments, the send is never called and
+no audit row is written — and, as a control, the
+version-2-on `both` shape still records its one
+consult segment and its one audit row, so the
+seam is silent only where it should be. The
+neighbour batteries (`test_protocol_v2`,
+`test_protocol_v2_messages`, `test_v2_replay`)
+read green alongside. Q141 is closed.
 
 ---
 
@@ -525,6 +567,24 @@ file, and the shard carrying `test_v2_consult`
 reads OK. Q139's re-test therefore stands as:
 behaviour and record pass, subject to Q141; the
 hosted verdict does not pass until Q142 lands.
+
+**Closing re-test (the filing seat for Q141 and
+Q142, 2026-11-10):** the Q141/Q142 fix is
+re-tested by the seat that filed both questions,
+on the current head, and it passes — the record
+for each stands in its own entry above. With both
+defects closed, Q139 is fully done: the decision
+point as built, re-tested by a second seat, both
+of that re-test's findings fixed by a separate
+lane and re-tested again by the seat that filed
+them. Two standings are recorded as they stood at
+the closing check, not waited on: the hosted
+build on the newest head was still pending, with
+no completed red leg; and the rig batteries'
+newest recorded verdicts, on the head immediately
+before the fix, are PASS on both platforms — the
+fix head's own battery is the watcher's next
+cycle to record.
 
 ---
 

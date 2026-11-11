@@ -2888,6 +2888,22 @@ recorded; point (5) completes as test-macos red,
 one error this landing's own, and Q139 is not
 called fully done until Q142's fix is re-tested.
 
+Closing (the filing seat, later still): the
+Q141/Q142 fix has been re-tested by the seat that
+filed both questions, on the current head, and it
+passes — the seam records nothing when version 2
+is off or the process is answer-only, and the
+dispatch head no longer raises for a protocol
+module without the consult surface; the batteries
+read 258 tests green together, and the seat's own
+probe of the filed shapes agrees. Q139 is
+therefore fully done, as this section's correction
+required. The hosted build on the newest head was
+still pending at the closing check; the rig
+batteries stand PASS on both platforms on the head
+immediately before the fix, the fix head's battery
+being the watcher's next cycle.
+
 Conclusions (2026-11-10, the same evening): **P7-S1
 refuted as stated** -- the living drafts are not
 byte-identical to any submitted revision: both are
