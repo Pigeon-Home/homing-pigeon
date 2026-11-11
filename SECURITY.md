@@ -682,7 +682,9 @@ user, a holder of the secret can send a job that deletes the word's
 file or patches the check before the owner ever sends the word. The
 word is real protection only where jobs cannot write to the runner's
 state or code, which today means `security.job_user` in `enforce`
-(above) on a POSIX box. `install.py --check` prints which case a
+(above) on a POSIX box, or `security.confinement` in `enforce` on
+Linux or FreeBSD, whose backends give a job no write to them.
+`install.py --check` prints which case a
 box is in. Keep the word off the machine it protects.
 
 ### Key names are public

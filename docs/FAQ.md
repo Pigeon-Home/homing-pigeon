@@ -104,8 +104,10 @@ Whoever holds it can run jobs, full stop. Treat it like a root
 password. Rotate it with `docs/steady/secret-rotation.md`. Two honest
 limits: there is no forward secrecy at the envelope layer unless the
 transport provides it, so a leaked secret exposes captured traffic
-that used it. And revocation is manual, since there is one shared
-secret rather than per-sender keys. Asymmetric signing would fix
+that used it. And revocation of the primary secret is manual:
+per-sender keys do exist (`additional_secrets`, the key directory),
+and a named key is revoked by marking it `compromised` there, but
+the primary secret itself is rotated, not revoked. Asymmetric signing would fix
 the second and is sketched in `docs/steady/design/asymmetric-signing-design.md`.
 
 ## Is this safe to run on my main machine?

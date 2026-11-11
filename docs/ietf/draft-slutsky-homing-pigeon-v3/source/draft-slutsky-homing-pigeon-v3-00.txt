@@ -419,7 +419,7 @@ Internet-Draft              Homing Pigeon v3               November 2026
 
    In ABNF [RFC5234], with the separator set as version 1 defines it:
 
-   flight-subject  = "[HOMING-PIGEON]" 1*gap "dtls" 1*gap
+   flight-subject  = "[HOMING-PIGEON]" gap "dtls" gap
                      session-id
    session-id      = 1*128 session-id-char
                      ; and not "." or ".."

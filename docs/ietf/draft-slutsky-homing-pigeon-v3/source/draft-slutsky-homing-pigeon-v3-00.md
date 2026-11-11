@@ -292,11 +292,7 @@ configuration option; the option is off by default.
 
 # Requirements Language
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL
-NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED",
-"MAY", and "OPTIONAL" in this document are to be interpreted
-as described in BCP 14 {{RFC2119}} {{RFC8174}} when, and only
-when, they appear in all capitals, as shown here.
+{::boilerplate bcp14-tagged}
 
 # Terminology
 
@@ -471,7 +467,7 @@ In ABNF {{RFC5234}}, with the separator set as version 1
 defines it:
 
 ~~~
-flight-subject  = "[HOMING-PIGEON]" 1*gap "dtls" 1*gap
+flight-subject  = "[HOMING-PIGEON]" gap "dtls" gap
                   session-id
 session-id      = 1*128 session-id-char
                   ; and not "." or ".."

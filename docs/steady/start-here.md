@@ -40,9 +40,9 @@ The other 178 files are in 9 drawers, named the way the rest of the project's do
 
 These are the files to look at first on a wander — the ones that carry the most weight and have gone the longest without a fresh look. Each one is very likely wrong somewhere by now.
 
-1. docker.md (use) — untouched since 2026-10-18, 17 days. the Docker reference page; the release machinery has moved a long way since it was last checked against the image.
+1. docker.md (use) — untouched since 2026-11-10. the Docker reference page; the overview's Packet 3 checked it against the live Dockerfile and corrected its image verification.
 2. hardening_report.md (security) — untouched since 2026-10-18, 17 days. the hardening report; the lockdown flip has shipped since, and this still tells the older story.
-3. use-runbook.md (use) — untouched since 2026-10-21, 14 days. the runner runbook, one of the first 2 files in the whole project; it predates the lockdown flip and the DTLS work.
+3. use-runbook.md (use) — untouched since 2026-11-10. the runner runbook, one of the first 2 files in the whole project; the overview's Packet 3 checked it and its version-scheme account stands current.
 4. transports-status.md (reports) — untouched since 2026-10-21, 14 days. the transports status page; a whole new transport story (DTLS over email) has landed since it froze.
 5. networking.md (the top of steady) — untouched since 2026-10-24, 11 days. the trust-boundary picture; new transports have drawn new edges since it was last touched.
 6. platforms.md (use) — untouched since 2026-10-24, 11 days. the proven platforms list; it has not been updated since the day it arrived, and platform claims go stale quietly.
@@ -85,10 +85,10 @@ Inside each drawer below, files are listed oldest untouched first, with the date
 
 ### use — 10 files
 
-- docker.md — untouched since 2026-10-18 · arrived 2026-10-14
+- docker.md — untouched since 2026-11-10 · arrived 2026-10-14
 - handoff-local-si.md — untouched since 2026-10-21 · arrived 2026-10-15
 - idea321-runbook.md — untouched since 2026-10-21 · arrived 2026-10-20
-- use-runbook.md — untouched since 2026-10-21 · arrived 2026-10-13
+- use-runbook.md — untouched since 2026-11-10 · arrived 2026-10-13
 - platforms.md — untouched since 2026-10-24 · arrived 2026-10-24
 - local-si-test.md — untouched since 2026-10-27 · arrived 2026-10-15
 - live-examples.md — untouched since 2026-10-30 · arrived 2026-10-25
@@ -213,7 +213,7 @@ The other 9 files in this drawer are data captures — JSON results and compress
 - v3.15.1-coverage.md — untouched since 2026-11-01 · arrived 2026-11-01
 - coverage.md — untouched since 2026-11-06 · arrived 2026-11-06
 
-The other 36 files in this drawer are data captures — JSON results and the coverage pictures — counted in the total above but not listed here. The coverage reports themselves are indexed in coverage.md, in this drawer.
+The other 37 files in this drawer are data captures — JSON results and the coverage pictures — counted in the total above but not listed here. The coverage reports themselves are indexed in coverage.md, in this drawer.
 
 ### the top of steady (core) — 9 files
 
