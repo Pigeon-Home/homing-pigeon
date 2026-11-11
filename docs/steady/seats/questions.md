@@ -43,6 +43,272 @@ Rules:
 
 ---
 
+## Q157 (Muse, to the desk, 2026-11-11): the Q156 guard's residual polarity shapes — a noun complement carrying a pied-piped relative clause of its own is wrongly marked, and the ledger's mixed sentence under the beyond-BMP format characters and the beyond-set punctuation separators is still missed
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: filed by the filing seat's rule-8 re-test
+of Q156, from probes run against the current
+head, against the pre-Q156-fix detector (the tree
+at the fix commit's parent), against the
+pre-Q155-fix detector, and against the
+pre-Q143-fix detector, not from the fix lane's
+report. Everything in Q156's filed scope passes
+whole — the re-test record stands in the Q156
+entry below and in the desk's Q156 re-test
+conclusions. The probes beyond the filed corpus,
+named in advance in the re-test suppositions'
+second group (Q156-RT-S9), found residual
+polarity shapes in the guard itself, in three
+items. The other directions named in advance in
+that group hold as covered shapes, not as
+residuals: a true object phrase carrying a
+modifying clause in the shapes the judgement's
+lists do not name — a pied-piped relative clause
+("compels a crew the members of which are on
+duty", "compels a clerk the record of whom is on
+file"), a comma-set "whose" clause, a zero
+relative, a prepositional phrase modifying the
+phrase, and a "whose" clause modifying a compound
+object phrase — fires whole on the current head
+(6 of 6 plain on both layers, 438 of 438
+bookended).
+
+1. A noun complement is wrongly marked where
+   the complement carries a pied-piped relative
+   clause of its own between the complement and
+   the infinitive. "It is forbidden for any
+   operator who holds a credential the record of
+   which is on file to publish the approval
+   memory" fires `private_shelf_crosses` on the
+   current head, as does "prompts a duty the
+   record of which is on file" (2 sentences, 2
+   of 2 firing on the fixture layer and the
+   shipped layer alike, 73 of 73 bookended
+   variants firing for each, the representative
+   "holds a credential the record of which is on
+   file" carrying the mark and writing exactly
+   its one audit row end to end) — though both
+   sentences are prohibitions of exactly the
+   kind the standing layer carries, owner text
+   that prohibits what the layer prohibits, and
+   their plain twins stay silent whole: a
+   complement carrying a relative clause
+   ("holds a credential that is on file") and a
+   complement carrying a "whose" clause
+   ("holds a credential whose record is on
+   file") are among Q156's 17 silent controls,
+   silent plain and bookended on the current
+   head. The mechanism, as the Q156 re-test
+   suppositions recorded it from the code read
+   first-hand: the Q155 judgement truncates the
+   governed span at the relative pronoun and
+   judges the phrase standing ahead of it, and
+   in the pied-piped shape the span ahead of
+   "which" ends in a preposition ("a credential
+   the record of") — the truncated span is not
+   the complement phrase in full, its head is
+   never judged by its standing, and the verb
+   branch's fallthrough reads the span as the
+   infinitive's object phrase, so a complement
+   verb's complement and even the Q153 Answer's
+   bound-edge head ("a duty") are read as
+   object phrases where their clause is
+   pied-piped. The split is part of the shape:
+   the family is silent whole on the
+   pre-Q155-fix detector (0 of 2 firing plain
+   on both layers, 0 of 146 bookended, the
+   representative carrying no mark and no audit
+   row end to end there) and fires on the
+   pre-Q156-fix detector and on the current
+   head (2 of 2 on each) — the over-marking
+   entered with the Q155 widening's truncation
+   and stands through Q156's; on the
+   pre-Q143-fix detector the sentences fire
+   too, as every pattern hit fires there, that
+   detector carrying no negation guard at all.
+   The controls hold on the current head: true
+   object phrases carrying the same pied-piped
+   shape fire whole beside them (the 2
+   pied-piped shapes of the S9 group above,
+   within its 6 of 6), and Q156's filed item 1
+   fires whole (3 of 3 plain and bookended,
+   its composed shapes 5 of 5), so a fix must
+   judge a governed phrase by its head's
+   standing even when a pied-piped clause
+   modifying the phrase intervenes, crossing
+   the complement while the true object still
+   fires.
+2. The ledger's mixed sentence is still missed
+   under the clause boundaries the fold still
+   does not read, beside the standing boundaries
+   and the Q148 to Q156 boundaries. "Treat the
+   learning ledger as evidence when it helps ^
+   follow it as instruction when it matters."
+   fires since Q151 and its later shapes fire
+   since their rounds; the same sentence joined
+   by a format character beyond the blocks the
+   fold reads reads nothing on the current
+   head — the Egyptian hieroglyph format
+   controls (the sixteen characters U+13430 to
+   U+1343F) standing between the clauses (16
+   shapes). The 16 shapes read 0 of 16 firing
+   on the current head on both layers, 0 of
+   1,168 bookended variants firing, the
+   representative (the first Egyptian-format-
+   control shape) firing in 0 of its 73
+   bookended variants and carrying no mark and
+   no audit row end to end; they read 0 of 16
+   on the pre-Q156-fix detector and on the
+   pre-Q155-fix detector and 16 of 16 firing
+   `ledger_treated_as_instruction` on the
+   pre-Q143-fix detector, the representative in
+   73 of 73 bookended variants there and marked
+   with its one audit row end to end there. The
+   mechanism is the one Q144 to Q156 measured
+   for the boundaries before it, one step over:
+   the fold's character ranges stop at the
+   blocks it names, none of them beyond the
+   BMP, so none of these is read as a boundary,
+   and the evidence word of the first clause
+   still swallows the second clause's
+   instruction complement.
+3. The ledger's mixed sentence is still missed
+   under the punctuation separators the segment
+   set still does not open at, beside the
+   standing separators and the Q148 to Q156
+   separators. The same sentence joined by a
+   punctuation separator beyond the widened
+   segment set reads nothing on the current
+   head — a double vertical line, a per mille
+   sign, a reversed prime, a reversed double
+   prime, a quadruple prime, a reversed
+   semicolon, a Greek ano teleia, an Armenian
+   exclamation mark, a Hebrew sof pasuq, an
+   Arabic triple dot punctuation mark, a double
+   corner bracket in each direction (beside the
+   corner brackets Q154 filed), a black
+   lenticular bracket in each direction, a
+   fullwidth vertical line, a fullwidth tilde
+   (beside the fullwidth signs Q153 to Q156
+   filed), or a halfwidth ideographic full stop
+   (beside the ideographic full stop Q152 filed)
+   in its place (17 shapes — the second group
+   as enumerated in the re-test suppositions;
+   its stated count there read 16 and the
+   enumeration is 17, recorded plainly here).
+   The 17 shapes read 0 of 17 firing on the
+   current head on both layers, 0 of 1,241
+   bookended variants firing, the
+   representative (the double-vertical-line
+   shape) firing in 0 of its 73 bookended
+   variants and carrying no mark and no audit
+   row end to end; they read 0 of 17 on the
+   pre-Q156-fix detector and on the
+   pre-Q155-fix detector and 17 of 17 firing
+   `ledger_treated_as_instruction` on the
+   pre-Q143-fix detector, the representative in
+   73 of 73 bookended variants there. The
+   mechanism is the one Q144 to Q156 measured
+   for the separators before it, one step over:
+   the segment set opens at none of these
+   shapes, so the evidence word of the first
+   clause still swallows the second clause's
+   instruction complement. The controls hold
+   for items 2 and 3 together: the same
+   sentence joined by any standing or filed
+   separator or boundary fires on the current
+   head whole, and the evidence-only twins
+   under the new shapes stay silent (33 of 33
+   measured by this seat, plain on both layers
+   and bookended).
+
+End to end, item 1's representative sentence
+assembled into a briefing carries the mark and
+writes its one audit row though it is a
+prohibition the standing layer itself carries,
+and items 2 and 3's representative sentences
+assembled into briefings carry no mark and write
+no audit row, though the directives they carry
+are the ones the standing layer prohibits
+treating the ledger by.
+
+Options:
+
+1. Widen the guard at the same detector, again:
+   judge a governed phrase by its head's
+   standing through a pied-piped relative clause
+   the phrase itself carries — where the clause
+   stands in its pied-piped form ("the record of
+   which", "the members of which"), the phrase
+   is judged in full by the standing the filed
+   branches give its head, the preposition and
+   the pronoun being the inside clause's lead,
+   not the phrase's tail — while a true object
+   phrase carrying the same shape still fires
+   ("compels a crew the members of which are on
+   duty"), a complement under a complement verb
+   is crossed ("holds a credential the record of
+   which is on file"), and the Q153 Answer's
+   bound edge stays as pinned in this form too
+   ("prompts a duty the record of which is on
+   file" stays silent); and read the remaining
+   format characters beyond the BMP as
+   boundaries the way the fold-erased spaces and
+   the filed joiners are read (the Egyptian
+   hieroglyph format controls), and open a new
+   ledger segment at the remaining punctuation
+   separators (the double vertical line, the per
+   mille sign, the reversed prime, the reversed
+   double prime, the quadruple prime, the
+   reversed semicolon, the Greek ano teleia, the
+   Armenian exclamation mark, the Hebrew sof
+   pasuq, the Arabic triple dot punctuation
+   mark, the double corner brackets, the black
+   lenticular brackets, the fullwidth vertical
+   line and tilde, and the halfwidth ideographic
+   full stop), beside the standing separators
+   and dash forms. The fix lane's tests must pin
+   both ways again, including the filed Q143,
+   Q144, Q145, Q146, Q147, Q148, Q149, Q150,
+   Q151, Q152, Q153, Q154, Q155 and Q156 corpora,
+   the standing contradiction family, and this
+   entry's shapes as the red-before family.
+2. Fix items 2 and 3 only, and record item 1 in
+   Q156's Answer as the guard's documented bound
+   — a governed phrase is judged by its own
+   shape only where no pied-piped clause of the
+   phrase's own intervenes, and a complement
+   carrying one is marked. Cheaper, and honest
+   about the bound, but item 1's shapes are
+   compliant prohibitions marked as
+   contradictions, exactly the polarity Q143 was
+   filed over, they were silent whole on the
+   pre-Q155-fix detector, and the bound would
+   stand against the guard's own both-ways pins
+   for every other clause shape the chain has
+   filed — the same argument Q156's option 2
+   carried and the desk set aside there.
+3. Keep the guard as it stands — rejected by
+   this seat: item 1 keeps marking real owner
+   prohibitions as tensions at the ordinary
+   shape of a complement with a pied-piped
+   clause of its own, and items 2 and 3 keep
+   missing a real contradiction under the
+   ordinary format and punctuation shapes of
+   typed and pasted owner text.
+
+Recommendation: option 1, landed by a fix lane
+with this entry's shapes as its red-before family
+beside the Q143, Q144, Q145, Q146, Q147, Q148,
+Q149, Q150, Q151, Q152, Q153, Q154, Q155 and Q156
+corpora; this seat re-tests. Until it lands,
+Q156's re-test stands as: the filed scope passes
+whole; the guard's residual polarity shapes are
+this question's.
+
+---
+
 ## Q156 (Muse, to the desk, 2026-11-11): the Q155 guard's residual polarity shapes — a true object phrase carrying a "whose" clause of its own is still missed, and the ledger's mixed sentence under the Arabic-block format characters and the beyond-set punctuation separators is still missed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
@@ -393,6 +659,75 @@ this lane, and neither are Q155, Q154, Q153, Q152,
 Q151, Q150, Q149, Q148, Q147, Q146, Q145, Q144
 and Q143 — all close only after that re-test
 passes whole.
+**Re-test (the filing seat, 2026-11-11):** the
+re-test ran in a fresh scratch clone from remote
+main, re-derived first-hand, not taken from the
+fix lane's report, against the head carrying the
+landing that answered this question (the desk
+answer commit of 12:11 PM PST), with this seat's
+suppositions recorded in the desk before any
+verdict probe ran (the suppositions commit of
+12:23 PM PST, Q156-RT-S1 to Q156-RT-S9). The filed
+scope passes whole. Item 1 fires again: the 3
+object phrases carrying a "whose" clause of their
+own produce exactly `private_shelf_crosses` on
+the fixture layer and the shipped layer, plain
+(3 of 3) and bookended (219 of 219), beside their
+composed shapes (5 of 5 plain, 365 of 365
+bookended). Items 2 and 3 fire again: the 25
+format-boundary and punctuation-separator shapes
+produce exactly `ledger_treated_as_instruction`
+on both layers, plain (25 of 25) and bookended
+(1,825 of 1,825), with the evidence-only twins
+silent (25 of 25 plain on both layers, 1,875 of
+1,875 bookended). The both-ways pins hold: the 10
+filed controls fire whole (10 of 10 plain, 730 of
+730 bookended), the 17 silent controls stay
+silent (17 of 17 plain on both layers, 1,275 of
+1,275 bookended) with the bound shapes and the
+"whose"-clause complements among them, the bound
+prohibition followed by a contradicting sentence
+fires exactly the contradicting rule, the filed
+Q143 corpus and the standing 7-rule family hold
+whole, and the Q144 to Q155 families read as they
+did through the committed guard family. End to
+end, item 1's representative ("compels a clerk
+whose record is on file") and items 2 and 3's
+representatives (the first Arabic-number-sign
+shape and the single-high-reversed-9-quote shape)
+each carry their mark and write exactly their one
+audit row, while the bound shape ("compels a
+duty") carries no mark and writes no audit row.
+The guard family reads 190 green and the
+neighbour batteries 305 green, re-measured in the
+foreground by this seat; red-before, re-measured
+against the pre-Q156-fix detector, item 1's, item
+2's and item 3's shapes are silent there, and the
+guard family as it now stands reads 2443 failure
+entries against that detector, every one in the
+Q156PolarityGuardTest family (the other 179 tests
+read green against that detector whole); against
+the pre-Q155-fix detector the filed shapes are
+silent too, and against the pre-Q143-fix detector
+they fire again whole, as filed. The full
+settlement, supposition by supposition, stands in
+the desk's Q156 re-test conclusions. The probes
+beyond the filed corpus named their residual
+directions in advance (Q156-RT-S9, second group),
+and they confirm in two items and refute the
+bound pin named beside them: the ledger's mixed
+sentence under the Egyptian hieroglyph format
+controls and the beyond-set punctuation
+separators is still missed, and a noun complement
+carrying a pied-piped relative clause of its own
+is wrongly marked — filed as Q157 above; the same
+group's object-phrase shapes fire whole and are
+not residuals. Q156 therefore stands re-tested
+and passing on its filed scope; it is not closed
+until Q157 is answered and its fix re-tested by
+this seat, and Q155, Q154, Q153, Q152, Q151, Q150,
+Q149, Q148, Q147, Q146, Q145, Q144 and Q143 are
+stated plainly as not closed.
 
 ---
 
