@@ -679,7 +679,7 @@ reproduced. Its records are `content-rung-49.md`,
 `content-rung-500000.md`, and `content-rung-cap.md`.
 
 The final position, the same in `thinking.md` and in
-`docs/security/model-and-proof-testing.md`: what carries
+`docs/infrastructure-documents/security/model-and-proof-testing.md`: what carries
 the proof is the model argument and the stage 3 code
 walk — no step of the gate's check order branches on
 what a script says, and the model checks hold at every
@@ -700,7 +700,7 @@ are stated, modelled, and checked; the ladder is closed
 at the production cap; the conformance family ties every
 clause to the code; and every finding has its stated
 end, written into its stage record and gathered in
-`docs/security/model-and-proof-testing.md`: P4 F1, P6 F1,
+`docs/infrastructure-documents/security/model-and-proof-testing.md`: P4 F1, P6 F1,
 P6 F2, and stage 5 F1 fixed on main with the failing test
 first, and P2 F1 accepted and carried as a named limit.
 The final consistency pass re-ran the full proof test

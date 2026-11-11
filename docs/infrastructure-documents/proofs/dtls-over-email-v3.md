@@ -13,12 +13,12 @@ section below is the record of the first 5 commits, and its
 
 ## What was built
 
-- `docs/design/v3-dtls-over-email-plan.md` -- the plan: 6
+- `docs/infrastructure-documents/design/v3-dtls-over-email-plan.md` -- the plan: 6
   goals, design decisions D1 to D9, and the open questions.
   Its addendum records the resolution of the seed line's
   truncated "SS": the Shared Secret, the handshake's existing
   PSK.
-- `docs/ietf/draft-slutsky-homing-pigeon-v3-00.md` -- the
+- `docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md` -- the
   version 3 specification, 930 lines: a transport extension to
   version 1 carrying its DTLS 1.3 profile over the email
   binding.

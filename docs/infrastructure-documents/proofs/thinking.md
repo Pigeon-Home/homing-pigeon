@@ -330,7 +330,7 @@ place.
   interpreter gets no prefix bind. The record is in
   `stage5.md`. The bind rule itself (P2 F1 above) is the one
   finding accepted rather than fixed, carried as a named
-  limit in `docs/security/model-and-proof-testing.md`.
+  limit in `docs/infrastructure-documents/security/model-and-proof-testing.md`.
 - **The priced replay windows (P5).** At-most-once execution
   holds outside two windows the statement prices in the open:
   a crash between a run and its result being recorded buys at
@@ -347,7 +347,7 @@ Stages 1 to 4 have landed and been verified first-hand: the
 foundation, the gate model at the first rung, the line-by-line
 reconciliation, and the five properties P2 to P6, each with its
 checked model and its record. The summary document at
-`docs/security/model-and-proof-testing.md` describes the model
+`docs/infrastructure-documents/security/model-and-proof-testing.md` describes the model
 and the testing for a general reader and points back here.
 
 Stage 5 has landed: a conformance test named for every clause

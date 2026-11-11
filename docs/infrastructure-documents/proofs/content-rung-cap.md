@@ -106,5 +106,7 @@ in any rung record was wrong.
   FreeBSD shell records (`content-sh-macos.md`,
   `content-sh-freebsd.md`) are a separate series and are
   not verified here; the FreeBSD record's own statement
-  stands — that shell was not run, and a skip is not a
-  pass.
+  stands — its parser phase ran in the 15.0 guest and
+  passed, and its execution half was not asked there.
+  The shell record still not run is the 15.2 one
+  (`content-sh-freebsd-15-2.md`).

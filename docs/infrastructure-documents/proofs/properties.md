@@ -1080,7 +1080,7 @@ this model is the full shape.
 
 ### P6 statement
 
-Decision 1 (`docs/design/present-but-invalid-config.md`) splits
+Decision 1 (`docs/steady/present-but-invalid-config.md`) splits
 a setting that is present but not usable by what a wrong value
 changes. P6 is that split, as the code performs it. The actors
 are the owner, who writes `config.json`, and the runner, which

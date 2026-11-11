@@ -12,7 +12,7 @@ class under Decision 1.
 
 ## How the Decision 1 class is recorded
 
-Decision 1 (`docs/design/present-but-invalid-config.md`) splits a
+Decision 1 (`docs/steady/present-but-invalid-config.md`) splits a
 present-but-unusable configuration value by what a wrong value
 changes:
 
@@ -321,8 +321,8 @@ refuse-class setting it stops the runner before any job is read.
   `runner/ops/main.py`, line 83, before any mailbox, model, or job
   work. Two features add their own startup refusals in the same
   class, both in `runner/ops/main.py`: `confinement` on `enforce`
-  whose sandbox cannot engage on this platform (its sandbox is
-  Linux-only) refuses to start, and `job_user` on `enforce` whose
+  whose confinement backend cannot engage on this platform (no
+  backend engages there — macOS today) refuses to start, and `job_user` on `enforce` whose
   demotion mechanism cannot engage (on Windows, where it was once
   a silent no-op) refuses to start.
 
@@ -425,7 +425,7 @@ refuse-class setting it stops the runner before any job is read.
   own authentication on purpose does not carry the two-gate
   property and MUST NOT claim it.
 - **Where:** the pattern is stated where transports are described
-  for extenders: `docs/extend/transports.md`, "Authorization
+  for extenders: `docs/infrastructure-documents/extend/transports.md`, "Authorization
   gates" — a transport's own credentials are "a second, required
   gate in front of the signature." The NATS transport is the
   worked example in code: its broker credentials are required by
@@ -676,7 +676,7 @@ refuse-class setting it stops the runner before any job is read.
   fences, and the proof work has no need of the value: the
   property is about the pinning machinery, not the pinned
   bytes.
-- **Where:** `docs/use/sending.md`, the remote upgrade
+- **Where:** `docs/steady/sending.md`, the remote upgrade
   section's "The upgrade key", which also records the live
   negative case in one sentence: a clock job signed with the
   upgrade key is refused — "script is not in this key's
@@ -823,7 +823,7 @@ refuse-class setting it stops the runner before any job is read.
 | C8 | Cleartext | refused; `--allow-cleartext` only | no config key exists |
 | C9 | AEAD | AES-256-GCM, `aes-256-gcm/hkdf-sha384` | not a setting |
 | C10 | Audience | configured `runner_id`; `aud` wins | refuse (as a security mode) |
-| C11 | Six security modes | each `enforce` by default | refuse (malformed block) |
+| C11 | Seven security modes | each `enforce` by default | refuse (malformed block) |
 | C12 | `max_job_age_sec` | 3600; future bound 300 | default class |
 | C13 | Protocol version | integer 1 only | not a setting |
 | C14 | Key policies | per-key; script pin is SHA-384 | refuse (malformed policy) |
