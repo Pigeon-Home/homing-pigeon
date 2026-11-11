@@ -278,7 +278,11 @@ def _fold(text, breaks=False):
     way -- the Arabic number signs, the Arabic end
     of ayah, the Arabic pound and piastre marks
     above and the Arabic disputed end of ayah are
-    clause boundaries too, read before the fold."""
+    clause boundaries too, read before the fold;
+    Q157 reads the format characters beyond the BMP
+    the same way -- the Egyptian hieroglyph format
+    controls are clause boundaries too, read before
+    the fold."""
     if breaks:
         text = re.sub(r"\r\n|[\r\n\t\x0b\x0c\x85\u2028\u2029"
                       r"\u00a0\u1680\u2000-\u200d\u202f"
@@ -288,7 +292,7 @@ def _fold(text, breaks=False):
                       r"\u061c\u206a-\u206f\u180b-\u180d"
                       r"\u061d\u070f\ufff9-\ufffb"
                       r"\u0600-\u0605\u06dd\u0890\u0891"
-                      r"\u08e2]",
+                      r"\u08e2\U00013430-\U0001343f]",
                       " \u00b6 ", text)
     return re.sub(r"\s+", " ", text).strip()
 
@@ -543,6 +547,32 @@ def _fold(text, breaks=False):
 # the angle brackets, the fullwidth number sign,
 # percent sign and hyphen-minus, and the fullwidth
 # curly brackets).
+# Q157 widened the guard once more at the same
+# detector: a governed phrase is judged by its
+# head's standing through a pied-piped relative
+# clause the phrase itself carries -- where the
+# clause stands in its pied-piped form ("the record
+# of which", "the members of which"), the phrase is
+# judged in full by the standing the filed branches
+# give its head, the preposition and the pronoun
+# being the inside clause's lead, not the phrase's
+# tail, while a true object phrase carrying the
+# same shape still fires and the Q153 Answer's
+# bound edge stays as pinned in this form too; the
+# format characters beyond the BMP are read as
+# boundaries the way the fold-erased spaces and the
+# filed joiners are read (the Egyptian hieroglyph
+# format controls); and the ledger guard opens a
+# new segment at the remaining punctuation
+# separators (the double vertical line, the per
+# mille sign, the reversed prime, the reversed
+# double prime, the quadruple prime, the reversed
+# semicolon, the Greek ano teleia, the Armenian
+# exclamation mark, the Hebrew sof pasuq, the Arabic
+# triple dot punctuation mark, the double corner
+# brackets, the black lenticular brackets, the
+# fullwidth vertical line and tilde, and the
+# halfwidth ideographic full stop).
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -758,7 +788,13 @@ def _prohibitive_occurrences(low):
 # "whose" clause the phrase itself carries, the
 # same way: the phrase standing ahead of "whose" is
 # judged by its own shape, and the inside clause's
-# tail is that clause's, not the phrase's.
+# tail is that clause's, not the phrase's. Q157
+# judges that same phrase through a pied-piped
+# relative clause the phrase itself carries, the
+# same way: the phrase standing ahead of the
+# pied-piped lead ("the record of which") is judged
+# by its head's standing, and the lead is the
+# inside clause's, not the phrase's tail.
 _CLAUSE_OBJECT_WORDS = frozenset({
     "you", "him", "her", "them", "us", "me", "it",
     "anyone", "someone", "everyone", "anybody",
@@ -1346,14 +1382,55 @@ def _clause_carries_infinitive(clause_words):
         # way the relative pronouns do, so the phrase
         # standing ahead of it is judged by its own
         # shape and the inside clause's tail is that
-        # clause's, not the phrase's.
+        # clause's, not the phrase's. Q157 reads a
+        # pied-piped clause the phrase itself carries
+        # the same way ("holds a credential the record
+        # of which is on file to ..."): where the span
+        # ahead of the pronoun ends in a preposition,
+        # that preposition and the noun phrase it
+        # closes are the inside clause's lead, and the
+        # governed phrase standing ahead of the lead
+        # is judged by its head's standing.
         rel_at = next((at for at, tail in enumerate(obj)
                        if tail in ("who", "whom", "which",
                                    "that", "whose")), None)
         if rel_at is not None:
             if rel_at == 0:
                 continue
+            rel_word = obj[rel_at]
             obj = obj[:rel_at]
+            if rel_word in ("which", "whom") \
+                    and obj \
+                    and obj[-1] in _PREPOSITION_WORDS:
+                # A pied-piped relative clause the
+                # phrase itself carries (Q157: "holds
+                # a credential the record of which is
+                # on file to ..."): the span ahead of
+                # the pronoun ends in the inside
+                # clause's lead -- a noun phrase the
+                # pronoun's preposition closes ("the
+                # record of") -- not in the governed
+                # phrase's head, so the truncated span
+                # is not the phrase in full and its
+                # tail is never the head to judge. The
+                # governed phrase stands ahead of that
+                # lead: it ends where the lead's own
+                # determiner stands, or, where the
+                # lead carries no determiner, ahead of
+                # the lead's noun and preposition. The
+                # phrase ahead of the lead is judged
+                # by its head's standing, below, the
+                # way the filed shapes are judged.
+                pied_at = next(
+                    (at for at in range(len(obj) - 2, 0, -1)
+                     if obj[at] in _CLAUSE_DETERMINERS),
+                    None)
+                if pied_at is not None:
+                    obj = obj[:pied_at]
+                elif len(obj) > 2:
+                    obj = obj[:-2]
+                if not obj:
+                    continue
         if obj[0] in _PREPOSITION_WORDS \
                 or obj[0] in _AUX_WORDS \
                 or "to" in obj \
@@ -1872,7 +1949,11 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     "¿", "‣", "⁇", "⸻",
                     "‛", "‟", "″", "⁈", "⁉",
                     "⸘", "⸮", ";", "⟨", "⟩",
-                    "＃", "％", "－", "｛", "｝")
+                    "＃", "％", "－", "｛", "｝",
+                    "‖", "‰", "‵", "‶", "⁗",
+                    "⁏", "·", "՜", "׃", "؞",
+                    "《", "》", "【", "】", "｜",
+                    "～", "｡")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -1975,7 +2056,21 @@ def _ledger_complement_is_evidence(owner, match):
     Greek question mark, the angle brackets, the
     fullwidth number sign, percent sign and
     hyphen-minus, and the fullwidth curly
-    brackets)): an evidence word in
+    brackets) -- and by Q157, where the format
+    characters beyond the BMP are read as boundaries
+    before the fold beside the characters it already
+    reads (the Egyptian hieroglyph format controls,
+    standing in the folded text as the pilcrow), and
+    the remaining punctuation separators open a
+    segment too (the double vertical line, the per
+    mille sign, the reversed prime, the reversed
+    double prime, the quadruple prime, the reversed
+    semicolon, the Greek ano teleia, the Armenian
+    exclamation mark, the Hebrew sof pasuq, the
+    Arabic triple dot punctuation mark, the double
+    corner brackets, the black lenticular brackets,
+    the fullwidth vertical line and tilde, and the
+    halfwidth ideographic full stop)): an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does
