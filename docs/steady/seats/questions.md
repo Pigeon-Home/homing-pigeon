@@ -3815,6 +3815,122 @@ not a measurement), and the conclusions against these
 suppositions follow in this entry. The 12-minute
 budget and the 20-minute wall stand unchanged.
 
+**Addendum (2026-11-11, the 3.16.20.4 re-pack —
+measurement and conclusions):** the measurement ran
+over 9 Windows logs at hand: both .4 attempts (the
+ship lane's kept logs), the 3.16.20.3 tag build's
+second attempt, both attempts of the .2-era head
+build, the aac5 and c63f head builds, and the two
+3.15-era tag logs. The estimator's exact listed sums
+alone convict the stale table: in the .3 build's slow
+attempt, test_oracle_alphabet's listed tests sum to
+673.9 seconds against 174.1 priced, and
+test_workspace_isolation's to 665.2 against 194.5 —
+and a listed sum is a floor on a file's whole cost,
+never the whole. The refresh by the tool's own
+`--write --from-logs` route over those 9 logs took
+the table from 442 files at 8,922.8 seconds to 444
+files at 12,852.0, priced at the slowest pool
+observed, exactly the shape Q136-RP-S3 predicted;
+its prices for the killed shards' heads then took
+the standing floors on top, and one new one. Against
+the suppositions:
+
+- Q136-RP-S1: refuted in its mechanism, confirmed in
+  its arithmetic. Shard 0's companions were indeed
+  priced at about 37 seconds in all (33.5 tabled,
+  plus test_v2_consult at the 3.7 median), but the
+  head is not shown above 1,100 seconds: the
+  shard-2 kill landed after about 86 of
+  test_decision1_startup's 96 tests had completed,
+  in a wall its first file's listed tests alone
+  measure 477.3 seconds of in the .3 attempt — the
+  head's whole cost cannot reach 1,100 without
+  contradicting that listed evidence, and the same
+  arithmetic puts it at about 700 or less. The
+  residual — over 500 seconds of the
+  .4 wall — sits in the companions, concentrated in
+  the one file below.
+- Q136-RP-S2: refuted as stated. Shard 4's
+  attempt-2 failure was not a wall kill: it exited 1
+  with one failure (test_local_signals'
+  test_briefing_thread_releases_the_gate, annotated
+  in its own log as a Windows socket flake) after
+  completing in 830.5 seconds of internal time; its
+  attempt 1 completed at 583.0. The sub-claim holds:
+  its head, test_proof_content_cap, is still
+  under-priced at the 390 floor — its listed tests
+  alone measure 276.5 (attempt 1), 416.5 (attempt 2)
+  and 477.3 (.3 attempt) — and the refresh raises it
+  to 477.6 without any floor's help.
+- Q136-RP-S3: confirmed. The refresh raised the
+  total well above 8,922.8 (to 12,852.0), and it
+  prices the killed shard's head below its standing
+  floor — test_decision1_startup at 304.8 against
+  the 650 floor, test_regression_guard at 186.6
+  against 250 — because a killed shard prints no
+  durations block and its wall spreads by test
+  count. Both floors are re-applied over the
+  refresh. (The one exception: test_proof_content_cap,
+  whose head status S2 guessed at, refreshes above
+  its floor on listed evidence alone.)
+- Q136-RP-S4: confirmed. With the refresh and the
+  floors landed, the table carries 444 files at
+  13,533.8 seconds and packs the discovered suite
+  (466 modules, 12,380 tests) into 20 shards of 684
+  seconds packed each, every one within the
+  720-second budget; the tool's own `--check` and
+  the guard family pass whole.
+- Q136-RP-S5: confirmed, with the pool's variance
+  measured beside it. Attempt 1's completed shards
+  ran 387 to 642 seconds of internal time against
+  687 packed; attempt 2 ran the same shards at 570
+  to 894 — a near-uniform 1.4x slower pool, which is
+  why the refresh prices at the slowest pool
+  observed rather than at any single attempt. The
+  heavy heads moved most (test_oracle_alphabet
+  174.1 to 674.0, test_workspace_isolation 194.5 to
+  666.5, their listed sums dominating both), while
+  ordinary files stayed near their values.
+- Q136-RP-S6: refuted. One untabled file is a
+  cause. test_v2_consult — 104 tests, each driving
+  runner.main() the way test_decision1_startup's do
+  — landed with Q139/Q141/Q142 after the table's
+  last refresh, has never completed on Windows in
+  any log at hand, and packed into shard 0 at the
+  3.7-second median. It takes a floor of 600.0
+  seconds: shard 0's residual over
+  test_decision1_startup's floor and its companions'
+  prices is over 500 seconds, and at that file's own
+  per-startup boundary cost (650 over 97 tests) 104
+  such tests price at about 600. The rest of the
+  untabled names are exonerated: the other .4-era
+  one in a completed shard, test_doc_link_resolution,
+  completed inside shard 5 of both attempts, and the
+  linux family that makes up most of the 22 untabled
+  names at the current tree reports no tests to
+  Windows discovery at all (its definitions are
+  platform-conditional). A first-hand local timing
+  of shard 0's 20 modules on Linux underlines the
+  shape: every one runs in 16.3 seconds of internal
+  time or less there (test_decision1_startup's 97
+  tests in 1.6, test_v2_consult's 104 in 3.5) — the
+  blow-up is the Windows leg's per-startup cost, not
+  the tests' logic.
+
+The floors are floors, not measurements, and one
+honest limit stands: test_v2_consult has still never
+completed on Windows, so no log bounds it above. Its
+new shard carries at most 84 seconds of priced
+companions, so it can only kill that shard if its
+true cost alone passes about 1,115 seconds; the
+next tag build's build-windows leg is the re-test
+under rule 8, and the drift rule stands if it fires
+again. **Applied in:** this addendum, the refreshed
+table with its floors, and the guard tests that pin
+the new floor and that the two in-process-startup
+files never share a shard, in one landing.
+
 ---
 
 ## Q135 (Muse, to the desk, 2026-11-10): the confinement decision raises where its contract is to answer — a denial must come back as a triple and be refused at the job boundary, not thrown from the decision

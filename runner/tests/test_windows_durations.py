@@ -532,6 +532,53 @@ class CheckedInTableGuardTest(unittest.TestCase):
                 "shard 2 of run 42950872171 packed into one "
                 "shard again")
 
+    def test_the_v2_consult_file_keeps_its_floor(self):
+        # The 3.16.20.4 tag build (run 43003938484) killed
+        # shard 0 at the 1,200.2s wall on both attempts.
+        # That shard carried test_decision1_startup at its
+        # 650s floor plus 19 files priced at about 37s in
+        # all, so the companions burned over 500s beyond
+        # their prices. The one companion that can carry
+        # that residual is test_v2_consult: 104 tests, each
+        # driving runner.main() the way
+        # test_decision1_startup's do, landed by Q139/Q141
+        # after the table's last refresh and so never
+        # measured on Windows at all -- it packed at the
+        # 3.7s median. (Its shard-mates are exonerated
+        # file by file in the Q136 re-pack conclusions:
+        # several completed inside other shards of the
+        # .2-head builds, and test_doc_link_resolution,
+        # the shard's other untabled name at the .4 tree,
+        # completed inside shard 5 of both attempts.)
+        # At test_decision1_startup's own per-startup
+        # boundary cost (its 650s floor over 97 tests),
+        # 104 such tests price at about 600s. The
+        # estimator cannot learn this from the logs: the
+        # killed shard prints no durations block, so its
+        # wall spreads by test count and a refresh over
+        # both .4 attempts prices the file at 326.8s.
+        # This floor keeps the packer from re-creating
+        # that shard; it is a floor from boundary
+        # evidence, not a measurement.
+        table = wd.load_table_file(wd.default_table_path())
+        self.assertGreaterEqual(
+            table["durations"]["runner.tests.test_v2_consult"],
+            600.0)
+
+    def test_decision1_and_v2_consult_do_not_share_a_shard(self):
+        table = wd.load_table_file(wd.default_table_path())
+        shards = wd.pack_modules(sorted(table["durations"]),
+                                 table["durations"],
+                                 table["budget_seconds"])
+        for shard in shards:
+            self.assertFalse(
+                "runner.tests.test_decision1_startup" in shard
+                and "runner.tests.test_v2_consult" in shard,
+                "the two in-process-startup files whose "
+                "combined under-pricing killed shard 0 of "
+                "the 3.16.20.4 tag build packed into one "
+                "shard again")
+
     def test_the_real_suite_packs_within_budget(self):
         table = wd.load_table_file(wd.default_table_path())
         counts = rtp.module_test_counts(
