@@ -1066,6 +1066,83 @@ release cut — not 1 gated sequence. The green-head
 rule itself stands for the cut; what changed is that
 nothing else stands behind it in line.
 
+## The documentation overview, Packet 2: suppositions recorded before the check (2026-11-10)
+
+Packet 2 of the overview takes the root manuals and the
+start-here layer: `AGENTS.md`, `PROTOCOL.md`,
+`INSTALL.md`, `docs/steady/start-here.md`, `docs/FAQ.md`,
+`docs/FUTURE.md` and `docs/ENTERPRISE.md`, each checked
+sentence by sentence against the code and the facts
+Packet 1 settled (the 3.16 line, the three confinement
+backends as field-proven on Linux, Windows and FreeBSD,
+and the enforce-by-default posture). Suppositions,
+written before the fix pass:
+
+- **P2-S1.** AGENTS.md's nested-shape note gives the
+  runner proper's size as 6,928 lines, and its
+  human-review paragraph then calls 6,647 lines "a human
+  size" -- a stale survivor of an earlier measure; the
+  file itself measures 6,928.
+- **P2-S2.** AGENTS.md's layout table puts `AGENTS.md`
+  and `PROTOCOL.md` at the top of `docs/`; both are root
+  manuals, and `docs/`'s own top holds `FUTURE.md`,
+  `FAQ.md`, `ENTERPRISE.md` and the support matrix.
+- **P2-S3.** PROTOCOL.md section 9.4 still describes OS
+  containment as an optional Linux sandbox: a sandbox
+  that cannot engage "(no `bwrap`, not Linux)" refuses
+  startup, and the work-directory passage says "On
+  Windows there is no sandbox: these checks are the
+  isolation." Both predate the Windows and FreeBSD
+  backends, the section names neither backend, and its
+  post-start failure is stated as a fallback without the
+  refusal SECURITY.md now records.
+- **P2-S4.** The FAQ's remote-execution answer calls
+  everything past the signature "opt-in containment" and
+  names only the bubblewrap sandbox -- against the
+  enforce-by-default posture Packet 1 established.
+- **P2-S5.** The FAQ's main-machine answer says "The
+  defaults favor 'it just works'" -- the security modes
+  have defaulted to `enforce` since the secure-by-default
+  landing, so the sentence inverts the current default
+  story.
+- **P2-S6.** FUTURE.md's cage bullet says only bwrap
+  stops a job, that FreeBSD and Windows merely detect a
+  bad write after it happens, and that "a jail, a job
+  object with a restricted token" is still needed; both
+  backends landed and were field-proven on 2026-11-10,
+  and only macOS still lacks a cage. Its egress bullet
+  likewise says nothing off Linux exists, while the
+  FreeBSD jail denies all network.
+- **P2-S7.** FUTURE.md's audit bullet says
+  `security-audit.jsonl` "has no hash chain"; the audit
+  log carries the tamper-evident chain in
+  `runner/guard/security.py`, verified through
+  `runner/ops/auditreport.py`. What remains open there is
+  an append-only flag and a remote copy.
+- **P2-S8.** FUTURE.md cites five paths in the retired
+  layout (`docs/use/networking.md`,
+  `docs/oracle/job-review.md`,
+  `docs/design/approval-gate-design.md`,
+  `docs/design/v3-dtls-over-email-plan.md`,
+  `docs/proofs/dtls-over-email-v3.md`); none of those
+  paths exists -- the files live under `docs/steady/` and
+  `docs/infrastructure-documents/`.
+- **P2-S9.** start-here.md's index has fallen behind the
+  shelf it maps: the arrival window closes at 2026-11-06
+  though shelf files arrived after; the security drawer
+  is counted at 8 files, design at 7 and use at 8; the
+  drawers' total is given as 164; and `questions.md` and
+  `windows.md` are dated untouched since October though
+  both changed on 2026-11-10.
+- **P2-S10.** INSTALL.md's install-and-run story, the
+  FAQ's remaining answers, PROTOCOL.md outside section
+  9.4, and `docs/ENTERPRISE.md` -- the placeholder rule 6
+  keeps as-is -- need no correction.
+
+Each supposition is settled against the code in the
+commits that follow this note; the conclusions stand at
+the end of this section when the packet lands.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
