@@ -530,9 +530,6 @@ says so. [docs/steady/project/contributing.md](docs/steady/project/contributing.
 - Randall Munroe: [xkcd 568](https://xkcd.com/568/) "You'll never find a programming language that frees you from the burden of clarifying your ideas." (Except with English + SI + a long context paragraph clarifying your ideas => the cycle begins again)
 - "I once saw a forklift lift a crate of forks. And it was way to literal for me" - Mitch Hedberg
 - "No problem, here is how you build one." - Lieutenant Barclay (S04E19)
-- IETF datatracker, Homing Pigeon v1: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
-- IETF datatracker, Homing Pigeon v2: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
-- IETF draft v3: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
 - https://news.ycombinator.com/item?id=50397008
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/resume.txt
 - cs_office — [What is a bug bounty program?](docs/ENTERPRISE.md)
