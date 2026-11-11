@@ -3155,3 +3155,47 @@ pristine base head in this cell, as Packet 3 also
 recorded; none of the packet's 3 edited files is a
 defaults-registry line, and the packet added no
 failure.
+
+## The live-examples link, re-checked after the conductor's live test (2026-11-10): suppositions recorded before the check
+
+The conductor clicked the live-examples link on GitHub
+himself after the 8:21 PM PST landing that repaired the
+FAQ's relative link, and met a 404. His click is the
+evidence that matters, so the link family is re-checked
+end to end — the clickable links, the plain-text paths,
+and the pages as GitHub actually serves them. Suppositions,
+written before the check ran:
+
+- **LE-S1.** On current main every clickable link that
+  names the live-examples page resolves the way GitHub
+  resolves it, from the linking file, and the link
+  guard (`runner/tests/test_doc_link_resolution.py`)
+  reads green: the FAQ, the runbook, the Oracle
+  configuration page, the README and SECURITY.md.
+- **LE-S2.** What the conductor's click met is the
+  pre-fix rendering, not current main: the FAQ as
+  served at the current release tag carries the old
+  target, which resolves to
+  `docs/docs/steady/use/live-examples.md` and 404s,
+  and any page rendered before the 8:21 PM landing
+  carries the same href. No released tree carries the
+  repair yet; it reaches a reader who follows a
+  release only when the next cut ships.
+- **LE-S3.** The plain-text stale paths found on the
+  head this check was tasked from — the design page's
+  `docs/use/live-examples.md`, and its siblings in the
+  runtime page and the senses page — already stand
+  corrected on current main by the Packet 4 and
+  Packet 9 sweeps, at their real homes.
+- **LE-S4.** The link guard still cannot see the
+  plain-text family: a backtick path in a reader's
+  page naming the retired layout (`docs/use/`,
+  `docs/security/`, `docs/oracle/`, `docs/design/`,
+  `docs/extend/`, `docs/proofs/`, `docs/project/`,
+  `docs/reports/`, `docs/seats/`) is no link at all,
+  so the guard passes over it. Scoped to the reader's
+  pages — the scope `test_reader_docs_quiet` already
+  draws — such a check reads green on current main
+  and red on a stale line; the dated records and the
+  seats' and project drawers, which quote the retired
+  paths as history, stand outside it.
