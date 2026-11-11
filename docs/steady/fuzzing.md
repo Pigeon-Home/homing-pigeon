@@ -59,8 +59,8 @@ list and their wiring grew runner/ops, runner/guard and
 the runner proper, and again the same day after the
 FreeBSD backend's field-test fixes and the Windows
 backend's import-safety change grew runner/guard, the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->59,059<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->53,268<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->748,622<!--/hp-fig-->-byte zip, and the project's own estimator
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->59,353<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->53,542<!--/hp-fig--> non-blank)
+and a <!--hp-fig:core_assembled_zip_bytes-->753,155<!--/hp-fig-->-byte zip, and the project's own estimator
 counts it at <!--hp-fig:core_assembled_tokens-->619,963<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
 estimator counts the canonical <!--hp-fig:core_files-->134<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->612,346<!--/hp-fig-->
@@ -79,14 +79,14 @@ set. A change aimed at core is aimed at those 134 files and
 no others, and a result reported for core covers exactly
 them.
 
-The runner proper is 6,766 lines; the core around it is
-59,059. The set as assembled, part by part (re-measured
+The runner proper is 6,779 lines; the core around it is
+59,353. The set as assembled, part by part (re-measured
 2026-11-10):
 
-- runner/ops: 18,556 lines
+- runner/ops: 18,837 lines
 - runner/tools: 8,903
 - runner/wire: 8,708
-- runner/runner.py: 6,766
+- runner/runner.py: 6,779
 - runner/oracle: 5,044
 - runner/transport_extensions: 2,775
 - runner/guard: 4,521
@@ -102,7 +102,7 @@ The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-59,059 lines, explicit platform branching — sys.platform,
+59,353 lines, explicit platform branching — sys.platform,
 os.name and win32 markers — totals about 140 lines in 36 of
 its files, beside a small number of dedicated platform
 modules (runner/ops/windows.py, runner/ops/winlog.py,

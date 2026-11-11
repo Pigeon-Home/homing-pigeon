@@ -83,10 +83,12 @@ class CoreListTest(unittest.TestCase):
         # The zip size is this module's own deterministic build,
         # re-recorded at the 2026-11-05 re-measures and again
         # at the 2026-11-10 re-measure that corrected the Q134
-        # entry's figures and took up the trial staging fix;
-        # the Gemini token count above still describes the
-        # 2026-11-04 assembly.
-        self.assertEqual(748622, core.AS_ASSEMBLED_ZIP_BYTES)
+        # entry's figures and took up the trial staging fix,
+        # and again the same day after the briefing's
+        # contradiction mark grew runner/ops and the runner
+        # proper; the Gemini token count above still describes
+        # the 2026-11-04 assembly.
+        self.assertEqual(753155, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -143,9 +145,11 @@ class CoreListTest(unittest.TestCase):
         # runner proper by 8) and are corrected at this
         # re-measure -- and again the same day after the
         # Q134 trial's staging fix grew
-        # runner/guard/windows_confine.py.
-        self.assertEqual(59059, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(53268, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner/guard/windows_confine.py, and again the same
+        # day after the briefing's contradiction mark (the
+        # Q138 build) grew runner/ops and the runner proper.
+        self.assertEqual(59353, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(53542, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
@@ -238,7 +242,7 @@ class CoreLinesTest(unittest.TestCase):
 
 class CorePartsTest(unittest.TestCase):
     def test_the_recorded_breakdown_stays_named(self):
-        self.assertEqual(6766, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
+        self.assertEqual(6779, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
         self.assertEqual(core.AS_ASSEMBLED_LINES,
                          sum(core.AS_ASSEMBLED_PART_LINES.values()))
 
