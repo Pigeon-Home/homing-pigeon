@@ -5180,3 +5180,138 @@ substrate is those sentences themselves beside the
 committed guard family, which this lane runs whole.
 No new behaviour is claimed beyond what those calls
 and that family show.
+
+## Q146: conclusions of the filing seat's re-test (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded in the desk
+before the re-test (the Q146 re-test section above;
+the supposition landing of 2:00 AM PST was pushed and
+verified before any probe in this lane ran), each
+measured first-hand in a fresh scratch clone from
+remote main on the tested head (the desk answer
+commit of 1:53 AM PST), on the pre-Q146-fix detector
+(the tree at the fix commit's parent) and on the
+pre-Q143-fix detector (the tree at the Q143 fix
+commit's parent), against the fixture layer and the
+shipped layer.
+
+- **Q146-RT-S1 confirmed** — item 1 is silent whole:
+  the long lead-in prohibitions across every
+  governing form and every rule swept produce no
+  marks on either layer, plain and bookended. This
+  seat's combined probe over the filed families read
+  4010 checks on the current head with no failure.
+- **Q146-RT-S2 confirmed** — item 2 is silent whole:
+  the relative-clause prohibitions produce no marks
+  on either layer, plain and bookended, in the same
+  combined probe.
+- **Q146-RT-S3 confirmed** — item 3 fires again
+  whole: the ledger's mixed sentence under every
+  filed dash form produces exactly
+  `ledger_treated_as_instruction` on both layers,
+  plain and bookended, and the evidence-only dash
+  twins stay silent, in the same combined probe.
+- **Q146-RT-S4 confirmed** — the both-ways pins hold:
+  the long hesitate pin and its kin, the
+  permission-other-verb shapes including the
+  comma-less twin, the relative-clause pins that
+  introduce the matched verb (the "tells you" shapes
+  and the subject-clause twin), the
+  unrelated-negation pins and the
+  negated-then-contradicting shapes all read as they
+  should on both layers.
+- **Q146-RT-S5 confirmed** — all three earlier
+  families hold whole beside the widening, as the
+  combined probe measured: the Q143 corpus silent
+  plain / bookended / joined, the Q144 and Q145
+  families as they were, the standing 7-rule family
+  firing whole.
+- **Q146-RT-S6 confirmed** — end to end, exactly as
+  supposed: item 1's filed pair assembled into a
+  briefing carries no mark, `briefing_report` names
+  no tensions for it, and the startup pass writes no
+  audit rows; item 2's sentence carries no mark and
+  writes no audit row; item 3's sentence carries its
+  mark and writes exactly its one audit row (feature
+  `briefing`, decision `marked`, detail
+  `rule=ledger_treated_as_instruction`).
+- **Q146-RT-S7 confirmed** — the guard family and
+  the neighbour batteries read 375 tests green on
+  the tested head, re-measured in the foreground by
+  this seat (the guard family 70;
+  `test_oracle_briefing` 35, `test_posture_stamp`
+  20, `test_protocol_v2` 14,
+  `test_protocol_v2_messages` 62, `test_v2_consult`
+  104, `test_v2_replay` 6, `test_security_config`
+  64). Red-before, re-measured by this seat: item
+  1's and item 2's shapes mark with their named
+  rules and item 3's shapes are silent on the
+  pre-Q146-fix detector on both layers (the
+  semicolon control fires there); item 3 fires
+  again on the pre-Q143-fix detector, with the Q143
+  compliant corpus reading 14 marks covering all 7
+  rules on that tree; and the guard family as it now
+  stands reads 1713 subtest failures against the
+  unpatched (pre-Q146-fix) detector, every one of
+  them in the new Q146PolarityGuardTest family — the
+  whole file against that detector reads the same
+  1713, so the fix accounts for the change.
+- **Q146-RT-S8 settled the other way, as the
+  supposition provided for** — most of this seat's
+  own probes beyond the filed corpus read as they
+  should (lead-ins of 8 and 12 words and the
+  whenever / allow-anyone / must-not variants silent;
+  the comma-set lead-in after "to" silent; the
+  positive-permission and "do not wait" shapes
+  firing; the assigned / whom / double / which /
+  and-carrying subject clauses silent; the
+  instruction-first dash shape and the dash-and
+  ledger shape firing), but three residual items
+  were found, all measured against all three trees
+  and filed as Q147 in the questions file: (1) a
+  prohibitive form cut off from its infinitive by a
+  relative clause on its subject opened by "that"
+  still marks — the crossing's pronoun set is "who",
+  "whom" and "which" only, and " that " stands only
+  as a barrier — on all three trees, in 73 of its 75
+  bookended variants, its sentence carrying the mark
+  and 1 audit row end to end; (2) a relative clause
+  that introduces the matched verb through a verb
+  outside the crossing's introducing-verb list
+  ("prompts", "bids", "pays", "gets", "hires",
+  "tasks") is now read as a subject clause, so the
+  contradiction is missed on the current head though
+  it fires on both pre trees — the listed controls
+  ("tells", "asks", "orders", "instructs",
+  "encourages", "urges", "directs") fire on every
+  tree, and the representative shape fires in 0 of
+  its 73 bookended variants on the current head, its
+  sentence carrying no mark and no audit row end to
+  end; (3) the ledger's mixed sentence under a typed
+  dash (the double hyphen "--", spaced and unspaced,
+  and the triple hyphen) is still missed — firing on
+  the pre-Q143-fix detector, silent since, in 0 of
+  its 73 bookended variants on the current head, its
+  sentence carrying no mark and no audit row end to
+  end. This seat does not fix them (rule 8).
+
+Guard evidence stands in the Q146 entry's re-test
+record in the questions file, with Q147 filed above
+it. Q146 is not closed by this re-test, and neither
+are Q145, Q144 and Q143: all four close only when
+Q147 is answered and its fix is re-tested by this
+seat. The hosted CI verdict on the new head is the
+trains' to judge — this lane claims neither it nor
+anything about the in-flight ship, whose lane,
+clones and state file this lane never touched. What
+could not be recorded as a unit test, as the
+suppositions stated in advance: this lane's ad-hoc
+probes are live detector calls over the sentences
+named in this record; their deterministic substrate
+is those sentences beside the committed guard
+family, which this lane ran whole (70 tests) — no
+new test file is landed by a re-test seat, and no
+behaviour is claimed beyond those calls and that
+family.
