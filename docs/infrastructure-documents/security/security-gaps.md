@@ -1,7 +1,7 @@
 # Security gaps: what the defaults don't cover
 
 This is the honest accounting. The project's threat model
-(`docs/security/threat-model.md`) says: the shared secret is root, and every
+(`docs/infrastructure-documents/security/threat-model.md`) says: the shared secret is root, and every
 job should be treated as potentially destructive. This document says
 what the *default* installation actually protects against — and what
 it doesn't — plus the order in which to turn things on if the answer
@@ -14,7 +14,8 @@ With default settings, jobs execute as the same OS user that owns
 job user is named by default, so in that `job_user` sense **the job
 is the runner**. That is not the whole default picture: all six
 `security.modes` features read `enforce` when unset, and
-confinement engages out of the box on a Linux box with `bwrap`, so
+confinement engages out of the box on a Linux box with `bwrap`,
+on Windows through its backend, and on FreeBSD through its jail, so
 the job is sandboxed away from `config.json`, the state dir and
 the audit log. Where confinement cannot engage, or where it is set
 to `audit` or `off`, every file permission on the box is theater
@@ -43,8 +44,8 @@ readable by the runner principal and not by the job principal.
 |---|---|---|
 | Linux | `job_user` (setuid), `install.py` writes owner-only `0600` | Default is still the same user. POSIX ACLs (`setfacl`) on the base dir should hide the secret from the job user when bwrap is off |
 | macOS | launchd agent as the installing user | `chmod +a` ACLs exist but nothing applies them; the real cage would be `sandbox-exec`, not an ACL |
-| FreeBSD | cron `@reboot` as the user | `setfacl` on ZFS/UFS unapplied; a jail is the real boundary |
-| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `docs/security/hardening/windows.md` documents the account as the sandbox | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r` — a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity or a restricted token is the stronger cousin |
+| FreeBSD | cron `@reboot` as the user | `setfacl` on ZFS/UFS unapplied; the per-job jail is the confinement backend and engages at `enforce` |
+| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `docs/steady/security/windows.md` documents the account as the identity boundary | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r` — a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity or a restricted token is the stronger cousin |
 
 `--posture` already warns about the Windows ACL; it should warn
 about a missing POSIX ACL too.
@@ -53,11 +54,13 @@ about a missing POSIX ACL too.
 are a snapshot today: the Oracle *notices* a write outside the
 workspace after the fact, and remediation (default
 `deterministic`) quarantines the job's outputs, refers and pages on
-that finding; the write itself has happened. An ACL — or bwrap where it exists — makes
+that finding; the write itself has happened. An ACL — or the confinement backend where it exists — makes
 the write *fail*. On Linux, bwrap (`security.modes.confinement`) is
-the better tool and should stay the confinement backend. ACLs matter
-where confinement is set to `off`, and for macOS, FreeBSD, and
-Windows, where bwrap doesn't exist. The Pi profile already lists
+the better tool and should stay the confinement backend; FreeBSD
+has its per-job jail and Windows its backend (Job Object,
+restricted token, low integrity). ACLs matter
+where confinement is set to `off`, and for macOS, where no cage
+exists yet. The Pi profile already lists
 `/etc/shadow` as a protected path; that path should be *denied* to
 the job user, not only watched.
 
@@ -88,30 +91,34 @@ where each one stands. Items marked absent are listed in docs/FUTURE.md.
 - **Network egress control.** The canonical agent attack is
   exfiltration — the job `curl`s secrets straight out, bypassing
   every redaction rule (those only cover what comes *back* in the
-  result email). Only bwrap in enforce mode (Linux, the default)
-  blocks it. Status: mechanism exists, on by default where bwrap
+  result email). Bwrap in enforce mode (Linux, the default)
+  blocks it, and the FreeBSD jail denies a job all network; the
+  Windows backend has no network control. Status: mechanism
+  exists, on by default where a backend with a network control
   can engage.
 - **Audit log integrity.** Neither log is append-only in the
   runner's own hands: past 5,000 lines `security-events.jsonl` is
   rewritten to its last 5,000 (by atomic replace), and
   `security-audit.jsonl` rolls to `.1` at 20,000
   (`security.audit_max_lines`). The watched principal can edit or
-  truncate either. No append-only flag (`chattr +a`), no hash
-  chain, no remote copy. Status: absent.
+  truncate either; on the audit log the tamper-evident hash chain
+  (`runner/guard/security.py`), verified through
+  `runner/ops/auditreport.py`, makes an edit show. No append-only
+  flag (`chattr +a`), no remote copy. Status: partial.
 - **Supply chain.** Releases ship `SHA384SUMS`, but nothing in the
   install path verifies them; the installer itself runs `curl | sh`
   for Ollama. PyPI trusted publishing is the one solid link.
   Status: partial.
 - **Secret revocation.** "The shared secret is root" is documented,
-  and a written fire drill exists — docs/security/safeguards.md §7 and
-  docs/use/secret-rotation.md: revoke the mailbox credential first
+  and a written fire drill exists — docs/infrastructure-documents/security/safeguards.md §7 and
+  docs/steady/secret-rotation.md: revoke the mailbox credential first
   (that stops mail-borne delivery at once), then generate a
   fresh shared secret, then check `runner.log` and the mailbox
   for jobs you didn't send. Status: documented.
 - **Windows default privilege.** The out-of-box Scheduled Task runs
   as SYSTEM. `--run-as` exists, but the default is the
   highest-privilege account on the box and it's quiet about it.
-  Status: documented in `docs/security/hardening/windows.md`, default unchanged by
+  Status: documented in `docs/steady/security/windows.md`, default unchanged by
   owner choice.
 - **`reply_to` (v3.7.0).** The runner now emails results to a
   SI-named address. The signed-body-only rule keeps it sound, but it

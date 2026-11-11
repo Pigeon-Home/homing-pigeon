@@ -39,7 +39,7 @@ a forward-secret session and then carry jobs inside it.
 
 ### Goal 1 — Specify version 3 as a transport extension to version 1
 
-Produce `docs/ietf/draft-slutsky-homing-pigeon-v3-00.md`, modeled on
+Produce `docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md`, modeled on
 the version 2 companion document and written as deltas against
 version 1. The document will define:
 
@@ -170,7 +170,7 @@ with the implementation. The test family will cover:
 
 ### Goal 6 — Record the result
 
-Add a proof note under `docs/proofs/` naming the modules, the
+Add a proof note under `docs/infrastructure-documents/proofs/` naming the modules, the
 specification, the tests that were actually run, their unfiltered
 results, what works end to end, and what remains unproven.
 
@@ -394,9 +394,9 @@ clone:
 ## Addendum — the definition of done, met (2026-11-03)
 
 Each condition above is established, with its evidence in
-`docs/proofs/dtls-over-email-v3.md`:
+`docs/infrastructure-documents/proofs/dtls-over-email-v3.md`:
 
-- Present: this plan, `docs/ietf/draft-slutsky-homing-pigeon-v3-00.md`
+- Present: this plan, `docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md`
   (local, unsubmitted), and the completed future entry.
 - Session and job through the production path: the `EmailPipe`
   tests complete a handshake and carry a real signed job to

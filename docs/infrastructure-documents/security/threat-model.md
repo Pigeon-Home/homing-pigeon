@@ -37,20 +37,22 @@ It could even work as a marketable service.
 - Run the agent as a locked-down user, on a throwaway account, on a
   box you can wipe. The README's security notes are not boilerplate.
 - The Oracle reviews and attests. It does not contain a job unless
-  Linux bubblewrap engages (`security.modes.confinement` runs at
-  `enforce` by default, and `bwrap` installed). Where `bwrap` cannot
-  engage, the runner refuses to start at that default rather than
-  run uncontained. A VM, a locked-down user, and the OS policy still do the real
-  containment. AppArmor and SELinux profiles live under `docs/security/hardening/`
+  a confinement backend engages (`security.modes.confinement` runs
+  at `enforce` by default): Linux bubblewrap, the Windows backend
+  (Job Object, restricted token, low integrity), or the FreeBSD
+  per-job jail. Where the platform's backend cannot engage, the
+  runner refuses to start at that default rather than run
+  uncontained. A VM, a locked-down user, and the OS policy still do the real
+  containment. AppArmor and SELinux profiles live under `docs/steady/security/`
   and are opt-in. They are not installed for you.
 - Every new sense, transport, and job kind added to this project
-  widens the blast radius. `docs/archive/roadmap-spec.md` is exciting and
+  widens the blast radius. `docs/steady/project/roadmap-spec.md` is exciting and
   dangerous in exactly equal measure; build the gates (§3) before
   the hands (§1.3).
 
 ## What the defaults don't cover
 
-`docs/security/security-gaps.md` is the companion to this file: the ordered
+`docs/infrastructure-documents/security/security-gaps.md` is the companion to this file: the ordered
 story (split identities, then ACL the secrets, then cage the
 workspace), the per-platform ACL gaps, and the inventory of basic
 technologies still missing or not covered by the defaults — runner

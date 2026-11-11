@@ -161,7 +161,7 @@ knows it exists.
 
 If email is the carrier pigeon, the hosted queue is the freight
 rail. It is the transport a hosted runner uses when the tenant has
-no mailbox to bring (`docs/project/hosting.md`, Phase 2), and the
+no mailbox to bring (`docs/steady/project/hosting.md`, Phase 2), and the
 one we'd recommend to anyone who winces at the word "email."
 
 **What ships.** Three parts, one contract:
@@ -277,7 +277,7 @@ A one-tenant deployment of this contract was run on
 2026-10-27: a stranger gets 401 on the configured tenant and
 404 on any other, and a signed ping came back exit 0 with an
 encrypted result. The record, tokens left out, is
-`docs/reports/queues-2026-10-27.md`.
+`docs/steady/reports/queues-2026-10-27.md`.
 
 Runner config:
 
@@ -677,7 +677,7 @@ up. The manifest's identity fields — name, publisher, version —
 are carried from day one so a future lockdown has something to
 pin; this build has no signature on the code, no allowlist, no
 registry check. What it has is the extension review
-([docs/extend/extensions.md](extensions.md), "The review"): before
+([docs/steady/extensions.md](../../steady/extensions.md), "The review"): before
 `entry` is launched, the folder is read against the manifest --
 every path in `entry` stays inside the folder, every `.py`
 compiles, no symlinks, no bidi control characters, nothing that
@@ -704,7 +704,7 @@ it.
 
 A transport can bring its own sources for the Oracle, exactly
 as a sense can: a `sources.json` next to the manifest
-([docs/extend/extensions.md](extensions.md), "Sources"), fetched in the
+([docs/steady/extensions.md](../../steady/extensions.md), "Sources"), fetched in the
 background the first time the transport starts and given to the
 Oracle under the disclosure rule. All five shipped transports
 declare their own code in the project tree; email, dtls and nats
@@ -775,7 +775,7 @@ dedicated mailbox account). The file transport needs nothing
 else — set `transports` to include `file` and drop envelopes
 in the inbox. NATS needs a broker you run (or one you already
 have) plus credentials for it. The hosted queue needs a Worker
-you deploy and a tenant record (`docs/project/hosting.md`). The
+you deploy and a tenant record (`docs/steady/project/hosting.md`). The
 `transports` config key (or `--transports` for one process) is
 the switch; several transport extensions run side by side, each
 supervised by the one runner. What is not built is listed in

@@ -1,7 +1,7 @@
 # Safeguards
 
 How to run homing-pigeon without getting burned. This is the
-*operational* companion to [SECURITY.md](../../SECURITY.md): that document
+*operational* companion to [SECURITY.md](../../../SECURITY.md): that document
 covers the threat model and how to report vulnerabilities; this one
 covers what **you** do, step by step, to keep a deployment safe.
 
@@ -9,8 +9,10 @@ covers what **you** do, step by step, to keep a deployment safe.
 
 - The runner executes **arbitrary code** as the user it was installed
   as. There is no confirmation prompt. A sandbox exists only where
-  Linux bubblewrap can engage (`security.modes.confinement` runs at
-  `enforce` by default, and `bwrap` installed). Where `bwrap` cannot
+  a confinement backend can engage (`security.modes.confinement`
+  runs at `enforce` by default): Linux bubblewrap, the Windows
+  backend (Job Object, restricted token, low integrity), or the
+  FreeBSD per-job jail. Where the platform's backend cannot
   engage, the runner refuses to start at that default; set
   `confinement` to `audit` or `off` there to run without the sandbox.
 - The shared secret (a dedicated high-entropy string, by your explicit choice)
@@ -69,10 +71,12 @@ Defense in depth, cheapest first:
   `workspace_root` and the Oracle attests that the job stayed inside
   it. That one is a snapshot, not a sandbox. See PROTOCOL.md §9.4.
   On Linux, `security.modes.confinement` set to `enforce` runs the
-  job inside bubblewrap. Enforce is the default: a feature the
+  job inside bubblewrap; on Windows `enforce` runs the job under
+  the Windows backend (Job Object, restricted token, low
+  integrity), and on FreeBSD inside a per-job jail with no network
+  at all. Enforce is the default: a feature the
   config does not set reads as `enforce`. Under `enforce` a sandbox
-  that cannot engage (no `bwrap`, user namespaces blocked, not
-  Linux) refuses to start the runner; a sandbox that breaks after a
+  that cannot engage (no `bwrap`, user namespaces blocked) refuses to start the runner; a sandbox that breaks after a
   good start falls back loudly and the audit log says `fallback`.
   Inside the sandbox
   the job sees `/usr`, its own workdir, and nothing else; when the
@@ -84,9 +88,9 @@ Defense in depth, cheapest first:
   path is what every staging check and the two workspace sweeps
   (after staging, before the process starts: no symlink or
   junction, nothing but regular files and directories, nothing
-  resolving outside) answer for, on every platform. On Windows,
-  where there is no sandbox, those checks are the isolation
-  (PROTOCOL.md §9.4, "The work directory").
+  resolving outside) answer for, on every platform. On Windows
+  the confinement backend's controls stand on top of those checks
+  at `enforce` (PROTOCOL.md §9.4, "The work directory").
 
 ## 4. The Oracle as a safeguard
 
@@ -114,7 +118,7 @@ mitigation:
   it.
 - **Rotate the shared secret every 90 days.** Add a new named
   key and leave the old one in place until every sender has
-  moved. The steps are `docs/use/secret-rotation.md`. Do not
+  moved. The steps are `docs/steady/secret-rotation.md`. Do not
   overwrite `shared_secret` in place for a calendar rotation;
   that cuts off every sender at once. A leak is different:
   replace the secret now (§7).
@@ -127,7 +131,7 @@ mitigation:
   running the Oracle, the first time an extension runs, the agent
   fetches the sources that extension declares from GitHub, in the
   background, so the Oracle can read them (`extension_sources`,
-  docs/extend/extensions.md "Sources"). The request pattern says which
+  docs/steady/extensions.md "Sources"). The request pattern says which
   extensions are installed. On a box whose posture is "nothing leaves
   but the attestation," set `extension_sources` to `false`, or leave
   the box deterministic: the default (`"auto"`) makes no request where

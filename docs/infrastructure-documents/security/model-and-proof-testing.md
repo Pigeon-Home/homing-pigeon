@@ -8,7 +8,7 @@ ask for, the ceilings on what a running job and its result can do,
 and the rules for what happens when the owner's own configuration
 is wrong. This page states that model in one account, then
 describes the formal testing program that checks it. The full
-records live in `docs/proofs/`; this page is the map, not a second
+records live in `docs/infrastructure-documents/proofs/`; this page is the map, not a second
 copy of them.
 
 ## The gate
@@ -164,16 +164,16 @@ but unusable. The split is by what a wrong value changes.
 ## The proof testing
 
 The model above is a design account. The proof work — on
-`main`, recorded in `docs/proofs/` — checks it,
+`main`, recorded in `docs/infrastructure-documents/proofs/` — checks it,
 property by property, against the code as it stands.
 
 The method is fixed. First, every value the model depends on is
 harvested from the code itself into a constraint inventory
-(`docs/proofs/constraints.md`), and a pinning test
+(`docs/infrastructure-documents/proofs/constraints.md`), and a pinning test
 (`runner/tests/test_proof_constraints.py`) fails if a declared
 value in the code drifts from the documented one. Each property
 is then stated in plain language precise enough to model
-(`docs/proofs/properties.md`), modelled in TLA+, and
+(`docs/infrastructure-documents/proofs/properties.md`), modelled in TLA+, and
 machine-checked with the TLC model checker, which searches the
 model exhaustively inside its stated bound for a counterexample.
 Witness configurations — cases that must be reachable — are
@@ -317,26 +317,26 @@ the same kind of reason were re-run with PowerShell
 
 ## The records
 
-- `docs/proofs/readme.md` — the goal, the assumptions, and how
+- `docs/infrastructure-documents/proofs/readme.md` — the goal, the assumptions, and how
   the work is reviewed.
-- `docs/proofs/goals.md` — the staged plan and what done means at
+- `docs/infrastructure-documents/proofs/goals.md` — the staged plan and what done means at
   each stage.
-- `docs/proofs/properties.md` — the six properties in full, with
+- `docs/infrastructure-documents/proofs/properties.md` — the six properties in full, with
   the code's check order and the shape of a counterexample to
   each.
-- `docs/proofs/constraints.md` — the constraint inventory, every
+- `docs/infrastructure-documents/proofs/constraints.md` — the constraint inventory, every
   value named with the file and function it was read from.
-- `docs/proofs/stage2.md`, `stage3.md`, `stage4-p2.md` through
+- `docs/infrastructure-documents/proofs/stage2.md`, `stage3.md`, `stage4-p2.md` through
   `stage4-p6.md`, `stage5.md`, the `stage6-*.md` records,
   `stage7-5000.md`, `stage8-50000.md`, `stage9-500000.md`, and
   `stage10-1048576.md` — the stage records: the checks, the
   state counts, the witnesses, and the findings. The first
   content-independence series is recorded in
-  `docs/proofs/stage7.md` to `stage10.md`, under the titles
+  `docs/infrastructure-documents/proofs/stage7.md` to `stage10.md`, under the titles
   those records landed with, and the redo that supersedes
-  it in `docs/proofs/content-rung-49.md`,
+  it in `docs/infrastructure-documents/proofs/content-rung-49.md`,
   `content-rung-5000.md`, `content-rung-50000.md`,
   `content-rung-500000.md`, and `content-rung-cap.md`.
-- `docs/proofs/thinking.md` — the reasoning behind the work,
+- `docs/infrastructure-documents/proofs/thinking.md` — the reasoning behind the work,
   the content-independence challenge, and its final position,
   stated in full.
