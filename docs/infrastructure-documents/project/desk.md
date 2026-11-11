@@ -16389,3 +16389,166 @@ claimed beyond what those calls and that family
 show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q159: the gates_strict dead-backend failure — the fix lane's suppositions, recorded before the fix (2026-11-11)
+
+Q159 (filed in the questions file by this lane)
+names the failure of
+`test_confinement_enforce_with_a_dead_backend_refuses_startup`
+(`runner/tests/test_decision1_startup_gates_strict.py`,
+StrictShapeTest) on real Windows across every
+recent GATES2-carrying head — shard 27 exit 1,
+`AssertionError: 0 != 2` at the test's refusal
+assertion: with `security.modes.confinement` at
+`enforce`, the runner started (exit 0, the
+`--audit-report` one-shot succeeding) instead of
+refusing startup (exit 2) — and a sibling shape
+on macOS, where the same test in shard 2 reports
+the darwin confinement-cannot-engage wording (a
+trial failure carrying exit -6) instead of the
+expected Linux bwrap wording. The test is part
+of the Q136 GATES2 split of the Decision 1
+startup family (2026-11-11). Because the test
+asserts the fail-closed posture — enforce with a
+dead backend must refuse, never run weaker — a
+product-side reading would be a real
+secure-by-default hole on Windows, so the two
+readings are separated first-hand, per platform,
+before any fix. This lane is a fresh fix lane
+starting from a fresh scratch clone from remote
+main at the head carrying the Q158 fix
+suppositions (the desk landing of 2:12 PM PST,
+2026-11-11; the remote head verified by
+foreground `git ls-remote` in the same call as
+the clone's reset to it). A macOS confinement
+fix lane (round 2) is active in parallel and may
+touch `runner/guard/macos_confine.py` and
+`runner/tests/test_macos_confine.py`; this lane
+does not edit those two files. A Q158 lane is
+editing `runner/ops/briefing.py`; this lane does
+not touch it. The ship lane's clones and state
+are not touched; this lane cuts no release.
+
+This section is the fix lane's suppositions,
+written from the code read first-hand — the
+confinement startup gate in
+`runner/ops/main.py`, which routes by the host's
+real `sys.platform`: on `win32` it asks
+`R._confinement_startup_problem(cfg)`, on
+FreeBSD and on `darwin` likewise, and only in
+the remaining (Linux) branch does it ask
+`R._sandbox.startup_problem(cfg=cfg)`; the
+per-platform gate in
+`runner/ops/remediation_ops.py`
+(`confinement_startup_problem`), which consults
+only a real-marked backend's
+`*_confinement_problem` probe (`IS_WINDOWS_BACKEND`,
+`IS_MACOS_BACKEND`, `IS_FREEBSD_BACKEND`) and
+answers None off its platforms, leaving the
+bwrap gate to Linux; the test itself, which
+constructs its dead backend through one seam
+only, `run_main(..., sandbox_problem="bwrap is
+not installed (not found on PATH)")` in
+`runner/tests/decision1_startup_support.py`,
+which patches only `RR._sandbox.startup_problem`;
+and the platform backend test files'
+established dead-backend shape (a
+SimpleNamespace backend, real-marked, whose
+`*_startup_problem` and `*_confinement_problem`
+both return the scripted problem) — and from
+this lane's red-before measurement, run
+first-hand before these suppositions were
+committed, which stands in the suppositions
+themselves:
+
+- GATES-S1 (Windows, the product reading —
+  predicted NOT a product bug). The gate's
+  win32 branch never consults the bwrap seam
+  the test scripts, so on a real Windows host
+  whose backend can engage the test as written
+  must produce exit 0, exactly the CI shape;
+  and the product, handed a dead backend on
+  the Windows seam itself, must refuse with
+  exit 2 naming `security.modes.confinement`.
+  Measured before this landing: the family
+  passes whole on this Linux host (6 of 6,
+  the dead-backend test among them); a
+  simulated real-Windows shape (the platform
+  patched to win32, a real-marked Windows
+  backend whose probe returns None, the
+  test's bwrap problem scripted) reproduces
+  exit 0 exactly; the same shape with the
+  backend dead on its own seam refuses with
+  exit 2 and the confinement-cannot-engage
+  wording; and `confinement_startup_problem`
+  called directly answers the scripted problem
+  for a dead Windows backend and None for a
+  live one.
+- GATES-S2 (macOS, a test-expectation
+  portability bug — predicted). The darwin
+  branch likewise bypasses the bwrap seam: a
+  backend dead on the macOS seam refuses with
+  exit 2, but the refusal carries the darwin
+  backend's own problem text, so the test's
+  assertion that the error names "bwrap is
+  not installed" must fail even though the
+  refusal itself is correct; and a macOS
+  backend that can engage gives the Windows
+  shape, exit 0. Measured before this
+  landing: a simulated darwin shape with the
+  trial failure "sandbox-exec exited -6"
+  scripted on the macOS seam refuses with
+  exit 2 while "bwrap is not installed" does
+  not appear in the error; a live macOS
+  backend with the bwrap problem scripted
+  starts with exit 0.
+- GATES-S3 (FreeBSD, the same test bug,
+  unreported — predicted). The freebsd branch
+  has the same routing, so a live FreeBSD
+  backend with only the bwrap seam scripted
+  dead must also start with exit 0. Measured
+  before this landing: it does.
+- GATES-S4 (Linux, no failure — predicted).
+  The test passes on Linux because the Linux
+  branch is the one branch that consults the
+  seam it scripts; the Linux `test` job
+  failures on the same build runs are
+  therefore a different shape, not this test.
+  Measured before this landing: the whole
+  gates_strict family passes on this Linux
+  host at the current head.
+- GATES-S5 (the fix's shape — predicted). The
+  evidence convicts the test's simulation,
+  not the product: the fix belongs in the
+  shared support fixtures and the gates_strict
+  file, scripting a dead backend on EVERY
+  platform seam (the bwrap seam and the
+  Windows, macOS and FreeBSD backend seams,
+  each real-marked in the platform files'
+  established shape) so the construction
+  holds on any host, asserting the refusal,
+  the mode key, and the scripted problem
+  carried through on the host's own platform
+  and on each simulated platform shape; with
+  a live-backend control per platform proving
+  the same startup still proceeds, so the
+  pinned refusal cannot pass by refusing
+  everything. No production code is expected
+  to change; if the fix-side measurement
+  contradicts any supposition above — in
+  particular, if a dead backend on its own
+  platform seam anywhere fails to refuse —
+  this lane stops, records the contradiction
+  here, and the product side is fixed instead.
+
+What cannot be recorded as a unit test, stated
+plainly in advance: the real-Windows and
+real-macOS CI verdicts themselves are live
+platform runs; their deterministic substrate
+is the simulated-platform constructions above,
+which the fix turns into committed tests, and
+the live proof owed is the next completed CI
+verdict on a fix-carrying head, re-tested by a
+seat other than this lane under rule 8.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026

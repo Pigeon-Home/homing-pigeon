@@ -43,6 +43,93 @@ Rules:
 
 ---
 
+## Q159 (Muse, to the desk, 2026-11-11): the gates_strict dead-backend test refuses nothing on real Windows — its dead backend is scripted only on the Linux bwrap seam the platform gates never consult off Linux, and its expected wording is the Linux wording on every platform
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: the read-only verdict lane's download
+of the build-windows job logs on three
+GATES2-carrying heads (the heads of 2026-11-11)
+found shard 27 exit 1 on all three, the one
+failure
+`test_confinement_enforce_with_a_dead_backend_refuses_startup`
+(`runner/tests/test_decision1_startup_gates_strict.py`,
+StrictShapeTest): `AssertionError: 0 != 2` —
+with `security.modes.confinement` at `enforce`
+and a backend scripted dead, the runner started
+(exit 0, the `--audit-report` one-shot
+succeeding) instead of refusing startup
+(exit 2). The test-macos verdict lane reported
+the sibling shape in shard 2: the same test
+refused, but the refusal carried the darwin
+confinement-cannot-engage wording (a trial
+failure carrying exit -6) instead of the
+test's expected "bwrap is not installed"
+wording. The test is part of the Q136 GATES2
+split of the Decision 1 startup family. The
+question matters beyond a red shard: the test
+asserts the fail-closed posture, so a
+product-side reading — enforce starting over a
+dead backend on Windows — would be a real
+secure-by-default hole, while a test-side
+reading leaves the posture intact and the pin
+worthless on exactly the platforms it most
+needs to hold.
+
+The fix lane's first-hand read and red-before
+measurement (suppositions GATES-S1 to GATES-S5,
+recorded in the desk before the fix) separate
+the readings. The confinement startup gate in
+`runner/ops/main.py` routes by the host's real
+`sys.platform`: win32, FreeBSD and darwin ask
+`_confinement_startup_problem` (the per-platform
+backend probe in
+`runner/ops/remediation_ops.py`); only the
+remaining branch asks the bwrap seam,
+`_sandbox.startup_problem`. The test scripts
+its dead backend through that bwrap seam alone
+(`run_main`'s `sandbox_problem`), so off Linux
+its construction never reaches the gate that
+decides. Measured: the family passes whole on
+Linux (6 of 6); a simulated real-Windows shape
+with a live backend reproduces exit 0 exactly,
+and a backend dead on the Windows seam itself
+refuses with exit 2; a darwin shape dead on
+the macOS seam refuses with exit 2 carrying
+the darwin wording, not the bwrap wording,
+and a live macOS or FreeBSD backend with only
+the bwrap seam scripted dead starts with
+exit 0.
+
+Options: (1) fix the test's simulation —
+script a dead backend on every platform seam
+through the shared support fixtures, in the
+platform files' established real-marked shape,
+assert the refusal and the carried-through
+scripted problem on the host platform and on
+each simulated platform, and pin a
+live-backend control per platform so the
+refusal cannot pass by refusing everything;
+no production change. (2) fix the product —
+rejected by the measurement above: handed a
+dead backend on its own seam, every platform
+gate already refuses. The fix lane recommends
+option 1, proceeds under the conductor's
+direct tasking of 2026-11-11, and records that
+Q159 is not closed by its own landing: closure
+waits on a second seat's re-test, whose live
+form is the next completed CI verdict on a
+fix-carrying head (rule 8).
+
+**Answer:** pending the re-test named above;
+the fix lane's landing and its local evidence
+are recorded under **Applied in** when they
+land.
+
+**Applied in:** the suppositions stand in the
+desk (the landing of this entry); the fix
+landing follows in this lane.
+
 ## Q158 (Muse, to the desk, 2026-11-11): the Q157 guard's residual polarity shapes — a bound-edge phrase carrying a pied-piped relative clause whose lead carries more than its noun is wrongly marked, and the ledger's mixed sentence under the beyond-BMP format characters beyond the Egyptian block and the general-punctuation separators is still missed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
