@@ -64,13 +64,13 @@ stays their source of truth.
   "latent_exact_percent": 0.03,
   "audit_date": "2026-11-09",
   "core_files": 135,
-  "core_lines": 59446,
-  "core_lines_nonblank": 53620,
-  "core_tokens": 623998,
-  "core_assembled_lines": 60230,
-  "core_assembled_nonblank": 54308,
-  "core_assembled_zip_bytes": 763178,
-  "core_assembled_tokens": 632301
+  "core_lines": 59482,
+  "core_lines_nonblank": 53654,
+  "core_tokens": 624364,
+  "core_assembled_lines": 60266,
+  "core_assembled_nonblank": 54342,
+  "core_assembled_zip_bytes": 763753,
+  "core_assembled_tokens": 632667
 }
 ```
 

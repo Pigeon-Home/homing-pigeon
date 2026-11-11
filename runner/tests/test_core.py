@@ -91,7 +91,7 @@ class CoreListTest(unittest.TestCase):
         # the briefing's contradiction mark and the posture
         # stamp producer; the Gemini token count above still
         # describes the 2026-11-04 assembly.
-        self.assertEqual(763178, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(763753, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -156,9 +156,12 @@ class CoreListTest(unittest.TestCase):
         # producer (Q137) wired the runner to the
         # disclosure module and runner/tools/disclosure.py
         # joined the canonical list, growing runner/ops,
-        # runner/tools and the runner proper.
-        self.assertEqual(60230, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(54308, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner/tools and the runner proper, and again
+        # the same day after the job_user postspawn fix
+        # grew runner/ops/remediation_ops.py by 36 lines,
+        # which that landing left unrecorded.
+        self.assertEqual(60266, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(54342, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

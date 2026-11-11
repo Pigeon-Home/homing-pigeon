@@ -49,8 +49,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 60,230 lines,
-54,308 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 60,266 lines,
+54,342 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -214,6 +214,13 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # proper, and runner/tools/disclosure.py joined the
 # canonical list above, the whole set re-measured over
 # the current tree.
+# Re-measured again the same day after the job_user
+# postspawn fix — the confinement spawn's Job Object
+# recorded by the postspawn instead of a second one
+# assigned — grew runner/ops/remediation_ops.py by 36
+# lines, which that landing left unrecorded; the head
+# build's test legs named the gap as a breakdown
+# mismatch in runner/ops.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 135 since
@@ -226,14 +233,14 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 138
-AS_ASSEMBLED_ZIP_BYTES = 763178
-AS_ASSEMBLED_LINES = 60230
-AS_ASSEMBLED_NONBLANK_LINES = 54308
+AS_ASSEMBLED_ZIP_BYTES = 763753
+AS_ASSEMBLED_LINES = 60266
+AS_ASSEMBLED_NONBLANK_LINES = 54342
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 18870,
+    "runner/ops": 18906,
     "runner/tools": 9598,
     "runner/wire": 8708,
     "runner/runner.py": 6928,
