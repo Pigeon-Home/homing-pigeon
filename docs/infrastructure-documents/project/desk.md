@@ -12641,3 +12641,176 @@ themselves beside the committed guard family,
 which this lane runs whole. No new behaviour is
 claimed beyond what those calls and that family
 show.
+
+## Q154 re-test: conclusions of the filing seat (2026-11-11)
+
+The re-test ran in a fresh scratch clone from
+remote main (the remote head verified by
+foreground `git ls-remote` in the same call as
+the clone, at the suppositions commit of
+9:55 AM PST), re-derived first-hand, not taken
+from the fix lane's report. The three trees: the
+current head; the pre-Q154-fix detector (the
+tree at the fix commit's parent); the
+pre-Q143-fix detector (the tree at the Q143 fix
+commit's parent). Settled against the
+suppositions one by one:
+
+- **Q154-RT-S1 — holds.** Item 1 fires again,
+  whole: the 5 object phrases under the unlisted
+  object-control verbs produce exactly
+  `private_shelf_crosses` on the fixture layer
+  and the shipped layer, plain (5 of 5 on each)
+  and bookended (365 of 365 on each; the
+  representative "compels a clerk" in 73 of 73).
+- **Q154-RT-S2 — holds.** Item 2 fires again,
+  whole: the 19 boundary and separator shapes
+  produce exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain (19 of 19) and bookended (1,387
+  of 1,387; each representative in 73 of 73),
+  and the evidence-only twins under the new
+  shapes stay silent (4 of 4 plain, 300 of 300
+  bookended).
+- **Q154-RT-S3 — holds.** The both-ways controls
+  hold: the 6 filed controls fire whole (6 of 6
+  plain on both layers, 438 of 438 bookended),
+  and the 10 silent controls stay silent (10 of
+  10 plain on both layers, 750 of 750 bookended)
+  — the bound edge "prompts a duty", the
+  complement-verb complements, the passive shape
+  and the same-standing control among them.
+- **Q154-RT-S4 — holds.** The both-ways pins
+  hold beside the widening: the bound prohibition
+  followed by a contradicting sentence fires
+  exactly `private_shelf_crosses` on both layers,
+  and the standing unrelated-negation and
+  negated-then-contradicting pins hold through
+  the committed guard family run whole (168
+  green, below).
+- **Q154-RT-S5 — holds.** The filed Q143
+  compliant corpus is silent on both layers (14
+  of 14 plain, 1,050 of 1,050 bookended, joined
+  silent on both layers) and its restating shapes
+  are silent (7 of 7 plain, 525 of 525
+  bookended); the standing 7-rule contradiction
+  family fires whole (7 of 7 plain with exactly
+  their rule on the fixture layer and their rule
+  present on the shipped layer, each in 73 of 73
+  bookended variants); and the Q144, Q145, Q146,
+  Q147, Q148, Q149, Q150, Q151, Q152 and Q153
+  families read as they did through the committed
+  guard family run whole.
+- **Q154-RT-S6 — holds.** End to end: item 1's
+  representative ("compels a clerk") and item 2's
+  representatives (the left-to-right-mark shape
+  and the single-low-9-quote shape) assembled
+  into briefings each carry their mark,
+  `briefing_report` names exactly their rule, and
+  the startup pass writes exactly their one audit
+  row (feature `briefing`, decision `marked`, the
+  rule id as the detail); the bound edge
+  ("prompts a duty") carries no mark, names no
+  tensions, and writes no audit row.
+- **Q154-RT-S7 — holds.** The guard family reads
+  168 green and the neighbour batteries
+  (`test_oracle_briefing`, `test_posture_stamp`,
+  `test_protocol_v2*`, `test_v2_consult`,
+  `test_v2_replay`, `test_security_config`) read
+  305 green, re-measured in the foreground by
+  this seat. Red-before, re-measured by this seat
+  against the pre-Q154-fix detector: item 1's and
+  item 2's shapes are silent there (0 of 5 and 0
+  of 19 plain on both layers; 0 of 365 and 0 of
+  1,387 bookended), and the guard family as it
+  now stands reads 1777 failure entries against
+  that detector, every one in the
+  Q154PolarityGuardTest family; against the
+  pre-Q153-fix detector the same family reads
+  exactly the fix lane's figures (2443 entries in
+  the Q154 family, 5184 in all with the Q153
+  family's 2741). Against the pre-Q143-fix
+  detector item 1's and item 2's shapes fire
+  again whole, as filed (5 of 5 and 19 of 19
+  plain, each representative in 73 of 73
+  bookended), and the Q143 compliant corpus reads
+  its marks there (0 of 14 silent).
+- **Q154-RT-S8 — holds, whole.** The first group
+  holds as the Answer states: the composed object
+  phrases under the unlisted verbs fire (10 of 10
+  plain on both layers, 730 of 730 bookended),
+  the complements under the widened
+  complement-verb set stay silent (4 of 4 plain,
+  300 of 300 bookended), the filed ledger shapes
+  in their other spacings fire (2 of 2 plain, 146
+  of 146 bookended), and the evidence-only twin
+  under a spaced boundary character stays silent
+  (1 of 1 plain, 75 of 75 bookended).
+- **Q154-RT-S9 — bound pin holds; second group
+  confirms all three residual items.** The bound
+  pin holds: "compels a duty" and "sends a
+  clearance" stay silent on the current head (2
+  of 2 plain on both layers, 150 of 150
+  bookended). (1) The object phrases carrying a
+  relative clause of their own ("compels a clerk
+  who is on duty", "deploys a crew that is on
+  duty", "summons a clerk who is on shift") are
+  missed whole on the current head — 0 of 3
+  firing on both layers plain, 0 of 219
+  bookended, the representative in 0 of 73 — and
+  end to end the representative carries no mark
+  and writes no audit row; the same shapes are
+  missed on the pre-Q154-fix detector (0 of 3)
+  and fire whole on the pre-Q143-fix detector (3
+  of 3, the representative in 73 of 73, and marked
+  with its one audit row end to end there). (2)
+  The ledger's mixed sentence under the
+  beyond-filed format characters (14 shapes) is
+  missed whole on the current head — 0 of 14
+  firing on both layers plain, 0 of 1,022
+  bookended, the representative (the
+  deprecated-format-control shape) in 0 of 73 —
+  and end to end that representative carries no
+  mark and writes no audit row; the same shapes
+  are missed on the pre-Q154-fix detector (0 of
+  14) and fire whole on the pre-Q143-fix detector
+  (14 of 14, the representative in 73 of 73).
+  (3) The ledger's mixed sentence under the
+  beyond-set punctuation separators (15 shapes)
+  is missed whole the same way — 0 of 15 on both
+  layers plain, 0 of 1,095 bookended, the
+  representative (the opening-single-curly-quote
+  shape) in 0 of 73, no mark and no audit row end
+  to end; 0 of 15 on the pre-Q154-fix detector
+  and 15 of 15 on the pre-Q143-fix detector. The
+  evidence-only twins under the 29 new shapes
+  stay silent on the current head (29 of 29 plain
+  on both layers, 2,175 of 2,175 bookended).
+
+Verdict: everything in Q154's filed scope
+passes whole. The S9 second-group residuals
+confirm, so they are filed as Q155 in the
+questions file, this seat does not fix them
+(rule 8), and Q154 is NOT closed by this
+re-test — and neither are Q153, Q152, Q151,
+Q150, Q149, Q148, Q147, Q146, Q145, Q144 and
+Q143. Q154 therefore stands re-tested and
+passing on its filed scope; it closes only
+after Q155 is answered and its fix re-tested by
+this seat.
+
+What could not be recorded as a unit test,
+stated plainly: the re-test's ad-hoc probes are
+live detector calls over the sentences named in
+the suppositions and in these conclusions;
+their deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane ran whole (168 green on the
+head; 1777 failure entries against the
+pre-Q154-fix detector, every one in the new
+family; 2443 in the new family against the
+pre-Q153-fix detector). No new behaviour is
+claimed beyond what those calls and that family
+show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
