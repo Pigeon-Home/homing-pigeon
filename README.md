@@ -166,7 +166,7 @@ Your machine runs two roles in one box:
 | polls the mailbox            | watches jobs as they run;    |
 | verifies HMAC + key policy   | its opinions ride results    |
 | judge: an opt-in gate        | fuses sensor alerts          |
-| executes jobs; cage opt-in   | watches resources            |
+| runs jobs; caged by default  | watches resources            |
 | answers queries at the       | pages you when a             |
 | ceiling you set -- the       | threshold trips              |
 | default is full output       | orders kills via remediation |
