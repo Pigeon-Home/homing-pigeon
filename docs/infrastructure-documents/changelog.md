@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.20.3 - 2026-11-11
+
+- The third release on the 3.16 line, cut as a practice run of the release train at the conductor's word, with no new content beyond what had already landed on main since 3.16.20.2.
+- The Oracle briefing's contradiction mark now reads negation properly: the governing negation of a clause (Q143), then the whole clause, the "not only" idiom, the ledger's own evidence/instruction complement, and the prohibitive forms (Q144) — a compliant instruction that prohibits what the standing layer prohibits is no longer marked as contradicting it, and the residual polarity shapes the second seat's re-test filed are answered and recorded at the desk.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,571,106 tokens, 1,353,035 tracked lines, 5,313 commits.
+
 ## 3.16.20.2 - 2026-11-10
 
 - The second release on the 3.16 line, cut the same day as the first: everything that landed after 3.16.20.1 ships here, and the release record is whole again — the tag build's publish path and every mirror stand behind this cut.
