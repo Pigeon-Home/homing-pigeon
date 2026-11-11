@@ -13519,3 +13519,151 @@ themselves beside the committed guard family,
 which this lane runs whole. No new behaviour is
 claimed beyond what those calls and that family
 show.
+
+## Q136 follow-on: the gates piece divides further — suppositions, recorded before the measurement (2026-11-11)
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The first split's own prescription (Q136-SPLIT-S5)
+is now invoked against one of its pieces: if a
+piece's own shard dies at the wall, the S1 rate is
+wrong for that piece and the piece divides further
+rather than repricing upward past the 400-second
+ceiling. Verified first-hand by this lane from the
+build-windows job logs of two completed runs: run
+43073089180 (head of 09:55 AM PST, 2026-11-11) and
+run 43075489988 (head of 10:11 AM PST) each carry
+shard 21 headed by
+runner.tests.test_decision1_startup_gates
+(RefuseStartupGatesTest, StrictShapeTest and
+Phase2StartupTest: 18 tests, 15 run_main startups,
+priced 270 seconds) followed by 17 companions, and
+each ends shard 21 FAILED exit 124 at 1,201.4 and
+1,201.6 seconds with exactly 7 progress dots
+captured for the shard — the shard died inside the
+gates piece's own run, before any companion
+started, and the count is identical in both runs.
+Ship state at this lane's start: last_completed
+3.16.20.3, 3.16.20.4 failed on this wall family and
+is spent; this lane cuts no release and touches no
+ship state.
+
+Suppositions, written before any local measurement
+or fix in this lane, to be judged against them:
+
+- Q136-GATES2-S1 (the 7 dots are one class,
+  complete): unittest loads a module's classes in
+  alphabetical order — Phase2StartupTest,
+  RefuseStartupGatesTest, StrictShapeTest — and the
+  shard runs its modules in listed order, gates
+  first. The 7 captured dots are therefore
+  Phase2StartupTest's 7 tests, complete, and the
+  shard died inside the 8th test of the piece, the
+  first RefuseStartupGatesTest test. A cost or
+  host-slowness explanation would not reproduce
+  the identical dot count at the identical place
+  in two runs an hour apart; a hang-adjacent test
+  would.
+- Q136-GATES2-S2 (the hang's mechanism):
+  test_confinement_enforce_refused_when_sandbox_
+  cannot_engage constructs its cannot-engage
+  condition only through the bwrap probe (it skips
+  where _sandbox.startup_problem() answers None).
+  On a real Windows host main() does not consult
+  bwrap for confinement at all: it consults the
+  Windows backend's probe (runner/ops/main.py,
+  through confinement_startup_problem), and where
+  that backend engages — and the job_user probe,
+  the config's other unstated enforce mode, also
+  passes — no refusal fires, and this test's
+  run_main carries no one-shot argv, so main()
+  proceeds past the gates into the mailbox poll
+  loop and never returns. The test was written
+  for the pre-Windows-backend world, the same
+  family the fifth reconciliation round fixed in
+  seven other files. A local simulation is
+  predicted to show the shape deterministically:
+  a scripted win32 platform with a real-marked
+  engageable backend makes run_main on this
+  test's config fail to return 2 inside a short
+  timeout, while a scripted cannot-engage backend
+  returns 2 naming confinement at once.
+- Q136-GATES2-S3 (two latent failures stand
+  behind the hang): StrictShapeTest's
+  test_confinement_enforce_on_win32_refuses_startup
+  and test_all_enforce_on_win32_refuses_and_names_
+  a_mode make the same pre-backend assumption —
+  that win32 confinement cannot engage — with no
+  backend scripted. On a real Windows host whose
+  backend engages, both would reach the
+  --audit-report one-shot and return 0, failing
+  fast rather than hanging; they have never run
+  there, because the S2 hang precedes StrictShape
+  in load order and kills the shard first.
+- Q136-GATES2-S4 (local time cannot price this):
+  measured locally in this lane before the fix,
+  each of the three classes is predicted to run
+  in well under a second on this Linux host, the
+  whole piece in about a second — so neither the
+  15 startups at the S1 rate (the piece's 270
+  seconds priced) nor any single class's local
+  cost can carry the piece alone past 1,200
+  seconds in first position in its shard. The
+  wall record is a hang record, not a price
+  record.
+- Q136-GATES2-S5 (the answer is the class seams,
+  with the construction made honest): the piece
+  divides along its class seams into three
+  sibling files — gates_refuse
+  (RefuseStartupGatesTest, 5 tests, 4 startups),
+  gates_strict (StrictShapeTest, 6 tests, 4
+  startups plus the decision-point subtests over
+  every feature on both platform shapes) and
+  gates_phase2 (Phase2StartupTest, 7 tests, 7
+  startups) — every test moved with its
+  assertions unchanged, the family total still
+  97 tests (the gates piece's 18 as 5 + 6 + 7).
+  In the refuse and strict pieces, the three
+  tests named in S2 and S3 script the Windows
+  backend lookup (REM._windows_confine) to the
+  support module's cannot-engage backend, so the
+  condition each test states — a mechanism that
+  cannot engage, an incapable platform — is the
+  condition actually constructed on every host,
+  the fifth round's own pattern; no assertion
+  changes, and on hosts where the condition
+  already constructed itself nothing changes.
+- Q136-GATES2-S6 (each new piece's expected
+  cost): priced with headroom over the S1
+  per-startup rate and under the 400-second
+  ceiling — gates_refuse at 100 seconds (4
+  startups, 3 of its 5 tests POSIX-only skips on
+  Windows), gates_strict at 180 (4 startups plus
+  the decision-point family: 9 features on 2
+  platform shapes through sec_decide and its
+  audit writes, the largest local share of the
+  old piece) and gates_phase2 at 150 (7
+  startups) — 430 seconds in all, above the old
+  piece's 270, no piece above 180, so each packs
+  with companions under the 720-second budget.
+- Q136-GATES2-S7 (what would prove this
+  sufficient): not local timing and not packing
+  arithmetic. The durations guard will pin each
+  new piece at its floor price, pin the
+  400-second ceiling on every piece, pin the old
+  gates module's absence from the table and its
+  file's absence from the tree, and pin the
+  split family's counts at 97 with the gates
+  piece's 18 carried as 5 + 6 + 7. What proves
+  the wall-clock red cleared is the next
+  completed build-windows verdict on a head
+  carrying this further split, under rule 8 —
+  this lane does not claim it. The
+  load-sensitive and version-rot families are
+  untouched by this lane and stand on their own
+  records.
+
+The measurement, the further split, the refreshed
+table entries, the guard extension and the
+conclusions against these suppositions follow in
+this section.
