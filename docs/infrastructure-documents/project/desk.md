@@ -1760,6 +1760,132 @@ Each supposition is settled against the code in the
 commits that follow this note; the conclusions stand
 at the end of this section when the packet lands.
 
+Conclusions (2026-11-10, the same evening): **P5-S1
+confirmed** — the threat model's containment bullet,
+the safeguards' first section and containment
+section, and the security-gaps cage step and
+FreeBSD row all stated the pre-backend shape; each
+now names the 3 backends (Linux bubblewrap; the
+Windows Job Object, restricted token and low
+integrity; the FreeBSD per-job jail) with the
+refusal — never a weaker run — where a platform's
+backend cannot engage, and the safeguards no longer
+call the Windows staging checks the isolation.
+**P5-S2 confirmed** — the security-gaps audit item
+now states the tamper-evident hash chain and its
+verification through `runner/ops/auditreport.py`;
+the append-only flag and the remote copy remain
+the open items there, and the item reads partial.
+**P5-S3 confirmed** — the egress item now states
+bwrap's block, the FreeBSD jail's total network
+denial, and the Windows backend's lack of a network
+control. **P5-S4 confirmed, in full** — every
+retired-layout pointer in the packet now names the
+file's current home under `docs/steady/` or
+`docs/infrastructure-documents/`, across the threat
+model, the safeguards, the security gaps, the
+Oracle configuration page, the transports page,
+the model-and-proof map (its 12 `docs/proofs/`
+pointers) and the version 3 plan; the safeguards'
+SECURITY.md link and the configuration page's
+live-examples link resolve again, and a closing
+scan of all 14 files finds no broken relative link
+and no retired path outside the dated records in
+P5-S6. **P5-S5 confirmed** — the configuration
+page's entries and defaults check out against the
+code and the registry that pins them; the page's
+one Linux-only confinement phrase (the
+`workspace_root` entry) now names the platform
+backend. **P5-S6 confirmed with 1 pointer
+corrected** — the 3 sentence reviews and the
+carriage review pass stand as the records of their
+passes, untouched but for the version 1 and 2
+review's opening pointer to its companion, which
+now names that file's current home.
+**P5-S7 confirmed** — `scripts.md`,
+`worker-agents.md` and `owasp-reference.md` check
+out as written, and the model-and-proof page's
+model account stands apart from the path
+corrections in P5-S4 and the outside read below.
+
+An outside read of this packet was run through
+Argon (gemini-4-argon) over all 14 files in full;
+its findings stand under its own stamp:
+
+<!-- Agent-Stamp: 00000000-argon-26a0-ff29-7825440c1fb9 -->
+Argon flagged: `scripts.md`'s platform-card
+sentence against the handshake card's fields; the
+transports page's, the configuration page's and
+the model-and-proof page's statements that the
+shared secret itself is the DTLS pre-shared key,
+against the version 3 plan's 2026-11-06 addendum
+(the PSK is an HKDF-derived key, info
+`homing-pigeon dtls psk v1`); the same pages'
+"alone among the pipes" secret-handoff claims
+against the email extension's `dtls_via_email`
+handoff, and the configuration page's missing
+`dtls_via_email` entry; its `dtls_greeting`
+"OS family only" parenthetical against the card
+the code builds; its present-but-invalid summary
+list against the size caps and other refuse-class
+keys its own later entries state; the
+model-and-proof ceilings passage and the
+security-gaps one-sentence and cage step against
+the Windows backend's lack of filesystem
+isolation; the safeguards' `/usr` passage read as
+universal; the security-gaps Windows table row's
+"stronger cousin" sentence; the version 1 and 2
+review's companion path; the version 3 plan's
+superseded early sections; and the version 3
+sentence review's scope paths. It returned no
+findings for `worker-agents.md`,
+`owasp-reference.md`, the threat model, the
+handshake design page, or the carriage review
+pass.
+
+Muse's decisions on those findings, under Muse's
+own stamp (00000000-muse-7e57-d0c5-58316a922026):
+accepted and landed, each verified against the
+code first — the derived-PSK statements in all 3
+pages (`runner/wire/dtlsproto.py`'s
+`psk_from_secret`); the secret-handoff statements
+(the email extension terminates DTLS when
+`dtls_via_email` is on and is handed the secret for
+it); the missing `dtls_via_email` entry, added to
+the configuration page with the defaults
+registry's pins following the moved lines (15 rows
+shifted by 1); the `dtls_greeting` parenthetical
+(the `family` card carries OS family, default
+interpreter and protocol versions); the
+Windows-filesystem-limit statements in the
+model-and-proof ceilings, the security-gaps
+one-sentence and cage step, and the Windows table
+row's cousin sentence; the safeguards' `/usr`
+passage scoped to the Linux sandbox; and the
+review's companion pointer. Accepted in narrowed
+form — `scripts.md`: the `pong` card does carry
+`key_ids` (the runner adds the names to the card
+it returns), so the sentence stands for the
+`pong`; its last clause now states that the
+handshake payload carries the platform card
+without the key names, which is the shape the DTLS
+extension builds. Declined, with the reasons
+recorded — the present-but-invalid summary list:
+that sentence is the decision's own canonical
+wording, carried identically in the design note
+and in PROTOCOL.md, and the page's per-key entries
+state their own refuse behavior where it applies.
+The version 3 plan's early sections: the plan is
+a chronological build record whose addenda
+supersede its early text in place, and the live
+pages that repeated the superseded mechanism are
+the ones corrected. The version 3 sentence
+review's scope paths: they name the draft as it
+stood at that pass and are that record's history,
+not a pointer for today's reader. Guard evidence:
+Guard evidence on the landing tree: the defaults hunt reads 33 passed with 953 subtests; the reader-quiet, design-docs, skip-registry and proof-constraints sets are green in their batch (78 passed across the 5-file batch, with the 1 failure below); the doc-divergences set reads 904 passed and 53 failed, the failures in the grep max-matches family this cell's runs have carried throughout the overview, and none in a page this packet touched. The batch's 1 failure is not this packet's: the version-rot guard names this desk file itself, for a current-version string in a parallel lane's section landed after this packet's suppositions; no Packet 5 file carries one.
+
+
 ## The documentation overview, Packet 6: suppositions recorded before the check (2026-11-10)
 
 Packet 6 of the overview takes the infrastructure
