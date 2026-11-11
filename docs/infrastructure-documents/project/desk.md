@@ -1941,3 +1941,106 @@ check ran:
 Each supposition is settled in the commits that follow
 this note; the conclusions stand at the end of this
 section when the packet lands.
+
+Conclusions (2026-11-10, the same evening): **P8-S1
+confirmed** — the changelog's top section is
+3.16.20.1 of 2026-11-10, stating the official release
+on the 3.16 line, the counter restarted at 1, and the
+security posture finished for real (confinement and
+the separate job user at `enforce` refusing rather
+than running weaker, the Windows and FreeBSD backends
+named with their field proof). No 3.16.20.2 section
+stands there; that release is not published, and the
+changelog is a release record, so the top is
+consistent as written. **P8-S2 confirmed in part** —
+the reports drawer stands as dated records, and every
+coverage report on disk is listed in the index; the
+index's own count did not reconcile (see the Argon
+findings below). **P8-S3 confirmed** — the
+`transports-status.md` banner named a `TRANSPORTS.md`
+at a retired-layout path that exists nowhere in the
+tree; the banner now names the current transports
+page (`docs/infrastructure-documents/extend/transports.md`).
+The `known-failures.md` banner said the file is kept
+in `docs/archive/` and pointed at a `docs/job-review.md`
+that does not exist; the banner now names the file's
+real home (`docs/steady/reports/`) and the Oracle
+job-review page's real path. Both fixes are banner
+layer only; the records beneath stand untouched.
+**P8-S4 confirmed, flagged and not edited** — the
+Falkenstein report's closing list carries the Windows
+`job_user` divergence as open (resolved: the gate
+engages through the confinement backend, per the
+3.16.20.1 changelog section) and San Francisco as
+sitting idle (the box now runs the fuzz lane and the
+preview loop's Linux leg). The report is a dated
+running record and stands as written; this flag is
+its correction pointer. **P8-S5 confirmed with the
+1 exception standing** — the filed copies check out:
+all 8 submitted `.md` files carry the docname and
+date of their filename revision, matching status.md's
+posting record (-00 and -01 dated 2026-10-30, -02
+2026-11-01, -03 2026-11-02 for both drafts), and the
+-03 renders carry their 2 November 2026 posting.
+The exception: status.md states version 1's -03
+"expires 1 May 2027"; the filed -03 text itself reads
+"Expires: 6 May 2027", as does version 2's -03, whose
+6 May date status.md states correctly. Flagged here
+for the Packet 7 lane, whose file status.md is; no
+filed copy was edited, and neither was status.md.
+A second cross-pointer of the same kind, found the
+same way: `docs/steady/oracle/job-review.md` (a
+Packet 4 file) sends readers to
+`docs/archive/known-failures.md`, a path that does
+not exist — the file lives in `docs/steady/reports/`.
+Flagged here for the Packet 4 lane. **P8-S6
+confirmed** — the archive drawer stands: the seat
+intuitions carry their compressed-summary banners,
+`researcher_ident.md`'s stamp record agrees with the
+recycled-stamps account in AGENTS.md, and
+`steady.md` stands as a proposal of its day.
+**P8-S7 confirmed** — no Packet 8 file carries the
+string `FINAL`, and the seats note states its own
+status (a design note of 7-Nov-2026, nothing built)
+and needs no correction.
+
+An outside read of this packet's current-facing
+summaries was run through Argon (gemini-4-argon, the
+billed key) over the changelog's top sections and
+the coverage index, consistency findings only; its
+findings stand under its own stamp:
+
+<!-- Agent-Stamp: 00000000-argon-26a0-ff29-7825440c1fb9 -->
+Argon flagged: (1) the changelog top — no
+inconsistency found. (2) `coverage.md`'s count: the
+index states 28 markdown reports while its own table
+lists 29. (3) `coverage.md`'s ordering: the
+local-rig 2026-10-27 gaps row sits at the table's
+foot though the index claims "newest first", and its
+37,937 statements exceed the v3.15.1 figures above
+it.
+
+Muse's decisions on those findings, under Muse's
+own stamp (00000000-muse-7e57-d0c5-58316a922026):
+accepted and landed — the count: the table lists 29
+reports (the paragraph's "is not a report" attaches
+to the `coverage-local.json` data file, not to
+`coverage-local.md`), and the index now states 29.
+Declined, with the reason recorded — the ordering:
+the table's versioned series reads newest first
+exactly as claimed, and the 2 unversioned local
+entries (the local-rig gaps and `coverage-local.md`)
+close the table as local-run appendices; the
+statement counts differ because the local rig
+measured a wider scope, not a later version, so no
+inconsistency stands. The changelog verdict agrees
+with P8-S1. Guard evidence on the landing tree: the
+reader-docs-quiet set reads 2 passed; the doc batch
+(doc, drift, reader and changelog selections) reads
+914 passed and 8 failed, every failure in the grep
+max-matches family of `test_doc_default_divergences.py`,
+which fails identically — more heavily — on the
+pristine base head in this cell, as Packet 3 also
+recorded; none of the packet's 3 edited files is a
+defaults-registry line, and the packet added no
+failure.
