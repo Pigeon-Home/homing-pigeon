@@ -1142,6 +1142,74 @@ written before the fix pass:
 Each supposition is settled against the code in the
 commits that follow this note; the conclusions stand at
 the end of this section when the packet lands.
+## The documentation overview, Packet 3: suppositions recorded before the check (2026-11-10)
+
+Packet 3 of the overview takes the operator-facing
+steady shelf: the 10 files under `docs/steady/use/`,
+the 12 under `docs/steady/project/`, and
+`docs/steady/sending.md`, `docs/steady/networking.md`,
+`docs/steady/extensions.md`,
+`docs/steady/feature-tiers.md` and
+`docs/steady/fuzzing.md` — 27 files, each checked
+sentence by sentence against the code and the current
+facts (the 3.16 line; the 3 confinement backends as
+field-proven; the secure-by-default enforce posture;
+the reply-to-self default the root manual carries;
+the fuzzing standards where a file states them).
+Suppositions, written before the sentence check ran:
+
+- **P3-S1.** `docs/steady/networking.md` predates the
+  platform confinement backends: its trust-boundary
+  account will describe a signed job as running as the
+  runner's account — an admin account by default —
+  with an unrestricted network edge, and its cage
+  account will name only the Linux sandbox, call the
+  Windows cage parked and unbuilt, and omit the
+  FreeBSD jail entirely.
+- **P3-S2.** `docs/steady/feature-tiers.md` will be
+  stale in 2 of its evidence rows: the tier-1
+  confinement row will name only the bubblewrap
+  sandbox and the workspace snapshot check, and the
+  tier-3 protocol-version-3 row will say no shipped
+  module speaks version 3, though the tree ships the
+  version 3 carriage behind its config gate. Its
+  counts (28 extension folders, 5 shipped transports)
+  will check out.
+- **P3-S3.** `docs/steady/sending.md`'s code-level
+  claims (the interpreter rule, the authority
+  tripwire, the remote-upgrade halves) will check out,
+  but the page will nowhere state the reply-to-self
+  default for a system sending on a user's behalf: it
+  describes `--reply-to` only for the task-board
+  subcommands.
+- **P3-S4.** Several Packet 3 files will carry links
+  and paths broken by the documentation
+  reorganization: the Docker page's link to the
+  install manual, the idea321 runbook's link to the
+  security test plan, the live examples' link to the
+  Oracle configuration page, the roadmap spec's link
+  to the future page, the fuzzing page's link to the
+  idea321 runbook, and the networking page's pointers
+  to the senses page and the security-gaps page.
+- **P3-S5.** The shelf's dated records — the live
+  examples' logs, the de_dust narratives, the
+  telephone-pole pages, the archived roadmap spec,
+  the finished-future note — will stand as records
+  and need no rewriting; `docs/steady/fuzzing.md`'s
+  slotted core figures will match the recorded facts
+  in the statistics record.
+- **P3-S6.** At least 1 use-runbook page will describe
+  confinement in Linux-only terms (the sandbox named
+  as `bwrap` with no platform qualification), where
+  the current fact is 3 backends with a refusal —
+  never a weaker run — where one cannot engage.
+- **P3-S7.** `docs/steady/extensions.md`'s catalog
+  counts (28 folders shipping, 25 pinned in the
+  table) will check out against the tree.
+
+Each supposition is settled against the code in the
+commits that follow this note; the conclusions stand
+at the end of this section when the packet lands.
 
 ## Sources
 
