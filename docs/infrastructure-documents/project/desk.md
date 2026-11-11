@@ -8384,3 +8384,105 @@ the committed guard family, which this lane ran
 whole (119 tests) -- no new test file is landed
 by a re-test seat, and no behaviour is claimed
 beyond those calls and that family.
+
+## Q136 fourth re-pack: suppositions, recorded before the measurement (2026-11-11)
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The drift rule fired a fourth time, and this time on a
+completed verdict. Build run 43026648905, on the
+Q150 desk-answer head (which contains the third
+re-pack), completed failure in the build-windows leg:
+the parallel-test step finished in 1,200.7 seconds
+(exit 1), shard 3 failed exit 124 (the wall-clock
+kill), and shards 3, 4, 5, 7, 10, 12 and 13 failed in
+all. Shards 0, 1 and 2 finished OK in 688.7, 713.5 and
+713.5 seconds, near the third re-pack's about
+684-second packing estimate. The third re-pack left
+the table at 444 files and 13,533.8 seconds in all,
+20 shards at about 684 seconds packed against the
+720-second budget and the standing 20-minute wall,
+with floors on test_decision1_startup (650),
+test_regression_guard (250) and test_v2_consult
+(600, new in that re-pack). This lane re-packs; it
+does not cut a release and does not touch the ship
+state. The suppositions below are recorded before
+any log download, estimator run, refreshed table or
+boundary measurement in this lane.
+
+- Q136-RP4-S1 (packing order protects the head
+  shards): shards 0 to 2 pass because the
+  largest-first packer isolates the correctly floored
+  heavy files (the 600-to-674-second files) at the
+  head of the packing, where each rides nearly alone
+  and its floor is honest; the later shards are sums
+  of many mid-priced files, and small under-prices
+  that are invisible one file at a time add up past
+  the wall there. If this holds, no single file in
+  shards 3 onward will explain its shard's overrun
+  alone; the overrun will be a sum.
+- Q136-RP4-S2 (growth since the third re-pack is
+  under-priced): modules that grew or landed after
+  the third re-pack's log set was taken -- the Q150
+  briefing growth and its neighbours are the named
+  candidates -- carry prices from before that growth
+  or, for new files, the median default, and they sit
+  in the failed shards. The named failure modules
+  (test_concurrency, test_oracle_send_contract,
+  test_oracle_chat, test_local_signals) are expected
+  to measure materially above their tabled prices on
+  a first-hand read of run 43026648905's log.
+- Q136-RP4-S3 (load-sensitive concurrency and Oracle
+  modules): the failures beyond the wall kill are
+  not pure timeouts -- a concurrency bad-answers test
+  and a briefing gate test read "True is not false",
+  and the Oracle send and chat families time out --
+  which is the shape of modules whose Windows time
+  and timing margins are load-dependent: under a
+  loaded shard their duration stretches and their
+  timing assertions flip. Their quiet-run listed
+  sums will therefore understate their loaded cost,
+  and floors, not just refreshed prices, will be
+  needed for the worst of them.
+- Q136-RP4-S4 (the estimator's killed-shard blind
+  spot repeats): a refresh by the tool's own
+  `--write --from-logs` route over run 43026648905
+  (and the newest completed build-windows logs at
+  hand) will raise the table total above 13,533.8
+  seconds, but will price the killed shard's files
+  below their standing floors, because a killed
+  shard prints no durations block and its wall
+  spreads by unlisted test count. The standing
+  floors will need re-applying on top of the
+  refresh, as in every prior re-pack.
+- Q136-RP4-S5 (the packing headroom itself is now
+  the binding constraint): 684 seconds packed
+  against a 1,200-second wall is only about 1.75x
+  of headroom, and the third re-pack already
+  measured a near-uniform 1.4x slow-pool swing
+  between attempts of one build. If the refreshed
+  total and the load-sensitive floors push the
+  honest total up materially, keeping 20 shards at
+  the 720-second budget leaves too little margin
+  for the slow pool, and this re-pack will need to
+  move the budget (and so the shard count) the way
+  the budget is the moving part in Q136's answer --
+  the wall itself never moves.
+- Q136-RP4-S6 (the version-rot shards are a
+  separate blocker, excluded from pricing): shards
+  5 and 13 fail on the desk version-rot family
+  (test_doc_version_rot and its regression_guard
+  knock-on), a deterministic blocker the next cut's
+  version bump clears. Their failures are not
+  duration evidence and must be excluded when
+  pricing durations; naming them here so the
+  conclusions can hold that exclusion honestly.
+
+The measurement, the refreshed table, any new
+floors the numbers support, any budget change, and
+the conclusions against these suppositions follow
+in this section. What would prove the red cleared
+is stated plainly in advance: not this lane's
+packing arithmetic, but the next completed
+tag-or-main build-windows verdict on a head
+carrying this re-pack, under rule 8.
