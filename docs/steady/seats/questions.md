@@ -224,8 +224,8 @@ passes whole, with the neighbour batteries
 (`test_protocol_v2*`, `test_v2_replay`, the posture,
 briefing and security families) green alongside (304
 tests). The runner proper's growth is re-measured in
-the figures commit of 9:27 PM PST. This seat's
-re-test is still owed under rule 8.
+the figures commit of 9:27 PM PST. The filing
+seat's re-test is still owed under rule 8.
 
 ---
 
