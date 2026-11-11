@@ -204,6 +204,29 @@ honestly is, and is not, stands in
 recorded before its field test and the conclusions after it.
 The support level stays Experimental.
 
+A third confinement backend is now in flight, for macOS —
+the last supported platform without one, approved by the
+conductor 2026-11-11. Its shape is settled before the build,
+mirroring the two landed backends: a Seatbelt profile
+generated per job and applied by `sandbox-exec` (there is no
+jail or namespace on macOS, and App Sandbox is an entitlement
+shape that does not fit a launcher of arbitrary commands),
+plus a small launcher shim that applies the spawn resource
+limits Seatbelt has no operation for, failing closed exactly
+as the Windows and FreeBSD backends do — confinement at
+`enforce` with no working backend refuses the job, never
+runs it weaker. No Mac joins the fleet for it: the module,
+the profile writer, a trial-spawn proof and the contract
+tests are built and proven on the CI macos-15 and
+macos-15-intel legs, and the platform's stated level will
+say only what that CI proof shows. The suppositions are
+recorded before the build in
+`docs/steady/security/macos.md`, in the place the Windows
+and FreeBSD lanes recorded theirs, and the conclusions will
+stand in the same place. Fresh installs keep seeding
+`confinement` at `audit` on macOS, exactly as the other two
+backends' platforms do; the seed posture does not move.
+
 And a third round of the same reconciliation, for the one
 surface the first two could not see: fixtures that only fail
 where no confinement backend exists at all. On Linux the
