@@ -102,7 +102,7 @@ with its disposition here and the reason.
 | Split existence from value (`has_phone`; audits record the boolean) | **Adopted; already the house shape** | The warning banner is fixed text that cannot reveal which name matched; audit records name features and outcomes, not file names. The shelter's manifest is the one deliberate exception: it holds paths, lives only inside the shelter folder on the operator's disk, and is never logged or sent. |
 | Privacy-safe telemetry (counters only, key denylist, value cap) | **Queued** (section 6) | The suite has no general telemetry surface today; the contract is recorded so the first one is built to it. |
 | QA-evidence privacy contract (pseudonymous IDs, redaction, 90-day raw retention) | **Documented; partially standing** | Crash and result records here already carry code names rather than target identities (the disclosure postures). A retention value for raw evidence is an operator decision, recorded as queued. |
-| Boundary test: prove a sensitive value appears only in allowlisted files | **Adopted as a testing rule** | The shelter family includes it in miniature: manifest paths are validated to stay inside home and the shelter, and the marker tests prove a lookalike folder does not gain the shelter's exemption. A tree-wide value-confinement test is queued. |
+| Boundary test: prove a sensitive value appears only in allowlisted files | **Adopted as a testing rule** | The shelter family includes it in miniature: manifest paths are validated to stay inside home and the shelter, and the marker tests prove a lookalike folder does not gain the shelter's exemption. The tree-wide value-confinement test stands shipped for the agent-state category (section 8). |
 | Fail-closed preflight for copies (gamma refresh) | **Already the house shape** | Decision 1 refuses startup when a wrong config value changes reach, execution or protection; the shelter validates its manifest fail-closed before moving anything. |
 | Session isolation (one user's state never surfaces in another's session) | **Documented only** | This suite has no multi-user interactive surface; jobs and results are bound to their job and key by the protocol. The principle is recorded for any future surface. |
 | Browser-deny data plane (RLS `using(false)`, service-role RPCs) | **Documented only** | There is no browser data plane here. The structural equivalent -- jobs cannot reach the host except through the runner's checked paths -- already holds. |
@@ -184,7 +184,12 @@ Recorded, not claimed:
    `agent_state_guard` mode), which proves at the commit
    boundary that agent-state files and saved approval grants
    appear only where a deployment allows. The general form
-   beyond that first boundary remains queued here.
+   beyond that first boundary stands shipped too:
+   `runner/tests/test_agent_state_tree_wide.py` applies the
+   guard's agent-state rules to the whole tracked tree, with
+   every finding required to stand on a recorded allowlist.
+   This item is closed; it stands in this list as the record
+   of what was queued.
 5. **An erasure path for operator-held records**: Fremont has
    none and neither does this suite; a deliberate, audited
    forget operation for a machine's own run records is design
@@ -312,8 +317,14 @@ or push is about to carry -- staged paths matching an
 agent-state shape, permission-grant state in staged JSON, and
 secret-shaped values inside saved command strings, the class
 generic scanners missed in the reported research -- and
-reports by file and rule, never by value. Queued (section 6's
-list is the record; this paragraph is its summary for this
-category): only the guard's specified extensions and the
-general tree-wide value-confinement test, as
-`agent-state-files.md` section 4 records them.
+reports by file and rule, never by value. The guard's
+specified extensions stand shipped in the same tool, as
+`agent-state-files.md` section 4 records them: tool-server
+configuration as a category of its own, grant state under its
+other names, the same content shapes in TOML and YAML, and a
+Subversion front door with the other systems' credential
+rules. The general tree-wide value-confinement test stands
+shipped beside the staged guard
+(`runner/tests/test_agent_state_tree_wide.py`). Nothing in
+this category remains queued; section 6's list is the record
+of what was queued, item 4 included.

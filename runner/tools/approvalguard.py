@@ -48,10 +48,34 @@ secrets, so unlike a name guard's registry it is not itself
 private-shelf material -- but nothing forces an operator to publish
 their copy either.
 
+The extensions recorded as specified in agent-state-files.md
+section 4 stand built here, in the same shapes: tool-server
+configuration as a category of its own (a staged file named
+``mcp.json``, and any staged JSON carrying the ``mcpServers``
+top-level key, gets its ``env`` and ``headers`` maps scanned
+wherever the file sits -- the filename and the key trigger the
+deeper scan, they are not findings in themselves, because those
+files are shareable by design and the content is what needs
+guarding); grant state under its other names (``autoApprove``,
+``allowedTools``, ``terminalAllowlist``, ``allowlist``, and a
+``permission`` map), with entries scanned as the command strings
+they can be; the same content shapes in TOML and YAML, where two
+vendors' configuration lives; and staged areas beyond git's, as
+this guard's second front door -- a Subversion working copy's
+scheduled additions fed to the same scan -- plus content rules
+for a Mercurial ``[auth]`` password line and a Subversion proxy
+password. The general tree-wide form of the boundary test lives
+in ``scan_tree_content``: the guard's agent-state rules applied
+to a whole tree, where secret-in-command is read in its designed
+context (structured documents' string values) rather than as a
+raw line scan over source code that handles credentials as
+variables by trade.
+
 The rules are VCS-agnostic: they speak of paths and content, never
 of git, so another front door (an svn working copy's status, say)
-can feed the same scan the same (path, content) pairs later. The
-front door shipped here reads the git index.
+can feed the same scan the same (path, content) pairs. Two front
+doors ship here: the git index, and a Subversion working copy's
+scheduled additions (``check-svn``).
 
 Like the personal-documents shelter, this tool is invoked, never
 ambient: it runs when an operator -- or their agent -- runs it, at
@@ -71,6 +95,8 @@ are. Nothing here acts at startup, and nothing moves or deletes
 any file: the guard only reads staged content and reports.
 
     python3 runner/tools/approvalguard.py check [--repo DIR]
+        [--config CONFIG.json] [--registry EXTRA.json]
+    python3 runner/tools/approvalguard.py check-svn [--wc DIR]
         [--config CONFIG.json] [--registry EXTRA.json]
     python3 runner/tools/approvalguard.py validate --registry R.json
 
@@ -158,6 +184,8 @@ DEFAULT_REGISTRY_DATA = {
 RULE_GRANT_STATE = "permission-grant-state"
 RULE_SECRET_IN_COMMAND = "secret-in-command"
 RULE_SECRET_VALUE = "secret-value"
+RULE_TOOL_SERVER_SECRET = "tool-server-secret"
+RULE_VCS_CREDENTIAL = "vcs-credential"
 
 _RULE_DESCRIPTIONS = {
     "agent-config-path": "agent permission/config file",
@@ -167,6 +195,10 @@ _RULE_DESCRIPTIONS = {
     RULE_SECRET_IN_COMMAND: "a secret-shaped value inside a "
                             "command string",
     RULE_SECRET_VALUE: "a secret-shaped value",
+    RULE_TOOL_SERVER_SECRET: "a secret-shaped value inside a "
+                             "tool-server env or headers map",
+    RULE_VCS_CREDENTIAL: "a credential value in another version-"
+                         "control system's own configuration shape",
 }
 
 
@@ -405,20 +437,32 @@ def _json_strings(node, out):
 
 
 def _grant_state_findings(path, data):
-    """permission-grant-state findings in a parsed JSON document.
+    """permission-grant-state findings in a parsed document.
 
-    An ``allow`` key holding a list of strings is grant state
-    wherever it sits; a string in the saved-command shape is one
-    wherever it sits. The values themselves are never carried into
-    a finding.
+    A grant key (``allow`` and its other names, in
+    GRANT_LIST_KEYS) holding a non-empty list of strings is grant
+    state wherever it sits; so are a non-empty ``autoApprove``
+    list of any items and a non-empty ``permission`` map, list or
+    string; and a string in the saved-command shape is grant
+    state wherever it sits. The values themselves are never
+    carried into a finding.
     """
     findings = []
 
     def walk(node):
         if isinstance(node, dict):
-            allow = node.get("allow")
-            if isinstance(allow, list) and allow and all(
-                    isinstance(item, str) for item in allow):
+            for key in GRANT_LIST_KEYS:
+                value = node.get(key)
+                if isinstance(value, list) and value and all(
+                        isinstance(item, str) for item in value):
+                    findings.append(Finding(path, RULE_GRANT_STATE))
+            auto = node.get("autoApprove")
+            if isinstance(auto, list) and auto:
+                findings.append(Finding(path, RULE_GRANT_STATE))
+            perm = node.get("permission")
+            if (isinstance(perm, dict) and perm) or (
+                    isinstance(perm, list) and perm) or (
+                    isinstance(perm, str) and perm.strip()):
                 findings.append(Finding(path, RULE_GRANT_STATE))
             for value in node.values():
                 walk(value)
@@ -433,6 +477,433 @@ def _grant_state_findings(path, data):
     return findings
 
 
+# ---- the extensions: grant names, tool-server maps, TOML/YAML,
+# ---- the other version-control systems' credential shapes
+
+# Grant state under its other names (agent-state-files.md section
+# 3's survey): the allowlist keys whose entries can be the full
+# command strings themselves. ``allow`` is the shipped member;
+# the rest are the same shape under other vendors' names.
+GRANT_LIST_KEYS = ("allow", "allowedTools", "terminalAllowlist",
+                   "allowlist")
+
+# A key whose name says the value it holds is a secret. Used only
+# where a value's *position* is the evidence -- inside a
+# tool-server env/headers map, or as a named scalar in a TOML/YAML
+# document -- never as a bare word search over text.
+_SECRET_KEY_NAME = re.compile(
+    r"(?i)password|passwd|secret|token|api[-_]?key|access[-_]?key"
+    r"|private[-_]?key|credential|auth")
+
+# Values that name a secret without holding one: an environment
+# reference is the safe pattern for exactly the maps this guard
+# scans, and a declared placeholder holds nothing to publish.
+_PLACEHOLDER_WORDS = frozenset({
+    "changeme", "change-me", "placeholder", "example", "redacted",
+    "none", "null", "true", "false", "xxxx", "********",
+})
+
+
+def _is_placeholder(value):
+    """True when `value` names a secret without holding one."""
+    stripped = value.strip().strip("\"'").strip()
+    if not stripped:
+        return True
+    if stripped.startswith("${") or stripped.startswith("$"):
+        return True
+    if stripped.startswith("<") and stripped.endswith(">"):
+        return True
+    return stripped.lower() in _PLACEHOLDER_WORDS
+
+
+def _secret_shaped(value):
+    """True when `value` matches a known key format or a
+    command-secret shape."""
+    return any(p.search(value) for p in _SECRET_VALUE_PATTERNS) \
+        or any(p.search(value) for p in _COMMAND_SECRET_PATTERNS)
+
+
+# Basenames that name a file as tool-server configuration, and
+# the top-level key that names it in any JSON document whatever
+# the file is called (the shape every surveyed vendor's examples
+# use; VS Code's own ``servers`` key is reached through the
+# filename trigger, which scans the whole file's maps).
+MCP_BASENAMES = ("mcp.json", ".mcp.json")
+MCP_TOP_KEYS = ("mcpServers",)
+
+
+def _scan_secret_map(path, mapping, findings):
+    """One env/headers map: a secret-shaped value fires, and so
+    does a plain value sitting under a secret-named key."""
+    for key, value in mapping.items():
+        if isinstance(value, dict):
+            _scan_secret_map(path, value, findings)
+            continue
+        if not isinstance(value, str):
+            continue
+        if _secret_shaped(value) or (
+                _SECRET_KEY_NAME.search(str(key))
+                and not _is_placeholder(value)
+                and len(value.strip()) >= 4):
+            findings.append(Finding(path, RULE_TOOL_SERVER_SECRET))
+            return
+
+
+def _tool_server_findings(path, data):
+    """tool-server-secret findings in a parsed document.
+
+    The trigger is position: the file is named for tool-server
+    configuration, or the document carries the tool-server
+    top-level key. Under a trigger, every ``env`` and ``headers``
+    map in the document is scanned; outside one, those map names
+    are ordinary configuration and stay silent.
+    """
+    basename = path.replace("\\", "/").rsplit("/", 1)[-1]
+    triggered = basename in MCP_BASENAMES or (
+        isinstance(data, dict)
+        and any(key in data for key in MCP_TOP_KEYS))
+    if not triggered:
+        return []
+    findings = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            for key in ("env", "headers"):
+                mapping = node.get(key)
+                if isinstance(mapping, dict):
+                    _scan_secret_map(path, mapping, findings)
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(data)
+    seen = []
+    for finding in findings:
+        if finding not in seen:
+            seen.append(finding)
+    return seen[:1]
+
+
+# The exact key names that make a TOML/YAML scalar a named
+# secret: the whole key, separators and case aside, is the
+# secret's name (``apiKey``, ``shared_secret``,
+# ``mailbox_password``). A compound name that merely contains
+# one of these words -- a script called ``homing-pigeon-auth``,
+# a workflow's ``id-token`` permission -- is a different thing
+# wearing a similar name, and stays silent.
+_NAMED_SECRET_KEYS = frozenset({
+    "password", "passwd", "pwd", "secret", "token",
+    "apikey", "api_key", "api-key", "accesskey", "access_key",
+    "access-key", "privatekey", "private_key", "private-key",
+    "credential", "credentials", "clientsecret", "client_secret",
+    "client-secret", "sharedsecret", "shared_secret",
+    "shared-secret", "mailboxpassword", "mailbox_password",
+    "mailbox-password", "authtoken", "auth_token", "auth-token",
+})
+
+
+def _is_named_secret_key(key):
+    return str(key).strip().strip("\"'").lower() \
+        in _NAMED_SECRET_KEYS
+
+
+def _named_secret_findings(path, data):
+    """secret-in-command findings for named scalars in a parsed
+    TOML/YAML document: a secret-named key holding a plain value
+    (a provider ``apiKey`` field is the survey's shape). One
+    finding per document is the whole report."""
+    findings = []
+
+    def walk(node):
+        if findings:
+            return
+        if isinstance(node, dict):
+            for key, value in node.items():
+                if isinstance(value, str) \
+                        and _is_named_secret_key(key) \
+                        and not _is_placeholder(value) \
+                        and len(value.strip()) >= 4:
+                    findings.append(
+                        Finding(path, RULE_SECRET_IN_COMMAND))
+                    return
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(data)
+    return findings
+
+
+def _parse_toml(text):
+    """A TOML document as data, or None: `tomllib` where the
+    interpreter carries it (3.11+), else the caller's line
+    fallback -- the fallback narrows the read, never the rules."""
+    try:
+        import tomllib
+    except ImportError:
+        return None
+    try:
+        return tomllib.loads(text)
+    except ValueError:
+        return None
+
+
+_YAML_KEY = re.compile(r"^([^:]+):\s*(.*)$")
+
+
+def _yaml_scalar(raw):
+    raw = raw.strip()
+    if len(raw) >= 2 and raw[0] == raw[-1] and raw[0] in "\"'":
+        return raw[1:-1]
+    if raw.startswith("[") and raw.endswith("]"):
+        inner = raw[1:-1].strip()
+        if not inner:
+            return []
+        return [_yaml_scalar(part) for part in inner.split(",")]
+    if raw.startswith("{") and raw.endswith("}"):
+        out = {}
+        inner = raw[1:-1].strip()
+        if inner:
+            for part in inner.split(","):
+                key, _, value = part.partition(":")
+                out[key.strip().strip("\"'")] = _yaml_scalar(value)
+        return out
+    return raw
+
+
+def _parse_yaml_subset(text):
+    """A bounded YAML subset as data, or None outside it.
+
+    Nested maps and scalar lists by indentation, inline lists
+    and maps, quoted and plain scalars -- the shape vendor
+    configuration files are written in. Anchors, block scalars
+    and multi-line strings are outside the subset: the caller
+    falls back to the line scan for those documents, so a shape
+    the subset cannot hold is read by the other reader, not
+    skipped.
+    """
+    rows = []
+    for raw_line in text.splitlines():
+        if "\t" in raw_line[:len(raw_line) - len(raw_line.lstrip())]:
+            return None
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#") \
+                or stripped in ("---", "..."):
+            continue
+        if stripped.endswith("|") or stripped.endswith(">") \
+                or "&" in stripped.split(":", 1)[0] \
+                or "*" == stripped[:1]:
+            return None
+        indent = len(raw_line) - len(raw_line.lstrip(" "))
+        rows.append((indent, stripped))
+    if not rows:
+        return {}
+
+    def parse_block(index, indent):
+        if index >= len(rows):
+            return None, index
+        is_list = rows[index][1].startswith("- ") \
+            or rows[index][1] == "-"
+        if is_list:
+            out = []
+            while index < len(rows) and rows[index][0] == indent \
+                    and (rows[index][1].startswith("- ")
+                         or rows[index][1] == "-"):
+                item = rows[index][1][1:].strip()
+                index += 1
+                if not item:
+                    value, index = parse_block(index, indent + 1) \
+                        if index < len(rows) else (None, index)
+                    out.append(value)
+                    continue
+                match = _YAML_KEY.match(item)
+                if match and not item.startswith(("\"", "'")):
+                    entry = {}
+                    key = match.group(1).strip().strip("\"'")
+                    rest = match.group(2)
+                    if rest:
+                        entry[key] = _yaml_scalar(rest)
+                    elif index < len(rows) \
+                            and rows[index][0] > indent:
+                        value, index = parse_block(
+                            index, rows[index][0])
+                        entry[key] = value
+                    else:
+                        entry[key] = {}
+                    while index < len(rows) \
+                            and rows[index][0] > indent:
+                        more, index = parse_block(
+                            index, rows[index][0])
+                        if isinstance(more, dict):
+                            entry.update(more)
+                        else:
+                            break
+                    out.append(entry)
+                else:
+                    out.append(_yaml_scalar(item))
+            return out, index
+        out = {}
+        while index < len(rows) and rows[index][0] == indent \
+                and not rows[index][1].startswith("- "):
+            match = _YAML_KEY.match(rows[index][1])
+            if not match:
+                return None, index
+            key = match.group(1).strip().strip("\"'")
+            rest = match.group(2)
+            index += 1
+            if rest:
+                out[key] = _yaml_scalar(rest)
+            elif index < len(rows) and rows[index][0] > indent:
+                value, index = parse_block(index, rows[index][0])
+                out[key] = value
+            else:
+                out[key] = {}
+        return out, index
+
+    data, end = parse_block(0, rows[0][0])
+    if data is None or end != len(rows):
+        return None
+    return data
+
+
+_STRUCTURED_SUFFIXES = (".toml", ".yaml", ".yml")
+_GRANT_LINE = re.compile(
+    r"^\s*[\"']?(allow|autoApprove|allowedTools|"
+    r"terminalAllowlist|allowlist|permission)[\"']?\s*[:=]\s*"
+    r"(\S.*)$")
+_NAMED_SECRET_LINE = re.compile(
+    r"^\s*[\"']?([A-Za-z0-9_.-]+)[\"']?\s*[:=]\s*"
+    r"[\"']?([^\s\"'#]{4,})")
+
+
+def _text_structure_findings(path, text):
+    """The structured shapes read off raw lines, for a TOML/YAML
+    document the parsers could not hold: grant keys with a
+    non-empty value, and secret-named assignments with a plain
+    value. Placeholder values stay silent, as they do in the
+    parsed read."""
+    findings = []
+    for line in text.splitlines():
+        match = _GRANT_LINE.match(line)
+        if match and match.group(2) not in ("[]", "{}", '""', "''"):
+            findings.append(Finding(path, RULE_GRANT_STATE))
+        match = _NAMED_SECRET_LINE.match(line)
+        if match and _is_named_secret_key(match.group(1)) \
+                and not _is_placeholder(match.group(2)):
+            findings.append(
+                Finding(path, RULE_SECRET_IN_COMMAND))
+        if findings and len(set(findings)) >= 2:
+            break
+    unique = []
+    for finding in findings:
+        if finding not in unique:
+            unique.append(finding)
+    return unique
+
+
+_HG_AUTH_PASSWORD = re.compile(
+    r"(?i)^(?:[A-Za-z0-9_*-]+\.)?password\s*=\s*(\S.*)$")
+_SVN_PROXY_PASSWORD = re.compile(
+    r"(?i)^http-proxy-password\s*=\s*(\S.*)$")
+_INI_HEADER = re.compile(r"^\[(.+)\]\s*$")
+
+
+def _vcs_credential_findings(path, text):
+    """vcs-credential findings in raw text: a Mercurial ``[auth]``
+    section's password line, and a Subversion proxy password.
+    The key named with no value, a placeholder value, and (for
+    Mercurial) a password line outside an ``[auth]`` section all
+    stay silent."""
+    in_auth = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        header = _INI_HEADER.match(stripped)
+        if header:
+            in_auth = header.group(1).strip().lower() == "auth"
+            continue
+        match = _SVN_PROXY_PASSWORD.match(stripped)
+        if match and not _is_placeholder(match.group(1)):
+            return [Finding(path, RULE_VCS_CREDENTIAL)]
+        if in_auth:
+            match = _HG_AUTH_PASSWORD.match(stripped)
+            if match and not _is_placeholder(match.group(1)):
+                return [Finding(path, RULE_VCS_CREDENTIAL)]
+    return []
+
+
+# Every command-secret pattern needs one of these substrings, so
+# a candidate without one cannot match: the pre-check keeps a
+# whole-tree scan fast without changing any answer.
+_COMMAND_HINTS = ("password", "passwd", "pwd", "secret", "token",
+                  "api", "auth", "sshpass", "://", "-p")
+
+
+def _command_secret_hit(candidate):
+    lowered = candidate.lower()
+    if not any(hint in lowered for hint in _COMMAND_HINTS):
+        return False
+    return any(p.search(candidate)
+               for p in _COMMAND_SECRET_PATTERNS)
+
+
+def _scan(path, content, registry, tree_wide):
+    findings = []
+    for rule in registry.rules:
+        if _path_matches(rule, path):
+            findings.append(Finding(path, rule.id))
+    if len(content) > CONTENT_SCAN_MAX_BYTES:
+        return findings
+    text = content.decode("utf-8", errors="replace")
+    data = None
+    structured = None
+    try:
+        data = json.loads(text)
+        structured = "json"
+    except ValueError:
+        data = None
+    lowered_path = path.lower()
+    if data is None and lowered_path.endswith(".toml"):
+        data = _parse_toml(text)
+        if data is not None:
+            structured = "toml"
+    if data is None and lowered_path.endswith((".yaml", ".yml")):
+        data = _parse_yaml_subset(text)
+        if data is not None:
+            structured = "yaml"
+    if data is not None:
+        findings.extend(_grant_state_findings(path, data))
+        findings.extend(_tool_server_findings(path, data))
+        if structured in ("toml", "yaml"):
+            findings.extend(_named_secret_findings(path, data))
+        strings = []
+        _json_strings(data, strings)
+    else:
+        if lowered_path.endswith(_STRUCTURED_SUFFIXES):
+            findings.extend(_text_structure_findings(path, text))
+        strings = text.splitlines()
+    findings.extend(_vcs_credential_findings(path, text))
+    for pattern in _SECRET_VALUE_PATTERNS:
+        if pattern.search(text):
+            findings.append(Finding(path, RULE_SECRET_VALUE))
+            break
+    if tree_wide and structured is None:
+        # The general form reads secret-in-command only in its
+        # designed context -- a structured document's values.
+        # Source and prose that handle credentials as variables
+        # are not agent-state material, and a raw line scan over
+        # a whole tree answers a different question (measured
+        # in the desk record for this lane).
+        return findings
+    for candidate in strings:
+        if _command_secret_hit(candidate):
+            findings.append(Finding(path, RULE_SECRET_IN_COMMAND))
+            break
+    return findings
+
+
 def scan_content(path, content, registry):
     """Every Finding in one staged (path, content) pair.
 
@@ -441,33 +912,16 @@ def scan_content(path, content, registry):
     The path rules run on every pair; the content rules run on the
     decoded text within the size cap.
     """
-    findings = []
-    for rule in registry.rules:
-        if _path_matches(rule, path):
-            findings.append(Finding(path, rule.id))
-    if len(content) > CONTENT_SCAN_MAX_BYTES:
-        return findings
-    text = content.decode("utf-8", errors="replace")
-    try:
-        data = json.loads(text)
-    except ValueError:
-        data = None
-    if data is not None:
-        findings.extend(_grant_state_findings(path, data))
-        strings = []
-        _json_strings(data, strings)
-    else:
-        strings = text.splitlines()
-    for pattern in _SECRET_VALUE_PATTERNS:
-        if pattern.search(text):
-            findings.append(Finding(path, RULE_SECRET_VALUE))
-            break
-    for candidate in strings:
-        if any(p.search(candidate)
-               for p in _COMMAND_SECRET_PATTERNS):
-            findings.append(Finding(path, RULE_SECRET_IN_COMMAND))
-            break
-    return findings
+    return _scan(path, content, registry, tree_wide=False)
+
+
+def scan_tree_content(path, content, registry):
+    """Every Finding in one (path, content) pair of a whole tree:
+    the guard's agent-state rules in their general form, for the
+    tree-wide value-confinement test. Identical to the staged
+    scan except that secret-in-command is read only inside
+    structured documents, where command strings are data."""
+    return _scan(path, content, registry, tree_wide=True)
 
 
 def scan_entries(entries, registry):
@@ -523,6 +977,85 @@ def scan_staged(repo, registry):
     return scan_entries(staged_entries(repo), registry)
 
 
+# ---- the Subversion front door: the same guard's second door,
+# ---- not a second tool (agent-state-files.md section 4)
+
+def svn_scheduled_entries(status_text, read_content):
+    """(path, content) pairs for a working copy's scheduled
+    additions, read off `svn status` output.
+
+    A scheduled addition carries status code ``A`` in the first
+    column; the path starts after the eighth column, the status
+    field's fixed width. Modified, missing, unversioned and
+    every other entry is not a pre-commit crossing and is not
+    fed to the scan. `read_content` takes a path and returns its
+    bytes, so the reader is pinned without a Subversion binary.
+    """
+    entries = []
+    for line in status_text.splitlines():
+        if len(line) < 9 or line[0] != "A":
+            continue
+        path = line[8:].strip()
+        if path:
+            entries.append((path, read_content(path)))
+    return entries
+
+
+def svn_entries(wc):
+    """A Subversion working copy's scheduled additions at `wc`,
+    as (path, content) pairs read from the working copy itself --
+    what its pre-commit is about to carry."""
+    try:
+        proc = subprocess.run(
+            ["svn", "status", wc],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except FileNotFoundError:
+        raise GuardError("svn is not available on this machine")
+    if proc.returncode != 0:
+        raise GuardError("svn status failed in %s: %s"
+                         % (wc, proc.stderr.decode(
+                             "utf-8", "replace").strip()))
+    status_text = proc.stdout.decode("utf-8", "surrogateescape")
+
+    def read_content(path):
+        with open(os.path.join(wc, path), "rb") as fh:
+            return fh.read()
+
+    return svn_scheduled_entries(status_text, read_content)
+
+
+def scan_svn(wc, registry):
+    """Every Finding in a Subversion working copy's scheduled
+    additions at `wc`."""
+    return scan_entries(svn_entries(wc), registry)
+
+
+# ---- the whole tree, for the general tree-wide test
+
+def tracked_entries(repo):
+    """The tracked tree at `repo`, as (path, content) pairs: the
+    `git ls-files` list, each file read from the working tree."""
+    try:
+        raw = _git(repo, ["ls-files", "-z"])
+    except FileNotFoundError:
+        raise GuardError("git is not available on this machine")
+    entries = []
+    for name in raw.decode("utf-8", "surrogateescape").split("\0"):
+        if not name:
+            continue
+        with open(os.path.join(repo, name), "rb") as fh:
+            entries.append((name, fh.read()))
+    return entries
+
+
+def scan_tree(repo, registry):
+    """Every tree-wide Finding in the tracked tree at `repo`."""
+    findings = []
+    for path, content in tracked_entries(repo):
+        findings.extend(scan_tree_content(path, content, registry))
+    return findings
+
+
 # ---- the command line
 
 def _load_security():
@@ -575,6 +1108,17 @@ def main(argv=None):
     p_check.add_argument("--registry", default=None,
                          help="an extra registry file: its path "
                               "rules are added to the declared ones")
+    p_svn = sub.add_parser(
+        "check-svn", help="scan a Subversion working copy's "
+                          "scheduled additions")
+    p_svn.add_argument("--wc", default=".",
+                       help="working copy to scan (default: .)")
+    p_svn.add_argument("--config", default=None,
+                       help="runner config.json; its security mode "
+                            "for %s gates this tool" % FEATURE)
+    p_svn.add_argument("--registry", default=None,
+                       help="an extra registry file: its path "
+                            "rules are added to the declared ones")
     args = ap.parse_args(argv)
 
     if args.cmd == "validate":
@@ -617,7 +1161,10 @@ def main(argv=None):
         return 2
 
     try:
-        findings = scan_staged(args.repo, registry)
+        if args.cmd == "check-svn":
+            findings = scan_svn(args.wc, registry)
+        else:
+            findings = scan_staged(args.repo, registry)
     except GuardError as exc:
         print("approvalguard: %s" % exc, file=sys.stderr)
         return 2

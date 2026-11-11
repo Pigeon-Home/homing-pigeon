@@ -439,8 +439,9 @@ each is stated as it stands.
   from value: it names the file and the rule it tripped, and
   never prints the secret. Its rules speak of paths and
   content, never of one version-control system, so another
-  system's staged area can feed the same scan; the front door
-  shipped here reads the git index. Nothing wires the tool
+  system's staged area can feed the same scan; the front doors
+  shipped here read the git index and a Subversion working
+  copy's scheduled additions. Nothing wires the tool
   into a hook or into CI: like the name guard, wiring is a
   deliberate adoption step, taken by the operator, or by their
   agent at the operator's word.
@@ -498,32 +499,40 @@ is invoked; it is a boundary check, not a daemon, and an
 operator who never wires the hook is relying on the ignore
 defaults and their own invocation. And the tree-wide
 value-confinement test queued in `privacy-design.md` section 6
-is still queued in its general form: the staged guard is its
-first concrete form, at the one boundary where publication
-actually happens, not the whole of it.
+stands shipped in its general form beside the staged guard:
+`runner/tests/test_agent_state_tree_wide.py` applies the
+guard's agent-state rules to the whole tracked tree and fails
+on any finding that does not stand on its recorded allowlist,
+each entry naming the file, the rule and the reason (a fixture,
+a specimen, or a declared fake whose naming of the shape is its
+purpose).
 
-The survey also recorded the guard's next extensions, which
-are specified here so the record is complete, and are *not*
-claimed as shipped: tool-server configuration as a category of
-its own (any staged file named for it, and any staged JSON
-carrying its top-level key, gets its `env` and `headers` maps
-scanned wherever the file sits, including files designed to be
-committed); grant state under its other names (`autoApprove`,
-`allowedTools`, the allowlist keys, a `permission` map), with
+The guard's extensions, recorded by the survey and now
+shipped in the same tool: tool-server configuration as a
+category of its own (any staged file named for it -- basename
+`mcp.json` -- and any staged JSON carrying its top-level key,
+`mcpServers`, gets its `env` and `headers` maps scanned
+wherever the file sits, including files designed to be
+committed; the filename and the key trigger the scan and are
+not findings in themselves, and an environment reference or
+placeholder value in those maps stays silent); grant state
+under its other names (`autoApprove`, `allowedTools`,
+`terminalAllowlist`, `allowlist`, a `permission` map), with
 allowlist entries scanned as the command strings they can be;
 the same content shapes in TOML and YAML, where two vendors'
-configuration lives; and staged areas beyond git's. That last
-extension is specified as **the same guard's second front
-door, not a second tool**: the guard's rules are already
-written in terms of paths and content, never of one
-version-control system, and its shipped front door reads the
-git index; what a Subversion deployment adds is a front door
-of its own -- a working copy's scheduled additions, fed to the
-same scan as the same (path, content) pairs, at the pre-commit
-moment -- plus content rules for a Mercurial `[auth]` password
-line and a Subversion proxy password. What section 3 ships for
-those systems today is the travelling half: the pattern list,
-rendered as the template file in this drawer, for an
+configuration lives (TOML read with the standard library's
+`tomllib` where the interpreter carries it, YAML by a bounded
+subset reader with a line-scan fallback, so a document outside
+the subset is read by the other reader, not skipped); and
+staged areas beyond git's, as **the same guard's second front
+door, not a second tool**: a Subversion working copy's
+scheduled additions, fed to the same scan as the same
+(path, content) pairs, at the pre-commit moment, plus content
+rules for a Mercurial `[auth]` password line and a Subversion
+proxy password (a key named with no value, and a placeholder
+value, stay silent under both). What section 3 ships for those
+systems beside the guard is the travelling half: the pattern
+list, rendered as the template file in this drawer, for an
 operator's own trees.
 
 ## 5. Questions worth carrying to your operator
