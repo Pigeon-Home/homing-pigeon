@@ -753,6 +753,28 @@ the failure arms. The build itself is sequenced after
 the 3.16.20.2 cut and the documentation overview: filed
 now, on the desk, ready to pick up in that order.
 
+## The briefing learns to name its own tensions (2026-11-10)
+
+The second of the three follow-on lanes landed the same
+day. Q138's build is the mark the answer chose over the
+designed startup warning: anchored rules in the briefing
+module compare a deployment's owner_instructions against
+the standing layer it carries, each rule firing only when
+the standing sentence it names actually stands in that
+layer's text, and a likely contradiction is marked inline
+in the assembled briefing, at the end of the standing
+layer's own part — the owner's sentence and the standing
+sentence quoted side by side, the precedence stated. The
+startup pass writes each finding to the audit as its own
+row, rule ids only. Nothing warns, nothing refuses,
+nothing is dropped; honest owner text fires no rule. The
+design text moved in the same landing — the briefing
+design's layer passage and status line, and the
+configuration page's owner-instructions section, now
+describe the mark — and Q138's answer carries the full
+addendum. The hosted verdict on the landing is the
+re-test.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:

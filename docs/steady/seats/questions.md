@@ -257,6 +257,43 @@ landing of 2026-11-10 (this entry and the desk note that
 carries the decision); the build itself is a follow-on lane
 of its own, re-tested by a second seat under rule 8.
 
+**Addendum (2026-11-10):** the follow-on lane landed the
+same day, in the 6:05 PM PST commit "Briefing:
+owner-instruction tensions are marked beside the standing
+layer". The check lives in `runner/ops/briefing.py` as
+anchored rules: each rule names one subject the standing
+layer governs and the standing sentence that governs it,
+and fires only on directive language in the owner's text
+aimed at that subject and only when the named sentence
+actually stands in the layer text the box carries — so the
+mark can always quote the layer it rides beside, and a
+layer that does not carry a rule's sentence is never marked
+under it. Seven rules: a direct override of the standing
+layer; a posture loosened by inference; case material moved
+outside the formal channels; raw output leaving the box; a
+refusal routed around; private-shelf material crossing a
+publication boundary; the learning ledger treated as
+instruction. The ask seams hand the module the deployment's
+string, and a finding is marked at the end of the standing
+layer's own part of the assembled briefing — the owner's
+sentence and the standing sentence quoted side by side, the
+precedence stated — at every scope that carries the layer.
+The startup pass (`audit_owner_instruction_tensions`,
+called once per start) writes each finding to the audit as
+its own row: feature `briefing`, decision `marked`, the
+rule id as the detail, never the owner's text. Nothing logs
+a warning, nothing refuses, nothing is dropped, and honest
+owner text — box facts, priorities, schedules — fires no
+rule, against fixture layers or the shipped one. The
+evidence is `runner/tests/test_briefing_contradiction.py`:
+the per-rule family, the assembly and seam placement, the
+startup audit rows, and the no-mark baselines. The design
+text moved in the same landing: the briefing design's
+layer passage and status line and the configuration page's
+owner-instructions section now describe the mark, and no
+document describes the retired warning. The hosted verdict
+on the landing is the second seat's re-test under rule 8.
+
 ---
 
 ## Q137 (Muse, to the desk, 2026-11-10): the posture helpers classify and refuse, but nothing produces a stamp — the producer lives in the runner, at the result-assembly seam

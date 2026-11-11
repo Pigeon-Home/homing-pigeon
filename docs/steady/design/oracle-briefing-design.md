@@ -8,7 +8,12 @@ assembly is wired at the ask seam, the manifest resolves the
 discovery surface locally, --inspect briefing reports the
 assembly, snapshots carry the prebuilt digest, and the
 remediation helper, the opinion note, and the deterministic
-briefs ride the same briefing).
+briefs ride the same briefing). The one behavior the stages
+left undesigned — a startup warning when owner instructions
+contradict the standing layer — is retired as designed and
+built differently: the contradiction is marked in the
+assembled briefing itself, beside the standing layer, with
+an audit row at startup to match.
 This note records an inventory of where the Oracle's
 instructions live today, an enumeration of the discovery
 surface a visiting system pulls when it is handed nothing but
@@ -465,9 +470,22 @@ learning ledger stays evidence, never instruction. The layers do
 not override each other; each governs its own subject: layer 0
 the doors' safety shape, layer 1 what the project is, layer 2
 what the Oracle is, layer 3 what this box is. A contradiction
-between layer 3 and layer 2 is named in the startup warning
-rather than silently resolved — the same posture the config
-decision takes toward a present-but-unusable value that matters.
+between layer 3 and layer 2 is named rather than silently
+resolved — not in a startup warning: a warning is the weakest
+surface the runner has, read by nobody and acted on by nobody,
+and whether free-text instructions contradict the standing
+layer is a judgment, so a heuristic detector must never refuse
+on it either. The signal is delivered at the point of use
+instead. A check at startup compares layer 3 against layer 2,
+and a likely contradiction is marked inline in the assembled
+briefing, adjacent to the standing layer it tensions against —
+each tension named with the owner's sentence and the standing
+sentence it tensions against, and the precedence stated — so
+the reader about to act on both layers sees the conflict named
+by the layer that governs; the same finding is written to the
+audit as its own row, rule ids only, for the operator. Nothing
+refuses and nothing is dropped: the owner's text rides exactly
+as written, with the mark beside the layer above it.
 
 How the door and the extras live together, stated once: the
 discovery layer can be revised by anyone who can revise the
