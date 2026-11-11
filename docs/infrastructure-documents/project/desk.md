@@ -14127,6 +14127,26 @@ landing made it 8 -- verified failing on the
 pristine head before this lane's changes, and
 left to that lane's reconciliation.
 
+Follow-on reconciliation (2026-11-11): the pin
+already matches the Q159 family on the current
+head -- the 3.16.20.5 release landing carried
+the reconciliation itself, moving the pin to
+8 gates_strict tests and 99 in the split
+family (the guard test renamed to match).
+Verified first-hand by the follow-on lane in a
+fresh clone at the remote head: gates_strict
+counts 8, every sibling pin in the family
+holds (refuse_main 22, refuse_policies 21,
+gates_refuse 5, gates_phase2 7, readers 16,
+defaults 20; total 99),
+runner/tests/test_windows_durations.py and
+the gates_strict family run green together,
+and runner/tools/windows_durations.py --check
+is clean. No pin change remained for the
+follow-on lane to make, and neither
+test_decision1_startup_gates_strict.py nor
+decision1_startup_support.py was touched.
+
 ## Q155 re-test: conclusions of the filing seat (2026-11-11)
 
 The re-test ran in a fresh scratch clone from
