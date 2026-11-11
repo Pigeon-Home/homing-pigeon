@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.20.5 - 2026-11-11
+
+- The fifth release on the 3.16 line. 3.16.20.4 was tagged and spent without a published release: the suite on that head failed the decision1 family pin below, so this cut carries everything that landed on main after 3.16.20.3, including the macOS confinement second fix and the Q158 and Q159 answers.
+- Fix: the decision1 split family's checked-in count still expected 6 tests in gates_strict and 97 in the family after Q159 added the dead-backend refusal on every platform seam and the live-backend control beside it. The pin now expects 8 and 99, which is what the modules load. That failure, and the version-rot failure it sat beside while 3.16.20.4 was still the current version in the desk record, is what kept the suite red.
+- Figures: a fresh measure of the tree at this cut, 20,882,477 tokens (still 20 million, so the counter increments), 1,254,039 tracked lines, 5,438 commits on main before this release commit.
+
 ## 3.16.20.4 - 2026-11-11
 
 - The fourth release on the 3.16 line: everything that landed on main after 3.16.20.3 ships here.

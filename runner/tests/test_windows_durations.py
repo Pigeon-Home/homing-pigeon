@@ -800,16 +800,18 @@ class CheckedInTableGuardTest(unittest.TestCase):
         self.assertGreaterEqual(
             durations["runner.tests.test_oracle_chat"], 55.0)
 
-    def test_the_decision1_split_family_still_carries_97_tests(self):
+    def test_the_decision1_split_family_still_carries_99_tests(self):
         # The split is a move, not a rewrite: the eight
-        # pieces between them carry exactly the original
-        # file's 97 tests, at the original per-class
-        # counts (RefuseMain 43 across its two pieces,
-        # the gates classes 18 carried as gates_refuse
-        # 5, gates_strict 6 and gates_phase2 7 after the
-        # further split, RefuseReader 16, the default
-        # class and its table pin 20). A test lost,
-        # duplicated or silently dropped in a future
+        # pieces between them carry the original file's
+        # 97 tests plus the two Q159 added to gates_strict
+        # (the dead-backend refusal on every platform seam
+        # and the live-backend control beside it), at the
+        # per-class counts (RefuseMain 43 across its two
+        # pieces, the gates classes 20 carried as
+        # gates_refuse 5, gates_strict 8 and gates_phase2
+        # 7 after that addition, RefuseReader 16, the
+        # default class and its table pin 20). A test
+        # lost, duplicated or silently dropped in a future
         # edit of a piece fails here.
         import importlib
         import unittest as _unittest
@@ -817,7 +819,7 @@ class CheckedInTableGuardTest(unittest.TestCase):
             "runner.tests.test_decision1_startup_refuse_main": 22,
             "runner.tests.test_decision1_startup_refuse_policies": 21,
             "runner.tests.test_decision1_startup_gates_refuse": 5,
-            "runner.tests.test_decision1_startup_gates_strict": 6,
+            "runner.tests.test_decision1_startup_gates_strict": 8,
             "runner.tests.test_decision1_startup_gates_phase2": 7,
             "runner.tests.test_decision1_startup_readers": 16,
             "runner.tests.test_decision1_startup_defaults": 20,
@@ -829,7 +831,7 @@ class CheckedInTableGuardTest(unittest.TestCase):
                 module).countTestCases()
             self.assertEqual(found, count, name)
             total += found
-        self.assertEqual(total, 97)
+        self.assertEqual(total, 99)
 
 
     def test_the_real_suite_packs_within_budget(self):
