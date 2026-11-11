@@ -527,8 +527,8 @@ its 19,227 jobs are worth knowing before loosening a real box:
 | `policy_files` | M2 | Constrains staged files for keys with a policy entry |
 | `policy_args` | M2 | Constrains job args for keys with a policy entry |
 | `audience` | M5 | Binds signed jobs to this runner's id |
-| `confinement` | M6 | Runs jobs inside a Linux sandbox (bwrap) |
-| `job_user` | M8 | Runs jobs as a different POSIX user |
+| `confinement` | M6 | Runs jobs inside the platform's confinement backend: a bwrap sandbox on Linux, a Job Object with a restricted token at low integrity on Windows, a jail with no network on FreeBSD |
+| `job_user` | M8 | Runs jobs as a different user (a POSIX setuid demote; on Windows, a Job Object memory ceiling instead) |
 
 ### Confinement
 
@@ -544,8 +544,8 @@ The job's scrubbed env arrives via
 `--setenv`. At startup under `enforce` the runner starts bwrap once
 with the built-in namespace flags, and again with the configured
 `extra_flags` added in the position a job's argv gives them; when
-either start cannot (bwrap missing, a non-Linux
-machine, a kernel that blocks the user namespace, such as
+either start cannot (bwrap missing, a kernel that blocks
+the user namespace, such as
 `kernel.apparmor_restrict_unprivileged_userns=1` on Ubuntu 24.04,
 or a configured flag bwrap rejects)
 the runner refuses to start and names the cause — a security mode
@@ -571,6 +571,24 @@ Optional tuning under `security.confinement` (all optional):
   "work_mount": "/work"
 }
 ```
+
+On Windows and FreeBSD the same mode engages the platform
+backend instead, and the startup gate probes that backend the
+same way. On Windows: a Job Object (512 MiB per process), a
+restricted token and a low integrity level, audited as
+`windows: job_object + restricted_token + low_integrity` —
+no filesystem namespace isolation, so a confined job can
+still read any path its token can read. On FreeBSD: a
+per-job jail with the host's system directories mounted
+read-only, the work directory the only writable mount, a
+fresh `/tmp`, no network at all, and a 512 MiB per-process
+ceiling applied at spawn, audited as
+`freebsd: jail + no_network + spawn_resource_limits`. A
+platform with no backend (macOS today) refuses to start at
+`enforce`. The platform pages are
+`docs/steady/security/windows.md` and
+`docs/steady/security/freebsd.md`; the guarantee each
+platform carries stands in `docs/support-matrix.md`.
 
 ### Running jobs as another user
 

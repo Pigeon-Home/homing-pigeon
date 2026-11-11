@@ -268,17 +268,28 @@ of thing:
   that reached outside, it does not prevent one. The walk stops
   at 50000 files, so a huge tree yields a partial snapshot and
   the log records the cap being hit. The key is `workspace_root`.
-- **The sandbox** (Linux only) actually walls the job in:
-  bubblewrap runs it with `/usr` read-only, no network, and only
-  the job workdir (at `/work`) and a throwaway tmpfs `/tmp`
-  writable. It runs at `enforce` by default.
-  A sandbox that cannot engage (no `bwrap`, user namespaces
-  blocked, not Linux) refuses to start the runner at that
-  default; a configured extra flag that bwrap rejects
-  refuses it too — set the key to `audit` or `off` to run without it.
-  One that breaks after a good start falls back loudly and the
-  audit log records the fallback. The key is
-  `security.modes.confinement`. See SECURITY.md.
+- **The confinement backends** actually wall the job in, each
+  in its platform's own way. On Linux, bubblewrap runs the job
+  with `/usr` read-only, no network, and only the job workdir
+  (at `/work`) and a throwaway tmpfs `/tmp` writable. On
+  Windows, the job is created under a restricted token at low
+  integrity and assigned to a Job Object with a 512 MiB
+  per-process memory ceiling — that is not a filesystem
+  sandbox: a confined job can still read any path its token
+  can read, and a field test recorded an escape read
+  succeeding. On FreeBSD, each job runs in its own jail: the
+  host's system directories mounted read-only, the work
+  directory the only writable mount, a fresh `/tmp`, no
+  network at all, and a 512 MiB per-process ceiling applied
+  at spawn. The key is `security.modes.confinement`; the mode
+  defaults to `enforce`, and at `enforce` the startup gate
+  probes the platform's backend and refuses to start when it
+  cannot engage (macOS has no backend yet, and refuses). A
+  fresh install on Windows or FreeBSD states the mode at
+  `audit` in the seeded config, for the operator to step up
+  deliberately. A job whose confinement cannot engage at
+  `enforce` is refused, never run weaker. See SECURITY.md
+  and docs/support-matrix.md.
 
 **Local inference.** Point the Oracle at a model running on your
 own box and the SI can `ask` questions in plain English — *"why

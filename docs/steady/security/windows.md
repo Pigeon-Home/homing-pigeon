@@ -27,8 +27,10 @@ The account needs:
   log all live here by default).
 - **Read** on anything jobs are expected to read; **write** only
   where jobs are expected to write. Jobs run as this user, so the
-  account *is* the sandbox boundary on Windows — there is no
-  bwrap/namespace equivalent.
+  account is the identity boundary on Windows — there is no
+  bwrap/namespace equivalent; the confinement backend described
+  below adds its own controls on top of the account when
+  `confinement` is at `enforce`.
 - **Log on as a batch job** (`SeBatchLogonRight`) if the task fails
   to start; `schtasks` usually grants this when creating the task.
 
@@ -98,7 +100,8 @@ with the Linux sandbox; it is not built yet.
 ## The two modes a Windows config states
 
 Two security modes name mechanisms whose full form is POSIX:
-`security.modes.confinement` (the bwrap sandbox is Linux-only) and
+`security.modes.confinement` (whose sandbox form is the Linux
+bwrap backend; FreeBSD's form is its jail backend) and
 `security.modes.job_user` (the demote is a POSIX `setuid`). Both
 read `enforce` when a config does not state them.
 

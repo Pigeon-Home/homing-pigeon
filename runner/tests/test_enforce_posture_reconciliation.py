@@ -457,7 +457,7 @@ class RoundTwoHarnessStatedModesTest(unittest.TestCase):
                 fh.read())
         from runner.tests.defaults_registry import ROWS
         row = [r for r in ROWS if r["key"] == "max_job_bytes"][0]
-        self.assertEqual(row["doc_line"], 439)
+        self.assertEqual(row["doc_line"], 450)
 
 
 class AudienceStartupRefusalStaysLandedTest(unittest.TestCase):
