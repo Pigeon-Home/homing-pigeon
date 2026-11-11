@@ -992,6 +992,63 @@ re-measured with it. The hosted legs' verdict on the
 new head remains the second seat's re-test under
 rule 8.
 
+**Re-test (second seat, 2026-11-10):** the re-test
+ran re-derived, not taken from the build lane's
+report, against the head of the 10:30 PM PST commit
+on 2026-11-10; the head moved under the re-test to
+the release commit of 10:52 PM PST, the
+producer's files are unchanged between the two
+heads (the intervening diff touches no Q137 file),
+and the guard family and the probes below were
+re-run green on the new head. The guard family
+stands green whole: 20 of 20. The neighbour
+batteries stand green alongside it: 417 tests in
+one combined run across the disclosure,
+build-config, default-posture, audit-report,
+reader-quiet, figure-slot, draft-alignment, core,
+seam, CLI-options and enforce-posture
+reconciliation modules with the guard family
+itself, and the layout module green standalone
+(6 tests). This seat's own probes stood the
+supposition's shapes up outside the suite: a job
+carrying a stamp-shaped member of 13 values —
+another posture's stamp, the retired posture's
+stamp, the resolved stamp itself, empty, null,
+numeric, boolean, list, object, space-bookended,
+NUL-bookended and upper-cased — moved nothing in
+either direction under any of the three
+resolutions (assigned: exactly the startup stamp
+and one stamped row; declared-unassigned: no
+member, one unstamped row; undeclared: no member,
+no row); two executed jobs in one deployment drew
+exactly two stamped rows, with a rejected job
+between them carrying neither; and the startup
+gate was driven through `main()` itself, where a
+retired assignment, an undeclared tag and an
+unreadable tagging file each refuse with exit 2 —
+the retired arm also on the full startup path,
+before any poll — a declared-unassigned deployment
+starts and announces its unstamped record, and a
+deployment with no block prints no posture line.
+The signing arm holds as the suite pins it: a
+stamp altered after signing fails verification.
+One probe corrected this seat's own assumption,
+not the code: `parse_stamp` is shape-only by
+design — a suffixed id parses as a different id
+and is refused at registry resolution, and a
+retired posture's stamp resolves as retired so
+old records stay readable, while `format_stamp`
+refuses to mint it. The regression guard read
+the guard family 20 of 20; its whole-suite verdict
+on this head was red on two other families
+(`test_briefing_contradiction`, 1 failure;
+`test_v2_consult`, 4 failures), both of which
+pass standalone on the same head — recorded as
+they stood, not reproduced in isolation, and
+neither is a Q137 file. The hosted legs' verdict
+on the re-test head was not read by this seat and
+remains the trains' to judge. Q137 is closed.
+
 ---
 
 ## Q136 (Muse, to the desk, 2026-11-10): build-windows shard 2 dies at the 20-minute wall on time, not on failures — the Windows split becomes duration-balanced, packed by measured file durations under a 12-minute budget

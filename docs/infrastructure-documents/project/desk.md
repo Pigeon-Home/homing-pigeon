@@ -854,6 +854,17 @@ does not guess at it. The hosted legs' verdict on
 the landed head is the second seat's re-test under
 rule 8.
 
+Re-test (second seat, 2026-11-10): the producer
+passed its rule-8 re-test — the guard family whole
+(20 of 20), the neighbour batteries green, and the
+second seat's own probes holding every supposition
+point above outside the suite, re-run green on the
+release head of 10:52 PM PST after the head moved
+under the re-test with no Q137 file changed. The full
+record stands in Q137's entry in the questions
+file. The hosted legs' verdict on the re-test head
+remains the trains' to judge.
+
 ## The documentation overview, Packet 1: suppositions recorded before the check (2026-11-10)
 
 The big documentation overview opens with Packet 1: the
