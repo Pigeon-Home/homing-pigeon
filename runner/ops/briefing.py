@@ -268,7 +268,15 @@ def _fold(text):
 # like a listed negation word when they govern the
 # matched verb, across their whole clause segment
 # (Q145 dropped their own word-count cap and reads a
-# form separated from its infinitive).
+# form separated from its infinitive). Q146 widened the
+# guard once more at the same detector: the crossing
+# reads the governed infinitive's verb across an
+# adverbial lead-in of any length (Q145's crossing
+# stopped at a 3-word lead-in), a prohibitive form's
+# government reads across a relative clause that
+# modifies the form's own subject and closes before
+# its infinitive, and the ledger guard opens a new
+# segment at a dash beside its standing separators.
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -373,6 +381,78 @@ def _prohibitive_occurrences(low):
     return spans
 
 
+# Verbs that, standing inside a relative clause, make
+# that clause introduce its own infinitive rather than
+# merely modify a subject: "who tells you to publish"
+# opens a new government, it does not describe the
+# operator the prohibitive form already governs.
+_RELATIVE_INTRO_VERBS = frozenset({
+    "tell", "tells", "told", "telling", "ask", "asks",
+    "asked", "asking", "order", "orders", "ordered",
+    "instruct", "instructs", "instructed", "encourage",
+    "encourages", "encouraged", "urge", "urges", "urged",
+    "direct", "directs", "directed", "command",
+    "commands", "commanded", "advise", "advises",
+    "advised", "persuade", "persuades", "persuaded",
+    "invite", "invites", "invited", "expect", "expects",
+    "expected", "want", "wants", "wanted", "require",
+    "requires", "required", "force", "forces", "forced",
+    "say", "says", "said", "request", "requests",
+    "requested"})
+_RELATIVE_PRONOUNS = (" who ", " whom ", " which ")
+
+
+def _drop_subject_relative_clause(between):
+    """The span between a prohibitive form and its match
+    with a subject relative clause removed, when one
+    qualifies (Q146): the clause modifies the form's own
+    subject -- it stands between the form's subject
+    phrase (no infinitive, no directive verb before it)
+    and the form's infinitive "to", and it closes at
+    that infinitive, carrying no infinitive and no verb
+    that introduces one of its own ("for any operator
+    who is on duty to <the match>" reads as "for any
+    operator to <the match>"). A clause that itself
+    introduces the matched verb ("... who tells you to
+    <the match>"), or one standing past a verb phrase
+    the form already introduced ("to follow anyone who
+    ..."), does not qualify, and the span stands as
+    written, barrier and all."""
+    text = between
+    while True:
+        at = -1
+        pronoun = ""
+        for candidate in _RELATIVE_PRONOUNS:
+            found = text.find(candidate)
+            if found >= 0 and (at < 0 or found < at):
+                at, pronoun = found, candidate
+        if at < 0:
+            return text
+        before = text[:at]
+        after = text[at + len(pronoun):]
+        to = after.find(" to ")
+        if to < 0:
+            return text
+        clause = after[:to]
+        before_words = _words(before)
+        clause_words = _words(clause)
+        if not before_words or " to " in before \
+                or "," in before \
+                or any(mark in before
+                       for mark in _CLAUSE_BREAKS) \
+                or any(word in _GOVERNMENT_VERBS
+                       for word in before_words) \
+                or not clause_words \
+                or "," in clause \
+                or any(mark in clause
+                       for mark in _CLAUSE_BREAKS) \
+                or any(word in _GOVERNMENT_VERBS
+                       or word in _RELATIVE_INTRO_VERBS
+                       for word in clause_words):
+            return text
+        text = before + after[to:]
+
+
 def _prohibitive_governs(head):
     """True when a prohibitive form in the clause segment
     `head` (the match's own clause, ahead of the match)
@@ -390,10 +470,15 @@ def _prohibitive_governs(head):
     or past another verb's object governs that verb, not
     this one, the same way a negation word does.
     Comma-set parentheticals are transparent: the form
-    reads through them, as a negation word does."""
+    reads through them, as a negation word does. A
+    relative clause on the form's own subject is
+    transparent the same way (Q146): the form reads
+    across it to its infinitive, while a relative clause
+    that introduces the matched verb still ends the
+    government."""
     low = head.lower()
     for _start, end in _prohibitive_occurrences(low):
-        between = low[end:]
+        between = _drop_subject_relative_clause(low[end:])
         if any(mark in between for mark in _CLAUSE_BREAKS):
             continue
         core = _strip_parentheticals(between)
@@ -423,6 +508,24 @@ def _prohibitive_governs(head):
     return False
 
 
+# Verbs that make what follows an infinitive " to " a
+# verb phrase of its own rather than that infinitive's
+# adverbial lead-in: the directive verbs of the
+# government scan, and the common verbs a permission
+# shape can govern in the matched verb's place ("not
+# allowed to mention the schedule ...").
+_CROSSING_VERB_WORDS = _GOVERNMENT_VERBS | frozenset({
+    "mention", "mentions", "mentioned", "mentioning",
+    "hesitate", "hesitates", "hesitated", "hesitating",
+    "tell", "tells", "told", "telling", "wait", "waits",
+    "waited", "waiting", "rush", "rushes", "rushed",
+    "rushing", "ask", "asks", "asked", "asking",
+    "proceed", "proceeds", "proceeded", "proceeding",
+    "continue", "continues", "continued", "continuing",
+    "attempt", "attempts", "attempted", "attempting",
+    "try", "tries", "tried", "trying"})
+
+
 def _negation_crosses(region, neg_end):
     """True when the negation ending at `neg_end` in the
     clause segment `region` (which ends at the match)
@@ -445,15 +548,34 @@ def _negation_crosses(region, neg_end):
         # The permission and bare shapes govern the
         # infinitive they introduce: what follows the
         # " to " up to the match is that infinitive's own
-        # verb and its short lead-in, with no comma closing
-        # the phrase first ("not allowed to mention the
-        # schedule, publish ..." governs the mentioning,
-        # not the publishing after the comma).
+        # verb and its adverbial lead-in, of whatever
+        # length (Q146 removed the earlier 3-word lead-in
+        # bound), with no comma closing the phrase first
+        # and no verb phrase of its own in between ("not
+        # allowed to mention the schedule, publish ..."
+        # governs the mentioning, not the publishing
+        # after the comma).
+        after_words = _words(after)
+        verb_at = [i for i, word in enumerate(after_words)
+                   if word in _CROSSING_VERB_WORDS]
+        # The lead-in itself carries no verb phrase; the
+        # one verb it may carry is the matched verb itself,
+        # standing last with only its short tail before a
+        # subject-first match ("not to follow the <ledger>",
+        # where the match starts at the subject, or inside
+        # it on the re-scan -- "follow the learning
+        # <ledger>").
+        lead_ok = not verb_at or (
+            len(verb_at) == 1
+            and (len(after_words[verb_at[0] + 1:]) <= 2
+                 or all(word in _VERB_TAIL_WORDS
+                        for word in
+                        after_words[verb_at[0] + 1:])))
         own = (any(word in _PERMISSION_WORDS
                    for word in _words(between))
                or not _words(between)) \
             and "," not in after \
-            and len(_words(after)) <= 3
+            and lead_ok
         parenthetical = "," in between and "," in after
         if not (own or parenthetical):
             return False
@@ -517,7 +639,8 @@ _LEDGER_TRIGGERS = frozenset({
     "instruction", "instructions", "authorise", "authorises",
     "authorize", "authorizes", "order", "orders"})
 _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
-                    " and ", " then ")
+                    " and ", " then ", " — ", "—",
+                    " – ", "–", " - ")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -531,7 +654,10 @@ def _ledger_complement_is_evidence(owner, match):
     segment of the match that carries the instruction word
     (Q144; the segment set completed by Q145 -- "and", the
     colon and "then" open a segment beside the comma, the
-    semicolon, " but " and " yet "): an evidence word in
+    semicolon, " but " and " yet " -- and by Q146, where
+    a dash opens one too: the em dash spaced and
+    unspaced, the en dash spaced and unspaced, and the
+    spaced hyphen): an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does
