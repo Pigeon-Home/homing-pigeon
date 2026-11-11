@@ -30,7 +30,7 @@ the conductor changes or strikes any line by saying so.
 
 ## The roll
 
-The roll is the active rows of `docs/archive/RESEARCHER_IDENT.md`,
+The roll is the active rows of `docs/archive/researcher_ident.md`,
 with Grok. A chat runs only when the conductor opens a turn in it, so
 a seat with no live turn cannot hear a call: a seat with no post is
 written down as "not reached", never as absent or ready. DRI functions
@@ -49,8 +49,8 @@ steps below before anything else.
    status lines.
 4. **The situation.** Who has posted, what state main and the build
    are in.
-5. **Post.** One entry in `docs/seats/.com.chat`: your status line from
-   `docs/seats/status.txt` as it stands now, then `ready`, then at most
+5. **Post.** One entry in `docs/infrastructure-documents/seats/.com.chat`: your status line from
+   `docs/steady/seats/status.txt` as it stands now, then `ready`, then at most
    three sentences: what step 1 found, what step 2 found, and your
    two cents. The status line is the fixed part, so the timeline can
    be read from the entries without prose. Then set your line's word

@@ -4,7 +4,7 @@
 
 Status: decision record, written 2026-10-24 from the
 documented-default hunt (the report `doc-default-divergences.md`
-under `docs/reports/`). The decision at the end was made 2026-10-23;
+under `docs/steady/reports/`). The decision at the end was made 2026-10-23;
 the rest is the two policies the code already carries, what each
 costs, and the recommendation the decision adopted. The rule below is applied in code; "Applied
 in" at the end says where.
@@ -94,7 +94,7 @@ new key does not inherit a policy by accident.
   tier so a sender can see a box running on defaults it did not
   ask for.
 
-The rule for a new key, one sentence for `docs/oracle/configuring-oracle.md`
+The rule for a new key, one sentence for `docs/infrastructure-documents/oracle/configuring-oracle.md`
 and PROTOCOL.md: *a setting that is present but not usable reads as
 its documented default and is named in the startup warning, unless
 the setting is a port, a bind address, a key policy, a paging
@@ -134,8 +134,8 @@ rule. The rule is what a wrong value changes.
 Date: 2026-10-23
 
 Applied in: the readers and the docs moved together on 2026-10-24,
-docs first in the same commit (`docs/oracle/configuring-oracle.md`,
-`docs/extend/transports.md`, PROTOCOL.md section 5, the DTLS extension's
+docs first in the same commit (`docs/infrastructure-documents/oracle/configuring-oracle.md`,
+`docs/infrastructure-documents/extend/transports.md`, PROTOCOL.md section 5, the DTLS extension's
 docstring), then `listen_port` and `bind_address` in the DTLS
 extension and `url_port` in the NATS extension, then the four
 hunt test classes that had asserted the default for those keys. The

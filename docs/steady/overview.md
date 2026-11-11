@@ -69,7 +69,7 @@ names they were written with.
 
 Status at this writing:
 
-- Corpus: **2,355 entries over 30 targets**, counted from the
+- Corpus: **2,400 entries over 30 targets**, counted from the
   committed corpus at this writing, merged from all three rigs.
 - Crashes are filed as findings, never fixed by the hand that
   found them.
@@ -77,8 +77,8 @@ Status at this writing:
   DTLS resumption included, now refuse a superseded key, and the
   two by-design failing probes are green since the key directory
   shipped.
-- Releases: the latest published release is 3.15.18.12,
-  verified on the GitHub releases page on 2026-11-08. The
+- Releases: the latest published release is 3.16.20.1,
+  verified on the GitHub releases page on 2026-11-10. The
   version in pyproject.toml moves ahead of publication whenever
   a ship is in flight, so the changelog is the record of what
   has shipped and the releases page is the record of what has

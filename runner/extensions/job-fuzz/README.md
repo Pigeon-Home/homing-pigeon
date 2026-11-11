@@ -70,6 +70,8 @@ Every variant the campaign runs is archived (default:
 moves it), pruned to `max_archived_variants` (200). A
 finding's detail names its archive file, and any finding
 reproduces by handing that file to `--run-variant` again.
+The campaign's own state lives in `.job-fuzz-state.json`
+next to the sense.
 
 ## How the campaign improves on itself
 

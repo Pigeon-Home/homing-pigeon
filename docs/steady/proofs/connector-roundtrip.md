@@ -3,7 +3,7 @@
 Captured from a live Gmail round-trip on 2026-10-13. These messages
 exercise the cloud side: sign, send, read back, verify. No IMAP login,
 no job execution on a host. The captures are replayed by
-`tests/test_connector_captures.py` to validate `verify_body` against
+`runner/tests/test_connector_captures.py` to validate `verify_body` against
 real-world mail (preambles, trailers, line wrapping).
 
 All messages are from the test address to itself. Safe to delete.
@@ -53,8 +53,8 @@ These were sent the same way. Outcomes are from running the returned body throug
 ## How to replay
 
 ```
-python3 cloud/send_job.py verify --secret test-shared-secret
+python3 runner/cloud/send_job.py verify --secret test-shared-secret
 ```
 
 Paste the JSON line from the happy-path body. Unit tests that replay the
-captured bodies live in `tests/test_connector_captures.py`.
+captured bodies live in `runner/tests/test_connector_captures.py`.
