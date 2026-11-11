@@ -774,6 +774,41 @@ configuration page's owner-instructions section, now
 describe the mark — and Q138's answer carries the full
 addendum. The hosted verdict on the landing is the
 re-test.
+## The posture stamp gets its producer (2026-11-10)
+
+Q137's answer named the seam — the runner core, at
+result assembly, after the job has exited — and left
+the wiring as a follow-on lane of its own. This is
+that lane, taken up the same day.
+
+Supposition, written before the build, to be judged
+against it:
+
+- A job carrying a stamp-shaped member of its own, of
+  any value, will produce a result carrying exactly
+  the stamp the runner resolved at startup when the
+  deployment is assigned, and no stamp at all when it
+  is not: nothing in a job's content will move the
+  member in either direction.
+- An assignment naming a retired posture will refuse
+  startup as a configuration problem, through
+  `format_stamp`'s own refusal, before any job is
+  polled — and so will an assignment whose tag the
+  registry does not declare, and a registry or tagging
+  file that cannot be read or parsed.
+- A deployment that declares the posture block but
+  assigns its project nothing will run: every executed
+  job's result will carry no stamp, and its audit row
+  will record the run as unstamped, plainly. No
+  default posture will be invented at either surface.
+- The stamp will ride inside what the runner signs:
+  a result whose stamp member is altered after
+  signing will fail verification like any other
+  signed member.
+- A deployment with no posture block will behave
+  exactly as it does today: no stamp member on its
+  results, no posture row in its audit log, no new
+  startup line.
 
 ## Sources
 
