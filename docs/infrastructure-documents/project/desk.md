@@ -12143,6 +12143,97 @@ The split, the refreshed table entries, the guard
 extension and the conclusions against these
 suppositions follow in this section.
 
+### Q136 follow-on: the file split — conclusions (2026-11-11)
+
+The split landed on main as five sibling files plus
+one support module, verified first-hand by the
+landing lane in its scratch clone (the earlier
+lane's uncommitted work was found there, checked
+file by file and test by test, and reused only
+where it matched these suppositions; its one
+deviation — the readers piece priced at 130 — was
+corrected back to the S3 price before landing).
+The full affected families run green locally on
+the landing head: the five pieces, the Windows
+durations guard, the skip registry and the
+default-posture suite (165 tests, 1 skipped, the
+registered root-process skip). Settled against
+the suppositions one by one:
+
+- Q136-SPLIT-S1: unproven locally, by the
+  supposition's own terms — local time cannot
+  price the Windows cost. The split is a pure
+  move, so the startups divide exactly as S1
+  predicts: 22, 21, 15 and 19 run_main startups
+  across refuse-main, refuse-policies, gates and
+  defaults, and none in readers — 77 in all, no
+  mechanism changed in any test. Whether the
+  cost follows the startups at the S1 rate is
+  what the post-split build-windows verdict
+  decides (S4).
+- Q136-SPLIT-S2: confirmed. The file divided
+  along its class seams exactly as prescribed:
+  refuse-main carries the 22 base RefuseMain
+  entries, refuse-policies the 21 generated
+  entries (the 9 security-mode values and the 12
+  key_policies entries), gates carries
+  RefuseStartupGates, StrictShape and Phase2Startup
+  (18 tests), readers carries RefuseReader (16)
+  and defaults carries DefaultClass and its
+  table pin (20). The shared BASE, STRONG_SECRET,
+  run_main and backend helpers live in
+  runner/tests/decision1_startup_support.py,
+  which the pieces import and which holds no
+  tests of its own. The total after the split is
+  still 97 tests, pinned by the guard below.
+- Q136-SPLIT-S3: confirmed as priced. The
+  checked-in Windows durations table carries
+  refuse-main 340, refuse-policies 330, gates
+  270, defaults 300 and readers 100 — 1,340
+  seconds in all, above the 1,200-second wall
+  the whole file burned past, and no piece above
+  340, less than half the 720-second budget. The
+  old module's 720.0 entry is removed from the
+  table. The test_v2_consult shard pin now covers
+  the four startup pieces (each priced at 270 or
+  more, so none can pack beside its 600); the
+  readers piece carries no startup and is not
+  part of that pin.
+- Q136-SPLIT-S4: the guard half is landed and
+  green. The durations guard pins each piece at
+  its S3 floor price, pins a 400-second ceiling
+  on every piece, pins the old module's absence
+  from the table and its file's absence from the
+  tree, and pins the split family's 97-test count
+  at the per-piece counts of S2; those pins
+  cannot pass against the pre-split table, where
+  the old module stands at 720.0 and none of the
+  five pieces exists. The proof half is NOT
+  claimed: what proves the wall-clock red cleared
+  is the next completed build-windows verdict on
+  a head carrying the split, judged under rule 8
+  with the version-rot family separate — that
+  verdict is a later lane's to read, and this
+  record does not call the red cleared.
+- Q136-SPLIT-S5: holds as landed. This lane
+  touched no file of the load-sensitive family
+  and no file of the version-rot family; the
+  only other files changed are the skip
+  registry (the job_user root-refusal reason now
+  names the gates piece that carries the test)
+  and the default-posture docstring (which now
+  names the split family). If a post-split
+  verdict still shows those families, that is
+  their own record, not evidence against the
+  split; if a piece's shard dies at the wall,
+  the S1 rate is wrong and the piece divides
+  further rather than repricing upward past the
+  400-second ceiling.
+
+This lane cut no release and touched no ship
+state: last_completed stays 3.16.20.3 and
+3.16.20.4 stays failed and spent.
+
 ## Q154: conclusions of the fix lane (2026-11-11)
 
 The fix landed under option 1 at the same
