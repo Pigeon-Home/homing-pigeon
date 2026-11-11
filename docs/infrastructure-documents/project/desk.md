@@ -1691,6 +1691,94 @@ Each supposition is settled against the code in the
 commits that follow this note; the conclusions stand
 at the end of this section when the packet lands.
 
+## The documentation overview, Packet 4: suppositions recorded before the check (2026-11-10)
+
+Packet 4 of the overview takes the remainder of
+`docs/steady/security/`, the `docs/steady/design/` and
+`docs/steady/oracle/` shelves, and the seats drawer
+(`bravo.md` and `questions.md`) — 24 files, each checked
+sentence by sentence against the code and the facts the
+earlier packets settled (the 3.16 line; the 3 confinement
+backends as field-proven; the secure-by-default enforce
+posture; the shipped agent-state guard). As Packet 1
+did, this packet also takes an outside read through
+Argon before its conclusions land; Argon's findings
+stand below under Argon's stamp, with Muse's decisions
+recorded beside them. Suppositions, written before the
+fix pass:
+
+- **P4-S1.** `docs/steady/oracle/senses.md`'s
+  cage-verification passage predates both the
+  secure-by-default landing and the platform backends:
+  it will say the Linux cage gives loopback only in
+  enforce mode and that by default a job's network edge
+  is unrestricted, call the cage opt-in enforcement,
+  describe the Windows cage as per-user WFP rules tied
+  to the job identity, and omit the FreeBSD jail —
+  whose denial is total — entirely.
+- **P4-S2.** The retired documentation layout's paths
+  will run across this packet's reader pages: the
+  senses page's pointers to the DRI playbook and the
+  remediation design, the DRI playbook's pointers to
+  the senses page and the future page, the job
+  review's pointers to the known-failures record and
+  the future page, the remediation design's pointer to
+  the opinion design, the opinion design's pointers to
+  the finished-future note, the specimens file, the
+  live examples and the asymmetric-signing design, the
+  CI runtime note's pointer to the platforms page, the
+  agent-stamp design's pointers to the job review and
+  the stamp-audit baseline, and the extension-review
+  design's pointer to the extensions guide.
+- **P4-S3.** `privacy-design.md` section 1 will count
+  6 guard features and name `runner/tools/posture.py`
+  as the disclosure postures' home; the modes family
+  carries 8 features (the shelter and the agent-state
+  guard joined it), and the disclosure postures are
+  declared in `runner/tools/disclosure.py`. Its
+  section 6 queue and section 8 disposition will
+  record the agent-state guard as queued work, though
+  the guard shipped — the staged-content tool, its
+  mode in `runner/guard/security.py`, and its row in
+  the shipped example config.
+- **P4-S4.** `agent-stamp-design.md` will name
+  `40000e00` as the active questions desk; that stamp
+  stands recycled on the record, its roles carried by
+  the Muse stamp, and the record file it names in
+  capitals (`RESEARCHER_IDENT.md`) stands in lowercase
+  on disk and in its own test.
+- **P4-S5.** `hardening_report.md` and
+  `security-test-plan.md` are dated records; their
+  retired-layout pointers will prove to sit inside
+  the records' own past tense and stand, except any
+  pointer a present-tense passage still sends a
+  reader to.
+- **P4-S6.** `privacy-fremont-research.md`'s
+  `docs/security-*` paths are the Fremont Derby
+  project's own files, surveyed as another project's
+  record, not pointers into this tree — they will
+  check out as written.
+- **P4-S7.** `questions.md`'s retired-layout paths sit
+  inside dated, answered entries — the forum record,
+  which stands unrewritten — and `bravo.md` states
+  the lane rules as they stand; neither will need a
+  correction.
+- **P4-S8.** The packet's remaining present-tense
+  claims will check out against the code:
+  `agent-state-files.md`'s shipped forms (the ignore
+  blocks, the renderings template, the staged guard,
+  its tests), the shelter and warning pages against
+  `runner/oracle/personal_docs.py` and its shelter
+  tool, the attack-v20 delta against
+  `runner/oracle/detection.py`, the Oracle's standing
+  instructions against the briefing assembly, and
+  `privacy-models.md` as the dated literature survey
+  it declares itself.
+
+Each supposition is settled against the code in the
+commits that follow this note; the conclusions stand
+at the end of this section when the packet lands.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
