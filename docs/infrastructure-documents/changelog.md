@@ -4,6 +4,17 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.20.2 - 2026-11-10
+
+- The second release on the 3.16 line, cut the same day as the first: everything that landed after 3.16.20.1 ships here, and the release record is whole again — the tag build's publish path and every mirror stand behind this cut.
+- Confinement, proven harder: the startup gate now trial-spawns a confined process that reads a staged file and writes its work directory before it calls a host able, and the trial stages its tree the way the confined token can actually read. On the Windows rig the confined-read question is answered by field test, not supposition.
+- The Oracle's briefing marks a likely contradiction in the deployment's own instructions inline, beside the standing layer it tensions against, with its audit row and no startup warning. A fallback remediation record now names a refusal, never a job running uncaged.
+- Disclosure posture, stamped by the runner itself: the runner resolves the deployment's assignment at startup and stamps the signed result and its audit row from runner-side state alone; a deployment with no assignment is honestly unstamped, and a retired posture refuses at startup.
+- Protocol version 2 gains the determination decision point: a v2 message that owes a determination may consult both the Oracle and a remote answerer, decide from the combined picture, and record it; with version 2 off, no consult record is written and the dispatch head guards the consult surface.
+- Documentation overview, complete: every document in the set was read sentence by sentence across 9 packets — the README first, the confinement passages checked against what the three backends actually do, the support matrix carrying the field record — with an outside read recorded under its own stamp beside the decisions taken from it.
+- CI: the Windows suite split is duration-balanced — test files packed largest-first by measured durations into shards budgeted at 12 minutes against the standing 20-minute wall — and the split's re-packs are priced from real build logs.
+- Figures: the statistics record is refreshed at this release's head from a fresh measure: 20,555,648 tokens, 1,351,515 tracked lines, 5,301 commits.
+
 ## 3.16.20.1 - 2026-11-10
 
 - The official release on the new 3.16 line. The counter restarts at 1; the token figure is the fresh recount at this cut. Everything recorded under 3.15.20.19 below ships in this release, together with everything that landed after it.
