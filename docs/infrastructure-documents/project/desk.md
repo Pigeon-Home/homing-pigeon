@@ -2684,8 +2684,63 @@ the gate blocks under enforce, the job is never
 refused: the consult degrades to local-only and the
 record says why — a determination is not a refusal.
 
-Conclusions stand at the end of this section when the
-landing is measured.
+Conclusions (2026-11-10, measured against the landing):
+the supposition held on all 3 points. (1) Legacy
+byte-identity: the guard family's legacy fixtures — a
+pre-filed answer's segments, a clean pass's question,
+the absence of any consult segment or audit row under
+the default mode — pass unchanged against the new seam,
+and the execution-invariance pair runs the same job
+under both modes to the same exit code and the same
+output. (2) No arm stalls or refuses: the failure-arm
+family (no answer at deadline 0 and inside a wait, a
+hand-off that raises, a model tier that raises, a gate
+that blocks) degrades each time to the local picture
+with the arm's code in the record, and the seam is
+exercised inside a full mail run without changing the
+run's outcome. (3) Per-field pin-testability: the guard
+family is `runner/tests/test_v2_consult.py` — 99 tests,
+93 of them red on the pristine tree before the build,
+green with it — enumerating each new field
+(`v2_consult`, `v2_question_postures`, the `v2_question`
+mode), every routing row, the record's field order, the
+audit vocabulary, and the startup refusals. The fuzz
+families run in the same file, as executed runs, not
+intentions: a seeded 400-case routing sweep asserting
+`consult_plan` never raises and stays in vocabulary; a
+seeded 300-case config fuzz asserting startup
+validation refuses or accepts and never crashes; a
+bookended answer-text corpus (every ASCII symbol at
+the front and the back, plus NUL, tab, CR and LF, with
+repetition runs at the front, the back and the middle)
+asserting the answer is preserved verbatim in its
+segment and never reaches the consult record or the
+audit detail; and a pump-timing case asserting an
+answer filed inside the wait is timely, never late.
+Neighbour batteries on the landing tree read green:
+324 passed across the protocol, replay, posture,
+briefing, security-config, posture, parity, reader-quiet,
+support-matrix and build-config families, and the
+proof-constraints family with the feature pin moved to
+the nine features the new mode makes. The
+doc-divergences family reads 906 passed and 13 failed
+on the landing tree against 904 passed and 27 failed
+on the base tree in the same cell — every failure in
+the known grep max-matches family, whose count moves
+with the cell's load (a first landing-tree run under
+full parallel load read 56 in the same family); the
+landing adds none. The regression guard reads RED on
+one pre-existing failure — `test_layout`'s stale-path
+check over packet-era text in AGENTS.md and this file —
+proven identical on the base tree without this
+landing; the consult module itself passes standalone
+on every run. The figure refresh is left to the
+release cut's figure pass, as the documentation
+packets settled for their own landings; the core chain
+in AGENTS.md records this landing's growth. What
+remains is the second seat's re-test under rule 8 —
+the hosted legs' verdict and the rig batteries on the
+landed head — before Q139 is called done.
 
 Conclusions (2026-11-10, the same evening): **P7-S1
 refuted as stated** -- the living drafts are not

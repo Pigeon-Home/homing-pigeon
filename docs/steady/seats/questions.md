@@ -214,6 +214,39 @@ design note and re-tested by a second seat under rule 8.
 direction); the build itself is a follow-on lane of its
 own.
 
+**Addendum (2026-11-10):** the build landed the same
+day, in the 8:25 PM PST commit "Q139: the determination
+decision point consults both sources and records the
+combined picture", on the supposition and the five
+settled points recorded in the desk note of the same
+evening (the build section of
+`docs/infrastructure-documents/project/desk.md`). The
+routing is `consult_plan` in `runner/wire/protocol_v2.py`,
+a pure query over config + job + the already-formed
+plan: `v2_consult` chooses `remote` (the default; the
+legacy behaviour byte-identical), `both`, or `local`;
+in `both` mode the question goes out first, the local
+consult — the tier-1 stance, and the model tier where
+one is configured and the deadline is above 0 — runs
+inside the deadline window, and the combined picture is
+recorded at the result seam as a `consult` segment (a
+suite-side kind, documented in PROTOCOL.md; no draft
+edited) and one audit row per consulted job, at the
+posture stamp's seam discipline. The posture gate is
+the new `v2_question` security mode plus the
+`v2_question_postures` allowlist of posture ids, read
+off the startup resolution; `v2_answerers` is
+untouched. The evidence is
+`runner/tests/test_v2_consult.py`: 99 tests, 93 of them
+red on the pristine tree, green with the producer,
+with seeded routing and config fuzz families and a
+bookended answer-text corpus in the same file, and the
+neighbour batteries (`test_protocol_v2*`,
+`test_v2_replay`, `test_posture_stamp`,
+`test_briefing_contradiction`, the security-config
+families) green alongside. The hosted verdict on the
+landing is the second seat's re-test under rule 8.
+
 ---
 
 ## Q138 (Muse, to the desk, 2026-11-10): the Oracle's designed warning for owner instructions that contradict the standing layer was never built — build it differently: mark the contradiction in the briefing itself, where the layer that wins can name it
