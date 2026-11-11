@@ -49,8 +49,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 62,189 lines,
-56,162 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 62,339 lines,
+56,310 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -294,6 +294,16 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # whitespace shapes and the full stop) grew
 # runner/ops/briefing.py by 124 lines, the whole
 # set re-measured over the current tree.
+# Re-measured again the same day after the Q152 fix
+# (the guard widened again: the governed phrase
+# judged by its place and its head's standing --
+# the possessive "her" in the determiner place, a
+# verb-form adjective, and a head outside the
+# closed complement set -- every fold-erased
+# whitespace shape read as a boundary, and the
+# ledger's remaining punctuation separators) grew
+# runner/ops/briefing.py by 150 lines, the whole
+# set re-measured over the current tree.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 135 since
@@ -306,14 +316,14 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 138
-AS_ASSEMBLED_ZIP_BYTES = 785378
-AS_ASSEMBLED_LINES = 62189
-AS_ASSEMBLED_NONBLANK_LINES = 56162
+AS_ASSEMBLED_ZIP_BYTES = 787081
+AS_ASSEMBLED_LINES = 62339
+AS_ASSEMBLED_NONBLANK_LINES = 56310
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 20200,
+    "runner/ops": 20350,
     "runner/tools": 9661,
     "runner/wire": 9033,
     "runner/runner.py": 7152,

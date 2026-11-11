@@ -67,12 +67,12 @@ and again the same day after the job_user postspawn
 fix grew runner/ops by 36 lines, which that landing
 left unrecorded,
 the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->62,189<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->56,162<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->785,378<!--/hp-fig-->-byte zip, and the project's own estimator
-counts it at <!--hp-fig:core_assembled_tokens-->652,102<!--/hp-fig--> tokens; the Gemini figure above still
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->62,339<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->56,310<!--/hp-fig--> non-blank)
+and a <!--hp-fig:core_assembled_zip_bytes-->787,081<!--/hp-fig-->-byte zip, and the project's own estimator
+counts it at <!--hp-fig:core_assembled_tokens-->653,666<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical <!--hp-fig:core_files-->135<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->643,799<!--/hp-fig-->
-tokens across <!--hp-fig:core_lines-->61,342<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->55,416<!--/hp-fig--> non-blank); the 2 token
+estimator counts the canonical <!--hp-fig:core_files-->135<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->645,363<!--/hp-fig-->
+tokens across <!--hp-fig:core_lines-->61,492<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->55,564<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
