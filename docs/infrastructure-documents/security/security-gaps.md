@@ -16,8 +16,11 @@ is the runner**. That is not the whole default picture: all six
 `security.modes` features read `enforce` when unset, and
 confinement engages out of the box on a Linux box with `bwrap`,
 on Windows through its backend, and on FreeBSD through its jail, so
-the job is sandboxed away from `config.json`, the state dir and
-the audit log. Where confinement cannot engage, or where it is set
+on Linux and FreeBSD the job is sandboxed away from `config.json`,
+the state dir and the audit log; on Windows the backend bounds
+the job's token, integrity level and memory but isolates no
+filesystem, and there a same-user job is separated from those
+files only by the identity split and the ACLs below. Where confinement cannot engage, or where it is set
 to `audit` or `off`, every file permission on the box is theater
 against a same-user job itself, because the job can read and
 rewrite all of it. Everything below follows from that.
@@ -45,7 +48,7 @@ readable by the runner principal and not by the job principal.
 | Linux | `job_user` (setuid), `install.py` writes owner-only `0600` | Default is still the same user. POSIX ACLs (`setfacl`) on the base dir should hide the secret from the job user when bwrap is off |
 | macOS | launchd agent as the installing user | `chmod +a` ACLs exist but nothing applies them; the real cage would be `sandbox-exec`, not an ACL |
 | FreeBSD | cron `@reboot` as the user | `setfacl` on ZFS/UFS unapplied; the per-job jail is the confinement backend and engages at `enforce` |
-| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `docs/steady/security/windows.md` documents the account as the identity boundary | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r` — a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity or a restricted token is the stronger cousin |
+| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `docs/steady/security/windows.md` documents the account as the identity boundary | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r` — a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity and a restricted token are the stronger cousins, and they now ship as the Windows confinement backend at `enforce` |
 
 `--posture` already warns about the Windows ACL; it should warn
 about a missing POSIX ACL too.
@@ -54,11 +57,13 @@ about a missing POSIX ACL too.
 are a snapshot today: the Oracle *notices* a write outside the
 workspace after the fact, and remediation (default
 `deterministic`) quarantines the job's outputs, refers and pages on
-that finding; the write itself has happened. An ACL — or the confinement backend where it exists — makes
+that finding; the write itself has happened. An ACL — or a confinement backend with filesystem isolation, where one exists — makes
 the write *fail*. On Linux, bwrap (`security.modes.confinement`) is
 the better tool and should stay the confinement backend; FreeBSD
-has its per-job jail and Windows its backend (Job Object,
-restricted token, low integrity). ACLs matter
+has its per-job jail, whose only writable mount is the workdir.
+The Windows backend (Job Object, restricted token, low
+integrity) bounds the job but isolates no filesystem, so on
+Windows the ACL and the identity split carry this step. ACLs matter
 where confinement is set to `off`, and for macOS, where no cage
 exists yet. The Pi profile already lists
 `/etc/shadow` as a protected path; that path should be *denied* to

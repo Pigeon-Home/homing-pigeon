@@ -78,7 +78,7 @@ Defense in depth, cheapest first:
   config does not set reads as `enforce`. Under `enforce` a sandbox
   that cannot engage (no `bwrap`, user namespaces blocked) refuses to start the runner; a sandbox that breaks after a
   good start falls back loudly and the audit log says `fallback`.
-  Inside the sandbox
+  Inside the Linux sandbox
   the job sees `/usr`, its own workdir, and nothing else; when the
   interpreter lives outside `/usr` (pyenv, a venv, `/opt`), its own
   install prefix is bound read-only too, and that bind is written

@@ -2,7 +2,7 @@
 
 # Sentence review: Homing Pigeon versions 1 and 2 (the -03 texts)
 
-This record is the Phase 2 companion to `docs/design/v3-sentence-review.md`.
+This record is the Phase 2 companion to `docs/infrastructure-documents/design/v3-sentence-review.md`.
 Same method as that pass: the two drafts were read sentence by sentence,
 every checkable statement was extracted into a ledger row, and each row
 was settled against the code and tests on main, against deterministic

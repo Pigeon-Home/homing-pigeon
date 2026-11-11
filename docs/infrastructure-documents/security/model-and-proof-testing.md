@@ -82,9 +82,9 @@ that has passed them still faces the signature in full.
 - **NATS** refuses to start without broker credentials unless
   `allow_unauthenticated` is set to literally `true`; with
   credentials configured, the broker enforces them at connect.
-- **DTLS** checks the shared secret itself as the handshake key
-  before any application message moves — two checks, one secret,
-  stated in those words.
+- **DTLS** checks a key derived from the shared secret as the
+  handshake key before any application message moves — two
+  checks, one secret, stated in those words.
 - **Queues** checks bearer tokens at the hosted edge, compared by
   hash and failing closed, before anything is enqueued or leased.
 
@@ -102,8 +102,10 @@ the job's.
 - Whether the job runs inside the sandbox is a function of the
   configured confinement mode and of whether the mechanism works
   on the machine — of nothing else. No field in the job is read
-  by that decision. Inside the sandbox, the job's writable set is
-  its work directory alone.
+  by that decision. Inside the Linux sandbox and the FreeBSD
+  jail, the job's writable set is its work directory alone; the
+  Windows backend carries no filesystem isolation, and what it
+  bounds is the job's token, integrity level and memory.
 - The visible set grows by one bounded rule only: when the
   interpreter a job names resolves outside `/usr`, that
   interpreter's own install prefix is bound read-only, by a

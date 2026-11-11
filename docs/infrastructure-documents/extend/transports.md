@@ -130,10 +130,12 @@ required gate in front of the signature — not a formality:
   job file at all — and then the signature.
 - **DTLS** has two, and a property none of the others have.
   The session is authenticated before any job crosses it —
-  the shared secret itself is the session's pre-shared key,
-  so the transport's authentication is the same secret doing
-  a second job, not a separate credential — and the signature
-  is checked on every job inside the session, as always. On
+  a key derived from the shared secret (HKDF, info
+  `homing-pigeon dtls psk v1`) is the session's pre-shared
+  key, so the transport's authentication is the same secret
+  doing a second job, not a separate credential — and the
+  signature is checked on every job inside the session, as
+  always. On
   top of the two gates, the session is confidential with
   perfect forward secrecy (see "DTLS — shipped" below).
 
@@ -440,9 +442,10 @@ implemented as a bounded pure-Python profile
   above, taken by the owner's explicit choice.
 - **One profile, enforced.** DTLS 1.3, one ciphersuite
   (TLS_AES_256_GCM_SHA384), PSK-only authentication
-  with the shared secret as the external PSK (identity
-  `homing-pigeon`, or `homing-pigeon:<key_id>` for an
-  additional secret). Key exchange is `psk_dhe_ke` only: a
+  with a key derived from the shared secret as the
+  external PSK (HKDF over the secret, info
+  `homing-pigeon dtls psk v1`; identity `homing-pigeon`,
+  or `homing-pigeon:<key_id>` for an additional secret). Key exchange is `psk_dhe_ke` only: a
   fresh X25519 ephemeral rides every handshake and every
   resumption, and `psk_ke` is never offered or accepted —
   perfect forward secrecy is a requirement of the profile,
@@ -506,9 +509,10 @@ implemented as a bounded pure-Python profile
   refuses, as after a rotation, is followed by one fresh
   handshake under the key itself, and the file is dropped.
 - **One supervisor deviation, stated plainly:** the dtls
-  extension is the one pipe the supervisor hands the shared
-  secret to — because this pipe terminates PSK
-  authentication with it. A pipe that merely carries
+  extension is handed the shared secret by the supervisor
+  — because this pipe terminates PSK authentication with
+  it. The email extension is handed it too when
+  `dtls_via_email` is enabled, for the same reason. A pipe that merely carries
   envelopes (email, file, NATS) is still never handed a
   secret, and every job that arrives over DTLS still faces
   the core's signature check like any other transport's.
@@ -720,9 +724,11 @@ them at shutdown. One extension's death never takes the
 runner or the other transports down. Each extension is handed
 a runtime config file (0600) holding only its own config —
 its `transport_<name>` block, and for email the mailbox keys —
-never the shared secret, with one exception: the dtls
-extension terminates PSK authentication, so it is handed the
-secret material it authenticates with (see "DTLS — shipped").
+never the shared secret, with two exceptions: the dtls
+extension terminates PSK authentication, and the email
+extension does the same when `dtls_via_email` is enabled,
+so each is handed the secret material it authenticates
+with (see "DTLS — shipped").
 Verification is the core's job, not the pipe's. The extension's
 own output lands in `<channel>/extension.log`.
 
