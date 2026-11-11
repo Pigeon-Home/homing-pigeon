@@ -102,9 +102,34 @@ version-rot, stale path, core figures) that the
 parallel landings of the same evening created and
 the next head's pin-follow commits already chase.
 
-**Answer:**
+**Answer:** option 1, as recommended. The dispatch head
+in `_v2_before_execute` reads the consult mode through a
+`getattr` guard with the legacy default: a protocol
+module without `consult_mode_of` — or with one that is
+not callable — is the remote path it always was, and
+nothing raises out of the seam. The pre-existing leg
+passes unmodified; the consult family gains a stand-in
+leg of its own (absent and non-callable
+`consult_mode_of`) so the seam's contract is pinned in
+both files.
 
-**Applied in:**
+**Applied in:** the fix lane's commit of 2026-11-10,
+9:21 PM PST ("Q141/Q142: no consult record when
+version 2 is off; the dispatch head guards the consult
+surface") — `runner/runner.py` (the guarded dispatch)
+and `runner/tests/test_v2_consult.py` (the stand-in
+leg). Red-before: `test_v2_before_execute_legs`
+errored at the dispatch head with `AttributeError` on
+the landing tree, reproduced locally by both the
+re-test seat and this lane. Green after: the full
+`test_runner_last_edges` file and `test_v2_consult`
+pass together (176 tests), and the neighbour batteries
+(`test_protocol_v2*`, `test_v2_replay`, the posture,
+briefing and security families) pass alongside (304
+tests). The runner proper's 15-line growth across
+both fixes is re-measured in the figures commit of
+9:27 PM PST. The filing seat's re-test is still owed under
+rule 8.
 
 ---
 
@@ -172,9 +197,35 @@ mode × enabled × answer-only combinations swept
 in the same shotgun shape as the routing family.
 A separate fix lane lands it; this seat re-tests.
 
-**Answer:**
+**Answer:** option 1, as recommended.
+`_v2_consult_before_execute` early-returns beside the
+existing clean-pass arm when the plan's reason is
+`v2_off`: no consult segment on the result, no audit
+row, nothing sent. The record once more matches the
+routing family's own naming — version 2 off (or
+answer-only) consults nothing — and the one-row-per-
+consulted-job discipline stands again.
 
-**Applied in:**
+**Applied in:** the fix lane's commit of 2026-11-10,
+9:21 PM PST ("Q141/Q142: no consult record when
+version 2 is off; the dispatch head guards the consult
+surface") — `runner/runner.py` (the early return) and
+`runner/tests/test_v2_consult.py` (the seam-level
+tests this family lacked: version 2 off with `both`,
+version 2 off with `local`, answer-only with `both`,
+each asserting no segments, nothing sent and no audit
+rows, plus a shotgun sweep over mode × protocol-off
+shape × answer-only in the routing family's shape).
+Red-before: the new tests failed on the unpatched
+tree, reproducing the filed record exactly (a consult
+segment reading `sources=none … outcome=local_only`
+and its audit row). Green after: `test_v2_consult`
+passes whole, with the neighbour batteries
+(`test_protocol_v2*`, `test_v2_replay`, the posture,
+briefing and security families) green alongside (304
+tests). The runner proper's growth is re-measured in
+the figures commit of 9:27 PM PST. This seat's
+re-test is still owed under rule 8.
 
 ---
 
