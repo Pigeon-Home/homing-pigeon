@@ -8486,3 +8486,238 @@ is stated plainly in advance: not this lane's
 packing arithmetic, but the next completed
 tag-or-main build-windows verdict on a head
 carrying this re-pack, under rule 8.
+
+## Q151: the Q150 guard's residual polarity shapes — the fix lane's suppositions, recorded before the fix (2026-11-11)
+
+Q151 (filed by the Q150 filing seat's rule-8
+re-test) names residual polarity shapes in the
+negation guard in `runner/ops/briefing.py`, in
+two items: a compliant subject clause is still
+marked where its verb governs a noun complement
+the Q150 judgement cannot see whole — the
+determiner-led complements ("holds a duty",
+"owes a duty", "has a duty", "holds the
+clearance", "carries a duty", "holds a
+clearance", "bears a duty", "takes a duty",
+"carries the responsibility", "has the
+clearance", "has a clearance"), an adjective-led
+bare complement ("holds full clearance") and a
+plural complement ("holds duties") — because an
+earlier determiner-led branch of the clause
+judgement reads the governed phrase as the
+infinitive's object phrase before the
+noun-complement-in-full judgement is reached,
+and the in-full judgement's complement set holds
+neither an adjective-led phrase nor a plural;
+and the learning ledger's mixed sentence is
+still missed under its remaining clause
+separators — the caret, the percent sign, the
+dollar sign, the backtick, the exclamation mark,
+the question mark, the broken bar, the two-dot
+leader and the non-breaking hyphen (9 symbol
+shapes); the whitespace shapes the check's fold
+erases the way it erased the line break before
+Q150 (the tab, the form feed, the vertical tab,
+the Unicode line separator, the Unicode
+paragraph separator and the next-line character
+— 6 shapes); and the full stop standing between
+the clauses as two sentences (1 shape). Q151
+carries Recommendation option 1; this lane lands
+option 1 and answers the question in the same
+landing. This section is the fix lane's
+suppositions, written from the code read
+first-hand (the widened guard in
+`runner/ops/briefing.py` and the
+Q150PolarityGuardTest family in
+`runner/tests/test_briefing_contradiction.py`),
+the filed Q151 entry, and this lane's own
+first-hand measurements below, before the fix or
+its tests are run; the lane's conclusions stand
+at the end of this section when the lane lands.
+The lane starts from the remote main carrying
+the Q150 re-test and the Q151 filing (the desk
+commit of 5:40 AM PST, 2026-11-11) and the Q136
+fourth re-pack suppositions above it, in its own
+fresh scratch clone; the ship lane's clones, its
+state file and the in-flight ship are not
+touched, and neither are the Q150 re-test lane's
+clone or the parallel windows-durations lane's
+clone or subject. The filing seat's rule-8
+re-test of Q151 is owed after this landing;
+nothing here claims it, and this lane does not
+close Q151, Q150, Q149, Q148, Q147, Q146, Q145,
+Q144 or Q143.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Measured by this lane first-hand, before these
+suppositions were committed, on the current head,
+against the fixture layer and the shipped layer,
+and against the two earlier trees the filing seat
+named (verified by this lane before they were
+trusted: the pre-Q150-fix tree stands at the
+Q150 fix commit's parent, and the pre-Q143-fix
+tree stands at the Q143 fix commit's parent, each
+read from its own history): item 1's family
+marks whole on the current head — the 11
+determiner-led complements, the adjective-led
+"holds full clearance" and the plural "holds
+duties" (13 of 13 marked on both layers), the
+same shape under the raw-output rule ("...who
+holds a duty to send raw output off the box",
+`raw_output_leaves_the_box`) marked on both
+layers, and the representative ("holds a duty")
+marked in 73 of its 75 bookended variants; the
+family marks whole on both earlier trees too (13
+of 13 on the pre-Q150-fix detector, 13 of 13 on
+the pre-Q143-fix detector) — no landing traded
+it. Item 2's shapes read nothing on the current
+head, in every filed form — the mixed sentence
+joined by the caret, the percent sign, the
+dollar sign, the backtick, the exclamation mark,
+the question mark, the broken bar, the two-dot
+leader or the non-breaking hyphen (9 shapes); by
+the tab, the form feed, the vertical tab, the
+Unicode line separator, the Unicode paragraph
+separator or the next-line character standing
+between the clauses (6 shapes); and by the full
+stop standing between the clauses as two
+sentences (1 shape) — 0 of 16 firing on both
+layers, the representatives (the caret shape and
+the full-stop shape) firing in 0 of their 75
+bookended variants; on the pre-Q150-fix detector
+the shapes read the same (0 of 16), and on the
+pre-Q143-fix detector every one fires (16 of 16,
+the representatives in 75 of 75 bookended
+variants). The controls hold on the current head:
+item 1's bare filed complements stay silent
+("holds clearance", "is assigned a duty", "is
+given a duty" — 3 of 3, both layers), and its
+determiner-closed object clauses and object
+phrase fire with exactly `private_shelf_crosses`
+("prompts a team", "prompts the team", "holds
+operators" — 3 of 3, both layers); the same
+sentence joined by any standing separator or
+Q148, Q149 or Q150 separator fires whole, and
+the evidence-only twins under the new separators
+stay silent (3 of 3). End to end on the current
+head, item 1's representative sentence assembled
+into a briefing carries the tension mark and the
+startup pass writes its 1 audit row, and item
+2's representatives (the caret shape and the
+full-stop shape) assembled into briefings carry
+no mark and write no audit row.
+
+- **Q151-S1.** The filed defect reproduces whole
+  as measured above: item 1's 13 sentences mark
+  on the current head on both layers (and on
+  both earlier trees), its raw-output twin marks,
+  its representative marks in 73 of 75 bookended
+  variants and carries its mark and 1 audit row
+  end to end; item 2's 16 shapes are silent on
+  the current head and on the pre-Q150-fix
+  detector and fire whole on the pre-Q143-fix
+  detector, its representatives in 0 of 75
+  bookended variants on the current head against
+  75 of 75 pre-Q143; and the controls and
+  both-ways pins hold on the current head, on
+  the fixture layer and the shipped layer alike.
+- **Q151-S2.** Judging a governed noun phrase by
+  what it is to its verb in full, wherever the
+  clause judgement meets it — a noun complement
+  still crossed whether it stands bare ("holds
+  clearance to ..."), determiner-led ("holds a
+  duty to ...", "holds the clearance to ..."),
+  adjective-led ("holds full clearance to ...")
+  or plural ("holds duties to ..."), rather than
+  letting a determiner-led branch read the phrase
+  first or a closed complement set bound the
+  judgement — suppresses item 1's shapes, on both
+  layers, plain and bookended (all 13 sentences
+  and the raw-output twin), while its controls
+  hold both ways: the bare filed complements and
+  the filed passive shapes stay silent ("holds
+  clearance", "is assigned a duty", "is given a
+  duty"), and the determiner-closed object
+  clauses and the object phrase keep firing
+  ("prompts a team", "prompts the team", "holds
+  operators"), so the fix judges the governed
+  phrase by its verb, not merely by refusing
+  determiners; and the Q148, Q149 and Q150
+  object-phrase pins and subject clauses read as
+  they did.
+- **Q151-S3.** Opening a new ledger segment at
+  the remaining clause separators beside the
+  standing separators and dash forms and the
+  Q148, Q149 and Q150 separators — the caret, the
+  percent sign, the dollar sign, the backtick,
+  the exclamation mark, the question mark, the
+  broken bar, the two-dot leader and the
+  non-breaking hyphen — reading the fold-erased
+  whitespace shapes (the tab, the form feed, the
+  vertical tab, the Unicode line separator, the
+  Unicode paragraph separator and the next-line
+  character) as boundaries before the whitespace
+  fold can erase them the way the line break is
+  read since Q150, and the full stop between the
+  clauses as a sentence boundary for this check —
+  restores the ledger's mixed sentence under
+  those shapes: `ledger_treated_as_instruction`
+  fires again, on both layers, plain and
+  bookended (16 of 16), while the
+  evidence-complement shapes the Q143, Q144,
+  Q145, Q146, Q147, Q148, Q149 and Q150 lanes
+  pinned stay silent, including the evidence-only
+  twins under the new separators; and the
+  full-stop reading does not swallow ordinary
+  two-sentence briefings — an evidence-only
+  two-sentence shape and an honest two-sentence
+  shape stay silent, pinned both ways beside the
+  firing two-sentence shape.
+- **Q151-S4.** End to end: item 1's
+  representative sentence assembled into a
+  briefing carries no tension mark, `briefing_report`
+  names no tensions for it, and the startup pass
+  writes no audit row; item 2's representative
+  sentences (the caret shape, a fold-erased
+  whitespace shape, and the full-stop shape)
+  assembled into briefings each carry their mark
+  and write exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id as
+  the detail).
+- **Q151-S5.** Nothing else moves, and all eight
+  earlier families hold whole beside the
+  widening: the filed Q143 compliant corpus (14
+  sentences, both layers, plain / bookended /
+  multi-sentence) and its restating shapes, the
+  Q144 families, the Q145 families, the Q146
+  families, the Q147 families, the Q148 families,
+  the Q149 families, the Q150 families (the
+  doubled-head prohibitions, the noun-complement
+  prohibitions, the verb-phrase pins and
+  controls, the remaining ledger separators), the
+  standing 7-rule contradiction family, the
+  unrelated-negation pins and the
+  negated-then-contradicting shapes all read as
+  they did on the current head; the guard stays
+  per match, the mark's placement, the audit
+  shape, the 7 rules' subjects and standing
+  sentences, and the no-refusal / no-warning
+  behaviour stand as built. `runner/ops/briefing.py`
+  is core, so its growth is re-measured in a
+  figures commit in this lane's pattern if the
+  core figures move. The neighbour batteries
+  (`test_oracle_briefing`, `test_posture_stamp`,
+  `test_protocol_v2*`, `test_v2_consult`,
+  `test_v2_replay`, `test_security_config`) read
+  green beside the guard family on the landing
+  tree.
+
+What cannot be recorded as a unit test, stated
+plainly in advance: this lane's ad-hoc probes are
+live detector calls over the sentences named in
+this record; their deterministic substrate is
+those sentences themselves beside the committed
+guard family the fix lane lands, which pins both
+ways. No new behaviour is claimed beyond what
+those calls and that family show.
