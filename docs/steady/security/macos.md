@@ -395,3 +395,145 @@ each supposition now stands on, stated exactly:
   landed, the escape, network and limits points
   unproven — and no field proof on project hardware is
   claimed: there is no Mac in the project's own fleet.
+
+## The second live verdict (2026-11-11)
+
+The live word has since landed, and it is failure again.
+Two `test-macos` jobs on heads carrying the fix above
+have completed with failure verdicts (build runs
+43101076872 and 43105044003; the newer on the tree this
+section's suppositions were written on, its `test-macos`
+job completing at 1:53 PM PST on 2026-11-11, on macOS
+15.8.2, the arm64 image, under the hosted Python 3.12.10).
+All 7 tests in the live class failed, in exactly the
+shape of the first verdict: the confined spawn aborted
+with exit -6 and produced no output on either stream —
+the probe's trial could not read its staged file, the
+escape, network and limits points again produced no
+evidence either way, and the limits read-back came back
+empty. The verdict was read first-hand from the job log
+before anything below was supposed.
+
+What that verdict settles about the first fix, stated
+exactly: S1 is wrong as a diagnosis of the abort, as its
+own record provided in advance ("if a head carrying that
+fix still aborts at -6, S1 is wrong"). The data-size-only
+shim changed the spawn's limits and the abort did not
+move at all, so the address-space limit was not the
+mechanism — or not the whole of it. S2's substrate proof
+stands (the profile text names the canonical twins it
+was built to name), and S3's seam proof stands; neither
+was ever exercised live, because the confined process
+still dies before any of them can be. One further fact
+the log carries: the startup probe — `sandbox-exec`
+starting `/usr/bin/true` under an allow-by-default
+profile — passes on the same host, so the tool works and
+a simply-confined native process starts; the abort lives
+in what this backend's own spawn adds on top of that:
+its deny-by-default profile, its launcher shim, or the
+limit the shim sets. The suppositions below are built to
+separate those three, and the fix that follows them
+carries a live bisect that names the culprit in the next
+verdict if the fix itself misses.
+
+## Suppositions for the second fix, recorded before the fix
+
+Recorded 2026-11-11, after the second verdict above and
+before any second fix was written, from a first-hand read
+of the failing job log, of `runner/guard/macos_confine.py`
+as the first fix left it, and of two outside records of
+deny-by-default Seatbelt profiles that do start processes
+on current macOS (an independent project's published
+allowlist, and a second project's fix for the identical
+failure shape on a newer macOS, named below for exactly
+what it is: corroboration by analogy, not proof for this
+host).
+
+- R2-S1, the root listing (the primary supposition).
+  Every process that starts on macOS reads the listing
+  of the root directory as it starts, and a process that
+  is refused that read is aborted — stopped at start
+  with SIGABRT, before it can print anything. That is
+  the published shape of this exact failure in the
+  second outside record: each process under a Seatbelt
+  profile stopped at start with SIGABRT, `/usr/bin/true`
+  included, because "the process reads the listing of
+  the root directory, and the profile gave `/` only its
+  metadata"; the fix there was one line, an allowance
+  of `file-read-data` on the literal `/`, which "gives
+  the names at the top of the disk" and "nothing below
+  them". This backend's profile gives `/` less than
+  that: its read line names subpath trees (`/System`,
+  `/usr`, and the rest) and no rule names the root
+  itself at all, so the root's listing is denied by the
+  deny-by-default base. The supposed mechanism fits
+  every fact on record: the abort is below the
+  interpreter (no output on either stream, no traceback
+  a Python-level refusal would print), it is identical
+  across both rounds (neither round's profile named the
+  root), and the allow-by-default probe passes because
+  that profile denies nothing. The fix this supposition
+  calls for: the profile carries exactly that one line
+  — `(allow file-read-data (literal "/"))` — and no
+  subpath grant on `/`, so nothing below the top of the
+  disk is readable by it. If a head carrying that line
+  still aborts at -6, R2-S1 is wrong and this record
+  says so in advance.
+- R2-S2, the system startup trees under `/private`.
+  Working deny-by-default allowlists name, beside the
+  familiar system trees, three `/private` trees this
+  backend's profile does not: `/private/var/db/dyld`
+  (the dynamic loader's own database, read as every
+  process's libraries are bound), `/private/var/db/timezone`
+  (the tree `/etc/localtime` points into, read as a
+  process learns its timezone), and `/private/var/select`
+  (the tool-selection links, which `/bin/sh` reads at
+  every start). This backend's `SYSTEM_READ_PATHS` names
+  `/private/etc` and nothing else under `/private` — the
+  one twin the first backend happened to carry — so all
+  three reads fall under the deny-by-default base. A
+  refused loader or timezone read at startup is the same
+  abort grade as R2-S1's: it lands in the loader or the
+  system library, below the interpreter, with nothing
+  printed. The fix this supposition calls for: the three
+  trees join `SYSTEM_READ_PATHS`, read-only like the
+  rest of that set, named once each. Which of R2-S1 and
+  R2-S2 carries the abort — either, or both — the next
+  live verdict cannot separate if the fix lands both at
+  once, and that is accepted plainly: the live bisect
+  below separates the profile from the shim, and the two
+  profile grants are both minimal, named, system-only
+  reads of the kind every working allowlist on record
+  carries.
+- R2-S3, the standing alternative: the data-size limit
+  itself. The 512 MiB `RLIMIT_DATA` the shim sets was
+  present in both failing rounds, so it cannot be
+  cleared by the round-over-round comparison that
+  cleared the address-space limit: if the second
+  `exec`'s startup — the loader binding the job
+  interpreter under a data ceiling already in force —
+  is what aborts, the profile grants above change
+  nothing. This round does not act on R2-S3 in the
+  production spawn, for one stated reason: round two
+  changed only the limits and the abort did not move,
+  so the profile is the variable this round changes,
+  one variable at a time. Instead the live suite gains
+  the bisect that convicts or clears each suspect in a
+  single verdict: a spawn under the generated profile
+  alone (no shim, no limit), a spawn through the shim
+  alone (no profile), and a native binary through the
+  full confined chain. If the next verdict still shows
+  -6 on the full chain, those three points' pattern
+  names which of the profile, the shim's limit, or the
+  chain itself is the cause, and this record says so in
+  advance.
+
+What is not supposed: that Seatbelt allowed any escape
+(no escape point has ever been exercised — the process
+dies before them), that the first fix's canonical twins
+were wrong (their substrate stands proven, and the
+staged file's canonical name was already in the profile
+in both rounds), or that the outside records prove
+anything about this host (they are the reason these
+three mechanisms are supposed first; the CI macOS legs
+remain the only field proof this platform has).
