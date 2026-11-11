@@ -1,6 +1,6 @@
 {
-  "bytes": 36169,
-  "fetched_at": "2026-11-06T15:21:54Z",
+  "bytes": 36948,
+  "fetched_at": "2026-11-11T15:35:44Z",
   "files": {
     "COPYING": {
       "bytes": 1838,
@@ -11,12 +11,12 @@
       "sha384": "ea1a6052f328d691b11b876f42c6cde47d0afea2407d45961725012ce542f7f003ffae8009988d5f61eadf9f35c92cf8"
     },
     "scripts/base/protocols/dns/main.zeek": {
-      "bytes": 22888,
-      "sha384": "2a98b5e0a1afade441dbfec009ded0b586b19abd4396c3296e6301e380b80e8897e8c03227f1eee15d623a2937dfca4c"
+      "bytes": 23667,
+      "sha384": "c469a9a07e140480000f64c97b7f04c7d626cc34024364f30ac7964c00da90cc64c95e3dada85188186fbd95b28c51ee"
     }
   },
   "license": "BSD-3-Clause",
-  "pin": "5862ccc5e13e6127cda5932a7f18aaf070c8b63b",
+  "pin": "5a6529c8a60600ac732f4e6dce84a5407a8cddb2",
   "ref": "master",
   "repo": "https://github.com/zeek/zeek"
 }
