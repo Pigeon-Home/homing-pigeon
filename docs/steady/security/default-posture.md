@@ -136,6 +136,29 @@ with the evidence:
   pin both halves (startup: `test_decision1_startup.py`,
   `test_windows_platform_proofs.py`; job time:
   `test_confinement.py`, `test_security_parity.py`).
+  **S5 — refreshed (2026-11-11).** The step-downs above are
+  the record of the tree as measured on 2026-11-09; neither
+  chain runs a job weaker now. Under `enforce`, a
+  confinement that cannot engage at job time — the sandbox
+  unavailable, its command not buildable, a malformed
+  confinement block, or a platform backend that cannot
+  engage — is a denial: the confinement decision is a pure
+  query that answers every configuration with a decision
+  and never raises, and for a denial it answers with no
+  command to run, writing the same warning and the same
+  `fallback` audit entry as before; the job boundary
+  refuses the job on that denial, so the job is refused
+  end to end and never runs unsandboxed, on any backend.
+  The job user refuses in the same shape: not root, an
+  unresolvable user, or a workdir that cannot be chown'd
+  each record the `fallback` first and then refuse the
+  job, instead of running it as the current user. `audit`
+  and `off` are unchanged. The two softer degradations
+  have moved too: audience at `enforce` with no runner id
+  now refuses startup instead of warning once and skipping
+  the check, and the job user at `enforce` with no user
+  named is named at startup and in the posture report as
+  not engaged, instead of engaging nothing silently.
 - **S6 — confirmed, with the exception where it was expected.**
   The README posture table (lines 229–262) and the SECURITY.md
   confinement and job-user sections (lines 533–590) describe
@@ -194,12 +217,27 @@ The review's two charges, as the tree answers them:
    however well recorded. Two quieter gaps stand beside them:
    an audience check skipped for want of a runner id, and a
    job-user mode that reads enforce while engaging nothing.
+   Refreshed (2026-11-11): that step-down has since been
+   retired — under `enforce` both chains now refuse the job
+   rather than run it weaker, as the refresh beside the S5
+   finding records, and the two quieter gaps have closed
+   beside them, the audience check refusing at startup for
+   want of a runner id and the unengaged job-user mode
+   named at startup and in the posture report.
 
 ## The phase-2 plan
 
 Behavior changes, in the order the evidence supports. None of
 these are made by the commits that carry this page; each lands
 with its own tests when it is taken up.
+
+Status (2026-11-11): items 1 and 2 have since landed, in the
+shape they state — under `enforce` the job is refused, never
+run weaker — and items 3 and 4 have landed beside them: a job
+user that engages nothing is named at startup and in the
+posture report as not engaged, and audience at `enforce`
+without a runner id refuses startup, closing the
+warn-and-skip path.
 
 1. **Confinement at enforce fails the job, not open.** When
    the sandbox cannot engage or its command cannot be built
