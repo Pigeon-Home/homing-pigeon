@@ -1265,6 +1265,82 @@ Each supposition is settled against the code in the
 commits that follow this note; the conclusions stand
 at the end of this section when the packet lands.
 
+Conclusions (2026-11-10, the same evening): **P3-S1
+confirmed** — the networking page's job ran as the
+runner's admin account with an unrestricted edge and
+its cage named only the Linux sandbox with the
+Windows cage parked; the trust-boundary account, the
+cage account and the diagram now state the shipped
+defaults (the separate job user on POSIX, the
+confinement spawn on Windows, loopback-only on Linux,
+no network at all on FreeBSD, and the Windows
+backend's lack of a network control stated plainly,
+WFP rules still unbuilt). **P3-S2 confirmed** — the
+tier-1 confinement row now names all 3 backends, and
+the tier-3 version 3 row now records the shipped
+carriage (`runner/wire/dtls_mailbox.py`, gated by
+`dtls_via_email`); the counts held (28 extension
+folders, 5 shipped transports, both verified against
+the tree). **P3-S3 confirmed** — the sending page's
+code-level claims all held, and the page now states
+the reply-to-self default beside its `--reply-to`
+account: without the flag the result goes to the
+runner's mailbox, and a system sending for a user
+addresses the result to the user, naming the price of
+a different destination up front. **P3-S4 confirmed,
+and wider than supposed** — beyond the 5 broken
+relative links, the retired layout's paths ran across
+the project shelf (the de_dust pages, hosting, the
+roadmap spec, the telephone-pole pages, the
+finished-future note, contributing, the handoff note,
+the industry map) and the fuzzing page; every one now
+names the file's current home, and a closing scan of
+all 27 files finds no broken link and no missing
+path. **P3-S5 confirmed with 1 exception class** —
+the dated records stand untouched, but present-tense
+capability claims sitting inside otherwise dated
+pages were corrected where they state today's facts:
+the handoff note's queues row and open item (the
+queues transport ships), the other-uses survey's
+sandboxing gap (sandboxing ships, enforce by
+default; the gap is per-class resource profiles),
+and the industry map's unused integrity-levels line
+and its self-contradicting Oracle-log item. The
+fuzzing page's slotted figures match the recorded
+facts; a live measure of the core has since drifted
+36 lines in `runner/ops` past those facts, and the
+refresh that settles it belongs to the release cut's
+figure pass, not to this packet. **P3-S6
+confirmed** — the idea321 runbook's confinement row
+now names all 3 backends. **P3-S7 confirmed** — the
+extensions catalog counts are exact (28 folders
+shipping, 25 pinned, the table's 17 + 8 rows).
+
+Findings past the suppositions: the Docker page's
+image verification named a `cosign verify` no
+workflow performs — the image carries a Sigstore
+build-provenance attestation, verified by digest
+with `gh attestation verify`, as the verification
+page already stated; the own-cloud page's queue
+example could not run as written (it named no HMAC
+secret, which the sender requires) and now carries
+one; the contributing page's release instructions
+waited on 9 CI jobs where the build workflow now
+defines 17. Files checked with no findings: the
+local-SI test page, the Pi Light readiness page, the
+platforms page, the extensions page, de_dust2,
+fy_iceworld, the runner-line-reduction runbook and
+the telephone-pole vocabulary. Guard evidence on the
+landing tree: the reader-quiet, support-matrix and
+SECURITY-claims sets read 13 passed with 11 subtests;
+the figure check is clean; the doc-divergences set
+reads 907 passed and 17 failed, against 904 passed
+and 24 failed on the pristine tree in the same pass —
+the packet's fixes cured 7 of the pristine failures
+and added none, and the 17 that remain are the
+pre-existing grep max-matches family this cell's
+runs have carried throughout.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
