@@ -33,9 +33,9 @@ process with `setrlimit` and then `exec`s the job's command,
 the macOS shape of the FreeBSD backend's `limits(1)` step,
 which macOS has no equivalent of. `sandbox-exec` wraps the
 shim, so the profile is in force before the shim's first
-line runs, and the job never runs a line unconfined; the
-profile file is generated per job and removed when the job's
-process exits.
+line runs, and the job never runs a line unconfined. The
+profile is generated per job and passed to `sandbox-exec`
+as an argument; it is never written to a file.
 
 What this does not provide, plainly:
 

@@ -2371,12 +2371,15 @@ def platform_modes(platform=None):
     both (confinement: Job Object + restricted token + low
     integrity; job_user: the Job Object ceiling), and FreeBSD
     has a confinement backend (jail + no network + spawn
-    resource limits), but the
+    resource limits), and macOS has a confinement backend
+    (Seatbelt profile + no network + spawn resource limits),
+    but the
     installer writes the seed without running the backend probe
     on the target machine, and stating enforce sight-unseen
     risks a first-start refusal on a machine where a control
     cannot engage -- so a fresh Windows install states both at
     audit, a fresh FreeBSD install states confinement at audit,
+    a fresh macOS install states confinement at audit,
     in the file, in the open, and the operator steps a
     mode up to enforce deliberately, with the startup gate then
     verifying the probe on that machine. On other non-Linux
@@ -2390,6 +2393,8 @@ def platform_modes(platform=None):
         platform = sys.platform
     if platform == "win32":
         return {"confinement": "audit", "job_user": "audit"}
+    if platform == "darwin":
+        return {"confinement": "audit"}
     if not platform.startswith("linux"):
         return {"confinement": "audit"}
     return {}

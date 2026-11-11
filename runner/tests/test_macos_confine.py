@@ -1,0 +1,813 @@
+# Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+"""macOS Seatbelt containment for confinement: the seams.
+
+Backend (runner/guard/macos_confine.py) wired into the
+confinement gates. The darwin code cannot execute on this
+host, so the gates run through the injection seams: the
+startup gate's decision table with a scripted backend, the
+argv gate with sys.platform patched, and the spawn seam
+against a fake backend. The profile writer, the launcher
+shim's argv builder and the trial orchestration are
+platform-neutral (they stand above the backend's platform
+branch), so they are exercised directly here on any host,
+per field, with a bookended fuzz family around the text the
+profile generator takes. The live class runs only on a macOS
+host (the CI macos-15 and macos-15-intel legs), where the
+backend is real.
+
+The honesty pins matter most: no audit record may name a
+control the backend does not apply (there is no jail, no
+namespace and no App Sandbox entitlement in this backend),
+and every failure lands in the refuse direction.
+"""
+import os
+import random
+import string
+import subprocess
+import sys
+import tempfile
+import types
+import unittest
+from unittest import mock
+
+_REPO = os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))
+if _REPO not in sys.path:
+    sys.path.insert(0, _REPO)
+
+import runner.runner as rr
+from runner.guard import macos_confine as MC
+from runner.ops import remediation_ops as REM
+from runner.ops import install as INS
+from runner.ops import setup as SU
+
+
+def _ccfg(mode):
+    return {"security": {"modes": {"confinement": mode}}}
+
+
+def _sec(mode, sink):
+    sec = mock.Mock()
+    sec.sec_mode.return_value = mode
+
+    def _write(base_dir, feature, decision, reason, **kw):
+        sink.append({"feature": feature, "decision": decision,
+                     "reason": reason, "kw": kw})
+    sec.write_audit_entry.side_effect = _write
+    return sec
+
+
+def _backend(problem=None, apply_error=None):
+    backend = types.SimpleNamespace()
+
+    def _probe(cfg=None, timeout=15):
+        if isinstance(problem, Exception):
+            raise problem
+        return problem
+
+    backend.macos_startup_problem = _probe
+    backend.macos_confinement_problem = _probe
+    backend.IS_MACOS_BACKEND = True
+    backend.STATUS_CONFINEMENT = MC.STATUS_CONFINEMENT
+    backend.spawned = []
+
+    def _spawn(argv, cwd=None, env=None, user=None):
+        if apply_error is not None:
+            raise apply_error
+        proc = types.SimpleNamespace(
+            pid=31337, returncode=None,
+            confinement_status=backend.STATUS_CONFINEMENT,
+            closed=False)
+        proc.close = lambda: setattr(proc, "closed", True)
+        backend.spawned.append(
+            {"argv": argv, "cwd": cwd, "env": env, "user": user,
+             "proc": proc})
+        return proc
+
+    backend.spawn_confined_process = _spawn
+    return backend
+
+
+class BackendStubTest(unittest.TestCase):
+    """The module itself, on a host that is not macOS."""
+
+    def setUp(self):
+        if MC.IS_MACOS_BACKEND:
+            self.skipTest("the stub exists only off darwin")
+
+    def test_import_is_safe_and_the_probe_refuses(self):
+        problem = MC.macos_startup_problem()
+        self.assertIsInstance(problem, str)
+        self.assertIn("macOS-only", problem)
+        self.assertIn("macOS-only", MC.macos_confinement_problem())
+
+    def test_spawn_raises_off_darwin(self):
+        with self.assertRaises(RuntimeError):
+            MC.spawn_confined_process(["/bin/sh", "-c", "true"])
+
+    def test_the_status_names_exactly_the_three_controls(self):
+        self.assertEqual(
+            MC.STATUS_CONFINEMENT,
+            "macos: seatbelt_profile + no_network + spawn_resource_limits")
+        self.assertEqual(
+            MC.CONFINEMENT_CONTROLS,
+            ("seatbelt_profile", "no_network", "spawn_resource_limits"))
+
+    def test_the_status_names_nothing_the_backend_does_not_apply(self):
+        # No jail, no namespace, no App Sandbox entitlement and
+        # no Seatbelt memory rule exists in this backend.
+        for word in ("jail", "namespace", "sandbox-exec",
+                     "app_sandbox", "rctl", "bwrap"):
+            self.assertNotIn(word, MC.STATUS_CONFINEMENT)
+
+
+class ProfileWriterFieldTest(unittest.TestCase):
+    """build_profile, one field at a time."""
+
+    def test_the_shape_is_fixed_and_denies_by_default(self):
+        profile = MC.build_profile("/work/job1")
+        lines = profile.splitlines()
+        self.assertEqual(lines[0], "(version 1)")
+        self.assertEqual(lines[1], "(deny default)")
+        self.assertIn("(deny network*)", lines)
+        self.assertNotIn("(allow network", profile)
+
+    def test_workdir_field_is_the_one_writable_tree(self):
+        profile = MC.build_profile("/work/job1")
+        self.assertIn('(allow file-write* (subpath "/work/job1"))',
+                      profile)
+        other = MC.build_profile("/work/job2")
+        self.assertIn('(subpath "/work/job2")', other)
+        self.assertNotIn("/work/job1", other)
+
+    def test_workdir_field_also_reads(self):
+        profile = MC.build_profile("/work/job1")
+        read_line = [ln for ln in profile.splitlines()
+                     if ln.startswith("(allow file-read*")][0]
+        self.assertIn('(subpath "/work/job1")', read_line)
+
+    def test_system_read_paths_field_is_the_named_set(self):
+        profile = MC.build_profile("/work/job1")
+        for path in MC.SYSTEM_READ_PATHS:
+            self.assertIn('(subpath "%s")' % path, profile, path)
+
+    def test_interpreter_field_adds_its_install_prefix(self):
+        profile = MC.build_profile(
+            "/work/job1", interpreter="/srv/hp-python/bin/python3")
+        self.assertIn('(subpath "/srv/hp-python")', profile)
+
+    def test_interpreter_field_inside_the_system_trees_adds_nothing(self):
+        bare = MC.build_profile("/work/job1")
+        with_interp = MC.build_profile(
+            "/work/job1", interpreter="/usr/bin/python3")
+        self.assertEqual(bare, with_interp)
+
+    def test_interpreter_field_never_names_a_user_home(self):
+        profile = MC.build_profile(
+            "/work/job1", interpreter="/Users/alice/bin/python3")
+        self.assertIn('(subpath "/Users/alice/bin")', profile)
+        self.assertNotIn('(subpath "/Users/alice")', profile)
+
+    def test_interpreter_field_bare_name_must_resolve(self):
+        with self.assertRaises(RuntimeError):
+            MC.build_profile(
+                "/work/job1",
+                interpreter="hp-no-such-interpreter-zz9")
+
+    def test_read_paths_field_adds_each_tree_once(self):
+        profile = MC.build_profile(
+            "/work/job1", read_paths=("/data/inputs", "/data/inputs",
+                                      "/data/more"))
+        self.assertEqual(profile.count('(subpath "/data/inputs")'), 1)
+        self.assertIn('(subpath "/data/more")', profile)
+
+    def test_read_paths_field_rejects_a_relative_path(self):
+        with self.assertRaises(RuntimeError):
+            MC.build_profile("/work/job1", read_paths=("relative/in",))
+
+    def test_the_writer_is_deterministic(self):
+        kw = dict(interpreter="/srv/hp-python/bin/python3",
+                  read_paths=("/data/inputs",))
+        self.assertEqual(MC.build_profile("/work/job1", **kw),
+                         MC.build_profile("/work/job1", **kw))
+
+    def test_workdir_must_be_absolute(self):
+        with self.assertRaises(RuntimeError):
+            MC.build_profile("work/job1")
+
+    def test_workdir_must_be_a_nonempty_string(self):
+        for bad in ("", None, 123, b"/work/job1"):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.build_profile(bad)
+
+    def test_workdir_must_not_carry_control_characters(self):
+        for bad in ("/work/a\x00b", "/work/a\rb", "/work/a\nb",
+                    "/work/a\tb", "/work/a\x0bb", "/work/a\x0cb",
+                    "/work/a\x7fb"):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.build_profile(bad)
+
+    def test_a_quote_in_a_path_is_escaped_not_injected(self):
+        profile = MC.build_profile('/work/a"b')
+        self.assertIn('(subpath "/work/a\\"b")', profile)
+        # The escaped quote adds no new line and no new rule:
+        # the line count is the fixed shape's.
+        self.assertEqual(len(profile.splitlines()),
+                         len(MC.build_profile("/work/x").splitlines()))
+
+    def test_a_backslash_in_a_path_is_escaped(self):
+        profile = MC.build_profile("/work/a\\b")
+        self.assertIn('(subpath "/work/a\\\\b")', profile)
+
+    def test_profile_syntax_characters_in_a_path_stay_inert(self):
+        # Parentheses, semicolons and comment marks inside the
+        # quoted string cannot start a rule of their own.
+        profile = MC.build_profile("/work/a);(deny default)#x")
+        self.assertIn('(subpath "/work/a);(deny default)#x")', profile)
+        self.assertEqual(
+            [ln for ln in profile.splitlines()
+             if ln == "(deny default)"], ["(deny default)"])
+        self.assertNotIn("(allow network", profile)
+
+
+class ShimFieldTest(unittest.TestCase):
+    """build_shim_argv, one field at a time."""
+
+    def test_the_argv_shape_is_fixed(self):
+        out = MC.build_shim_argv(["/bin/echo", "hi"])
+        self.assertEqual(out[0], sys.executable)
+        self.assertEqual(out[1], "-c")
+        self.assertEqual(out[2], MC.LIMIT_SHIM_SOURCE)
+        self.assertEqual(out[5:], ["/bin/echo", "hi"])
+
+    def test_memory_field_defaults_to_the_named_ceiling(self):
+        out = MC.build_shim_argv(["/bin/true"])
+        self.assertEqual(out[3], str(512 * 1024 * 1024))
+        self.assertEqual(MC.DEFAULT_PROCESS_MEMORY_BYTES,
+                         512 * 1024 * 1024)
+
+    def test_memory_field_carries_the_given_ceiling(self):
+        out = MC.build_shim_argv(["/bin/true"], memory_bytes=1024)
+        self.assertEqual(out[3], "1024")
+
+    def test_memory_field_rejects_a_non_ceiling(self):
+        for bad in (0, -1, True, False, "512", 1.5, None):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.build_shim_argv(["/bin/true"], memory_bytes=bad)
+
+    def test_user_field_defaults_to_the_no_user_mark(self):
+        self.assertEqual(MC.build_shim_argv(["/bin/true"])[4], "-")
+
+    def test_user_field_carries_the_named_user(self):
+        out = MC.build_shim_argv(["/bin/true"], user="nobody")
+        self.assertEqual(out[4], "nobody")
+
+    def test_user_field_rejects_an_unnamable_user(self):
+        for bad in ("", "a:b", "a\nb", "a\rb", "a\x00b", 123):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.build_shim_argv(["/bin/true"], user=bad)
+
+    def test_command_field_must_be_a_nonempty_string_list(self):
+        for bad in ([], (), "ls", ["/bin/true", 1], [""], None):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.build_shim_argv(bad)
+
+    def test_the_shim_source_sets_limits_then_execs(self):
+        src = MC.LIMIT_SHIM_SOURCE
+        self.assertIn("RLIMIT_AS", src)
+        self.assertIn("RLIMIT_DATA", src)
+        self.assertIn("setrlimit", src)
+        self.assertIn("os.execvp(argv[0], argv)", src)
+        # The limits are set before the exec, in source order.
+        self.assertLess(src.index("setrlimit"), src.index("os.execvp"))
+
+
+class SandboxArgvFieldTest(unittest.TestCase):
+    """build_sandbox_argv: the composed spawn argv."""
+
+    def test_the_shape_is_sandbox_exec_profile_shim(self):
+        argv, profile = MC.build_sandbox_argv(
+            ["/usr/bin/python3", "s.py"], cwd="/work/job1")
+        self.assertEqual(argv[0], MC.SANDBOX_EXEC_BIN)
+        self.assertEqual(argv[0], "/usr/bin/sandbox-exec")
+        self.assertEqual(argv[1], "-p")
+        self.assertEqual(argv[2], profile)
+        self.assertEqual(argv[3], sys.executable)
+        self.assertEqual(argv[4], "-c")
+
+    def test_cwd_field_drives_the_profile_workdir(self):
+        _argv, profile = MC.build_sandbox_argv(
+            ["/bin/echo"], cwd="/work/elsewhere")
+        self.assertIn('(subpath "/work/elsewhere")', profile)
+
+    def test_memory_and_user_fields_reach_the_shim(self):
+        argv, _profile = MC.build_sandbox_argv(
+            ["/bin/echo"], cwd="/work/j", memory_bytes=2048,
+            user="nobody")
+        self.assertIn("2048", argv)
+        self.assertEqual(argv[argv.index("2048") + 1], "nobody")
+
+    def test_an_unresolvable_interpreter_is_a_refusal(self):
+        with self.assertRaises(RuntimeError):
+            MC.build_sandbox_argv(
+                ["hp-no-such-interpreter-zz9"], cwd="/work/j")
+
+
+class ProfileFuzzTest(unittest.TestCase):
+    """The bookended fuzz family around the profile writer.
+
+    Every symbol on the ASCII table, at the front AND the back
+    of the text the generator takes, as single characters and
+    as runs of 10, in the middle as well as at the edges, plus
+    the non-printing edge cases and symbol-only strings. The
+    invariants, for every input: the writer either refuses it
+    (a path carrying NUL, CR or LF) or returns the fixed-shape
+    profile -- the same number of lines, the network denial
+    standing, no network allow rule, and the input present
+    exactly as the writer's own quoting writes it.
+    """
+
+    BASE = "/work/hp-job"
+
+    def _cases(self):
+        symbols = string.punctuation + " \t"
+        cases = []
+        for ch in symbols:
+            cases.append(ch + self.BASE)
+            cases.append(self.BASE + ch)
+            cases.append(ch * 10 + self.BASE)
+            cases.append(self.BASE + ch * 10)
+            cases.append(self.BASE + "/" + ch * 10 + "/x")
+            cases.append(ch * 10)
+        for ch in ("\x00", "\r", "\n", "\x0b", "\x0c", "\x7f"):
+            cases.append(ch + self.BASE)
+            cases.append(self.BASE + ch)
+            cases.append(self.BASE + ch * 10)
+        cases.append("")
+        cases.append("/")
+        return cases
+
+    def test_bookended_symbols_never_break_the_profile_shape(self):
+        ran = 0
+        refused = 0
+        for value in self._cases():
+            ran += 1
+            try:
+                profile = MC.build_profile(value)
+            except RuntimeError:
+                refused += 1
+                # Only a control-bearing or non-absolute input
+                # may be refused.
+                self.assertTrue(
+                    any(ord(c) < 0x20 or ord(c) == 0x7f for c in value)
+                    or not value.startswith("/"), repr(value))
+                continue
+            self.assertEqual(
+                len(profile.splitlines()),
+                len(MC.build_profile(self.BASE).splitlines()),
+                repr(value))
+            self.assertIn("(deny network*)", profile)
+            self.assertNotIn("(allow network", profile)
+            self.assertIn(MC._sb_quote(value), profile, repr(value))
+        self.assertGreater(ran, 200)
+        self.assertGreater(refused, 0)
+
+    def test_bookended_symbols_never_break_the_shim_user_field(self):
+        ran = 0
+        for ch in string.punctuation + " \t\x00\r\n":
+            for value in (ch + "nobody", "nobody" + ch,
+                          ch * 10 + "nobody", "nobody" + ch * 10):
+                ran += 1
+                try:
+                    out = MC.build_shim_argv(["/bin/true"], user=value)
+                except RuntimeError:
+                    self.assertTrue(
+                        ":" in value
+                        or any(ord(c) < 0x20 or ord(c) == 0x7f
+                               for c in value),
+                        repr(value))
+                    continue
+                self.assertEqual(out[4], value)
+        self.assertGreater(ran, 100)
+
+    def test_random_text_keeps_the_invariants(self):
+        rng = random.Random(20261111)
+        alphabet = string.printable + "\x00\x7f"
+        ran = 0
+        for _ in range(300):
+            text = "".join(rng.choice(alphabet)
+                           for _ in range(rng.randrange(0, 30)))
+            value = "/work/" + text
+            ran += 1
+            try:
+                profile = MC.build_profile(value)
+            except RuntimeError:
+                self.assertTrue(
+                    any(ord(c) < 0x20 or ord(c) == 0x7f for c in value),
+                    repr(value))
+                continue
+            self.assertNotIn("(allow network", profile)
+            self.assertIn("(deny network*)", profile)
+            self.assertIn(MC._sb_quote(value), profile)
+        self.assertEqual(ran, 300)
+
+
+class _FakeTrialProc:
+    """The confined-process shape the trial drives, scripted."""
+
+    def __init__(self, out=b"", err=b"", returncode=0, work=None,
+                 write_file=False, timeout=False):
+        self._out = out
+        self._err = err
+        self.returncode = returncode
+        self._work = work
+        self._write_file = write_file
+        self._timeout = timeout
+        self.killed = False
+        self.closed = False
+
+    def communicate(self, timeout=None):
+        if self._timeout:
+            raise subprocess.TimeoutExpired("trial", timeout)
+        if self._write_file and self._work is not None:
+            with open(os.path.join(self._work, "trial-out.txt"),
+                      "w") as fh:
+                fh.write("hp-confinement-trial\n")
+        return self._out, self._err
+
+    def kill(self):
+        self.killed = True
+
+    def close(self):
+        self.closed = True
+
+
+class ConfinementTrialProblemTest(unittest.TestCase):
+    """confinement_trial_problem through scripted spawn seams."""
+
+    def _spawn(self, proc_factory, record):
+        def _spawn(argv, cwd=None, env=None):
+            record["argv"] = argv
+            record["cwd"] = cwd
+            record["staged_existed"] = all(
+                os.path.exists(p) for p in argv[1:])
+            record["staged_inside_work"] = all(
+                p == cwd or p.startswith(cwd + os.sep)
+                for p in argv[1:])
+            return proc_factory(cwd)
+        return _spawn
+
+    def test_trial_ok_answers_none_and_cleans_up(self):
+        record = {}
+        spawn = self._spawn(
+            lambda work: _FakeTrialProc(
+                out=b"TRIAL-READ-OK\nTRIAL-WRITE-OK\n",
+                work=work, write_file=True), record)
+        self.assertIsNone(MC.confinement_trial_problem(spawn))
+        self.assertTrue(record["staged_existed"])
+        self.assertTrue(record["staged_inside_work"])
+        root = os.path.dirname(record["cwd"])
+        self.assertFalse(os.path.exists(root))
+
+    def test_trial_read_failure_names_the_staged_read(self):
+        record = {}
+        spawn = self._spawn(
+            lambda work: _FakeTrialProc(
+                out=b"", err=b"PermissionError: [Errno 1] denied",
+                returncode=1), record)
+        problem = MC.confinement_trial_problem(spawn)
+        self.assertIsNotNone(problem)
+        self.assertIn("could not read its staged file", problem)
+
+    def test_trial_write_failure_names_the_work_write(self):
+        record = {}
+        spawn = self._spawn(
+            lambda work: _FakeTrialProc(
+                out=b"TRIAL-READ-OK\n",
+                err=b"PermissionError: [Errno 1] denied",
+                returncode=1), record)
+        problem = MC.confinement_trial_problem(spawn)
+        self.assertIsNotNone(problem)
+        self.assertIn("could not write its work directory", problem)
+
+    def test_trial_spawn_failure_names_the_spawn(self):
+        def _spawn(argv, cwd=None, env=None):
+            raise RuntimeError("sandbox-exec failed: 71")
+        problem = MC.confinement_trial_problem(_spawn)
+        self.assertIsNotNone(problem)
+        self.assertIn("confined trial spawn failed", problem)
+        self.assertIn("sandbox-exec failed: 71", problem)
+
+    def test_trial_timeout_names_the_timeout_and_kills(self):
+        record = {}
+        holder = {}
+
+        def _factory(work):
+            holder["proc"] = _FakeTrialProc(timeout=True)
+            return holder["proc"]
+
+        spawn = self._spawn(_factory, record)
+        problem = MC.confinement_trial_problem(spawn, timeout=3)
+        self.assertIsNotNone(problem)
+        self.assertIn("timed out", problem)
+        self.assertTrue(holder["proc"].killed)
+        self.assertTrue(holder["proc"].closed)
+
+
+class ConfinementStartupGateTest(unittest.TestCase):
+    """confinement_startup_problem: darwin consults the backend."""
+
+    def test_engageable_backend_lets_enforce_start(self):
+        self.assertIsNone(rr._confinement_startup_problem(
+            _ccfg("enforce"), platform="darwin",
+            backend=_backend(None)))
+
+    def test_unengageable_backend_refuses_and_names_why(self):
+        problem = rr._confinement_startup_problem(
+            _ccfg("enforce"), platform="darwin",
+            backend=_backend("sandbox-exec cannot start"))
+        self.assertIsNotNone(problem)
+        self.assertIn("confinement cannot engage on darwin", problem)
+        self.assertIn("sandbox-exec cannot start", problem)
+
+    def test_a_backend_that_raises_still_refuses(self):
+        problem = rr._confinement_startup_problem(
+            _ccfg("enforce"), platform="darwin",
+            backend=_backend(RuntimeError("module gone")))
+        self.assertIsNotNone(problem)
+        self.assertIn("module gone", problem)
+
+    def test_audit_and_off_are_never_refused_by_the_gate(self):
+        for mode in ("audit", "off"):
+            self.assertIsNone(rr._confinement_startup_problem(
+                _ccfg(mode), platform="darwin",
+                backend=_backend("cannot engage")), mode)
+
+    def test_non_darwin_is_untouched_by_the_backend(self):
+        self.assertIsNone(rr._confinement_startup_problem(
+            _ccfg("enforce"), platform="linux",
+            backend=_backend("cannot engage")))
+
+    def test_simulated_darwin_refusal_is_deterministic(self):
+        if MC.IS_MACOS_BACKEND:
+            self.skipTest(
+                "the simulated darwin refusal is deterministic "
+                "off darwin")
+        problem = rr._confinement_startup_problem(
+            _ccfg("enforce"), platform="darwin")
+        self.assertEqual(
+            problem,
+            "confinement (bwrap) is Linux-only; "
+            "this machine is darwin")
+
+
+class ConfinementArgvTest(unittest.TestCase):
+    """_confinement_argv on a simulated darwin: the argv gate."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.base = self.tmp.name
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _run(self, mode, backend):
+        sink = []
+        with mock.patch.object(sys, "platform", "darwin"), \
+                mock.patch.object(rr, "_security", _sec(mode, sink)):
+            out = rr._confinement_argv(
+                _ccfg(mode), self.base, "j1", ["python"], "script.py",
+                self.base, [], {}, backend=backend)
+        return out, sink
+
+    def test_engageable_backend_returns_the_normal_argv(self):
+        out, _sink = self._run("enforce", _backend(None))
+        self.assertEqual(out, (["python", "script.py"], True, False))
+
+    def test_unengageable_backend_denies_the_job(self):
+        out, sink = self._run("enforce", _backend("not a mac"))
+        self.assertEqual(out, ([], True, False))
+        self.assertEqual(sink[0]["decision"], "fallback")
+        self.assertEqual(sink[0]["reason"], "confinement_unavailable")
+
+
+class ConfinementSpawnTest(unittest.TestCase):
+    """_confinement_spawn: the sandbox-exec creation-time seam."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.base = self.tmp.name
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _secmap(self, modes, sink):
+        sec = mock.Mock()
+        sec.sec_mode.side_effect = lambda cfg, name: modes.get(
+            name, "off")
+
+        def _write(base_dir, feature, decision, reason, **kw):
+            sink.append({"feature": feature, "decision": decision,
+                         "reason": reason, "kw": kw})
+        sec.write_audit_entry.side_effect = _write
+        return sec
+
+    def _run(self, cfg, modes, backend="unset"):
+        sink = []
+        kw = {} if backend == "unset" else {"backend": backend}
+        with mock.patch.object(sys, "platform", "darwin"), \
+                mock.patch.object(REM.os, "name", "posix"), \
+                mock.patch.object(rr, "_security",
+                                  self._secmap(modes, sink)):
+            out = REM._confinement_spawn(
+                cfg, self.base, "j1", ["/bin/sh", "s.sh"],
+                self.base, {}, **kw)
+        return out, sink
+
+    def test_other_platforms_are_a_noop(self):
+        sink = []
+        with mock.patch.object(sys, "platform", "linux"), \
+                mock.patch.object(REM.os, "name", "posix"), \
+                mock.patch.object(rr, "_security",
+                                  self._secmap(
+                                      {"confinement": "enforce"}, sink)):
+            out = REM._confinement_spawn(
+                _ccfg("enforce"), self.base, "j1", ["/bin/sh", "s.sh"],
+                self.base, {}, backend=_backend(None))
+        self.assertIsNone(out)
+        self.assertEqual(sink, [])
+
+    def test_audit_and_off_spawn_nothing(self):
+        for mode in ("audit", "off"):
+            out, _sink = self._run(
+                _ccfg(mode), {"confinement": mode},
+                backend=_backend(None))
+            self.assertIsNone(out, mode)
+
+    def test_enforce_spawns_and_records_exactly_the_controls(self):
+        backend = _backend(None)
+        (proc, release), sink = self._run(
+            _ccfg("enforce"), {"confinement": "enforce"},
+            backend=backend)
+        self.assertEqual(proc.pid, 31337)
+        self.assertEqual(len(sink), 1)
+        self.assertEqual(sink[0]["feature"], "confinement")
+        self.assertEqual(sink[0]["decision"], "confined")
+        self.assertEqual(
+            sink[0]["reason"],
+            "macos: seatbelt_profile + no_network + spawn_resource_limits")
+        self.assertNotIn("jail", sink[0]["reason"])
+        release()
+        self.assertTrue(proc.closed)
+
+    def test_enforce_hands_the_job_user_to_the_spawn(self):
+        backend = _backend(None)
+        cfg = {"security": {
+            "modes": {"confinement": "enforce",
+                      "job_user": "enforce"},
+            "job_user": {"user": "nobody"}}}
+        self._run(cfg, {"confinement": "enforce",
+                        "job_user": "enforce"}, backend=backend)
+        self.assertEqual(backend.spawned[0]["user"], "nobody")
+
+    def test_no_user_is_handed_over_when_job_user_is_not_enforce(self):
+        backend = _backend(None)
+        cfg = {"security": {
+            "modes": {"confinement": "enforce"},
+            "job_user": {"user": "nobody"}}}
+        self._run(cfg, {"confinement": "enforce"}, backend=backend)
+        self.assertIsNone(backend.spawned[0]["user"])
+
+    def test_enforce_spawn_failure_refuses_and_records_fallback(self):
+        backend = _backend(None, apply_error=RuntimeError("sb 71"))
+        sink_modes = {"confinement": "enforce"}
+        sink = []
+        with mock.patch.object(sys, "platform", "darwin"), \
+                mock.patch.object(REM.os, "name", "posix"), \
+                mock.patch.object(rr, "_security",
+                                  self._secmap(sink_modes, sink)):
+            with self.assertRaises(rr.JobRejected):
+                REM._confinement_spawn(
+                    _ccfg("enforce"), self.base, "j1",
+                    ["/bin/sh", "s.sh"], self.base, {},
+                    backend=backend)
+        self.assertEqual(sink[0]["decision"], "fallback")
+        self.assertEqual(sink[0]["reason"],
+                         "macos_confinement_failed")
+
+
+class SeedShapeTest(unittest.TestCase):
+    """The seed keeps the other backends' pattern: stated, not probed."""
+
+    def test_platform_modes_states_confinement_audit_only(self):
+        self.assertEqual(INS.platform_modes("darwin"),
+                         {"confinement": "audit"})
+
+    def test_a_fresh_darwin_seed_states_confinement_audit(self):
+        cfg = {"security": {"modes": {
+            "confinement": "enforce", "job_user": "enforce"}}}
+        SU.seed_platform_modes(cfg, platform="darwin")
+        self.assertEqual(cfg["security"]["modes"]["confinement"],
+                         "audit")
+        # job_user is a POSIX demote and engages on macOS; the
+        # seed does not state it down.
+        self.assertEqual(cfg["security"]["modes"]["job_user"],
+                         "enforce")
+
+
+@unittest.skipUnless(MC.IS_MACOS_BACKEND, "run on macOS")
+class LiveBackendTest(unittest.TestCase):
+    """The real backend, on a macOS host (the CI legs)."""
+
+    def test_the_probe_engages(self):
+        self.assertIsNone(MC.macos_startup_problem())
+        self.assertIsNone(MC.macos_confinement_problem())
+
+    def test_a_spawn_runs_inside_the_profile(self):
+        with tempfile.TemporaryDirectory() as work:
+            proc = MC.spawn_confined_process(
+                [sys.executable, "-c",
+                 "print('IN-PROFILE'); "
+                 "open('note.txt', 'w').write('x'); "
+                 "print('WROTE-WORK')"],
+                cwd=work, env=dict(os.environ))
+            out, _err = proc.communicate(timeout=30)
+            rc = proc.returncode
+            proc.close()
+            self.assertEqual(rc, 0)
+            self.assertIn(b"IN-PROFILE", out)
+            self.assertIn(b"WROTE-WORK", out)
+            self.assertTrue(os.path.exists(
+                os.path.join(work, "note.txt")))
+
+    def test_an_escape_write_does_not_land(self):
+        target = os.path.join(
+            tempfile.gettempdir(),
+            "hp-escape-%s.txt" % os.urandom(6).hex())
+        with tempfile.TemporaryDirectory() as work:
+            proc = MC.spawn_confined_process(
+                [sys.executable, "-c",
+                 "import sys\n"
+                 "try:\n"
+                 "    open(sys.argv[1], 'w').write('x')\n"
+                 "    print('WRITE-LANDED')\n"
+                 "except OSError:\n"
+                 "    print('WRITE-DENIED')\n", target],
+                cwd=work, env=dict(os.environ))
+            out, _err = proc.communicate(timeout=30)
+            proc.close()
+            self.assertIn(b"WRITE-DENIED", out)
+            self.assertFalse(os.path.exists(target))
+
+    def test_an_escape_read_does_not_return_contents(self):
+        with tempfile.TemporaryDirectory() as host, \
+                tempfile.TemporaryDirectory() as work:
+            secret = os.path.join(host, "secret.txt")
+            with open(secret, "w") as fh:
+                fh.write("HOST-SECRET-CONTENTS")
+            proc = MC.spawn_confined_process(
+                [sys.executable, "-c",
+                 "import sys\n"
+                 "try:\n"
+                 "    print(open(sys.argv[1]).read())\n"
+                 "except OSError:\n"
+                 "    print('READ-DENIED')\n", secret],
+                cwd=work, env=dict(os.environ))
+            out, _err = proc.communicate(timeout=30)
+            proc.close()
+            self.assertIn(b"READ-DENIED", out)
+            self.assertNotIn(b"HOST-SECRET-CONTENTS", out)
+
+    def test_a_network_attempt_is_refused(self):
+        with tempfile.TemporaryDirectory() as work:
+            proc = MC.spawn_confined_process(
+                [sys.executable, "-c",
+                 "import socket\n"
+                 "try:\n"
+                 "    socket.create_connection("
+                 "('127.0.0.1', 9), timeout=3)\n"
+                 "    print('NET-OPEN')\n"
+                 "except OSError:\n"
+                 "    print('NET-DENIED')\n"],
+                cwd=work, env=dict(os.environ))
+            out, _err = proc.communicate(timeout=30)
+            proc.close()
+            self.assertIn(b"NET-DENIED", out)
+
+    def test_the_spawn_limits_are_carried_by_the_job(self):
+        with tempfile.TemporaryDirectory() as work:
+            proc = MC.spawn_confined_process(
+                [sys.executable, "-c",
+                 "import resource\n"
+                 "print(resource.getrlimit(resource.RLIMIT_AS)[0])\n"
+                 "print(resource.getrlimit(resource.RLIMIT_DATA)[0])\n"],
+                cwd=work, env=dict(os.environ))
+            out, _err = proc.communicate(timeout=30)
+            proc.close()
+            limits = [int(x) for x in out.decode().split()]
+            self.assertEqual(
+                limits, [MC.DEFAULT_PROCESS_MEMORY_BYTES] * 2)
+
+
+if __name__ == "__main__":
+    unittest.main()

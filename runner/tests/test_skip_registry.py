@@ -245,6 +245,21 @@ REGISTERED = {
         "FreeBSD host as root (the fleet FreeBSD node), where a "
         "real jail can engage; everywhere else the stub and the "
         "injection seams are the subject",
+    "the stub exists only off darwin":
+        "test_macos_confine's stub tests are exercised on every "
+        "host that is not macOS, where the Seatbelt backend is "
+        "a stub; on darwin the real backend is the subject and "
+        "the stub shape does not exist there",
+    "the simulated darwin refusal is deterministic off darwin":
+        "test_macos_confine's simulated-darwin startup refusal "
+        "runs deterministically on hosts that are not macOS; "
+        "on a real macOS host the backend's own probe answers "
+        "instead",
+    "run on macOS":
+        "test_macos_confine's live backend tests run on a "
+        "macOS host (the CI macos-15 and macos-15-intel legs), "
+        "where a real Seatbelt profile can engage; everywhere "
+        "else the stub and the injection seams are the subject",
     "peak RSS is read from /proc":
         "test_de_dust2's synthetic-grow memory peak reads "
         "/proc/self/status; runs on Linux, skipped where /proc is absent",

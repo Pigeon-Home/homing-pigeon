@@ -73,6 +73,29 @@ def _freebsd_confine(backend=None):
     except ImportError:
         return None
 
+
+def _macos_confine(backend=None):
+    """The macOS containment backend module, or None.
+
+    The mirror of _freebsd_confine for runner/guard/
+    macos_confine.py, imported lazily the same way. `backend`
+    is the tests' injection point. None when it cannot be
+    imported at all: callers read that as "cannot engage",
+    which keeps every gate in its refuse direction.
+    """
+    if backend is not None:
+        return backend
+    try:
+        from runner.guard import macos_confine
+        return macos_confine
+    except ImportError:
+        pass
+    try:
+        from guard import macos_confine  # type: ignore
+        return macos_confine
+    except ImportError:
+        return None
+
 def _finish_remediation(cfg, st, monitor, job, job_id, work,
                         base_dir, script_path, proc=None):
     """Close out a monitored job: acts, record, member.
@@ -460,15 +483,35 @@ def confinement_startup_problem(cfg, platform=None, backend=None):
     the deterministic Linux-only refusal, exactly as job_user's
     gate does. The FreeBSD branch is the same shape against
     runner/guard/freebsd_confine.py (jail + no network + spawn
-    resource limits). Off win32 and FreeBSD this returns None
-    and changes nothing: the bwrap gate in ops/main.py is the
-    confinement gate there.
+    resource limits), and the darwin branch against
+    runner/guard/macos_confine.py (Seatbelt profile + no
+    network + spawn resource limits). Off win32, FreeBSD and
+    darwin this returns None and changes nothing: the bwrap
+    gate in ops/main.py is the confinement gate there.
     """
     if platform is None:
         platform = sys.platform
     sec = _runner()._security
     if sec is None or sec.sec_mode(cfg, "confinement") != "enforce":
         return None
+    if platform == "darwin":
+        backend = _macos_confine(backend)
+        if backend is not None and getattr(
+                backend, "IS_MACOS_BACKEND", False):
+            probe = getattr(backend, "macos_confinement_problem",
+                            None)
+            if probe is None:
+                return ("confinement cannot engage on darwin: "
+                        "the backend has no confinement probe")
+            try:
+                problem = probe(cfg)
+            except Exception as e:  # a backend that cannot answer
+                problem = str(e)    # has not shown it can engage
+            if problem is None:
+                return None
+            return "confinement cannot engage on darwin: %s" % problem
+        return ("confinement (bwrap) is Linux-only; "
+                "this machine is %s" % platform)
     if platform.startswith("freebsd"):
         backend = _freebsd_confine(backend)
         if backend is not None and getattr(
@@ -512,11 +555,12 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
     """Spawn a job process under platform confinement, or None.
 
     Returns None when the seam does not apply -- every platform
-    but win32 and FreeBSD, and every confinement mode but
-    enforce -- so the caller uses its ordinary spawn. On win32
-    at enforce it returns (proc, release): proc is the Windows
-    backend's confined process (the Popen subset exec drives),
-    and release closes its handles once the process has exited.
+    but win32, FreeBSD and darwin, and every confinement mode
+    but enforce -- so the caller uses its ordinary spawn. On
+    win32 at enforce it returns (proc, release): proc is the
+    Windows backend's confined process (the Popen subset exec
+    drives), and release closes its handles once the process
+    has exited.
     On FreeBSD at enforce the same shape comes from the FreeBSD
     backend (runner/guard/freebsd_confine.py): the jail is
     created first and the job started inside it via jexec, and
@@ -525,21 +569,76 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
     FreeBSD spawn, which applies it at the jail door (jexec -u)
     -- the Popen preexec demote cannot ride a spawn that
     replaces Popen, the same reason the Windows creation-time
-    token exists. A backend that cannot engage refuses the job
-    here, after the fallback record: under enforce a job never
-    falls through to an unconfined spawn. The success record
-    names exactly the controls applied, in the backend's own
-    status string ("windows: job_object + restricted_token +
-    low_integrity" / "freebsd: jail + no_network +
-    spawn_resource_limits").
+    token exists. On darwin at enforce the same shape comes
+    from the macOS backend (runner/guard/macos_confine.py):
+    sandbox-exec applies the per-job Seatbelt profile to the
+    launcher shim, which sets the spawn limits (and drops to
+    the handed-over user, at the spawn door, the same reason)
+    before it execs the job. A backend that cannot engage
+    refuses the job here, after the fallback record: under
+    enforce a job never falls through to an unconfined spawn.
+    The success record names exactly the controls applied, in
+    the backend's own status string ("windows: job_object +
+    restricted_token + low_integrity" / "freebsd: jail +
+    no_network + spawn_resource_limits" / "macos:
+    seatbelt_profile + no_network + spawn_resource_limits").
     """
     is_windows = os.name == "nt"
     is_freebsd = sys.platform.startswith("freebsd")
-    if not is_windows and not is_freebsd:
+    is_darwin = sys.platform == "darwin"
+    if not is_windows and not is_freebsd and not is_darwin:
         return None
     sec = _runner()._security
     if sec is None or sec.sec_mode(cfg, "confinement") != "enforce":
         return None
+    if is_darwin:
+        backend = _macos_confine(backend)
+
+        def _audit_mac(decision, reason, detail=""):
+            try:
+                sec.write_audit_entry(
+                    base_dir, "confinement", decision, reason,
+                    job_id=str(job_id), detail=str(detail), cfg=cfg,
+                    mode="enforce")
+            except Exception:
+                pass
+
+        user = None
+        if sec.sec_mode(cfg, "job_user") == "enforce":
+            secblock = cfg.get("security") \
+                if isinstance(cfg, dict) else None
+            secblock = secblock if isinstance(secblock, dict) else {}
+            ju = secblock.get("job_user")
+            ju = ju if isinstance(ju, dict) else {}
+            if isinstance(ju.get("user"), str) and ju.get("user"):
+                user = ju["user"]
+        try:
+            if backend is None:
+                raise RuntimeError(
+                    "macos confinement backend is unavailable")
+            spawn = getattr(backend, "spawn_confined_process", None)
+            if spawn is None:
+                raise RuntimeError(
+                    "macos confinement backend has no confined spawn")
+            proc = spawn(argv, cwd=cwd, env=env, user=user)
+        except Exception as e:
+            _audit_mac("fallback", "macos_confinement_failed", e)
+            raise _runner().JobRejected(
+                "confinement could not be applied on darwin "
+                "(%s); job refused under "
+                "security.modes.confinement=enforce" % (e,))
+        status = getattr(proc, "confinement_status", None) \
+            or getattr(backend, "STATUS_CONFINEMENT", None) \
+            or "macos: seatbelt_profile + no_network + spawn_resource_limits"
+        _audit_mac("confined", status)
+
+        def _release_mac():
+            try:
+                proc.close()
+            except Exception:
+                pass
+
+        return proc, _release_mac
     if is_freebsd:
         backend = _freebsd_confine(backend)
 

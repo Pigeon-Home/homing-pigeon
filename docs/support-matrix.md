@@ -17,9 +17,11 @@ Levels used below:
 - **Supported, reduced confinement** — built and tested, the
   runner runs with its full authentication and policy posture,
   but confinement on this platform is weaker than the Linux
-  namespace sandbox: on macOS there is no confinement backend,
-  so `confinement` at enforce refuses to start and the operator
-  must consciously choose a lower mode; on Windows the backend
+  namespace sandbox: on macOS the backend applies a Seatbelt
+  profile (system trees and the interpreter's prefix readable,
+  the work directory the only writable tree, no network) with
+  spawn resource limits — a profile over the host filesystem,
+  not a namespace or a jail; on Windows the backend
   applies resource limits, a restricted token and a low
   integrity level, with no namespace isolation. The startup
   posture printout says which.
@@ -36,7 +38,7 @@ Levels used below:
 | Linux, minimal userland | **Supported** | Same as x86-64 where bwrap is present | Enforce available (POSIX) | Full; Pi Light profile = deterministic Oracle, no local LLM | Dedicated minimal-userland workflow |
 | Linux as root | **Supported** | Same as x86-64 | Enforce available | Full | Linux-root switch-proof legs in CI |
 | Raspberry Pi (Pi Light) | **Supported** | Same as Linux ARM64 | Enforce available (POSIX) | Deterministic only (by design — no local model) | Pi Light build leg; the profile is a config choice, not a separate codebase |
-| macOS (Intel and Apple silicon) | **Supported, reduced confinement** | Not available (bwrap is Linux-only; confinement at enforce refuses to start — fail-closed, never silent) | Enforce available (POSIX) | Full | macOS build legs (macos-15); full suite in 3 shards in CI (3,388 + 3,355 + 3,363 tests at the last full run recorded before this file landed). A Seatbelt (`sandbox-exec`) confinement backend is the known path to full parity; not built yet |
+| macOS (Intel and Apple silicon) | **Supported, reduced confinement** | Enforce available via the macOS backend (bwrap is Linux-only): a Seatbelt profile generated per job and applied by `sandbox-exec` — deny-by-default, the system trees and the job interpreter's own install prefix readable, the job's work directory the only writable tree, and no network at all (the profile names no network allow rule) — with a 512 MiB per-process memory ceiling applied at spawn as resource limits by a small launcher shim; the audit record names exactly "macos: seatbelt_profile + no_network + spawn_resource_limits". Startup probes the backend — the tool present, a generated profile that parses, and a confined trial spawn that reads a staged file and writes its work directory — and refuses when it cannot engage. It is a profile over the host filesystem, not a namespace and not a jail | Enforce available (POSIX); when confinement also engages, the named user is applied inside the launcher shim at spawn | Full | macOS build legs (macos-15 and macos-15-intel); full suite in 3 shards in CI (3,388 + 3,355 + 3,363 tests at the last full run recorded before this file landed). The confinement backend's live tests run in those CI legs (probe, confined spawn, escape write and read refused, network refused, spawn limits carried); there is no Mac in the project's own fleet, so no field proof on project hardware is claimed for this backend |
 | Windows x86-64 | **Supported, reduced confinement** | Enforce available via the Windows backend: a Job Object memory ceiling (512 MiB per process), a restricted token (privileges stripped, Administrators group disabled) and a low integrity level, applied at creation — the audit record names exactly "windows: job_object + restricted_token + low_integrity". No filesystem namespace isolation: a confined job can still read any path its token can read. Startup probes the backend and refuses when it cannot engage | Enforce available via a Job Objects backend: a per-process memory ceiling assigned as each job starts, and a job that cannot be assigned is refused; the POSIX setuid demote itself does not exist here | Full | Windows build leg (windows-latest); Windows switch-proof legs in CI. Field-proven on the project's own Windows rig: the full 17-step rig battery passed at every security mode enforce on 2026-11-10 — the startup probe engaged, the escape write was blocked, a 700 MiB allocation was refused by the ceiling, tampered and wrong-audience jobs were rejected, and the production install stood untouched throughout (the escape read succeeded, as the confinement column states: the token's reads are not walled). The Job Objects backend carries job_user with the memory ceiling only; an AppContainer backend for confinement parity is not built yet |
 | Windows ARM64 | **Supported, reduced confinement** | As Windows x86-64 | As Windows x86-64 | Full | windows-11-arm build leg |
 | Docker (GHCR image) | **Supported** | Inherits the host kernel's answer above | Inherits host | Full | docker workflow; image attested by digest; sums verifiable per docs/steady/verification.md |
@@ -100,8 +102,10 @@ Not yet true, stated plainly so this file stays honest:
   the platform table): Linux confines with a namespace sandbox;
   FreeBSD confines with a per-job jail; Windows confines with
   resource limits, a restricted token and a low integrity
-  level, and no namespace isolation; macOS has no confinement
-  backend.
+  level, and no namespace isolation; macOS confines with a
+  per-job Seatbelt profile and spawn resource limits, a
+  profile over the host filesystem rather than a separate
+  root.
 
 *Maintenance rule for this file: when a platform leg, a workflow,
 or a support level changes, this file changes in the same commit —

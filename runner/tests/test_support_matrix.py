@@ -63,12 +63,19 @@ class SupportMatrixTest(unittest.TestCase):
 
     def test_confinement_honesty_lines_are_present(self):
         flat = _flat()
-        # bwrap is Linux-only, and confinement at enforce on a
-        # platform without it refuses to start -- fail-closed,
-        # never silent. The matrix must keep saying both.
+        # bwrap is Linux-only, and on every platform confinement
+        # at enforce whose backend cannot engage refuses --
+        # fail-closed, never a weaker run. Until the macOS
+        # backend landed, the matrix's macOS row pinned that
+        # refusal directly ("confinement at enforce refuses to
+        # start -- fail-closed, never silent"); the row now
+        # names the backend, and the pins below name its exact
+        # controls and its probe-refusal in the same spirit.
         self.assertIn("bwrap is Linux-only", flat)
-        self.assertIn("confinement at enforce refuses to start", flat)
-        self.assertIn("fail-closed, never silent", flat)
+        self.assertIn("refuses when it cannot engage", flat)
+        self.assertIn(
+            "macos: seatbelt_profile + no_network + "
+            "spawn_resource_limits", flat)
         # job_user at enforce no longer refuses on win32: the
         # Job Objects backend carries it, and the matrix must
         # keep saying so (this line pinned the refusal until

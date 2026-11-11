@@ -29,7 +29,9 @@ and runner/guard/freebsd_confine.py), and the list stands at
 joined it on 2026-11-10, when the posture stamp producer
 wired the runner to load it at startup and at the result
 seam — the first tools module the runner itself executes —
-and the list stands at 135, with the figures below
+and the list stands at 135; the macOS confinement backend
+(runner/guard/macos_confine.py) joined it on 2026-11-11,
+and the list stands at 136, with the figures below
 re-measured live by the CLI as always. This module itself
 is not in the list either: the list names the set as assembled
 for the 2026-11-04 pass, and this module is the tooling that
@@ -41,7 +43,7 @@ CLI output:
 - GEMINI_COUNT_TOKENS (619,845) is the Gemini countTokens
   measure of the set as assembled (133 files), 2026-11-04.
 - The project estimator (runner/ops/version4.py's
-  count_text_tokens) counts the canonical list (135 files as
+  count_text_tokens) counts the canonical list (136 files as
   it now stands); the
   CLI prints its figure live. The estimator is not a BPE
   tokenizer, and the 2 figures are not interchangeable: the
@@ -334,10 +336,16 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # punctuation separators) grew
 # runner/ops/briefing.py by 77 lines, the whole
 # set re-measured over the current tree.
+# Re-measured again the same day after the macOS
+# confinement backend joined the canonical list
+# (135 to 136 files): runner/guard/macos_confine.py
+# grew runner/guard, and its wiring grew runner/ops
+# and the runner proper, the whole set re-measured
+# over the current tree.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
-# the module docstring; the list itself stands at 135 since
-# the 2026-11-10 entries above), not the canonical list itself. The
+# the module docstring; the list itself stands at 136 since
+# the 2026-11-11 entry above), not the canonical list itself. The
 # reviewing model's own token measure of the set (Gemini
 # countTokens) is a measure of the 2026-11-04 assembly and is
 # NOT re-recorded here: no re-count of the grown set has been
@@ -345,21 +353,21 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # assembly. The zip size and the estimator counts re-measured
 # here come from this module's own deterministic build and
 # counter over the current tree.
-AS_ASSEMBLED_FILES = 138
-AS_ASSEMBLED_ZIP_BYTES = 791012
-AS_ASSEMBLED_LINES = 62660
-AS_ASSEMBLED_NONBLANK_LINES = 56631
+AS_ASSEMBLED_FILES = 139
+AS_ASSEMBLED_ZIP_BYTES = 800810
+AS_ASSEMBLED_LINES = 63460
+AS_ASSEMBLED_NONBLANK_LINES = 57355
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 20671,
+    "runner/ops": 20781,
     "runner/tools": 9661,
     "runner/wire": 9033,
-    "runner/runner.py": 7152,
+    "runner/runner.py": 7178,
     "runner/oracle": 5055,
     "runner/transport_extensions": 2775,
-    "runner/guard": 4527,
+    "runner/guard": 5191,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,
@@ -384,6 +392,7 @@ CORE_FILES = (
     "runner/guard/extreview.py",
     "runner/guard/filenames.py",
     "runner/guard/freebsd_confine.py",
+    "runner/guard/macos_confine.py",
     "runner/guard/panic.py",
     "runner/guard/sandbox.py",
     "runner/guard/security.py",

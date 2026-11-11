@@ -127,6 +127,12 @@ def main() -> int:
                 # (jail + no network + spawn resource limits);
                 # its probe decides here, not bwrap's.
                 problem = R._confinement_startup_problem(cfg)
+            elif sys.platform == "darwin" and getattr(
+                    R, "_confinement_startup_problem", None) is not None:
+                # macOS has its own confinement backend too
+                # (Seatbelt profile + no network + spawn resource
+                # limits); its probe decides here, not bwrap's.
+                problem = R._confinement_startup_problem(cfg)
             else:
                 problem = R._sandbox.startup_problem(cfg=cfg)
             if problem:

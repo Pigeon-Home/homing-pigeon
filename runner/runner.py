@@ -433,6 +433,32 @@ def _confinement_argv(cfg, base_dir, job_id, interpreter, script_path,
             f"({sys.platform}); refusing the job under enforce", "WARN")
         _audit("fallback", "confinement_unavailable")
         return denial
+    if sys.platform == "darwin":
+        # macOS confinement is not bwrap either: the job is
+        # started under a Seatbelt profile at the spawn seam
+        # (_confinement_spawn in ops/remediation_ops.py), so the
+        # argv is the normal one, exactly as on win32 and
+        # FreeBSD. What this gate decides is only whether the
+        # backend can engage; when it cannot, the refusal is the
+        # same shape as the unavailable-sandbox refusal below.
+        # Only a real backend's probe is consulted (an injected
+        # backend counts, for the suite); a simulated darwin
+        # keeps the refusal.
+        mod = _remediation_ops._macos_confine(backend)
+        engageable = False
+        if mod is not None and (backend is not None or getattr(
+                mod, "IS_MACOS_BACKEND", False)):
+            probe = getattr(mod, "macos_confinement_problem", None)
+            try:
+                engageable = probe is not None and probe(cfg) is None
+            except Exception:
+                engageable = False
+        if engageable:
+            return normal
+        log(f"job {job_id}: confinement unavailable on this machine "
+            f"({sys.platform}); refusing the job under enforce", "WARN")
+        _audit("fallback", "confinement_unavailable")
+        return denial
     try:
         available = _sandbox.sandbox_available()
     except Exception:
