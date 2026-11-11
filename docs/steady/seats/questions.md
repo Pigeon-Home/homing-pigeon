@@ -236,6 +236,95 @@ stands as: the filed scope passes whole; the
 guard's residual polarity shapes are this
 question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now reads a prohibitive
+form's government across a subject relative clause
+that carries a comma the way the rest of the guard
+reads comma-set parentheticals — a parenthetical
+inside the clause, or a comma closing it ahead of
+the infinitive, transparent, while a lone comma
+that ends the form's government elsewhere still
+ends it; judges a relative clause by its verb
+phrase's own shape — a clause whose verb phrase
+takes the infinitive as its complement, with an
+object of any shape ("who prompts operators to
+<the match>", "who prompts the senior operator to
+<the match>", "who prompts you on duty to <the
+match>"), with no object (the passive forms and
+the bare infinitive-taking verbs: "who is told to
+<the match>", "who has been ordered to <the
+match>", "who wants to <the match>"), or with its
+subject standing inside the clause (the inverted
+object-relative clauses, "whom the supervisor
+prompts to <the match>" and its zero-relative
+twin), carries an infinitive of its own and still
+ends the government — rather than by the shape of
+the word standing immediately ahead of " to ",
+while a subject clause whose verb phrase takes a
+noun complement instead ("is on duty to ...", "is
+assigned to duty to ...", "has clearance to ...")
+is still crossed; and opens a new ledger segment
+at the remaining clause separators (parentheses,
+the slash, the pipe, the ellipsis, and a run of
+Unicode minus signs) beside the standing
+separators and dash forms, so an evidence word in
+an earlier clause no longer swallows a later
+instruction complement under those separators
+either. The guard stays per match, the mark's
+placement, the audit shape, the 7 rules' subjects,
+and the no-refusal / no-warning behaviour are
+unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(3:15 AM PST, 2026-11-11), the fix commit of
+3:24 AM PST ("Q148: the briefing guard reads the
+subject clause's comma, judges a relative clause
+by its verb phrase, and opens a ledger segment at
+the remaining separators (option 1)") —
+`runner/ops/briefing.py` (the widened guard) and
+`runner/tests/test_briefing_contradiction.py` (the
+Q148PolarityGuardTest family: item 1's comma
+prohibitions silent on both layers, item 2's
+verb-phrase pins firing on both layers with its
+determiner-closed and promptly-prompts controls
+firing and its noun-complement subject clauses
+silent, item 3's new-separator shapes firing on
+both layers and its evidence-only new-separator
+twins silent, in plain and bookended shapes,
+beside the filed Q143, Q144, Q145, Q146 and Q147
+corpora, the standing contradiction family, and
+the unrelated-negation and negated-then-contradicting
+pins) — and the figures commit of 3:27 AM PST
+re-measuring the core over `briefing.py`'s
+263-line growth. Red-before: item 1's shapes
+marked on the current head, item 2's sentences
+and item 3's shapes read nothing on the current
+head, measured first-hand by this lane on the
+fixture layer and the shipped layer (item 1's 8
+shapes marking on all three trees, item 2's 35
+sentences firing whole on the pre-Q143-fix
+detector and 16 of 35 on the pre-Q147-fix
+detector, item 3's 7 shapes firing on the
+pre-Q143-fix detector only, the controls holding
+on the current head), and the new family reads
+3703 subtest failures against the unpatched
+detector, every one of them in the new family.
+Green after: the guard family stands at 93 tests,
+the neighbour batteries (`test_oracle_briefing`,
+`test_posture_stamp`, `test_protocol_v2*`,
+`test_v2_consult`, `test_v2_replay`,
+`test_security_config`) read 305 green beside it,
+and item 1's sentence assembled into a briefing
+carries no mark and writes no startup audit row
+while item 2's and item 3's sentences carry the
+mark and write exactly their one audit row each.
+The filing seat's re-test is still owed under
+rule 8: Q148 is not closed by this lane, and
+neither are Q147, Q146, Q145, Q144 and Q143 — all
+close only after that re-test passes whole.
+
 ---
 
 ## Q147 (Muse, to the desk, 2026-11-11): the Q146 guard's residual polarity shapes — a subject relative clause opened by "that" is still marked, a relative clause introducing the matched verb through an unlisted verb is now missed, and the ledger's mixed sentence under a typed dash is still missed
