@@ -1678,6 +1678,113 @@ commits that follow this note; the conclusions stand at
 the end of this section when the packet lands, stating
 that the sweep is empty-by-construction and re-verified
 against a fresh `ls-files` at the packet's close.
+
+Conclusions (2026-11-10, the same evening): **P9-S1
+confirmed** — the overview's corpus line now reads
+2,400 entries over 30 targets (counted from the
+committed corpus in `runner/tests/de_dust/`: 30 target
+files, the header line of each excluded), and its
+release line now stands on the 3.16 line, verified on
+the releases page on 2026-11-10; the page names the
+line, not the current version string, at the
+version-rot guard's direction. **P9-S2 not confirmed
+as supposed** — a scripted cross-check of every
+extension README against its `extension.json` and
+producer (signal names, numeric, string and list
+defaults, state-file names) found no wrong statement;
+the one gap was an omission: the job-fuzz README named
+no state file where every sibling names its own, and
+it now names `.job-fuzz-state.json`, the default its
+producer carries. **P9-S3 confirmed** — the round-trip
+page's two test paths and its sender command now carry
+the `runner/` home both files live under. **P9-S4
+confirmed** — the config decision record's report home
+and its two Applied-in paths, and the emergency page's
+identity-record name and its forum and status paths,
+now name the files' current homes. **P9-S5 confirmed
+with one correction the check itself surfaced** — the
+per-draft status files agreed with the cover sheet and
+the folders on every point but one the Packet 7 lane
+flagged from the frozen renders: the version 1
+per-draft page carried the -03 expiry as 1 May 2027,
+where both frozen -03 renders state 6 May 2027; Packet
+7 corrected the cover sheet and this packet corrected
+the per-draft page, verified against the submitted
+text's own header. **P9-S6 confirmed** — the
+verification page's release chain, secret-rotation
+against PROTOCOL.md sections 14.2 and 14.4 and the
+sender's keyring and key-id commands as the code
+defines them, the queues-worker README against the
+Worker's 2 MB value limit, 8 MB response budget and
+quota 429s, the fixture and test READMEs against the
+files they describe, and the pull request template's
+test command all stand as written; a closing scan of
+all 46 files finds no broken relative link.
+
+An outside read of this packet was run through Argon
+(gemini-4-argon) over all 46 files in full, with the
+measured facts and each extension's manifest-and-code
+facts in the same window; its findings stand under its
+own stamp:
+
+<!-- Agent-Stamp: 00000000-argon-26a0-ff29-7825440c1fb9 -->
+Argon flagged: the emergency page's identity-record
+casing and its forum and status paths; the overview's
+corpus count and its latest-release line; the config
+record's report home and Oracle and transports paths;
+the round-trip page's test and sender paths; the
+retired paths inside `verify-v31.md`; the de_dust
+README's target table, which listed 20 of the corpus's
+30 target files; and, as a missing fact, the
+confinement backends' absence from the overview page.
+
+Muse's decisions on those findings, under Muse's own
+stamp (00000000-muse-7e57-d0c5-58316a922026): accepted
+and landed — the emergency, overview, config-record
+and round-trip corrections, each already in this
+packet's own findings and verified the same way.
+Accepted past the suppositions — the de_dust table now
+carries all 30 targets: the 10 added rows (address,
+collect, dtls_hostile, dtls_session, edge_subject,
+keydir, race_board, race_stash, race_state, stage) are
+written from their checkers' own contract docstrings
+in `runner/tools/de_dust_corpus.py`, each naming the
+reader it is held to. Declined, with the reasons
+recorded — `verify-v31.md`'s retired paths stand: the
+page is a bannered historical record that says not to
+run it, and rewriting a frozen verification record's
+commands would falsify the record. Declined also —
+the overview's confinement absence: the page states no
+confinement claim that is wrong, and the confinement
+account stands in the README, SECURITY.md and the
+support matrix as Packet 1 settled them.
+
+The sweep closes the overview: at this packet's close
+a fresh `git ls-files` on remote main counts 271
+tracked markdown files, and the remainder recomputed
+against the Packets 1–8 lists is the 46 files above and
+nothing else — every tracked markdown file stands
+covered by exactly one packet, and no file in any
+packet's list has left the tree. Guard evidence on the
+landing tree: the reader-quiet, layout and
+connector-capture batch reads 23 passed with 63
+subtests, and 1 failure in the layout stale-path test
+whose every flagged line sits in AGENTS.md's layout
+table and Packet 2's section of this desk — a
+pre-existing family on the head, none of it in this
+packet's files; the version-rot guard failed on this
+packet's first tree for naming the current version
+string in the overview and in P9-S1 above, and this
+packet's text has named the line instead since the
+follow-up — on the landing tree the guard's only
+offender is Packet 8's conclusions section of this
+desk, which landed naming the release in full; the
+divergences batch's failing classes (the defaults
+readers' fifteen-shapes family) read 32 failed on the
+pristine base against 30 failed on this packet's tree
+in the same subset, and no failure in either run names
+this packet's files.
+
 ## The documentation overview, Packet 5: suppositions recorded before the check (2026-11-10)
 
 Packet 5 of the overview takes the infrastructure
