@@ -1142,6 +1142,60 @@ written before the fix pass:
 Each supposition is settled against the code in the
 commits that follow this note; the conclusions stand at
 the end of this section when the packet lands.
+Conclusions (2026-11-10, the same evening): **P2-S1
+confirmed** -- the human-review paragraph now reads
+6,928, the figure the core paragraph and the file itself
+carry. **P2-S2 confirmed** -- the layout table now names
+`docs/`'s own top files (`FUTURE.md`, `FAQ.md`,
+`ENTERPRISE.md` and the support matrix). **P2-S3
+confirmed** -- section 9.4 now names all three backends
+with their shapes (bubblewrap; Job Object + restricted
+token + low integrity, 512 MiB, no filesystem namespace
+isolation; the per-job jail, `/work` the only writable
+mount, no network at all, 512 MiB at spawn), states the
+startup refusal for a platform with no backend as well
+as one whose backend cannot engage, records a post-start
+failure as a fallback with the job refused -- never run
+weaker -- as SECURITY.md states it, and the
+work-directory passage no longer calls the Windows
+checks the isolation; the heading's "(optional)" is
+gone. **P2-S4 confirmed** -- the FAQ's containment is
+now stated under the security modes at `enforce` by
+default, with all three backends named. **P2-S5
+confirmed** -- the main-machine answer now states the
+`enforce` default and calls the standing posture not an
+opt-in. **P2-S6 confirmed** -- FUTURE.md's cage bullet
+now records the two landed backends and their
+2026-11-10 field proof, with only the macOS cage
+outstanding; its egress bullet now states the FreeBSD
+jail's total network denial and the Windows backend's
+lack of one, with per-job egress rules still absent
+everywhere. **P2-S7 confirmed in part** -- the audit
+bullet now states the hash chain and its verification;
+the append-only flag and the remote copy remain the
+open items there, as they were. **P2-S8 confirmed** --
+all five citations now point at the files' real homes
+under `docs/steady/` and
+`docs/infrastructure-documents/`. **P2-S9 confirmed**
+-- start-here's window now closes at 2026-11-10, its
+counts are corrected (11 files at the top, 178 in the
+drawers; design 8, security 17, use 10, reports 108),
+the files its drawer lists omitted are listed with
+their dates from main's history, and `windows.md` and
+`questions.md` are re-dated to their 2026-11-10
+changes. **P2-S10 confirmed** -- INSTALL.md, the FAQ's
+remaining answers, PROTOCOL.md outside section 9.4 and
+`docs/ENTERPRISE.md` stand as written; ENTERPRISE.md is
+the placeholder rule 6 keeps as-is and was not touched.
+The defaults registry's doc lines followed the moved
+statements (the PROTOCOL.md inference-block and
+key-policy lines, and the FAQ's poll line). Guard
+evidence: the 139-test doc guard batch is green,
+including the drift guard and the reader-docs line; the
+divergences file's grep max-matches family fails
+identically on the pristine base in this cell and is
+recorded there as pre-existing, not as this packet's.
+
 ## The documentation overview, Packet 3: suppositions recorded before the check (2026-11-10)
 
 Packet 3 of the overview takes the operator-facing
