@@ -187,6 +187,35 @@ class ProfileWriterFieldTest(unittest.TestCase):
         self.assertEqual(profile.count('(subpath "/private/etc")'), 1)
         self.assertEqual(profile.count('(subpath "/etc")'), 1)
 
+    def test_the_root_listing_is_readable_and_nothing_below_it(self):
+        # Supposition R2-S1 (docs/steady/security/macos.md):
+        # a process reads the root directory's listing as it
+        # starts and is aborted when the read is refused --
+        # the second live verdict's shape (exit -6, no output,
+        # every confined spawn). The grant is the listing
+        # only: file-read-data on the literal "/", exactly
+        # once, and never a subpath grant on "/", which would
+        # make the whole disk readable.
+        profile = MC.build_profile("/work/job1")
+        self.assertEqual(
+            profile.count('(allow file-read-data (literal "/"))'), 1)
+        self.assertNotIn('(subpath "/")', profile)
+
+    def test_the_private_startup_trees_are_system_read_paths(self):
+        # Supposition R2-S2: the startup trees under /private
+        # that working deny-by-default allowlists carry --
+        # the loader's database, the timezone tree
+        # /etc/localtime points into, and the tool-selection
+        # links /bin/sh reads at every start. Each stands in
+        # the named set and in the generated profile, once.
+        profile = MC.build_profile("/work/job1")
+        for path in ("/private/var/db/dyld",
+                     "/private/var/db/timezone",
+                     "/private/var/select"):
+            self.assertIn(path, MC.SYSTEM_READ_PATHS, path)
+            self.assertEqual(
+                profile.count('(subpath "%s")' % path), 1, path)
+
     def test_system_read_paths_field_is_the_named_set(self):
         profile = MC.build_profile("/work/job1")
         for path in MC.SYSTEM_READ_PATHS:
@@ -906,6 +935,60 @@ class LiveBackendTest(unittest.TestCase):
             limits = [int(x) for x in out.decode().split()]
             self.assertEqual(
                 limits, [MC.DEFAULT_PROCESS_MEMORY_BYTES, -1])
+
+    def test_a_native_binary_runs_inside_the_profile(self):
+        # The full confined chain (profile, shim, limits)
+        # carrying a native binary with no interpreter of
+        # its own: one leg of the second verdict's bisect
+        # (supposition R2-S3). If this passes while the
+        # interpreter spawns fail, the chain is sound and
+        # the abort is interpreter-specific; if it fails at
+        # -6, the abort is in the chain every spawn shares.
+        with tempfile.TemporaryDirectory() as work:
+            proc = MC.spawn_confined_process(
+                ["/usr/bin/true"], cwd=work, env=dict(os.environ))
+            _out, _err = proc.communicate(timeout=30)
+            rc = proc.returncode
+            proc.close()
+            self.assertEqual(rc, 0)
+
+    def test_the_profile_alone_lets_the_interpreter_start(self):
+        # The generated profile with no shim and no limit:
+        # sandbox-exec drives the interpreter directly. One
+        # leg of the bisect (supposition R2-S3): if this
+        # passes while the full chain aborts, the profile is
+        # cleared and the shim's limit is convicted; if it
+        # aborts at -6, the profile still refuses a startup
+        # read the interpreter needs.
+        with tempfile.TemporaryDirectory() as work:
+            profile = MC.build_profile(
+                os.path.realpath(work), interpreter=sys.executable)
+            done = subprocess.run(
+                [MC.SANDBOX_EXEC_BIN, "-p", profile,
+                 sys.executable, "-c", "print('PROFILE-ONLY-OK')"],
+                cwd=work, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, timeout=30)
+            self.assertEqual(done.returncode, 0)
+            self.assertIn(b"PROFILE-ONLY-OK", done.stdout)
+
+    def test_the_shim_alone_lets_the_interpreter_start(self):
+        # The launcher shim with no profile at all: the
+        # interpreter sets the data-size ceiling on itself
+        # and execs the job interpreter under it. One leg of
+        # the bisect (supposition R2-S3): if this aborts at
+        # -6 while the profile-only leg passes, the ceiling
+        # itself -- in force across the second exec, while
+        # the loader binds the interpreter -- is the abort's
+        # cause, and the profile is cleared.
+        with tempfile.TemporaryDirectory() as work:
+            done = subprocess.run(
+                [sys.executable, "-c", MC.LIMIT_SHIM_SOURCE,
+                 str(MC.DEFAULT_PROCESS_MEMORY_BYTES), "-",
+                 sys.executable, "-c", "print('SHIM-ONLY-OK')"],
+                cwd=work, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, timeout=30)
+            self.assertEqual(done.returncode, 0)
+            self.assertIn(b"SHIM-ONLY-OK", done.stdout)
 
     def test_the_memory_ceiling_refuses_a_700mb_job(self):
         # The data-size ceiling is a real ceiling, not a

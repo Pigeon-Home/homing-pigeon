@@ -10,9 +10,16 @@ own tool (/usr/bin/sandbox-exec). One seam uses this module:
   for that job and applied by sandbox-exec(1): the profile
   starts from deny-by-default, allows executing and reading
   the system trees (/System, /usr, /Library, /bin, /sbin,
-  /opt, /etc) and the job interpreter's own install prefix,
-  allows reading and writing only inside the job's work
-  directory, and names no network allow rule at all -- with an
+  /opt, /etc, and the /private startup trees named in
+  SYSTEM_READ_PATHS) and the job interpreter's own install
+  prefix, allows reading the root directory's own listing
+  (file-read-data on the literal "/" -- the names at the top
+  of the disk and nothing below them; a process reads that
+  listing as it starts and is aborted when it is refused,
+  which is the second live verdict's primary supposition,
+  R2-S1 in docs/steady/security/macos.md), allows reading
+  and writing only inside the job's work directory, and
+  names no network allow rule at all -- with an
   explicit (deny network*) line beside the deny-by-default
   base, so a confined job has no network, loopback included.
   The memory ceiling is applied at spawn by a small launcher
@@ -125,10 +132,22 @@ SANDBOX_EXEC_BIN = "/usr/bin/sandbox-exec"
 
 # System trees a confined job may read and execute: the whole
 # userland a job can run -- the interpreter's libraries, the
-# base tools, the dynamic loader's world. Nothing else of the
-# host filesystem is readable under the profile.
+# base tools, the dynamic loader's world. The /private entries
+# are the startup trees a process reads as it starts: the
+# loader's own database (/private/var/db/dyld), the timezone
+# tree /etc/localtime points into (/private/var/db/timezone),
+# and the tool-selection links /bin/sh reads at every start
+# (/private/var/select) -- beside /private/etc, the canonical
+# twin of /etc. Working deny-by-default allowlists name all
+# of them; the second live verdict's suppositions (R2-S2 in
+# docs/steady/security/macos.md) record why they stand here.
+# Nothing else of the host filesystem is readable under the
+# profile.
 SYSTEM_READ_PATHS = ("/System", "/usr", "/Library", "/bin",
-                     "/sbin", "/opt", "/etc", "/private/etc")
+                     "/sbin", "/opt", "/etc", "/private/etc",
+                     "/private/var/db/dyld",
+                     "/private/var/db/timezone",
+                     "/private/var/select")
 
 # The name of the per-job temporary directory the spawn makes
 # inside the work directory and points TMPDIR at: inside the
@@ -303,12 +322,16 @@ def build_profile(workdir, interpreter=None, read_paths=()):
     The shape never varies: deny-by-default; process, sysctl,
     mach and IPC services a job interpreter needs to start and
     run; reads (with execution mapping) for the system trees,
-    the interpreter prefix and the extra read paths; read +
-    write inside the work directory; the /dev nodes a job's
-    standard streams and entropy need; and the network denial
-    stated. Paths under /var and /tmp are named with their
-    /private canonical twins (see _with_canonical_twins), on
-    the read line and the write line alike. No field can add
+    the interpreter prefix and the extra read paths; the root
+    directory's own listing (file-read-data on the literal
+    "/", never a subpath grant -- a process reads that
+    listing as it starts and is aborted when it is refused;
+    supposition R2-S1 in docs/steady/security/macos.md);
+    read + write inside the work directory; the /dev nodes a
+    job's standard streams and entropy need; and the network
+    denial stated. Paths under /var and /tmp are named with
+    their /private canonical twins (see _with_canonical_twins),
+    on the read line and the write line alike. No field can add
     a network allow rule, a write outside the work directory,
     or a read of a user home: the writer has no parameter
     that expresses them.
@@ -338,6 +361,7 @@ def build_profile(workdir, interpreter=None, read_paths=()):
         "(allow signal (target self))",
         "(allow pseudo-tty)",
         "(allow file-read* file-map-executable %s)" % read_args,
+        '(allow file-read-data (literal "/"))',
         "(allow file-write* %s)" % write_args,
         '(allow file-read* file-write* (literal "/dev/null")'
         ' (literal "/dev/zero") (literal "/dev/random")'
