@@ -527,10 +527,9 @@ says so. [docs/steady/project/contributing.md](docs/steady/project/contributing.
 
 - SourceForge: https://sourceforge.net/projects/homing-pigeon
 - GitLab: https://gitlab.com/pigeon-home/homing-pigeon
+- https://news.ycombinator.com/item?id=50397008
 - Randall Munroe: [xkcd 568](https://xkcd.com/568/) "You'll never find a programming language that frees you from the burden of clarifying your ideas." (Except with English + SI + a long context paragraph clarifying your ideas => the cycle begins again)
 - "I once saw a forklift lift a crate of forks. And it was way to literal for me" - Mitch Hedberg
 - "No problem, here is how you build one." - Lieutenant Barclay (S04E19)
-- https://news.ycombinator.com/item?id=50397008
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/resume.txt
-- cs_office — [What is a bug bounty program?](docs/ENTERPRISE.md)
 - "Humor between a system and its user is load-bearing, not decoration." - Me
