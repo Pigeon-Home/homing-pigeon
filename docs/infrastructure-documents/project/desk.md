@@ -11829,3 +11829,190 @@ family). No new behaviour is claimed beyond
 what those calls and that family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q154: the Q153 guard's residual polarity shapes — the fix lane's suppositions, recorded before the fix (2026-11-11)
+
+Q154 (filed by the filing seat's rule-8 re-test
+of Q153) names residual polarity shapes in the
+negation guard in `runner/ops/briefing.py`, in
+two items: a true object phrase is still missed
+where its governing verb is an object-control
+verb outside the judgement's closed
+object-control verb set ("compels a clerk",
+"summons a clerk", "dispatches a clerk", "sends
+a clerk" and "deploys a clerk" — 5 sentences,
+silent on the current head and on the
+pre-Q153-fix detector, firing whole on the
+pre-Q143-fix detector), because the Q153 branch
+judges a governed phrase by its governing verb
+only where that verb stands in the closed set
+and the general branch behind it judges the
+phrase as a complement in full; and the ledger's
+mixed sentence is still missed under the clause
+boundaries the fold and the segment set still do
+not read — the format, bidi and invisible
+characters beyond the filed joiners (the
+left-to-right mark, the right-to-left mark, the
+bidi embedding and pop controls, the invisible
+operators, the combining grapheme joiner and the
+Arabic letter mark — 10 shapes) and the
+punctuation separators beyond the widened
+segment set (a single low-9 quote, a prime, a
+fraction slash, a corner bracket in each
+direction, a fullwidth exclamation mark, a
+fullwidth question mark, an Arabic semicolon
+and a Devanagari danda — 9 shapes) — 19 shapes
+in all, silent on the current head and on the
+pre-Q153-fix detector, firing whole on the
+pre-Q143-fix detector. The Q153 Answer's bound
+edge ("prompts a duty" stays silent) is pinned
+as a bound in the re-test and is not part of
+Q154. Q154's recommendation is option 1. This
+lane is a fresh fix lane — neither the Q153 fix
+lane nor the filing/re-test seat — and starts
+from a fresh scratch clone from remote main at
+the head carrying the Q154 filing (the desk
+commit of 8:51 AM PST, 2026-11-11, the remote
+head verified by foreground `git ls-remote` in
+the same call as the clone). The ship lane's
+clones, its state file and the in-flight ship
+are not touched, and neither are the earlier
+lanes' clones. This section is the fix lane's
+suppositions, written from the code read
+first-hand (the widened guard in
+`runner/ops/briefing.py` — `_clause_carries_infinitive`
+judging a governed phrase by its governing verb
+only where that verb stands in
+`_OBJECT_CONTROL_VERBS`, with
+`_is_noun_complement_phrase` behind it judging
+any common-noun phrase that is not headed by a
+listed person head as a complement in full;
+`_fold` reading the filed spaces and joiners as
+boundaries; and `_LEDGER_SEGMENTS` opening at
+the filed separators — and the
+Q153PolarityGuardTest family in
+`runner/tests/test_briefing_contradiction.py`),
+the filed Q154 entry, the Q153 entry and its
+Answer, and the desk's Q153 re-test conclusions,
+before any fix or verdict probe in this lane is
+run; the lane's conclusions stand at the end of
+this section when the lane lands.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q154-S1.** Red-before, item 1: the 5 object
+  phrases under the unlisted object-control
+  verbs produce no findings on the current head
+  on the fixture layer and the shipped layer,
+  plain (0 of 5 firing
+  `private_shelf_crosses`), and the
+  representative ("compels a clerk") fires in 0
+  of its bookended variants and carries no mark
+  and no audit row end to end; the same shapes
+  are silent on the pre-Q153-fix detector and
+  fire whole on the pre-Q143-fix detector, and
+  the controls hold on the current head ("compels
+  operators" fires, the filed object phrases
+  under the listed verbs in their other forms
+  fire, and Q153's filed item 2 fires whole).
+- **Q154-S2.** Red-before, item 2: the ledger's
+  mixed sentence under the 10 beyond-filed
+  format, bidi and invisible characters and the
+  9 beyond-set punctuation separators produces
+  no findings on the current head on both
+  layers, plain (0 of 19 firing
+  `ledger_treated_as_instruction`), each
+  representative (the left-to-right-mark shape
+  and the single-low-9-quote shape) firing in 0
+  of its bookended variants and carrying no mark
+  and no audit row end to end; the same shapes
+  are silent on the pre-Q153-fix detector and
+  fire whole on the pre-Q143-fix detector, and
+  the evidence-only twins under the new shapes
+  stay silent.
+- **Q154-S3.** The fix, at the same detector
+  under option 1, judges a governed phrase that
+  carries the clause's infinitive complement by
+  the phrase's own shape: a common-noun phrase
+  standing between the clause's verb and its
+  infinitive is the clause's object phrase by
+  that standing — judged by what the clause
+  does, not by the governing verb's membership
+  in the closed object-control set — while a
+  phrase whose head is a noun of the
+  complement's closed standing is still crossed
+  whatever verb governs it, a phrase governed by
+  a complement verb (the hold / carry / keep /
+  retain / bear / take family and its kin) is
+  still judged by its head's standing as a
+  complement, a participle behind a be-auxiliary
+  keeps its passive reading, and the Q153
+  Answer's bound edge stays as pinned ("prompts
+  a duty" stays silent). Item 1's 5 sentences
+  then fire exactly `private_shelf_crosses` on
+  both layers, plain and bookended, beside the
+  filed controls.
+- **Q154-S4.** The fix reads the remaining
+  format, bidi and invisible characters as
+  boundaries the way the fold-erased spaces and
+  the filed joiners are read (the direction
+  marks, the bidi controls, the invisible
+  operators, the combining grapheme joiner and
+  the Arabic letter mark), and opens a new
+  ledger segment at the remaining punctuation
+  separators (the single low-9 quote, the prime,
+  the fraction slash, the corner brackets, the
+  fullwidth exclamation and question marks, the
+  Arabic semicolon and the Devanagari danda),
+  beside the standing separators and dash forms.
+  Item 2's 19 shapes then fire exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain and bookended, while the
+  evidence-only twins under the new shapes stay
+  silent.
+- **Q154-S5.** Both ways hold beside the
+  widening: the bound edge and the filed
+  complement prohibitions stay silent (Q153's
+  item 1 family whole, the raw-output twin
+  beside it, the same-standing controls, the
+  bare verb-form heads standing alone still
+  marking, the passive shape still crossed), a
+  complement prohibition followed by a
+  contradicting sentence fires exactly the
+  contradicting rule, and the standing
+  unrelated-negation and negated-then-
+  contradicting pins hold.
+- **Q154-S6.** No earlier family regresses: the
+  filed Q143, Q144, Q145, Q146, Q147, Q148,
+  Q149, Q150, Q151, Q152 and Q153 corpora and
+  the standing contradiction family read as they
+  did, through the committed guard family run
+  whole; the new Q154 family reads red against
+  the unpatched detector (the count stated in
+  the conclusions, every failure in the new
+  family) and green after; and the neighbour
+  batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2*`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read green beside it.
+- **Q154-S7.** End to end: item 1's
+  representative sentence ("compels a clerk")
+  and item 2's representative sentences (the
+  left-to-right-mark shape and the
+  single-low-9-quote shape) assembled into
+  briefings each carry their mark and write
+  exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id as
+  the detail), and the bound edge ("prompts a
+  duty") assembled into a briefing carries no
+  mark and writes no audit row.
+
+What cannot be recorded as a unit test, stated
+plainly in advance: this lane's ad-hoc probes
+are live detector calls over the sentences named
+in this record and in the conclusions; their
+deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane runs whole. No new behaviour is
+claimed beyond what those calls and that family
+show.
