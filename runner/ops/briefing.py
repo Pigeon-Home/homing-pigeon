@@ -236,9 +236,14 @@ def _fold(text, breaks=False):
     break is first read as a clause boundary (the pilcrow
     the ledger guard opens a segment at, Q150), before the
     fold can erase it the way it erases every other run of
-    whitespace."""
+    whitespace; Q151 reads the fold's other erased
+    whitespace the same way -- the tab, the form feed, the
+    vertical tab, the Unicode line and paragraph
+    separators and the next-line character are clause
+    boundaries too, read before the fold erases them."""
     if breaks:
-        text = re.sub(r"\r\n|\r|\n", " \u00b6 ", text)
+        text = re.sub(r"\r\n|[\r\n\t\x0b\x0c\x85\u2028\u2029]",
+                      " \u00b6 ", text)
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -357,6 +362,29 @@ def _fold(text, breaks=False):
 # with the same-mechanism separators beside them),
 # reading a line break as a boundary before the
 # whitespace fold can erase it.
+# Q151 widened the guard once more at the same
+# detector: a governed noun phrase is judged by
+# what it is to its verb in full wherever the
+# clause judgement meets it -- a noun complement
+# is still crossed whether it stands bare,
+# determiner-led, adjective-led or plural, rather
+# than letting an earlier determiner-led branch
+# read the phrase as the infinitive's object
+# phrase first or a closed complement set bound
+# the judgement, while a true object phrase ahead
+# of the infinitive is still the clause's own;
+# and the ledger guard opens a new segment at the
+# remaining clause separators (the caret, the
+# percent sign, the dollar sign, the backtick, the
+# exclamation mark, the question mark, the broken
+# bar, the two-dot leader and the non-breaking
+# hyphen), reading the fold-erased whitespace
+# shapes (the tab, the form feed, the vertical
+# tab, the Unicode line separator, the Unicode
+# paragraph separator and the next-line character)
+# as boundaries before the whitespace fold can
+# erase them, and the full stop between the
+# clauses as a sentence boundary for this check.
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -538,6 +566,13 @@ def _prohibitive_occurrences(low):
 # landing's closed verb sets: the sets below now
 # stand as examples the shape rules read beside a
 # verb's own form, not as the judgement itself.
+# Q151 judges a governed noun phrase in full
+# wherever a judgement below meets it: a noun
+# complement in full -- bare, determiner-led,
+# adjective-led or plural -- is its verb's
+# complement at every branch, not only at the
+# branch the Q150 landing added, and a true object
+# phrase is the clause's own at every branch.
 _CLAUSE_OBJECT_WORDS = frozenset({
     "you", "him", "her", "them", "us", "me", "it",
     "anyone", "someone", "everyone", "anybody",
@@ -647,6 +682,70 @@ _IRREGULAR_PARTICIPLES = frozenset({
     "driven", "born", "worn", "known", "seen", "done",
     "gone", "met", "led", "fed", "read", "said", "sold",
     "meant", "dealt", "felt", "lost", "won", "spent"})
+
+
+def _noun_complement_head(word):
+    """True when a word is a noun complement's head, in
+    its singular or its plural form (Q151): "duty" and
+    "duties", "clearance" and "clearances" name the
+    same complement to their verb."""
+    if word in _NOUN_COMPLEMENT_WORDS:
+        return True
+    if word.endswith("ies") and len(word) > 3 \
+            and word[:-3] + "y" in _NOUN_COMPLEMENT_WORDS:
+        return True
+    if word.endswith("es") \
+            and word[:-2] in _NOUN_COMPLEMENT_WORDS:
+        return True
+    return word.endswith("s") \
+        and word[:-1] in _NOUN_COMPLEMENT_WORDS
+
+
+def _is_noun_complement_phrase(phrase):
+    """True when a governed noun phrase, judged in full
+    (Q151), is a noun complement to its verb: its head
+    is a noun complement (singular or plural) and every
+    word ahead of the head is a determiner or an
+    adjective -- the phrase stands bare ("clearance"),
+    determiner-led ("a duty", "the clearance"),
+    adjective-led ("full clearance") or plural
+    ("duties"). A phrase whose head is any other noun
+    ("the senior operator", "a team") is an object
+    phrase, not a complement, however it is led."""
+    if not phrase or not _noun_complement_head(phrase[-1]):
+        return False
+    for word in phrase[:-1]:
+        if word in _CLAUSE_DETERMINERS:
+            continue
+        if word in _AUX_WORDS or word in _PREPOSITION_WORDS \
+                or word in _CLAUSE_OBJECT_WORDS \
+                or word in _GOVERNMENT_VERBS \
+                or _verb_like(word) or _participle_like(word):
+            return False
+    return True
+
+
+def _final_noun_phrase(words):
+    """The noun phrase a clause ends with: the maximal
+    suffix of determiner, adjective and noun words,
+    stopping ahead of any verb, auxiliary, preposition
+    or object word -- the phrase the clause's verb
+    governs, as the determiner-led branch of the clause
+    judgement meets it ("holds a duty" ends with "a
+    duty"; "instructs the senior operator" ends with
+    "the senior operator")."""
+    if not words:
+        return []
+    suffix = [words[-1]]
+    for word in reversed(words[:-1]):
+        if word in _AUX_WORDS or word in _PREPOSITION_WORDS \
+                or word in _CLAUSE_OBJECT_WORDS \
+                or word in _GOVERNMENT_VERBS \
+                or _verb_like(word) or _participle_like(word):
+            break
+        suffix.append(word)
+    suffix.reverse()
+    return suffix
 
 
 def _is_adverb(word):
@@ -810,14 +909,12 @@ def _clause_carries_infinitive(clause_words):
             and clause_words[0] not in _AUX_WORDS \
             and clause_words[0] not in _PREPOSITION_WORDS \
             and clause_words[0] not in _CLAUSE_DETERMINERS \
-            and clause_words[0] \
-            not in _NOUN_COMPLEMENT_WORDS:
+            and not _noun_complement_head(clause_words[0]):
         return True
     if len(clause_words) >= 2 \
             and all(head in _AUX_WORDS or _is_adverb(head)
                     for head in clause_words[:-1]) \
-            and clause_words[-1] \
-            not in _NOUN_COMPLEMENT_WORDS \
+            and not _noun_complement_head(clause_words[-1]) \
             and clause_words[-1] not in _PREPOSITION_WORDS \
             and clause_words[-1] not in _CLAUSE_DETERMINERS \
             and clause_words[-1] not in _AUX_WORDS \
@@ -834,7 +931,15 @@ def _clause_carries_infinitive(clause_words):
         return True
     if len(clause_words) >= 3 \
             and clause_words[-2] in _CLAUSE_DETERMINERS \
-            and clause_words[0] not in _BE_WORDS:
+            and clause_words[0] not in _BE_WORDS \
+            and not _is_noun_complement_phrase(
+                _final_noun_phrase(clause_words)):
+        # A determiner-led phrase is the infinitive's
+        # object phrase only when it is one in full
+        # (Q151): a governed phrase that is a noun
+        # complement in full ("holds a duty to ...",
+        # "holds the clearance to ...") is judged by
+        # its verb below, not read here first.
         return True
     # A verb of any identity governing an object
     # phrase of any shape: the verb itself, or the
@@ -874,17 +979,19 @@ def _clause_carries_infinitive(clause_words):
                 or "to" in obj \
                 or any(tail in _AUX_WORDS for tail in obj):
             continue
-        if any(tail in _NOUN_COMPLEMENT_WORDS
-               for tail in obj) \
-                and all(tail in _CLAUSE_DETERMINERS
-                        or tail in _NOUN_COMPLEMENT_WORDS
-                        for tail in obj):
+        if _is_noun_complement_phrase(obj):
             # A governed noun phrase that is a noun
             # complement in full ("holds clearance to
             # ...", "is assigned a duty to ...") is the
             # verb's complement, not the infinitive's
-            # object phrase (Q150): the clause is the
-            # subject's, and is crossed below.
+            # object phrase (Q150); Q151 judges the
+            # phrase in full wherever it stands --
+            # determiner-led ("holds a duty to ..."),
+            # adjective-led ("holds full clearance to
+            # ...") and plural ("holds duties to ...")
+            # complements are the verb's complement the
+            # same way: the clause is the subject's,
+            # and is crossed below.
             continue
         return True
     # The inverted shape: the clause's subject stands
@@ -897,8 +1004,7 @@ def _clause_carries_infinitive(clause_words):
     # modifies.
     if len(clause_words) >= 3 \
             and clause_words[-2] in _AUX_WORDS \
-            and clause_words[-1] \
-            not in _NOUN_COMPLEMENT_WORDS \
+            and not _noun_complement_head(clause_words[-1]) \
             and clause_words[-1] not in _PREPOSITION_WORDS \
             and clause_words[-1] not in _CLAUSE_DETERMINERS \
             and clause_words[-1] not in _AUX_WORDS:
@@ -917,10 +1023,9 @@ def _clause_carries_infinitive(clause_words):
                 for word in subject):
             return True
     if len(clause_words) >= 2 \
+            and not _noun_complement_head(clause_words[-1]) \
             and (_verb_like(clause_words[-1])
                  or clause_words[-1]
-                 not in _NOUN_COMPLEMENT_WORDS
-                 and clause_words[-1]
                  not in _PREPOSITION_WORDS
                  and clause_words[-1]
                  not in _CLAUSE_DETERMINERS
@@ -970,7 +1075,7 @@ def _zero_relative_carries(between):
     if core[-1] in _AUX_WORDS \
             or core[-1] in _PREPOSITION_WORDS \
             or core[-1] in _CLAUSE_DETERMINERS \
-            or core[-1] in _NOUN_COMPLEMENT_WORDS:
+            or _noun_complement_head(core[-1]):
         return False
     # A verb standing last in its base form (Q150: "the
     # supervisors compel to ...") reads by its form only
@@ -1290,7 +1395,9 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     "⸺", "*", "{", "}", "·",
                     "―", "‐", "‒", "=", "+",
                     "#", "@", "_", "§", "¶",
-                    "∙", "<", ">")
+                    "∙", "<", ">", "^", "%", "$",
+                    "`", "!", "?", "¦", "‥",
+                    "‑", ".")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -1318,7 +1425,24 @@ def _ledger_complement_is_evidence(owner, match):
     backslash, square brackets, and a run of two dots,
     with the same-mechanism separators beside them --
     the bullet, the tilde, the fullwidth slash, the
-    two-em dash and a run of asterisks): an evidence word in
+    two-em dash and a run of asterisks -- and by Q150,
+    where the remaining separators open one too: curly
+    braces, the middle dot, the horizontal bar, the
+    Unicode hyphen and the figure dash, with the equals
+    sign, the plus sign, the hash, the at sign, the
+    underscore, the section sign, the pilcrow, the bullet
+    operator and a pair of angle brackets beside them,
+    and a line break read as a boundary before the
+    fold -- and by Q151, where the last separators open
+    one too: the caret, the percent sign, the dollar
+    sign, the backtick, the exclamation mark, the
+    question mark, the broken bar, the two-dot leader
+    and the non-breaking hyphen, with the fold-erased
+    whitespace shapes read as boundaries before the
+    fold (they stand in the folded text as the pilcrow,
+    a segment mark since Q149) and the full stop
+    standing between the clauses as a sentence
+    boundary): an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does
