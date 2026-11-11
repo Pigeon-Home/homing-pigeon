@@ -66,7 +66,7 @@ seconds at most; `docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-p
 Three days of a real box: 19,227 jobs, every result verified, a few
 milliseconds of work inside a four-second round trip on the file
 transport. The quoted lines, the envelopes, the posture card and
-the full numbers are in [live-examples.md](docs/steady/use/live-examples.md).
+the full numbers are in [live-examples.md](steady/use/live-examples.md).
 
 ## Isn't this just remote code execution by email?
 
