@@ -12016,3 +12016,129 @@ themselves beside the committed guard family,
 which this lane runs whole. No new behaviour is
 claimed beyond what those calls and that family
 show.
+
+## Q136 follow-on: the test_decision1_startup file split — suppositions, recorded before the split (2026-11-11)
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The fifth re-pack's conclusions stated the condition
+in advance: test_decision1_startup priced at the
+720-second budget exactly, packing alone, and if the
+file still kills a shard alone the defect is in the
+file (97 in-process runner startups), not in the
+packing, and the answer is a file split in a lane of
+its own, not a sixth re-pack. That condition has now
+occurred. Verified first-hand by this lane from the
+build-windows logs of three completed runs, fetched
+through `gh`: run 43047662646 (head of 7:35 AM PST),
+run 43053974828 (head of 8:00 AM PST) and run
+43057662476 each carry shard 0 as 1 module,
+runner.tests.test_decision1_startup alone, and each
+ends shard 0 FAILED exit 124 with the sharded run
+finished at 1,200.4, 1,200.3 and 1,200.7 seconds
+(the 20-minute wall); run 43053974828's discovery
+read 12,312 tests from 447 modules in 27 shards.
+The other shards' exit-1 failures in run
+43047662646 are the families already named and
+excluded from this lane's judgements: the
+version-rot failure (test_doc_version_rot) with its
+skip-registry knock-on (test_regression_guard), and
+the load-sensitive family (test_concurrency's
+concurrent bad-answers, test_oracle_send_contract's
+concurrent asks and slow-model legs), which never
+appears in the serial legs. Ship state at this
+lane's start: last_completed 3.16.20.3, 3.16.20.4
+failed on this family and is spent; this lane cuts
+no release and touches no ship state, and it does
+not touch the Q154 lane's files.
+
+Measured by this lane first-hand on the current
+head before these suppositions were committed: the
+file holds 97 tests in 7 classes — RefuseMainTest
+43 generated tests (each one real startup through
+main()), DefaultClassTest 19 generated tests (each
+one startup) plus DefaultClassTableTest 1,
+RefuseReaderTest 16 (no startup: the refusing
+readers called directly), RefuseStartupGatesTest 5
+(4 startups), StrictShapeTest 6 (4 startups) and
+Phase2StartupTest 7 (7 startups) — 77 run_main
+startups in all. Locally on this Linux host the
+whole file runs in about 1.2 seconds (per class:
+RefuseMain 0.19, gates 0.02, strict 0.28, readers
+0.39, defaults 0.32, phase-2 0.01), so local time
+cannot price the Windows cost; the kill record is
+the only Windows measurement, and it bounds the
+file's Windows cost below by the wall itself: a
+shard carrying nothing else burned past 1,200
+seconds three times.
+
+- Q136-SPLIT-S1 (the cost follows the startups):
+  the file's Windows cost is carried by its 77
+  in-process startups through main(), at roughly
+  15 seconds a startup on the loaded Windows leg
+  (1,200 seconds of wall over 77 startups, the
+  non-startup reader and decision-point tests
+  contributing the remainder), not by test count
+  or by any single class. If this holds, dividing
+  the startups divides the cost in proportion, and
+  no piece needs a mechanism change — the split is
+  a move, every test preserved with its assertions.
+- Q136-SPLIT-S2 (the seams are the classes): the
+  file divides along its own class seams into 5
+  sibling files — refuse-main (the 22 base
+  RefuseMain entries: ports, size caps and the
+  security block), refuse-policies (the 21
+  generated RefuseMain entries the loops append:
+  the 9 security-mode values and the 12
+  key_policies entries), gates (RefuseStartupGates,
+  StrictShape and Phase2Startup: 18 tests, 15
+  startups), readers (RefuseReader: 16 tests, no
+  startup) and defaults (DefaultClass and its
+  table pin: 20 tests, 19 startups) — with the
+  shared BASE, STRONG_SECRET, run_main and backend
+  helpers in one support module the pieces import,
+  the pattern runner/tests already uses for shared
+  fixtures. Total after the split: still 97 tests.
+- Q136-SPLIT-S3 (each piece's expected cost):
+  priced from the kill record at the S1 rate with
+  headroom, refuse-main at 340 seconds (22
+  startups), refuse-policies at 330 (21), gates at
+  270 (15 startups plus the decision-point
+  subtests), defaults at 300 (19) and readers at
+  100 (no startup; its price is import and reader
+  cost, the largest local share) — 1,340 seconds
+  in all, above the 1,200-second wall the whole
+  file burned past, and no piece above 340, less
+  than half the 720-second budget, so a piece
+  packs with companions under the budget instead
+  of alone at it. If a piece's true cost ran at
+  its price, its shard's packed load stays within
+  the budget the fifth re-pack's completed shards
+  ran at most 0.68x of.
+- Q136-SPLIT-S4 (what would prove the split
+  sufficient): not local timing and not packing
+  arithmetic. The guard family will pin each
+  piece at its floor price, pin a ceiling of 400
+  seconds on every piece so none can silently
+  regrow toward the budget, and pin the old
+  module's absence from the table; those pins are
+  red against the pre-split table and green after.
+  What proves the red cleared is the next
+  completed tag-or-main build-windows verdict on
+  a head carrying the split, under rule 8, with
+  the version-rot family judged separately and
+  the load-sensitive family noted only where a
+  piece's own shard evidence bears on it.
+- Q136-SPLIT-S5 (the split does not move the
+  other families): the load-sensitive timeout
+  family and the version-rot family are untouched
+  by this lane; if a post-split verdict still
+  shows them, that is their own record, not
+  evidence against the split, and if a piece
+  shard dies at the wall the S1 rate is wrong and
+  the piece divides further rather than repricing
+  upward past the ceiling.
+
+The split, the refreshed table entries, the guard
+extension and the conclusions against these
+suppositions follow in this section.
