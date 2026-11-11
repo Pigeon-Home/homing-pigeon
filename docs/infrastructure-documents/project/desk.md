@@ -2784,6 +2784,76 @@ remains is the second seat's re-test under rule 8 —
 the hosted legs' verdict and the rig batteries on the
 landed head — before Q139 is called done.
 
+Second-seat re-test (rule 8, 2026-11-10, the same
+evening): this seat re-derived the landing from the
+tree rather than taking the building seat's word.
+(1) The guard family `runner/tests/test_v2_consult.py`
+runs green standalone on the landed head: 99 tests,
+OK; the neighbour batteries this seat chose
+(`test_protocol_v2`, `test_protocol_v2_messages`,
+`test_v2_replay`, `test_posture_stamp`,
+`test_briefing_contradiction`, `test_security_config`)
+run green alongside: 184 tests, OK. (2) The failure
+arms were read arm by arm against the design
+preparation's table and the seam family: no-answer
+inside a wait and at deadline 0, a hand-off that
+raises, a model tier that raises or is skipped at
+deadline 0, a late answer, no plan, a gate that
+blocks at enforce and one that records at audit —
+each degrades to the local picture with the arm's
+code in the record; none raises out of the seam and
+none refuses a job (the audit writer is itself
+best-effort and never raises into the caller). Two
+record-level divergences from the preparation's
+table are noted, neither a defect against the
+settled record vocabulary above: the plan-cannot-form
+arm records under `no_plan`, not the preparation's
+`oracle_unavailable`; and the defensive
+posture-state arm's code stays in the plan's gate
+reason and never reaches the record, since the gate
+does not block there. (3) Legacy byte-identity: the
+build's diff against its supposition parent adds a
+dispatch head and a docstring to
+`_v2_before_execute` and deletes no legacy line
+(the whole landing is insertions in the runner
+proper and in `runner/wire/protocol_v2.py`); the
+legacy fixtures pass unchanged, and the
+execution-invariance pair runs the same job through
+a full mail run under both modes to the same exit
+code and the same output, the consult segment
+present only in the consult mode's result.
+(4) The config surface pins as settled: `FEATURES`
+in `runner/guard/security.py` counts 9 with
+`v2_question` last; the per-field validation family
+and the startup family pass in the guard file,
+including exit 2 naming `v2_question_postures` for
+an allowlist declared with no posture block, and
+exit 2 naming `v2_question` for a bad mode value.
+(5) Hosted verdict at re-test time: on the
+conclusions head the platform-matrix,
+queues-worker, minimal-userland and upgrade-proof
+runs are success, the main build is still in
+progress with every completed leg success (test,
+test-macos and build-windows still running), and
+python-range stands cancelled by supersession —
+the next head, a tests-only pin commit at
+8:59 PM, carries the same code. No red leg touches
+a Q139 file; the build's final verdict is the
+trains' to record. (6) Rig batteries: the watcher
+tested the build head itself — Windows PASS and
+Linux PASS, all steps, at full attestation — so
+the landed head is field-proven on both platforms.
+One genuine defect, found by probe and confirmed
+twice: with version 2 disabled (or an answer-only
+configuration) and a consult mode chosen, the seam
+still records a consult segment and an audit row
+for a consult that never happened. It has no
+execution effect and is filed as Q141 for a fix
+lane; this seat lands no fix for it. Subject to
+that filing and the hosted build's completion,
+Q139's re-test passes: the supposition the building
+seat recorded is judged held by a second seat.
+
 Conclusions (2026-11-10, the same evening): **P7-S1
 refuted as stated** -- the living drafts are not
 byte-identical to any submitted revision: both are

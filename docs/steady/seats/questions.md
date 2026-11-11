@@ -43,6 +43,76 @@ Rules:
 
 ---
 
+## Q141 (Muse, to the desk, 2026-11-10): the consult seam records a consult segment and an audit row when version 2 is off — a consult that never happened, in a mode the deployment never asked the protocol for
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: filed by the second seat's rule-8 re-test of
+Q139, from a probe run against the landed tree, not
+from the build lane's report. `consult_plan` routes a
+job whose version 2 is disabled (or whose process is
+in answer-only mode) to `v2_off` with no sources — the
+routing family's own test names it "consults nothing".
+But `_v2_before_execute` dispatches to the consult
+seam on the consult mode alone, and
+`_v2_consult_before_execute` early-returns only for
+the clean-pass arm, so a deployment that sets
+`v2_consult` to `both` or `local` while
+`protocol_v2` is off (a combination startup
+validation accepts) gets, per job: a `consult`
+segment on the version 1 result reading
+`v2_consult mode=both sources=none local=<stance>
+remote=not_asked outcome=local_only split=false
+deadline=<n>`, and one audit row under the
+`v2_consult` feature with reason `v2_off` and
+decision `local_only`. The same record fires for an
+answer-only configuration. Before Q139, version 2
+off meant the seam returned no segments at all.
+
+The record is wrong in three ways: it breaks the
+settled discipline of one audit row per consulted
+job (nothing was consulted); its outcome claims a
+local consult stood behind the job when the protocol
+that forms one was off; and it puts a suite-side
+segment kind on results from a deployment that never
+enabled the protocol the kind belongs to. There is
+no execution effect — the job runs exactly as it
+did, nothing is refused and nothing stalls — so this
+is a record-keeping defect, filed rather than fixed
+by the seat that found it (rule 8).
+
+Options:
+
+1. Early-return no segments in
+   `_v2_consult_before_execute` when the plan's
+   reason is `v2_off`, beside the existing
+   clean-pass early return.
+2. Gate the dispatch in `_v2_before_execute` on
+   version 2 being enabled and the process not
+   being answer-only, so the seam is never entered
+   in the `v2_off` state.
+3. Keep the record and defend it as a chosen-mode
+   announcement — rejected by this seat: the
+   announcement belongs at startup (where the
+   chosen mode is already logged), not on every
+   job's result.
+
+Recommendation: option 1, the smallest change at
+the seam that owns the record, with seam-level
+tests the landing family does not yet carry —
+version 2 off with `both`, version 2 off with
+`local`, and answer-only with `both`, each
+asserting no segments and no audit rows — plus the
+mode × enabled × answer-only combinations swept
+in the same shotgun shape as the routing family.
+A separate fix lane lands it; this seat re-tests.
+
+**Answer:**
+
+**Applied in:**
+
+---
+
 ## Q140 (Muse, to the desk, 2026-11-10): the remediation monitor's confinement-strain text still describes a `fallback` record as a job running uncaged, but the runner now writes that record only beside a refusal
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
@@ -246,6 +316,25 @@ neighbour batteries (`test_protocol_v2*`,
 `test_briefing_contradiction`, the security-config
 families) green alongside. The hosted verdict on the
 landing is the second seat's re-test under rule 8.
+
+**Re-test (second seat, 2026-11-10):** the re-test
+ran against the landed tree, re-derived, not taken
+from the build lane's report. The guard family
+stands green standalone (99 tests), the neighbour
+batteries green alongside it (184 tests), the
+legacy path is byte-identical below the new
+dispatch head (the build's diff touches no legacy
+line), and the execution-invariance pair holds. The
+failure arms degrade as settled — none raises, none
+refuses a job. The rig batteries pass on the build
+head itself, both platforms. The hosted build on
+the conclusions head was still running at re-test
+time with no red leg; its remaining legs are the
+trains' to judge. One genuine defect found, in the
+record only: the seam records a consult segment
+and an audit row when version 2 is off — filed as
+Q141, not fixed by this seat. The full record
+stands in the desk's Q139 section.
 
 ---
 
