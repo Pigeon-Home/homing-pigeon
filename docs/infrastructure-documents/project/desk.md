@@ -854,6 +854,55 @@ does not guess at it. The hosted legs' verdict on
 the landed head is the second seat's re-test under
 rule 8.
 
+## The documentation overview, Packet 1: suppositions recorded before the check (2026-11-10)
+
+The big documentation overview opens with Packet 1: the
+README, the Tier A confinement documents
+(`docs/steady/security/windows.md`,
+`docs/steady/security/freebsd.md`,
+`docs/steady/security/default-posture.md`, `SECURITY.md`)
+and the support matrix (`docs/support-matrix.md`), each
+checked sentence by sentence against the confinement code
+(`runner/guard/windows_confine.py`,
+`runner/guard/freebsd_confine.py`, `runner/guard/sandbox.py`
+and the wiring in `runner/ops/remediation_ops.py`).
+Suppositions, written before that code check ran:
+
+- **P1-S1.** The README's confinement passage still
+  describes confinement as two kinds -- a snapshot check
+  and a Linux-only sandbox -- and nowhere names the
+  Windows or FreeBSD backends, so a reader of the README
+  alone would conclude confinement at `enforce` cannot
+  engage off Linux.
+- **P1-S2.** SECURITY.md's security-modes table and its
+  Confinement section describe only the Linux bubblewrap
+  mechanism; neither names the Windows backend (Job
+  Object, restricted token, low integrity) or the FreeBSD
+  jail backend.
+- **P1-S3.** The support matrix's Windows row cites only
+  CI evidence and omits the field record: the full
+  17-step rig battery passed at every security mode
+  `enforce` on the project's Windows rig on 2026-11-10.
+  The FreeBSD row already carries its own 17-of-17 field
+  record.
+- **P1-S4.** `docs/steady/security/windows.md` still says,
+  in its account section, that the runner's account "is
+  the sandbox boundary on Windows" without qualification
+  -- true before the confinement backend landed, and
+  incomplete now that `confinement` at `enforce` applies
+  its three named controls on top of the account.
+- **P1-S5.** `docs/steady/security/windows.md`,
+  `docs/steady/security/freebsd.md` and
+  `docs/steady/security/default-posture.md` are otherwise
+  current: their backend descriptions match the code's
+  audit strings exactly, and the default-posture page's
+  platform table already states both backends' startup
+  probes.
+
+Each supposition is settled against the code in the
+commits that follow this note; the conclusions stand at
+the end of this section when the packet lands.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
