@@ -337,6 +337,27 @@ The suite stands at 87 tests and 382 subtests, green under
 both pytest and unittest discovery, with the sibling tools'
 suites alongside (229 tests in the four).
 
+The first producer is wired, in the runner core. A
+deployment declares its assignment in its config (a
+`disclosure_posture` block naming the registry file, the
+tagging file, and the deployment's own project); the
+runner resolves the assignment against the registry once,
+at startup, from its own state alone, and at the
+completion seam — where it assembles an executed job's
+result and writes the audit row, after the job process
+has exited — it stamps both with `format_stamp` over that
+resolution, the result's stamp riding inside what the
+runner signs. A deployment whose project has no
+assignment gets no stamp, and the seam's audit row
+records the run as unstamped, plainly; no default posture
+is invented. An assignment naming a retired posture
+surfaces at startup through `format_stamp`'s own refusal,
+as a configuration problem, and a rejection result —
+which records no run — carries no stamp. A stamp field
+arriving on a job is never read. The remaining producers
+(the run record, the ledger entry, the log line) stay
+follow-on work, one producer at a time, as before.
+
 ## What the Oracle is to understand by a posture
 
 The Oracle renders opinions inside this suite, so its

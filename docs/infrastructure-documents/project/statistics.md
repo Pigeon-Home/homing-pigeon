@@ -63,14 +63,14 @@ stays their source of truth.
   "latent_near_percent": 3.17,
   "latent_exact_percent": 0.03,
   "audit_date": "2026-11-09",
-  "core_files": 134,
-  "core_lines": 58275,
-  "core_lines_nonblank": 52580,
-  "core_tokens": 612346,
-  "core_assembled_lines": 59353,
-  "core_assembled_nonblank": 53542,
-  "core_assembled_zip_bytes": 753155,
-  "core_assembled_tokens": 619963
+  "core_files": 135,
+  "core_lines": 59446,
+  "core_lines_nonblank": 53620,
+  "core_tokens": 623998,
+  "core_assembled_lines": 60230,
+  "core_assembled_nonblank": 54308,
+  "core_assembled_zip_bytes": 763178,
+  "core_assembled_tokens": 632301
 }
 ```
 

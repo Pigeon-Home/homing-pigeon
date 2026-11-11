@@ -2,6 +2,8 @@
   "base_dir": "",
   "default_interpreter": [],
   "default_timeout_sec": 300,
+  "disclosure_posture": {},
+  "_disclosure_posture": "the disclosure posture stamp (docs/infrastructure-documents/project/cs_office-postures.md): {\"registry\": <path>, \"tagging\": <path>, \"project\": <name>} -- this deployment's posture assignment, read from the operator's registry and tagging files (relative paths resolve against base_dir) and resolved once at startup. An assignment to an active posture stamps every result the runner signs, and its audit row, with hp-posture-<version>-<posture id>; no assignment records each run unstamped; a retired posture, an undeclared tag, or an unreadable file refuses startup as a config error. Empty or absent: no stamp, and nothing changes.",
   "imap_host": "imap.gmail.com",
   "imap_port": 993,
   "job_encryption": true,

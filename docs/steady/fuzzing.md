@@ -10,7 +10,7 @@ and they load no model.
 Core names the production runner as a set of files: the code
 that runs, without the unit tests, the test harnesses or
 anything superfluous. The canonical list stands in
-runner/ops/core.py (CORE_FILES): <!--hp-fig:core_files-->134<!--/hp-fig--> files, all under runner/.
+runner/ops/core.py (CORE_FILES): <!--hp-fig:core_files-->135<!--/hp-fig--> files, all under runner/.
 Running `python3 runner/ops/core.py` prints the set's current
 zip size and token counts.
 
@@ -58,13 +58,18 @@ runner/guard/freebsd_confine.py) joined the canonical
 list and their wiring grew runner/ops, runner/guard and
 the runner proper, and again the same day after the
 FreeBSD backend's field-test fixes and the Windows
-backend's import-safety change grew runner/guard, the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->59,353<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->53,542<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->753,155<!--/hp-fig-->-byte zip, and the project's own estimator
-counts it at <!--hp-fig:core_assembled_tokens-->619,963<!--/hp-fig--> tokens; the Gemini figure above still
+backend's import-safety change grew runner/guard, and
+again the same day after the posture stamp producer
+wired the runner to the disclosure module and
+runner/tools/disclosure.py joined the canonical list,
+growing runner/ops, runner/tools and the runner proper,
+the
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->60,230<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->54,308<!--/hp-fig--> non-blank)
+and a <!--hp-fig:core_assembled_zip_bytes-->763,178<!--/hp-fig-->-byte zip, and the project's own estimator
+counts it at <!--hp-fig:core_assembled_tokens-->632,301<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical <!--hp-fig:core_files-->134<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->612,346<!--/hp-fig-->
-tokens across <!--hp-fig:core_lines-->58,275<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->52,580<!--/hp-fig--> non-blank); the 2 token
+estimator counts the canonical <!--hp-fig:core_files-->135<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->623,998<!--/hp-fig-->
+tokens across <!--hp-fig:core_lines-->59,446<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->53,620<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -75,18 +80,18 @@ leaves them out. The list and its counters stand in
 home of the core figures above.
 
 When project talk says "test core", it means testing this
-set. A change aimed at core is aimed at those 134 files and
+set. A change aimed at core is aimed at those 135 files and
 no others, and a result reported for core covers exactly
 them.
 
-The runner proper is 6,779 lines; the core around it is
-59,353. The set as assembled, part by part (re-measured
+The runner proper is 6,928 lines; the core around it is
+60,230. The set as assembled, part by part (re-measured
 2026-11-10):
 
-- runner/ops: 18,837 lines
-- runner/tools: 8,903
+- runner/ops: 18,870 lines
+- runner/tools: 9,598
 - runner/wire: 8,708
-- runner/runner.py: 6,779
+- runner/runner.py: 6,928
 - runner/oracle: 5,044
 - runner/transport_extensions: 2,775
 - runner/guard: 4,521
@@ -97,12 +102,12 @@ The runner proper is 6,779 lines; the core around it is
 
 The canonical list's breakdown is the same except
 runner/tools, where the 3 excluded suite runners account
-for 784 of the lines, leaving 8,119 in the canonical list.
+for 784 of the lines, leaving 8,814 in the canonical list.
 The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-59,353 lines, explicit platform branching — sys.platform,
+60,230 lines, explicit platform branching — sys.platform,
 os.name and win32 markers — totals about 140 lines in 36 of
 its files, beside a small number of dedicated platform
 modules (runner/ops/windows.py, runner/ops/winlog.py,

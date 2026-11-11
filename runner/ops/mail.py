@@ -645,6 +645,14 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 result.setdefault("confinement_detail", {})["protected_paths_changed"] = protected_changed
             if cfg.get("judge") in ("advisory", "enforce"):
                 result["judgment"] = {"verdict": verdict, "reasons": reasons}
+            # The disclosure posture stamp (Q137): the runner's
+            # own fact about this run, resolved at startup from
+            # runner-side state alone and set here, at the
+            # completion seam, before the body is fitted and
+            # signed -- nothing the job carried is read, and the
+            # job, already exited, can neither skip nor forge it.
+            _runner()._stamp_result_posture(base_dir, result, job_id,
+                                            key_id=key_id, cfg=cfg)
             out_subject = f"{_runner().SUBJECT_RESULT}{job_id}"
             # Fit before signing (review item 4): a body over
             # max_result_bytes has its streams cut to head and tail,

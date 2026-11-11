@@ -25,8 +25,12 @@ the Oracle briefing work of 2026-11-08 added its 2 files
 and the list stands at 132; the platform confinement backends
 of 2026-11-09/10 added theirs (runner/guard/windows_confine.py
 and runner/guard/freebsd_confine.py), and the list stands at
-134, with the figures below re-measured live by the CLI as
-always. This module itself
+134; the disclosure posture module (runner/tools/disclosure.py)
+joined it on 2026-11-10, when the posture stamp producer
+wired the runner to load it at startup and at the result
+seam — the first tools module the runner itself executes —
+and the list stands at 135, with the figures below
+re-measured live by the CLI as always. This module itself
 is not in the list either: the list names the set as assembled
 for the 2026-11-04 pass, and this module is the tooling that
 carries the list, written after that pass.
@@ -37,7 +41,7 @@ CLI output:
 - GEMINI_COUNT_TOKENS (619,845) is the Gemini countTokens
   measure of the set as assembled (133 files), 2026-11-04.
 - The project estimator (runner/ops/version4.py's
-  count_text_tokens) counts the canonical list (134 files as
+  count_text_tokens) counts the canonical list (135 files as
   it now stands); the
   CLI prints its figure live. The estimator is not a BPE
   tokenizer, and the 2 figures are not interchangeable: the
@@ -45,13 +49,13 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 59,353 lines,
-53,542 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 60,230 lines,
+54,308 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
 The headline inside those numbers: the runner proper,
-runner/runner.py itself, is 6,779 lines; the core around it
+runner/runner.py itself, is 6,928 lines; the core around it
 is the rest. The as-assembled set's per-part line counts are
 recorded in AS_ASSEMBLED_PART_LINES below; the CLI computes
 and prints the canonical list's per-part counts live, and
@@ -201,10 +205,19 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # contradiction mark (the Q138 build) grew
 # runner/ops/briefing.py and runner/ops/startup.py and the
 # ask seams and the runner proper took the wiring.
+# Re-measured again the same day after the posture stamp
+# producer (Q137) wired the runner to the disclosure
+# module — the assignment resolved at startup in
+# runner/ops/main.py, the stamp set on the signed result
+# in runner/ops/mail.py, the producer itself in the
+# runner proper — growing runner/ops and the runner
+# proper, and runner/tools/disclosure.py joined the
+# canonical list above, the whole set re-measured over
+# the current tree.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
-# the module docstring; the list itself stands at 134 since
-# the 2026-11-10 entry above), not the canonical list itself. The
+# the module docstring; the list itself stands at 135 since
+# the 2026-11-10 entries above), not the canonical list itself. The
 # reviewing model's own token measure of the set (Gemini
 # countTokens) is a measure of the 2026-11-04 assembly and is
 # NOT re-recorded here: no re-count of the grown set has been
@@ -212,18 +225,18 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # assembly. The zip size and the estimator counts re-measured
 # here come from this module's own deterministic build and
 # counter over the current tree.
-AS_ASSEMBLED_FILES = 137
-AS_ASSEMBLED_ZIP_BYTES = 753155
-AS_ASSEMBLED_LINES = 59353
-AS_ASSEMBLED_NONBLANK_LINES = 53542
+AS_ASSEMBLED_FILES = 138
+AS_ASSEMBLED_ZIP_BYTES = 763178
+AS_ASSEMBLED_LINES = 60230
+AS_ASSEMBLED_NONBLANK_LINES = 54308
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 18837,
-    "runner/tools": 8903,
+    "runner/ops": 18870,
+    "runner/tools": 9598,
     "runner/wire": 8708,
-    "runner/runner.py": 6779,
+    "runner/runner.py": 6928,
     "runner/oracle": 5044,
     "runner/transport_extensions": 2775,
     "runner/guard": 4521,
@@ -324,6 +337,7 @@ CORE_FILES = (
     "runner/tools/coverage_gaps.py",
     "runner/tools/coverage_one.py",
     "runner/tools/coverage_targets.py",
+    "runner/tools/disclosure.py",
     "runner/tools/fetch_upstream.py",
     "runner/tools/first_ping.py",
     "runner/tools/linecov.py",

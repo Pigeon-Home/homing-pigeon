@@ -189,6 +189,31 @@ def main() -> int:
                     "no runner_id is configured; the check is "
                     "skipped. Set runner_id (the setup wizard "
                     "generates one for fresh configs).", "WARN")
+    # The disclosure posture assignment (Q137) resolves here, at
+    # startup, from runner-side state alone: a retired posture,
+    # an undeclared tag or an unreadable registry is a
+    # configuration problem named before any job work, never
+    # discovered at a job's completion. No block declares
+    # nothing and changes nothing. A declared block whose
+    # project has no assignment runs unstamped and says so
+    # once, here -- the same not-engaged record the job_user
+    # gate keeps above.
+    try:
+        _posture_declared, _posture_project, _posture_stamp = \
+            R._resolve_posture_stamp(
+                cfg, R._base_dir_for(cfg, args.config))
+    except RuntimeError as e:
+        print(e, file=sys.stderr)
+        return 2
+    R._set_posture_resolution(_posture_declared, _posture_project,
+                              _posture_stamp)
+    if _posture_stamp:
+        R.log(f"disclosure posture: project {_posture_project} "
+              f"runs under {_posture_stamp}")
+    elif _posture_declared:
+        R.log(f"disclosure posture: no assignment for project "
+              f"{_posture_project}; results are recorded "
+              f"unstamped", "WARN")
     # F2: a present-but-invalid oracle tool mode stops startup here
     # too. The value decides what the Oracle's run tool may do on
     # this box, so a bad one is refused naming the key, never

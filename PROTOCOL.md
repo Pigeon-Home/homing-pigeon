@@ -255,6 +255,19 @@ The reference default is email only: `transports` absent means
   changed and never what. The view does not shape it, since it is
   not output, and no tier lets a receiver read the list back from
   it. A runner reinstalled with a new salt reads as changed.
+- `posture_stamp`: OPTIONAL. The deployment's disclosure
+  posture stamp, `hp-posture-<version>-<posture id>`, carried
+  on a result when the deployment declares a posture
+  assignment in its config and the assignment resolves to an
+  active posture in the operator's registry. The runner
+  resolves the assignment at startup from its own config and
+  files, and sets the member itself at the completion seam,
+  after the job has exited and inside what it signs: no job
+  member can add, change or remove it, and a stamp field
+  arriving on a job is never read. A deployment with no
+  assignment carries no member; its audit log records each
+  run as unstamped instead. A rejection result records no
+  run and carries none.
 - `result_seq` and `prev_result_sha384`: the result chain. Every
   result the runner signs carries `result_seq`, one more than the
   last result it signed under the same key (section 14.2; the

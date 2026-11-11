@@ -156,6 +156,13 @@ _channel = _load_mod("runner.transport_extensions.channel",
 # the fifty-six documented defaults that motivated it.
 _confval = _load_mod("runner.guard.confval", "guard.confval")
 _defaulted = _load_mod("runner.guard.defaulted", "guard.defaulted")
+# The disclosure posture formats (the registry, the tagging, the
+# stamp): runner/tools/disclosure.py, loaded for the stamp
+# producer at the result-assembly seam (Q137). The frozen builds
+# carry it as a hidden import; a build without it refuses a
+# declared posture block at startup rather than running an
+# assigned deployment unstamped.
+_disclosure = _load_mod("runner.tools.disclosure", "tools.disclosure")
 # The one atomic writer for state files (Agent-Chat-Stamp
 # 50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f): runner/guard/atomicio.py.
 _atomicio = _required_load_mod("runner.guard.atomicio", "guard.atomicio")
@@ -2091,7 +2098,7 @@ def outbox_lines(base_dir):
 _STUB_KEYS = ("v", "type", "job_id", "kind", "key_id", "completed_at",
               "exit_code", "timed_out", "duration_sec", "runner", "review",
               "judgment", "env_fingerprint", "result_seq",
-              "prev_result_sha384")
+              "prev_result_sha384", "posture_stamp")
 
 def _result_meta(result):
     if not isinstance(result, dict):
@@ -2185,6 +2192,148 @@ def chain_members(cfg, base_dir, owner, result):
     if prev:
         result["prev_result_sha384"] = prev
     return seq
+
+# ---- the disclosure posture stamp producer (Q137)
+#
+# The producer the posture helpers waited for: the helpers in
+# runner/tools/disclosure.py classify and refuse, and this is
+# where a stamp is minted onto a run's records. The deployment's
+# assignment is resolved ONCE, at startup, from runner-side
+# state alone (the config's disclosure_posture block: the
+# registry file, the tagging file, and this deployment's
+# project in it), and that resolution -- never anything a job
+# carried -- is what the completion seam stamps with. A stamp
+# field arriving on a job is never read: the job is the
+# untrusted party, and a stamp it could set, skip or forge
+# would attest nothing.
+_POSTURE_DECLARED = False
+_POSTURE_PROJECT = ""
+_POSTURE_STAMP = None
+
+
+def _set_posture_resolution(declared, project, stamp) -> None:
+    """Record main()'s startup resolution for this process.
+    Set once, before the poll loop; the seam below only reads
+    it, and a hot config reload does not move it."""
+    global _POSTURE_DECLARED, _POSTURE_PROJECT, _POSTURE_STAMP
+    _POSTURE_DECLARED = bool(declared)
+    _POSTURE_PROJECT = project if isinstance(project, str) else ""
+    _POSTURE_STAMP = stamp if isinstance(stamp, str) and stamp else None
+
+
+def _posture_stamp():
+    """The stamp this process resolved at startup, or None."""
+    return _POSTURE_STAMP
+
+
+def _resolve_posture_stamp(cfg, base_dir):
+    """(declared, project, stamp) for this deployment.
+
+    declared is False when the config carries no
+    disclosure_posture block (or an empty one): the deployment
+    stands outside the posture system and runs exactly as
+    before. stamp is None when the block is declared but the
+    tagging assigns this deployment's project nothing -- the
+    absence the seam records as unstamped, plainly; no default
+    posture is invented here, because an invented default
+    would forge the very classification the stamp exists to
+    fix.
+
+    A declared block that cannot be honored is a configuration
+    problem and raises RuntimeError: a key missing or not a
+    non-empty string, a registry or tagging file that cannot
+    be read or parsed, a tag the registry does not declare, an
+    assignment naming a retired posture (format_stamp's own
+    refusal, surfaced here, at startup), or a build that does
+    not carry the disclosure module. Relative registry and
+    tagging paths resolve against base_dir, the house rule
+    for operator files (transport_file, extensions_dir).
+    """
+    block = cfg.get("disclosure_posture") if isinstance(cfg, dict) else None
+    if block is None:
+        return False, "", None
+    if not isinstance(block, dict):
+        raise RuntimeError(
+            "config error: disclosure_posture must be an object "
+            "naming registry, tagging and project")
+    if not block:
+        return False, "", None
+    for key in ("registry", "tagging", "project"):
+        value = block.get(key)
+        if not isinstance(value, str) or not value.strip():
+            raise RuntimeError(
+                "config error: disclosure_posture.%s must be a "
+                "non-empty string" % key)
+    project = block["project"]
+    if _disclosure is None:
+        raise RuntimeError(
+            "config error: disclosure_posture is declared but "
+            "this build does not carry runner/tools/disclosure.py; "
+            "the deployment's assignment cannot be resolved")
+
+    def _path(raw):
+        return raw if os.path.isabs(raw) else os.path.join(base_dir, raw)
+
+    try:
+        registry = _disclosure.load_registry(_path(block["registry"]))
+    except _disclosure.RegistryError as e:
+        raise RuntimeError(
+            "config error: disclosure_posture registry: %s" % e)
+    try:
+        tagging = _disclosure.load_tagging(_path(block["tagging"]))
+    except _disclosure.TaggingError as e:
+        raise RuntimeError(
+            "config error: disclosure_posture tagging: %s" % e)
+    assignment = None
+    for entry in tagging.assignments:
+        if entry.project == project:
+            assignment = entry
+            break
+    if assignment is None:
+        return True, project, None
+    posture = registry.by_tag(assignment.posture)
+    if posture is None:
+        raise RuntimeError(
+            "config error: disclosure_posture: project %r is "
+            "assigned tag %r, which the registry does not declare"
+            % (project, assignment.posture))
+    try:
+        stamp = _disclosure.format_stamp(registry, posture.id)
+    except _disclosure.StampError as e:
+        raise RuntimeError("config error: disclosure_posture: %s" % e)
+    return True, project, stamp
+
+
+def _stamp_result_posture(base_dir, result, job_id, key_id="", cfg=None):
+    """The completion seam's posture fact: stamp the result and
+    write its audit row, after the job has exited.
+
+    Called where the runner assembles an executed job's result,
+    before the body is fitted and signed, so the stamp rides
+    inside what the runner signs. An undeclared deployment does
+    nothing at all: no member, no row, exactly as before. A
+    declared one writes one audit row per executed job --
+    "stamped", with the stamp as the detail, or "unstamped"
+    when the deployment's project has no assignment -- and a
+    stamped result carries the member. A rejected job is not
+    stamped: it records no run, and a posture on it would be
+    the posture of a run that never happened.
+    """
+    if not _POSTURE_DECLARED or not isinstance(result, dict):
+        return
+    if _POSTURE_STAMP:
+        result["posture_stamp"] = _POSTURE_STAMP
+        decision = "stamped"
+        reason = "deployment assignment"
+        detail = _POSTURE_STAMP
+    else:
+        decision = "unstamped"
+        reason = "no assignment for the deployment's project"
+        detail = _POSTURE_PROJECT
+    if _security is not None:
+        _security.write_audit_entry(
+            base_dir, "posture", decision, reason,
+            key_id=key_id, job_id=job_id, detail=detail, cfg=cfg)
 
 # ---- the result's size, and what a permanent refusal gets instead
 MAX_RESULT_BYTES = 5 * 1024 * 1024   # 5 MiB on the wire; providers allow 10-25 for the whole message
