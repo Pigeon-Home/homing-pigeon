@@ -105,9 +105,24 @@ class RegistryTest(unittest.TestCase):
         self.assertEqual(("confinement",),
                          RG.classify_path("runner/guard/sandbox.py"))
         self.assertEqual(("confinement",),
+                         RG.classify_path("runner/guard/windows_confine.py"))
+        self.assertEqual(("confinement",),
+                         RG.classify_path("runner/guard/freebsd_confine.py"))
+        self.assertEqual(("confinement",),
                          RG.classify_path("docs/steady/security/homing_pigeon.te"))
         self.assertEqual(("confinement",), RG.classify_path(
             "docs/steady/security/homing-pigeon.service"))
+
+    def test_every_confinement_backend_asks_for_confinement(self):
+        # One backend per platform family: the Linux sandbox and
+        # the Windows and FreeBSD confinement backends are the
+        # same kind of module, so a change to any one of them
+        # asks for the confinement review (Packet 6, P6-S10).
+        for path in ("runner/guard/sandbox.py",
+                     "runner/guard/windows_confine.py",
+                     "runner/guard/freebsd_confine.py"):
+            self.assertEqual(("confinement",),
+                             RG.classify_path(path), path)
 
     def test_posture_asks_for_confinement_and_job_user(self):
         self.assertEqual(("confinement", "job-user behavior"),

@@ -109,6 +109,8 @@ EXACT_RULES = {
     "runner/guard/confval.py": ("key handling",),
     "runner/config.example.json": ("key handling",),
     "runner/guard/sandbox.py": ("confinement",),
+    "runner/guard/windows_confine.py": ("confinement",),
+    "runner/guard/freebsd_confine.py": ("confinement",),
     "runner/ops/posture.py": ("confinement", "job-user behavior"),
     "docs/steady/security/homing_pigeon.te": ("confinement",),
     "docs/steady/security/homing-pigeon.service": ("confinement",),

@@ -210,7 +210,7 @@ intended.
 | Protocol | `PROTOCOL.md`; `docs/ietf/`; `runner/wire/` |
 | Execution | `runner/runner.py`; `runner/ops/` execution modules (`exec.py`, `main.py`, `startup.py`, `poll.py`, `handlers.py`, `cli.py`) |
 | Key handling | `runner/wire/jobcrypto.py`, `runner/wire/mlkem.py`; `runner/ops/install.py`; `runner/guard/confval.py`; `runner/config.example.json`; `runner/cloud/` |
-| Confinement | `runner/guard/sandbox.py`; `runner/ops/posture.py`; the shipped sandbox policy (`docs/steady/security/homing_pigeon.te`, `docs/steady/security/homing-pigeon.service`) |
+| Confinement | `runner/guard/sandbox.py`; `runner/guard/windows_confine.py`; `runner/guard/freebsd_confine.py`; `runner/ops/posture.py`; the shipped sandbox policy (`docs/steady/security/homing_pigeon.te`, `docs/steady/security/homing-pigeon.service`) |
 | Job-user behavior | Any file whose name carries `job_user` or `job-user`; `runner/ops/posture.py` |
 | Extension loading | `runner/extensions/`; `runner/transport_extensions/`; `runner/ops/extensions.py`; `runner/ops/extsources.py`; `runner/guard/extreview.py`; `runner/tools/pin_extension_sources.py` |
 | Disclosure controls | `runner/oracle/`; `runner/guard/security.py`; `runner/ops/briefing.py`; `runner/tools/make_briefing.py`; `runner/tools/disclosure.py` |

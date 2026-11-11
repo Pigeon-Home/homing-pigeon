@@ -3660,3 +3660,68 @@ check and the new tests ran:
 Each supposition is settled against the tree in the
 commits that follow this note; the conclusions stand
 at the end of this section when the lane lands.
+
+## Release-gate confinement registry: conclusions (2026-11-10)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded above,
+each verified on the tree before the fix and after
+it:
+
+- **RG-S1 confirmed** — on the head the supposition
+  was written against, `classify_path` returned no
+  class for `runner/guard/windows_confine.py` and
+  for `runner/guard/freebsd_confine.py`, and the
+  confinement class alone for
+  `runner/guard/sandbox.py`. The gap was the
+  registry's exact rules, exactly as supposed.
+- **RG-S2 confirmed, with 1 examined file recorded
+  plainly** — no other production file whose whole
+  purpose is a confinement backend stands
+  unclassified: the 3 backends are the whole set
+  (the Linux sandbox and the Windows and FreeBSD
+  backends, one per platform family, each registered
+  in `runner/ops/core.py`). The other
+  confinement-touching production files stand as
+  the supposition read them: `runner/runner.py`
+  carries execution, `runner/guard/security.py`
+  carries disclosure controls, `runner/ops/posture.py`
+  already carries confinement, and the tests are
+  unclassified by the gate's stated design. One
+  file was examined and deliberately left:
+  `runner/ops/remediation_ops.py`, the shared
+  dispatch extracted from the runner, holds the
+  confinement startup gate and spawn seam beside
+  the job-user seams and the remediation helpers —
+  mixed dispatch serving several classes, not a
+  platform backend, so no exact rule for it is an
+  omission of this kind; whether mixed dispatch
+  should take a class at the gate is a wider
+  registry-design question, recorded here unfixed
+  rather than widened into this lane.
+- **RG-S3 confirmed** — `release-gate.md`'s class
+  table reproduces the registry, and its
+  confinement row omitted the 2 backends as the
+  code did; the row now names all 3 backends, so
+  prose and code agree.
+- **RG-S4 confirmed** — the pins landed in
+  `runner/tests/test_release_gate.py`
+  (`test_confinement_paths` extended to both
+  backends, and
+  `test_every_confinement_backend_asks_for_confinement`
+  holding the 3 backends to the one class). On the
+  pre-fix tree the file read 46 tests with exactly
+  2 failures, both pins failing on the Windows
+  backend's empty class; with the fix the same 46
+  read green.
+- **RG-S5 confirmed** — the fix is the 2 exact
+  rules and nothing else: both backend paths now
+  take the confinement class alone, no prefix rule
+  was added, the classifier did not change, and no
+  other class moved.
+
+The P6-S10 flag is closed: a release range touching
+either platform confinement backend now asks for
+the confinement review, in the tool and in the
+design prose that reproduces it.
