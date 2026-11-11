@@ -74,7 +74,7 @@ What the numbers say:
   Oracle predicted `likely_success` for every job, so its accuracy
   is exactly the share of jobs that succeed, and it missed every
   failure. Use the prediction as a record, not as a signal, until an
-  `llm` Oracle is running ([configuring-oracle.md](../oracle/configuring-oracle.md)).
+  `llm` Oracle is running ([configuring-oracle.md](../../infrastructure-documents/oracle/configuring-oracle.md)).
 - **`full` means full.** At `max_result_view: full` the result is
   what the script printed. The `flagread` job prints a planted fake
   credential file; `runner.log` redacts it, and the result does not

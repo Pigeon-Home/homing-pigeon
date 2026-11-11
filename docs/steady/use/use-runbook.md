@@ -414,7 +414,7 @@ paged, and no model is called. There is no flag that deletes the Oracle.
 Real log lines, envelopes, and posture output from a running
 system are in [live-examples.md](live-examples.md), with what
 19,227 jobs on a test box came to. The capture itself
-(scrubbed) is `docs/reports/live-2026-10-25/`; read it with
+(scrubbed) is `docs/steady/reports/live-2026-10-25-readme.md`; read it with
 `python3 runner/tools/live_capture.py`.
 
 ### Where results go

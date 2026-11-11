@@ -6,7 +6,7 @@ The conductor's campaign, 2026-10-26, to run indefinitely: a
 coverage-guided seed corpus against every reader that stands
 between bytes from outside and the agent's trust in them. This is
 the plan from here on; the standing orders' section M is the loop
-that runs it, `docs/seats/questions.md` is where its questions and
+that runs it, `docs/steady/seats/questions.md` is where its questions and
 findings go, and this file is revised as the campaign learns.
 Nothing here names a person, a machine, a path or an address that
 is real.
@@ -127,12 +127,12 @@ peer on the wire reaches first.
 | 19 | `stage`, `collect` | `runner/ops/exec.py`: the staging of a job's inline files and the collection of its outputs, under the file-name rules (Q101) | in the corpus |
 | 20 | `keydir` | `runner/wire/verify.py` `load_key_directory`, `validate_key_directory`, `key_directory_verdict` (PROTOCOL.md section 14.4), and the two doors that ask them, `check_key_policy` and the DTLS pipe's `directory_lookup`: one directory and one key id; the verdict the same under every name of a key, `compromised` ahead of every bound, the job's door answering exactly the verdict, the DTLS lookup answering the secret exactly when the verdict admits | in the corpus (de_dust2, P5) |
 | 21 | `address` | `runner/wire/mailbox.py` `_valid_reply_to` and `send_mail`: one job's `reply_to`; an honored address is the stripped text, within the length and character rules, and the To header the result carries parses back to that one address and nothing else (Q113: a mutated address once rendered as `<>`) | in the corpus (de_dust2, P5) |
-| 22 | `dtls_session` | `runner/wire/dtlsproto.py`, stateful: a script of steps over two clients and one server in memory (deliver, drop, duplicate, flip, cut, reorder, tick, rebind, rotate, resume); no core raises past its contract, nothing establishes under a key the server does not hold, a resume names a key still in the map, nothing half-open outlives the give-up (`docs/project/de_dust2.md` section 7) | in the corpus (de_dust2, technique `protocol`) |
+| 22 | `dtls_session` | `runner/wire/dtlsproto.py`, stateful: a script of steps over two clients and one server in memory (deliver, drop, duplicate, flip, cut, reorder, tick, rebind, rotate, resume); no core raises past its contract, nothing establishes under a key the server does not hold, a resume names a key still in the map, nothing half-open outlives the give-up (`docs/steady/project/de_dust2.md` section 7) | in the corpus (de_dust2, technique `protocol`) |
 | 23 | `race_board` | `runner/wire/board.py` under threads: lanes of board operations interleaved under a short switch interval over one board; one lease is one `claimed_at`, a timeout of 0 ends it at once, one completion, the file is the board in memory | in the corpus (de_dust2, technique `race`) |
 | 24 | `race_stash` | `runner/runner.py` under threads: lanes of stash, deliver, fail, undeliver and resend over one outbox; a sent body was stashed, and one key is not delivered twice with no undeliver between | in the corpus (de_dust2, technique `race`) |
 | 25 | `race_state` | `runner/runner.py` under threads: lanes over the pool's seen and retained files; the seen file loses no key a thread marked, and a retained id reads back as one complete write (a second save of the same id replaces the first) | in the corpus (de_dust2, technique `race`) |
-| 26 | `dtls_hostile` | `runner/wire/dtlsproto.py`, stateful: the client against a server that does not hold its key, the wire mutated in flight; no key, no session -- the client never establishes and never surfaces a server message, raising only `DtlsError` (`docs/project/de_dust2.md` section 7) | in the corpus (de_dust2, technique `protocol`) |
-| 27 | `edge_subject` | `runner/wire/transports.py` vs the hosted queue's Worker (`runner/cloud/queues-worker/src/index.js`): one subject line, and the gate's `jobIdOf`/`resultIdOf` must read the same job and result id as the runner's `_JOB_ID_RE`/`_RESULT_ID_RE`, over a node bridge; skipped when node is absent (`docs/project/de_dust2.md` section 7, Q121) | in the corpus (de_dust2, technique `parity`) |
+| 26 | `dtls_hostile` | `runner/wire/dtlsproto.py`, stateful: the client against a server that does not hold its key, the wire mutated in flight; no key, no session -- the client never establishes and never surfaces a server message, raising only `DtlsError` (`docs/steady/project/de_dust2.md` section 7) | in the corpus (de_dust2, technique `protocol`) |
+| 27 | `edge_subject` | `runner/wire/transports.py` vs the hosted queue's Worker (`runner/cloud/queues-worker/src/index.js`): one subject line, and the gate's `jobIdOf`/`resultIdOf` must read the same job and result id as the runner's `_JOB_ID_RE`/`_RESULT_ID_RE`, over a node bridge; skipped when node is absent (`docs/steady/project/de_dust2.md` section 7, Q121) | in the corpus (de_dust2, technique `parity`) |
 
 The `dtls` target's core holds three resumption tickets on every
 replay (de_dust2, P5): one issued under the key in its map, one
@@ -369,14 +369,14 @@ the search as well as preceding it (Muse, 2026-10-26).
   campaign writes the corpus files, the arc maps, `runs.jsonl`
   and `survivors.json`; the desk writes the tool, the seed
   functions and the readers); Muse's daily note is the top of
-  `docs/seats/.com.chat`.
+  `docs/infrastructure-documents/seats/.com.chat`.
 
 ## 7. Cadence and records
 
 The grow is continuous and pegs the CPU (the conductor's order;
 the resource line reads on target or over, and anything lower is a
 serial step named in the ledger). Since de_dust2
-(`docs/project/de_dust2.md`) a cycling grow gives each target a
+(`docs/steady/project/de_dust2.md`) a cycling grow gives each target a
 time slice tilted by its recent yield rather than a fixed count of
 rounds, draws parents by the rarity of what they reach and by
 whether the reader took them, and files a try far slower than the
@@ -390,17 +390,17 @@ it; the corpus and its records ride every release, and the replay
 test is a release gate like any other. Every grow, kept or not,
 is a line in `runs.jsonl`; every pass of the regression tool, when
 the conductor lifts its suspension, is a line in
-`docs/reports/regression/passes.jsonl`; the campaign's ledger is
+`docs/steady/specimens/passes.jsonl`; the campaign's ledger is
 the end of the standing orders; the campaign's questions are in
 `questions.md`. Where each target Grok built landed is
-`docs/project/de_dust-where.md`. A release's evidence
+`docs/steady/project/de_dust-where.md`. A release's evidence
 manifest beside its SBOM is
 the conductor's call (offered 2026-10-26).
 
 ## 8. Saturation and what comes after it
 
 The fleet's own signature of saturation, read on 29-OCT from the
-run ledger (`docs/project/de_dust2.md`): entries kept per CPU-hour
+run ledger (`docs/steady/project/de_dust2.md`): entries kept per CPU-hour
 fell from 22 to 0.7 in four days while spend rose twentyfold, four
 slow targets took three quarters of the CPU under a fixed round
 count, and zero new crashes meant a plateau, not a clean reader.

@@ -4,7 +4,7 @@
 > environment variables `.github/docker/entrypoint.sh` reads, the dry-run
 > invocation, and updating; those parts are checked against the
 > live Dockerfile (last: 2026-10-21). The install paths that ship
-> today, Docker included, are in [INSTALL.md](../../INSTALL.md),
+> today, Docker included, are in [INSTALL.md](../../../INSTALL.md),
 > which points here for these three topics.
 
 The fastest way to run the runner. No Python to install, no git clone,
@@ -154,8 +154,7 @@ Then replace `ghcr.io/pigeon-home/homing-pigeon:latest` with
 - Runs as a **non-root** user inside the container. Never needs root.
 - **No inbound network.** The runner polls IMAP outbound and sends SMTP
   outbound. No ports exposed, no ports published, nothing listens.
-- Published images are signed with Sigstore. Verify:
-  ```bash
-  cosign verify ghcr.io/pigeon-home/homing-pigeon:latest \
-    --certificate-oidc-issuer https://token.actions.githubusercontent.com
-  ```
+- Published images carry a Sigstore build-provenance attestation
+  for the image digest, pushed to the registry alongside the image.
+  Verify it by digest with `gh attestation verify` (see
+  `docs/steady/verification.md`).

@@ -2,7 +2,7 @@
 
 <!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
 
-Historical record. `docs/project/future.md` lists only work that is
+Historical record. `docs/FUTURE.md` lists only work that is
 not built; the owner asked for the finished items to leave it. These
 are the entries as they stood, kept for the decisions they carry (the
 hard requirements, placements and defaults DRU set). The live docs
@@ -46,7 +46,7 @@ resumption, draft Section 20. The same card now rides a ping's result
 (B6).
 
 **A4. The Oracle's opinion as a result member.** Built (DRU):
-`docs/design/oracle-opinion-design.md`, PROTOCOL 3.1 and 3.2,
+`docs/steady/design/oracle-opinion-design.md`, PROTOCOL 3.1 and 3.2,
 `runner/oracle/opinion.py`: diagnose, advise and repair latitudes
 under the `oracle_opinion_mode` ceiling, deterministic tier-1 checks,
 an optional labeled model note, and the one mechanical repair (absent
@@ -68,7 +68,7 @@ separate Oracle signing key the same entry asked for is C11.
 
 **A7. The local test chat.** The whole exchange on one box, acting as
 the cloud SI in-process and reading the result directly; no mail is
-sent. `--local-test`; `docs/archive/handoff-local-si.md`.
+sent. `--local-test`; `docs/steady/use/handoff-local-si.md`.
 
 **A8. The firewall posture line.** On or off, with the T1562.004
 change alert, shipped. The ruleset hash and the cage-held check are

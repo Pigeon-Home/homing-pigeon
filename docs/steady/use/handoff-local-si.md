@@ -51,12 +51,12 @@ unless asked.
 
 The harness uses no adapter module; in the runner, transports are
 extensions supervised by `runner/wire/transports.py`. Status:
-`docs/transports-status.md`.
+`docs/steady/reports/transports-status.md`.
 
 | Transport | State |
 |-----------|--------|
 | email | implemented, this is what the harness tests |
-| cloudflare | not in the runner |
+| cloudflare | implemented as the `queues` transport extension; not used by this harness |
 | nats | implemented as a transport extension; not used by this harness |
 | local_socket, mqtt, redis, durable_objects, postgres | cut on purpose |
 
@@ -87,18 +87,19 @@ Not part of this branch's unique commits, but context:
 ## Files
 
 - `runner/ops/local_test.py` — the harness
-- `docs/local-si-test.md` — how to run it
-- `docs/transports-status.md` — transport table
-- `docs/handoff-local-si.md` — this file
-- `tests/test_local_si.py`, `tests/test_local_si_blast.py`,
-  `tests/test_local_si_transport.py`
+- `docs/steady/use/local-si-test.md` — how to run it
+- `docs/steady/reports/transports-status.md` — transport table
+- `docs/steady/use/handoff-local-si.md` — this file
+- `runner/tests/test_local_si.py`, `runner/tests/test_local_si_blast.py`,
+  `runner/tests/test_local_si_transport.py`
 
 ## Open items left in this note
 
 Unbuilt work is listed in FUTURE.md. These notes are not a queue.
 
 1. A live Cloudflare try was planned and was not done. Queues are
-   still not in the runner.
+   in the runner as a transport extension now; this harness still
+   exercises email only.
 2. Open WebUI env var: confirmed — `runner/ops/local_test.py` sets
    `OLLAMA_BASE_URL` when it launches Open WebUI for
    `--local-test --browser`.

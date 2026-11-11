@@ -320,6 +320,17 @@ with the same meaning as for `new`. Every subcommand takes
 `--keyring PATH` to read secrets from a keyring other than the default
 (`$HP_KEYRING`, else `~/.homing-pigeon/keyring.json`).
 
+`new` takes `--reply-to ADDRESS` too: the signed job carries it as
+its `reply_to`, and the runner emails the result to that address
+instead of its own mailbox. Without it the result goes to the
+runner's mailbox. A system sending on a user's behalf addresses
+the result to the user by default — reply to self, the address it
+sends from on their behalf — and, when the user asks for the
+result to go to a different address, says up front that it will
+not be able to retrieve the result from there and the user will
+have to fetch it by hand (AGENTS.md, "Where the answer goes:
+reply to self, by default").
+
 On a runner whose owner caps the view (`max_result_view`), ask for
 the view and declare the questions the result should answer, so the
 answers come back even where no output may (PROTOCOL.md sections 9

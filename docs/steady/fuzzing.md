@@ -326,7 +326,7 @@ to a shell. A job-shaped answer with no canary comes back as
 text. The format guard does not treat `{"kind","script"}` as
 a tool call. The research notes, and where that premise
 stops, are in
-[docs/design/idea321/RUNBOOK.md](../design/idea321/RUNBOOK.md).
+[docs/steady/use/idea321-runbook.md](use/idea321-runbook.md).
 
 A short DTLS record raised `IndexError` inside the record
 opener. It now raises `DtlsError`, which the session already
@@ -541,7 +541,7 @@ floor) and `runner/tests/test_seeded_mutation_workflow.py`
 The conductor asked this opinion thrown into the hat. It is
 not a change to the rings above, and it is not a standing
 order. The full read is the answer to Q65 in
-`docs/seats/questions.md`. The desk applies what it takes.
+`docs/steady/seats/questions.md`. The desk applies what it takes.
 What follows is the part that would change this document.
 
 In-memory fuzzing is the right tool, and it is already on the
@@ -564,7 +564,7 @@ write a third fuzzer, and do not lengthen the in-suite
 rounds.
 
 The targets that followed, in order, all in the de_dust corpus
-now (`docs/project/de_dust.md`, rows 7 to 11):
+now (`docs/steady/project/de_dust.md`, rows 7 to 11):
 
 1. Mail extraction (`mailbox.py`, `get_text_body`, subject
    parsing, and the email extension's `_subject_body` and

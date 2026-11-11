@@ -62,12 +62,14 @@ product; standalone NDR as a growth story; chat-only copilots; pre-LLM
 
 - **ACLs** — the example. Partly in place: the Windows one-home install
   sets a real DACL (`icacls`); POSIX ACLs are not applied yet. Extend
-  per `docs/security/security-gaps.md`.
+  per `docs/infrastructure-documents/security/security-gaps.md`.
 - **Linux capabilities** — drop everything a job doesn't need. A few lines,
   zero runtime cost. Partly there via bwrap; make it explicit per profile.
 - **seccomp-bpf** — syscall filter per job profile. Cheap, set once.
-- **Windows integrity levels + job objects** — free, per-job. Unused today;
-  candidate.
+- **Windows integrity levels + job objects** — free, per-job. In use
+  today: the Windows confinement backend creates each job suspended
+  under a restricted token at low integrity and assigns it to a Job
+  Object with a 512 MiB ceiling (`runner/guard/windows_confine.py`).
 - **Kernel audit (auditd / SACLs / ETW)** — the OS logs, we just read. An
   audit-log sense costs almost nothing.
 - **eBPF observability** — ~1–3% overhead for syscall visibility a rootkit
@@ -111,9 +113,10 @@ every tool call the Oracle makes); a policy for which tool calls the
 Oracle may make on its own is not built, and this page is its record.
 
 1. **Nobody watches the Oracle.** The industry's newest category is
-   agent-behavior baselining — watching the watchers. Our Oracle calls tools
-   with no record beyond chat history. Candidate: an Oracle action log as a
-   sense. The calls already flow through one place; recording them is small.
+   agent-behavior baselining — watching the watchers. Our Oracle's tool
+   calls are recorded in the oracle log; what is missing is the watch over
+   that record. Candidate: an Oracle action-log sense over the existing
+   log. The calls already flow through one place; watching them is small.
 2. **No guardrail below the Oracle.** ClawArmor's whole pitch is policy a
    compromised agent cannot override. Our cage protects the host *from jobs*;
    nothing constrains a misbehaving Oracle. Candidate: an Oracle tool-call

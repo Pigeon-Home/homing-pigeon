@@ -2,7 +2,7 @@
 
 > **Archived 2026-10-22.** A spec-only roadmap from 2026-10-15; nothing
 > in it was scheduled. Unbuilt work is listed in
-> [docs/FUTURE.md](../FUTURE.md).
+> [docs/FUTURE.md](../../FUTURE.md).
 
 Status: **spec only** (2026-10-15). Nothing here is scheduled or
 approved for build. Drawn from a Claude brainstorm; edited to fit the
@@ -12,7 +12,7 @@ the Oracle's `ask`, the board, and the DRI Telegram channel.
 Design constraints that apply to everything below: minimal-install
 (stdlib first), the Oracle stays advisory-only (it pages, it never
 remediates — a 2026-10-15 constraint, since superseded: remediation
-shipped as a runner-core mechanism; see docs/remediation-design.md),
+shipped as a runner-core mechanism; see docs/steady/design/remediation-design.md),
 sensor daemons get restricted keys that may only file for
 their own bound sensor, alert detail is redacted before leaving the
 box, and anything interactive is TTY-gated so services never block.
@@ -25,7 +25,7 @@ keys.
 ## 1. Senses and actuators
 
 The senses (1.1 and 1.2) arrive as `sensor_alert` jobs through the existing ingest
-path (`docs/senses.md`); the hands (1.3) go the other way, out to actuators. Sensors are dumb; the Oracle fuses.
+path (`docs/steady/oracle/senses.md`); the hands (1.3) go the other way, out to actuators. Sensors are dumb; the Oracle fuses.
 
 ### 1.1 Eyes and ears — a `snapshot` job kind
 
@@ -94,9 +94,9 @@ directly — it drafts, you confirm.
 
 ### 4.1 Learning loop
 
-When a job fails, the Oracle proposes a new `docs/archive/known-failures.md` entry —
+When a job fails, the Oracle proposes a new `docs/steady/reports/known-failures.md` entry —
 symptom, cause, fix, match pattern — and the owner approves it. The
-advisory reviewer (`runner/review.py`, `docs/job-review.md`) then gets
+advisory reviewer (`runner/oracle/review.py`, `docs/steady/oracle/job-review.md`) then gets
 better with every failure instead of staying frozen at whatever was
 written by hand.
 
@@ -108,7 +108,7 @@ senses saw. Cheap, private, no cloud involved.
 ### 4.3 Environment diff
 
 The runner already snapshots files outside the workspace
-(`docs/archive/audit-2026-10-15.md` re-sweep). Show "what this job changed on my
+(`docs/steady/reports/audit-2026-10-15.md` re-sweep). Show "what this job changed on my
 disk" as a diff view in the dashboard. Turns "what did it just do?"
 from a log-reading exercise into a glance.
 
@@ -137,7 +137,7 @@ from a log-reading exercise into a glance.
   each bird's last heartbeat, with a dead-man page if one goes quiet.
 - **Integrations.** Home Assistant add-on, Homebrew tap, winget package,
   a Docker Compose preset with Ollama included, and a Prometheus
-  endpoint for the resource monitor (`runner/resources.py` already
+  endpoint for the resource monitor (`runner/oracle/resources.py` already
   collects the numbers).
 
 ## 7. Security model sub-agent
@@ -158,7 +158,7 @@ reads each fused incident first and returns a triage verdict:
 benign / suspicious / malicious, with a severity and a one-line
 reason. The Oracle (the main Llama) then decides what to do with
 that verdict: dismiss it, log it, watch the box for follow-ups, or
-raise it through the DRI playbook (`docs/dri-playbook.md`), which
+raise it through the DRI playbook (`docs/steady/oracle/dri-playbook.md`), which
 pages the owner. The sub-model never pages, never remediates, never
 touches a tool. It is an advisor with one output: a verdict. The
 Oracle keeps the decision, which keeps the "advisory only" design
@@ -218,6 +218,6 @@ Open questions, deliberately unresolved: whether the verdict
 should carry a numeric score the Oracle can fuse with sensor
 weights (`score = weight × severity`), and whether the
 sub-model should also screen job *scripts* pre-execution
-(advisory reviewer input, `docs/job-review.md`) or only
+(advisory reviewer input, `docs/steady/oracle/job-review.md`) or only
 post-hoc incidents. Both are config-shaped, not code-shaped,
 so they can be decided per box.

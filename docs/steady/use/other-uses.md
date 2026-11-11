@@ -62,7 +62,7 @@ section states the survey's open questions in full.
   slow, size-capped and unsealed by default; there is no
   real-time control, no live video, and no guarantee the host
   is awake; and a job file needs a safe template library,
-  sandboxing, scheduling and queueing, and a non-technical
+  scheduling and queueing, and a non-technical
   consent and onboarding path before non-hobbyist audiences
   can use it. A job runner is, as the self-hosted CI
   literature puts it, "remote code execution by design" —
@@ -630,8 +630,12 @@ These apply across nearly all of the uses above, stated once:
    non-hobbyist use above needs named, parameterised,
    human-readable jobs ("Backup Check," parameters: none) —
    raw script submission limits the audience to programmers.
-2. **Sandboxing and resource caps.** CPU, RAM, disk, time and
-   network-egress limits per job class; VM or container
+2. **Resource profiles past the shipped caps.** Sandboxing
+   itself ships: confinement is enforce by default, with a
+   backend per platform (the Linux sandbox, the Windows Job
+   Object backend, the FreeBSD jail), a per-process memory
+   ceiling and job timeouts. What is missing is CPU, disk and
+   network-egress limits per job class, and VM or container
    profiles for untrusted inputs (uses 13 and 14).
 3. **Email mechanics.** Attachment limits of common mailboxes,
    chunking, compression, duplicate and retry handling, the

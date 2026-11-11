@@ -83,7 +83,7 @@ What it does instead:
   JSON object would not change the answer.
 
 PROTOCOL section 10 and T2.3 in
-[docs/steady/security/security-test-plan.md](../../security/security-test-plan.md)
+[docs/steady/security/security-test-plan.md](../security/security-test-plan.md)
 describe the same threat. T2.3 is a manual case. The stub
 above is the automated one. A live model is not required
 and is not called.
@@ -105,7 +105,7 @@ does not matter either. Stop on each row.
 | Review | A judgment of a job that already exists. The comment is not a script. |
 | Email, file drop, NATS, DTLS | Carry bytes to the same verifier. The bomb is a job script, or it is not. The pipe does not add a reader. |
 | Oracle chat / the SI | Can be told to ignore its instructions. Anything it emits still has to verify and pass policy before the runner acts. T2.5. No live-model test belongs here. |
-| Confinement | When enforce is on and `bwrap` exists, the process runs inside it. The default is enforce: a feature the config does not set reads as enforce. It does not change the judge. |
+| Confinement | When enforce is on and the platform backend exists — `bwrap` on Linux, the Job Object backend on Windows, the jail on FreeBSD — the process runs inside it. The default is enforce: a feature the config does not set reads as enforce. It does not change the judge. |
 | Windows | The bomb is POSIX syntax. The denylist is still an exact substring. A `cmd` spelling is a different denylist, which this judge does not have, and it is not this premise. |
 
 ## What not to add

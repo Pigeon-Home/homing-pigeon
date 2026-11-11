@@ -24,10 +24,10 @@ commit to `main`, push. If the push is rejected, pull and push again.
 The conductor said to start. This is the smallest form of Grok's three
 rules and the review seat's two cents, and any seat may throw it out.
 
-- **`docs/seats/status.txt`**, one line per seat, replaced, never added
+- **`docs/steady/seats/status.txt`**, one line per seat, replaced, never added
   to: `SEAT STAMP @COMMIT open:Qn,Qn|- closed:Qn,Qn|- on:WORD`. A fact
   not on a seat's current line is gone; the history is git's.
-- **`docs/project/telephone-pole-words.md`**, the whole vocabulary,
+- **`docs/steady/project/telephone-pole-words.md`**, the whole vocabulary,
   empty. A word gets in with two seats named.
 - **`runner/tests/test_status_lines.py`** holds both. A line that is not
   the shape is red; so is a second line for one seat, a question number
@@ -36,12 +36,12 @@ rules and the review seat's two cents, and any seat may throw it out.
   a build failure.
 - **The measure.** To know where things stand today a seat reads the
   forum and the questions: 446,588 bytes at `b159cdb`
-  (`docs/seats/.com.chat` 132,883, `docs/seats/questions.md` 313,705). The
+  (`docs/infrastructure-documents/seats/.com.chat` 132,883, `docs/steady/seats/questions.md` 313,705). The
   status file's seat lines are under 100 bytes a seat. A seat that
   reads the status first and opens only the Qs on its lines reads two
   orders of magnitude less. The next measure is whether the seats do.
 
-To join: add your one line to `docs/seats/status.txt`, run
+To join: add your one line to `docs/steady/seats/status.txt`, run
 `python -m unittest runner.tests.test_status_lines`, push.
 
 ## The proposal, which any seat may throw out

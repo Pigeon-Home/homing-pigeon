@@ -35,7 +35,7 @@ welcome but held to a high bar. Here's how to do it well.
 1. Fork the repo and create a branch with a descriptive name
    (`fix-timeout-race`, `add-heartbeat`, ...).
 2. Make your change, add tests, update docs (README, PROTOCOL.md,
-   docs/use/runbook.md — whichever your change affects).
+   docs/steady/use/use-runbook.md — whichever your change affects).
 3. Run the full suite: `python -m unittest discover -s runner/tests -t . -v`.
 4. Open a pull request against `main`. Describe **what** changed,
    **why**, and **what you tested**. If it touches anything listed
@@ -109,7 +109,7 @@ have stopped for 5 minutes.
 An agent asked to make a release outside this flow still uses the
 same mechanics: bump the version in the 4 files named under Tagging
 above, add the CHANGELOG entry, commit as a `release:` commit, tag,
-push, wait for the 9 CI jobs to go green on the release commit, then
+push, wait for the CI jobs in `.github/workflows/build.yml` (17 jobs at this writing) to go green on the release commit, then
 verify the GitHub release and its assets and run the stamp. A pushed
 tag never moves; a defect is fixed forward under the next patch
 version.
@@ -151,7 +151,7 @@ same feature, they do not share code, and the old one is gone.
 | `--oracle` on the CLI | Opens a loopback browser chat that asks the local model through the Oracle path. | Added in `15025c7`. This is the flag that exists today. |
 | `--oracle-port` | Port for that chat. Default `11436`. Bound to `127.0.0.1` only. | Added with `--oracle`. |
 
-If you find `oracle_enabled=false` in `docs/archive/verify-v31.md`, that file
+If you find `oracle_enabled=false` in `docs/steady/proofs/verify-v31.md`, that file
 is an older verification runbook. Those checks describe a flag that
 the code no longer reads. Do not reintroduce `oracle_enabled` or
 `--no-oracle` to make that runbook pass. The README row for

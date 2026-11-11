@@ -12,7 +12,7 @@ and how it fits. Pricing, providers and the business plan live
 outside the repository.
 
 The seat that owns this code (stamp `70000a51`) keeps its working
-intuitions, each from a failure, in `docs/project/hosting-seat-intuitions.md`.
+intuitions, each from a failure, in `docs/archive/hosting-seat-intuitions.md`.
 
 ## What is built
 
@@ -30,12 +30,12 @@ Nothing in the runner core, the protocol or the signing changed.
 
 - **The hosted queue** since 2026-10-27: a one-tenant Worker on the
   operator's own Cloudflare account. Its first ping is
-  `docs/reports/queues-2026-10-27.md`; since then it is the control
-  plane for the Germany rig (`docs/reports/germany-control-2026-10-27.md`).
+  `docs/steady/reports/queues-2026-10-27.md`; since then it is the control
+  plane for the Germany rig (`docs/steady/reports/germany-control-2026-10-27.md`).
 - **The `hosted` profile** on that rig, a one-core Hetzner VM: the
   runner polls the queue, answers at the `attested` ceiling, and runs
   jobs confined (a signed job could not write `/etc` or move the root
-  password). `docs/reports/germany-rig-2026-10-28.md`.
+  password). `docs/steady/reports/germany-rig-2026-10-28.md`.
 - **Not yet live:** `homing-pigeon-host` itself. The Germany runner was
   installed by hand, so every provider adapter is still proven against
   recorded exchanges only.
@@ -77,7 +77,7 @@ nowhere. The inventory (`~/.homing-pigeon/hosting.json`, mode 0600)
 refuses a second resident machine for a tenant on a provider and
 never lets a machine change tenant.
 
-**The hosted queue.** `docs/extend/transports.md`, "Queues". The
+**The hosted queue.** `docs/infrastructure-documents/extend/transports.md`, "Queues". The
 Worker is where the per-tenant quota lives, because Cloudflare's
 budget alerts are informational only; an exceeded tenant gets 429
 and nothing past it is stored or billed.
@@ -116,7 +116,7 @@ Nothing here charges a card after the fact.
 
 ## How it ships
 
-As a feature, not a service. `docs/use/own-cloud.md` is the user's
+As a feature, not a service. `docs/steady/use/own-cloud.md` is the user's
 page: one command puts a runner on their own $2 machine, on their own
 account, under their own terms. The hosted queue runs on an
 operator's own Cloudflare account first. The ephemeral workflow is a

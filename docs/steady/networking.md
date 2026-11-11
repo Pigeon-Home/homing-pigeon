@@ -17,7 +17,8 @@ a firewall — as sense or as enforcement — watches or bites.
 
   runner ──loopback──► Ollama 127.0.0.1:11434   (inference)
   owner  ──loopback──► Oracle page 127.0.0.1:11436 (chat UI)
-  job    ── ??? ────►  anywhere                  (the open edge)
+  job    ── confined ─► loopback only (Linux), nowhere (FreeBSD),
+                        the account's reach (Windows: no net control)
   sensor daemons ──local──► Oracle ingest (signed sensor_alert jobs)
 ```
 
@@ -41,37 +42,49 @@ because there is no route to it from off the box; loopback
 :11434/:11436 to loopback is defense in depth, not the
 mechanism — the bind address is.
 
-**3. The job is the untrusted principal.** A signed job runs
-as the runner's account — by the owner's explicit call, that
-is an admin account by default. Its network edge is currently
-unrestricted: a job can open any outbound connection the
-account can. This is the edge all firewall work is about, and
-the edge this document draws.
+**3. The job is the untrusted principal.** At the shipped
+defaults a signed job does not run as the runner's account:
+with `job_user` at `enforce` a POSIX job runs as the separate
+job user, and with `confinement` at `enforce` it runs inside
+the platform backend — on Windows under the confinement spawn
+(a restricted token at low integrity, with the Job Object
+ceiling; the POSIX demote itself does not exist there). Its
+network edge is closed by confinement where the backend
+carries a network control: loopback only on Linux, no network
+at all on FreeBSD. The Windows backend carries no network
+control, and a deployment that lowers confinement leaves the
+edge at the account's reach: a job there can open any outbound
+connection the account can. That open shape is the edge all
+firewall work is about, and the edge this document draws.
 
 ## Where the firewall fits
 
 Three slots, deliberately separate:
 
 - **Sense (read-only).** The `firewall` sense
-  (`docs/extend/senses.md`) watches host firewall state, rule diffs,
+  (`docs/steady/oracle/senses.md`) watches host firewall state, rule diffs,
   and new listeners; the `netmon` sense watches flows and
   DNS. Neither blocks anything. Safe to leave on everywhere.
 - **Cage (on by default: confinement defaults to enforce).** Linux: bwrap with
   `--unshare-net` (loopback-only jobs) in enforce mode.
-  Windows: per-user WFP rules tied to the job identity
-  (`--run-as`) — **not built; the Windows cage is parked**
-  and no WFP rules are written today. The firewall *sense*
-  verifies the cage held — check, don't trust.
+  FreeBSD: a per-job jail with `ip4`/`ip6` disabled — no
+  network at all. Windows: the confinement backend (Job
+  Object, restricted token, low integrity) carries no
+  network control, so a confined Windows job keeps the
+  account's network reach; per-user WFP rules tied to the
+  job identity are not built, and no WFP rules are written
+  today. The firewall *sense* verifies the cage held —
+  check, don't trust.
 - **Egress policy (opt-in enforcement).** Per-job-identity
   allowlists. This closes the phone-home shape: a job that
   exfiltrates over its own connection prints nothing, so the
   Oracle's secret-scanner never sees it. Named as a gap in
-  `docs/security/security-gaps.md`; designed here when the owner
+  `docs/infrastructure-documents/security/security-gaps.md`; designed here when the owner
   wants it.
 
 Enforcement never rides the sense path. Senses file alerts;
 the runner enforces; the Oracle fuses and decides. That split
-is load-bearing — see `docs/extend/senses.md` ("why this shape").
+is load-bearing — see `docs/steady/oracle/senses.md` ("Why this shape").
 
 ## What ships and what the picture still lacks
 

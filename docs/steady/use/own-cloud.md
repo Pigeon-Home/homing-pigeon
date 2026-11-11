@@ -100,7 +100,8 @@ With the hosted queue, the SI sends and reads through it:
 
 ```bash
 export HP_SI_TOKEN=...   # the SI token, never on the command line
-python3 runner/cloud/send_job.py new --kind ping --to-queue https://hp.example.workers.dev/t/you
+export HP_SECRET=...     # the shared secret, the HMAC key
+python3 runner/cloud/send_job.py new --kind ping --secret "$HP_SECRET" --to-queue https://hp.example.workers.dev/t/you
 python3 runner/cloud/send_job.py results --from-queue https://hp.example.workers.dev/t/you --ack
 ```
 

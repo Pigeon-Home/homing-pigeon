@@ -3,8 +3,8 @@
 The working tree was clean when this was written. Everything
 below is already on `main`. This file is the index.
 
-The questions are `docs/seats/questions.md`. The plan is
-`docs/project/de_dust.md`. The tool is
+The questions are `docs/steady/seats/questions.md`. The plan is
+`docs/steady/project/de_dust.md`. The tool is
 `runner/tools/de_dust_corpus.py`. The corpus is
 `runner/tests/de_dust/<target>.jsonl`, and
 `runner/tests/test_de_dust_corpus.py` replays it.
@@ -35,8 +35,9 @@ Q77 through Q83 were checked as ancestors of `main` on
 2026-10-26. Each id above is that commit. The working tree was
 clean. Nothing in this table was still waiting on a later commit.
 
-Q74 does not copy the capture. The capture stays at
-`docs/reports/live-2026-10-25/`. The seeds are invented ids
+Q74 does not copy the capture. The capture stays shelved flat in
+`docs/steady/reports/` (its readme) and `docs/steady/specimens/`
+(its data files). The seeds are invented ids
 under the corpus secret.
 
 The desk's lane in the same days, under the same plan:

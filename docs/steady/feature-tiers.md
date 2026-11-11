@@ -122,7 +122,7 @@ commit is 654de37cd8a0dfa152e07fe4a2093d9b1b015c1b:
 | The email transport | `"transports": ["email"]` in the example config; the default every install walks |
 | Key management in its base form: the one shared secret, its fingerprint name, rotation, the panic word | PROTOCOL.md section 14 marks only 14.1 and 14.4 "(opt-in)"; 14.2 (names) and 14.3 (the panic word, installer-generated) carry no marker; `docs/steady/secret-rotation.md` |
 | The audit log | The `security` block in the example config (`audit_max_lines`); `runner/tests/test_audit_chain.py` |
-| Confinement: the bubblewrap sandbox and the workspace snapshot check | `security.modes.confinement` reads `enforce` in the example config; the README: a sandbox that cannot engage refuses to start the runner at that default. PROTOCOL.md 9.4 calls confinement "(optional)" — the protocol does not require it; the shipped runner turns it on |
+| Confinement: the platform backends — the Linux bubblewrap sandbox, the Windows Job Object + restricted token + low integrity backend, the FreeBSD per-job jail — and the workspace snapshot check | `security.modes.confinement` reads `enforce` in the example config; the README: a sandbox that cannot engage refuses to start the runner at that default. PROTOCOL.md 9.4 calls confinement "(optional)" — the protocol does not require it; the shipped runner turns it on |
 | The separate job user | `security.modes.job_user` reads `enforce` in the example config |
 | Simple result handling: the signed result at the full view, stashed in the outbox and resent until delivered | `max_result_view` reads `full` in the example config; the stash is PROTOCOL.md section 5 |
 
@@ -160,7 +160,7 @@ commit is 654de37cd8a0dfa152e07fe4a2093d9b1b015c1b:
 | Extension source fetching for the Oracle | `extension_sources` reads `auto`: what a `sources.json` declares is fetched for the local model to read; nothing fetched ships; an unpinned entry waits for the owner's allowance; a deterministic box makes no request |
 | Protocol version 2 | `runner/wire/protocol_v2.py` opens version 2 only when the config's `protocol_v2` is exactly true; jobs are protocol 1; version 2 rides its own Internet-Draft |
 | The DTLS hybrid group, X25519MLKEM768 | `runner/wire/mlkem.py`, `runner/wire/dtlsproto.py`: the hybrid share is "accepted only under the hybrid profile option", and the session constructor's default is `hybrid=False` |
-| Protocol version 3 | A draft under `docs/ietf/`; no shipped module speaks it — `runner/wire/` holds `protocol_v2.py` and no version 3 counterpart |
+| Protocol version 3 | A draft under `docs/ietf/`; shipped code speaks it — `runner/wire/dtls_mailbox.py` carries the version 3 carriage and the DTLS transport rides it — enabled only with `dtls_via_email` set to true, off by default on every platform |
 | Transports with no shipped code | Sections of the transports document with no folder in `runner/transport_extensions/`: NATS JetStream ("design notes"), MQTT, Redis Streams, Postgres, Cloudflare Durable Objects; and "Local socket — cut" |
 | The FUTURE sketches | `docs/FUTURE.md`: one-tap approval, signatures with no shared secret, a dashboard — written as imagining, not as shipped features |
 
