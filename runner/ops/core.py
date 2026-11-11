@@ -49,8 +49,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 61,400 lines,
-55,395 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 61,442 lines,
+55,435 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -257,6 +257,12 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # ledger's dash) grew runner/ops/briefing.py by
 # 126 lines, the whole set re-measured over the
 # current tree.
+# Re-measured again the same day after the Q147 fix
+# (the guard widened again: the subject clause opened
+# by "that", the relative clause judged by its own
+# infinitive, and the ledger's run of hyphens) grew
+# runner/ops/briefing.py by 42 lines, the whole set
+# re-measured over the current tree.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 135 since
@@ -269,14 +275,14 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 138
-AS_ASSEMBLED_ZIP_BYTES = 776453
-AS_ASSEMBLED_LINES = 61400
-AS_ASSEMBLED_NONBLANK_LINES = 55395
+AS_ASSEMBLED_ZIP_BYTES = 777009
+AS_ASSEMBLED_LINES = 61442
+AS_ASSEMBLED_NONBLANK_LINES = 55435
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 19411,
+    "runner/ops": 19453,
     "runner/tools": 9661,
     "runner/wire": 9033,
     "runner/runner.py": 7152,
