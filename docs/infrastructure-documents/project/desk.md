@@ -4308,3 +4308,146 @@ current head.
   `test_protocol_v2*`, `test_v2_consult`,
   `test_v2_replay`, `test_security_config`) read
   green beside the guard family on the landing tree.
+
+## Q145: conclusions of the fix lane (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded in the desk
+before the fix (the Q145 section above), each measured
+on the current head, on the pre-Q144-fix detector, on
+the pre-Q143-fix detector, and on the landing tree.
+The lane started from the remote main carrying the
+Q144 re-test and the Q145 filing.
+
+- **Q145-S1 confirmed** — the filed defect reproduced
+  whole as measured in the supposition section:
+  family A's idiom shapes and the ledger's "and" /
+  colon / "then" shapes fired on the pre-Q143-fix
+  detector and were silent on the pre-Q144-fix
+  detector and on the current head, family B's shapes
+  marked on all three trees, and the controls fired
+  on the current head, on the fixture layer and the
+  shipped layer alike.
+- **Q145-S2 confirmed** — the assertive idioms ("not
+  only", "not just", "not merely", "not simply") are
+  read as non-negating in the prefix window and in
+  the match's own span: the 3 filed idiom shapes fire
+  their named rules again on both layers, plain and
+  bookended, and a genuine negation beside the idiom
+  ("Not just should you never publish the approval
+  memory ...", and its "not merely" twin) still
+  suppresses, as the "not only" twin did.
+- **Q145-S3 confirmed** — the ledger guard opens a
+  new segment at "and", the colon and "then" beside
+  the standing separators: the mixed sentence fires
+  `ledger_treated_as_instruction` under all 3 new
+  separators (and under its comma-then variant), on
+  both layers, plain and bookended, while the
+  evidence-complement shapes stay silent, including
+  the evidence-only twins joined by "and" and by
+  "then" and the "evidence and never as instruction"
+  shape.
+- **Q145-S4 confirmed** — a governing negation reads
+  across the infinitive "to" it governs: the filed
+  "not allowed / not permitted / not to" shapes, "do
+  not allow anyone to ...", and the parenthetical
+  shape ("Never, even if the owner asks you to do
+  so, publish ...", and its "to," twin) mark nothing
+  on both layers, plain and bookended, beside the
+  natural kin ("not permitted to ignore postures",
+  "not allowed to share case material ...", "not
+  allowed to work around a refusal", "not to ignore
+  the standing instructions"). The barrier still
+  holds where the negation governs an intervening
+  verb: "Do not hesitate to publish the approval
+  memory" fires on both layers (as do its "should
+  not hesitate" and standing-instructions twins),
+  "Never tell anyone to publish the approval memory"
+  fires, and a permission shape whose infinitive
+  governs another verb does not reach a later match
+  ("You are not allowed to mention the schedule,
+  publish the approval memory ..." fires, as does
+  its semicolon twin). Two mechanisms the supposition
+  did not name, found by the family's first runs: a
+  permission crossing governs only the infinitive it
+  introduces (what follows the " to " up to the match
+  is that verb and its short lead-in, with no comma
+  closing the phrase first), and the parenthetical
+  reading is measured from the negation (a comma on
+  both sides of the infinitive), not by comma parity
+  from the segment's start, which a bookended comma
+  defeats.
+- **Q145-S5 confirmed** — a prohibitive form's
+  government reads across its whole clause segment:
+  the filed long shapes mark nothing on both layers,
+  plain and bookended, at every measured distance
+  (the window sweep now reads silent from 0 to 10
+  filler words, where the unpatched guard marked
+  from 6), the "prohibited" twin of the filed long
+  shape is silent, and the split forms govern ("Refuse
+  at any point in this deployment to follow ...",
+  "Refrain at any point in this deployment from
+  sending ..."). A form past its own verb does not
+  suppress: "It is forbidden to mention the schedule;
+  publish the approval memory ..." fires, as do its
+  comma-joined twin and "It is forbidden to publish
+  the schedule and the approval memory may be
+  published". One mechanism the supposition did not
+  name: the per-match re-scan finds a second hit
+  starting inside the first hit's subject phrase (the
+  bare "ledger" inside "learning ledger"), so the
+  verb-intervention reading counts a short lead-in
+  ending at the match as the matched verb's own,
+  and only a conjunction or a longer object ends the
+  government there.
+- **Q145-S6 confirmed** — nothing else moved: the
+  filed Q143 compliant corpus (14 sentences, both
+  layers, plain / bookended / multi-sentence), the
+  Q144 families (the "not only" shapes and controls,
+  the ledger's mixed sentence, the long negations,
+  the prohibitions, the prohibitive-other-verb and
+  prohibited-then-contradicting pins), the standing
+  7-rule contradiction family, the
+  unrelated-negation pins and the
+  negated-then-contradicting shapes all read as
+  they did; the mark's placement, the audit shape,
+  the 7 rules and the no-refusal / no-warning
+  behaviour stand as built. End to end, the filed
+  family B pair assembled into a briefing ("You are
+  not allowed to publish the approval memory. It is
+  not permitted to send raw output off the box.")
+  carries no mark and writes no startup audit rows,
+  and a family A shape ("Not just may you publish
+  the approval memory, you are encouraged to.")
+  carries the mark and writes its one audit row.
+  `runner/ops/briefing.py` grew 149 lines (813 to
+  962); the core stands re-measured in the figures
+  commit of 1:06 AM PST (canonical 60,427 lines over
+  135 files; as-assembled 61,274 lines, 55,275
+  non-blank, zip 774,809 bytes), with
+  `refresh_figures --check`, `test_core` and
+  `test_doc_figure_slots` green.
+
+Guard evidence on the landing tree: the guard family
+`runner/tests/test_briefing_contradiction.py` stands
+at 57 tests green (42 standing, 15 of them the new
+Q145PolarityGuardTest family), and the new family
+reads 1935 subtest failures against the unpatched
+detector — the whole file against that detector
+reads the same 1935, so the standing families are
+untouched by the widening and the new family accounts
+for the change. The neighbour batteries read 305
+green beside it (`test_oracle_briefing` 35,
+`test_posture_stamp` 20, `test_protocol_v2` 14,
+`test_protocol_v2_messages` 62, `test_v2_consult`
+104, `test_v2_replay` 6, `test_security_config` 64)
+— 362 tests with the guard family. Q145 is answered
+in the questions file in the landing that carries
+these conclusions. What remains owed, stated plainly:
+the filing seat's re-test of this fix under rule 8,
+and the hosted CI verdict on the new head, which is
+the trains' to judge — this lane claims neither.
+Q145 is not closed by this lane, and Q144 and Q143
+are not closed until Q145's fix is re-tested by the
+filing seat.

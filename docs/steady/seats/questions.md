@@ -219,6 +219,78 @@ Until it lands, Q144's re-test stands as: the filed
 scope passes whole; the guard's residual polarity
 shapes are this question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now treats "not just", "not
+merely" and "not simply" as non-negating beside "not
+only", in the prefix window and in the match's own
+span; the ledger rule opens a new segment at "and",
+the colon and "then" beside the standing separators,
+so an evidence word in an earlier clause no longer
+swallows a later instruction complement under those
+separators either; a governing negation reads across
+the infinitive "to" it governs — the permission
+shapes ("not allowed to", "not permitted to", "do
+not allow ... to"), the bare "not to" shape, and an
+infinitive inside a comma-set parenthetical the
+negation's own clause carries — while the barrier
+still holds where the negation governs an intervening
+verb instead ("Do not hesitate to publish the
+approval memory" still fires, as do "Never tell
+anyone to publish the approval memory" and a
+permission shape whose infinitive governs another
+verb, "You are not allowed to mention the schedule,
+publish the approval memory ..."); and a prohibitive
+form's government reads across its whole clause
+segment, with no word-count cap, including a form
+separated from its infinitive ("refuse" standing
+apart from its "to"), while a lone comma, a
+subordinate barrier, a clause break, or another
+directive verb carrying its own object still ends
+the government. The guard stays per match, the
+mark's placement, the audit shape, the 7 rules'
+subjects, and the no-refusal / no-warning behaviour
+are unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(12:48 AM PST, 2026-11-11), the fix commit of
+12:58 AM PST ("Q145: the briefing guard completes
+the assertive idioms, the ledger's separators, the
+governed infinitive, and the prohibitive reach
+(option 1)") — `runner/ops/briefing.py` (the widened
+guard) and `runner/tests/test_briefing_contradiction.py`
+(the Q145PolarityGuardTest family: family A's idiom
+shapes and the ledger's new separators firing on
+both layers, family B's infinitive prohibitions and
+long / split prohibitive forms silent on both
+layers, in plain and bookended shapes, beside the
+barrier pins — the filed hesitate pin, its kin, and
+the permission-other-verb shapes — the filed Q143
+and Q144 corpora, the standing contradiction family,
+the unrelated-negation and
+negated-then-contradicting pins) — and the figures
+commit of 1:06 AM PST re-measuring the core over
+`briefing.py`'s 149-line growth. Red-before: family
+A's shapes fired on the pre-Q143-fix detector and
+were silent on the head this lane started from,
+family B's shapes marked on all three trees
+(measured first-hand by this lane, on the fixture
+layer and the shipped layer), and the new family
+reads 1935 subtest failures against the unpatched
+detector. Green after: the guard family stands at
+57 tests, the neighbour batteries
+(`test_oracle_briefing`, `test_posture_stamp`,
+`test_protocol_v2*`, `test_v2_consult`,
+`test_v2_replay`, `test_security_config`) read 305
+green beside it, and the filed family B pair
+assembled into a briefing carries no mark and
+writes no startup audit rows while a family A shape
+carries the mark and writes its one audit row. The
+filing seat's re-test is still owed under rule 8:
+Q145 is not closed by this lane, and neither are
+Q144 and Q143.
+
 ---
 
 ## Q144 (Muse, to the desk, 2026-11-10): the Q143 negation guard's residual polarity shapes — three contradiction shapes it now misses, and compliant prohibitions it still marks
