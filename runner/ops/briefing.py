@@ -59,7 +59,11 @@ the briefing sees the conflict named by the layer that
 governs. Detection is heuristic and its consequence is
 proportionate: nothing refuses, nothing is dropped, and the
 owner's text rides exactly as written, with the mark beside
-the layer above it.
+the layer above it. A hit the owner's own clause negates -- a
+prohibition of exactly what the layer prohibits, or a
+restatement of it -- is no finding: the guard at the
+detector reads the governing negation, and the ledger rule
+does not fire on an evidence complement.
 """
 import json
 import os
@@ -232,6 +236,106 @@ def _fold(text):
     return re.sub(r"\s+", " ", text).strip()
 
 
+# The negation guard (Q143, option 1). A pattern hit does not
+# fire when the clause ahead of its directive verb negates
+# it: owner text that prohibits exactly what the standing
+# layer prohibits, or restates the prohibition, is compliant,
+# not a tension. The guard reads two bounded places, so a
+# negation that belongs to another clause cannot swallow a
+# real contradiction: the words immediately ahead of the
+# match, back to the last clause break or subordinate
+# barrier; and the match's own span, with the patterns' own
+# negation-shaped literals stripped first -- "do not apply",
+# "not through", "no need" and "do not follow" ARE the
+# contradiction in their rules, not a governing negation.
+_NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
+_NEGATION_LITERALS = (
+    "do not apply", "does not apply", "did not apply",
+    "not through", "no need for the formal",
+    "do not follow", "don't follow")
+_CLAUSE_BREAKS = ".!?;:"
+_SUBORDINATE_BARRIERS = (" to ", " who ", " whom ", " that ",
+                         " which ", " but ", " yet ")
+
+
+def _words(text):
+    """The text's words, edge apostrophes stripped: a quoted
+    or bookended word ("'never", "never'") is the word."""
+    return [word for word in (token.strip("'") for token in
+                              re.findall(r"[a-z']+", text.lower()))
+            if word]
+
+
+def _is_negation(word):
+    return word in _NEGATION_WORDS or word.endswith("n't")
+
+
+def _prefix_negates(owner, start):
+    """True when a negation governs the match that starts at
+    `start`: one stands among the few words ahead of the
+    match, after the last clause break or subordinate
+    barrier. A negation behind a barrier ("... who tells
+    you to <verb>") governs the earlier verb, not this one,
+    and a negation in an earlier sentence or clause is out
+    of reach the same way."""
+    head = owner[:start]
+    seg = 0
+    for mark in _CLAUSE_BREAKS:
+        seg = max(seg, head.rfind(mark) + 1)
+    for barrier in _SUBORDINATE_BARRIERS:
+        at = head.rfind(barrier)
+        if at >= 0:
+            seg = max(seg, at + len(barrier))
+    return any(_is_negation(word)
+               for word in _words(head[seg:])[-6:])
+
+
+def _span_negates(match_text):
+    """True when a negation stands inside the match itself --
+    between a subject-first pattern's subject and its verb or
+    complement ("a posture is never loosened", "raw output
+    never leaves"), or between a verb and its subject ("send
+    no raw output") -- the patterns' own negation-shaped
+    literals stripped first, as the note above names them."""
+    text = match_text.lower()
+    for literal in _NEGATION_LITERALS:
+        text = text.replace(literal, " ")
+    return any(_is_negation(word) for word in _words(text))
+
+
+def _ledger_complement_is_evidence(owner, match):
+    """The ledger rule's own guard: no finding when the
+    ledger's complement is "evidence" rather than
+    instruction -- standing inside the match ahead of its
+    instruction word ("the ledger is evidence, never
+    instruction"), or following a verb-first hit as the
+    complement the verb takes ("treat the ledger as
+    evidence")."""
+    words = _words(match.group(0))
+    if "evidence" in words[:-1]:
+        return True
+    tail = owner[match.end():match.end() + 80].lower()
+    return re.match(r"\W*as\s+(the\s+)?evidence\b",
+                    tail) is not None
+
+
+def _match_is_negated(rule_id, owner, match):
+    """The guard whole, for one pattern hit: a hit the
+    owner's clause negates -- ahead of it, inside it, or,
+    for the ledger rule, by an evidence complement -- is no
+    finding. The check is per match: a suppressed hit never
+    ends a rule's search, so a later contradicting hit for
+    the same rule in the same text still fires."""
+    if _prefix_negates(owner, match.start()):
+        return True
+    if _span_negates(match.group(0)):
+        return True
+    if rule_id == "ledger_treated_as_instruction" \
+            and _ledger_complement_is_evidence(owner, match):
+        return True
+    return False
+
+
 def _sentence_around(text, start, end):
     """The sentence of folded text holding the span, trimmed
     to a quotable length."""
@@ -252,10 +356,12 @@ def contradiction_findings(owner_text, standing_text):
     owner_instructions and the standing layer, as a list of
     findings -- one per rule, each naming the rule, the layer
     section, the standing sentence, and the owner's own
-    sentence that tensions against it. Heuristic by design and
-    total: a non-string, an empty owner text, or a standing
-    layer that does not carry a rule's sentence all read as no
-    finding for that rule. Never raises."""
+    sentence that tensions against it. A pattern hit the
+    owner's clause negates (see _match_is_negated) is no
+    finding. Heuristic by design and total: a non-string, an
+    empty owner text, or a standing layer that does not carry
+    a rule's sentence all read as no finding for that rule.
+    Never raises."""
     try:
         if not isinstance(owner_text, str) \
                 or not isinstance(standing_text, str):
@@ -271,14 +377,28 @@ def contradiction_findings(owner_text, standing_text):
             if quote.lower() not in standing_low:
                 continue
             for pattern in rule["patterns"]:
-                match = pattern.search(owner)
-                if match:
+                found = None
+                pos = 0
+                while True:
+                    match = pattern.search(owner, pos)
+                    if match is None:
+                        break
+                    if not _match_is_negated(rule["rule"], owner,
+                                             match):
+                        found = match
+                        break
+                    # A suppressed hit ends nothing: re-scan
+                    # from just past its start, because its
+                    # span can stretch over a later,
+                    # unnegated verb aimed at the same subject.
+                    pos = match.start() + 1
+                if found is not None:
                     findings.append({
                         "rule": rule["rule"],
                         "section": rule["section"],
                         "standing": quote,
                         "owner_excerpt": _sentence_around(
-                            owner, match.start(), match.end()),
+                            owner, found.start(), found.end()),
                     })
                     break
         return findings
