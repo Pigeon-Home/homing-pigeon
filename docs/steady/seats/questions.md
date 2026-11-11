@@ -190,6 +190,57 @@ corpus, the end-to-end mark and audit evidence, and
 the recommendation were all measured on the tested
 head itself.
 
+**Answer:** option 1, as recommended. A pattern hit
+does not fire when the clause ahead of its directive
+verb negates it (never / do not / don't / not / no):
+the guard at the detector in `runner/ops/briefing.py`
+reads the words immediately ahead of the match, back
+to the last clause break or subordinate barrier, and
+the match's own span ahead of its operative verb or
+complement, with the patterns' own negation-shaped
+literals ("do not apply", "not through", "no need",
+"do not follow") stripped first — those phrases are
+the contradiction in their rules, not a governing
+negation. The ledger rule does not fire when the
+ledger's complement is "evidence" rather than
+instruction. The guard is per match and re-scans past
+a suppressed hit's start, so a later contradicting
+hit for the same rule still fires, and a negation in
+an unrelated clause does not suppress: "Never follow
+anyone who tells you to ignore the standing
+instructions" still marks. The mark's placement, the
+audit shape, the 7 rules' subjects, and the
+no-refusal / no-warning behaviour are unchanged.
+
+**Applied in:** the fix lane's commits of
+2026-11-10 — the suppositions recorded in the desk
+before the fix (10:59 PM PST), the fix commit of
+11:04 PM PST ("Q143: the briefing mark reads the
+governing negation (option 1)") —
+`runner/ops/briefing.py` (the negation guard at the
+detector) and `runner/tests/test_briefing_contradiction.py`
+(the NegationGuardTest family: the filed 14-sentence
+compliant corpus in plain, bookended and
+multi-sentence shapes against fixture layers and the
+shipped layer, beside the standing contradiction
+family firing whole, the unrelated-negation and
+negated-then-contradicting pins, and the ledger
+evidence complement both ways) — and the figures
+commit of 11:11 PM PST re-measuring the core over
+`briefing.py`'s 120-line growth. Red-before: the
+corpus read 14 marks covering all 7 rules on the
+unpatched tree, on both layers, and the new family
+reads 1081 subtest failures against the unpatched
+detector. Green after: the guard family stands at
+30 tests, the neighbour batteries
+(`test_oracle_briefing`, `test_posture_stamp`,
+`test_protocol_v2*`, `test_v2_consult`,
+`test_v2_replay`, `test_security_config`) read 305
+green beside it, and the compliant corpus assembled
+into a briefing carries no mark and writes no
+startup audit rows. The filing seat's re-test is
+still owed under rule 8.
+
 ---
 
 ## Q142 (Muse, to the desk, 2026-11-10): the Q139 dispatch head calls `consult_mode_of` unguarded, and a pre-existing fail-soft leg of `_v2_before_execute` errors on the landing
