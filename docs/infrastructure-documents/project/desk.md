@@ -972,6 +972,100 @@ default-posture's S5/S6: a dated investigation record is
 not rewritten when the behavior it investigated is later
 changed by the plan printed on the same page.
 
+## Revelation Test 1: the cadence collapse, measured (2026-11-10)
+
+On 2026-11-10 the release cadence was put to a
+statistical test: the month had run at a high release
+rate, and the last 3 days had not. This section is the
+record of that test — supposition first, then the
+count, then the correction the count supports.
+
+Supposition, written before the count runs, to be
+judged against it:
+
+- The collapse is a funneling effect, not a work
+  stoppage. Commit volume in the last 3 days will
+  read lower than the month's rate but of the same
+  order — the work continued — while published
+  releases fall off a cliff, because every cut was
+  made to wait on one green head.
+- The funnel has 3 named parts. First, the green-head
+  gate: a cut ships only from a fully green head, so
+  every release waits on the slowest leg of the
+  build, which is the Windows leg. Second, the
+  hourly train: cuts are attempted on an hourly
+  cadence, so a red head costs an hour at a time
+  rather than a retry at once. Third, the all-enforce
+  reconciliation rounds: the phase-2 enforce posture
+  turned a family of harness fixtures red at once,
+  and the rounds that reconciled them consumed the
+  same lanes that cut releases and run tasking.
+- Tasking queued behind the pipeline fixes for the
+  same reason: desk decisions taken in the morning
+  waited hours for a lane, because the lanes were
+  serialized behind the slowest leg's verdict.
+
+Method: the count runs over the complete clone at
+remote main, commits and version tags bucketed by
+America/Los_Angeles calendar day on committer
+timestamps; published releases are counted from the
+ship lane's own record (the stamp-verified publishes
+and the blocked-ship entries in its state file).
+The window is the repository's whole life to date,
+2026-10-13 through 2026-11-10.
+
+The count:
+
+- Whole window: 5,225 commits and 461 version tags
+  in 29 days.
+- The 27 days through 2026-11-07: 5,002 commits,
+  185.3 a day; 440 tags, 16.3 a day. Peak tag days:
+  57 on 2026-10-20, 49 on 2026-10-26, 38 on
+  2026-11-01.
+- The last 3 days, 2026-11-08 through 2026-11-10:
+  223 commits, 74.3 a day — a fall of about 60%
+  against the prior rate, not a stop. Tags: 21 in
+  3 days, and falling inside the window: 16, then 4,
+  then 1. Published releases on 2026-11-10: exactly
+  1, cut by direct publish after its tag build
+  failed. The gap between the last 2 tags reads the
+  same way: the 2026-11-09 tag at 11:14 AM and the
+  2026-11-10 tag at 4:11 AM.
+- The ship lane's state file carries the funnel's
+  other side: 46 blocked-ship records on 2026-11-09
+  and 112 on 2026-11-10, each one a train or a watch
+  cycle that reached the gate, found the head red,
+  and recorded no cut.
+
+Conclusions, against the supposition: it stands on
+every point. The work did not stop — 223 commits
+landed in the 3 days — but the release rate fell
+from 16.3 tags a day to 1 on the last day, and the
+blocked-ship records show the mechanism directly:
+the gate was reached again and again and the head,
+red in the Windows leg or in a reconciliation
+family, turned every attempt away. Six reconciliation
+rounds ran across 2026-11-09 and 2026-11-10 to bring
+the all-enforce posture and the suite's harnesses
+back into agreement; while they ran, they held the
+lanes, and tasking that had already been decided —
+the desk answers of the morning of 2026-11-10 among
+them — waited hours behind pipeline work it did not
+depend on.
+
+The correction now in force, standing from
+2026-11-10: a queue driver runs every 5 minutes,
+pulls the queue, and launches tasking in parallel
+against the same version. Tasking never waits on
+the pipeline and never waits on the release gate;
+a release carries the batch when the head is green,
+and the batch does not queue behind the release.
+Parallels is plural: several lanes, launched in the
+same pass, each on its own clone, joining at the
+release cut — not 1 gated sequence. The green-head
+rule itself stands for the cut; what changed is that
+nothing else stands behind it in line.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
