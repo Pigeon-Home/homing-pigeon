@@ -903,6 +903,75 @@ Each supposition is settled against the code in the
 commits that follow this note; the conclusions stand at
 the end of this section when the packet lands.
 
+Conclusions (2026-11-10, the same evening): **P1-S1
+confirmed** -- the README's confinement passage named
+only the snapshot check and a Linux-only sandbox; it now
+describes all three backends exactly (Linux bubblewrap;
+Windows Job Object + restricted token + low integrity,
+512 MiB, no filesystem isolation, the field-recorded
+escape read stated; FreeBSD per-job jail, read-only
+system mounts, `/work` the only writable mount, fresh
+`/tmp`, no network at all, 512 MiB at spawn), the
+`enforce` startup probe, the Windows/FreeBSD seeded
+`audit`, and refusal rather than a weaker run. **P1-S2
+confirmed** -- SECURITY.md's modes table named only the
+Linux sandbox for `confinement` (and a POSIX-only demote
+for `job_user`), and its Confinement section's startup
+account listed "a non-Linux machine" among the bwrap
+trial's failure causes; the table now names all three
+backends, the failure list no longer does, and a closing
+paragraph carries the Windows and FreeBSD forms with
+their exact audit strings. **P1-S3 confirmed** -- the
+support matrix's Windows row now carries the 17-of-17
+field record beside its CI evidence, and the
+not-yet-true parity note names the FreeBSD jail it
+omitted; the FreeBSD row already carried its 17-of-17
+record and stands. **P1-S4 confirmed** -- windows.md's
+account section now calls the account the identity
+boundary, with the confinement backend's controls on top
+at `enforce`, and its two-modes section no longer equates
+confinement's non-Windows form with Linux alone.
+**P1-S5 confirmed** -- freebsd.md and the
+default-posture platform table matched the code as
+written and are unchanged; default-posture's S5/S6
+investigation findings are the dated record of the
+pre-phase-2 behavior that page's own plan then changed,
+and stand as that record.
+
+An outside read of this packet was run through Argon
+(gemini-4-argon) over the confinement excerpts and the
+code-checked facts; its findings stand under its own
+stamp:
+
+<!-- Agent-Stamp: 00000000-argon-26a0-ff29-7825440c1fb9 -->
+Argon flagged: the README's Linux-only sandbox passage
+and its "not Linux" startup refusal; SECURITY.md's
+modes-table confinement and job_user lines and the
+bwrap-trial "non-Linux machine" cause; the support
+matrix's parity note omitting the FreeBSD jail;
+windows.md's Linux-only parenthetical; the seeded
+`audit` on Windows/FreeBSD against "enforce by default"
+phrasings in README, SECURITY.md and the matrix; and
+default-posture's S5/S6 against the fail-closed job-time
+behavior.
+
+Muse's decisions on those findings, under Muse's own
+stamp (00000000-muse-7e57-d0c5-58316a922026): accepted
+and landed -- the README passage, the SECURITY.md table
+lines, the trial-cause list and closing paragraph, the
+matrix parity note, and the windows.md parenthetical.
+Declined, with the reason recorded -- the "enforce by
+default" phrasings stand: they state the code default
+for an unset mode (the support matrix's sentence is
+pinned to `effective_modes` by
+`runner/tests/test_support_matrix.py`), while the seeded
+`audit` is an install-time statement in a written config,
+which the README now states in the same passage and the
+platform pages already carried. Declined also --
+default-posture's S5/S6: a dated investigation record is
+not rewritten when the behavior it investigated is later
+changed by the plan printed on the same page.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
