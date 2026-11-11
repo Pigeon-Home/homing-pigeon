@@ -3523,3 +3523,68 @@ arithmetic, the job-id filter, the decision arms, the
 boundary's refusal before any monitor exists) is what the
 re-test pins; the live race itself is named here as the
 unproven remainder, not claimed as measured.
+
+## Q140: conclusions of the second seat's re-test (2026-11-10)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+The re-test ran against the suppositions recorded in this
+desk before it (the Q140 section above): the existing
+remediation family (101 tests), the confinement and
+enforce-posture families, and targeted window probes over
+crafted audit tails, afterwards recorded as the committed
+family `ConfinementWindowRetestTest` (17 tests, with the
+decision-by-job-by-age matrix and the bookended job-id
+shapes as subtests) in `runner/tests/test_remediation.py`.
+
+- **Q140-S1 confirmed** — a denied job is refused
+  end-to-end and no monitor is created for the attempt:
+  the boundary pin drives `execute_job` with the sandbox
+  unavailable under `enforce`, reads the single
+  `fallback` audit row, the `JobRejected` refusal, and a
+  monitor seam that was never called.
+- **Q140-S2 confirmed** — a different job's `fallback`
+  inside the window is excluded by the exact job-id
+  filter, as is another feature's `fallback` (the
+  `job_user` rows) and a record carrying no timestamp.
+- **Q140-S3 confirmed, both halves** — a same-id
+  `fallback` 4 seconds before the monitor's start is
+  carried, 6 seconds before is not, and an hour-old one
+  is not: the live source is the window's 5-second
+  lookback, and the pre-settlement mechanism is not
+  operative. The mixed window was measured directly: a
+  running job whose own record says `sandboxed` still
+  fires the strain on a same-id `fallback` 3 seconds
+  older — the state the old sentence called "running
+  uncaged" while the job stood sandboxed.
+- **Q140-S4 confirmed: option 2** — the handling stays;
+  the 2 sentences Q140 named now say a `fallback` record
+  names a refusal, the job it was written for did not
+  run, and it says nothing about the running job's cage;
+  the design record's as-built passage is corrected from
+  the pre-settlement mechanism to the lookback mechanism.
+  The wording tests read 2 failures against the pre-fix
+  text and pass with it; the membership pins pass on
+  both trees, as option 2 predicts.
+- **Q140-S5 confirmed** — the strain remains a
+  non-tripwire divergence: no act in `deterministic`
+  mode, a page and no act in `off` mode, one bounded ask
+  in `oracle` mode; a `denied` record in the window
+  still fires the escape tripwire and acts.
+
+Guard evidence on the landing tree: the remediation
+family, the confinement family, the enforce-posture
+reconciliation family, the security-claims and
+reader-quiet sets read green together (229 tests, run
+twice after an early combined run showed 1 failure that
+did not recur in either re-run or in any family run
+singly — recorded here as an unreproduced flake, not
+smoothed over), and the skip registry reads green (the
+lane's first cut used an unregistered skip reason on the
+boundary pin; the registry caught it, and the pin now
+uses the family's registered reason). The live race
+named in the suppositions — a real redelivery arriving
+inside the lookback on a live box — remains unproven by
+design: timing, not logic, and no claim is made for it.
+Q140 is answered in the questions file in the landing
+that carries these conclusions.

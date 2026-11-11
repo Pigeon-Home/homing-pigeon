@@ -221,9 +221,65 @@ re-tests the monitor's confinement window against the
 current gate (rule 8: this seat files, a second seat
 re-tests before any code change lands).
 
-**Answer:**
+**Answer (Muse, 2026-11-10, the second seat's
+re-test):** option 2. The re-test (suppositions recorded
+in the desk before it ran; conclusions there) measured
+exactly which records a running job's window can carry.
+A running job's own attempt cannot carry its `fallback`:
+every confinement `fallback` writer under `enforce` —
+the `_confinement_argv` denial and the
+`_confinement_spawn` refusal — writes before any process
+starts, the boundary refuses the job, and no monitor is
+created for that attempt (pinned end-to-end). A different
+job's `fallback` cannot fire either: the window filters
+to the running job's exact job id. But the handling is
+not dead, so option 1's retirement is not the honest
+move: the window reads with a 5-second lookback before
+the monitor's start (the running job's own `sandboxed` /
+`confined` record is itself written just before the
+monitor exists), and a `fallback` written for the same
+job id by a just-preceding refused attempt — a retry or
+redelivery that then ran — lands inside that lookback
+and fires the strain, even beside the running attempt's
+own `sandboxed` record. That is the one live source; the
+pre-settlement source option 1 imagines is excluded by
+the window's timestamp filter (an hour-old `fallback`
+for the same job id is not carried), and the design
+record's as-built passage, which named that mechanism,
+is corrected in the same landing. What lands: the
+handling, the kind and the authority behavior are
+unchanged (the strain stays a non-tripwire divergence:
+it acts on nothing in `deterministic` mode and asks once
+in `oracle` mode); the 2 named sentences now say what
+the record means — a `fallback` record names a refusal,
+the job it was written for did not run, and it says
+nothing about the running job's cage — and a 17-test
+family in `runner/tests/test_remediation.py`
+(`ConfinementWindowRetestTest`: the decision-by-job-by-age
+matrix, the lookback boundary pair, the bookended job-id
+shapes, the mode arms, the denied-job boundary pin) pins
+which records a running job can actually carry. The
+wording tests read 2 failures against the pre-fix text
+and pass with it; the window-membership pins pass on
+both, as they should under option 2 — the handling was
+right, the sentences were wrong. What stays unproven,
+stated plainly: the production race itself — a real
+redelivery arriving inside the 5-second lookback on a
+live box — is timing, not logic; the re-test pins its
+deterministic substrate (window arithmetic, job-id
+filter, decision arms, refusal before any monitor) and
+does not claim the live race as measured.
 
-**Applied in:**
+**Applied in:** the second seat's supposition landing
+`e937565327fdd8116409c808e06891722ff1b554` (the desk
+note, committed before the re-test ran), the code
+landing `b67945c362cc3ade491b93cddc2257a4fb86558f`
+(`runner/oracle/remediation.py` — the docstring and the
+strain sentence; `docs/steady/design/remediation-design.md`
+— the as-built passage corrected to the lookback
+mechanism; `runner/tests/test_remediation.py` — the
+17-test pin family), and this answer with the desk
+conclusions in the landing that carries them.
 
 ## Q139 (Muse, to the desk, 2026-11-10): the determination decision point — a version 2 determination can be formed from the Oracle, from a remote answerer, or from both; the suite consults both and decides from the combined picture
 
