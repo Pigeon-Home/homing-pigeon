@@ -10,7 +10,7 @@ and they load no model.
 Core names the production runner as a set of files: the code
 that runs, without the unit tests, the test harnesses or
 anything superfluous. The canonical list stands in
-runner/ops/core.py (CORE_FILES): <!--hp-fig:core_files-->135<!--/hp-fig--> files, all under runner/.
+runner/ops/core.py (CORE_FILES): <!--hp-fig:core_files-->136<!--/hp-fig--> files, all under runner/.
 Running `python3 runner/ops/core.py` prints the set's current
 zip size and token counts.
 
@@ -66,13 +66,17 @@ growing runner/ops, runner/tools and the runner proper,
 and again the same day after the job_user postspawn
 fix grew runner/ops by 36 lines, which that landing
 left unrecorded,
+and again on 2026-11-11 after the macOS confinement
+backend (runner/guard/macos_confine.py) joined the
+canonical list and its wiring grew runner/ops,
+runner/guard and the runner proper,
 the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->62,660<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->56,631<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->791,012<!--/hp-fig-->-byte zip, and the project's own estimator
-counts it at <!--hp-fig:core_assembled_tokens-->657,259<!--/hp-fig--> tokens; the Gemini figure above still
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->63,460<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->57,355<!--/hp-fig--> non-blank)
+and a <!--hp-fig:core_assembled_zip_bytes-->800,810<!--/hp-fig-->-byte zip, and the project's own estimator
+counts it at <!--hp-fig:core_assembled_tokens-->665,483<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical <!--hp-fig:core_files-->135<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->648,956<!--/hp-fig-->
-tokens across <!--hp-fig:core_lines-->61,813<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->55,885<!--/hp-fig--> non-blank); the 2 token
+estimator counts the canonical <!--hp-fig:core_files-->136<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->657,180<!--/hp-fig-->
+tokens across <!--hp-fig:core_lines-->62,613<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->56,609<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -83,7 +87,7 @@ leaves them out. The list and its counters stand in
 home of the core figures above.
 
 When project talk says "test core", it means testing this
-set. A change aimed at core is aimed at those 135 files and
+set. A change aimed at core is aimed at those 136 files and
 no others, and a result reported for core covers exactly
 them.
 
@@ -114,8 +118,9 @@ The core is platform-agnostic in the main. Across its
 os.name and win32 markers — totals about 140 lines in 36 of
 its files, beside a small number of dedicated platform
 modules (runner/ops/windows.py, runner/ops/winlog.py,
-runner/guard/windows_confine.py and
-runner/guard/freebsd_confine.py).
+runner/guard/windows_confine.py,
+runner/guard/freebsd_confine.py and
+runner/guard/macos_confine.py).
 Dropping 1 platform would trim that thin layer only; the
 rest of the set does not know which platform it is on.
 
