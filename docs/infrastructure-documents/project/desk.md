@@ -13879,6 +13879,102 @@ completed build-windows verdict on a head
 carrying this further split, under rule 8. This
 lane does not claim it.
 
+## Q136 shard-5 follow-on: suppositions, recorded before the measurement (2026-11-11)
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The wall-clock failure moved after the GATES2
+split. Verified first-hand by this lane from the
+build-windows job log of build run 43101076872
+(head 9dfc1ba2, the Q157-answer head): the
+parallel-test step ran 1,201.7 seconds to exit 1;
+shard 5 FAILED exit 124 at the wall with no
+completed individual test failure in its output,
+while gates_phase2's shard completed (the GATES2
+hang is gone from this record). Shard 5 carries
+16 modules packed at 701 seconds in all:
+test_de_dust_corpus priced 539.5, then
+test_credential_canary 37.7, defaults_registry
+26.7, test_runner_last_edges 21.8, and 12 smaller
+companions summing to about 75. The runner's
+kill dump names the test running at the kill:
+runner.tests.test_runner_last_edges
+.RunnerFailSoftLegs6Test.test_oracle_cli_ctrl_c,
+its main thread inside a subprocess.run
+communicate (a stdout-thread join) reached from
+_firewall_posture's netsh read through
+oracle_context, inside the deterministic Oracle
+answer that oracle_cli computes before
+record_oracle_turn — the seam this test scripts
+to raise KeyboardInterrupt on its second call.
+Ship state at this lane's start: last_completed
+3.16.20.3, 3.16.20.4 spent and never to be
+reused; this lane cuts no release.
+
+Suppositions, written before any local timing,
+estimator run or fix in this lane:
+
+- Q136-S5-S1 (the head dominates): shard 5's
+  load is its first module. test_de_dust_corpus
+  (293 tests, the campaign corpus family) is
+  priced at 539.5 of the shard's 701 packed, and
+  the kill landed in the shard's fourth module,
+  so the first three modules together consumed
+  nearly the whole wall. The module's true
+  Windows cost stands well above its price —
+  expected at or past 900 seconds — convicted
+  by its listed slowest-test sums in completed
+  appearances in the other logs at hand, the
+  way every prior re-pack's heads were.
+- Q136-S5-S2 (a hang mechanism stands beside
+  the price): test_oracle_cli_ctrl_c scripts
+  only record_oracle_turn; the deterministic
+  answer it drives first runs the host posture
+  probes (sc query, netsh advfirewall) through
+  _run_text's subprocess.run with a 5-second
+  timeout. On timeout, subprocess.run kills the
+  child and waits in communicate with no second
+  timeout; a child that leaves its output pipe
+  held open makes that wait unbounded. The kill
+  dump's main thread sits exactly there. A
+  local simulation is predicted to show the
+  shape deterministically: a timed-out child
+  whose pipe stays open makes _run_text fail to
+  return inside a short timeout, while an
+  ordinary child returns at once.
+- Q136-S5-S3 (the red is concentrated, not
+  uniform): the same run's completed shards are
+  expected to read within about 1.15x of their
+  701-second packed loads, so the pool was not
+  uniformly slow and a budget change is not the
+  answer; the 720-second budget and the
+  20-minute wall stand.
+- Q136-S5-S4 (local time is a proxy only):
+  every shard-5 module is predicted to run in
+  seconds on this Linux host, the ctrl_c test
+  among them (its probes answer None at once
+  here); Linux timing cannot price the Windows
+  leg, and the clearing proof remains the next
+  completed build-windows verdict on a head
+  carrying this lane's fix, under rule 8.
+- Q136-S5-S5 (the fix the numbers are expected
+  to support): floor test_de_dust_corpus at the
+  720-second budget so it packs alone, the
+  fifth re-pack's own shape for a file whose
+  cost the logs bound only from below; and fix
+  the hang mechanism at its seam — _run_text
+  must return within a bounded time even when
+  a timed-out child leaves its pipe open — with
+  the ctrl_c test's deterministic substrate
+  pinned by unit tests either way. If the
+  measurement instead convicts a different
+  module or clears the hang shape, the fix
+  follows the measurement, not this paragraph.
+
+The measurement, the fix, and the conclusions
+against these suppositions follow in this
+section.
+
 ## Q155 re-test: conclusions of the filing seat (2026-11-11)
 
 The re-test ran in a fresh scratch clone from
