@@ -750,7 +750,7 @@ The feature is filed as Q139, with the five design
 points the build must settle — the routing signals, the
 both-consulted semantics, the record, the posture gate,
 the failure arms. The build itself is sequenced after
-the 3.16.20.2 cut and the documentation overview: filed
+the next 3.16 cut and the documentation overview: filed
 now, on the desk, ready to pick up in that order.
 
 ## The briefing learns to name its own tensions (2026-11-10)
@@ -1085,8 +1085,8 @@ written before the fix pass:
   file itself measures 6,928.
 - **P2-S2.** AGENTS.md's layout table puts `AGENTS.md`
   and `PROTOCOL.md` at the top of `docs/`; both are root
-  manuals, and `docs/`'s own top holds `FUTURE.md`,
-  `FAQ.md`, `ENTERPRISE.md` and the support matrix.
+  manuals, and `docs/`'s own top holds `docs/FUTURE.md`,
+  `docs/FAQ.md`, `docs/ENTERPRISE.md` and the support matrix.
 - **P2-S3.** PROTOCOL.md section 9.4 still describes OS
   containment as an optional Linux sandbox: a sandbox
   that cannot engage "(no `bwrap`, not Linux)" refuses
@@ -1146,8 +1146,8 @@ Conclusions (2026-11-10, the same evening): **P2-S1
 confirmed** -- the human-review paragraph now reads
 6,928, the figure the core paragraph and the file itself
 carry. **P2-S2 confirmed** -- the layout table now names
-`docs/`'s own top files (`FUTURE.md`, `FAQ.md`,
-`ENTERPRISE.md` and the support matrix). **P2-S3
+`docs/`'s own top files (`docs/FUTURE.md`, `docs/FAQ.md`,
+`docs/ENTERPRISE.md` and the support matrix). **P2-S3
 confirmed** -- section 9.4 now names all three backends
 with their shapes (bubblewrap; Job Object + restricted
 token + low integrity, 512 MiB, no filesystem namespace
@@ -1185,8 +1185,9 @@ their dates from main's history, and `windows.md` and
 `questions.md` are re-dated to their 2026-11-10
 changes. **P2-S10 confirmed** -- INSTALL.md, the FAQ's
 remaining answers, PROTOCOL.md outside section 9.4 and
-`docs/ENTERPRISE.md` stand as written; ENTERPRISE.md is
-the placeholder rule 6 keeps as-is and was not touched.
+`docs/ENTERPRISE.md` stand as written; the ENTERPRISE
+file is the placeholder rule 6 keeps as-is and was not
+touched.
 The defaults registry's doc lines followed the moved
 statements (the PROTOCOL.md inference-block and
 key-policy lines, and the FAQ's poll line). Guard
@@ -2406,7 +2407,7 @@ below under Argon's stamp
 (00000000-argon-26a0-ff29-7825440c1fb9); Muse's
 decisions on each stand beside them under Muse's own
 stamp (00000000-muse-7e57-d0c5-58316a922026).
-## The road to 3.16.20.2: three stale figures, named and re-measured (2026-11-10)
+## The road to the next 3.16 release: three stale figures, named and re-measured (2026-11-10)
 
 The head the .2 cut was first attempted on failed
 its build in 3 places, each a figure or a harness
@@ -3219,9 +3220,9 @@ record as a record. Suppositions, written before the
 check ran:
 
 - **P8-S1.** The changelog's top section will be the
-  current release, 3.16.20.1 of 2026-11-10, stating the
+  current release on the 3.16 line, of 2026-11-10, stating the
   official release on the 3.16 line and the security
-  posture finished; no section for 3.16.20.2 will stand
+  posture finished; no section for the next release will stand
   there yet, because that release is not published, and
   the changelog is a release record — so the top will
   read consistent with the current state with no edit.
@@ -3242,7 +3243,7 @@ check ran:
   of remaining items will carry items since resolved —
   the Windows `job_user` divergence (the gate now
   engages through the confinement backend, per the
-  3.16.20.1 changelog section) and San Francisco sitting
+  the current release's changelog section) and San Francisco sitting
   idle (the box now runs the fleet's fuzz lane and the
   preview loop's Linux leg). The report is a dated
   running record: flagged here, not edited.
@@ -3272,12 +3273,12 @@ section when the packet lands.
 
 Conclusions (2026-11-10, the same evening): **P8-S1
 confirmed** — the changelog's top section is
-3.16.20.1 of 2026-11-10, stating the official release
+the current release on the 3.16 line, of 2026-11-10, stating the official release
 on the 3.16 line, the counter restarted at 1, and the
 security posture finished for real (confinement and
 the separate job user at `enforce` refusing rather
 than running weaker, the Windows and FreeBSD backends
-named with their field proof). No 3.16.20.2 section
+named with their field proof). No section for the next release
 stands there; that release is not published, and the
 changelog is a release record, so the top is
 consistent as written. **P8-S2 confirmed in part** —
@@ -3299,7 +3300,7 @@ layer only; the records beneath stand untouched.
 Falkenstein report's closing list carries the Windows
 `job_user` divergence as open (resolved: the gate
 engages through the confinement backend, per the
-3.16.20.1 changelog section) and San Francisco as
+the current release's changelog section) and San Francisco as
 sitting idle (the box now runs the fuzz lane and the
 preview loop's Linux leg). The report is a dated
 running record and stands as written; this flag is
