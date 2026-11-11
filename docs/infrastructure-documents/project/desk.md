@@ -12142,3 +12142,163 @@ seconds three times.
 The split, the refreshed table entries, the guard
 extension and the conclusions against these
 suppositions follow in this section.
+
+## Q154: conclusions of the fix lane (2026-11-11)
+
+The fix landed under option 1 at the same
+detector in `runner/ops/briefing.py` (the
+suppositions recorded in the desk before the fix
+at 9:03 AM PST, the fix commit of 9:14 AM PST,
+the figures commit of 9:22 AM PST re-measuring
+the core over `briefing.py`'s 138-line growth,
+and the desk answer commit that carries this
+record). Settled against the suppositions one by
+one:
+
+- **Q154-S1 — holds.** Red-before, item 1,
+  measured first-hand by this lane on the
+  current head: the 5 object phrases under the
+  unlisted object-control verbs produce no
+  findings on the fixture layer or the shipped
+  layer, plain (0 of 5 firing
+  `private_shelf_crosses`) and bookended (0 of
+  365 variants; the representative "compels a
+  clerk" in 0 of 73), and end to end the
+  representative carries no mark and writes no
+  audit row. The three-tree split stands as
+  filed: the same shapes are silent on the
+  pre-Q153-fix detector (0 of 5) and fire whole
+  on the pre-Q143-fix detector (5 of 5). The
+  controls hold on the current head ("compels
+  operators" and the filed object phrases under
+  the listed verbs in their other forms — 6 of 6
+  firing plain).
+- **Q154-S2 — holds.** Red-before, item 2: the
+  ledger's mixed sentence under the 10
+  beyond-filed format, bidi and invisible
+  characters and the 9 beyond-set punctuation
+  separators produces no findings on the current
+  head on both layers, plain (0 of 19 firing
+  `ledger_treated_as_instruction`) and bookended
+  (0 of 1,387 variants; each representative —
+  the left-to-right-mark shape and the
+  single-low-9-quote shape — in 0 of 73), and
+  end to end each representative carries no mark
+  and writes no audit row. The same shapes are
+  silent on the pre-Q153-fix detector (0 of 19)
+  and fire whole on the pre-Q143-fix detector
+  (19 of 19), and the evidence-only twins under
+  the new shapes stay silent (2 of 2 plain, 0 of
+  146 bookended variants firing).
+- **Q154-S3 — holds.** The fix judges a governed
+  phrase by its own shape at the verb branch of
+  `_clause_carries_infinitive`: a common-noun
+  phrase standing between the clause's verb and
+  its infinitive is the clause's object phrase
+  unless its head is a noun of the complement's
+  closed standing, its governing verb is a
+  complement verb (the new `_COMPLEMENT_VERBS`
+  set: the hold, carry, keep, retain, bear,
+  take, own, possess and wear families), or it
+  stands behind a be-auxiliary as a participle's
+  passive shape; the person-head set also gains
+  the Q153 item 2 heads and their ordinary kin.
+  Item 1's 5 sentences now fire exactly
+  `private_shelf_crosses` on both layers, plain
+  (5 of 5) and bookended (365 of 365; the
+  representative in 73 of 73), beside the filed
+  controls (6 of 6 plain and bookended).
+- **Q154-S4 — holds.** The fix reads the
+  remaining format, bidi and invisible characters
+  as boundaries in `_fold` (the direction marks,
+  the bidi embedding, override, pop and isolate
+  controls, the invisible operators, the
+  combining grapheme joiner and the Arabic letter
+  mark, standing in the folded text as the
+  pilcrow), and `_LEDGER_SEGMENTS` gains the
+  single low-9 quote, the prime, the fraction
+  slash, the corner brackets, the fullwidth
+  exclamation and question marks, the Arabic
+  semicolon and the Devanagari danda. Item 2's
+  19 shapes now fire exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain (19 of 19) and bookended (1,387
+  of 1,387; each representative in 73 of 73),
+  while the evidence-only twins under the new
+  shapes stay silent (4 of 4 in the committed
+  family, plain and bookended).
+- **Q154-S5 — holds.** Both ways hold beside the
+  widening: the bound edge "prompts a duty" stays
+  silent on both layers, plain and bookended
+  (0 of 73 variants firing, and no mark and no
+  audit row end to end); the complement-verb
+  complements stay silent beside it ("holds a
+  credential", "holds a permit", "keeps a
+  permit", "retains credential", "bears a
+  permit", "takes an oath", "carries a permit",
+  "is assigned a duty", "holds a request" — 10
+  of 10 silent in the committed family beside
+  the bound, plain and bookended); the bound
+  prohibition followed by a contradicting
+  sentence fires exactly the contradicting rule;
+  and the Q153 family whole — its item 1
+  complement prohibitions silent, its item 2
+  object phrases and item 3 shapes firing, its
+  bounds as stated — reads as it did through the
+  committed guard family run whole.
+- **Q154-S6 — holds.** No earlier family
+  regresses: the committed guard family stands
+  at 168 tests green (the 157 of the Q153
+  landing plus the new family's 11), covering
+  the filed Q143, Q144, Q145, Q146, Q147, Q148,
+  Q149, Q150, Q151, Q152 and Q153 corpora and
+  the standing contradiction family; the
+  neighbour batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2*`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read 305 green beside
+  it. Red-before for the family: the new
+  Q154PolarityGuardTest family reads 2443
+  subtest failures against the unpatched
+  detector (the pre-Q153-fix tree), every one of
+  them in the new family — the guard family
+  whole against that detector reads 5184
+  failures, the Q153 family's 2741 as recorded
+  by its re-test plus this family's 2443.
+- **Q154-S7 — holds.** End to end: item 1's
+  representative ("compels a clerk") and item
+  2's representatives (the left-to-right-mark
+  shape and the single-low-9-quote shape)
+  assembled into briefings each carry their mark
+  and write exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id as
+  the detail), and the bound edge ("prompts a
+  duty") carries no mark and writes no audit
+  row.
+
+The Q154 entry in the questions file carries
+the Answer (option 1) and its Applied-in record
+with these counts. Q154 is not closed by this
+lane, and neither are Q153, Q152, Q151, Q150,
+Q149, Q148, Q147, Q146, Q145, Q144 and Q143:
+the filing seat's rule-8 re-test of this fix is
+still owed, and all of them close only after
+that re-test passes whole. The hosted CI verdict
+on the new head is the trains' to judge — this
+lane claims neither it nor anything about the
+in-flight ship, whose lane, clones and state
+file this lane never touched.
+
+What could not be recorded as a unit test,
+stated plainly: this lane's ad-hoc probes are
+live detector calls over the sentences named in
+the suppositions and in these conclusions;
+their deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane ran whole (168 green on the
+head; 2443 subtest failures for the new family
+against the pre-Q153-fix detector). No new
+behaviour is claimed beyond what those calls
+and that family show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
