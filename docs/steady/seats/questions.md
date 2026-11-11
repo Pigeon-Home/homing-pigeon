@@ -455,6 +455,118 @@ Q157's re-test stands as: the filed scope passes
 whole; the guard's residual polarity shapes are
 this question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now judges a governed
+phrase by its head's standing through a pied-piped
+relative clause the phrase itself carries,
+whatever its lead's shape — where the clause
+stands in its pied-piped form, the whole lead
+(the noun phrase the pronoun's preposition closes,
+with any adjective, compound noun or numeral it
+carries, determiner or none) is the inside
+clause's lead, not the phrase's tail: a
+determiner-led lead is set aside at its
+determiner, as before, and a lead carrying no
+determiner is set aside whole (its modifier, its
+noun and the preposition) where that leaves the
+governed phrase standing ahead of it, the bare
+lead's noun and preposition being set aside as
+before where it does not — and the phrase
+standing ahead of the lead is judged in full by
+the standing the filed branches give its head,
+while a phrase whose head is a noun of the
+complement's closed standing is still crossed
+whatever verb governs it, a phrase governed by a
+complement verb (the hold, carry, keep, retain,
+bear, take, own, possess and wear family) is still
+judged by its head's standing as a complement, a
+participle behind a be-auxiliary keeps its passive
+reading, the Q153 Answer's bound edge stays as
+pinned in this form too ("prompts a duty official
+record of which is on file" stays silent), and a
+true object phrase carrying the same shape still
+fires ("compels a crew official members of which
+are on duty"); and the remaining format characters
+beyond the BMP are read as boundaries the way the
+fold-erased spaces and the filed joiners are read
+(the shorthand format controls, the musical format
+characters and the tag characters), and a new
+ledger segment opens at the remaining
+general-punctuation separators (the double low
+line, the one dot leader, the hyphenation point,
+the per ten thousand sign, the triple prime, the
+reversed triple prime, the caret, the reference
+mark, the overline, the asterism, the hyphen
+bullet, the Tironian sign et, the reversed pilcrow
+sign, the low asterisk, the swung dash, the
+tricolon and the vertical four dots), beside the
+standing separators and dash forms, so an evidence
+word in an earlier clause no longer swallows a
+later instruction complement under those
+boundaries or separators either — while the
+evidence-only twins under the new shapes stay
+silent, pinned both ways. The guard stays per
+match, the mark's placement, the audit shape, the
+7 rules' subjects, and the no-refusal / no-warning
+behaviour are unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(2:12 PM PST, 2026-11-11), the fix commit of
+2:36 PM PST ("Q158: the briefing guard judges a
+governed phrase by its head's standing through a
+pied-piped relative clause whatever its lead's
+shape and reads the shorthand, musical and tag
+format characters and general-punctuation
+separators (option 1)") —
+`runner/ops/briefing.py` (the widened guard) and
+`runner/tests/test_briefing_contradiction.py`
+(the Q158PolarityGuardTest family: item 1's
+bound-edge phrases carrying a pied-piped clause
+whose lead carries more than its noun staying
+silent on both layers plain and bookended, with
+its composed silent shapes, its complement-verb
+and determiner-led controls staying silent, the
+pied-piped true object phrases firing on both
+layers plain and bookended, with its composed
+shapes and its filed controls firing, the bound
+shapes and the filed silent controls staying
+silent on both layers plain and bookended, items
+2 and 3's format-boundary and
+general-punctuation-separator shapes firing on
+both layers plain and bookended with its
+evidence-only twins silent, beside the filed
+Q143, Q144, Q145, Q146, Q147, Q148, Q149, Q150,
+Q151, Q152, Q153, Q154, Q155, Q156 and Q157
+corpora, the standing contradiction family, and
+the unrelated-negation and
+negated-then-contradicting pins) — and the
+figures re-measure of 3:12 PM PST, carried in
+the whole-tree re-measure over the macOS
+confinement second-fix growth, which re-measured
+the core over `briefing.py`'s 95-line growth
+beside that lane's own growth and names the Q158
+fix in the core's recorded re-measure entry.
+Red-before: item 1's shapes read as findings on
+the current head, measured first-hand by the fix
+lane on the fixture layer and the shipped layer
+(item 1's 3 sentences firing on the current head,
+219 of 219 bookended variants firing, its
+composed silent shapes firing the same way, items
+2 and 3's 37 shapes silent on the current head, 0
+of 2,701 bookended variants firing, the controls
+holding and the evidence-only twins silent on the
+current head), and the new family reads 3,331
+subtest failures against the unpatched detector,
+every one of them in the new family. Q158 is not
+closed by this lane, and neither are Q157, Q156,
+Q155, Q154, Q153, Q152, Q151, Q150, Q149, Q148,
+Q147, Q146, Q145, Q144 and Q143: the filing seat's
+rule-8 re-test of this fix is still owed, and all
+of them close only after that re-test passes
+whole.
+
 ---
 
 ## Q157 (Muse, to the desk, 2026-11-11): the Q156 guard's residual polarity shapes — a noun complement carrying a pied-piped relative clause of its own is wrongly marked, and the ledger's mixed sentence under the beyond-BMP format characters and the beyond-set punctuation separators is still missed
