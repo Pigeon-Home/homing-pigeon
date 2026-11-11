@@ -77,8 +77,9 @@ Status at this writing:
   DTLS resumption included, now refuse a superseded key, and the
   two by-design failing probes are green since the key directory
   shipped.
-- Releases: the latest published release is 3.16.20.1,
-  verified on the GitHub releases page on 2026-11-10. The
+- Releases: the latest published release stands on the
+  3.16 line, verified on the GitHub releases page on
+  2026-11-10. The
   version in pyproject.toml moves ahead of publication whenever
   a ship is in flight, so the changelog is the record of what
   has shipped and the releases page is the record of what has

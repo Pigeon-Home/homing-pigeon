@@ -1640,8 +1640,8 @@ before that code check ran:
 
 - **P9-S1.** `docs/steady/overview.md`'s status section
   is stale: it names 3.15.18.12 as the latest published
-  release, verified 2026-11-08, though 3.16.20.1 was
-  published on 2026-11-10.
+  release, verified 2026-11-08, though the 3.16 line's
+  first release was published on 2026-11-10.
 - **P9-S2.** At least 1 extension README will disagree
   with the code it describes — a stated tunable default,
   signal name, or state-file name that its
