@@ -2,7 +2,7 @@
 
 Steady is the quiet shelf. A document lands here when it has not been touched for a while, and this folder exists for 1 thing: wandering. If you opened steady, you came to explore.
 
-Everything on this shelf arrived between 2026-10-13 and 2026-11-06 — the project's first 3 weeks, and the days since. Nothing here is deleted, and every file sits in exactly 1 place.
+Everything on this shelf arrived between 2026-10-13 and 2026-11-10 — the project's first 4 weeks, and the days since. Nothing here is deleted, and every file sits in exactly 1 place.
 
 ## Which tree
 
@@ -10,7 +10,7 @@ Two trees of documents sit side by side in docs/. This one, steady, is the quiet
 
 ## The core of the project
 
-9 files sit at the top of this folder, in no folder at all. They are the heart of the project: what the system is, how it is used, and how it keeps itself safe.
+11 files sit at the top of this folder, in no folder at all — this map is 1 of them. The 9 core files among them are the heart of the project: what the system is, how it is used, and how it keeps itself safe.
 
 - overview.md — the project overview — what Homing Pigeon is and where the campaign stands. Untouched since 2026-10-30.
 - networking.md — the networking picture — what talks to what, drawn as trust boundaries. Untouched since 2026-10-24.
@@ -24,17 +24,17 @@ Two trees of documents sit side by side in docs/. This one, steady, is the quiet
 
 ## The drawers
 
-The other 164 files are in 9 drawers, named the way the rest of the project's documents are named:
+The other 178 files are in 9 drawers, named the way the rest of the project's documents are named:
 
-- design — 7 files. design documents and decision records — how pieces were shaped before they were built.
-- security — 8 files. the hardening set — host hardening, the confinement profiles, and the security papers.
-- use — 8 files. guides and runbooks — running the system and using it day to day.
+- design — 8 files. design documents and decision records — how pieces were shaped before they were built.
+- security — 17 files. the hardening set — host hardening, the confinement profiles, the privacy papers, and the security papers.
+- use — 10 files. guides and runbooks — running the system and using it day to day.
 - project — 12 files. the project's own papers — plans, maps, and campaign notes.
 - oracle — 4 files. the Oracle's papers — its playbook, its reviews, its senses, its standing instructions.
 - seats — 3 files. papers from the seats era, which closed on 2026-10-31 — who sat where, and what was asked.
 - proofs — 2 files. proof and verification records.
 - specimens — 14 files. raw artifacts — logs and machine output, kept as found.
-- reports — 107 files. the dated record — audits, coverage, reviews, rig reports, and release records; the biggest drawer.
+- reports — 108 files. the dated record — audits, coverage, reviews, rig reports, and release records; the biggest drawer.
 
 ## First stops: important, and untouched the longest
 
@@ -52,7 +52,7 @@ These are the files to look at first on a wander — the ones that carry the mos
 
 Inside each drawer below, files are listed oldest untouched first, with the date each one arrived in the project. The top of each list is where the stalest reading lives.
 
-### design — 7 files
+### design — 8 files
 
 - approval-gate-design.md — untouched since 2026-10-21 · arrived 2026-10-15
 - asymmetric-signing-design.md — untouched since 2026-10-21 · arrived 2026-10-15
@@ -61,19 +61,29 @@ Inside each drawer below, files are listed oldest untouched first, with the date
 - oracle-opinion-design.md — untouched since 2026-10-30 · arrived 2026-10-18
 - remediation-design.md — untouched since 2026-10-30 · arrived 2026-10-18
 - agent-stamp-design.md — untouched since 2026-11-01 · arrived 2026-10-22
+- oracle-briefing-design.md — untouched since 2026-11-10 · arrived 2026-11-09
 
-### security — 8 files
+### security — 17 files
 
 - hardening_report.md — untouched since 2026-10-18 · arrived 2026-10-15
 - security-test-plan.md — untouched since 2026-10-21 · arrived 2026-10-15
 - hardening-readme.md — untouched since 2026-10-24 · arrived 2026-10-15
 - homing-pigeon — untouched since 2026-10-24 · arrived 2026-10-15
-- windows.md — untouched since 2026-10-24 · arrived 2026-10-15
 - homing-pigeon.service — untouched since 2026-10-26 · arrived 2026-10-15
 - homing_pigeon.te — untouched since 2026-10-26 · arrived 2026-10-15
 - personal-documents-warning.md — untouched since 2026-10-26 · arrived 2026-10-21
+- attack-v20-delta.md — untouched since 2026-11-07 · arrived 2026-11-07
+- personal-documents-shelter.md — untouched since 2026-11-08 · arrived 2026-11-08
+- privacy-fremont-research.md — untouched since 2026-11-08 · arrived 2026-11-08
+- privacy-models.md — untouched since 2026-11-08 · arrived 2026-11-08
+- agent-state-files.md — untouched since 2026-11-09 · arrived 2026-11-09
+- agent-state-ignores.txt — untouched since 2026-11-09 · arrived 2026-11-09
+- privacy-design.md — untouched since 2026-11-09 · arrived 2026-11-08
+- default-posture.md — untouched since 2026-11-10 · arrived 2026-11-09
+- freebsd.md — untouched since 2026-11-10 · arrived 2026-11-10
+- windows.md — untouched since 2026-11-10 · arrived 2026-10-15
 
-### use — 8 files
+### use — 10 files
 
 - docker.md — untouched since 2026-10-18 · arrived 2026-10-14
 - handoff-local-si.md — untouched since 2026-10-21 · arrived 2026-10-15
@@ -83,6 +93,8 @@ Inside each drawer below, files are listed oldest untouched first, with the date
 - local-si-test.md — untouched since 2026-10-27 · arrived 2026-10-15
 - live-examples.md — untouched since 2026-10-30 · arrived 2026-10-25
 - own-cloud.md — untouched since 2026-10-30 · arrived 2026-10-25
+- pi-light-ai-hat-2-readiness.md — untouched since 2026-11-07 · arrived 2026-11-07
+- other-uses.md — untouched since 2026-11-08 · arrived 2026-11-08
 
 ### project — 12 files
 
@@ -108,9 +120,9 @@ Inside each drawer below, files are listed oldest untouched first, with the date
 
 ### seats — 3 files
 
-- questions.md — untouched since 2026-10-24 · arrived 2026-10-23
 - bravo.md — untouched since 2026-10-31 · arrived 2026-10-31
 - status.txt — untouched since 2026-10-31 · arrived 2026-10-27
+- questions.md — untouched since 2026-11-10 · arrived 2026-10-23
 
 ### proofs — 2 files
 
@@ -127,7 +139,7 @@ Inside each drawer below, files are listed oldest untouched first, with the date
 
 The other 9 files in this drawer are data captures — JSON results and compressed logs — counted in the total above but not listed here.
 
-### reports — 107 files
+### reports — 108 files
 
 - v3.5.2-coverage.md — untouched since 2026-10-16 · arrived 2026-10-16
 - mutation.md — untouched since 2026-10-18 · arrived 2026-10-18

@@ -969,11 +969,11 @@ judgment:
   `dd` onto a device), a non-https `script_url`, and `..` in a file
   name. It does not weigh the job.
 
-### 9.4 Execution confinement (optional)
+### 9.4 Execution confinement
 
 During execution, the Oracle reports what a job touched, not just
 what its results may reveal. The snapshot below does not stop a
-write. An optional Linux sandbox does. Config for the snapshot:
+write. The platform's confinement backend does. Config for the snapshot:
 
 - `workspace_root`: absolute path (e.g. `/home/user/workspace`). When
   set, it names the root the confinement snapshot watches. The job's
@@ -997,12 +997,19 @@ elsewhere on the disk is outside the walk.
 OS containment is a separate switch, `security.modes.confinement`,
 at `enforce` by default. On Linux with `bwrap` installed the job
 runs inside bubblewrap: `/usr` read-only, no network, and only the
-job workdir writable at `/work`. At startup, a sandbox that cannot
-engage (no `bwrap`, not Linux) refuses to start the runner at
-`enforce`; a sandbox that breaks after a good start falls back
-loudly and the audit log records the fallback. `audit` mode runs
-normally and records `would_run_sandboxed`. See SECURITY.md. The
-attestation
+job workdir writable at `/work`. On Windows the job is created
+under a Job Object with a restricted token at low integrity, with
+a 512 MiB per-process ceiling; there is no filesystem namespace
+isolation, so a confined job can still read any path its token can
+read. On FreeBSD each job runs in its own jail: the system mounts
+read-only, the job workdir the only writable mount, a fresh `/tmp`,
+no network at all, and a 512 MiB ceiling at spawn. At startup, a
+backend that cannot engage on a platform that has one -- and any
+platform with no backend at all -- refuses to start the runner at
+`enforce`; a backend that fails after a good start is recorded in
+the audit log as a fallback and the job is refused, never run
+weaker. `audit` mode runs normally and records
+`would_run_sandboxed`. See SECURITY.md. The attestation
 format does not change when the sandbox is on.
 
 Like everything the Oracle does, the ceiling is the runner owner's:
@@ -1023,8 +1030,9 @@ removed before the result goes out. A download lands in a temp name
 beside its destination, capped while streaming, and is renamed into
 place whole. On Linux the sandbox binds that real path, so a
 symlinked state directory cannot widen the bind to wherever the link
-points. On Windows there is no sandbox: these checks are the
-isolation.
+points. On Windows these checks stand beside the confinement
+backend above: the backend bounds the process, and these checks
+hold the work directory to the job.
 
 #### Protected paths
 

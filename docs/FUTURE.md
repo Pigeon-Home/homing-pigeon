@@ -6,19 +6,26 @@
 - 100% disk is now "-110F too hot" AND (fix me bonus (agent bug bounty) extra compute for agent with solution)) cddr the cuddr of the carrrr
 
 - **Audit log integrity.** `security-events.jsonl` is rewritten past
-  5,000 lines and `security-audit.jsonl` has no hash chain, no append-only
-  flag and no remote copy, so the watched user can edit history?
+  5,000 lines. `security-audit.jsonl` now carries a tamper-evident hash
+  chain (verified by the audit report tool), so an edit to its history
+  is detectable; what it still lacks is an append-only flag and a
+  remote copy.
 
-- **A cage off Linux.** Only bwrap stops a job; macOS, FreeBSD and
-  Windows detect a bad write after it happens. Needed: `sandbox-exec`, a
-  jail, a job object with a restricted token. The `job_user` handoff
+- **A cage off Linux.** The FreeBSD jail and the Windows job object
+  with a restricted token landed as the confinement backends and were
+  field-proven on 2026-11-10; the cage that is still missing is
+  macOS's, where a bad write is still only detected after it happens
+  and `sandbox-exec` is the named candidate. The `job_user` handoff
   already chowns the workdir to that user and opens only the search bit
   on the path above it, so the job reaches its workdir without listing
-  the runner's state; what is missing is the cage, not the handoff.
+  the runner's state; off macOS what was missing was the cage, not the
+  handoff, and the cage is now there.
 
-- **Egress control.** A job can `curl` secrets out unless bwrap is in
-  enforce mode on Linux. Per-job egress rules, and anything off Linux, do
-  not exist. `docs/use/networking.md`.
+- **Egress control.** On Linux a job can `curl` secrets out unless
+  bwrap is in enforce mode; the FreeBSD jail denies a job all network,
+  and the Windows backend does not restrict a job's network at all.
+  Per-job egress rules do not exist on any platform.
+  `docs/steady/networking.md`.
 
 - **POSIX ACL warning.** `--posture` reads the Windows DACL and warns
   when Everyone, Users or Guests can read a secret file. On POSIX it
@@ -26,13 +33,13 @@
   ACL, so a `+` entry granting another user read passes as 0600.
 
 - **A signing key for the Oracle**, so its opinion can be a signed
-  statement from an authenticated party. `docs/oracle/job-review.md`.
+  statement from an authenticated party. `docs/steady/oracle/job-review.md`.
 
 - **A firewall ruleset hash**, and a check after each job that its
   network cage held. Only the on/off posture line exists.
 
 - **An approval gate (M10)**, a human yes before a job runs, for the
-  jobs a policy names. `docs/design/approval-gate-design.md`.
+  jobs a policy names. `docs/steady/design/approval-gate-design.md`.
 
 - **Board delegation over ping** Ping reply carries the box's open task
   board, so the cloud SI can submit work ?? Yes, with reverse secret given only to SI? v4
@@ -78,7 +85,7 @@
   (`docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md`). The
   carriage is in the suite behind the `dtls_via_email`
   option, off by default. The build plan is
-  `docs/design/v3-dtls-over-email-plan.md`; the record of what
-  was built and tested is `docs/proofs/dtls-over-email-v3.md`.
+  `docs/infrastructure-documents/design/v3-dtls-over-email-plan.md`; the record of what
+  was built and tested is `docs/infrastructure-documents/proofs/dtls-over-email-v3.md`.
   This completes the carriage the mailbox harness above was
   the first step toward.

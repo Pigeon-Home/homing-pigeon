@@ -79,9 +79,10 @@ never travels in email, a replay and age check (`issued_at` within
 `max_job_age_sec`, default one hour, plus a seen-set of job ids), and
 an AES-256-GCM envelope keyed from the same secret, so a mailbox
 reader cannot read the job. Nothing executes before the signature
-verifies. Everything past that is opt-in containment: the
-Oracle's `judge`, a bubblewrap sandbox, and AppArmor and SELinux
-templates in `docs/steady/security/`. Run it as a locked-down user
+verifies. Everything past that is containment under the security
+modes at `enforce` by default: the Oracle's `judge`, and the
+confinement backend (bubblewrap on Linux, a Job Object on
+Windows, a jail on FreeBSD). Run it as a locked-down user
 on a box you can wipe (`docs/infrastructure-documents/security/threat-model.md`).
 
 ## Why not SSH, Tailscale, or a self-hosted CI runner?
@@ -111,10 +112,10 @@ the second and is sketched in `docs/steady/design/asymmetric-signing-design.md`.
 
 No, and we'd rather you hear it from us. Run it on a spare box, a VM,
 or a Raspberry Pi, under a dedicated user, with `max_result_view` on
-`attested` if the data matters. Turn on the sandbox and the OS
-profiles if the box has anything to lose. The defaults favor "it just
-works"; the posture table in the README (`just run it`, `eyes open`,
-`lockdown`) is how you choose otherwise.
+`attested` if the data matters. The security modes default to
+`enforce` -- the confinement backend and the OS profiles are the
+standing posture, not an opt-in. The posture table in the README
+(`just run it`, `eyes open`, `lockdown`) is how you choose otherwise.
 
 ## How often does the Oracle refresh what's happening on the system? Does it poll, or does a signal wake it up?
 
