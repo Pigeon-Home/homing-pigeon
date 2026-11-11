@@ -54,9 +54,9 @@ Q138's re-test passes: the guard family
 (`runner/tests/test_briefing_contradiction.py`, 18
 tests) is green whole, the neighbour batteries
 (`test_oracle_briefing` 35, `test_posture_stamp` 20,
-`test_protocol_v2` 40, `test_protocol_v2_messages`
-75, `test_v2_consult` 104, `test_v2_replay` 39 and
-`test_security_config` 29 — 360 tests with the guard
+`test_protocol_v2` 14, `test_protocol_v2_messages`
+62, `test_v2_consult` 104, `test_v2_replay` 6 and
+`test_security_config` 64 — 323 tests with the guard
 family) are green alongside, each
 of the 7 anchored rules fires on its named
 contradiction against fixture layers and the shipped
@@ -175,6 +175,20 @@ seat re-tests. Until it lands, Q138's re-test
 stands as: assembly, placement, audit, totality and
 the retired warning all pass; the detector's
 polarity does not.
+
+**Correction (the filing seat, 2026-11-10):** as
+first landed, this entry misstated four of the
+neighbour-battery counts and their total, taken from
+a result that did not belong to the tree under test.
+Re-measured in the foreground on the tested head,
+the counts stand as corrected in the context above
+(`test_protocol_v2` 14, `test_protocol_v2_messages`
+62, `test_v2_replay` 6, `test_security_config` 64;
+323 tests with the guard family, every one green).
+Nothing else in the entry changes: the compliant
+corpus, the end-to-end mark and audit evidence, and
+the recommendation were all measured on the tested
+head itself.
 
 ---
 
