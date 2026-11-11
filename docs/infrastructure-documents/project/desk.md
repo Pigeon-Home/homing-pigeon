@@ -1868,3 +1868,76 @@ personal-repository practitioner's do-it-yourself merge queue,
 the closest published analogue to this desk's exact shape
 (alatas.dev). Where the desk departs from all of them — the red
 main — the departure is stated above, in the open.
+
+## The documentation overview, Packet 8: suppositions recorded before the check (2026-11-10)
+
+Packet 8 of the overview takes the historical shelf and
+the filed copies: the 11 files under `docs/archive/`, the
+59 under `docs/steady/reports/`, the Falkenstein rig
+report and the seats note under
+`docs/infrastructure-documents/`, the changelog at
+`docs/infrastructure-documents/changelog.md`, and the 8
+filed Internet-Draft copies under `docs/ietf/*/submitted/`
+— 81 files. The packet's rule is narrower than the
+others': historical files are the record and are not
+rewritten, filed copies are not edited at all, and the
+check is consistency and banners only. Anything in a
+current-facing summary that plainly contradicts the
+current state (the 3.16 official release line, secure by
+default finished) is flagged here; a fix lands only where
+a file presents itself as current guidance and is
+plainly wrong, or in the banner layer that marks a
+record as a record. Suppositions, written before the
+check ran:
+
+- **P8-S1.** The changelog's top section will be the
+  current release, 3.16.20.1 of 2026-11-10, stating the
+  official release on the 3.16 line and the security
+  posture finished; no section for 3.16.20.2 will stand
+  there yet, because that release is not published, and
+  the changelog is a release record — so the top will
+  read consistent with the current state with no edit.
+- **P8-S2.** The reports drawer will stand as dated
+  records under the audit ignore list (AGENTS.md rule
+  6); its one index-like file, `coverage.md`, will
+  reconcile against the drawer: the count it states
+  (28 reports) will match the files on disk and every
+  coverage report will be listed.
+- **P8-S3.** At least 1 archived banner will point a
+  current reader at a retired-layout path that no
+  longer exists: `transports-status.md`'s banner will
+  name a `TRANSPORTS.md` as the current page, and
+  `known-failures.md`'s banner will misstate the file's
+  own home. The bodies beneath the banners will stand
+  as records; the banner layer is where a fix may land.
+- **P8-S4.** The Falkenstein rig report's closing list
+  of remaining items will carry items since resolved —
+  the Windows `job_user` divergence (the gate now
+  engages through the confinement backend, per the
+  3.16.20.1 changelog section) and San Francisco sitting
+  idle (the box now runs the fleet's fuzz lane and the
+  preview loop's Linux leg). The report is a dated
+  running record: flagged here, not edited.
+- **P8-S5.** The filed IETF copies will be internally
+  consistent — each submitted `.md`'s docname and date
+  matching its filename revision and the posting record
+  in `docs/ietf/status.md`, each `-03` render carrying
+  its posted date — with 1 exception: status.md's
+  expiry date for version 1's -03 will disagree with
+  the filed -03 text itself. Status.md is Packet 7's
+  file: flagged here, not edited in this packet.
+- **P8-S6.** The archive drawer will stand as the
+  record: compressed-summary banners on the seat
+  intuitions, the stamp record consistent with the
+  recycled-stamps account in AGENTS.md, and the
+  `steady.md` proposal standing as a proposal of its
+  day, with no current-facing contradiction.
+- **P8-S7.** No Packet 8 file will carry the string
+  `FINAL`, and the seats note
+  (`si-to-si-over-homing-pigeon.md`) will stand as a
+  dated design note that states its own status, needing
+  no correction.
+
+Each supposition is settled in the commits that follow
+this note; the conclusions stand at the end of this
+section when the packet lands.
