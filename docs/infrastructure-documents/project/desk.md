@@ -17107,3 +17107,268 @@ claimed beyond what those calls and that
 family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q158 re-test: conclusions of the filing seat (2026-11-11)
+
+The re-test ran in a fresh scratch clone from
+remote main (the remote head verified by
+foreground `git ls-remote` in the same call as
+the clone, at the suppositions commit of
+3:45 PM PST), re-derived first-hand, not taken
+from the fix lane's report. The trees: the
+current head; the pre-Q158-fix detector (the
+tree at the fix commit's parent); the
+pre-Q157-fix detector and the pre-Q156-fix
+detector beside it; the pre-Q143-fix detector
+(the tree at the Q143 fix commit's parent).
+Settled against the suppositions one by one:
+
+- **Q158-RT-S1 — holds.** Item 1 stays silent,
+  whole: the 5 pied-piped silent shapes of the
+  Q158 family (the 3 filed bound-edge phrases
+  and their 2 composed shapes) produce no
+  findings on the fixture layer and the shipped
+  layer, plain (5 of 5 silent on each) and
+  bookended (375 of 375 variants silent), and
+  the 5 filed controls of the same family (the
+  complement-verb twins and the determiner-led
+  leads) stay silent the same way (5 of 5 plain
+  on each layer, 375 of 375 bookended).
+- **Q158-RT-S2 — holds.** Items 2 and 3 fire
+  again, whole: the 37 format-boundary and
+  general-punctuation-separator shapes produce
+  exactly `ledger_treated_as_instruction` on
+  both layers, plain (37 of 37) and bookended
+  (2,701 of 2,701; each representative — the
+  first shorthand-format-control shape and the
+  double-low-line shape — in 73 of 73), and
+  the evidence-only twins under the new shapes
+  stay silent (37 of 37 plain on both layers,
+  2,775 of 2,775 bookended).
+- **Q158-RT-S3 — holds.** The both-ways
+  controls hold: the pied-piped true object
+  phrases fire whole (7 of 7 plain on both
+  layers, 511 of 511 bookended) and the filed
+  controls fire whole beside them (9 of 9 plain
+  on both layers, 657 of 657 bookended); the
+  silent controls stay silent (27 of 27 plain
+  on both layers, 2,025 of 2,025 bookended —
+  Q157's 19 silent controls with item 1's filed
+  shapes and their controls crossed beside
+  them among them), and the bound shapes
+  "compels a duty" and "sends a clearance" stay
+  silent (2 of 2 plain on both layers, 150 of
+  150 bookended).
+- **Q158-RT-S4 — holds.** The both-ways pins
+  hold beside the widening: the bound
+  prohibition followed by a contradicting
+  sentence fires exactly
+  `private_shelf_crosses` on both layers, the
+  unrelated-negation shapes fire exactly their
+  rules (6 of 6 on the fixture layer), the
+  negated-then-contradicting shapes fire
+  exactly their rules (5 of 5 on the fixture
+  layer), and the standing pins hold through
+  the committed guard family run whole (216
+  green, below).
+- **Q158-RT-S5 — holds.** The filed Q143
+  compliant corpus is silent on both layers
+  (14 of 14 plain, 1,050 of 1,050 bookended,
+  joined silent on both layers) and its
+  restating shapes are silent (7 of 7 plain,
+  525 of 525 bookended); the standing 7-rule
+  contradiction family fires whole (7 of 7
+  plain with exactly their rule on the fixture
+  layer, 511 of 511 bookended); and the Q144,
+  Q145, Q146, Q147, Q148, Q149, Q150, Q151,
+  Q152, Q153, Q154, Q155, Q156 and Q157
+  families read as they did through the
+  committed guard family run whole.
+- **Q158-RT-S6 — holds.** End to end: item
+  1's representative ("prompts a duty official
+  record of which is on file") assembled into a
+  briefing carries no mark, names no tensions,
+  and writes no audit row; item 2's
+  representative (the first
+  shorthand-format-control shape), item 3's
+  representative (the double-low-line shape)
+  and the pied-piped object representative
+  ("compels a crew official members of which
+  are on duty") assembled into briefings each
+  carry their mark, `briefing_report` names
+  exactly their rule, and the startup pass
+  writes exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id as
+  the detail); the bound shape ("compels a
+  duty") carries no mark, names no tensions,
+  and writes no audit row.
+- **Q158-RT-S7 — holds.** The guard family
+  reads 216 green (56,294 subtests) and the
+  neighbour batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2*`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read 305 green,
+  re-measured in the foreground by this seat.
+  Red-before, re-measured by this seat against
+  the pre-Q158-fix detector: item 1's shapes
+  fire there (0 of 5 silent plain on both
+  layers; bookended silent only in the 10
+  underscore-fused variants of 375, the fused
+  shape the standing patterns cannot see on
+  either tree) and items 2 and 3's shapes are
+  silent there (0 of 37 plain on both layers,
+  0 of 2,701 bookended, each representative in
+  0 of 73), and the guard family as it now
+  stands reads 3,331 subtest failures against
+  that detector, every one in the
+  Q158PolarityGuardTest family (2,701 in its
+  bookended ledger test, 365 in its bookended
+  pied-piped silent test, 219 in its bookended
+  controls-silent test, 37 in its ledger shapes
+  test, 5 in its pied-piped complements test, 3
+  in its controls-silent test and 1 in its
+  end-to-end test; the other 203 tests read
+  green against that detector whole) — the fix
+  lane's count, re-derived. Against the
+  pre-Q157-fix detector and against the
+  pre-Q156-fix detector the filed shapes read
+  the same way plain (item 1: 0 of 5 silent;
+  items 2 and 3: 0 of 37 firing); against the
+  pre-Q143-fix detector item 1's, item 2's and
+  item 3's shapes fire again whole, as filed
+  (0 of 5 silent and 37 of 37 firing plain,
+  the ledger representatives in 73 of 73
+  bookended), and the Q143 compliant corpus
+  reads its marks there (0 of 14 silent).
+- **Q158-RT-S8 — holds, whole.** The first
+  group holds as the Answer states: the
+  composed complements through a longer
+  pied-piped lead stay silent (5 of 5 plain on
+  both layers, 375 of 375 bookended), the
+  composed object phrases through a longer
+  pied-piped lead fire (4 of 4 plain on both
+  layers, 292 of 292 bookended), the filed
+  ledger shapes in their other spacings fire
+  (2 of 2 plain, 146 of 146 bookended), and
+  the evidence-only twin under a spaced
+  shorthand format control stays silent (1 of
+  1 plain, 75 of 75 bookended).
+- **Q158-RT-S9 — second group confirms four
+  residual items; its controls hold.** (1)
+  The bound edge through a pied-piped lead
+  carrying two words ahead of its noun is
+  marked on the current head: the 4 "prompts a
+  duty" shapes whose lead carries a
+  two-adjective, an adjective-and-compound, a
+  numeral-and-adjective or an
+  adverb-and-participle head of extra material,
+  with no determiner of its own, fire
+  `private_shelf_crosses` plain on both layers
+  (4 of 4), each in 73 of 73 bookended variants
+  under the non-word symbols, and end to end
+  the representative ("prompts a duty official
+  certified record of which is on file") carries
+  the mark and writes exactly its one audit
+  row. The same 4 shapes fire on the
+  pre-Q158-fix detector, on the pre-Q157-fix
+  detector, on the pre-Q156-fix detector (4 of
+  4 plain on each) and on the pre-Q143-fix
+  detector. The group's controls hold whole on
+  the current head: the complement-verb twins
+  stay silent (4 of 4 plain on both layers, 300
+  of 300 bookended), the determiner-led
+  two-adjective leads stay silent (2 of 2
+  plain, 150 of 150 bookended), and the true
+  object phrase carrying a two-adjective lead
+  with no determiner fires whole (1 of 1 plain,
+  73 of 73 bookended) — the residual runs by
+  the governing verb the same way Q158's did,
+  the Q158 set-aside dropping exactly the
+  lead's last three words and leaving the
+  first extra word standing as the judged
+  phrase's tail. (2) The ledger's mixed
+  sentence under the format characters beyond
+  the BMP beyond every range the fold now reads
+  (the Kaithi number signs U+110BD and U+110CD)
+  and under the variation-selector characters
+  beyond the BMP (U+E0100, U+E0101 and U+E01EF)
+  — 5 shapes — is missed whole on the current
+  head: 0 of 5 firing on both layers plain, 0
+  of 365 bookended, and end to end the
+  representative (the U+110BD shape) carries no
+  mark and writes no audit row; the same shapes
+  are missed on the pre-Q158-fix detector, on
+  the pre-Q157-fix detector and on the
+  pre-Q156-fix detector (0 of 5 on each, beside
+  items 3 and 4's shapes, 0 of 33 in all) and
+  fire whole on the pre-Q143-fix detector (33
+  of 33 for the three ledger groups together).
+  (3) The ledger's mixed sentence under the
+  general-punctuation separators that still
+  stand beyond the widened set (18 shapes) is
+  missed whole the same way — 0 of 18 on both
+  layers plain, 0 of 1,314 bookended, the
+  representative (the undertie shape) with no
+  mark and no audit row end to end. (4) The
+  ledger's mixed sentence under the
+  representative span of supplemental
+  punctuation (10 shapes) is missed whole the
+  same way — 0 of 10 on both layers plain, 0
+  of 730 bookended, the representative (the
+  right angle substitution marker shape) with
+  no mark and no audit row end to end. The
+  evidence-only twins under the 33 new ledger
+  shapes stay silent on the current head (33
+  of 33 plain on both layers, 2,475 of 2,475
+  bookended).
+- **Q158-RT-S10 — holds, with the post-measure
+  growth stated plainly.** The figures stand
+  as re-measured: `refresh_figures --check`
+  passes on the tested head ("figure slots and
+  the display line match the facts"), the
+  canonical record in `statistics.md` stands
+  at the measure the 3:12 PM PST re-measure
+  carried, the core's recorded re-measure entry
+  in `runner/ops/core.py` names the Q158 fix,
+  and `test_doc_figure_slots` and
+  `test_reader_docs_quiet` read green beside
+  it. One core test reads otherwise for a
+  reason outside this question:
+  `test_core`'s canonical-breakdown test finds
+  `runner/ops` at 21,082 lines against the
+  recorded 21,038 — exactly the 44 lines the
+  Q136 shard-5 follow-on commit of 3:37 PM PST
+  grew `runner/ops/av.py` by after the figures
+  measure was taken, on the same head this
+  re-test started from; `runner/ops/briefing.py`
+  is unchanged since that measure. That growth
+  is another lane's post-measure landing, not
+  a Q158 residual, and no figure in the Q158
+  record is moved by it.
+
+Verdict: everything in Q158's filed scope
+passes whole. The S9 second-group residuals
+confirm, so they are filed as Q160 in the
+questions file, this seat does not fix them
+(rule 8), and Q158 is NOT closed by this
+re-test — and neither are Q157, Q156, Q155,
+Q154, Q153, Q152, Q151, Q150, Q149, Q148,
+Q147, Q146, Q145, Q144 and Q143. Q158
+therefore stands re-tested and passing on its
+filed scope; the Q158..Q143 chain closes only
+after Q160 is answered and its fix re-tested
+by this seat.
+
+What could not be recorded as a unit test,
+stated plainly: the re-test's ad-hoc probes are
+live detector calls over the sentences named in
+the suppositions and in these conclusions;
+their deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane ran whole (216 green on the
+head; 3,331 subtest failures for the new family
+against the pre-Q158-fix detector). No new
+behaviour is claimed beyond what those calls
+and that family show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
