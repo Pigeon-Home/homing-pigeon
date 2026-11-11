@@ -273,7 +273,12 @@ def _fold(text, breaks=False):
     annotation anchors, the Arabic end-of-text mark
     (beside the Arabic letter mark) and the Syriac
     abbreviation mark are clause boundaries too,
-    read before the fold."""
+    read before the fold; Q156 reads the remaining
+    format characters of the Arabic block the same
+    way -- the Arabic number signs, the Arabic end
+    of ayah, the Arabic pound and piastre marks
+    above and the Arabic disputed end of ayah are
+    clause boundaries too, read before the fold."""
     if breaks:
         text = re.sub(r"\r\n|[\r\n\t\x0b\x0c\x85\u2028\u2029"
                       r"\u00a0\u1680\u2000-\u200d\u202f"
@@ -281,7 +286,9 @@ def _fold(text, breaks=False):
                       r"\u180e\u200e\u200f\u202a-\u202e"
                       r"\u2061-\u2064\u2066-\u2069\u034f"
                       r"\u061c\u206a-\u206f\u180b-\u180d"
-                      r"\u061d\u070f\ufff9-\ufffb]",
+                      r"\u061d\u070f\ufff9-\ufffb"
+                      r"\u0600-\u0605\u06dd\u0890\u0891"
+                      r"\u08e2]",
                       " \u00b6 ", text)
     return re.sub(r"\s+", " ", text).strip()
 
@@ -512,6 +519,30 @@ def _fold(text, breaks=False):
 # interrobang, the inverted exclamation and
 # question marks, the triangular bullet, the double
 # question mark and the three-em dash).
+# Q156 widened the guard once more at the same
+# detector: a governed phrase is judged by its own
+# shape through a "whose" clause the phrase itself
+# carries -- a common-noun phrase standing between
+# the clause's verb and its infinitive is the
+# clause's object phrase even when a "whose" clause
+# modifying the phrase intervenes between the phrase
+# and its infinitive, while a noun complement is
+# still crossed and the Q153 Answer's bound edge
+# stays as pinned; the remaining format characters
+# of the Arabic block are read as boundaries the
+# way the fold-erased spaces and the filed joiners
+# are read (the Arabic number signs, the Arabic end
+# of ayah, the Arabic pound and piastre marks above
+# and the Arabic disputed end of ayah); and the
+# ledger guard opens a new segment at the remaining
+# punctuation separators (the single and double
+# high-reversed-9 quotation marks, the double prime,
+# the question exclamation mark, the exclamation
+# question mark, the inverted interrobang, the
+# reversed question mark, the Greek question mark,
+# the angle brackets, the fullwidth number sign,
+# percent sign and hyphen-minus, and the fullwidth
+# curly brackets).
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -723,7 +754,11 @@ def _prohibitive_occurrences(low):
 # phrase standing ahead of its own relative clause
 # is judged by its own shape, and the inside
 # clause's tail is the inside clause's, not the
-# phrase's.
+# phrase's. Q156 judges that same phrase through a
+# "whose" clause the phrase itself carries, the
+# same way: the phrase standing ahead of "whose" is
+# judged by its own shape, and the inside clause's
+# tail is that clause's, not the phrase's.
 _CLAUSE_OBJECT_WORDS = frozenset({
     "you", "him", "her", "them", "us", "me", "it",
     "anyone", "someone", "everyone", "anybody",
@@ -1304,9 +1339,17 @@ def _clause_carries_infinitive(clause_words):
         # the relative pronoun, by the branches
         # below. A relative pronoun standing first
         # leaves no phrase ahead of it to judge.
+        # Q156 reads a "whose" clause the phrase
+        # itself carries the same way ("compels a
+        # clerk whose record is on file to ..."):
+        # "whose" opens the phrase's own clause the
+        # way the relative pronouns do, so the phrase
+        # standing ahead of it is judged by its own
+        # shape and the inside clause's tail is that
+        # clause's, not the phrase's.
         rel_at = next((at for at, tail in enumerate(obj)
                        if tail in ("who", "whom", "which",
-                                   "that")), None)
+                                   "that", "whose")), None)
         if rel_at is not None:
             if rel_at == 0:
                 continue
@@ -1826,7 +1869,10 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     "！", "？", "؛", "।", "‘",
                     "＂", "＇", "（", "）", "［",
                     "］", "॥", "‼", "‽", "¡",
-                    "¿", "‣", "⁇", "⸻")
+                    "¿", "‣", "⁇", "⸻",
+                    "‛", "‟", "″", "⁈", "⁉",
+                    "⸘", "⸮", ";", "⟨", "⟩",
+                    "＃", "％", "－", "｛", "｝")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -1913,7 +1959,23 @@ def _ledger_complement_is_evidence(owner, match):
     exclamation mark, the interrobang, the inverted
     exclamation and question marks, the triangular
     bullet, the double question mark and the
-    three-em dash)): an evidence word in
+    three-em dash) -- and by Q156, where the
+    remaining format characters of the Arabic block
+    are read as boundaries before the fold beside
+    the characters it already reads (the Arabic
+    number signs, the Arabic end of ayah, the Arabic
+    pound and piastre marks above and the Arabic
+    disputed end of ayah, standing in the folded
+    text as the pilcrow), and the remaining
+    punctuation separators open a segment too (the
+    single and double high-reversed-9 quotation
+    marks, the double prime, the question exclamation
+    mark, the exclamation question mark, the inverted
+    interrobang, the reversed question mark, the
+    Greek question mark, the angle brackets, the
+    fullwidth number sign, percent sign and
+    hyphen-minus, and the fullwidth curly
+    brackets)): an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does
