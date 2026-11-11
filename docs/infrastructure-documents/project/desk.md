@@ -227,6 +227,34 @@ stand in the same place. Fresh installs keep seeding
 `confinement` at `audit` on macOS, exactly as the other two
 backends' platforms do; the seed posture does not move.
 
+The macOS backend has since landed (2026-11-11):
+`runner/guard/macos_confine.py` — the per-job Seatbelt
+profile applied by `sandbox-exec` plus the launcher shim
+for the spawn resource limits, the audit record naming
+exactly "macos: seatbelt_profile + no_network +
+spawn_resource_limits" — wired into the confinement
+startup gate, the argv gate and the spawn seam, fail-closed
+at `enforce` exactly as its suppositions required, and
+registered in the core list with its re-measure (the list
+stands at 136 files; the figures record was refreshed over
+the grown tree in the landing that followed). The contract
+proof stands green off darwin: the profile writer and the
+shim per field, a bookended fuzz family around the profile
+text, the trial, gate, argv and spawn seams, and the seed
+shape, with the live class skipped off darwin under its
+registered reasons. The live proof is CI's word and had
+not landed when this note was written: on the landed
+tree's build the two macOS build jobs completed
+successfully and the other workflows on the same tree
+completed successfully, but the test-macos job that runs
+the live tests (probe, confined spawn, escape write and
+read refused, network refused, spawn limits carried) was
+still in progress. The support matrix states the level as
+Supported, reduced confinement on the basis stated there,
+no field proof on project hardware is claimed, and the
+conclusions stand in `docs/steady/security/macos.md`,
+to be completed with the test-macos verdict when it lands.
+
 And a third round of the same reconciliation, for the one
 surface the first two could not see: fixtures that only fail
 where no confinement backend exists at all. On Linux the

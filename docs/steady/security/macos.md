@@ -134,3 +134,48 @@ that proof gives):
 
 Conclusions from the CI proof are recorded in the place
 this supposition stands, after the proof runs.
+
+## Conclusions, as they stand (2026-11-11)
+
+The backend landed on 2026-11-11 as described above:
+`runner/guard/macos_confine.py`, wired into the confinement
+startup gate, the argv gate and the spawn seam, registered
+in the core list (the list stands at 136 files, the figures
+re-measured over the grown tree), with the support matrix
+and the default-posture page stating what it applies.
+What is proven, and what is not, as this section stands:
+
+- The off-darwin half of the supposition is proven. The
+  contract tests run green on a Linux host: the profile
+  writer per field, the launcher shim per field, a
+  bookended fuzz family around the profile text, the
+  trial-spawn proof's failure naming, the startup gate,
+  the argv gate and the spawn seam (which records exactly
+  "macos: seatbelt_profile + no_network +
+  spawn_resource_limits"), and the seed shape — a fresh
+  macOS install still states `confinement` at `audit`.
+  The stub half stands as supposed: off darwin the probe
+  always answers a problem string, and a simulated darwin
+  refuses deterministically.
+- The live half is not yet proven. The live tests — the
+  probe engaging on a real macOS host, a confined spawn,
+  the escape write and the escape read refused, a network
+  attempt refused, the spawn limits carried by the job —
+  run only on the CI macOS legs, and they were skipped on
+  the Linux host the contract tests ran on, exactly as
+  their skip reasons are registered. On the landed tree's
+  build, the two macOS build jobs (macos-15 and
+  macos-15-intel) completed successfully and the other
+  workflows on the same tree completed successfully, but
+  the test-macos job that runs the live tests was still
+  in progress when this section was written. Until that
+  job completes green, the live supposition points above
+  stand unproven: they are CI's word to give, and no
+  field proof on project hardware is claimed — there is
+  no Mac in the project's own fleet.
+- The support level therefore stands exactly as the
+  support matrix states it — Supported, reduced
+  confinement — on the basis stated there, and it moves
+  only when the CI proof lands. When the test-macos job
+  completes, this section is completed with its verdict,
+  whichever way it reads.
