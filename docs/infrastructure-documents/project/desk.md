@@ -10023,3 +10023,195 @@ default-posture page's S5 measurement record now
 states, beside the 2026-11-09 record it preserves,
 that a job whose confinement cannot engage is refused
 end to end -- never run weaker.
+## Q136 fifth re-pack: suppositions, recorded before the measurement (2026-11-11)
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+The drift rule fired a fifth time, again on a
+completed verdict. The fourth re-pack landed on
+2026-11-11 (444 files, 17,206.5 seconds in all,
+25 shards at about 696 seconds packed in the
+lane's discovery against the unchanged
+720-second budget and 20-minute wall, its guard
+pinning test_decision1_startup never to share a
+shard with its killed shard's seven heaviest
+companions). Build run 43035985891, on the
+Q151-answer head carrying that re-pack, is the
+first completed build-windows verdict on a
+fourth-re-pack head, and it is red the same way:
+the parallel-test step ran 1,205 seconds to the
+wall, shard 3 failed exit 124 with the
+killed-shard shape (its annotation reads "shard
+3 ended without a named failure", a truncated
+progress-dots tail), and shards 10, 12, 16, 17
+and 18 failed exit 1 beside it. This lane
+re-packs; it does not cut a release and does not
+touch the ship state.
+
+Measured by this lane first-hand before these
+suppositions were committed, from that run's
+build-windows log (fetched whole through `gh`
+after the verification lane's in-progress
+attempts returned 0 bytes) and the four
+build-windows logs the fourth re-pack measured
+(runs 43026648905, 43022614477, 43018894064 and
+43016116636, the last two repaired from their
+lost step label the same way that lane repaired
+them): shard 3 of run 43035985891 carried 14
+modules -- test_decision1_startup at its
+650-second floor plus 13 companions priced at
+67.3 seconds in all, 717.3 packed -- and none of
+the seven companions the fourth re-pack pinned
+is among them, so that pin held and the shard
+died anyway. Every one of the 13 companions
+appears inside completed shards of the older
+logs at an estimate of 14.2 seconds or less
+(test_approvalguard listed 8.3 and estimated
+9.2; test_dtls_rfc9147_wire 14.2;
+test_install_box at most 7.3; test_install_gaps
+at most 6.0; the rest at about 3 or less), an
+aggregate of about 45 seconds at completed-run
+prices. test_decision1_startup itself has no
+completed appearance in any of the five logs:
+it stands in a killed shard in every one (shard
+0 of the three older runs, shard 3 of run
+43026648905, shard 3 of this run), beside the
+two killed tag-build shards the guard family
+already names. The completed shards of run
+43035985891 ran 99.5 to 484.0 seconds internally
+against 717.3 packed each (9,262.4 in all,
+against the table's 17,206.5 total); shard 4,
+carrying test_v2_consult at its 600-second
+residual floor, ran 442 tests in 99.5 seconds
+in all. In completed shards, listed slowest-test
+sums convict eight files past their prices:
+test_transports 302.9 against 158.2,
+test_enforce_posture_reconciliation 284.0
+against 207.3, test_oracle_opinion 247.0
+against 172.8, test_negative_concurrency 162.3
+against 103.0, test_audience 123.3 against
+32.8, test_protocol_examples 90.7 against 11.3,
+test_concurrency_poison 71.7 against 21.0 and
+test_oracle_chat 56.4 against 33.7. The exit-1
+failures beyond the wall kill are the
+load-sensitive family and the version-rot
+family: shard 10's two test_oracle_chat
+timeouts, shard 16's test_negative_oracle_and_
+extensions concurrent-asks failure and shard
+17's test_concurrency bad-answers failure,
+with shards 10, 17 and 18 annotated for the
+Windows socket flake (WinError 10038); shard 12
+fails on test_doc_version_rot (the desk named
+with the spent tree version) and shard 18's
+test_regression_guard failure is the
+skip-registry knock-on the fourth re-pack
+recorded for the same family. The run's own
+Windows discovery read 445 modules and 12,249
+tests in 24 shards; this lane's discovery on
+the current head reads 466 modules and 12,410
+tests, the growth since the fourth re-pack
+being 14 tests inside existing files.
+
+- Q136-RP5-S1 (the floored file itself, not its
+  companions): three duration-era kills now
+  share one composition -- test_decision1_startup
+  at its 650-second floor plus companions priced
+  at about 63 to 67 seconds -- with three
+  disjoint companion sets, and the companions
+  are exonerated file by file in completed
+  shards. The 650 floor was a residual lower
+  bound derived from one killed shard's wall,
+  not a measurement, and it understates the
+  file: companions at completed-run prices
+  supply about 45 seconds of the shard's cost,
+  so the file's own Windows cost stands at
+  about 1,100 seconds or more, plausibly past
+  the wall alone. If this holds, no completed
+  estimate for the file exists in any log at
+  hand, and the only packing that answers the
+  record is one where the file rides alone.
+- Q136-RP5-S2 (the packing changed by
+  repricing, not by growth): the suite grew by
+  14 tests inside existing files since the
+  fourth re-pack, which cannot reshuffle a
+  shard; what changed the companions is the
+  fourth re-pack's own new prices (a new
+  largest-first order) and the shard count the
+  run's discovery produced (24, not the lane's
+  25). A heavy file's companions are whoever
+  fills the gap under the budget -- an output
+  of the prices, not a property of the files --
+  so a pin against named companions, the fourth
+  re-pack's shape, cannot hold this failure:
+  it held, and the shard died with a fresh set.
+- Q136-RP5-S3 (the load-sensitive family's
+  prices): the Oracle chat, concurrency-poison
+  and negative-concurrency files measure under
+  load at listed sums far above their prices
+  (56.4 against 33.7; 71.7 against 21.0; 162.3
+  against 103.0), and their timeout and
+  bad-answers failures land in those same loaded
+  shards, so their prices must carry the loaded
+  cost, as floors just under the listed sums.
+  test_concurrency's standing 250-second floor
+  holds (229.5 listed this run, 253.4 in the
+  run before). test_negative_oracle_and_
+  extensions is the exception that proves the
+  shape: its listed sum (57.6) sits under its
+  price (89.8), so its concurrent-asks failure
+  is a timing margin under load, not a duration
+  the table can price away.
+- Q136-RP5-S4 (the estimator's killed-shard
+  blind spot repeats): a refresh by the tool's
+  own `--write --from-logs` route over this
+  log set will spread shard 3's 1,200.2-second
+  wall over its 14 files by unlisted test count
+  -- test_decision1_startup at about 512.9 by
+  its 97 of the shard's 227 tests, under any
+  honest floor -- and will raise companions to
+  spurious spread prices (test_approvalguard to
+  about 158.6) that the max-merge then keeps, as
+  every prior re-pack has accepted. The standing
+  floors will need re-applying on top of the
+  refresh, and test_decision1_startup's new
+  floor must be set from the kill record, not
+  from the spread.
+- Q136-RP5-S5 (the budget is not the binding
+  constraint; the floor cap is): completed
+  shards ran at most 0.68x of their packed
+  prices and the table overstates the leg's
+  aggregate internal time by about 1.86x, so
+  neither the 720-second budget nor the shard
+  count is what kills shard 3, and both stand
+  unchanged with the 20-minute wall. What binds
+  is that the table's own check cannot carry a
+  price over the budget: test_decision1_startup's
+  floor therefore rises to 720 seconds exactly
+  -- the budget itself, the largest price the
+  packing contract can express -- at which it
+  fills a shard alone and no companion can join
+  it. Stated plainly in advance: if the file
+  still kills a shard alone, the defect is in
+  the file (97 in-process runner startups), not
+  in the packing, and the answer is a file
+  split in a lane of its own, not a sixth
+  re-pack.
+- Q136-RP5-S6 (the version-rot shards are a
+  separate blocker, excluded from pricing):
+  shard 12's version-rot failure and shard 18's
+  regression-guard skip-registry knock-on are
+  the deterministic family the next cut's
+  version bump clears; neither is duration
+  evidence, and both are excluded from every
+  pricing judgement here, as in the fourth
+  re-pack.
+
+The measurement, the refreshed table, the new
+floors the numbers support, and the conclusions
+against these suppositions follow in this
+section. What would prove the red cleared is
+stated plainly in advance: not this lane's
+packing arithmetic, but the next completed
+tag-or-main build-windows verdict on a head
+carrying this re-pack, under rule 8, with the
+version-rot family judged separately.
