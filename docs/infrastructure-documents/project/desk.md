@@ -309,6 +309,35 @@ level stays Supported, reduced confinement, and the
 conclusions stand in `docs/steady/security/macos.md`
 against the three suppositions.
 
+The second live verdict has since landed, and it is
+failure again: all 7 live tests failed with the same
+exit -6, no-output shape on a head carrying that fix,
+so the first fix's primary supposition stands wrong as
+a diagnosis of the abort, exactly as its own record
+provided. A second fix has since landed. Its
+suppositions were recorded in
+`docs/steady/security/macos.md` before any second fix
+was written — the profile naming no rule for the root
+itself, so a process refused the root directory's
+listing is aborted at start, and the profile's missing
+`/private` startup trees (`/private/var/db/dyld`,
+`/private/var/db/timezone`, `/private/var/select`) —
+and the fix matches them: the profile carries exactly
+one `(allow file-read-data (literal "/"))` line and no
+subpath grant on `/`, the three trees join the system
+read paths, and the live suite gains a three-point
+bisect (a native binary through the full chain, the
+profile alone, the shim alone) that names the culprit
+if the full chain still aborts. The contract proof
+runs green off darwin (the macOS suite, beside the
+neighbouring confinement suites and the figure guards
+after their re-measure). The live proof is still owed:
+no `test-macos` job on a head carrying the second fix
+has completed as this note stands, so the support
+level stays Supported, reduced confinement, and the
+conclusions stand in `docs/steady/security/macos.md`
+against R2-S1 to R2-S3.
+
 And a third round of the same reconciliation, for the one
 surface the first two could not see: fixtures that only fail
 where no confinement backend exists at all. On Linux the

@@ -537,3 +537,61 @@ in both rounds), or that the outside records prove
 anything about this host (they are the reason these
 three mechanisms are supposed first; the CI macOS legs
 remain the only field proof this platform has).
+
+## Conclusions for the second fix, against R2-S1 to R2-S3
+
+The second fix has since landed, built to the
+suppositions above, and the core figures were
+re-measured over its tree in the landing that followed
+it. What each supposition now stands on, stated
+exactly:
+
+- R2-S1's grant is landed exactly as supposed, and its
+  deterministic substrate is proven off darwin: the
+  generated profile carries `(allow file-read-data
+  (literal "/"))` exactly once and no `(subpath "/")`
+  anywhere, pinned by a contract test beside the
+  profile writer's other field tests. Whether the
+  abort is gone is not proven here: that is a live
+  fact, and no `test-macos` job on a head carrying
+  this fix has completed as this section stands. If
+  that verdict still shows exit -6, R2-S1 is wrong,
+  exactly as its record said in advance.
+- R2-S2's grant is landed exactly as supposed, and
+  its substrate is proven the same way: the three
+  trees — `/private/var/db/dyld`,
+  `/private/var/db/timezone` and `/private/var/select`
+  — stand in `SYSTEM_READ_PATHS` and in the generated
+  profile, once each, read-only like the rest of that
+  set, pinned by a contract test. Which of R2-S1 and
+  R2-S2 carried the abort the next live verdict
+  cannot separate, as the suppositions record said
+  in advance; both grants are minimal, named,
+  system-only reads.
+- R2-S3 was not acted on in the production spawn, as
+  supposed: the shim and its data-size limit are
+  unchanged this round, one variable at a time. The
+  live bisect it called for is landed as three live
+  points beside the original seven — a native binary
+  through the full confined chain, the generated
+  profile alone with no shim and no limit, and the
+  shim alone with no profile. If the next verdict
+  still shows -6 on the full chain, those three
+  points' pattern names which of the profile, the
+  shim's limit, or the chain itself is the cause.
+- The contract proof runs green off darwin: the macOS
+  suite runs 78 tests on a Linux host, OK with the
+  10 live Seatbelt tests skipped under their
+  registered reason (the original 7 and the bisect's
+  3), beside the neighbouring confinement suites and
+  the figure guards after their re-measure.
+- The support level does not move. It stands exactly
+  as the support matrix states it — Supported,
+  reduced confinement. The live proof remains open,
+  and it closes only when a `test-macos` job on a
+  head carrying this fix completes green; until then
+  the live points stand as the second failure verdict
+  left them — the confined spawn refuted twice over,
+  the escape, network and limits points unproven —
+  and no field proof on project hardware is claimed:
+  there is no Mac in the project's own fleet.
