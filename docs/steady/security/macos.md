@@ -213,3 +213,102 @@ What is proven, and what is not, as this section stands:
   them — 2 refuted as landed, 4 unproven — and no field
   proof on project hardware is claimed — there is no
   Mac in the project's own fleet.
+
+## Suppositions for the fix, recorded before the fix
+
+Recorded 2026-11-11, after the failure verdict above and
+before any fix was written, from a first-hand read of
+`runner/guard/macos_confine.py` and of the spawn seam in
+`runner/ops/remediation_ops.py`. Three mechanisms are
+supposed, one for each failure shape; the fix that
+follows is built to these, and the conclusions section
+below is completed against them.
+
+- S1, the live abort (the primary supposition). Every
+  confined spawn passes through the launcher shim, and
+  the shim sets both `RLIMIT_AS` and `RLIMIT_DATA` to
+  512 MiB and then `exec`s the job's command. On macOS a
+  process's virtual address space at interpreter startup
+  — the dynamic loader, the dyld shared cache and the
+  system libraries every process maps before its first
+  line of code — already exceeds 512 MiB, on Apple
+  silicon by a wide margin. The supposed mechanism is
+  therefore not the Seatbelt profile's file rules at
+  all: the shim's own interpreter starts under the
+  profile and runs (the profile lets it), and the abort
+  lands at the next `exec`, when the job's interpreter
+  tries to come up under a virtual-memory ceiling
+  smaller than its own startup mappings and dies by
+  SIGABRT (exit -6) before any job code runs — which is
+  why every live test failed with the same shape (no
+  output, no DENIED markers, no limits read back) and
+  why the escape, network and limits points produced no
+  evidence either way. The fix this supposition calls
+  for: the shim sets the data-size limit only
+  (`RLIMIT_DATA`, the heap ceiling, which macOS enforces
+  on a process's data mappings) and leaves the address
+  space unlimited; the audit name
+  `spawn_resource_limits` stands, and the live limits
+  test is re-pinned to read back exactly that — the
+  data limit at the ceiling, the address space
+  unlimited — plus a live point the landed suite did
+  not carry: a job that tries to allocate well past the
+  ceiling is refused by it. If a head carrying that fix
+  still aborts at -6, S1 is wrong and this record says
+  so in advance.
+- S2, the staged read and the work write (a latent
+  failure behind S1). A macOS work directory lives
+  under the temp tree, `/var/folders/...`, and `/var`
+  is a firmlink whose canonical form is
+  `/private/var`; Seatbelt path filters match the
+  canonical path, so a `(subpath "/var/folders/...")`
+  rule never matches the file it names. The profile
+  writer already carries this knowledge for the system
+  trees — `SYSTEM_READ_PATHS` names `/private/etc`
+  beside `/etc` for exactly this reason — but the work
+  directory and the extra read paths get no such twin,
+  so even with S1 fixed the trial's staged read and
+  the job's work-directory write would be refused.
+  The fix this supposition calls for: the profile
+  names the `/private` canonical twin of every
+  `/var/...` and `/tmp/...` path it names, on both the
+  read line and the write line, deduplicated against
+  paths already named. This is deterministically
+  testable off macOS — the generated profile text is
+  the substrate — and the contract tests pin it.
+- S3, the windows seam failures on the darwin host.
+  `_confinement_spawn` derives its platform from two
+  different signals: Windows from `os.name`, FreeBSD
+  and darwin from `sys.platform`. On a Linux or
+  Windows host the signals never disagree, but on a
+  darwin host the windows tests' simulation (which
+  patches `os.name` to `nt`, the signal that seam has
+  always used) satisfies the darwin branch at the same
+  time, the darwin branch is consulted first, and the
+  scripted Windows backend — whose spawn takes no
+  `user` argument, because the Windows branch never
+  hands one over — is called by the macOS branch with
+  `user=`, which is the recorded `TypeError`, and its
+  fallback is recorded under the macOS name. The other
+  confinement gates (`_confinement_argv`, the startup
+  gate) derive every platform from `sys.platform`
+  alone. The fix this supposition calls for: the spawn
+  seam derives all three platforms from `sys.platform`
+  alone (`win32`, `darwin`, `freebsd*`), the same
+  single signal as the gates beside it, and the
+  windows seam tests complete their simulation by
+  patching `sys.platform` as the FreeBSD and macOS
+  seam tests already do. On a real host nothing
+  changes — a real Windows host answers `win32` to
+  both signals — and the Windows and FreeBSD branches'
+  behaviour is otherwise untouched.
+
+What is not supposed: that the profile's file or
+network posture caused the abort (the shim starts and
+runs under the profile; the abort's signature is the
+exec'd interpreter's startup), or that Seatbelt allowed
+any escape (no escape point was ever exercised). The
+fix keeps the fail-closed posture throughout: deny by
+default, no network allow rule, writes only inside the
+work directory, and a spawn that cannot apply its
+controls still refuses the job.
