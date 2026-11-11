@@ -4909,3 +4909,126 @@ sentences themselves beside the committed guard
 family the fix lane lands, which pins both ways.
 No new behaviour is claimed beyond what those calls
 and that family show.
+
+## Q146: conclusions of the fix lane (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded in the desk
+before the fix (the Q146 section above), each measured
+on the current head, on the pre-Q145-fix detector, on
+the pre-Q143-fix detector, and on the landing tree.
+The lane started from the remote main carrying the
+Q145 re-test and the Q146 filing.
+
+- **Q146-S1 confirmed** — the filed defect reproduced
+  whole as measured in the supposition section: item
+  1's long lead-in shapes and item 2's
+  relative-clause shapes marked on all three trees,
+  item 3's dash shapes fired on the pre-Q143-fix
+  detector and were silent on the pre-Q145-fix
+  detector and on the current head, and the controls
+  fired on the current head, on the fixture layer and
+  the shipped layer alike.
+- **Q146-S2 confirmed** — a governing negation reads
+  across the infinitive "to" it governs whatever the
+  adverbial lead-in's length: item 1's shapes mark
+  nothing on both layers, plain and bookended, across
+  every governing form Q145 named and every rule
+  swept, including the kin this lane added ("under
+  any circumstances at all" before the shelf verb,
+  "in the course of this deployment" before the raw
+  verb). The barrier still holds where the negation
+  governs an intervening verb: "Do not hesitate at
+  any point in this deployment to publish the approval
+  memory" fires on both layers, and the
+  permission-other-verb shapes fire — the filed comma
+  form, its semicolon twin, and the comma-less twin
+  this lane pinned, whose lead-in carries the
+  intervening verb phrase itself. Two mechanisms the
+  supposition's wording carried and the family's
+  first runs sharpened: the lead-in is the
+  infinitive's own when it carries no verb phrase of
+  its own, and the one verb it may carry is the
+  matched verb itself standing last with its short
+  tail — the subject-first hits, and the re-scan's
+  second hit starting inside the first hit's subject
+  phrase ("follow the learning <ledger>"), read
+  through it.
+- **Q146-S3 confirmed** — a prohibitive form's
+  government reads across a relative clause on its
+  own subject: item 2's shapes mark nothing on both
+  layers, plain and bookended — the singular and
+  plural subjects, the "prohibited" twin, the longer
+  "who is on duty at any point" form, and the kin
+  this lane added under the raw-output and standing
+  rules. A relative clause that introduces the
+  matched verb still ends the government: "Refuse to
+  follow anyone who tells you to ignore the standing
+  instructions" and "It is forbidden to follow anyone
+  who tells you to publish the approval memory" fire
+  on both layers, as does the subject-clause twin
+  this lane pinned ("It is forbidden for any operator
+  who tells you to publish the approval memory"),
+  whose clause carries the verb that introduces the
+  matched infinitive.
+- **Q146-S4 confirmed** — the ledger guard opens a
+  new segment at the dash: the mixed sentence fires
+  `ledger_treated_as_instruction` under the em dash
+  spaced and unspaced, the en dash spaced and
+  unspaced, and the spaced hyphen, on both layers,
+  plain and bookended (the bookended em-dash shape
+  marks in all 75 variants, where the unpatched guard
+  marked in none), while the evidence-complement
+  shapes stay silent, including the evidence-only
+  twins joined by a dash.
+- **Q146-S5 confirmed** — end to end, exactly as
+  supposed: item 1's filed pair assembled into a
+  briefing carries no mark, `briefing_report` names
+  no tensions for it, and the startup pass writes no
+  audit rows; item 2's sentence carries no mark and
+  writes no audit row; item 3's sentence carries its
+  mark and writes exactly its one audit row (feature
+  `briefing`, decision `marked`, detail
+  `rule=ledger_treated_as_instruction`).
+- **Q146-S6 confirmed** — nothing else moved: the
+  filed Q143 compliant corpus (14 sentences, both
+  layers, plain / bookended / multi-sentence), the
+  Q144 families, the Q145 families, the standing
+  7-rule contradiction family, the
+  unrelated-negation pins and the
+  negated-then-contradicting shapes all read as they
+  did; the mark's placement, the audit shape, the 7
+  rules and the no-refusal / no-warning behaviour
+  stand as built. `runner/ops/briefing.py` grew 126
+  lines (962 to 1088); the core stands re-measured
+  in the figures commit of 1:52 AM PST (canonical
+  60,553 lines over 135 files; as-assembled 61,400
+  lines, 55,395 non-blank, zip 776,453 bytes), with
+  `refresh_figures --check`, `test_core` and
+  `test_doc_figure_slots` green.
+
+Guard evidence on the landing tree: the guard family
+`runner/tests/test_briefing_contradiction.py` stands
+at 70 tests green (57 standing, 13 of them the new
+Q146PolarityGuardTest family), and the new family
+reads 1713 subtest failures against the unpatched
+detector — the whole file against that detector
+reads the same 1713, so the standing families are
+untouched by the widening and the new family accounts
+for the change. The neighbour batteries read 305
+green beside it (`test_oracle_briefing` 35,
+`test_posture_stamp` 20, `test_protocol_v2` 14,
+`test_protocol_v2_messages` 62, `test_v2_consult`
+104, `test_v2_replay` 6, `test_security_config` 64)
+— 375 tests with the guard family. Q146 is answered
+in the questions file in the landing that carries
+these conclusions. What remains owed, stated plainly:
+the filing seat's re-test of this fix under rule 8,
+and the hosted CI verdict on the new head, which is
+the trains' to judge — this lane claims neither.
+Q146 is not closed by this lane, and Q145, Q144 and
+Q143 are not closed until Q146's fix is re-tested by
+the filing seat. The ship lane's clones, its state
+file and the in-flight 3.16.20.3 ship were never
+touched by this lane.
