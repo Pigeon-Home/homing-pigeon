@@ -5,7 +5,7 @@
 Split from runner/tests/test_decision1_startup.py in the
 Q136 follow-on file split (2026-11-11): the original file's
 97 tests burned past the Windows shard wall alone, so the
-family now lives in five sibling test files that share the
+family now lives in eight sibling test files that share the
 fixtures this module carries -- the base config whose
 platform gates are stated off (an unstated audience reads
 enforce and would mask the field each test is about), the
