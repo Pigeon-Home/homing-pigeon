@@ -774,8 +774,15 @@ def confinement_events_in_window(base_dir, job_id, since_ts):
     """Cage audit entries for this job inside the window.
 
     The cage's live report today is its startup audit entry (see
-    the design delta): 'fallback' -- enforce was requested and
-    the job is running uncaged -- is a strain divergence. A
+    the design delta). A 'fallback' entry names a refusal:
+    enforce was requested, confinement could not engage, and
+    the job that entry was written for did not run. It is a
+    strain divergence when one lands in a running job's
+    window -- the window's 5-second lookback can carry a
+    fallback written for the same job id by a just-preceding
+    refused attempt (a retry or a redelivery that then ran) --
+    because confinement for this job id has just failed to
+    engage; it does not show the running job uncaged. A
     'denied' decision, for the day a cage reports one mid-run,
     is the escape tripwire.
     """
@@ -1426,8 +1433,12 @@ class JobMonitor:
                     elif decision == "fallback":
                         self._handle(divergence(
                             "confinement_strain",
-                            "confinement was requested but the job "
-                            "is running uncaged "
+                            "a 'fallback' confinement record for "
+                            "this job id stands in this job's "
+                            "window: it names a refusal -- the job "
+                            "it was written for did not run -- and "
+                            "says nothing about this running job's "
+                            "cage "
                             f"({rec.get('reason') or 'fallback'})"))
             except Exception as e:
                 self._error(e)

@@ -646,6 +646,254 @@ class WindowEvidenceTest(unittest.TestCase):
             "process_storm"))
 
 
+class ConfinementWindowRetestTest(unittest.TestCase):
+    """Q140 second-seat re-test: which confinement records a
+    running job's window can actually carry.
+
+    Settled against the current gate: under enforce a
+    'fallback' record is written only beside a refusal (the
+    job it was written for never runs, and no monitor is
+    created for that attempt), the window filter is the
+    exact job id plus a 5-second lookback before the
+    monitor's start, and the strain divergence the fallback
+    arm fires is evidence for the authority layer, never a
+    claim that the running job is uncaged.
+    """
+
+    NOW = 1_800_000_000  # a fixed whole second: audit ts are 1s
+
+    def _write(self, base, rows):
+        path = os.path.join(base, "security-audit.jsonl")
+        with open(path, "w", encoding="utf-8") as fh:
+            for row in rows:
+                fh.write(json.dumps(row) + "\n")
+
+    def _rec(self, decision, job_id="job-9", at=None, **kw):
+        rec = {"ts": _iso(self.NOW if at is None else at),
+               "feature": "confinement", "decision": decision,
+               "job_id": job_id}
+        rec.update(kw)
+        return rec
+
+    def _events(self, base, job_id="job-9", since=None):
+        return rem.confinement_events_in_window(
+            base, job_id, self.NOW if since is None else since)
+
+    def _monitor(self, base, job_id="job-9", mode="deterministic",
+                 ask_fn=None):
+        mon = rem.JobMonitor(
+            _settings(mode=mode), job_id, 4242, base,
+            sampler=lambda _pid: {4242: (0.0, None)},
+            base_dir=base, ask_fn=ask_fn)
+        mon._started_wall = self.NOW
+        mon.sample_once()
+        return mon
+
+    def _kinds(self, mon):
+        return [d["kind"] for d in mon.outcome["divergences"]]
+
+    # -- window membership, per record shape -------------------
+
+    def test_same_id_fallback_inside_window_is_carried(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [self._rec("fallback",
+                                         reason="no bwrap")])
+            self.assertEqual(len(self._events(base)), 1)
+
+    def test_same_id_fallback_at_lookback_edge_is_carried(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [self._rec("fallback",
+                                         at=self.NOW - 5)])
+            self.assertEqual(len(self._events(base)), 1)
+
+    def test_same_id_fallback_just_outside_lookback_is_not(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [self._rec("fallback",
+                                         at=self.NOW - 6)])
+            self.assertEqual(self._events(base), [])
+
+    def test_same_id_fallback_an_hour_old_is_not_carried(self):
+        # The pre-settlement-record theory, pinned down: an old
+        # fallback is excluded by its timestamp, not carried
+        # forward into a later run of the same job id.
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [self._rec("fallback",
+                                         at=self.NOW - 3600)])
+            self.assertEqual(self._events(base), [])
+            self.assertEqual(self._kinds(self._monitor(base)), [])
+
+    def test_other_jobs_fallback_inside_window_is_not_carried(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [self._rec("fallback",
+                                         job_id="other-job")])
+            self.assertEqual(self._events(base), [])
+            self.assertEqual(self._kinds(self._monitor(base)), [])
+
+    def test_other_features_fallback_is_not_carried(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [{"ts": _iso(self.NOW),
+                                "feature": "job_user",
+                                "decision": "fallback",
+                                "job_id": "job-9"}])
+            self.assertEqual(self._events(base), [])
+
+    def test_record_without_a_timestamp_is_not_carried(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [{"feature": "confinement",
+                                "decision": "fallback",
+                                "job_id": "job-9"}])
+            self.assertEqual(self._events(base), [])
+
+    def test_job_id_match_is_exact_for_bookended_id_shapes(self):
+        ids = ["job-9", "a", "job_9.x-y", "-job-", ";job;",
+               "JOB-9", "j" * 64, " job-9 "]
+        for jid in ids:
+            with self.subTest(job_id=jid):
+                with tempfile.TemporaryDirectory() as base:
+                    self._write(base, [self._rec("fallback",
+                                                 job_id=jid)])
+                    self.assertEqual(
+                        len(self._events(base, job_id=jid)), 1)
+                    self.assertEqual(
+                        self._events(base, job_id=jid + "-2"), [])
+
+    def test_decision_by_job_by_age_matrix(self):
+        # Only (fallback, same id, inside window) fires strain;
+        # only (denied, same id, inside window) fires escape.
+        for decision in ("fallback", "denied", "sandboxed",
+                         "confined", "would_sandbox"):
+            for same in (True, False):
+                for age in (0, 3600):
+                    with self.subTest(decision=decision, same=same,
+                                      age=age):
+                        with tempfile.TemporaryDirectory() as base:
+                            self._write(base, [self._rec(
+                                decision,
+                                job_id="job-9" if same else "zz",
+                                at=self.NOW - age,
+                                reason="r")])
+                            want = []
+                            if same and age == 0:
+                                if decision == "fallback":
+                                    want = ["confinement_strain"]
+                                elif decision == "denied":
+                                    want = ["confinement_escape"]
+                            self.assertEqual(
+                                self._kinds(self._monitor(base)),
+                                want)
+
+    # -- the strain the fallback arm fires ---------------------
+
+    def test_fallback_fires_strain_that_names_a_refusal(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [self._rec("fallback",
+                                         reason="no bwrap")])
+            mon = self._monitor(base)
+            self.assertEqual(self._kinds(mon),
+                             ["confinement_strain"])
+            div = mon.outcome["divergences"][0]
+            self.assertIn("did not run", div["detail"])
+            self.assertNotIn("is running uncaged", div["detail"])
+            self.assertFalse(div["tripwire"])
+
+    def test_fallback_without_reason_uses_the_fallback_word(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [self._rec("fallback")])
+            mon = self._monitor(base)
+            self.assertIn("(fallback)",
+                          mon.outcome["divergences"][0]["detail"])
+
+    def test_strain_alone_never_acts_in_deterministic_mode(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [self._rec("fallback", reason="x")])
+            mon = self._monitor(base)
+            self.assertEqual(self._kinds(mon),
+                             ["confinement_strain"])
+            self.assertIsNone(mon.outcome["acted"])
+
+    def test_strain_in_off_mode_pages_and_never_acts(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [self._rec("fallback", reason="x")])
+            mon = self._monitor(base, mode="off")
+            self.assertIsNotNone(mon.outcome["page"])
+            self.assertIsNone(mon.outcome["acted"])
+
+    def test_strain_in_oracle_mode_asks_once_and_spares(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [self._rec("fallback", reason="x")])
+            mon = self._monitor(
+                base, mode="oracle",
+                ask_fn=lambda _q, _c: "SPARE: a refusal record")
+            self.assertEqual(self._kinds(mon),
+                             ["confinement_strain"])
+            self.assertEqual(mon.outcome["oracle"][0]["decision"],
+                             "spare")
+            self.assertIsNone(mon.outcome["acted"])
+
+    def test_own_sandboxed_record_beside_a_prior_fallback(self):
+        # The mixed window the re-test measured on the live
+        # code: this attempt's own record says sandboxed, a
+        # just-preceding refused attempt of the same job id
+        # left the fallback -- the strain fires on the refusal
+        # record and its text must not call this job uncaged.
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [
+                self._rec("fallback", at=self.NOW - 3,
+                          reason="no bwrap"),
+                self._rec("sandboxed", at=self.NOW - 1)])
+            mon = self._monitor(base)
+            self.assertEqual(self._kinds(mon),
+                             ["confinement_strain"])
+            self.assertNotIn(
+                "is running uncaged",
+                mon.outcome["divergences"][0]["detail"])
+
+    def test_denied_still_fires_the_escape_tripwire(self):
+        with tempfile.TemporaryDirectory() as base:
+            self._write(base, [self._rec("denied")])
+            mon = self._monitor(base)
+            self.assertEqual(self._kinds(mon),
+                             ["confinement_escape"])
+            self.assertIsNotNone(mon.outcome["acted"])
+            self.assertEqual(mon.outcome["acted"]["authority"],
+                             "tripwire")
+
+    @unittest.skipIf(not POSIX, "execute_job fixtures are POSIX shell")
+    def test_a_denied_job_gets_no_monitor_at_all(self):
+        # S1 of the re-test: the fallback is written at the
+        # gate, the boundary refuses, and execute_job never
+        # reaches the monitor seam for that attempt.
+        from runner.guard import sandbox as SB
+        calls = []
+
+        def _spy(*a, **kw):
+            calls.append((a, kw))
+            return None
+
+        job = {"job_id": "q140-denied", "kind": "exec",
+               "script": "echo hi"}
+        cfg = {"security": {"modes": {"confinement": "enforce",
+                                      "job_user": "off"}}}
+        with tempfile.TemporaryDirectory() as base:
+            cfg["base_dir"] = base
+            with mock.patch.object(SB, "sandbox_available",
+                                   return_value=False), \
+                    mock.patch.object(sys, "platform", "linux"), \
+                    mock.patch.object(runner, "_start_job_monitor",
+                                      _spy):
+                with self.assertRaises(runner.JobRejected):
+                    runner.execute_job(cfg, job, base)
+            self.assertEqual(calls, [])
+            rows = []
+            path = os.path.join(base, "security-audit.jsonl")
+            with open(path, encoding="utf-8") as fh:
+                rows = [json.loads(ln) for ln in fh if ln.strip()]
+            conf = [r for r in rows
+                    if r.get("feature") == "confinement"]
+            self.assertEqual([r["decision"] for r in conf],
+                             ["fallback"])
+
+
 @unittest.skipIf(not POSIX, "execute_job fixtures are POSIX shell")
 class ExecuteJobTest(unittest.TestCase):
     """Real subprocesses through runner.execute_job."""

@@ -311,9 +311,15 @@ The open items above, as the build closed them:
   a producer exists. (The runner's confinement gate has
   since settled the fallback's other half: under `enforce`
   a `fallback` record now accompanies the job's refusal —
-  the job does not run uncaged — so a strain divergence
-  can only fire on a record a running job's window still
-  carries from before that settlement.)
+  the job it was written for does not run at all — so a
+  strain divergence fires only when a `fallback` for the
+  running job's own job id lands inside the window's
+  5-second lookback: in practice a just-preceding refused
+  attempt of the same job id, a retry or redelivery that
+  then ran. An older record is excluded by the window's
+  timestamp filter, a different job's record by the job-id
+  filter, and the record a strain fires on names that
+  refusal — it does not show the running job uncaged.)
 - **Saturation tells are named constants.** Tree CPU at 95%
   of one core across 3 consecutive samples
   (`tree_saturation`), tree resident memory at 50% of the
