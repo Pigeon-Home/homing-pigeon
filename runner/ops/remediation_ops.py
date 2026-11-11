@@ -583,7 +583,18 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
     no_network + spawn_resource_limits" / "macos:
     seatbelt_profile + no_network + spawn_resource_limits").
     """
-    is_windows = os.name == "nt"
+    # The platform is sys.platform alone, the signal every
+    # confinement gate beside this seam uses (_confinement_argv,
+    # confinement_startup_problem). Deriving Windows from
+    # os.name while darwin came from sys.platform let the two
+    # disagree: on a darwin host a windows simulation that
+    # patched os.name satisfied both branches at once, the
+    # darwin branch won, and the windows backend was called
+    # with the macOS branch's user argument (the test-macos
+    # failures recorded in docs/steady/security/macos.md,
+    # supposition S3). On a real host the signals always
+    # agreed, so real-host behaviour is unchanged.
+    is_windows = sys.platform == "win32"
     is_freebsd = sys.platform.startswith("freebsd")
     is_darwin = sys.platform == "darwin"
     if not is_windows and not is_freebsd and not is_darwin:

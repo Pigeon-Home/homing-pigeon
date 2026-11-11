@@ -505,6 +505,7 @@ class PostspawnAlreadyContainedTest(unittest.TestCase):
         spawn_backend = _backend(None)
         sink = []
         with mock.patch.object(REM.os, "name", "nt"), \
+                mock.patch.object(sys, "platform", "win32"), \
                 mock.patch.object(rr, "_security",
                                   _sec("enforce", sink)):
             proc, release = REM._confinement_spawn(
@@ -640,11 +641,39 @@ class ConfinementSpawnTest(unittest.TestCase):
         sink = []
         kw = {} if backend == "unset" else {"backend": backend}
         with mock.patch.object(REM.os, "name", "nt" if nt else "posix"), \
+                mock.patch.object(sys, "platform",
+                                  "win32" if nt else "linux"), \
                 mock.patch.object(rr, "_security", _sec(mode, sink)):
             out = REM._confinement_spawn(
                 _ccfg(mode), self.base, "j1", ["python", "s.py"],
                 self.base, {}, **kw)
         return out, sink
+
+    def test_the_seam_follows_sys_platform_not_os_name(self):
+        # The spawn seam derives its platform from sys.platform
+        # alone, the signal the confinement gates beside it use
+        # (docs/steady/security/macos.md, supposition S3): a
+        # win32 sys.platform routes to the windows backend even
+        # when os.name still answers the host's "posix" -- the
+        # mixed-signal shape that, on a darwin host, routed a
+        # windows simulation into the macOS branch, which handed
+        # the windows spawn a user argument it does not take.
+        backend = _backend(None)
+        sink = []
+        with mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(REM.os, "name", "posix"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            proc, release = REM._confinement_spawn(
+                _ccfg("enforce"), self.base, "j1", ["python", "s.py"],
+                self.base, {}, backend=backend)
+        self.assertEqual(proc.pid, 31337)
+        self.assertEqual(len(backend.spawned), 1)
+        self.assertEqual(
+            sink[0]["reason"],
+            "windows: job_object + restricted_token + low_integrity")
+        release()
+        self.assertTrue(proc.closed)
 
     def test_off_windows_is_a_noop(self):
         out, sink = self._run("enforce", backend=_backend(None),
@@ -675,6 +704,7 @@ class ConfinementSpawnTest(unittest.TestCase):
         backend = _backend(None, apply_error=RuntimeError("spawn 5"))
         sink = []
         with mock.patch.object(REM.os, "name", "nt"), \
+                mock.patch.object(sys, "platform", "win32"), \
                 mock.patch.object(rr, "_security",
                                   _sec("enforce", sink)):
             with self.assertRaises(rr.JobRejected):

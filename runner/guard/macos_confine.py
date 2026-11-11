@@ -17,14 +17,25 @@ own tool (/usr/bin/sandbox-exec). One seam uses this module:
   base, so a confined job has no network, loopback included.
   The memory ceiling is applied at spawn by a small launcher
   shim: sandbox-exec first runs the runner's own interpreter
-  on the shim text in this module, which sets the
-  virtual-memory and data-size resource limits to
-  DEFAULT_PROCESS_MEMORY_BYTES (512 MiB) with setrlimit, drops
-  to the job user when the job_user seam hands one over (the
-  POSIX preexec demote cannot ride a spawn that replaces
-  process creation, so the demote happens in the shim, at the
-  spawn door -- the FreeBSD backend's jexec -u shape), and
-  then execs the job's command. The profile is in force before
+  on the shim text in this module, which sets the data-size
+  resource limit to DEFAULT_PROCESS_MEMORY_BYTES (512 MiB)
+  with setrlimit, drops to the job user when the job_user
+  seam hands one over (the POSIX preexec demote cannot ride
+  a spawn that replaces process creation, so the demote
+  happens in the shim, at the spawn door -- the FreeBSD
+  backend's jexec -u shape), and then execs the job's
+  command. Only the data-size limit is set, never the
+  virtual-memory (address-space) limit: on macOS the
+  address space a process maps at startup -- the dynamic
+  loader, the dyld shared cache, the system libraries --
+  already exceeds 512 MiB, so a 512 MiB RLIMIT_AS made
+  every exec'd interpreter abort (SIGABRT, exit -6) before
+  its first line of job code, which is the shape of the
+  first live failure (build run 43089173541, recorded in
+  docs/steady/security/macos.md, supposition S1). The
+  data-size limit is the ceiling macOS enforces on a
+  process's data mappings, and it is the one this backend
+  has applied since that fix. The profile is in force before
   the shim's first line runs (sandbox-exec applies it to the
   process it starts), so there is no race in which the job
   runs unconfined; the process object owns nothing to tear
@@ -96,9 +107,11 @@ import tempfile
 import threading
 
 # The one ceiling this backend sets: 512 MiB per job process,
-# applied as both the virtual-memory and the data-size resource
-# limit at spawn. A named constant, mirroring the Windows and
-# FreeBSD backends' ceiling; not a config knob yet.
+# applied as the data-size resource limit at spawn (never the
+# virtual-memory limit -- see the module docstring for the
+# startup abort a virtual-memory ceiling causes on macOS).
+# A named constant, mirroring the Windows and FreeBSD
+# backends' ceiling; not a config knob yet.
 DEFAULT_PROCESS_MEMORY_BYTES = 512 * 1024 * 1024
 
 # The confinement controls, named exactly. Every audit and
@@ -245,6 +258,37 @@ def interpreter_read_paths(interpreter):
     return out
 
 
+def _with_canonical_twins(paths):
+    """`paths` with each path's /private canonical twin added.
+
+    On macOS /var and /tmp are firmlinks (in the filesystem,
+    symlinks) to /private/var and /private/tmp, and Seatbelt
+    path filters match the canonical path of the file a
+    process touches: a rule naming only "/var/folders/..."
+    never matches the staged file it means, which lives at
+    "/private/var/folders/...". That is why SYSTEM_READ_PATHS
+    already names /private/etc beside /etc; a job's work
+    directory lives under the temp tree, so it needs the
+    same twin or its staged read and its work write are
+    refused (docs/steady/security/macos.md, supposition
+    S2). The twin is added for /var and /tmp paths only,
+    deduplicated, in first-seen order, so the writer stays
+    deterministic and a path already named in canonical
+    form gains nothing.
+    """
+    out = []
+    for path in paths:
+        if path not in out:
+            out.append(path)
+        for alias in ("/var", "/tmp"):
+            if path == alias or path.startswith(alias + "/"):
+                twin = "/private" + path
+                if twin not in out:
+                    out.append(twin)
+                break
+    return out
+
+
 def build_profile(workdir, interpreter=None, read_paths=()):
     """The Seatbelt profile text for one job, deterministically.
 
@@ -262,9 +306,12 @@ def build_profile(workdir, interpreter=None, read_paths=()):
     the interpreter prefix and the extra read paths; read +
     write inside the work directory; the /dev nodes a job's
     standard streams and entropy need; and the network denial
-    stated. No field can add a network allow rule, a write
-    outside the work directory, or a read of a user home: the
-    writer has no parameter that expresses them.
+    stated. Paths under /var and /tmp are named with their
+    /private canonical twins (see _with_canonical_twins), on
+    the read line and the write line alike. No field can add
+    a network allow rule, a write outside the work directory,
+    or a read of a user home: the writer has no parameter
+    that expresses them.
     """
     _validate_profile_path(workdir, "workdir")
     reads = list(SYSTEM_READ_PATHS)
@@ -276,7 +323,11 @@ def build_profile(workdir, interpreter=None, read_paths=()):
             reads.append(path)
     if workdir not in reads:
         reads.append(workdir)
+    reads = _with_canonical_twins(reads)
     read_args = " ".join("(subpath %s)" % _sb_quote(p) for p in reads)
+    write_args = " ".join(
+        "(subpath %s)" % _sb_quote(p)
+        for p in _with_canonical_twins([workdir]))
     lines = [
         "(version 1)",
         "(deny default)",
@@ -287,7 +338,7 @@ def build_profile(workdir, interpreter=None, read_paths=()):
         "(allow signal (target self))",
         "(allow pseudo-tty)",
         "(allow file-read* file-map-executable %s)" % read_args,
-        "(allow file-write* (subpath %s))" % _sb_quote(workdir),
+        "(allow file-write* %s)" % write_args,
         '(allow file-read* file-write* (literal "/dev/null")'
         ' (literal "/dev/zero") (literal "/dev/random")'
         ' (literal "/dev/urandom") (subpath "/dev/fd"))',
@@ -302,18 +353,23 @@ def build_profile(workdir, interpreter=None, read_paths=()):
 
 # The shim's text. sandbox-exec starts the runner's own
 # interpreter on it (through -c, so no shim file exists to
-# stage); it sets the spawn resource limits, drops to the job
+# stage); it sets the spawn resource limit, drops to the job
 # user when one is named (argument 2, "-" when none), and
 # execs the job's command (arguments 3 onward). A limit it
 # cannot set, or a user it cannot drop to, ends the shim
 # before the exec -- the job is refused, never run weaker.
+# The one limit it sets is RLIMIT_DATA: a RLIMIT_AS at this
+# ceiling is below the address space every macOS process
+# maps at startup, and the exec'd interpreter aborts in
+# the loader before job code (supposition S1 in
+# docs/steady/security/macos.md).
 LIMIT_SHIM_SOURCE = (
     "import os, sys\n"
     "limit = int(sys.argv[1])\n"
     "user = sys.argv[2]\n"
     "argv = sys.argv[3:]\n"
     "import resource\n"
-    "for _name in ('RLIMIT_AS', 'RLIMIT_DATA'):\n"
+    "for _name in ('RLIMIT_DATA',):\n"
     "    _r = getattr(resource, _name, None)\n"
     "    if _r is not None:\n"
     "        resource.setrlimit(_r, (limit, limit))\n"
@@ -372,10 +428,22 @@ def build_sandbox_argv(argv, cwd=None, env=None,
     for symmetry with the other backends' builders and does
     not enter the argv -- the spawn passes it to the process,
     as the other backends' spawns do.
+
+    The profile names the work directory's real path, not
+    the path as handed over: Seatbelt matches the canonical
+    path, and a work directory reached through a symlink or
+    a firmlink (the /var temp tree is the standing case) is
+    a different string from the file's canonical name, so a
+    profile built from the handed-over string would refuse
+    the staged read it exists to allow. The /var and /tmp
+    twins in build_profile cover the firmlink case for a
+    profile built directly from a temp path; the realpath
+    here covers every other alias a caller hands over.
     """
     if cwd is None:
         cwd = os.getcwd()
-    profile = build_profile(cwd, interpreter=argv[0] if argv else None,
+    profile = build_profile(os.path.realpath(cwd),
+                            interpreter=argv[0] if argv else None,
                             read_paths=read_paths)
     shim = build_shim_argv(argv, memory_bytes=memory_bytes, user=user)
     return [SANDBOX_EXEC_BIN, "-p", profile, *shim], profile

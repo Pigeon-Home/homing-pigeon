@@ -146,6 +146,47 @@ class ProfileWriterFieldTest(unittest.TestCase):
                      if ln.startswith("(allow file-read*")][0]
         self.assertIn('(subpath "/work/job1")', read_line)
 
+    def test_a_var_workdir_names_its_private_canonical_twin(self):
+        # Supposition S2: a macOS work directory lives under
+        # /var/folders, whose canonical form Seatbelt matches
+        # is /private/var/folders; a profile naming only the
+        # /var form refuses the staged read and the work
+        # write it exists to allow. Both lines carry both.
+        profile = MC.build_profile("/var/folders/xx/work")
+        read_line = [ln for ln in profile.splitlines()
+                     if ln.startswith("(allow file-read*")][0]
+        self.assertIn('(subpath "/var/folders/xx/work")', read_line)
+        self.assertIn('(subpath "/private/var/folders/xx/work")',
+                      read_line)
+        write_line = [ln for ln in profile.splitlines()
+                      if ln.startswith("(allow file-write*")][0]
+        self.assertIn('(subpath "/var/folders/xx/work")', write_line)
+        self.assertIn('(subpath "/private/var/folders/xx/work")',
+                      write_line)
+
+    def test_a_tmp_workdir_names_its_private_canonical_twin(self):
+        profile = MC.build_profile("/tmp/hp-job")
+        self.assertIn('(subpath "/private/tmp/hp-job")', profile)
+
+    def test_a_canonical_workdir_gains_no_duplicate_twin(self):
+        profile = MC.build_profile("/private/var/folders/xx/work")
+        self.assertEqual(
+            profile.count('(subpath "/private/var/folders/xx/work")'),
+            2)  # once on the read line, once on the write line
+        self.assertNotIn('(subpath "/private/private', profile)
+
+    def test_a_var_read_path_names_its_twin_once(self):
+        profile = MC.build_profile(
+            "/work/job1", read_paths=("/var/data/in",))
+        self.assertEqual(profile.count('(subpath "/var/data/in")'), 1)
+        self.assertEqual(
+            profile.count('(subpath "/private/var/data/in")'), 1)
+
+    def test_the_etc_twin_the_system_trees_carry_is_not_doubled(self):
+        profile = MC.build_profile("/work/job1")
+        self.assertEqual(profile.count('(subpath "/private/etc")'), 1)
+        self.assertEqual(profile.count('(subpath "/etc")'), 1)
+
     def test_system_read_paths_field_is_the_named_set(self):
         profile = MC.build_profile("/work/job1")
         for path in MC.SYSTEM_READ_PATHS:
@@ -274,12 +315,23 @@ class ShimFieldTest(unittest.TestCase):
 
     def test_the_shim_source_sets_limits_then_execs(self):
         src = MC.LIMIT_SHIM_SOURCE
-        self.assertIn("RLIMIT_AS", src)
         self.assertIn("RLIMIT_DATA", src)
         self.assertIn("setrlimit", src)
         self.assertIn("os.execvp(argv[0], argv)", src)
         # The limits are set before the exec, in source order.
         self.assertLess(src.index("setrlimit"), src.index("os.execvp"))
+
+    def test_the_shim_never_sets_an_address_space_limit(self):
+        # Supposition S1 (docs/steady/security/macos.md): a
+        # 512 MiB RLIMIT_AS is below the address space every
+        # macOS process maps at startup (the loader, the dyld
+        # shared cache, the system libraries), so the shim's
+        # exec'd interpreter aborted at -6 before any job code
+        # in the first live run. The data-size limit is the
+        # ceiling this backend applies; the address-space
+        # limit must not come back.
+        self.assertNotIn("RLIMIT_AS", MC.LIMIT_SHIM_SOURCE)
+        self.assertNotIn("RLIMIT_VMEM", MC.LIMIT_SHIM_SOURCE)
 
 
 class SandboxArgvFieldTest(unittest.TestCase):
@@ -299,6 +351,24 @@ class SandboxArgvFieldTest(unittest.TestCase):
         _argv, profile = MC.build_sandbox_argv(
             ["/bin/echo"], cwd="/work/elsewhere")
         self.assertIn('(subpath "/work/elsewhere")', profile)
+
+    def test_cwd_field_names_the_real_path_of_a_symlinked_workdir(self):
+        # Seatbelt matches canonical paths: a work directory
+        # handed over through a symlink alias must enter the
+        # profile under its real name, or the staged read at
+        # that real path is refused (supposition S2).
+        with tempfile.TemporaryDirectory() as tmp:
+            real = os.path.join(tmp, "real-work")
+            os.makedirs(real)
+            alias = os.path.join(tmp, "alias-work")
+            os.symlink(real, alias)
+            _argv, profile = MC.build_sandbox_argv(
+                ["/bin/echo"], cwd=alias)
+            self.assertIn(
+                '(subpath "%s")' % os.path.realpath(real), profile)
+            write_line = [ln for ln in profile.splitlines()
+                          if ln.startswith("(allow file-write*")][0]
+            self.assertNotIn(alias, write_line)
 
     def test_memory_and_user_fields_reach_the_shim(self):
         argv, _profile = MC.build_sandbox_argv(
@@ -637,6 +707,29 @@ class ConfinementSpawnTest(unittest.TestCase):
         self.assertIsNone(out)
         self.assertEqual(sink, [])
 
+    def test_the_seam_ignores_a_simulated_nt_os_name_on_darwin(self):
+        # The seam derives its platform from sys.platform alone
+        # (supposition S3): on a darwin-shaped host an os.name
+        # of "nt" -- a windows simulation's patch, or any other
+        # stray signal -- does not route the spawn anywhere but
+        # the macOS branch its sys.platform names.
+        backend = _backend(None)
+        sink = []
+        with mock.patch.object(sys, "platform", "darwin"), \
+                mock.patch.object(REM.os, "name", "nt"), \
+                mock.patch.object(rr, "_security",
+                                  self._secmap(
+                                      {"confinement": "enforce"}, sink)):
+            proc, release = REM._confinement_spawn(
+                _ccfg("enforce"), self.base, "j1", ["/bin/sh", "s.sh"],
+                self.base, {}, backend=backend)
+        self.assertEqual(proc.pid, 31337)
+        self.assertEqual(
+            sink[0]["reason"],
+            "macos: seatbelt_profile + no_network + spawn_resource_limits")
+        release()
+        self.assertTrue(proc.closed)
+
     def test_audit_and_off_spawn_nothing(self):
         for mode in ("audit", "off"):
             out, _sink = self._run(
@@ -795,18 +888,43 @@ class LiveBackendTest(unittest.TestCase):
             self.assertIn(b"NET-DENIED", out)
 
     def test_the_spawn_limits_are_carried_by_the_job(self):
+        # The ceiling the shim applies is the data-size limit;
+        # the address space is unlimited, because a 512 MiB
+        # address-space limit is below the startup mappings of
+        # every macOS process and aborted the exec'd
+        # interpreter at -6 in the first live run (supposition
+        # S1). The job reads both back, in this order.
         with tempfile.TemporaryDirectory() as work:
             proc = MC.spawn_confined_process(
                 [sys.executable, "-c",
                  "import resource\n"
-                 "print(resource.getrlimit(resource.RLIMIT_AS)[0])\n"
-                 "print(resource.getrlimit(resource.RLIMIT_DATA)[0])\n"],
+                 "print(resource.getrlimit(resource.RLIMIT_DATA)[0])\n"
+                 "print(resource.getrlimit(resource.RLIMIT_AS)[0])\n"],
                 cwd=work, env=dict(os.environ))
             out, _err = proc.communicate(timeout=30)
             proc.close()
             limits = [int(x) for x in out.decode().split()]
             self.assertEqual(
-                limits, [MC.DEFAULT_PROCESS_MEMORY_BYTES] * 2)
+                limits, [MC.DEFAULT_PROCESS_MEMORY_BYTES, -1])
+
+    def test_the_memory_ceiling_refuses_a_700mb_job(self):
+        # The data-size ceiling is a real ceiling, not a
+        # read-back: a job that tries to allocate and touch
+        # 700 MiB -- past the 512 MiB limit -- does not
+        # complete the allocation, and the refusal is the
+        # ceiling's (a MemoryError), not a failure to start.
+        with tempfile.TemporaryDirectory() as work:
+            proc = MC.spawn_confined_process(
+                [sys.executable, "-c",
+                 "a = bytearray(700 * 1024 * 1024); "
+                 "a[::4096] = b'1' * 179200; print('MEM-DONE')"],
+                cwd=work, env=dict(os.environ))
+            out, err = proc.communicate(timeout=60)
+            rc = proc.returncode
+            proc.close()
+            self.assertNotEqual(rc, 0)
+            self.assertNotIn(b"MEM-DONE", out)
+            self.assertIn(b"MemoryError", err)
 
 
 if __name__ == "__main__":
