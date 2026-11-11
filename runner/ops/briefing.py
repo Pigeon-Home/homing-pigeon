@@ -305,6 +305,31 @@ def _fold(text):
 # segment at parentheses, the slash, the pipe, the
 # ellipsis and a run of Unicode minus signs beside
 # its standing separators and dash forms.
+# Q149 widened the guard once more at the same
+# detector: the subject-clause crossing finds a
+# clause by its pronoun with a comma standing after
+# it the way it finds it with a space, so a
+# clause-head parenthetical is read through like
+# every other comma-set parenthetical; a relative
+# clause is judged by its verb phrase's shape
+# generally rather than by closed verb sets -- a
+# passive verb phrase with an adverb inside it, a
+# participle of any verb behind its auxiliaries
+# where the phrase takes the infinitive, a verb of
+# any identity taking the infinitive bare or
+# governing an object phrase of any shape ahead of
+# it, an object phrase behind more than one adverb,
+# and the inverted and zero-relative clauses with
+# an inside subject of any shape, a proper name
+# included -- while a subject clause whose verb
+# phrase takes a noun complement instead is still
+# crossed; and the ledger guard opens a new segment
+# at the ampersand, the backslash, square brackets
+# and a run of two dots, with the same-mechanism
+# separators beside them (the bullet, the tilde,
+# the fullwidth slash, the two-em dash and a run of
+# asterisks), beside its standing separators and
+# dash forms.
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -315,7 +340,9 @@ _CLAUSE_BREAKS = ".!?;:"
 # negation behind one governs the earlier verb, not the
 # matched one, without exception.
 _HARD_BARRIERS = (" who ", " whom ", " that ",
-                  " which ", " but ", " yet ")
+                  " which ", " but ", " yet ",
+                  " who,", " whom,", " that,",
+                  " which,")
 # The permission words of the governing shapes a negation
 # reads across an infinitive with: "not allowed to
 # publish" prohibits the publishing, the way "never
@@ -434,7 +461,11 @@ def _prohibitive_occurrences(low):
 # the clause with its verb last (the inverted
 # object-relative clauses "whom the supervisor
 # prompts to ...", and the zero-relative twin, whose
-# clause stands with no pronoun at all).
+# clause stands with no pronoun at all). Q149 judges
+# that same verb-phrase shape generally, not by the
+# landing's closed verb sets: the sets below now
+# stand as examples the shape rules read beside a
+# verb's own form, not as the judgement itself.
 _CLAUSE_OBJECT_WORDS = frozenset({
     "you", "him", "her", "them", "us", "me", "it",
     "anyone", "someone", "everyone", "anybody",
@@ -524,34 +555,101 @@ _RELATIVE_PRONOUNS = (" who ", " whom ", " which ",
                       " that ")
 
 
+_ADVERB_WORDS = frozenset({
+    "very", "quite", "just", "also", "even", "still",
+    "already", "now", "then", "so", "too", "rather",
+    "almost", "nearly", "really", "truly", "fully",
+    "directly"})
+# Words that, standing as a verb phrase's complement,
+# are a noun complement, not the infinitive's verb:
+# "is on duty to ...", "has clearance to ...".
+_NOUN_COMPLEMENT_WORDS = frozenset({
+    "duty", "clearance", "point", "shift", "access",
+    "permission", "authority", "responsibility",
+    "leave", "post", "role", "charge", "control"})
+_IRREGULAR_PARTICIPLES = frozenset({
+    "told", "sent", "given", "paid", "bidden", "made",
+    "set", "put", "held", "kept", "left", "brought",
+    "caught", "taught", "sought", "bound", "found",
+    "shown", "taken", "chosen", "written", "drawn",
+    "driven", "born", "worn", "known", "seen", "done",
+    "gone", "met", "led", "fed", "read", "said", "sold",
+    "meant", "dealt", "felt", "lost", "won", "spent"})
+
+
+def _is_adverb(word):
+    return word in _ADVERB_WORDS or word.endswith("ly")
+
+
+def _verb_like(word):
+    """True when a word in verb position reads as a
+    verb by its form or by the standing verb sets: a
+    finite or participial ending, or a listed
+    infinitive-taking or object-control form. A word
+    ending in a noun's ending ("duty", "clearance")
+    is not one, and neither is an auxiliary, a
+    preposition or a determiner."""
+    if word in _AUX_WORDS or word in _PREPOSITION_WORDS \
+            or word in _CLAUSE_DETERMINERS \
+            or word in _NOUN_COMPLEMENT_WORDS:
+        return False
+    if word in _OBJECT_CONTROL_VERBS \
+            or word in _BARE_INFINITIVE_VERBS \
+            or word in _PASSIVE_INFINITIVE_PARTICIPLES \
+            or word in _IRREGULAR_PARTICIPLES:
+        return True
+    if word.endswith("ss") or word.endswith("us") \
+            or word.endswith("is"):
+        return False
+    return word.endswith(("s", "ed", "en", "ing"))
+
+
+def _participle_like(word):
+    if word in _PASSIVE_INFINITIVE_PARTICIPLES \
+            or word in _IRREGULAR_PARTICIPLES:
+        return True
+    if word in _AUX_WORDS or word in _PREPOSITION_WORDS \
+            or word in _NOUN_COMPLEMENT_WORDS:
+        return False
+    return word.endswith(("ed", "en"))
+
+
 def _clause_carries_infinitive(clause_words):
     """True when a relative clause's own verb phrase
     takes the infinitive that follows it as its
     complement (Q148: judged by the verb phrase's own
     shape, not by the word standing immediately ahead
-    of " to "): an object word standing last in the
-    clause, or an object of the clause's verb wherever
-    it stands in the verb phrase ("prompts you
-    directly to ...", "tells everyone on duty to
-    ..."); a determiner-led object phrase a non-copula
-    verb governs ("instructs the operator to ...",
-    "prompts the senior operator to ..."); an
-    object-control verb governing an object phrase of
-    any shape ("prompts operators to ...", "prompts
-    his team to ...", a proper name in the object's
-    place); a passive verb phrase whose participle
-    takes the infinitive ("is told to ...", "has been
-    ordered to ...", "is told by the supervisor to
-    ..."); a bare infinitive-taking verb ("wants to
-    ...", "decides to ..."); or the clause's subject
-    standing inside the clause with an object-control
-    verb last (the inverted shape, "the supervisor
-    prompts to ..."). A clause that merely modifies a
-    subject -- its verb phrase taking a noun or
-    prepositional complement instead ("is on duty
-    to ...", "is assigned to duty to ...", "has
-    clearance to ...") -- carries no infinitive of
-    its own."""
+    of " to "; Q149: judged by that shape generally,
+    not by closed verb sets): an object word standing
+    last in the clause, or an object of the clause's
+    verb wherever it stands in the verb phrase
+    ("prompts you directly to ...", "tells everyone
+    on duty to ..."); a determiner-led object phrase
+    a non-copula verb governs ("instructs the
+    operator to ...", "prompts the senior operator
+    to ..."); a verb of any identity governing an
+    object phrase of any shape ahead of the
+    infinitive ("compels operators to ...", a proper
+    name in the object's place, an object phrase
+    behind more than one adverb, "very promptly
+    prompts operators to ..."); a passive verb phrase
+    taking the infinitive, with an adverb inside it
+    or a participle of any verb behind its
+    auxiliaries ("is quietly told to ...", "is
+    compelled to ...", "is told by the supervisor to
+    ..."); a verb of any identity taking the
+    infinitive bare, alone, behind its auxiliaries or
+    behind adverbs, and the raising shapes with it
+    ("longs to ...", "is about to ...", "seems to
+    ...", "used to ..."); or the clause's subject
+    standing inside the clause with a verb of any
+    identity last (the inverted shape, "the
+    supervisor prompts to ...", "Jordan prompts to
+    ..."). A clause that merely modifies a subject --
+    its verb phrase taking a noun or prepositional
+    complement instead ("is on duty to ...", "is
+    assigned to duty to ...", "has clearance to
+    ...") -- carries no infinitive of its own."""
     if not clause_words:
         return False
     if clause_words[-1] in _CLAUSE_OBJECT_WORDS:
@@ -571,74 +669,137 @@ def _clause_carries_infinitive(clause_words):
                             _BARE_INFINITIVE_VERBS
                             for verb in clause_words[:at])):
             return True
-    # A passive verb phrase whose participle takes
-    # the infinitive: an auxiliary ahead of the
-    # participle, and nothing but auxiliaries.
-    for at, word in enumerate(clause_words):
-        if word in _PASSIVE_INFINITIVE_PARTICIPLES \
-                and at \
-                and all(head in _AUX_WORDS
-                        for head in clause_words[:at]):
-            return True
-    # A bare infinitive-taking verb, alone or behind
-    # its auxiliaries: "wants to ...", "has decided
-    # to ...".
-    if clause_words[-1] in _BARE_INFINITIVE_VERBS \
-            and all(head in _AUX_WORDS
+    # The raising shape with "about": a be-phrase
+    # whose last word is "about" takes the infinitive
+    # ("is about to ...").
+    if clause_words[-1] == "about" \
+            and all(head in _AUX_WORDS or _is_adverb(head)
                     for head in clause_words[:-1]):
+        return True
+    # A passive verb phrase taking the infinitive: an
+    # auxiliary (or an adverb among the auxiliaries)
+    # ahead of a participle of any verb, and after the
+    # participle nothing but adverbs or a by-phrase --
+    # a participle followed by its own complement
+    # ("is assigned to duty", where a "to" phrase of
+    # the clause itself follows) does not take the
+    # infinitive that stands after that complement.
+    for at, word in enumerate(clause_words):
+        if not _participle_like(word) or not at:
+            continue
+        if not all(head in _AUX_WORDS or _is_adverb(head)
+                   for head in clause_words[:at]):
+            continue
+        rest = clause_words[at + 1:]
+        if all(_is_adverb(tail) for tail in rest):
+            return True
+        if rest and rest[0] == "by" \
+                and all(tail not in _PREPOSITION_WORDS
+                        and tail not in _AUX_WORDS
+                        and tail not in _GOVERNMENT_VERBS
+                        and not _participle_like(tail)
+                        for tail in rest[1:]):
+            return True
+    # A verb of any identity taking the infinitive
+    # bare: the clause's verb phrase is auxiliaries
+    # and adverbs ahead of one lexical verb, and that
+    # verb is last ("wants to ...", "longs to ...",
+    # "has decided to ..."), or the clause is that
+    # one verb alone ("used to ...", "seems to ..."
+    # in its single-word form). A lone auxiliary is
+    # no verb phrase of its own ("is, on duty, to
+    # ..." strips to a copula alone and is crossed).
+    if len(clause_words) == 1 \
+            and clause_words[0] not in _AUX_WORDS \
+            and clause_words[0] not in _PREPOSITION_WORDS \
+            and clause_words[0] not in _CLAUSE_DETERMINERS \
+            and clause_words[0] \
+            not in _NOUN_COMPLEMENT_WORDS:
+        return True
+    if len(clause_words) >= 2 \
+            and all(head in _AUX_WORDS or _is_adverb(head)
+                    for head in clause_words[:-1]) \
+            and clause_words[-1] \
+            not in _NOUN_COMPLEMENT_WORDS \
+            and clause_words[-1] not in _PREPOSITION_WORDS \
+            and clause_words[-1] not in _CLAUSE_DETERMINERS \
+            and (_verb_like(clause_words[-1])
+                 or clause_words[-1]
+                 in _BARE_INFINITIVE_VERBS):
         return True
     if len(clause_words) >= 3 \
             and clause_words[-2] in _CLAUSE_DETERMINERS \
             and clause_words[0] not in _BE_WORDS:
         return True
-    # An object-control verb governing an object
+    # A verb of any identity governing an object
     # phrase of any shape: the verb itself, or the
-    # verb behind one adverb ("promptly prompts
+    # verb behind adverbs or auxiliaries ("very
+    # promptly prompts operators to ...", "compels
     # operators to ..."), with a noun phrase after
-    # it, not a prepositional phrase.
-    verb_at = None
-    if clause_words[0] in _OBJECT_CONTROL_VERBS:
-        verb_at = 0
-    elif len(clause_words) >= 2 \
-            and clause_words[1] in _OBJECT_CONTROL_VERBS:
-        verb_at = 1
-    if verb_at is not None \
-            and len(clause_words) > verb_at + 1 \
-            and clause_words[verb_at + 1] \
-            not in _PREPOSITION_WORDS \
-            and clause_words[verb_at + 1] \
-            not in _AUX_WORDS:
+    # it, not a prepositional phrase and not the
+    # clause's own "to" complement. An auxiliary in
+    # verb position governs no object phrase here --
+    # "has clearance to ..." is a noun complement,
+    # crossed below.
+    for verb_at, word in enumerate(clause_words):
+        if word in _AUX_WORDS \
+                or word in _PREPOSITION_WORDS \
+                or word in _CLAUSE_DETERMINERS \
+                or word in _CLAUSE_OBJECT_WORDS:
+            continue
+        if not _verb_like(word):
+            continue
+        if any(head not in _AUX_WORDS
+               and not _is_adverb(head)
+               for head in clause_words[:verb_at]):
+            continue
+        obj = clause_words[verb_at + 1:]
+        if not obj:
+            continue
+        if obj[0] in _PREPOSITION_WORDS \
+                or obj[0] in _AUX_WORDS \
+                or "to" in obj \
+                or any(tail in _AUX_WORDS for tail in obj):
+            continue
         return True
     # The inverted shape: the clause's subject stands
-    # inside the clause -- a determiner-led noun
-    # phrase with no verb or preposition inside it --
-    # and an object-control verb stands last, its
-    # object the head the clause modifies.
-    if len(clause_words) >= 3 \
-            and clause_words[-1] in _OBJECT_CONTROL_VERBS \
-            and clause_words[0] in _CLAUSE_DETERMINERS \
-            and all(word not in _PREPOSITION_WORDS
-                    and word not in _AUX_WORDS
-                    and word not in _OBJECT_CONTROL_VERBS
-                    and word not in _BARE_INFINITIVE_VERBS
-                    and word not in _GOVERNMENT_VERBS
-                    for word in clause_words[1:-1]):
-        return True
+    # inside the clause -- a noun phrase of any shape
+    # with no verb or preposition inside it, a
+    # determiner-led phrase ("the supervisor prompts
+    # to ...") or a proper name ("Jordan prompts to
+    # ...") included -- and a verb of any identity
+    # stands last, its object the head the clause
+    # modifies.
+    if len(clause_words) >= 2 \
+            and _verb_like(clause_words[-1]):
+        subject = clause_words[:-1]
+        if all(word not in _PREPOSITION_WORDS
+               and word not in _AUX_WORDS
+               and word not in _OBJECT_CONTROL_VERBS
+               and word not in _BARE_INFINITIVE_VERBS
+               and word not in _GOVERNMENT_VERBS
+               and not _participle_like(word)
+               for word in subject):
+            return True
     return False
 
 
 def _zero_relative_carries(between):
     """True when the span between a prohibitive form
     and its match carries an infinitive of its own
-    with no relative pronoun at all (Q148): a
-    zero-relative clause whose subject stands inside
-    it, between the form's own subject phrase and the
-    form's infinitive -- "for any operator the
-    supervisor prompts to <the match>", where the
-    clause's subject phrase (a determiner-led noun
-    phrase carrying no verb) stands after a subject
-    phrase that carries no verb either, and an
-    object-control verb stands last ahead of the
+    with no relative pronoun at all (Q148; Q149: the
+    inside subject and the clause's verb are judged
+    by shape generally, not by a determiner-led
+    subject and a closed verb set): a zero-relative
+    clause whose subject stands inside it, between
+    the form's own subject phrase and the form's
+    infinitive -- "for any operator the supervisor
+    prompts to <the match>", and its proper-name
+    twin "for any operator Jordan prompts to <the
+    match>", where the clause's subject phrase (a
+    noun phrase carrying no verb) stands after a
+    subject phrase that carries no verb either, and
+    a verb of any identity stands last ahead of the
     infinitive's " to ". The form's own subject
     phrase alone ("for any operator at any point to
     ...") carries no such clause."""
@@ -646,13 +807,12 @@ def _zero_relative_carries(between):
     if len(words) < 5 or words[-1] != "to":
         return False
     core = words[:-1]
-    if core[-1] not in _OBJECT_CONTROL_VERBS:
+    if not _verb_like(core[-1]) \
+            and core[-1] not in _OBJECT_CONTROL_VERBS:
         return False
     for at in range(2, len(core) - 1):
-        if core[at] not in _CLAUSE_DETERMINERS:
-            continue
         subject = core[:at]
-        clause_subject = core[at + 1:-1]
+        clause_subject = core[at:-1]
         if not clause_subject:
             continue
         if any(word in _OBJECT_CONTROL_VERBS
@@ -688,7 +848,10 @@ def _drop_subject_relative_clause(between):
     the verbs on Q146's introducing list; Q148: judged
     by its verb phrase's own shape, with an object of
     any shape, with no object, or with its subject
-    standing inside the clause), or one
+    standing inside the clause; Q149: judged by that
+    shape generally, not by closed verb sets, and
+    found by its pronoun with a comma standing after
+    it the way it is found with a space), or one
     standing past a verb phrase the form already
     introduced ("to follow anyone who ..."), does not
     qualify, and the span stands as written, barrier
@@ -698,26 +861,31 @@ def _drop_subject_relative_clause(between):
     phrase ahead of it carries is read the way the
     rest of the guard reads commas (Q148): a
     comma-set parenthetical inside the clause, or a
-    comma closing the clause ahead of the infinitive,
-    is transparent -- the qualification is judged on
+    comma closing it ahead of the infinitive, is
+    transparent -- the qualification is judged on
     the spans with their parentheticals stripped and
     a closing comma set aside -- while a lone comma
     left standing in either span still refuses the
     crossing, as a lone comma elsewhere still ends
-    the form's government."""
+    the form's government. A parenthetical standing
+    at the clause's head is read the same way (Q149):
+    the pronoun is found with the comma that follows
+    it, and the parenthetical that comma opens is
+    stripped with the clause's other parentheticals
+    before the clause is judged."""
     text = between
     while True:
-        at = -1
-        pronoun = ""
-        for candidate in _RELATIVE_PRONOUNS:
-            found = text.find(candidate)
-            if found >= 0 and (at < 0 or found < at):
-                at, pronoun = found, candidate
-        if at < 0:
+        found = re.search(r"(?<![a-z])(who|whom|which|that)"
+                          r"(?=[,\s])", text)
+        if found is None:
             return text
+        start = found.start()
+        if start > 0 and text[start - 1] == " ":
+            start -= 1
+        at = start
         before = text[:at]
-        after = text[at + len(pronoun):]
-        to = after.find(" to ")
+        after = text[found.end():]
+        to = after.rfind(" to ")
         if to < 0:
             return text
         clause = after[:to]
@@ -935,7 +1103,9 @@ _LEDGER_TRIGGERS = frozenset({
 _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     " and ", " then ", " — ", "—",
                     " – ", "–", " - ", "(", ")", "/",
-                    "|", "...", "…")
+                    "|", "...", "…", "&", "\\", "[",
+                    "]", "..", "•", "~", "／",
+                    "⸺", "*")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -958,7 +1128,12 @@ def _ledger_complement_is_evidence(owner, match):
     and by Q148, where the remaining clause separators
     open one too: parentheses, the slash, the pipe, the
     ellipsis, and a run of Unicode minus signs in the
-    typed dash's place): an evidence word in
+    typed dash's place -- and by Q149, where the next
+    clause separators open one too: the ampersand, the
+    backslash, square brackets, and a run of two dots,
+    with the same-mechanism separators beside them --
+    the bullet, the tilde, the fullwidth slash, the
+    two-em dash and a run of asterisks): an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does
