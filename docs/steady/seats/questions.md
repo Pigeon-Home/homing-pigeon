@@ -4395,6 +4395,86 @@ table with its floors, and the guard tests that pin
 the new floor and that the two in-process-startup
 files never share a shard, in one landing.
 
+**Addendum (2026-11-11, the fourth re-pack):** the
+re-test the third re-pack named produced the first
+completed build-windows verdict on a re-pack head,
+and it is red on the wall clock. Build run
+43026648905, on the Q150 desk-answer head carrying
+the third re-pack, finished its parallel-test step
+in 1,200.7 seconds (exit 1): shard 3 failed exit
+124, shards 4, 5, 7, 10, 12 and 13 failed exit 1,
+and shards 0, 1 and 2 finished OK in 688.7, 713.5
+and 713.5 seconds against 713 packed. The
+suppositions for this re-pack stand in the desk
+(Q136-RP4-S1 to S6, recorded before the
+measurement); the measurement ran first-hand over
+that run's log and the 3 newest completed failure
+runs before it (43022614477, 43018894064,
+43016116636 -- the last two carrying their runner
+lines under a lost step label, repaired to the
+parallel runner's step name so the tool's step
+filter reads them). The findings: every completed
+shard's internal time stayed within 1.10x of its
+713-second price (highest 781.9), so the budget
+was not the binding constraint and stands at 720
+seconds with the 20-minute wall; the only wall
+kill was shard 3, test_decision1_startup at its
+650-second floor plus 16 companions priced at
+about 63 seconds in all, no single companion
+convicted (the same companions estimate at 10
+seconds or less inside completed shards of the
+older logs, and the killed shard's last-lines
+dump is a truncated tail of progress dots that
+cannot place the kill in one file); and the
+largest exact convictions sat in completed
+shards, where a file's listed slowest-tests sum
+is a floor on its whole cost -- test_result_stash
+562.7 listed against 151.6 priced,
+test_notable_access 466.9 against 174.4,
+test_key_names 321.8 against 94.5, and
+test_concurrency 253.4 against 16.1, the last
+measured in the very shard where its bad-answers
+timing test failed, with the Oracle send and chat
+families timing out under the same loaded run
+(test_oracle_send_contract refreshes 9.7 to 57.0,
+test_oracle_chat 10.2 to 33.7). Shards 5 and 13
+are the desk version-rot family, a separate
+deterministic blocker the next cut's version bump
+clears, excluded from every pricing judgement
+here (their internal times, 594.5 and 450.5
+seconds, sat within their prices anyway). The
+refresh by the tool's own `--write --from-logs`
+route over the 4 logs took the table to 444 files
+at 15,050.2 seconds and, as every re-pack has
+found, priced the killed shards' floored files
+under their floors (test_decision1_startup 369.7
+against 650, test_regression_guard 188.1 against
+250, test_v2_consult 326.8 against 600); the
+standing floors are re-applied on top, four new
+floors land just under their listed sums
+(test_result_stash 560, test_notable_access 460,
+test_key_names 320, test_concurrency 250), and
+the merged table takes each file's largest price
+across the refresh and the prior table -- the
+largest across the union of the two log sets.
+The table now carries 444 files at 17,206.5
+seconds and packs the discovered suite (466
+modules, 12,396 tests) into 25 shards of about
+696 seconds packed each. The guard family (46
+tests) pins the four new floors and that
+test_decision1_startup never shares a shard with
+any of its killed shard's seven heaviest
+companions, whose spread prices the refresh
+raises to 76 seconds or more. No claim is made
+that the red is cleared: the next completed
+tag-or-main build-windows verdict on a head
+carrying this re-pack is the re-test under
+rule 8, with the version-rot family judged
+separately. **Applied in:** this addendum, the
+desk's fourth re-pack section, the refreshed
+table with its floors, and the guard tests that
+pin them, in one landing.
+
 ---
 
 ## Q135 (Muse, to the desk, 2026-11-10): the confinement decision raises where its contract is to answer — a denial must come back as a triple and be refused at the job boundary, not thrown from the decision

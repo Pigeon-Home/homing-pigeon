@@ -579,6 +579,81 @@ class CheckedInTableGuardTest(unittest.TestCase):
                 "the 3.16.20.4 tag build packed into one "
                 "shard again")
 
+    def test_the_completed_shards_listed_files_keep_their_floors(self):
+        # Build run 43026648905 (2026-11-11), the first
+        # completed build-windows verdict on a head
+        # carrying the third re-pack: shards 0, 1 and 2
+        # finished at their packed prices, every other
+        # completed shard's internal time stayed within
+        # 1.10x of its price, and the leg's only wall
+        # kill was shard 3. Four files in completed
+        # shards are convicted by exact evidence, not
+        # by the estimator's spread: a file's listed
+        # slowest-tests sum is a floor on its whole
+        # cost, and in that run test_result_stash's
+        # listed tests sum to 562.7s against 151.6
+        # priced, test_notable_access's to 466.9
+        # against 174.4, test_key_names' to 321.8
+        # against 94.5, and test_concurrency's to
+        # 253.4 against 16.1 (test_concurrency is also
+        # the module whose bad-answers test failed in
+        # shard 4 of the same run -- its cost is
+        # load-sensitive, and the listed sum was taken
+        # under that load). These floors, each just
+        # under its listed sum, keep the packer from
+        # pricing any of the four back under the cost
+        # its own tests already measured.
+        table = wd.load_table_file(wd.default_table_path())
+        durations = table["durations"]
+        self.assertGreaterEqual(
+            durations["runner.tests.test_result_stash"], 560.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_notable_access"], 460.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_key_names"], 320.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_concurrency"], 250.0)
+
+    def test_decision1_startup_does_not_share_with_its_killed_shard_companions(self):
+        # Shard 3 of run 43026648905 carried
+        # test_decision1_startup at its 650s floor plus
+        # 16 companions priced at about 63s in all, and
+        # burned past the 1,200s wall (exit 124) with
+        # no durations block printed. No companion is
+        # convicted alone: in the three older
+        # build-windows logs at hand the same
+        # companions estimate at 10s or less inside
+        # completed shards, so the overrun is the
+        # shard's composition, not one file. The
+        # refresh spreads the killed wall over the
+        # companions by unlisted test count, which
+        # raises the seven heaviest of them to 76s or
+        # more; this pin keeps the packer from putting
+        # any of those seven back beside
+        # test_decision1_startup (650 + 76 already
+        # passes the 720 budget, so the pin is what
+        # holds the shape, not the budget arithmetic
+        # alone at every future price).
+        table = wd.load_table_file(wd.default_table_path())
+        shards = wd.pack_modules(sorted(table["durations"]),
+                                 table["durations"],
+                                 table["budget_seconds"])
+        heavy = ("runner.tests.test_oracle_tool_mode",
+                 "runner.tests.test_freebsd_confine",
+                 "runner.tests.test_q110_key_parity",
+                 "runner.tests.test_oracle_script_gate",
+                 "runner.tests.test_release_drop",
+                 "runner.tests.test_flag321",
+                 "runner.tests.test_review")
+        for shard in shards:
+            if "runner.tests.test_decision1_startup" in shard:
+                for name in heavy:
+                    self.assertNotIn(
+                        name, shard,
+                        "test_decision1_startup packed beside "
+                        "%s, re-creating shard 3 of run "
+                        "43026648905" % name)
+
     def test_the_real_suite_packs_within_budget(self):
         table = wd.load_table_file(wd.default_table_path())
         counts = rtp.module_test_counts(

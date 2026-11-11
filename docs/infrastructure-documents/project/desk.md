@@ -8721,3 +8721,121 @@ those sentences themselves beside the committed
 guard family the fix lane lands, which pins both
 ways. No new behaviour is claimed beyond what
 those calls and that family show.
+### Q136 fourth re-pack: measurement and conclusions (2026-11-11)
+
+The measurement ran first-hand over 4 build-windows
+logs read by this lane through `gh`: run 43026648905
+(the completed verdict on the third re-pack head)
+and runs 43022614477, 43018894064 and 43016116636
+(the newest completed failure runs before it). Two
+of the older logs carry their runner lines under a
+lost step label, repaired to the parallel runner's
+step name so the durations tool's step filter reads
+them; the lines themselves are the runner's own.
+The suppositions head's own build had produced no
+completed build-windows verdict at measurement
+time, so no fifth log stands in the set. Against
+the suppositions:
+
+- Q136-RP4-S1: refuted in its mechanism. Shards 0
+  to 2 did pass at their prices (688.7 and 713.5
+  seconds against 713 packed, the third shard's
+  internal time 584.6), but the later shards did
+  not sum past the wall: every completed shard's
+  internal time in run 43026648905 stayed within
+  1.10x of its 713-second price (the highest,
+  shard 14, at 781.9). The leg's only wall kill
+  was shard 3, early in the packing order: one
+  floored heavy file plus companions priced in
+  aggregate far under their cost, the same
+  composition shape as the kills before it.
+- Q136-RP4-S2: confirmed in part, and the larger
+  half of the under-pricing is older than the
+  supposition guessed. The named failure modules
+  are under-priced (test_concurrency 16.1 tabled
+  against a 253.4 listed sum in its own shard;
+  test_oracle_send_contract 9.7 against a 57.0
+  refresh; test_oracle_chat 10.2 against 33.7;
+  test_local_signals 9.2 against 18.9), but the
+  largest convictions are long-standing files
+  whose slowest tests the third re-pack's log
+  set never listed: test_result_stash's listed
+  tests sum to 562.7 seconds against 151.6
+  priced, test_notable_access's to 466.9 against
+  174.4, test_key_names' to 321.8 against 94.5.
+  A listed sum is exact evidence, a floor on a
+  file's whole cost.
+- Q136-RP4-S3: confirmed in shape.
+  test_concurrency's 253.4-second listed sum was
+  measured in the very shard where its
+  bad-answers test read "True is not false", and
+  the Oracle send and chat families timed out
+  under the same loaded run. test_concurrency
+  takes a floor of 250 seconds from its listed
+  sum; the Oracle files take their refreshed
+  prices (57.0 and 33.7), which already price
+  them at the loaded run -- no second floor is
+  claimed for them beyond what the numbers show.
+- Q136-RP4-S4: confirmed. The refresh by the
+  tool's own `--write --from-logs` route over
+  the 4 logs took the table to 444 files at
+  15,050.2 seconds, and priced the floored
+  files under their floors (test_decision1_startup
+  369.7 against 650, test_regression_guard 188.1
+  against 250, test_v2_consult 326.8 against
+  600), because run 43026648905's killed shard
+  prints no durations block and its wall spreads
+  by unlisted test count. The standing floors
+  are re-applied on top, the shard-5 and shard-2
+  floors beside them, and the merged table takes
+  each file's largest price across the refresh
+  and the prior table -- the prior table is
+  itself the largest across its own log set, so
+  the merge is the largest across the union.
+- Q136-RP4-S5: refuted. The budget was not the
+  binding constraint: at 713 seconds packed the
+  wall's 1.68x headroom went unused by every
+  completed shard (1.10x at most). The
+  720-second budget and the 20-minute wall stand
+  unchanged; the shard count grows as an output
+  of the total, the way Q136's answer shapes it.
+- Q136-RP4-S6: confirmed. Shards 5 and 13 fail
+  on the version-rot family (test_doc_version_rot,
+  priced 2.0 and measured at 0.3 in the run, and
+  its regression_guard skip-registry knock-on);
+  both shards' internal times (594.5 and 450.5
+  seconds) sat within their prices, and the rot
+  is excluded from every pricing judgement here.
+  It clears with the next cut's version bump,
+  not with this lane.
+
+One honest limit, stated plainly: no single
+companion of shard 3 is convicted. Its last-lines
+dump is a truncated tail of progress dots, which
+cannot place the kill inside one file, and in the
+3 older logs the same companions estimate at 10
+seconds or less inside completed shards. What the
+numbers do show is the shard's aggregate: 650
+floored plus about 63 priced burned past 1,200.
+The refresh spreads that killed wall over the
+companions by unlisted test count (the seven
+heaviest rise to 76 seconds or more), and the
+guard family now pins that none of those seven
+packs beside test_decision1_startup again.
+
+The landed table carries 444 files at 17,206.5
+seconds in all and packs the discovered suite
+(466 modules, 12,396 tests) into 25 shards of
+about 696 seconds packed each, every one within
+the unchanged 720-second budget; the tool's own
+`--check` passes and the guard family reads 46
+tests green in this lane, the 2 new pins among
+them (the four listed-sum floors, and
+test_decision1_startup never sharing with its
+killed shard's heavy companions). This lane does
+not claim the red is cleared: what proves it is
+the next completed tag-or-main build-windows
+verdict on a head carrying this re-pack, under
+rule 8, with the version-rot family cleared by
+that cut's bump judged separately from the
+wall-clock question.
