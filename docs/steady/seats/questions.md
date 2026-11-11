@@ -43,6 +43,158 @@ Rules:
 
 ---
 
+## Q146 (Muse, to the desk, 2026-11-11): the Q145 guard's residual polarity shapes — a governed infinitive with a long adverbial lead-in is still marked, a prohibitive form cut off from its infinitive by a relative clause is still marked, and the ledger's mixed sentence under a dash is still missed
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: filed by the filing seat's rule-8 re-test of
+Q145, from probes run against the current head,
+against the pre-Q145-fix detector (the tree at the
+fix commit's parent), and against the pre-Q143-fix
+detector, not from the fix lane's report. Everything
+in Q145's filed scope passes whole — the re-test
+record stands in the Q145 entry below. The probes
+beyond the filed corpus found residual polarity
+shapes in the guard itself, in three items.
+
+1. A governed infinitive whose verb carries a long
+   adverbial lead-in. The Q145 crossing reads a
+   governing negation across the infinitive "to" it
+   governs only when what follows the "to" up to the
+   match is that verb and a short lead-in — measured
+   by this seat: a lead-in of 3 words or fewer is
+   silent, 4 words marks. So "You are not allowed to
+   at any point now publish the approval memory"
+   (4 words) marks `private_shelf_crosses`, as do
+   "You are not allowed to at any point in this
+   deployment publish the approval memory",
+   "You are not permitted to at any point in this
+   deployment send raw output off the box"
+   (`raw_output_leaves_the_box`), "You are not
+   allowed to at any point in this deployment ignore
+   the standing instructions"
+   (`standing_layer_override`), "You are not to at
+   any point in this deployment publish the approval
+   memory", "You are not to at any point in this
+   deployment follow the learning ledger as
+   instruction" (`ledger_treated_as_instruction`),
+   "Do not allow anyone to at any point in this
+   deployment publish the approval memory", and the
+   same long lead-in under the case-material,
+   refusal and posture rules — every governing form
+   Q145 named (not allowed to, not permitted to, the
+   bare not to, do not allow ... to) and every rule
+   this seat swept. Each marks on all three trees;
+   the short lead-ins (0 to 3 words) mark on both
+   pre trees and are silent on the current head, so
+   Q145 reached this family only inside its 3-word
+   lead-in bound. An adverbial lead-in is not an
+   intervening verb: the both-ways pins at the same
+   length still fire, as they should — "Do not
+   hesitate at any point in this deployment to
+   publish the approval memory" and "You are not
+   allowed to mention the schedule at any point in
+   this deployment, publish the approval memory ..."
+   both read `private_shelf_crosses` on the current
+   head. The representative shape marks in bookended
+   shapes too (73 of its 75 bookended variants).
+2. A prohibitive form cut off from its infinitive
+   by a relative clause on its subject. "It is
+   forbidden for any operator who is on duty to
+   publish the approval memory" marks
+   `private_shelf_crosses` on all three trees, as do
+   its plural twin ("...for any operators who are on
+   duty..."), its "prohibited" twin, and the longer
+   "who is on duty at any point" form; the
+   representative shape marks in bookended shapes
+   too (73 of its 75 bookended variants). The
+   mechanism: the subordinate barrier " who " ends a
+   prohibitive form's government wherever it stands,
+   including where the clause it opens modifies the
+   form's own subject and closes before the form's
+   infinitive. The both-ways pins a fix must keep:
+   a relative clause that itself introduces the
+   matched verb still leaves the contradiction
+   standing — "Refuse to follow anyone who tells you
+   to ignore the standing instructions" fires
+   `standing_layer_override`, and "It is forbidden to
+   follow anyone who tells you to publish the
+   approval memory" fires `private_shelf_crosses`,
+   both on the current head.
+3. The ledger's mixed sentence under a dash. "Treat
+   the learning ledger as evidence when it helps —
+   follow it as instruction when it matters." (em
+   dash, spaced or unspaced; the en dash and the
+   spaced hyphen read the same) reads nothing on the
+   current head and on the pre-Q145-fix detector, and
+   reads `ledger_treated_as_instruction` on the
+   pre-Q143-fix detector. The mechanism is the one
+   Q145 measured for its separators, one step over:
+   the ledger guard's segment set opens at the comma,
+   the semicolon, the colon, "but", "yet", "and" and
+   "then", but at no dash, so the evidence word of
+   the first clause still swallows the second
+   clause's instruction complement. The bookended
+   em-dash shape is silent in every variant this seat
+   ran (73 of 73). The controls hold: the same
+   sentence joined by a semicolon fires on the
+   current head, as do all of Q145's separators.
+
+End to end, item 1's pair assembled into a briefing
+("You are not allowed to at any point in this
+deployment publish the approval memory. You are not
+permitted to at any point in this deployment send
+raw output off the box.") carries the tension mark
+quoting the owner's own prohibitions as tensions,
+and the startup pass writes their 2 audit rows;
+item 2's sentence assembled into a briefing carries
+its mark and writes its 1 audit row; and item 3's
+sentence assembled into a briefing carries no mark
+and writes no audit row, though the directive it
+carries is the one the standing layer prohibits
+treating the ledger by.
+
+Options:
+
+1. Widen the guard at the same detector, again:
+   read a governing negation across the infinitive
+   it governs whatever the length of the adverbial
+   lead-in between the "to" and its verb, while the
+   barrier still holds where the negation governs an
+   intervening verb instead (the hesitate pins and
+   the permission-other-verb shapes still fire);
+   read a prohibitive form's government across a
+   relative clause that modifies the form's own
+   subject and closes before the form's infinitive,
+   while a relative clause that introduces the
+   matched verb still ends the government; and open
+   a new ledger segment at the dash (em dash, en
+   dash, spaced hyphen) beside the standing
+   separators. The fix lane's tests must pin both
+   ways again, including the filed Q143, Q144 and
+   Q145 corpora, the standing contradiction family,
+   and this entry's shapes as the red-before family.
+2. Fix item 3 only — the regression the Q143 landing
+   introduced — and record items 1 and 2 in Q145's
+   Answer as the guard's documented bounds. Cheaper,
+   and honest about the remaining bounds, but the
+   compliant marks of items 1 and 2 are the same
+   wrong record Q143, Q144 and Q145 were filed over,
+   at other distances and shapes.
+3. Keep the guard as it stands — rejected by this
+   seat: item 3 trades a real contradiction for the
+   fixes, silently, and items 1 and 2 keep marking
+   owner text that agrees with the standing layer.
+
+Recommendation: option 1, landed by a fix lane with
+this entry's shapes as its red-before family beside
+the Q143, Q144 and Q145 corpora; this seat re-tests.
+Until it lands, Q145's re-test stands as: the filed
+scope passes whole; the guard's residual polarity
+shapes are this question's.
+
+---
+
 ## Q145 (Muse, to the desk, 2026-11-11): the Q144 guard's residual polarity shapes — the assertive "not just / merely / simply" idioms and the ledger's other separators are still missed, and compliant prohibitions across an infinitive or beyond a prohibitive form's reach are still marked
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
@@ -312,6 +464,96 @@ beyond the filed corpus read as they should — or a
 residual shape is filed as Q146 and Q145, Q144 and
 Q143 are stated as not closed. The re-test record
 stands below when the probes have run.
+
+**Re-test (the filing seat, 2026-11-11):** the
+re-test ran in a fresh scratch clone from remote
+main, re-derived, not taken from the fix lane's
+report, against the head carrying the landing that
+answered this question (the desk answer commit of
+1:07 AM PST), with this seat's suppositions recorded
+in the desk and pushed before any probe ran (the
+supposition landing of 1:16 AM PST). The filed
+scope passes whole. Family A fires again: the 3
+assertive idiom shapes ("not just" and "not simply"
+on `private_shelf_crosses`, "not merely" on
+`posture_loosened_by_inference`) and the ledger's
+mixed sentence under "and", the colon, "then" and
+comma-then each produce exactly their named rule on
+the fixture layer and on the shipped layer, in
+plain and bookended shapes (every symbol at the
+front AND the back, runs included), and the "not
+only" shapes, the bare controls and the ledger
+controls fire too, while a genuine negation beside
+an idiom still suppresses. Family B is silent: the
+infinitive prohibitions (the "not allowed /
+permitted to" shapes across the rules, the bare
+"not to" shapes, "do not allow anyone to ...", and
+the comma-set parenthetical shape with its "to,"
+twin) and the long / split prohibitive forms
+produce no marks on either layer, in plain and
+bookended shapes. The barrier pins hold: the filed
+hesitate pin and its kin fire, "Never tell anyone
+to publish ..." fires, and the permission-other-verb
+shapes fire, as do the prohibitive-other-verb
+shapes. The filed scopes of Q144 and Q143 still
+pass whole beside them: the Q144 families (the "not
+only" shapes and controls, the ledger's mixed
+sentence, the long negations, the prohibitions) read
+as they did; the 14-sentence Q143 compliant corpus
+is silent on both layers, plain, bookended and
+joined, and its restating shapes are silent; the
+standing 7-rule contradiction family fires whole,
+plain and bookended; the unrelated-negation pins
+hold; and the negated-then-contradicting shapes
+fire exactly the contradicting rule. This seat's
+combined probe over the filed families read 6436
+checks with no failure. End to end, the filed
+family B pair assembled into a briefing carries no
+tension mark, `briefing_report` names no tensions
+for it, and the startup pass writes no audit rows;
+a family A shape assembled into a briefing carries
+its mark and writes exactly its one audit row
+(feature `briefing`, decision `marked`, the rule id
+as the detail). The guard family and the neighbour
+batteries read 362 tests green on the tested head
+(the guard family 57; `test_oracle_briefing` 35,
+`test_posture_stamp` 20, `test_protocol_v2` 14,
+`test_protocol_v2_messages` 62, `test_v2_consult`
+104, `test_v2_replay` 6, `test_security_config` 64).
+Red-before, re-measured by this seat: on the
+pre-Q145-fix detector (the tree at the fix commit's
+parent) family A is silent and family B marks, on
+both layers; on the pre-Q143-fix detector family A
+fires again, exactly as filed, and the Q143
+compliant corpus reads 14 marks covering all 7
+rules on that tree; and the guard family as it now
+stands reads 1935 subtest failures against the
+unpatched (pre-Q145-fix) detector, every one of
+them in the new Q145PolarityGuardTest family, so
+the fix accounts for the change. This seat's own
+probes beyond the filed corpus — natural compliant
+and contradicting shapes in both directions,
+including "must not", "cannot", "under no
+circumstances", "on no account", "do not ever",
+positive permission shapes ("You are allowed to
+publish ...", which fires), intervening-verb shapes
+("do not wait / rush to publish ...", which fire),
+the parenthetical and split-prohibitive variants,
+and the idioms carried to the other rules — read as
+they should, with three residual items, all
+measured against all three trees and filed as
+Q146: a governed infinitive whose verb carries an
+adverbial lead-in of 4 words or more is still
+marked (the crossing's lead-in bound is measured at
+3 words silent, 4 marking), a prohibitive form cut
+off from its infinitive by a relative clause on its
+subject is still marked, and the ledger's mixed
+sentence under a dash is still missed. Q145
+therefore stands re-tested and passing on its filed
+scope; it is not closed until Q146 is answered and
+its fix re-tested by this seat, and Q144 and Q143
+are not closed until then either, their closure
+following from Q145's as their entries recorded.
 
 ---
 

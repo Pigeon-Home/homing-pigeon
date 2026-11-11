@@ -4593,3 +4593,125 @@ deterministic substrate is those sentences
 themselves beside the committed guard family, which
 this lane runs whole. No new behaviour is claimed
 beyond what those calls and that family show.
+
+## Q145: conclusions of the filing seat's re-test (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded in the desk
+before the re-test (the Q145 re-test section above;
+the supposition landing of 1:16 AM PST was pushed and
+verified before any probe in this lane ran), each
+measured first-hand in a fresh scratch clone from
+remote main on the tested head (the desk answer
+commit of 1:07 AM PST), on the pre-Q145-fix detector
+(the tree at the fix commit's parent) and on the
+pre-Q143-fix detector (the tree at the Q143 fix
+commit's parent), against the fixture layer and the
+shipped layer.
+
+- **Q145-RT-S1 confirmed** — family A fires again
+  whole: the 3 assertive idiom shapes and the
+  ledger's mixed sentence under "and", the colon,
+  "then" and comma-then each produce exactly their
+  named rule on both layers, plain and bookended;
+  the "not only" shapes and the bare controls fire,
+  and a genuine negation beside an idiom still
+  suppresses.
+- **Q145-RT-S2 confirmed** — family B is silent
+  whole: the infinitive prohibitions across the
+  rules and the long / split prohibitive forms
+  produce no marks on either layer, plain and
+  bookended. This seat's combined probe over the
+  filed families (family A, family B, the barrier
+  pins, the prohibitive-other-verb shapes, the filed
+  Q143 corpus and restating shapes, the Q144
+  families, the standing 7-rule family, the
+  unrelated-negation and negated-then-contradicting
+  pins) read 6436 checks with no failure.
+- **Q145-RT-S3 confirmed** — the barrier pins hold:
+  the hesitate pin and its kin, "Never tell anyone
+  to publish ...", the permission-other-verb shapes
+  and the prohibitive-other-verb shapes all still
+  fire their named rules on both layers.
+- **Q145-RT-S4 confirmed** — both earlier families
+  hold whole beside the widening, as S2's probe
+  measured: the Q143 corpus silent plain / bookended
+  / joined, the Q144 families as they were, the
+  standing family firing whole, the pins holding.
+- **Q145-RT-S5 confirmed** — end to end, exactly as
+  supposed: the filed family B pair assembled into a
+  briefing carries no mark, `briefing_report` names
+  no tensions for it, and the startup pass writes no
+  audit rows; the family A shape carries its mark
+  and writes exactly its one audit row (feature
+  `briefing`, decision `marked`, detail
+  `rule=private_shelf_crosses`).
+- **Q145-RT-S6 confirmed** — the guard family and
+  the neighbour batteries read 362 tests green on
+  the tested head, re-measured in the foreground by
+  this seat (the guard family 57;
+  `test_oracle_briefing` 35, `test_posture_stamp`
+  20, `test_protocol_v2` 14,
+  `test_protocol_v2_messages` 62, `test_v2_consult`
+  104, `test_v2_replay` 6, `test_security_config`
+  64). Red-before, re-measured by this seat: family
+  A silent and family B marking on the pre-Q145-fix
+  detector on both layers; family A firing again on
+  the pre-Q143-fix detector, with the Q143 compliant
+  corpus reading 14 marks covering all 7 rules on
+  that tree; and the guard family as it now stands
+  reading 1935 subtest failures against the
+  unpatched (pre-Q145-fix) detector, every one in
+  the new Q145PolarityGuardTest family — the whole
+  file against that detector reads the same 1935, so
+  the fix accounts for the change and the standing
+  families are untouched by the widening.
+- **Q145-RT-S7 settled the other way, as the
+  supposition provided for** — most of this seat's
+  own probes beyond the filed corpus read as they
+  should (the "must not" / "cannot" / "under no
+  circumstances" / "on no account" / "do not ever"
+  compliant shapes silent; the positive-permission
+  and intervening-verb contradicting shapes firing;
+  the parenthetical, split-prohibitive and
+  cross-rule idiom variants reading both ways), but
+  three residual items were found, all measured
+  against all three trees and filed as Q146 in the
+  questions file: (1) a governed infinitive whose
+  verb carries an adverbial lead-in of 4 words or
+  more still marks — the crossing's lead-in bound
+  measured at 3 words silent, 4 marking — across
+  every governing form Q145 named and every rule
+  swept, its pair carrying the mark and 2 audit rows
+  end to end; (2) a prohibitive form cut off from
+  its infinitive by a relative clause on its subject
+  ("It is forbidden for any operator who is on duty
+  to publish ...") still marks, its sentence
+  carrying the mark and 1 audit row end to end,
+  while the relative-clause pins that introduce the
+  matched verb still fire; (3) the ledger's mixed
+  sentence under a dash (em dash spaced or unspaced,
+  en dash, spaced hyphen) is still missed — firing
+  on the pre-Q143-fix detector, silent since, in
+  every bookended variant. This seat does not fix
+  them (rule 8).
+
+Guard evidence stands in the Q145 entry's re-test
+record in the questions file, with Q146 filed above
+it. Q145 is not closed by this re-test, and neither
+are Q144 and Q143: all three close only when Q146
+is answered and its fix is re-tested by this seat.
+The hosted CI verdict on the new head is the
+trains' to judge — this lane claims neither it nor
+anything about the in-flight 3.16.20.3 ship, whose
+lane, clones and state file this lane never touched.
+What could not be recorded as a unit test, as the
+suppositions stated in advance: this lane's ad-hoc
+probes are live detector calls over the sentences
+named in this record; their deterministic substrate
+is those sentences beside the committed guard
+family, which this lane ran whole (57 tests) — no
+new test file is landed by a re-test seat, and no
+behaviour is claimed beyond those calls and that
+family.
