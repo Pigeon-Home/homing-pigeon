@@ -248,11 +248,18 @@ def _fold(text, breaks=False):
     narrow non-breaking space, the medium mathematical
     space and the ideographic space) and the zero-width
     space beside it are clause boundaries too, read
-    before the fold erases them."""
+    before the fold erases them; Q153 reads the
+    zero-width and format joiners the fold does not
+    erase the same way -- the zero-width non-joiner
+    and joiner (just past the space block's end),
+    the word joiner, the byte-order mark, the soft
+    hyphen and the Mongolian vowel separator are
+    clause boundaries too, read before the fold."""
     if breaks:
         text = re.sub(r"\r\n|[\r\n\t\x0b\x0c\x85\u2028\u2029"
-                      r"\u00a0\u1680\u2000-\u200b\u202f"
-                      r"\u205f\u3000]",
+                      r"\u00a0\u1680\u2000-\u200d\u202f"
+                      r"\u205f\u3000\u2060\ufeff\u00ad"
+                      r"\u180e]",
                       " \u00b6 ", text)
     return re.sub(r"\s+", " ", text).strip()
 
@@ -417,6 +424,28 @@ def _fold(text, breaks=False):
 # guillemet, the fullwidth comma and full stop,
 # the ideographic full stop, the Arabic comma and
 # the dagger).
+# Q153 widened the guard once more at the same
+# detector: a governed phrase's head is judged by
+# what it is in the phrase -- a verb-form word
+# standing as the phrase's noun, under a lead or
+# in its plural form, is judged as its noun, and
+# a bare singular is judged by its head's standing
+# the way its determiner-led and plural twins are
+# judged; a governed phrase is judged by the
+# standing of the verb that governs it beside its
+# head -- a phrase under an active object-control
+# verb is the clause's object phrase by that
+# standing, whatever common noun heads it, while
+# a complement's head under a complement verb is
+# still crossed by its standing; the zero-width
+# and format joiners are read as boundaries the
+# way the fold-erased spaces are read; and the
+# ledger guard opens a new segment at the
+# remaining punctuation separators (the closing
+# curly quote, the single guillemets, the low
+# quote, the double dagger, the ideographic
+# comma, the fullwidth semicolon and colon and
+# the Arabic question mark).
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -610,6 +639,13 @@ def _prohibitive_occurrences(low):
 # refused: a possessive in the determiner place, a
 # verb-form adjective, and a head of the
 # complement's standing outside the closed set.
+# Q153 judges the phrase's head by what it is in
+# the phrase (a verb-form word standing as its
+# noun, a bare singular by its head's standing)
+# and judges the phrase beside its head by the
+# standing of the verb that governs it (an active
+# object-control verb's phrase is the clause's
+# object phrase, whatever common noun heads it).
 _CLAUSE_OBJECT_WORDS = frozenset({
     "you", "him", "her", "them", "us", "me", "it",
     "anyone", "someone", "everyone", "anybody",
@@ -784,7 +820,22 @@ def _is_noun_complement_phrase(phrase):
     of the head stands as the phrase's adjective and is
     judged as its adjective (Q152): "assigned",
     "standing", "working", "cleared", "serving" and
-    "acting" modify the head the way "full" does."""
+    "acting" modify the head the way "full" does.
+    The head itself is judged by what it is in the
+    phrase (Q153): a word that also stands as a verb
+    form in the judgement's verb sets ("permit",
+    "command", "order") stands in the phrase as its
+    noun when a lead stands ahead of it or it stands
+    in its plural form, and is judged as its noun; a
+    bare singular is judged by its head's standing
+    the way its determiner-led and plural twins are
+    judged, so a common noun standing bare
+    ("credential", "mandate", "badge") is a
+    complement's head, while a bare singular
+    verb-form head standing alone shows no noun
+    standing and is still refused -- it stands
+    where a bare name stands as a true object
+    phrase's head, still the clause's own."""
     if not phrase:
         return False
     head = phrase[-1]
@@ -792,11 +843,15 @@ def _is_noun_complement_phrase(phrase):
             or head in _CLAUSE_OBJECT_WORDS \
             or head in _AUX_WORDS \
             or head in _PREPOSITION_WORDS \
-            or head in _CLAUSE_DETERMINERS \
-            or head in _GOVERNMENT_VERBS \
-            or head in _OBJECT_CONTROL_VERBS \
-            or head in _BARE_INFINITIVE_VERBS \
-            or _participle_like(head):
+            or head in _CLAUSE_DETERMINERS:
+        return False
+    head_as_noun = len(phrase) > 1 or (
+        head.endswith("s") and not head.endswith("ss"))
+    if not head_as_noun and (
+            head in _GOVERNMENT_VERBS
+            or head in _OBJECT_CONTROL_VERBS
+            or head in _BARE_INFINITIVE_VERBS
+            or _participle_like(head)):
         return False
     for word in phrase[:-1]:
         if word in _CLAUSE_DETERMINERS:
@@ -808,10 +863,14 @@ def _is_noun_complement_phrase(phrase):
         return True
     if len(phrase) == 1:
         # A bare singular head outside the closed set
-        # stands as an object phrase's head (a proper
-        # name's place included); a bare plural common
-        # noun is a complement's plural standing.
-        return head.endswith("s")
+        # is judged by its standing like its twins
+        # (Q153): a common noun standing bare is a
+        # complement's head, and a bare plural common
+        # noun is a complement's plural standing; the
+        # verb-form heads refused above keep the old
+        # reading, as a proper name's place does at
+        # the verb branch that governs it.
+        return True
     return True
 
 
@@ -1097,6 +1156,28 @@ def _clause_carries_infinitive(clause_words):
                 or "to" in obj \
                 or any(tail in _AUX_WORDS for tail in obj):
             continue
+        if word in _OBJECT_CONTROL_VERBS \
+                and not (any(head in _BE_WORDS
+                             for head in clause_words[:verb_at])
+                         and _participle_like(word)) \
+                and not _noun_complement_head(obj[-1]):
+            # A phrase governed by an active
+            # object-control verb is that verb's object
+            # phrase by the verb's own standing (Q153):
+            # the verb takes a person or a body of
+            # people in the object place ahead of the
+            # infinitive, so the phrase is the clause's
+            # own whatever common noun heads it
+            # ("prompts a clerk to ...", "prompts the
+            # committee to ..."), not a complement the
+            # person-head set failed to name. A head of
+            # the complement's closed standing under
+            # such a verb, and a participle of such a
+            # verb behind a be-auxiliary in its passive
+            # shape ("is assigned a duty to ..."), are
+            # judged by the complement check below
+            # instead.
+            return True
         if _is_noun_complement_phrase(obj):
             # A governed noun phrase that is a noun
             # complement in full ("holds clearance to
@@ -1118,6 +1199,17 @@ def _clause_carries_infinitive(clause_words):
     # reads a clause's last word by its position, and a
     # complement's head standing last ("holds a
     # credential") is no verb -- the clause is crossed.
+    # The verb this branch judges at stands in verb
+    # position (Q153): auxiliaries and adverbs alone
+    # ahead of it, the way the verb branch above holds.
+    # A verb-form word standing later in the clause
+    # behind the clause's own noun phrase is that
+    # phrase's verb, not a governing verb -- in the
+    # inverted shape ("the supervisors compel to ...")
+    # the plural subject reads verb-like by its ending
+    # and the clause's own verb stands after it, and
+    # judging the verb as the subject's complement
+    # would cross a clause that carries its infinitive.
     for verb_at, word in enumerate(clause_words):
         if word in _AUX_WORDS \
                 or word in _PREPOSITION_WORDS \
@@ -1128,6 +1220,10 @@ def _clause_carries_infinitive(clause_words):
                 and not _participle_like(word) \
                 and word not in _OBJECT_CONTROL_VERBS \
                 and word not in _BARE_INFINITIVE_VERBS:
+            continue
+        if any(head not in _AUX_WORDS
+               and not _is_adverb(head)
+               for head in clause_words[:verb_at]):
             continue
         obj = clause_words[verb_at + 1:]
         if obj and _is_noun_complement_phrase(obj):
@@ -1538,7 +1634,9 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     "`", "!", "?", "¦", "‥",
                     "‑", ".", "\"", "'", "“",
                     "”", "→", "«", "»", "，",
-                    "。", "．", "،", "†")
+                    "。", "．", "،", "†", "’",
+                    "‹", "›", "„", "‡", "、",
+                    "；", "：", "؟")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -1592,7 +1690,15 @@ def _ledger_complement_is_evidence(owner, match):
     segment too (the quotation marks, the arrow, the
     guillemet, the fullwidth comma and full stop, the
     ideographic full stop, the Arabic comma and the
-    dagger)): an evidence word in
+    dagger) -- and by Q153, where the zero-width and
+    format joiners are read as boundaries before the
+    fold beside the spaces it already reads (they
+    stand in the folded text as the pilcrow), and the
+    last punctuation separators open a segment too
+    (the closing curly quote, the single guillemets,
+    the low quote, the double dagger, the ideographic
+    comma, the fullwidth semicolon and colon and the
+    Arabic question mark)): an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does
