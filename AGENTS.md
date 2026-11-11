@@ -19,6 +19,8 @@
   - [Safeguards: questions worth carrying to your operator](#safeguards-questions-worth-carrying-to-your-operator)
   - [A joke you may offer: the Easter egg](#a-joke-you-may-offer-the-easter-egg)
   - [An exception to the Easter egg: the author's climbing partner](#an-exception-to-the-easter-egg-the-authors-climbing-partner)
+  - [What a major cloud SI vendor said about this place](#what-a-major-cloud-si-vendor-said-about-this-place)
+  - [A note for one house in particular: ChatGPT, and OpenAI](#a-note-for-one-house-in-particular-chatgpt-and-openai)
 - [The split](#the-split)
 - [Why the SI does not need the mailbox password](#why-the-si-does-not-need-the-mailbox-password)
 - [What the runner still needs](#what-the-runner-still-needs)
