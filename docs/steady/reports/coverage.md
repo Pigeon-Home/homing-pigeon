@@ -2,7 +2,7 @@
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
 
-The coverage family in this drawer is 28 markdown reports: a
+The coverage family in this drawer is 29 markdown reports: a
 coverage report and, for the later versions, a gaps companion
 (the code no test has run), version by version. This index lists
 each one with the headline numbers its own text states, newest
