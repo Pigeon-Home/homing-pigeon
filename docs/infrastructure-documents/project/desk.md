@@ -2195,6 +2195,150 @@ fix pass:
 Each supposition is settled against the code in the
 commits that follow this note; the conclusions stand
 at the end of this section when the packet lands.
+
+The outside read (Argon, gemini-4-argon, on the
+billed key the conductor authorized for this
+overview): all 24 files were sent in full, headed by
+their paths, against a verified-facts block, in one
+sitting. Argon's findings stand under Argon's stamp;
+Muse's decisions on each stand under Muse's.
+
+Agent-Stamp: 00000000-argon-26a0-ff29-7825440c1fb9 —
+Argon confirmed the suppositions' core: the senses
+page's cage passage (the enforce default inverted,
+the Windows cage stated as WFP rules, the opt-in
+framing, the retired pointers), the privacy design's
+6-feature count, its `runner/tools/posture.py` path,
+and the agent-state guard recorded as queued in
+sections 6 and 8; the agent-stamp design's record
+filename in capitals, its active desk named as the
+recycled `40000e00`, and its retired job-review and
+stamp-audit pointers; and the retired-layout pointers
+across the DRI playbook, the job review, the opinion
+design, the remediation design, the CI runtime note
+and the extension-review design. Past the
+suppositions Argon raised: the hardening report's
+M6 row and confinement-fallback bullet stating the
+runtime fail-open as present behaviour; the
+remediation design's as-built strain passage in the
+same terms; the approval-gate design's proposed
+`security.modes.approval` default of `off`, against
+the family's enforce default; and the
+extension-review guide's home as the infrastructure
+shelf's extend drawer. Argon read the remaining 12
+files clean.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 —
+Muse's decisions, each verified against the code
+before acting. Adopted and fixed, on Argon's
+pointing and on the hand check's: everything named
+above, with 2 corrections of Argon's own directions —
+the extension guide's current home is
+`docs/steady/extensions.md` (the section title Argon
+quoted stands there; no extensions page stands in
+the infrastructure extend drawer), and the
+stamp-audit baseline's current home is
+`docs/steady/reports/2026-10-27.md`. The hardening
+report's 2 passages keep their 2026-10-15 record and
+gain the current chain beside it (under `enforce` a
+job-time fallback refuses the job — SECURITY.md
+states it), in the shape Packet 6's lane used for
+the same settlement in the standing orders. Not
+adopted: the approval-gate default. That document
+is the design of a feature that is not built; its
+`off` default is a stated design choice for a
+human-in-the-loop gate — the document itself records
+that the posture check does not nag about it — not a
+claim about the shipped modes, whose enforce default
+stands untouched. Argon missed 3 findings the hand
+check caught and fixed: the opinion design's
+finished-future pointer, the job review's 2
+known-failures pointers, and the hardening report's
+M9/M10 design pointers.
+
+Conclusions (2026-11-10, the same evening): **P4-S1
+confirmed** — the senses page's cage-verification
+spec now states the cages as they stand (Linux
+loopback and the FreeBSD jail's total denial under
+the confinement mode at `enforce` by default, a
+backend that cannot engage refusing the job, and
+the Windows backend's lack of a network control
+stated plainly, WFP rules not built), and its
+hardening paragraph no longer calls the modes
+opt-in. **P4-S2 confirmed, and wider in one place**
+— every retired pointer Argon and the hand check
+found now names the file's current home, including
+the hardening report's M9/M10 rows; a closing scan
+of all 24 files finds no remaining retired-layout
+path in a present-tense passage. **P4-S3 confirmed
+and overtaken** — the privacy design now counts
+the modes family as it stands and names
+`runner/tools/disclosure.py`; the count moved
+under the packet (8 when the check ran; the Q139
+build landed a 9th feature, `v2_question`, in
+parallel, and the page states 9), and sections 6
+and 8 record the agent-state guard as the shipped
+form it is, its extensions and the general
+tree-wide test alone remaining queued. **P4-S4
+confirmed** — the agent-stamp design names the
+record in its lowercase spelling throughout and
+the active desk as the Muse seat. **P4-S5
+confirmed** — the security test plan carries its
+archived banner and stands entire, its local-test
+claim included (the module stands at
+`runner/ops/local_test.py`); the hardening report
+stands as its date's record with the 2
+current-behaviour notes above. **P4-S6 confirmed**
+— the Fremont research paths are that project's
+own, as Argon also read them. **P4-S7 confirmed
+with 1 addition** — `questions.md`'s dated entries
+stand unrewritten, and the packet adds 1 entry of
+its own: Q140, the remediation monitor's strain
+text, which describes a `fallback` record as a job
+running uncaged though the runner now writes that
+record only beside a refusal; the design record
+carries the settlement note, and the code text
+waits on a second seat's re-test under rule 8.
+`bravo.md` stands as written. **P4-S8 confirmed**
+— the agent-state file's shipped forms, the
+shelter and warning pages (the 2,000-name cap
+stands in `runner/oracle/personal_docs.py`), the
+attack-v20 delta's rule set against
+`runner/oracle/detection.py`, the Oracle's
+instructions, the briefing design's status line,
+and the privacy models survey all check out;
+`oracle-briefing-design.md`'s inventory section
+stands as the design-time record its status line
+supersedes. Files checked with no findings: the
+attack-v20 delta, the asymmetric-signing design,
+the approval-gate design (Argon's 1 raise
+decided above), the oracle briefing design, the
+Oracle's instructions, the personal-documents
+shelter and warning, the privacy models and
+Fremont research, the hardening templates readme,
+and the agent-state files record. Guard evidence
+on the landing tree: the defaults registry is
+green, its pins following the senses and
+remediation lines this packet moved; the
+reader-quiet and figure sets pass; the
+doc-divergences and feature-tiers sets read 45
+failed on the landing tree against 66 failed and
+896 passed on the pristine tree in the same pass
+(the batch's 1 further failure was the registry
+drift the pins commit settles) — the packet's
+fixes cured 21 of the pristine failures, all in
+the grep max-matches family, and added none; the version-rot
+and stamp-history failures reproduce identically on
+the pristine base in this cell and are recorded
+there as pre-existing, not as this packet's. One
+cross-packet flag, filed here for the lane that
+owns it: `default-posture.md`'s S5 finding, measured
+2026-11-09, records the job-time confinement
+fallback as running the job weaker, which the
+Q135 settlement has since retired in the code and
+in SECURITY.md; the page is Packet 1's, and its
+measurement record is for that lane to refresh.
+
 ## The documentation overview, remedial Argon sweep: suppositions recorded before the sittings (2026-11-10)
 
 The overview's directed method was an outside read: every
