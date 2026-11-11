@@ -264,14 +264,24 @@ def _fold(text, breaks=False):
     invisible separator and invisible plus), the
     combining grapheme joiner and the Arabic letter
     mark are clause boundaries too, read before
-    the fold."""
+    the fold; Q155 reads the format characters
+    standing past those ranges the same way -- the
+    deprecated format controls (standing past the
+    bidi isolate controls the fold already reads),
+    the Mongolian free variation selectors (beside
+    the Mongolian vowel separator), the interlinear
+    annotation anchors, the Arabic end-of-text mark
+    (beside the Arabic letter mark) and the Syriac
+    abbreviation mark are clause boundaries too,
+    read before the fold."""
     if breaks:
         text = re.sub(r"\r\n|[\r\n\t\x0b\x0c\x85\u2028\u2029"
                       r"\u00a0\u1680\u2000-\u200d\u202f"
                       r"\u205f\u3000\u2060\ufeff\u00ad"
                       r"\u180e\u200e\u200f\u202a-\u202e"
                       r"\u2061-\u2064\u2066-\u2069\u034f"
-                      r"\u061c]",
+                      r"\u061c\u206a-\u206f\u180b-\u180d"
+                      r"\u061d\u070f\ufff9-\ufffb]",
                       " \u00b6 ", text)
     return re.sub(r"\s+", " ", text).strip()
 
@@ -477,6 +487,31 @@ def _fold(text, breaks=False):
 # fraction slash, the corner brackets, the fullwidth
 # exclamation and question marks, the Arabic
 # semicolon and the Devanagari danda).
+# Q155 widened the guard once more at the same
+# detector: a governed phrase is judged by its own
+# shape through a relative clause the phrase itself
+# carries -- a common-noun phrase standing between
+# the clause's verb and its infinitive is the
+# clause's object phrase even when a relative clause
+# modifying the phrase intervenes between the phrase
+# and its infinitive, while a noun complement is
+# still crossed and the Q153 Answer's bound edge
+# stays as pinned; the format characters standing
+# past the fold's ranges are read as boundaries the
+# way the fold-erased spaces and the filed joiners
+# are read (the deprecated format controls, the
+# Mongolian free variation selectors, the
+# interlinear annotation anchors, the Arabic
+# end-of-text mark and the Syriac abbreviation
+# mark); and the ledger guard opens a new segment
+# at the remaining punctuation separators (the
+# opening single curly quote, the fullwidth
+# quotation mark and apostrophe, the fullwidth
+# parentheses and square brackets, the Devanagari
+# double danda, the double exclamation mark, the
+# interrobang, the inverted exclamation and
+# question marks, the triangular bullet, the double
+# question mark and the three-em dash).
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -683,7 +718,12 @@ def _prohibitive_occurrences(low):
 # the clause's object phrase whatever verb governs
 # it, while a complement verb's phrase and a head
 # of the complement's closed standing are still
-# crossed.
+# crossed. Q155 judges that same phrase through a
+# relative clause the phrase itself carries: the
+# phrase standing ahead of its own relative clause
+# is judged by its own shape, and the inside
+# clause's tail is the inside clause's, not the
+# phrase's.
 _CLAUSE_OBJECT_WORDS = frozenset({
     "you", "him", "her", "them", "us", "me", "it",
     "anyone", "someone", "everyone", "anybody",
@@ -1253,6 +1293,24 @@ def _clause_carries_infinitive(clause_words):
         obj = clause_words[verb_at + 1:]
         if not obj:
             continue
+        # A governed phrase carrying a relative
+        # clause of its own (Q155): the phrase stands
+        # ahead of the clause that modifies it
+        # ("compels a clerk who is on duty to ..."),
+        # and the inside clause's auxiliary,
+        # preposition and complement-head tail is
+        # that clause's, not the phrase's -- the
+        # phrase is judged by its own shape, ahead of
+        # the relative pronoun, by the branches
+        # below. A relative pronoun standing first
+        # leaves no phrase ahead of it to judge.
+        rel_at = next((at for at, tail in enumerate(obj)
+                       if tail in ("who", "whom", "which",
+                                   "that")), None)
+        if rel_at is not None:
+            if rel_at == 0:
+                continue
+            obj = obj[:rel_at]
         if obj[0] in _PREPOSITION_WORDS \
                 or obj[0] in _AUX_WORDS \
                 or "to" in obj \
@@ -1765,7 +1823,10 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     "‹", "›", "„", "‡", "、",
                     "；", "：", "؟", "‚",
                     "′", "⁄", "「", "」",
-                    "！", "？", "؛", "।")
+                    "！", "？", "؛", "।", "‘",
+                    "＂", "＇", "（", "）", "［",
+                    "］", "॥", "‼", "‽", "¡",
+                    "¿", "‣", "⁇", "⸻")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -1836,7 +1897,23 @@ def _ledger_complement_is_evidence(owner, match):
     single low-9 quote, the prime, the fraction slash,
     the corner brackets, the fullwidth exclamation
     and question marks, the Arabic semicolon and the
-    Devanagari danda)): an evidence word in
+    Devanagari danda) -- and by Q155, where the
+    format characters standing past the fold's ranges
+    are read as boundaries before the fold beside the
+    characters it already reads (the deprecated
+    format controls, the Mongolian free variation
+    selectors, the interlinear annotation anchors,
+    the Arabic end-of-text mark and the Syriac
+    abbreviation mark, standing in the folded text
+    as the pilcrow), and the remaining punctuation
+    separators open a segment too (the opening single
+    curly quote, the fullwidth quotation mark and
+    apostrophe, the fullwidth parentheses and square
+    brackets, the Devanagari double danda, the double
+    exclamation mark, the interrobang, the inverted
+    exclamation and question marks, the triangular
+    bullet, the double question mark and the
+    three-em dash)): an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does
