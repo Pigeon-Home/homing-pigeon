@@ -13757,6 +13757,74 @@ these suppositions, before any fix):
   rather than skipping; its local pass is the
   bwrap branch's refusal, not the Windows one.
 
+Conclusions (2026-11-11, this lane), against the
+suppositions one by one: **GATES2-S1 confirmed**
+— the load order and the identical 7 dots stand
+as the measurement's starting point, and the
+classes' local counts are the piece's 18 as
+7 + 5 + 6 in load order. **GATES2-S2 confirmed**
+— the simulation above is the mechanism,
+deterministically: an engageable Windows backend
+leaves the refuse test's startup with no refusal
+to fire, and `main()` does not return; a
+cannot-engage backend refuses at once.
+**GATES2-S3 confirmed** — both strict win32
+configs returned 0 with the audit report under
+the engageable backend in simulation, the latent
+fast failures exactly as supposed.
+**GATES2-S4 confirmed** — no class costs a
+second locally; the wall record was a hang
+record, not a price record. **GATES2-S5 landed
+as prescribed** — the piece divides along its
+class seams into
+`test_decision1_startup_gates_refuse` (5 tests),
+`test_decision1_startup_gates_strict` (6) and
+`test_decision1_startup_gates_phase2` (7),
+every test moved with its assertions unchanged
+(the move's diff is exactly the three prescribed
+constructions and one comment), and the three
+named tests script `REM._windows_confine` to the
+support module's cannot-engage backend. Under a
+simulated Windows host (platform `win32`, OS
+name `nt`, an engageable backend scripted behind
+the production lookup) the three named tests now
+pass — 3 run, no failures — where the unscripted
+shapes hang and fail as measured above. The
+skip registry's job_user reason names the refuse
+piece that now carries its test, and the support
+module counts the family's eight siblings.
+**GATES2-S6 landed as priced** — the durations
+table retires the gates piece's 270 and prices
+gates_refuse at 100, gates_strict at 180 and
+gates_phase2 at 150 (430 in all, no piece above
+180), and the guard's real-suite packing stays
+within the 720-second budget. **GATES2-S7's
+guard stands as prescribed** — the durations
+guard's new pin holds each new piece at its
+floor price and under the 400-second ceiling,
+the old gates module absent from the table and
+its file absent from the tree, and the family
+count pin carries the 97 with the gates 18 as
+5 + 6 + 7. Guard evidence on the landing tree:
+the durations guard reads 49 green; the
+decision1 family across its eight pieces plus
+the skip registry reads 102 green (1 skip, the
+root-only job_user refusal); the neighbouring
+enforce-posture reconciliation, windows-confine
+and require-posture families read 137 green; and
+the regression guard over the strict piece reads
+red on one leg only — the version-rot test over
+this file, which fails identically on the tree
+without this lane's changes (its offender
+strings stand in sections landed before this
+lane) and which S7 leaves untouched on its own
+record, as it leaves the load-sensitive family.
+What would prove the wall-clock red cleared
+stands exactly where S7 put it: the next
+completed build-windows verdict on a head
+carrying this further split, under rule 8. This
+lane does not claim it.
+
 ## Q155 re-test: conclusions of the filing seat (2026-11-11)
 
 The re-test ran in a fresh scratch clone from
