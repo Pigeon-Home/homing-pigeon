@@ -1434,6 +1434,66 @@ Each supposition is settled against the records in
 the commits that follow this note; the conclusions
 stand at the end of this section when the packet
 lands.
+## The documentation overview, Packet 9: suppositions recorded before the check (2026-11-10)
+
+Packet 9 of the overview is the remainder sweep, computed
+at run time as every tracked markdown file not covered by
+Packets 1–8. Against a fresh `git ls-files` on remote main
+at this packet's start (271 tracked markdown files, the
+same count the inventory recorded), the remainder is
+exactly the 46 files the assembly plan named: the 3
+per-draft IETF status files, 7 steady-shelf files
+(`docs/steady/emergency.md`, `overview.md`,
+`present-but-invalid-config.md`,
+`proofs/connector-roundtrip.md`, `proofs/verify-v31.md`,
+`secret-rotation.md`, `verification.md`), the hosted
+queue's README, 30 extension READMEs and fixture READMEs
+under `runner/extensions/`, 4 test READMEs, and the pull
+request template. Each is checked sentence by sentence;
+the extension READMEs are checked against the extension
+code and manifests they describe. Suppositions, written
+before that code check ran:
+
+- **P9-S1.** `docs/steady/overview.md`'s status section
+  is stale: it names 3.15.18.12 as the latest published
+  release, verified 2026-11-08, though 3.16.20.1 was
+  published on 2026-11-10.
+- **P9-S2.** At least 1 extension README will disagree
+  with the code it describes — a stated tunable default,
+  signal name, or state-file name that its
+  `extension.json` or producer does not carry.
+- **P9-S3.** `docs/steady/proofs/connector-roundtrip.md`
+  carries retired-layout paths: its replay test and its
+  sender command are named without the `runner/` home
+  the files now live under.
+- **P9-S4.** Two steady records cite the retired layout:
+  `present-but-invalid-config.md` names the divergences
+  report under `docs/reports/` and its Applied-in line
+  names `docs/oracle/` and `docs/extend/` homes, and
+  `emergency.md` names the researcher identity record in
+  capitals and the forum and hold file under a
+  `docs/seats/` home none of them lives at.
+- **P9-S5.** The 3 per-draft IETF status files agree
+  with the cover sheet (`docs/ietf/status.md`, Packet
+  7's reading) and with the folders they describe: the
+  posted -03 revisions and the -00 through -03 submitted
+  sets for versions 1 and 2, and no submitted set at all
+  for version 3.
+- **P9-S6.** Everything else in the remainder checks
+  out: `verification.md`'s release chain,
+  `secret-rotation.md` against PROTOCOL.md sections
+  14.2 and 14.4 and the sender's keyring commands, the
+  queues-worker README against the Worker code, the
+  fixture and test READMEs against the files they
+  describe, `verify-v31.md` as the bannered historical
+  record it declares itself, and the pull request
+  template's test command.
+
+Each supposition is settled against the code in the
+commits that follow this note; the conclusions stand at
+the end of this section when the packet lands, stating
+that the sweep is empty-by-construction and re-verified
+against a fresh `ls-files` at the packet's close.
 
 ## Sources
 
