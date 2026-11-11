@@ -29,9 +29,10 @@ configuration shape that expresses it.
   name matches legal, tax or medical vocabulary. It never opens
   a file, never keeps a name, never sends anything.
 - **The config security modes** (`runner/guard/security.py`).
-  Eight guard features -- `policy_env`, `policy_files`,
+  Nine guard features -- `policy_env`, `policy_files`,
   `policy_args`, `audience`, `confinement`, `job_user`,
-  `personal_docs_shelter`, `agent_state_guard` -- each
+  `personal_docs_shelter`, `agent_state_guard`,
+  `v2_question` -- each
   set to `off`, `audit` or `enforce` under `security.modes` in
   the config, each defaulting to `enforce`, with audit records
   written to a tamper-evident log. An unknown feature name in
