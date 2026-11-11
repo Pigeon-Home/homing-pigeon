@@ -67,12 +67,12 @@ and again the same day after the job_user postspawn
 fix grew runner/ops by 36 lines, which that landing
 left unrecorded,
 the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->60,266<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->54,342<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->763,753<!--/hp-fig-->-byte zip, and the project's own estimator
-counts it at <!--hp-fig:core_assembled_tokens-->632,667<!--/hp-fig--> tokens; the Gemini figure above still
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->60,887<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->54,916<!--/hp-fig--> non-blank)
+and a <!--hp-fig:core_assembled_zip_bytes-->769,727<!--/hp-fig-->-byte zip, and the project's own estimator
+counts it at <!--hp-fig:core_assembled_tokens-->638,111<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical <!--hp-fig:core_files-->135<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->624,364<!--/hp-fig-->
-tokens across <!--hp-fig:core_lines-->59,482<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->53,654<!--/hp-fig--> non-blank); the 2 token
+estimator counts the canonical <!--hp-fig:core_files-->135<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->629,808<!--/hp-fig-->
+tokens across <!--hp-fig:core_lines-->60,040<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->54,170<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -87,17 +87,17 @@ set. A change aimed at core is aimed at those 135 files and
 no others, and a result reported for core covers exactly
 them.
 
-The runner proper is 6,928 lines; the core around it is
-60,266. The set as assembled, part by part (re-measured
+The runner proper is 7,137 lines; the core around it is
+60,887. The set as assembled, part by part (re-measured
 2026-11-10):
 
-- runner/ops: 18,906 lines
-- runner/tools: 9,598
-- runner/wire: 8,708
-- runner/runner.py: 6,928
+- runner/ops: 18,924 lines
+- runner/tools: 9,661
+- runner/wire: 9,033
+- runner/runner.py: 7,137
 - runner/oracle: 5,044
 - runner/transport_extensions: 2,775
-- runner/guard: 4,521
+- runner/guard: 4,527
 - runner/cloud: 2,049
 - runner/hosting: 1,704
 - runner/__init__.py: 23
@@ -105,12 +105,12 @@ The runner proper is 6,928 lines; the core around it is
 
 The canonical list's breakdown is the same except
 runner/tools, where the 3 excluded suite runners account
-for 784 of the lines, leaving 8,814 in the canonical list.
+for 847 of the lines, leaving 8,814 in the canonical list.
 The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-60,266 lines, explicit platform branching — sys.platform,
+60,887 lines, explicit platform branching — sys.platform,
 os.name and win32 markers — totals about 140 lines in 36 of
 its files, beside a small number of dedicated platform
 modules (runner/ops/windows.py, runner/ops/winlog.py,
