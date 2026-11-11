@@ -2854,6 +2854,40 @@ that filing and the hosted build's completion,
 Q139's re-test passes: the supposition the building
 seat recorded is judged held by a second seat.
 
+Correction (the second seat, later the same
+evening): the hosted build's macOS leg completed
+after the record above was written, and it is red,
+and one of its errors belongs to this landing.
+`test_runner_last_edges`' `test_v2_before_execute_legs`
+— a pre-existing fail-soft pin whose stand-in for
+the protocol module carries only the legacy surface
+— passes on the tree immediately before the Q139
+build and errors on the landing, reproduced
+locally by this seat both ways: the dispatch head
+calls `_protocol_v2.consult_mode_of(cfg)` with no
+guard for a module object that lacks the new
+function, and the `AttributeError` leaves the seam
+the leg exists to keep soft. No deployed runner
+raises (the real module carries the function); the
+broken thing is the seam's pinned contract and a
+standing test. Filed as Q142 for a fix lane, not
+fixed here. The macOS leg's other failures are
+the recorded pre-existing families, none in a Q139
+file — the defaults registry's doc-line pins for
+pages the parallel packets moved, the version-rot
+guard on this file (this seat verified it fails
+identically on the pristine head), the layout
+stale-path check the building seat already named,
+the core-figures breakdown the next head's
+re-measure already chases, and the regression
+guard's end-to-end leg carrying the same drift —
+and the macOS shard carrying `test_v2_consult`
+itself reads OK. The verdict above is therefore
+amended: points (1) through (4) and (6) stand as
+recorded; point (5) completes as test-macos red,
+one error this landing's own, and Q139 is not
+called fully done until Q142's fix is re-tested.
+
 Conclusions (2026-11-10, the same evening): **P7-S1
 refuted as stated** -- the living drafts are not
 byte-identical to any submitted revision: both are

@@ -43,6 +43,71 @@ Rules:
 
 ---
 
+## Q142 (Muse, to the desk, 2026-11-10): the Q139 dispatch head calls `consult_mode_of` unguarded, and a pre-existing fail-soft leg of `_v2_before_execute` errors on the landing
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: filed by the second seat's rule-8 re-test of
+Q139, from the hosted verdict on the landing's
+conclusions head, and reproduced locally both ways.
+`runner/tests/test_runner_last_edges.py`'s
+`test_v2_before_execute_legs` pins the seam's
+fail-soft legs: it stands a `SimpleNamespace` in for
+the protocol module — carrying only the legacy
+surface, `outbound_for` and `segment` — and asserts
+the determination segment comes back. Q139's
+dispatch head in `_v2_before_execute` calls
+`_protocol_v2.consult_mode_of(cfg)` before the
+legacy body runs, with no guard for a module object
+that does not carry the new function, so the leg
+now raises `AttributeError` out of the seam. The
+test passes on the tree immediately before the
+Q139 build and errors on the landing, locally and
+on the hosted macOS leg (its shard 1 error; the
+shard carrying `test_v2_consult` itself reads OK).
+The production module always carries the function,
+so no deployed runner raises here; what broke is
+the seam's pinned contract — the seam answers for
+whatever protocol module it is handed, absent
+module included (the leg's first half pins exactly
+that) — and a standing test stands red on the
+landing because of the build.
+
+Options:
+
+1. Guard the dispatch: read the mode through a
+   `getattr` with the legacy default, so a module
+   without `consult_mode_of` is the remote path it
+   always was.
+2. Move the mode read inside the consult seam and
+   let `_v2_before_execute` dispatch on a plain
+   config read (`consult_mode_of`'s logic is a pure
+   config query and needs no module).
+3. Update the leg's stand-in to carry
+   `consult_mode_of` — rejected by this seat as
+   the whole fix: it would green the test by
+   moving the pin, and the next stand-in (or an
+   embedding that wraps the module) would raise
+   again. The test may still gain a consult-mode
+   leg of its own afterward.
+
+Recommendation: option 1 or 2, landed by a fix
+lane with the leg run before and after, and the
+full `test_runner_last_edges` file green; this
+seat re-tests. Until it lands, the hosted verdict
+on the Q139 landing reads: test-macos red, one of
+its errors this defect, the rest the recorded
+pre-existing families (doc-drift pins,
+version-rot, stale path, core figures) that the
+parallel landings of the same evening created and
+the next head's pin-follow commits already chase.
+
+**Answer:**
+
+**Applied in:**
+
+---
+
 ## Q141 (Muse, to the desk, 2026-11-10): the consult seam records a consult segment and an audit row when version 2 is off — a consult that never happened, in a mode the deployment never asked the protocol for
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
@@ -335,6 +400,24 @@ record only: the seam records a consult segment
 and an audit row when version 2 is off — filed as
 Q141, not fixed by this seat. The full record
 stands in the desk's Q139 section.
+
+**Correction (second seat, later the same
+evening):** the hosted build on the conclusions
+head completed its macOS leg after the note above
+was written, and the leg is red. One of its errors
+is a second Q139 defect, proven both ways by this
+seat: `test_v2_before_execute_legs` passes on the
+tree before the build and errors on the landing —
+the dispatch head calls `consult_mode_of`
+unguarded against a protocol-module stand-in.
+Filed as Q142. The leg's remaining failures are
+the recorded pre-existing families (doc-drift
+pins, version-rot on this desk file, the
+stale-path check, core figures), none in a Q139
+file, and the shard carrying `test_v2_consult`
+reads OK. Q139's re-test therefore stands as:
+behaviour and record pass, subject to Q141; the
+hosted verdict does not pass until Q142 lands.
 
 ---
 
