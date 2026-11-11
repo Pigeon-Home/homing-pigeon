@@ -1846,6 +1846,113 @@ below under Argon's stamp
 decisions on each stand beside them under Muse's own
 stamp (00000000-muse-7e57-d0c5-58316a922026).
 
+## The determination decision point, built (2026-11-10)
+
+Q139's build, taken up by the building seat. The design
+preparation resolved the five filed points on paper; this
+note records the supposition before the code, the five
+open points the preparation deliberately left to this
+seat and how each is settled here, and — at the end of
+the landing — the conclusions against the evidence.
+
+Supposition, written before the build: if the decision
+point is implemented as a pure routing query computed
+once per job from config + job + the already-formed
+opinion plan, with the remote question sent first, the
+local consult run inside the existing deadline window,
+and the combined picture recorded only on the result
+(a `consult` segment) and in the audit — never in the
+wire determination, never in the execution decision —
+then (1) every existing deployment behaves
+byte-identically (the legacy `remote` mode is the
+default when `v2_consult` is absent); (2) no failure arm
+can stall the worker past the 30-second cap or turn a
+determination into a refusal; and (3) the whole feature
+is pin-testable per field, because every decision it
+makes is a pure function of inputs the tests can
+construct. The conclusions below judge this supposition
+against the red/green evidence of the landing.
+
+The five open points, settled by this seat:
+
+1. **The clean-pass reading.** Q139's first point says
+   "a clean pass sends nothing, and stays nothing". This
+   seat reads that suppression as a property of the new
+   `both` mode only. In legacy `remote` mode
+   `should_ask` fires on clean-pass exec jobs exactly as
+   it does today, and changing that would break the
+   byte-identical promise every existing deployment
+   runs on; the filed sentence names the routing
+   question the decision point answers, and the
+   decision point exists only where a consult mode is
+   chosen. In `both` mode a clean pass with no model
+   tier engaged consults nothing and records nothing.
+2. **An allowlist with no posture block.** Refusal, not
+   warn-once: `v2_question_postures` present while the
+   config declares no `disclosure_posture` block is a
+   startup config error naming the pair, in the same
+   refuse class as the posture producer's own startup
+   errors. A warn-and-continue here would leave a
+   disclosure gate silently inert for the whole run,
+   which is the failure shape this suite has retired
+   everywhere else. The tunable surface is the key
+   itself: remove the allowlist, or declare the block.
+3. **The record's exact shape.** The `consult` segment
+   text is pinned, in this field order:
+   `v2_consult mode=<mode> sources=<csv|none>
+   local=<stance> remote=<stance> outcome=<outcome>
+   split=<true|false> deadline=<seconds>`, followed,
+   only when they apply, by `gate=<code>`,
+   `local_model=<status>` and `late=true`. Sources are
+   `det`, `model`, `remote`. Local stances are `fail`,
+   `unknown`, `proceed`, `none`. Remote stances are
+   `proceed`, `stated`, `no_answer`, `not_asked`,
+   `send_failed`. Outcomes are `both`, `local_only`,
+   `remote_only`, `none`. The audit row's decision is
+   the outcome; its reason is the routing reason —
+   `v2_off`, `legacy_remote`, `legacy_no_ask`,
+   `clean_pass_settled`, `both_deterministic`,
+   `both_llm_model`, `both_det_remote`, `local_only_mode`,
+   `kind_not_exec`, `no_plan`, `posture_not_listed`,
+   `posture_unstamped`, `v2_question_off` — replaced,
+   when a failure arm fires, by the arm's own code:
+   `send_failed`, `no_answer`, or `deadline_zero_remote`
+   when the deadline was 0 and nothing was pre-filed.
+   The segment text is also the audit row's detail:
+   names and codes only, never answer text, never
+   script text.
+4. **The stamp does not ride the consult segment.** The
+   posture stamp already rides the result where the
+   posture producer put it; the consult record names
+   posture only as a gate outcome code, never the stamp
+   and never the posture id.
+5. **One question, both audiences.** The local model
+   tier is asked through the existing opinion model
+   note — the same question text the opinion tier
+   already uses — so the two sources answer one
+   question and the picture is combined rather than two
+   unrelated opinions. The note keeps its existing home
+   in the opinion member, prefixed `Model-formed note:`;
+   the consult record references the tier's engagement
+   (`local_model=ok|unavailable|error`), never its text.
+   The model tier's budget is the deadline: it is not
+   engaged at all when the deadline is 0, and it runs
+   inside the wait window the deadline already bounds,
+   after the question has gone out.
+
+Two further defaults, under the conductor's
+defaults-plus-options rule. The posture gate's modes
+are the house security modes for the new `v2_question`
+feature (off disables the remote consult, audit sends
+and records what enforce would have decided, enforce
+applies the gate; unset reads as enforce). And where
+the gate blocks under enforce, the job is never
+refused: the consult degrades to local-only and the
+record says why — a determination is not a refusal.
+
+Conclusions stand at the end of this section when the
+landing is measured.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:
