@@ -24,8 +24,6 @@ Setup walks you through connecting a dedicated mailbox. The
 recommended path is a browser sign-in, so the account password never
 lands in config; an app password is the
 other choice.
-Another provider works by setting `imap_host` and `smtp_host` in
-`config.json` with an app password.
 
 
 ## IETF Internet-Drafts:
