@@ -430,9 +430,27 @@ class StartupGateTest(_PostureGuard):
         out, err = io.StringIO(), io.StringIO()
         argv = ["runner", "--config", cfg_path, "--audit-report",
                 *extra_argv]
-        with mock.patch.object(sys, "argv", argv):
-            with redirect_stdout(out), redirect_stderr(err):
-                rc = runner.main()
+        # The startup announcement rides runner.log(), whose INFO
+        # lines share one per-minute budget across the whole test
+        # process; in a full-suite run earlier tests can spend it
+        # and the line is suppressed before this test ever runs.
+        # This class is about the announcement, not the flood cap:
+        # start from a fresh budget window (the shape
+        # test_build_stamp.py already uses) and restore it after.
+        old_minute = runner._LOG_MINUTE
+        old_count = runner._LOG_COUNT
+        old_dropped = runner._LOG_DROPPED
+        runner._LOG_MINUTE = 0.0
+        runner._LOG_COUNT = 0
+        runner._LOG_DROPPED = 0
+        try:
+            with mock.patch.object(sys, "argv", argv):
+                with redirect_stdout(out), redirect_stderr(err):
+                    rc = runner.main()
+        finally:
+            runner._LOG_MINUTE = old_minute
+            runner._LOG_COUNT = old_count
+            runner._LOG_DROPPED = old_dropped
         return rc, out.getvalue(), err.getvalue()
 
     def _cfg(self, d, block=None):
