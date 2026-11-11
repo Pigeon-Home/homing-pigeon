@@ -10441,3 +10441,107 @@ tag-or-main build-windows verdict on a head
 carrying this re-pack, under rule 8, with the
 version-rot family cleared by that cut's bump
 judged separately from the wall-clock question.
+
+## The agent-state guard extensions and the general tree-wide test: conclusions (2026-11-11)
+
+Settled against the suppositions recorded before the
+build in this lane's section above (ASG-S1 to ASG-S7):
+
+- **ASG-S1 confirmed.** The tool-server category
+  catches a secret pasted into an `env` or `headers`
+  map under the `mcp.json` filename at any depth and
+  under the `mcpServers` top-level key in an
+  arbitrarily named file (the VS Code `servers` shape
+  is reached through the filename), fires nothing on
+  placeholder or plain values, and the trigger alone
+  is not a finding. One scope refinement the build
+  required, recorded here: a named-secret key in the
+  TOML/YAML read must be the secret's whole name
+  (`apiKey`, `shared_secret`, `mailbox_password`),
+  not a compound containing the word -- a script
+  named `homing-pigeon-auth` in this tree's own
+  `pyproject.toml` and a workflow's `id-token`
+  permission are the measured counterexamples, and
+  both stand silent in the landed family.
+- **ASG-S2 confirmed.** Grant state fires under
+  `autoApprove`, `allowedTools`, `terminalAllowlist`,
+  `allowlist` and a `permission` map, plain and with
+  a secret inside an entry (both rules firing on the
+  second), and stays silent on every empty and
+  absent form.
+- **ASG-S3 confirmed.** The extension 1 and 2 shapes
+  fire in TOML and YAML fixtures shaped like the
+  survey's members; a YAML document outside the
+  bounded subset (a block scalar) is read by the
+  line-scan fallback and its grant and named-secret
+  shapes still fire; the workflow-shaped YAML control
+  stays silent.
+- **ASG-S4 confirmed.** The Subversion status reader
+  feeds exactly the scheduled additions (modified,
+  missing and unversioned entries are not fed), the
+  same scan answers for those pairs, the `check-svn`
+  front door reports and stops under `enforce`, and
+  `vcs-credential` fires on the Mercurial `[auth]`
+  password line and the Subversion proxy password,
+  plain and bookended, and on nothing else in its
+  control set (outside-section, empty and
+  placeholder forms all silent under that rule).
+- **ASG-S5 confirmed, with the measured scope line
+  the supposition left open.** No real agent-state
+  material stands in the current tree. Measured
+  before the build: the staged scan's raw line form
+  over the whole tree fires `secret-in-command` on
+  223 files -- ordinary source and prose handling
+  credentials as variables, which is not agent-state
+  material and not what section 6 item 4 names. The
+  landed tree-wide test therefore reads that one
+  rule in its designed context (structured
+  documents' string values) and every other
+  agent-state rule over every tracked file. Its
+  findings on the landing tree are exactly the 19
+  allowlisted (file, rule) pairs, each with its
+  reason recorded in the test: 17 `secret-value`
+  pairs, every one a canonical published example key
+  id, a minted fake in a guard fixture, a private-key
+  header marker named as a test subject, or a
+  hyphenated heading anchor matching a key format's
+  shape; and 2 `secret-in-command` pairs, the CI
+  fixture config literals in the workflow files,
+  whose password is declared not-a-real in the file
+  and whose shared secret is a synthetic patterned
+  test value. The allowlist is pinned both ways: a
+  pair that stops firing fails the test, so the list
+  cannot rot.
+- **ASG-S6 confirmed.** The shipped guard's family
+  reads as it did (30 tests), the extensions family
+  stands at 39 tests and the tree-wide family at 9,
+  and the neighbour batteries stay green beside them
+  on the landing tree: the gitignore state files and
+  ignore renderings, the security config, posture,
+  parity, personal-documents and shelter families
+  (203 tests), and the skip registry and reader-quiet
+  sets. No core file changed and `approvalguard.py`
+  stands outside the canonical core list, as the
+  supposition's first-hand check recorded, so no
+  core figure moved and no figures commit stands in
+  this lane.
+- **ASG-S7 confirmed.** The report discipline holds
+  through every extension: captured reports for the
+  tool-server and VCS rules name the file and the
+  rule and provably never carry the fixtures' fake
+  values, as the shipped family's report test already
+  pinned for its rules.
+
+The design records now state the shipped form:
+`agent-state-files.md` section 4 records the
+extensions and the tree-wide test as shipped, and
+`privacy-design.md` sections 4, 6 and 8 record the
+category with nothing left queued. What could not be
+recorded as a unit test stands as the supposition
+recorded it: a live Subversion pre-commit run needs
+a Subversion binary this cell does not carry; the
+status reader, the pair feeding, the front door's
+error shape and the content rules are the pinned
+substrate.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
