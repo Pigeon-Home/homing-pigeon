@@ -11310,3 +11310,109 @@ those sentences themselves beside the committed
 guard family the fix lane lands, which pins both
 ways. No new behaviour is claimed beyond what
 those calls and that family show.
+
+## Q153: conclusions of the fix lane (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded in the desk
+before the fix (the Q153 section above), each measured
+on the current head and on the landing tree. The lane
+started from the remote main carrying the Q152
+re-test and the Q153 filing.
+
+- **Q153-S1 confirmed** — the filed defect reproduced
+  whole before the fix, on this lane's own probe over
+  the fixture layer and the shipped layer and over
+  both earlier trees (the pre-Q152-fix tree at the
+  Q152 fix commit's parent, the pre-Q143-fix tree at
+  the Q143 fix commit's parent): item 1's 11 sentences
+  marking whole on all three trees (each family's
+  representative in 73 of 75 bookended variants, its
+  mark and 1 audit row end to end), item 2's 10
+  sentences silent on the current head and firing
+  whole on both earlier trees (the representative in
+  0 of 73 firing bookended variants on the current
+  head, 73 of 73 on each earlier tree), item 3's 15
+  shapes silent on the current head and on the
+  pre-Q152-fix detector and firing whole on the
+  pre-Q143-fix detector (both representatives in 0 of
+  73 on the current head, 73 of 73 on the
+  pre-Q143-fix detector), the controls and both-ways
+  pins holding among the checks.
+- **Q153-S2 confirmed** — a governed phrase's head is
+  judged by what it is in the phrase: a verb-form
+  word standing as the phrase's noun, under a lead or
+  in its plural form, is judged as its noun, and a
+  bare singular is judged by its head's standing like
+  its twins: item 1's 11 sentences and the raw-output
+  twin are silent on both layers, plain and bookended
+  (825 of 825 and 75 of 75 variants), its
+  same-standing controls stay silent (4 of 4), and
+  the complement and object-phrase pins of the Q143
+  to Q152 families read as they did. One refinement
+  beyond the suppositions' letter, recorded plainly:
+  the filed family's measurement showed the
+  complement judgement at the branch guarding the
+  inverted clauses taking the clause's own verb for
+  its subject's complement (the Q150 pin "the
+  supervisors compel to ..." crossed by its bare
+  verb standing after a verb-like plural subject),
+  and that judgement is now taken only at a verb
+  standing in verb position — auxiliaries and
+  adverbs alone ahead of it — as the verb branch
+  above it already held.
+- **Q153-S3 confirmed** — a governed phrase is judged
+  by the standing of the verb that governs it beside
+  its head: item 2's 10 sentences fire on both
+  layers, plain and bookended (730 of 730 firing
+  variants), the filed person-head controls keep
+  firing (9 of 9, 657 of 657 bookended), a
+  complement's head under a complement verb is still
+  crossed by its standing, and the passive
+  complements behind a be-auxiliary keep their
+  reading, as the held Q151 and Q152 families pin
+  beside the new one.
+- **Q153-S4 confirmed** — the zero-width and format
+  joiners are read as boundaries before the fold, and
+  a new ledger segment opens at the remaining
+  punctuation separators: the mixed sentence fires
+  under every one of the 15 shapes on both layers,
+  plain and bookended (1095 of 1095 firing variants),
+  and the evidence-only twins under the new
+  separators and joiners stay silent (6 of 6 in the
+  committed family).
+- **Q153-S5 confirmed** — end to end, item 1's
+  representative sentences (one of each family)
+  assembled into briefings carry no tension mark,
+  `briefing_report` names no tensions for them, and
+  the startup pass writes no audit row, and item 2's
+  representative sentence ("prompts a clerk") and
+  item 3's representative sentences (the
+  zero-width-non-joiner shape and the
+  closing-curly-quote shape) each carry the mark and
+  write exactly one audit row (feature `briefing`,
+  decision `marked`, the rule id as the detail), all
+  pinned in the family's end-to-end test.
+- **Q153-S6 confirmed** — nothing else moved: the
+  guard family stands at 157 tests (the
+  Q153PolarityGuardTest family's 13 beside the filed
+  Q143, Q144, Q145, Q146, Q147, Q148, Q149, Q150,
+  Q151 and Q152 families, the standing 7-rule family,
+  the unrelated-negation pins and the
+  negated-then-contradicting shapes), red-before at
+  2741 subtest failures against the unpatched
+  detector, every one of them in the new family; the
+  neighbour batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2*`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read 305 green beside it,
+  and the figures commit re-measured the core over
+  `briefing.py`'s 106-line growth.
+
+Q153 is answered under option 1 in the questions
+file. The filing seat's re-test is still owed under
+rule 8: Q153 is not closed by this lane, and neither
+are Q152, Q151, Q150, Q149, Q148, Q147, Q146, Q145,
+Q144 and Q143 — all close only after that re-test
+passes whole.

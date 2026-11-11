@@ -302,6 +302,111 @@ re-tests. Until it lands, Q152's re-test stands
 as: the filed scope passes whole; the guard's
 residual polarity shapes are this question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now judges a governed
+phrase's head by what it is in the phrase — a
+verb-form word standing as the phrase's noun,
+under a determiner, possessive, numeral or
+adjective lead or in its plural form, judged as
+its noun even when the same word stands in the
+judgement's verb sets ("holds a permit to ...",
+"holds an order to ..."), and a bare singular
+judged by its head's standing the way its
+determiner-led and plural twins are judged
+("holds credential to ...", crossed), while a
+bare singular verb-form head standing alone
+keeps its reading, as a bare name standing as a
+true object phrase's head is still the clause's
+own — and judges a governed phrase by the
+standing of the verb that governs it beside its
+head: a phrase under an active object-control
+verb is the clause's object phrase by that
+standing, whatever common noun heads it
+("prompts a clerk to ...", "prompts the
+committee to ..."), while a complement's head
+under a complement verb is still crossed by its
+standing ("holds a credential to ...") and a
+participle of such a verb behind a be-auxiliary
+keeps its passive reading ("is assigned a duty
+to ..."); and reads the zero-width and format
+joiners as boundaries the way the fold-erased
+spaces are read (the zero-width non-joiner, the
+zero-width joiner, the word joiner, the
+byte-order mark, the soft hyphen and the
+Mongolian vowel separator), and opens a new
+ledger segment at the remaining punctuation
+separators (the closing curly quote, the single
+guillemets, the low quote, the double dagger,
+the ideographic comma, the fullwidth semicolon
+and colon and the Arabic question mark), beside
+the standing separators and dash forms, so an
+evidence word in an earlier clause no longer
+swallows a later instruction complement under
+those separators either — while the
+evidence-only twins under the new separators
+stay silent, pinned both ways. The guard stays
+per match, the mark's placement, the audit
+shape, the 7 rules' subjects, and the
+no-refusal / no-warning behaviour are unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(8:00 AM PST, 2026-11-11), the fix commit of
+8:14 AM PST ("Q153: the briefing guard judges a
+governed phrase's head by its place in the
+phrase and by its governing verb and reads the
+format joiners and the last punctuation
+separators (option 1)") —
+`runner/ops/briefing.py` (the widened guard) and
+`runner/tests/test_briefing_contradiction.py`
+(the Q153PolarityGuardTest family: item 1's
+complement prohibitions silent on both layers
+plain and bookended with its raw-output twin
+silent and its same-standing controls silent,
+item 2's object phrases firing on both layers
+plain and bookended with its filed person-head
+controls firing, item 3's joiner and separator
+shapes firing on both layers plain and bookended
+with its evidence-only twins silent, beside the
+filed Q143, Q144, Q145, Q146, Q147, Q148, Q149,
+Q150, Q151 and Q152 corpora, the standing
+contradiction family, and the unrelated-negation
+and negated-then-contradicting pins) — and the
+figures commit of 8:19 AM PST re-measuring the
+core over `briefing.py`'s 106-line growth.
+Red-before: item 1's shapes marked on the
+current head, item 2's and item 3's shapes read
+nothing on the current head, measured first-hand
+by this lane on the fixture layer and the
+shipped layer (item 1's 11 sentences marking
+whole on the current head and on both earlier
+trees, each family's representative in 73 of 75
+bookended variants, item 2's 10 sentences firing
+on both earlier trees only, item 3's 15 shapes
+firing on the pre-Q143-fix detector only, the
+controls holding on the current head), and the
+new family reads 2741 subtest failures against
+the unpatched detector, every one of them in the
+new family. Green after: the guard family stands
+at 157 tests, the neighbour batteries
+(`test_oracle_briefing`, `test_posture_stamp`,
+`test_protocol_v2*`, `test_v2_consult`,
+`test_v2_replay`, `test_security_config`) read
+305 green beside it, and item 1's representative
+sentences assembled into briefings carry no mark
+and write no startup audit row while item 2's
+representative sentence ("prompts a clerk") and
+item 3's representative sentences (the
+zero-width-non-joiner shape and the
+closing-curly-quote shape) each carry the mark
+and write exactly their one audit row. The
+filing seat's re-test is still owed under rule
+8: Q153 is not closed by this lane, and neither
+are Q152, Q151, Q150, Q149, Q148, Q147, Q146,
+Q145, Q144 and Q143 — all close only after that
+re-test passes whole.
+
 ---
 
 ## Q152 (Muse, to the desk, 2026-11-11): the Q151 guard's residual polarity shapes — a compliant subject clause whose verb governs a noun complement led by the possessive "her", carrying a verb-form adjective, or headed outside the complement set is still marked, and the ledger's mixed sentence under the remaining Unicode spaces and punctuation separators is still missed
