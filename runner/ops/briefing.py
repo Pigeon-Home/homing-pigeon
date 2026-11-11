@@ -282,7 +282,11 @@ def _fold(text, breaks=False):
     Q157 reads the format characters beyond the BMP
     the same way -- the Egyptian hieroglyph format
     controls are clause boundaries too, read before
-    the fold."""
+    the fold; Q158 reads the remaining format
+    characters beyond the BMP the same way -- the
+    shorthand format controls, the musical format
+    characters and the tag characters are clause
+    boundaries too, read before the fold."""
     if breaks:
         text = re.sub(r"\r\n|[\r\n\t\x0b\x0c\x85\u2028\u2029"
                       r"\u00a0\u1680\u2000-\u200d\u202f"
@@ -292,7 +296,10 @@ def _fold(text, breaks=False):
                       r"\u061c\u206a-\u206f\u180b-\u180d"
                       r"\u061d\u070f\ufff9-\ufffb"
                       r"\u0600-\u0605\u06dd\u0890\u0891"
-                      r"\u08e2\U00013430-\U0001343f]",
+                      r"\u08e2\U00013430-\U0001343f"
+                      r"\U0001bca0-\U0001bca3"
+                      r"\U0001d173-\U0001d17a\U000e0001"
+                      r"\U000e0020-\U000e007f]",
                       " \u00b6 ", text)
     return re.sub(r"\s+", " ", text).strip()
 
@@ -573,6 +580,32 @@ def _fold(text, breaks=False):
 # brackets, the black lenticular brackets, the
 # fullwidth vertical line and tilde, and the
 # halfwidth ideographic full stop).
+# Q158 widened the guard once more at the same
+# detector: a governed phrase is judged by its
+# head's standing through a pied-piped relative
+# clause the phrase itself carries, whatever its
+# lead's shape -- where the lead carries more
+# than its noun ahead of the preposition, with no
+# determiner of its own (an adjective, a compound
+# noun or a numeral), the whole lead is the inside
+# clause's lead, not the phrase's tail, while a
+# true object phrase carrying the same shape still
+# fires and the Q153 Answer's bound edge stays as
+# pinned in this form too; the remaining format
+# characters beyond the BMP are read as boundaries
+# the way the fold-erased spaces and the filed
+# joiners are read (the shorthand format controls,
+# the musical format characters and the tag
+# characters); and the ledger guard opens a new
+# segment at the remaining general-punctuation
+# separators (the double low line, the one dot
+# leader, the hyphenation point, the per ten
+# thousand sign, the triple prime, the reversed
+# triple prime, the caret, the reference mark, the
+# overline, the asterism, the hyphen bullet, the
+# Tironian sign et, the reversed pilcrow sign, the
+# low asterisk, the swung dash, the tricolon and
+# the vertical four dots).
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -794,7 +827,12 @@ def _prohibitive_occurrences(low):
 # same way: the phrase standing ahead of the
 # pied-piped lead ("the record of which") is judged
 # by its head's standing, and the lead is the
-# inside clause's, not the phrase's tail.
+# inside clause's, not the phrase's tail. Q158
+# judges that same phrase through a pied-piped
+# clause whatever its lead's shape, the same way:
+# a lead carrying more than its noun, with no
+# determiner of its own, is the inside clause's
+# lead whole, not the phrase's tail.
 _CLAUSE_OBJECT_WORDS = frozenset({
     "you", "him", "her", "them", "us", "me", "it",
     "anyone", "someone", "everyone", "anybody",
@@ -1390,7 +1428,12 @@ def _clause_carries_infinitive(clause_words):
         # that preposition and the noun phrase it
         # closes are the inside clause's lead, and the
         # governed phrase standing ahead of the lead
-        # is judged by its head's standing.
+        # is judged by its head's standing. Q158
+        # reads a pied-piped lead carrying more than
+        # its noun, with no determiner of its own, the
+        # same way: the whole lead is the inside
+        # clause's, and the phrase standing ahead of
+        # it is judged by its head's standing.
         rel_at = next((at for at, tail in enumerate(obj)
                        if tail in ("who", "whom", "which",
                                    "that", "whose")), None)
@@ -1427,6 +1470,32 @@ def _clause_carries_infinitive(clause_words):
                     None)
                 if pied_at is not None:
                     obj = obj[:pied_at]
+                elif len(obj) > 3 \
+                        and obj[:-3][-1] \
+                        not in _CLAUSE_DETERMINERS:
+                    # A pied-piped lead carrying more
+                    # than its noun, with no determiner
+                    # of its own (Q158: "prompts a duty
+                    # official record of which is on
+                    # file to ...", "a duty file record
+                    # of which", "a duty two records of
+                    # which"): the lead's modifier -- an
+                    # adjective, a compound noun or a
+                    # numeral -- stands ahead of the
+                    # lead's noun, so the whole lead
+                    # (the modifier, the noun and the
+                    # preposition) is set aside, the way
+                    # a determiner-led lead is set aside
+                    # at its determiner, and the governed
+                    # phrase standing ahead of the lead
+                    # is judged by its head's standing,
+                    # below. Where setting the whole
+                    # lead aside would leave no governed
+                    # phrase standing ahead of it (the
+                    # bare lead's shape), the lead's noun
+                    # and preposition alone are set
+                    # aside, as before.
+                    obj = obj[:-3]
                 elif len(obj) > 2:
                     obj = obj[:-2]
                 if not obj:
@@ -1953,7 +2022,12 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     "‖", "‰", "‵", "‶", "⁗",
                     "⁏", "·", "՜", "׃", "؞",
                     "《", "》", "【", "】", "｜",
-                    "～", "｡")
+                    "～", "｡",
+                    "‗", "․", "‧", "‱",
+                    "‴", "‷", "‸", "※",
+                    "‾", "⁂", "⁃", "⁊",
+                    "⁋", "⁎", "⁓", "⁝",
+                    "⁞")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -2070,7 +2144,22 @@ def _ledger_complement_is_evidence(owner, match):
     Arabic triple dot punctuation mark, the double
     corner brackets, the black lenticular brackets,
     the fullwidth vertical line and tilde, and the
-    halfwidth ideographic full stop)): an evidence word in
+    halfwidth ideographic full stop) -- and by Q158,
+    where the remaining format characters beyond the
+    BMP are read as boundaries before the fold beside
+    the characters it already reads (the shorthand
+    format controls, the musical format characters
+    and the tag characters, standing in the folded
+    text as the pilcrow), and the remaining
+    general-punctuation separators open a segment too
+    (the double low line, the one dot leader, the
+    hyphenation point, the per ten thousand sign, the
+    triple prime, the reversed triple prime, the
+    caret, the reference mark, the overline, the
+    asterism, the hyphen bullet, the Tironian sign
+    et, the reversed pilcrow sign, the low asterisk,
+    the swung dash, the tricolon and the vertical
+    four dots)): an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does
