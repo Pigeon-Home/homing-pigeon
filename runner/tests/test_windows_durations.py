@@ -513,9 +513,14 @@ class CheckedInTableGuardTest(unittest.TestCase):
         self.assertGreaterEqual(
             durations["runner.tests.test_regression_guard"],
             250.0)
-        self.assertGreaterEqual(
-            durations["runner.tests.test_decision1_startup"],
-            650.0)
+        # test_decision1_startup's 650s floor, recorded in
+        # the comment above, is retired by the Q136 file
+        # split (2026-11-11): the module no longer exists,
+        # and its five pieces carry their own floors,
+        # pinned in
+        # test_the_decision1_split_pieces_keep_their_prices.
+        self.assertNotIn("runner.tests.test_decision1_startup",
+                         durations)
 
     def test_the_shard2_heavy_files_do_not_share_a_shard(self):
         table = wd.load_table_file(wd.default_table_path())
@@ -523,8 +528,7 @@ class CheckedInTableGuardTest(unittest.TestCase):
                                  table["durations"],
                                  table["budget_seconds"])
         heavy = ("runner.tests.test_proof_content_cap",
-                 "runner.tests.test_regression_guard",
-                 "runner.tests.test_decision1_startup")
+                 "runner.tests.test_regression_guard")
         for shard in shards:
             self.assertLessEqual(
                 sum(1 for name in heavy if name in shard), 1,
@@ -566,18 +570,35 @@ class CheckedInTableGuardTest(unittest.TestCase):
             600.0)
 
     def test_decision1_and_v2_consult_do_not_share_a_shard(self):
+        # After the Q136 file split (2026-11-11) the
+        # decision1 side of this pin is the split family's
+        # startup pieces: none of them packs beside
+        # test_v2_consult, the other in-process-startup
+        # file. Each startup piece is priced at 270s or
+        # more, so the budget arithmetic (600 + 270 > 720)
+        # holds the shape the way the original 650s floor
+        # held it. The readers piece carries no startup
+        # (its S3 price is import and reader cost), so it
+        # is not part of this pin and may pack beside
+        # test_v2_consult under the budget.
+        pieces = ("runner.tests.test_decision1_startup_refuse_main",
+                  "runner.tests.test_decision1_startup_refuse_policies",
+                  "runner.tests.test_decision1_startup_gates",
+                  "runner.tests.test_decision1_startup_defaults")
         table = wd.load_table_file(wd.default_table_path())
         shards = wd.pack_modules(sorted(table["durations"]),
                                  table["durations"],
                                  table["budget_seconds"])
         for shard in shards:
-            self.assertFalse(
-                "runner.tests.test_decision1_startup" in shard
-                and "runner.tests.test_v2_consult" in shard,
-                "the two in-process-startup files whose "
-                "combined under-pricing killed shard 0 of "
-                "the 3.16.20.4 tag build packed into one "
-                "shard again")
+            if "runner.tests.test_v2_consult" in shard:
+                for piece in pieces:
+                    self.assertNotIn(
+                        piece, shard,
+                        "a decision1 split piece packed beside "
+                        "test_v2_consult, re-creating the "
+                        "combined in-process-startup shard that "
+                        "killed shard 0 of the 3.16.20.4 tag "
+                        "build")
 
     def test_the_completed_shards_listed_files_keep_their_floors(self):
         # Build run 43026648905 (2026-11-11), the first
@@ -614,45 +635,59 @@ class CheckedInTableGuardTest(unittest.TestCase):
         self.assertGreaterEqual(
             durations["runner.tests.test_concurrency"], 250.0)
 
-    def test_decision1_startup_does_not_share_with_its_killed_shard_companions(self):
-        # Shard 3 of run 43026648905 carried
-        # test_decision1_startup at its 650s floor plus
-        # 16 companions priced at about 63s in all, and
-        # burned past the 1,200s wall (exit 124) with
-        # no durations block printed. No companion is
-        # convicted alone: in the three older
-        # build-windows logs at hand the same
-        # companions estimate at 10s or less inside
-        # completed shards, so the overrun is the
-        # shard's composition, not one file. The
-        # refresh spreads the killed wall over the
-        # companions by unlisted test count, which
-        # raises the seven heaviest of them to 76s or
-        # more; this pin keeps the packer from putting
-        # any of those seven back beside
-        # test_decision1_startup (650 + 76 already
-        # passes the 720 budget, so the pin is what
-        # holds the shape, not the budget arithmetic
-        # alone at every future price).
+    def test_the_decision1_split_pieces_keep_their_prices(self):
+        # The Q136 file split (2026-11-11). Three completed
+        # build-windows verdicts on fifth-re-pack heads
+        # (runs 43047662646, 43053974828 and 43057662476)
+        # carried shard 0 as test_decision1_startup ALONE
+        # at its 720s budget price and still failed exit
+        # 124 at the 1,200s wall -- the condition the
+        # fifth re-pack's conclusions named in advance:
+        # the defect is in the file (97 in-process runner
+        # startups), not the packing, and the answer is a
+        # file split, not a sixth re-pack. The file is
+        # split along its class seams into five pieces,
+        # priced from the kill record at about 15s a
+        # startup on the loaded Windows leg: refuse_main
+        # 340 (22 startups), refuse_policies 330 (21),
+        # gates 270 (15 startups plus the decision-point
+        # subtests), defaults 300 (19) and readers 100
+        # (no startup; its price is import and reader
+        # cost, the largest local share). The pieces
+        # total 1,340s -- above
+        # the wall the whole file burned past -- and the
+        # 400s ceiling on every piece is the regrowth
+        # pin: a piece that grows past it fails here and
+        # divides further instead of repricing upward
+        # toward the budget the way the whole file did.
+        # The retired pins this replaces (the 720s budget
+        # floor packing alone, and the named-companion
+        # pin from run 43026648905) cannot hold a split
+        # family: pieces are priced to pack WITH
+        # companions under the budget, by design.
         table = wd.load_table_file(wd.default_table_path())
-        shards = wd.pack_modules(sorted(table["durations"]),
-                                 table["durations"],
-                                 table["budget_seconds"])
-        heavy = ("runner.tests.test_oracle_tool_mode",
-                 "runner.tests.test_freebsd_confine",
-                 "runner.tests.test_q110_key_parity",
-                 "runner.tests.test_oracle_script_gate",
-                 "runner.tests.test_release_drop",
-                 "runner.tests.test_flag321",
-                 "runner.tests.test_review")
-        for shard in shards:
-            if "runner.tests.test_decision1_startup" in shard:
-                for name in heavy:
-                    self.assertNotIn(
-                        name, shard,
-                        "test_decision1_startup packed beside "
-                        "%s, re-creating shard 3 of run "
-                        "43026648905" % name)
+        durations = table["durations"]
+        floors = {
+            "runner.tests.test_decision1_startup_refuse_main": 340.0,
+            "runner.tests.test_decision1_startup_refuse_policies": 330.0,
+            "runner.tests.test_decision1_startup_gates": 270.0,
+            "runner.tests.test_decision1_startup_readers": 100.0,
+            "runner.tests.test_decision1_startup_defaults": 300.0,
+        }
+        self.assertNotIn("runner.tests.test_decision1_startup",
+                         durations)
+        self.assertFalse(os.path.isfile(os.path.join(
+            REPO, "runner", "tests", "test_decision1_startup.py")))
+        total = 0.0
+        for name, floor in floors.items():
+            self.assertTrue(os.path.isfile(os.path.join(
+                REPO, "runner", "tests",
+                name.rsplit(".", 1)[1] + ".py")), name)
+            self.assertGreaterEqual(durations[name], floor, name)
+            self.assertLessEqual(durations[name], 400.0, name)
+            total += durations[name]
+        self.assertGreaterEqual(total, 1200.0)
+
 
     def test_the_fifth_repack_listed_files_keep_their_floors(self):
         # Build run 43035985891 (2026-11-11), the first
@@ -702,54 +737,33 @@ class CheckedInTableGuardTest(unittest.TestCase):
         self.assertGreaterEqual(
             durations["runner.tests.test_oracle_chat"], 55.0)
 
-    def test_decision1_startup_keeps_its_budget_floor_and_packs_alone(self):
-        # Shard 3 of run 43035985891 carried
-        # test_decision1_startup at its 650s floor plus
-        # 13 companions priced at 67.3s in all (717.3
-        # packed) and burned past the 1,200s wall, exit
-        # 124 -- the third duration-era kill with that
-        # composition, each time with a disjoint
-        # companion set (shard 2 of run 42950872171,
-        # shard 3 of run 43026648905, shard 3 here).
-        # None of the seven companions the fourth
-        # re-pack pinned is in this shard, so that pin
-        # held and the shard died anyway: a heavy
-        # file's companions are whoever fills the gap
-        # under the budget, an output of the prices.
-        # The companions here are exonerated file by
-        # file in the older logs at hand -- each
-        # appears inside completed shards at an
-        # estimate of 14.2s or less, about 45s in
-        # aggregate -- and test_decision1_startup has
-        # no completed appearance in any of the five
-        # logs: it stands in a killed shard in every
-        # one. Its 650s floor was a residual lower
-        # bound from one killed shard's wall, not a
-        # measurement; the kill record puts its own
-        # cost at about 1,100s or more. The table's
-        # own check cannot carry a price over the
-        # 720s budget, so the floor rises to the
-        # budget itself -- the largest price the
-        # packing contract can express -- at which
-        # the file fills a shard alone and no
-        # companion can join it. If it still kills
-        # a shard alone, the defect is in the file
-        # (97 in-process runner startups), not in
-        # the packing.
-        table = wd.load_table_file(wd.default_table_path())
-        durations = table["durations"]
-        self.assertGreaterEqual(
-            durations["runner.tests.test_decision1_startup"],
-            720.0)
-        shards = wd.pack_modules(sorted(durations),
-                                 durations,
-                                 table["budget_seconds"])
-        for shard in shards:
-            if "runner.tests.test_decision1_startup" in shard:
-                self.assertEqual(
-                    shard, ["runner.tests.test_decision1_startup"],
-                    "test_decision1_startup packed with "
-                    "companions again: %r" % (shard,))
+    def test_the_decision1_split_family_still_carries_97_tests(self):
+        # The split is a move, not a rewrite: the five
+        # pieces between them carry exactly the original
+        # file's 97 tests, at the original per-class
+        # counts (RefuseMain 43 across its two pieces,
+        # the gates classes 18, RefuseReader 16, the
+        # default class and its table pin 20). A test
+        # lost, duplicated or silently dropped in a
+        # future edit of a piece fails here.
+        import importlib
+        import unittest as _unittest
+        expected = {
+            "runner.tests.test_decision1_startup_refuse_main": 22,
+            "runner.tests.test_decision1_startup_refuse_policies": 21,
+            "runner.tests.test_decision1_startup_gates": 18,
+            "runner.tests.test_decision1_startup_readers": 16,
+            "runner.tests.test_decision1_startup_defaults": 20,
+        }
+        total = 0
+        for name, count in expected.items():
+            module = importlib.import_module(name)
+            found = _unittest.TestLoader().loadTestsFromModule(
+                module).countTestCases()
+            self.assertEqual(found, count, name)
+            total += found
+        self.assertEqual(total, 97)
+
 
     def test_the_real_suite_packs_within_budget(self):
         table = wd.load_table_file(wd.default_table_path())

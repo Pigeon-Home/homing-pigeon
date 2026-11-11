@@ -40,7 +40,7 @@ REGISTERED = {
         "test_switch_proofs: the --root refusal cannot be shown when the "
         "process is root; runs in every non-root job",
     "the job_user root refusal needs a non-root process":
-        "test_decision1_startup: a root process can apply the job_user "
+        "test_decision1_startup_gates: a root process can apply the job_user "
         "demote, so the startup refusal cannot fire for one; runs in "
         "every non-root job, and the gate's branches are pinned at "
         "the function in test_security_config",

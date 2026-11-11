@@ -23,7 +23,7 @@ together:
 
 The behavioral half of the evidence (startup refusals, the
 job-time fallback chains) is pinned by the suites that own it:
-test_decision1_startup, test_windows_platform_proofs,
+the test_decision1_startup_* family, test_windows_platform_proofs,
 test_confinement, test_security_parity.
 """
 import json
