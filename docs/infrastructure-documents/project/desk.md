@@ -1778,6 +1778,73 @@ fix pass:
 Each supposition is settled against the code in the
 commits that follow this note; the conclusions stand
 at the end of this section when the packet lands.
+## The documentation overview, remedial Argon sweep: suppositions recorded before the sittings (2026-11-10)
+
+The overview's directed method was an outside read: every
+sentence of the documents checked through Argon
+(gemini-4-argon) against the tree. Packet 1 took that
+read. Packets 2 and 3 did not — their lanes judged the
+outside read unnecessary, checked by hand, and the hand
+check passed at least one defect a reader has since hit
+live (a broken link in the FAQ). The conductor has
+directed the remedy plainly: run the outside read now,
+over the whole document set, the way it was directed the
+first time.
+
+The set, computed fresh from `git ls-files` on the main
+this section lands on: every tracked `.md` and `.txt`
+file, excluding only `docs/archive/` — **313 files**.
+(The airgap fixture's own archive-named folder is not
+the archive folder and stays in the sweep.) The owner's
+`docs/checklist.txt` is in the set as reading material
+only; it is never modified by this lane, and findings
+about it are reported to the conductor, never fixed.
+
+The suppositions, stated before the first sitting runs,
+so the record shows what was expected against what the
+outside read finds:
+
+- **R-S1.** The Packet 1 files (already Argon-read once)
+  come back nearly clean: at most a handful of minor
+  findings, none of them a confinement misdescription.
+- **R-S2.** Packets 2 and 3, hand-checked only, carry
+  more: a small number of real errors each — stale
+  present-tense claims, counts drifted since the hand
+  pass, backend descriptions written before the Windows
+  and FreeBSD backends finished. More than zero, fewer
+  than a landslide: single digits per packet.
+- **R-S3.** The bulk of the sweep's findings land in the
+  long tail the packets have not reached yet or reached
+  lightly: reports, proofs and project pages whose
+  present tense describes a tree that has since moved.
+  Most of those will be dated records standing as
+  records, not errors to rewrite; the confirmed-error
+  share of all findings is expected under half.
+- **R-S4.** Argon will flag IETF-adjacent pages as stale
+  where the v1/v2 mirror lock holds their text still.
+  Per the conductor's direction those flags are
+  dismissed on sight — the lock, not neglect. Technical
+  or grammar findings in the v1/v2/v3 draft sources
+  themselves are a different class: genuine candidates,
+  recorded here for the conductor's email route (the
+  v1/v2 texts themselves are never edited in this
+  repository; v3 findings may be acted on after
+  verification).
+- **R-S5.** Argon will also produce false positives a
+  tree-side check dismisses: figures a release cut
+  refreshes, dates that are records rather than claims,
+  and sentences correct against the code Argon was not
+  shown. Every finding is verified against the tree
+  before anything is fixed; Argon points, Muse decides.
+- **R-S6.** No finding will require a new file in the
+  repository root, and no confirmed fix will touch the
+  v1/v2 draft texts or `docs/checklist.txt`.
+
+Argon's findings, when the sittings complete, stand
+below under Argon's stamp
+(00000000-argon-26a0-ff29-7825440c1fb9); Muse's
+decisions on each stand beside them under Muse's own
+stamp (00000000-muse-7e57-d0c5-58316a922026).
 
 ## Sources
 
