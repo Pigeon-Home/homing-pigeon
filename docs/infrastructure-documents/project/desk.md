@@ -14004,6 +14004,112 @@ The measurement, the fix, and the conclusions
 against these suppositions follow in this
 section.
 
+### Q136 shard-5 follow-on: measurement and conclusions (2026-11-11)
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Measured by the lane that continues from the
+suppositions above, before any fix landed.
+Shard 5's set was re-derived with the packer
+itself (windows_durations.py's pack_modules over
+the discovered counts): at this lane's head the
+shard packs 16 modules at 708.4 seconds --
+test_de_dust_corpus 539.5, test_credential_canary
+37.7, defaults_registry 26.7,
+test_runner_last_edges 21.8, and 12 smaller
+companions summing to about 82 (the suppositions'
+701 was the same shape at the killed head; the
+table has moved since). Run 43101076872's
+build-windows log was re-parsed with the
+estimator's own parser, and the logs at hand
+(the 1404 head's diag build-windows log among
+them) were priced the same way.
+
+- Q136-S5-S1 PARTLY FAILED. The head does
+  dominate by price (539.5 of the shard's 708.4
+  packed). The expected 900 seconds or past is
+  NOT supported: in the corpus file's one
+  completed appearance at hand (the 1404 head's
+  shard 5, which completed), its listed
+  slowest tests sum to 286.5 seconds and that
+  shard's whole internal time was 391.5 seconds,
+  bounding the file at 391.5 in that run; and
+  the local Linux run below measured 522.1
+  seconds internal for its 293 tests, which
+  corroborates the 539.5 price on an unloaded
+  basis and no more. The file's cost is
+  load-variable; the kill cannot be laid on
+  this file alone.
+- Q136-S5-S2 CONFIRMED as a mechanism; its
+  local-simulation sub-prediction FAILED on
+  this platform, for a reason the source names.
+  CPython's subprocess.run, on timeout, kills
+  the child and then -- on Windows only --
+  collects output with a second communicate()
+  carrying no timeout; the POSIX branch waits
+  for the child alone and re-raises. The kill
+  dump's stack is the Windows shape exactly:
+  the main thread sits in _communicate's
+  stdout-thread join, the join the second,
+  unbounded communicate makes. The local
+  simulation on Linux showed the POSIX shape
+  instead: an ordinary timed-out child returned
+  None at 1.0 seconds, and a child whose
+  grandchild held the pipe open also returned
+  at 1.0 seconds -- the unbounded wait does not
+  reproduce on POSIX, exactly as the source
+  says. The deterministic substrate is
+  therefore pinned at the Popen seam (a wait
+  after the kill must carry a finite timeout),
+  not by a POSIX end-to-end shape.
+- Q136-S5-S3 HELD, approximately. The killed
+  run's completed shards ran 532 to 835 seconds
+  internally against about 701 to 708 packed:
+  every one but one within 1.15x of its packed
+  load, the worst at 1.18x. The pool was not
+  uniformly slow; the 720-second budget and
+  the 20-minute wall stand unchanged.
+- Q136-S5-S4 FAILED for the head, held for
+  the rest. Local internal times on this Linux
+  host: test_de_dust_corpus 522.1 seconds (not
+  seconds -- the module is intrinsically heavy
+  even unloaded), test_credential_canary 1.6,
+  defaults_registry 20.5, test_runner_last_edges
+  1.5, and test_oracle_cli_ctrl_c alone 0.5.
+  Linux timing still cannot price the Windows
+  leg; the clearing proof remains the next
+  completed build-windows verdict on a head
+  carrying this lane's fix, under rule 8.
+- Q136-S5-S5: the fix follows in the next
+  commit, with its rationale corrected by S1.
+  (a) The hang is fixed at its seam:
+  runner/ops/av.py's _run_text now drives
+  subprocess.Popen by hand -- the first wait
+  bounded by the probe timeout, the wait after
+  a timeout kill bounded by a 2-second grace,
+  the pipes abandoned past the grace -- pinned
+  by runner/tests/test_low_profile.py's
+  RunTextBoundTest family (6 tests) and by the
+  two pre-existing _run_text tests re-seamed
+  from subprocess.run to the Popen factory.
+  (b) test_de_dust_corpus is floored at the
+  720-second budget so it packs alone, pinned
+  by two new guard tests in
+  runner/tests/test_windows_durations.py --
+  as boundary insurance on the fifth re-pack's
+  own shape for a loosely bounded file, NOT as
+  a measurement: S1's 900 seconds was not
+  proven, and this record says so in plain
+  words. The measurement did not implicate
+  test_decision1_startup_gates_strict.py or
+  decision1_startup_support.py (shard 27's
+  separate lane); neither file was touched.
+
+This lane does NOT claim the wall-clock red
+is cleared. Only the next completed
+build-windows CI verdict on a head carrying
+this fix proves that, under rule 8.
+
 ## Q155 re-test: conclusions of the filing seat (2026-11-11)
 
 The re-test ran in a fresh scratch clone from
