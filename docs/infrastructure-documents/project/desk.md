@@ -810,6 +810,50 @@ against it:
   results, no posture row in its audit log, no new
   startup line.
 
+Outcome: the build matched the supposition on every
+point, and the lane landed the same day in the
+6:41 PM PST commit "runner: the posture stamp
+producer -- the assignment resolved at startup, the
+stamp set at the completion seam". The gate sits in
+`runner/ops/main.py`, resolving through the producer
+in the runner proper before any one-shot dispatch;
+the seam sits in `runner/ops/mail.py`, ahead of the
+fitting and signing, on the executed-job path only --
+a rejection result, which records no run, carries
+neither the member nor the row. The guard family is
+`runner/tests/test_posture_stamp.py`: 20 tests, red
+20 of 20 against the tree without the producer,
+green 20 of 20 with it, and the regression guard
+reads the module green on every leg (native, repeat,
+shuffled, the simulated Windows surface, no leaked
+state). The neighboring sets read green with it: 281
+passed across the disclosure, build-config,
+default-posture, audit-report, reader-quiet,
+figure-slot, layout and draft-alignment modules, and
+202 passed with 144 subtests across the core, seam,
+CLI-options and enforce-posture reconciliation
+modules.
+
+One mechanical choice the answer left open, recorded
+here: the runner loads the disclosure module from
+`runner/tools` through its own module loader, so a
+build that does not carry the tools -- the wheel --
+refuses a declared block at startup, naming the
+missing module, rather than running an assigned
+deployment unstamped in silence; the frozen binaries
+carry the module as a hidden import on every build
+line, and the module joined the core list in
+`runner/ops/core.py`, the recorded figures
+re-measured over the grown tree (59,936 lines as
+assembled, the runner proper at 6,915). A second,
+smaller step past the answer's letter: an assignment
+whose tag the registry does not declare refuses at
+startup in the same class as a retired posture --
+the assignment cannot be honored, and the runner
+does not guess at it. The hosted legs' verdict on
+the landed head is the second seat's re-test under
+rule 8.
+
 ## Sources
 
 The gates are compositions of published practice, not inventions:

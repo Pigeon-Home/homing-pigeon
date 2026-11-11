@@ -381,6 +381,49 @@ producer wiring is a follow-on lane of its own, whose
 tests pin that job content cannot influence the stamp,
 re-tested by a second seat under rule 8.
 
+**Addendum (2026-11-10, the producer landed):** the
+follow-on lane landed the same day, in the 6:41 PM PST
+commit "runner: the posture stamp producer -- the
+assignment resolved at startup, the stamp set at the
+completion seam", on top of the desk note's supposition,
+committed before the build. The startup gate in
+`runner/ops/main.py` resolves the config's
+`disclosure_posture` block (the registry file, the
+tagging file, the deployment's project) through the
+producer in the runner proper before any job is polled:
+a retired posture refuses through `format_stamp`'s own
+refusal, an undeclared tag and an unreadable or
+unparsable file refuse in the same class, and a project
+the tagging assigns nothing resolves to unstamped -- no
+default invented at either surface. The seam in
+`runner/ops/mail.py` sets the result's `posture_stamp`
+member from that resolution after the job exits and
+before the body is fitted and signed, and writes the
+audit row beside it (feature `posture`; `stamped` with
+the stamp as its detail, or `unstamped` naming the
+project), once per executed job; the rejection path,
+which records no run, carries neither, and a deployment
+with no block gains no member, no row and no startup
+line. The guard family
+(`runner/tests/test_posture_stamp.py`, 20 tests) pins
+the resolution arms, the seam through the mail path --
+a stamp-shaped member on the job moves nothing in
+either direction, and a stamp altered after signing
+fails verification -- and the startup gate; the module
+reads 20 failures against the tree without the producer
+and 20 passes with it, and the regression guard reads
+it green on every leg including the simulated Windows
+surface. The mechanical choice the answer left open is
+recorded in the desk note: the disclosure module loads
+from `runner/tools` through the runner's own loader, a
+declared block on a build without it (the wheel)
+refuses at startup naming the module, the frozen
+binaries carry it as a hidden import, and the module
+joined the core list at this landing, the core figures
+re-measured with it. The hosted legs' verdict on the
+new head remains the second seat's re-test under
+rule 8.
+
 ---
 
 ## Q136 (Muse, to the desk, 2026-11-10): build-windows shard 2 dies at the 20-minute wall on time, not on failures — the Windows split becomes duration-balanced, packed by measured file durations under a 12-minute budget
