@@ -14,7 +14,7 @@ The campaign is **de_aztec** from 30-OCT 3:16PM PST (de_dust2 from
 and yield lines and the hourly note carry the new name from then;
 the tool, the corpus directory, the environment variables, the tests
 and the two strategy files keep their `de_dust` paths, so nothing on
-a rig changes. The strategy is `docs/project/de_dust2.md`.
+a rig changes. The strategy is `docs/steady/project/de_dust2.md`.
 
 The campaign runs continuously from this file. It does not wait for
 a new batch of questions. When one piece of work closes, the next
@@ -23,8 +23,8 @@ owner should never have to hand the campaign its next task; if the
 campaign is idle, these orders were not followed.
 
 How a campaign is run (the rig, the loop, recording a finding, the
-watchdog, the hard rules) is `docs/project/campaign-playbook.md`.
-Questions to Claude or the owner go in `docs/seats/questions.md`
+watchdog, the hard rules) is `docs/infrastructure-documents/project/campaign-playbook.md`.
+Questions to Claude or the owner go in `docs/steady/seats/questions.md`
 (AGENTS.md rules 7 and 8). This file says only what to work on next
 and when to stop.
 
@@ -46,8 +46,8 @@ What counts as talking to him, and is not allowed outside the list:
 a chat message that reports progress, confirms an order was heard,
 announces a start or a finish, repeats a finding that is already in
 a commit or a Q entry, or relays a question that belongs in
-`docs/seats/questions.md`. A reminder of this section posted in
-`docs/seats/.com.chat` by Claude means the pattern was seen; the next
+`docs/steady/seats/questions.md`. A reminder of this section posted in
+`docs/infrastructure-documents/seats/.com.chat` by Claude means the pattern was seen; the next
 rule refresh re-reads this section and says so in the ledger.
 
 ## Rule refresh, every hour
@@ -55,7 +55,7 @@ rule refresh re-reads this section and says so in the ledger.
 Long runs lose context. At least once an hour, and after any restart
 or context reset, re-read before taking the next item: this file,
 AGENTS.md (rules 7, 8 and 9 above all), the open entries in
-`docs/seats/questions.md`, and `docs/project/campaign-playbook.md`'s
+`docs/steady/seats/questions.md`, and `docs/infrastructure-documents/project/campaign-playbook.md`'s
 hard rules. Note the refresh in the ledger as one line
 ("rules refreshed <time>"), followed by the hour's resource line
 (below). A ledger with no refresh line in the last hour of activity
@@ -127,7 +127,7 @@ waiting is not testing.
 
 1. Pull main. If the last rule refresh was more than an hour ago, do
    it now (above).
-2. Read `docs/seats/questions.md`. Anything answered since the last
+2. Read `docs/steady/seats/questions.md`. Anything answered since the last
    pass that changes the campaign's own work (a fix to re-verify, a
    probe to retire, a decision that moves an assertion) comes first.
 3. Take the first open item from the queue below. Mark it taken by
@@ -157,7 +157,7 @@ the last green head this rig recorded and the current head to name
 the commit it has been red since, and prints one ledger line and,
 on red, a paragraph for `questions.md`. Paste the ledger line under
 the hour's "rules refreshed" line with the resources line, and
-commit `docs/reports/regression/passes.jsonl` with it: the pass
+commit `docs/steady/specimens/passes.jsonl` with it: the pass
 appended its own line there (head, tests, wall time, the failing
 ids, the flake split, the culprits), and that file is the proof
 the pass ran, green passes included. On a deterministic red, file
@@ -205,7 +205,7 @@ order, 2026-10-25, after a release was blocked twice in one hour):
 ## When to stop and ask the owner
 
 Only these stop the loop, and only for the item they block. Write
-the question in `docs/seats/questions.md` addressed to the owner, then
+the question in `docs/steady/seats/questions.md` addressed to the owner, then
 continue with the next item that does not need it.
 
 - A secret: anything that needs a mailbox password, a token or a key
@@ -269,6 +269,13 @@ that "hardens" past it is wrong: with `confinement: enforce`, a
 sandbox that does not work at startup refuses to start (Q9), but a
 sandbox that fails after a good start lets the job run unsandboxed
 with a WARN line and a `fallback` audit entry. Pin that as it is.
+The confinement half of that decision no longer stands: since the
+phase-2 secure-by-default landing (2026-11-09, and the Q135
+denial shape), a confinement that cannot engage at job time under
+`enforce` denies the job — the WARN line and the `fallback` audit
+entry record the denial, and the job does not run. Pin the
+refusal, on every backend (bwrap on Linux, the Job Object form on
+Windows, the jail on FreeBSD).
 The second decision of that day — `job_user` without root doing
 the same (`job_user_needs_root`) — no longer stands: since
 2026-11-07 (Q132), on POSIX under `job_user: enforce` with a
@@ -297,7 +304,10 @@ refusal, and pin the chain's remaining reach.
    Have: `test_audience.py`.
 5. M6, `confinement`: `enforce` runs the job inside bwrap with no
    network, no home, `/usr` read-only and the workdir only at
-   `/work`; the same escape succeeds with the mode off. Since
+   `/work` — the Linux form of the control; Windows and FreeBSD
+   engage their own backends under the same mode (a Job Object
+   with a restricted token; a per-job jail), each field-proven on
+   2026-11-10; the same escape succeeds with the mode off. Since
    2026-11-07 (Q133) the startup trial also runs the configured
    `extra_flags` in the position a job's argv gives them, and a
    flag bwrap rejects refuses startup under `enforce`, naming
@@ -307,7 +317,7 @@ refusal, and pin the chain's remaining reach.
    (network, home, `/usr` write, a path outside `/work`), and the
    after-a-good-start fallback above.
 6. M7, the AppArmor, SELinux and systemd templates under
-   `docs/security/hardening/`: files only; nothing installs them.
+   `docs/steady/security/`: files only; nothing installs them.
    Prove that they parse and that the runner's paths in them match
    the install layout; file a question if they drift.
 7. M8, `job_user` and the secret files: `enforce` drops uid and
@@ -367,7 +377,7 @@ R4) lists it.
 
 <!-- Agent-Stamp: 60000b3a-32a6-4847-996f-638cbcb6d854 -->
 
-The hand-off and the fixed rules are Q59 in `docs/seats/questions.md`.
+The hand-off and the fixed rules are Q59 in `docs/steady/seats/questions.md`.
 The loop:
 
 1. **Measure.** The suite under `coverage` exactly as
@@ -391,7 +401,7 @@ The loop:
    `@unittest.expectedFailure` with the Q number.
 6. **Measure again** and ledger the cycle: `platinum <n>: statements
    X% (+d), branches Y% (+d), <k> tests, <m> crashes filed,
-   <resources line>`. Refresh `docs/reports/<version>/coverage-gaps.md`
+   <resources line>`. Refresh `docs/steady/reports/<version>-coverage-gaps.md`
    with the full table and add the row to that folder's
    `coverage.md` Platinum log.
 7. **Under-driven?** The filler is the fuzz modules with a larger
@@ -429,7 +439,7 @@ written with). Everything moved with it: the tool is
 `runner/tools/de_dust_corpus.py`, the instrument
 `runner/tools/de_dust_survivors.py`, the corpus
 `runner/tests/de_dust/`, the tests `test_de_dust_corpus` and
-`test_de_dust_survivors`, the plan `docs/project/de_dust.md`, the
+`test_de_dust_survivors`, the plan `docs/steady/project/de_dust.md`, the
 archive directory's environment name `HP_DE_DUST_ARCHIVE`, and the
 header key of every corpus, arc, run and survivors file
 (`"de_dust": 1`). The grow in flight at the rename finishes on the
@@ -437,11 +447,11 @@ old tool in memory; it banks at the new paths (git's rename
 detection carries its changed files across), and the next grow
 starts with the command below.
 
-The plan is `docs/project/de_dust.md` (the conductor's
+The plan is `docs/steady/project/de_dust.md` (the conductor's
 campaign, to run indefinitely: the surface, the contracts, the
 seeds and vocabulary, the roles, the saturation rule and the
 phases); the hand-off and the fixed rules are Q62 in
-`docs/seats/questions.md`; the owner named the campaign on
+`docs/steady/seats/questions.md`; the owner named the campaign on
 2026-10-26. The tool is `runner/tools/de_dust_corpus.py`, the
 corpus is `runner/tests/de_dust/<target>.jsonl` (the targets
 are the tool's own list, `stats` prints them with their saturation;
@@ -467,7 +477,7 @@ The loop:
    target or over, and anything lower is a serial step to name in
    the ledger. The campaign never idles between grows and stops
    only on the conductor's word.
-2. **Grow.** Under de_dust2 (29-OCT, `docs/project/de_dust2.md`,
+2. **Grow.** Under de_dust2 (29-OCT, `docs/steady/project/de_dust2.md`,
    the audit seat's decision), each rig runs its lane, started again at every
    rules refresh, `--jobs` at the box's core count and no other
    grow work beside it (the note, the banks and the liveness watch
@@ -639,7 +649,7 @@ corpus entries are never edited or removed by hand.
    hour showed the three 4x targets at 0.03 CPU-hours each, because
    the grow loop spent its rounds on rounds that made no child and
    a 2,400-second slice ended in three seconds. Rounds are tries now
-   (`docs/project/de_dust2.md`, "Rounds are tries"); the readings
+   (`docs/steady/project/de_dust2.md`, "Rounds are tries"); the readings
    before the restart measured a tilt that never ran. The lift
    stays 31-OCT 7:00PM PST.
 
@@ -682,8 +692,8 @@ seats, split by folder so no file has two writers:
 `90000998` goes back to reviews and does not write coverage tests;
 `40000e00` lands a coverage test only for a gap it finds while fixing a
 question. A gap a seat finds outside its folders goes to the owning
-seat as a line in `docs/seats/.com.chat`. Each pass commits its run data
-under `docs/reports/coverage/`, with every line it leaves unrun named
+seat as a line in `docs/infrastructure-documents/seats/.com.chat`. Each pass commits its run data
+under `docs/steady/reports/`, with every line it leaves unrun named
 and the reason no test is aimed at it.
 
 ### B. Environment axes
@@ -715,10 +725,13 @@ as a finding.
    on macOS, a jail on FreeBSD. The platforms themselves are no
    longer parked: as of 2026-10-25 the suite and the roster run on
    Linux, Windows, macOS (plain and as root) on every push and on
-   FreeBSD weekly (`docs/project/testing.md`, "Where the suite
-   runs"). What stays parked is the product work: each cage is a
-   scope decision for the owner, and until he makes it the roster
-   judges those kernels on the controls they have.
+   FreeBSD weekly (`docs/infrastructure-documents/project/testing.md`, "Where the suite
+   runs"). Two of the cages have since landed and been
+   field-proven (2026-11-10): the Windows Job Object backend and
+   the FreeBSD jail. What stays parked is the macOS cage alone:
+   it is a scope decision for the owner, and until he makes it
+   the roster judges macOS on the controls it has, and a macOS
+   host under `confinement: enforce` refuses to start.
 
 ### D. Refill
 
@@ -728,7 +741,7 @@ ledger:
 
 1. Re-run the documented-default hunt against every key added to the
    docs since the defaults registry was last complete.
-2. Every claim in SECURITY.md and `docs/security/threat-model.md`:
+2. Every claim in SECURITY.md and `docs/infrastructure-documents/security/threat-model.md`:
    one test per claim that would fail if the claim were false, plus
    its negative control.
 3. Every example in PROTOCOL.md and AGENTS.md's "Do not emit" table,

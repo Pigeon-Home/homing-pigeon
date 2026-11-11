@@ -21,8 +21,8 @@ python3 runner/runner.py --config config.json --once --dry-run --verbose
 | `--audit-report [--since 14d|48h] [--feature NAME] [--key KEY_ID]` | Summarize the security audit log and exit; no mailbox, read-only. `--feature` narrows it to one control's entries, `--key` to one key's |
 | `--posture` | Report the runner's security posture (exit 0/1/2) and exit; no mailbox |
 | `--run-variant FILE` | Run one locally supplied fuzz variant job from FILE through validation and confined execution, print its outcome as JSON, and exit; no mailbox. The job-fuzz sense's execution door: variants are unsigned local artifacts, admitted only here, never through the job path |
-| `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `docs/CONTRIBUTING.md` (maintainer notes: the `--oracle` flag). |
-| `--poll-interval SECONDS`, `--timeout SECONDS`, `--judge MODE`, `--dag-mode MODE`, `--oracle-mode MODE`, … | One-process config overrides: one flag per key, `config.json` untouched, and a flag beats a later config edit. The full map is in `--help` and `docs/oracle/configuring-oracle.md` |
+| `--oracle` | Open a loopback chat with the Oracle in your browser. Does not poll mail. Turns are appended to `oracle-chat.jsonl` in the base dir (1 MiB, then one backup). See `docs/steady/project/contributing.md` (maintainer notes: the `--oracle` flag). |
+| `--poll-interval SECONDS`, `--timeout SECONDS`, `--judge MODE`, `--dag-mode MODE`, `--oracle-mode MODE`, … | One-process config overrides: one flag per key, `config.json` untouched, and a flag beats a later config edit. The full map is in `--help` and `docs/infrastructure-documents/oracle/configuring-oracle.md` |
 
 `install.py` accepts the common run flags — `--poll-interval`,
 `--timeout`, `--workers`, `--max-output-bytes`, `--dry-run`,
@@ -56,7 +56,7 @@ End-to-end without your SI:
 4. A result message should arrive in the mailbox (or at the job's
    `reply_to` address, if you set one). It arrives as an encrypted
    envelope; decrypt it with `send_job.py verify --job-id`
-   (`docs/use/sending.md`) and the result inside says
+   (`docs/steady/sending.md`) and the result inside says
    `stdout: "pong"`.
 
 ## Where the suite runs, and what each platform proves
@@ -80,8 +80,8 @@ run — the suite and the roster on that kernel — is still owed.
 | Platform | Suite | Switch proofs (the roster) | Built binaries | When |
 |---|---|---|---|---|
 | Linux (ubuntu-latest) | `test` job, in-process under the wall clock | `linux` leg (bwrap) and `root` leg (a second user): every control | smoked | suite and binaries on every push to main and every tag; the switch proofs on a push that touches `runner/**`, SECURITY.md, the hardening templates or `switch-proofs.yml`, and nightly, never on a tag |
-| Windows (windows-latest) | `build-windows` job, sharded over 4 cores | `windows` leg: the platform-neutral controls | smoked | as Linux |
-| macOS (macos-15) | `test-macos` job, sharded over 3 cores | `macos` leg and `macos-root` leg (a second user): the POSIX controls, the drop included | smoked (both macOS builds) | as Linux |
+| Windows (windows-latest) | `build-windows` job, the suite sharded by the duration table (`runner/tools/windows_durations.py`) into balanced shards | `windows` leg: the platform-neutral controls | smoked | as Linux |
+| macOS (macos-15) | `test-macos` job, the suite run 3 ways in parallel (`--jobs 3`) | `macos` leg and `macos-root` leg (a second user): the POSIX controls, the drop included | smoked (both macOS builds) | as Linux |
 | FreeBSD 15 (a VM inside a Linux runner) | as an ordinary user, under the wall clock | as root with a second user: the POSIX controls | not built (sdist install) | weekly, on dispatch, and when `freebsd.yml` changes; no green run yet |
 
 The roster (`runner/tests/switch_roster.py`) says, per control, what
@@ -123,7 +123,7 @@ it cannot:
 | `coverage` | the map of code no test runs, on Linux and Windows, by function (`runner/tools/coverage_gaps.py`); a signal, never a gate | every quarter hour on the tip of main, and on dispatch |
 | `stamp-audit` | every commit's agent stamp against `docs/archive/RESEARCHER_IDENT.md` over the full history: one stamp one session, one session one stamp, no recycled or unregistered stamp from 2026-10-27 on (`runner/tools/stamp_audit.py`) | off since 2026-11-01; dispatch only, and the workflow is disabled |
 | `test_parser_properties` | every parser that reads input the runner did not write (protocol v2, both verifiers, reply-to, the platform card, extension manifests, `sources.json`, archive extraction, the config readers, the text helpers) held to its contract on generated input; `PROPERTY_ROSTER` names each parser, its promise and its proof, and fails if one loses its test | every push |
-| `test_live_capture` | the runner's readers take three days of a real box's files (`docs/reports/live-2026-10-25/`), the scrub holds, and `docs/use/live-examples.md` quotes them exactly | every push |
+| `test_live_capture` | the runner's readers take three days of a real box's files (the live capture, shelved flat in `docs/steady/reports/` and `docs/steady/specimens/`), the scrub holds, and `docs/steady/use/live-examples.md` quotes them exactly | every push |
 
 The live capture is the suite's one corpus from a real deployment:
 19,227 jobs, the learning ledger, the security events and the log of
@@ -144,8 +144,9 @@ unchanged; neither counts branches.
 | `runner/tools/stdlib_coverage.py --subprocess --jobs N --out cov.json` | the whole suite, sharded, against all of `runner/`: the number for a box, comparable run to run | counted when they inherit the suite's environment |
 | `runner/tools/coverage_one.py [--jobs N]` | both of the above, then one line: statements, never executed, branches, never taken, percent. The conductor should not have to know which tool | the number |
 
-`docs/reports/coverage/` and `docs/reports/local-rig-2026-10-27/` keep
-the reports they have made. On the same tree both read at or below the
+The coverage reports and the local-rig reports stand in
+`docs/steady/reports/` (`coverage.md` and its companions, the
+`local-rig-2026-10-27` files), keeping the reports they have made. On the same tree both read at or below the
 coverage.py number in the release reports, never above it.
 
 `linecov.py` leaves out of a count what no run could mark: a `global`

@@ -5,10 +5,10 @@ hunts, and the rules that turn executions into the permanent test
 record. Written after the first campaign (2026-10-22/23, frozen at
 the `campaign-1-record` tag) so that a second run can start from
 this document alone. It is the record of campaigns one and two;
-the campaign runs today from `docs/project/campaign-standing-orders.md`,
+the campaign runs today from `docs/infrastructure-documents/project/campaign-standing-orders.md`,
 whose queues P (coverage-guided fuzzing) and M (de_dust)
 supersede the hard rules below where they differ, and the desk
-fixes every crash the corpus finds (`docs/project/de_dust.md`).
+fixes every crash the corpus finds (`docs/steady/project/de_dust.md`).
 
 The campaign's product is not findings. It is committed unit tests.
 The proof-of-work rule governs everything below: every test
@@ -127,7 +127,7 @@ registry row. The hand-written divergence tests
 
 Neither "silent default" nor "startup error" is the universal
 rule; the rule is what a wrong value changes. The normative
-sentence for PROTOCOL.md and docs/oracle/configuring-oracle.md:
+sentence for PROTOCOL.md and docs/infrastructure-documents/oracle/configuring-oracle.md:
 
 > a setting that is present but not usable reads as its
 > documented default and is named in the startup warning, unless
@@ -160,7 +160,7 @@ current code, with a four-part docstring:
    It passes only when the bug described above is fixed in the
    code."**
 
-Under de_dust2 (29-OCT, `docs/project/de_dust2.md`) the corpus
+Under de_dust2 (29-OCT, `docs/steady/project/de_dust2.md`) the corpus
 campaign records three more kinds, each its own way: a crash record
 rides as an `expectedFailure` probe until `promote` retires it; a
 `slow` record (a try over fifty times the corpus median and over
