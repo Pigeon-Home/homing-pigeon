@@ -7825,3 +7825,116 @@ those sentences themselves beside the committed
 guard family the fix lane lands, which pins both
 ways. No new behaviour is claimed beyond what
 those calls and that family show.
+
+## Q150: conclusions of the fix lane (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Settled against the suppositions recorded in the desk
+before the fix (the Q150 section above), each measured
+on the current head and on the landing tree. The lane
+started from the remote main carrying the Q149
+re-test and the Q150 filing.
+
+- **Q150-S1 confirmed** — the filed defect reproduced
+  whole before the fix, on this lane's own probe over
+  the fixture layer and the shipped layer: item 1(a)'s
+  4 shapes marking on the current head (73 of 75
+  bookended variants), item 1(b)'s 7 sentences marking
+  whole on the current head, item 2's 23 sentences
+  silent on the current head, item 3's 15 shapes
+  silent on the current head, the controls and
+  both-ways pins holding among the checks, with the
+  three-tree split as the filing seat's evidence
+  records it.
+- **Q150-S2 confirmed** — a clause-head parenthetical
+  is now read through however many comma-set
+  parentheticals share the head, and its
+  dropped-comma form with it: item 1(a)'s shapes (the
+  doubled "who" and "that" shapes, the raw-output
+  twin, and the dropped-comma form) are silent on
+  both layers, plain and bookended, the Q146, Q147,
+  Q148 and Q149 subject shapes stay silent, a clause
+  that itself introduces the matched verb still
+  fires, and the prohibitive scan's own lone-comma
+  check stands as it was. One mechanism the
+  supposition did not name, found by the landing's
+  own regression run and tightened before the fix
+  landed: the zero-relative crossing's base-form
+  reading is gated on the agreement shape itself —
+  a determiner-led plural inside subject — so a
+  plain word standing last in a long lead-in ("alpha
+  bravo ... foxtrot to ...", "at any point in this
+  deployment to ...") is still no verb there.
+- **Q150-S3 confirmed** — a governed noun phrase is
+  judged by what it is to its verb: item 1(b)'s 7
+  sentences (the noun-complement object phrases) are
+  silent on both layers, plain and bookended, its
+  controls stay silent ("has clearance", "has
+  responsibility", "is assigned to duty", "is on
+  duty"), and the object-phrase pins and controls of
+  the Q148 and Q149 families keep firing.
+- **Q150-S4 confirmed** — the verb phrase is judged
+  by its form at the three shapes: all 23 of item
+  2's sentences fire again on both layers, plain and
+  bookended (the adjective-carried raising
+  predicates, the tailed by-phrases restored without
+  re-trading the plain by-phrase, and the base-form
+  verbs behind a modal, inside an inverted clause
+  behind a modal, and under a plural inside subject);
+  its controls keep firing ("is bound", "is set",
+  "is going", "is told by the supervisor", "compels
+  operators", "vows", "the supervisor compels", "the
+  supervisors prompt"); the relative-clause pins
+  still fire; and a subject clause whose verb phrase
+  takes a noun complement instead is still crossed,
+  so "is on duty to ...", "is assigned to duty to
+  ...", "has clearance to ..." and "whose shift is
+  on duty to ..." stay silent and the Q146, Q147,
+  Q148 and Q149 relative-clause prohibitions stay
+  silent.
+- **Q150-S5 confirmed** — curly braces, the middle
+  dot, the horizontal bar, the Unicode hyphen and
+  the figure dash open a ledger segment, with the
+  equals sign, the plus sign, the hash, the at sign,
+  the underscore, the section sign, the pilcrow, the
+  bullet operator and a pair of angle brackets
+  beside them, and a line break read as a boundary
+  before the whitespace fold can erase it: the mixed
+  sentence fires under every one of those separators
+  on both layers, plain and bookended, and the
+  evidence-only twins under the new separators stay
+  silent.
+- **Q150-S6 confirmed** — end to end, item 1's
+  doubled-head and noun-complement sentences
+  assembled into briefings carry no tension mark and
+  write no startup audit row, and item 2's three
+  representative sentences and item 3's sentence each
+  carry the mark and write exactly one audit row
+  (feature `briefing`, decision `marked`, the rule
+  id as the detail), all pinned in the family's
+  end-to-end test.
+- **Q150-S7 confirmed** — nothing else moved: the
+  guard family stands at 119 tests (the
+  Q150PolarityGuardTest family's 14 beside the filed
+  Q143, Q144, Q145, Q146, Q147, Q148 and Q149
+  families, the standing 7-rule family, the
+  unrelated-negation pins and the
+  negated-then-contradicting shapes), red-before at
+  3629 subtest failures against the unpatched
+  detector, every one of them in the new family; the
+  neighbour batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2*`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read 305 green beside it;
+  and the core was re-measured over `briefing.py`'s
+  185-line growth in the figures commit of 5:08 AM
+  PST (as-assembled 62,065 lines, 56,044 non-blank,
+  zip 783,788 bytes; canonical 61,218 lines over 135
+  files).
+
+Q150 is answered under option 1 in the questions
+file in this landing. It is NOT closed: the filing
+seat's rule-8 re-test is still owed, and Q149, Q148,
+Q147, Q146, Q145, Q144 and Q143 close only if that
+re-test passes whole.
