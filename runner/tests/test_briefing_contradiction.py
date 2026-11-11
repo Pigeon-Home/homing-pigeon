@@ -2542,5 +2542,434 @@ class Q149PolarityGuardTest(unittest.TestCase):
                 "rule=ledger_treated_as_instruction",
                 rows[0]["detail"])
 
+# Q150 (filed by the Q149 re-test): the Q149
+# guard's residual polarity shapes. Item 1: a
+# compliant subject clause still marked in two
+# shapes -- a clause-head parenthetical doubled
+# at the head, two parentheticals sharing their
+# boundary comma (with its dropped-comma form),
+# and a subject clause whose verb governs a
+# noun-complement object phrase. Item 2: a
+# relative clause carrying an infinitive of its
+# own still missed at three verb-phrase shapes --
+# a raising predicate carried by an adjective, a
+# passive whose by-phrase carries a prepositional
+# tail (fired whole on the pre-Q149 detector,
+# traded away by the Q149 landing), and a verb in
+# its base form behind a modal or under a plural
+# inside subject. Item 3: the ledger's mixed
+# sentence under its remaining clause separators
+# (curly braces, the middle dot, the horizontal
+# bar, the Unicode hyphen, the figure dash), at
+# which no ledger segment opened, with the
+# same-mechanism separators beside them and a
+# line break the whitespace fold erases.
+Q150_DOUBLED_HEAD_PROHIBITIONS = {
+    "private_shelf_crosses": [
+        "It is forbidden for any operator who, at "
+        "any point, in any week, is on duty to "
+        "publish the approval memory",
+        "It is forbidden for any operator that, at "
+        "any point, in any week, is on duty to "
+        "publish the approval memory",
+        "It is forbidden for any operator who, at "
+        "any point is on duty to publish the "
+        "approval memory",
+    ],
+    "raw_output_leaves_the_box": [
+        "It is forbidden for any operator who, at "
+        "any point, in any week, is on duty to send "
+        "raw output off the box",
+    ],
+}
+Q150_DOUBLED_HEAD_FLAT = [
+    sentence for sentences in
+    Q150_DOUBLED_HEAD_PROHIBITIONS.values()
+    for sentence in sentences]
+Q150_NOUN_COMPLEMENT_PROHIBITIONS = [
+    "It is forbidden for any operator who holds "
+    "clearance to publish the approval memory",
+    "It is forbidden for any operator who holds "
+    "authority to publish the approval memory",
+    "It is forbidden for any operator who carries "
+    "responsibility to publish the approval memory",
+    "It is forbidden for any operator who takes "
+    "charge to publish the approval memory",
+    "It is forbidden for any operator who is "
+    "assigned responsibility to publish the "
+    "approval memory",
+    "It is forbidden for any operator who is "
+    "assigned a duty to publish the approval memory",
+    "It is forbidden for any operator who is given "
+    "responsibility to publish the approval memory",
+]
+Q150_SUBJECT_CLAUSES_SILENT = [
+    "It is forbidden for any operator who has "
+    "clearance to publish the approval memory",
+    "It is forbidden for any operator who has "
+    "responsibility to publish the approval memory",
+    "It is forbidden for any operator who is "
+    "assigned to duty to publish the approval memory",
+    "It is forbidden for any operator who is on duty "
+    "to publish the approval memory",
+]
+Q150_ADJECTIVE_FORMS = [
+    "is likely", "is certain", "is sure", "is ready",
+    "is eager", "is due", "is free", "is able",
+    "is apt", "is prone", "is very likely",
+]
+Q150_VERB_PHRASE_PINS = {
+    "private_shelf_crosses": [
+        "It is forbidden for any operator who " + form
+        + " to publish the approval memory"
+        for form in Q150_ADJECTIVE_FORMS] + [
+        "It is forbidden for any operator who is told "
+        "by the supervisor on duty to publish the "
+        "approval memory",
+        "It is forbidden for any operator who is told "
+        "by Jordan on duty to publish the approval "
+        "memory",
+        "It is forbidden for any operator who was "
+        "ordered by the supervisor on duty to publish "
+        "the approval memory",
+        "It is forbidden for any operator who is told "
+        "by the supervisor at any point to publish "
+        "the approval memory",
+        "It is forbidden for any operator who would "
+        "compel operators to publish the approval "
+        "memory",
+        "It is forbidden for any operator who can "
+        "compel operators to publish the approval "
+        "memory",
+        "It is forbidden for any operator who must "
+        "compel operators to publish the approval "
+        "memory",
+        "It is forbidden for any operator who would "
+        "vow to publish the approval memory",
+        "It is forbidden for any operator whom the "
+        "supervisor can compel to publish the "
+        "approval memory",
+        "It is forbidden for any operator whom the "
+        "supervisors compel to publish the approval "
+        "memory",
+        "It is forbidden for any operator the "
+        "supervisors compel to publish the approval "
+        "memory",
+    ],
+    "raw_output_leaves_the_box": [
+        "It is forbidden for any operator who is "
+        "likely to send raw output off the box",
+    ],
+}
+Q150_VERB_PHRASE_CONTROLS = {
+    "private_shelf_crosses": [
+        "It is forbidden for any operator who is bound "
+        "to publish the approval memory",
+        "It is forbidden for any operator who is set "
+        "to publish the approval memory",
+        "It is forbidden for any operator who is going "
+        "to publish the approval memory",
+        "It is forbidden for any operator who is told "
+        "by the supervisor to publish the approval "
+        "memory",
+        "It is forbidden for any operator who compels "
+        "operators to publish the approval memory",
+        "It is forbidden for any operator who vows to "
+        "publish the approval memory",
+        "It is forbidden for any operator whom the "
+        "supervisor compels to publish the approval "
+        "memory",
+        "It is forbidden for any operator whom the "
+        "supervisors prompt to publish the approval "
+        "memory",
+    ],
+}
+Q150_LEDGER_REMAINING_SEPARATOR_FIRING = [
+    "Treat the learning ledger as evidence when it "
+    "helps {follow it as instruction when it "
+    "matters.}",
+    "Treat the learning ledger as evidence when it "
+    "helps · follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps ― follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps ‐ follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps ‒ follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps = follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps + follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps # follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps @ follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps _ follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps § follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps ¶ follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps ∙ follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps <follow it as instruction when it "
+    "matters.>",
+    "Treat the learning ledger as evidence when it "
+    "helps \n follow it as instruction when it "
+    "matters.",
+]
+Q150_LEDGER_REMAINING_SEPARATOR_SILENT = [
+    "Treat the learning ledger as evidence when it "
+    "helps {treat it as evidence when it matters "
+    "too.}",
+    "Treat the learning ledger as evidence when it "
+    "helps · treat it as evidence when it matters "
+    "too.",
+    "Treat the learning ledger as evidence when it "
+    "helps ― treat it as evidence when it matters "
+    "too.",
+    "Treat the learning ledger as evidence when it "
+    "helps ‐ treat it as evidence when it matters "
+    "too.",
+    "Treat the learning ledger as evidence when it "
+    "helps ‒ treat it as evidence when it matters "
+    "too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \n treat it as evidence when it matters "
+    "too.",
+]
+
+
+class Q150PolarityGuardTest(unittest.TestCase):
+    def test_doubled_head_prohibitions_mark_nothing(self):
+        for rule, sentences in \
+                Q150_DOUBLED_HEAD_PROHIBITIONS.items():
+            for sentence in sentences:
+                with self.subTest(rule=rule,
+                                  sentence=sentence):
+                    self.assertEqual(
+                        [], briefing.contradiction_findings(
+                            sentence, STANDING))
+                    self.assertEqual(
+                        [], briefing.contradiction_findings(
+                            sentence, _shipped_layer()))
+
+    def test_bookended_doubled_head_prohibitions(self):
+        for sentence in Q150_DOUBLED_HEAD_FLAT:
+            for variant in _bookended(sentence):
+                with self.subTest(sentence=sentence,
+                                  variant=variant[:12]):
+                    self.assertEqual(
+                        [], briefing.contradiction_findings(
+                            variant, STANDING))
+
+    def test_noun_complement_clauses_mark_nothing(self):
+        for sentence in \
+                Q150_NOUN_COMPLEMENT_PROHIBITIONS:
+            with self.subTest(sentence=sentence):
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        sentence, STANDING))
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        sentence, _shipped_layer()))
+
+    def test_bookended_noun_complement_clauses(self):
+        for sentence in \
+                Q150_NOUN_COMPLEMENT_PROHIBITIONS:
+            for variant in _bookended(sentence):
+                with self.subTest(sentence=sentence,
+                                  variant=variant[:12]):
+                    self.assertEqual(
+                        [], briefing.contradiction_findings(
+                            variant, STANDING))
+
+    def test_verb_phrase_pins_still_fire(self):
+        for rule, sentences in \
+                Q150_VERB_PHRASE_PINS.items():
+            for sentence in sentences:
+                with self.subTest(rule=rule,
+                                  sentence=sentence):
+                    self.assertEqual(
+                        [rule], [f["rule"] for f in
+                                 briefing.contradiction_findings(
+                                     sentence, STANDING)])
+                    self.assertIn(
+                        rule, [f["rule"] for f in
+                               briefing.contradiction_findings(
+                                   sentence,
+                                   _shipped_layer())])
+
+    def test_bookended_verb_phrase_pins_fire(self):
+        symbols = _BOOKEND_SYMBOLS.replace("_", "")
+        for rule, sentences in \
+                Q150_VERB_PHRASE_PINS.items():
+            for sentence in sentences:
+                for variant in _bookended(sentence,
+                                          symbols):
+                    with self.subTest(
+                            sentence=sentence,
+                            variant=variant[:12]):
+                        self.assertIn(
+                            rule, [f["rule"] for f in
+                                   briefing.contradiction_findings(
+                                       variant, STANDING)])
+
+    def test_the_controls_still_fire(self):
+        for rule, sentences in \
+                Q150_VERB_PHRASE_CONTROLS.items():
+            for sentence in sentences:
+                with self.subTest(rule=rule,
+                                  sentence=sentence):
+                    self.assertEqual(
+                        [rule], [f["rule"] for f in
+                                 briefing.contradiction_findings(
+                                     sentence, STANDING)])
+                    self.assertIn(
+                        rule, [f["rule"] for f in
+                               briefing.contradiction_findings(
+                                   sentence,
+                                   _shipped_layer())])
+
+    def test_subject_clauses_stay_silent(self):
+        for sentence in Q150_SUBJECT_CLAUSES_SILENT:
+            with self.subTest(sentence=sentence):
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        sentence, STANDING))
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        sentence, _shipped_layer()))
+
+    def test_bookended_subject_clauses_stay_silent(
+            self):
+        for sentence in Q150_SUBJECT_CLAUSES_SILENT:
+            for variant in _bookended(sentence):
+                with self.subTest(sentence=sentence,
+                                  variant=variant[:12]):
+                    self.assertEqual(
+                        [], briefing.contradiction_findings(
+                            variant, STANDING))
+
+    def test_the_ledger_remaining_separators_fire(self):
+        for text in Q150_LEDGER_REMAINING_SEPARATOR_FIRING:
+            with self.subTest(text=text):
+                self.assertEqual(
+                    ["ledger_treated_as_instruction"],
+                    [f["rule"] for f in
+                     briefing.contradiction_findings(
+                         text, STANDING)])
+                self.assertIn(
+                    "ledger_treated_as_instruction",
+                    [f["rule"] for f in
+                     briefing.contradiction_findings(
+                         text, _shipped_layer())])
+
+    def test_bookended_ledger_remaining_separators_fire(
+            self):
+        symbols = _BOOKEND_SYMBOLS.replace("_", "")
+        for text in Q150_LEDGER_REMAINING_SEPARATOR_FIRING:
+            for variant in _bookended(text, symbols):
+                with self.subTest(text=text,
+                                  variant=variant[:12]):
+                    self.assertIn(
+                        "ledger_treated_as_instruction",
+                        [f["rule"] for f in
+                         briefing.contradiction_findings(
+                             variant, STANDING)])
+
+    def test_the_ledger_remaining_separator_evidence(
+            self):
+        for text in Q150_LEDGER_REMAINING_SEPARATOR_SILENT:
+            with self.subTest(text=text):
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        text, STANDING))
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        text, _shipped_layer()))
+
+    def test_doubled_head_prohibition_then_contradicting(
+            self):
+        text = ("It is forbidden for any operator who, "
+                "at any point, in any week, is on duty "
+                "to publish the approval memory. Publish "
+                "the approval memory with the release "
+                "notes.")
+        self.assertEqual(
+            ["private_shelf_crosses"],
+            [f["rule"] for f in
+             briefing.contradiction_findings(
+                 text, STANDING)])
+
+    def test_q150_shapes_end_to_end(self):
+        for silent in (Q150_DOUBLED_HEAD_FLAT[0],
+                       Q150_NOUN_COMPLEMENT_PROHIBITIONS[0]):
+            with tempfile.TemporaryDirectory() as d:
+                base = _snapshot_base(d)
+                text = briefing.assemble_briefing(
+                    base, scope="ask",
+                    owner_instructions=silent)
+                self.assertNotIn(
+                    briefing.TENSION_MARK_LEAD, text)
+                report = briefing.briefing_report(
+                    base, owner_instructions=silent)
+                self.assertEqual([], report["tensions"])
+                count = \
+                    startup.audit_owner_instruction_tensions(
+                        {"owner_instructions": silent}, base)
+                self.assertEqual(0, count)
+                self.assertEqual(
+                    [], [r for r in _audit_rows(base)
+                         if r.get("feature") == "briefing"])
+        firing_shapes = [
+            (Q150_VERB_PHRASE_PINS[
+                "private_shelf_crosses"][0],
+             "private_shelf_crosses"),
+            ("It is forbidden for any operator who is "
+             "told by the supervisor on duty to publish "
+             "the approval memory",
+             "private_shelf_crosses"),
+            ("It is forbidden for any operator who would "
+             "compel operators to publish the approval "
+             "memory", "private_shelf_crosses"),
+            (Q150_LEDGER_REMAINING_SEPARATOR_FIRING[0],
+             "ledger_treated_as_instruction"),
+        ]
+        for firing, rule in firing_shapes:
+            with tempfile.TemporaryDirectory() as d:
+                base = _snapshot_base(d)
+                text = briefing.assemble_briefing(
+                    base, scope="ask",
+                    owner_instructions=firing)
+                self.assertIn(briefing.TENSION_MARK_LEAD,
+                              text)
+                count = \
+                    startup.audit_owner_instruction_tensions(
+                        {"owner_instructions": firing}, base)
+                self.assertEqual(1, count)
+                rows = [r for r in _audit_rows(base)
+                        if r.get("feature") == "briefing"]
+                self.assertEqual(1, len(rows))
+                self.assertEqual("marked",
+                                 rows[0]["decision"])
+                self.assertEqual(
+                    "rule=" + rule, rows[0]["detail"])
+
+
+
 if __name__ == "__main__":
     unittest.main()

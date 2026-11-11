@@ -230,9 +230,15 @@ TENSION_MARK_LEAD = (
     "to tension against this layer:")
 
 
-def _fold(text):
+def _fold(text, breaks=False):
     """Whitespace-folded text, for matching and quoting: the
-    check reads prose, not layout."""
+    check reads prose, not layout. With `breaks`, a line
+    break is first read as a clause boundary (the pilcrow
+    the ledger guard opens a segment at, Q150), before the
+    fold can erase it the way it erases every other run of
+    whitespace."""
+    if breaks:
+        text = re.sub(r"\r\n|\r|\n", " \u00b6 ", text)
     return re.sub(r"\s+", " ", text).strip()
 
 
@@ -330,6 +336,27 @@ def _fold(text):
 # the fullwidth slash, the two-em dash and a run of
 # asterisks), beside its standing separators and
 # dash forms.
+# Q150 widened the guard once more at the same
+# detector: a clause-head parenthetical is read
+# through however many comma-set parentheticals
+# share the head (and its dropped-comma form); a
+# governed noun phrase is judged by what it is to
+# its verb -- a noun complement is still crossed,
+# an object phrase ahead of the infinitive is
+# still the clause's own; a relative clause's verb
+# phrase is judged by its form at the shapes the
+# general judgement's form rules did not reach --
+# a raising predicate carried by an adjective, a
+# by-phrase whose tail runs on through a
+# prepositional phrase, and a verb in its base
+# form behind a modal or under a plural inside
+# subject; and the ledger guard opens a new
+# segment at the remaining clause separators
+# (curly braces, the middle dot, the horizontal
+# bar, the Unicode hyphen and the figure dash,
+# with the same-mechanism separators beside them),
+# reading a line break as a boundary before the
+# whitespace fold can erase it.
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -416,6 +443,51 @@ def _strip_parentheticals(text):
         if second < 0:
             return text
         text = text[:first] + text[second + 1:]
+
+
+def _strip_chained_parentheticals(text):
+    """The text with a run of comma-set parentheticals
+    removed as one run (Q150): two parentheticals at a
+    clause's head share their boundary comma
+    (", at any point, in any week, is on duty"), so
+    pairing the commas leaves a lone comma standing;
+    a run of comma-delimited segments closed by a
+    comma is stripped whole, the way a single
+    parenthetical is."""
+    return re.sub(r",(?:[^,]+,)+", "", text)
+
+
+def _drop_dropped_head_parenthetical(text):
+    """A clause-head parenthetical whose closing comma
+    was dropped (Q150: ", at any point is on duty"):
+    the clause's lone comma stands at its head, and
+    the adverbial phrase it opens -- prepositions,
+    determiners and their nouns ahead of the clause's
+    own verb phrase -- is read through, leaving the
+    clause's verb phrase standing. A head comma over
+    anything else stands as written."""
+    stripped = text.strip()
+    if not stripped.startswith(",") \
+            or stripped.count(",") != 1:
+        return text
+    words = stripped[1:].split()
+    if not words or not (
+            words[0].strip("'").lower()
+            in _PREPOSITION_WORDS
+            or _is_adverb(words[0].strip("'").lower())):
+        return text
+    rest = list(words)
+    while len(rest) > 1:
+        head = rest[0].strip("'").lower()
+        if head in _AUX_WORDS or _verb_like(head):
+            break
+        rest.pop(0)
+    if not rest or rest == words:
+        return text
+    head = rest[0].strip("'").lower()
+    if head not in _AUX_WORDS and not _verb_like(head):
+        return text
+    return " " + " ".join(rest)
 
 
 def _prohibitive_occurrences(low):
@@ -693,13 +765,38 @@ def _clause_carries_infinitive(clause_words):
         rest = clause_words[at + 1:]
         if all(_is_adverb(tail) for tail in rest):
             return True
-        if rest and rest[0] == "by" \
-                and all(tail not in _PREPOSITION_WORDS
-                        and tail not in _AUX_WORDS
-                        and tail not in _GOVERNMENT_VERBS
-                        and not _participle_like(tail)
-                        for tail in rest[1:]):
-            return True
+        if rest and rest[0] == "by" and rest[1:]:
+            # The by-phrase's own noun phrase, running
+            # on through a prepositional tail if it
+            # carries one (Q150: "is told by the
+            # supervisor on duty to ...", traded away
+            # when the tail's preposition refused the
+            # branch whole): noun-phrase words, then
+            # preposition-led phrases of the same
+            # shape, and nothing verbal among them.
+            tail = rest[1:]
+            at = 0
+            tailed = True
+            while tailed and at < len(tail):
+                start = at
+                while at < len(tail) \
+                        and tail[at] \
+                        not in _PREPOSITION_WORDS:
+                    if tail[at] in _AUX_WORDS \
+                            or tail[at] \
+                            in _GOVERNMENT_VERBS \
+                            or _participle_like(tail[at]):
+                        tailed = False
+                        break
+                    at += 1
+                if at == start:
+                    tailed = False
+                elif at < len(tail):
+                    at += 1
+                    if at >= len(tail):
+                        tailed = False
+            if tailed and at >= len(tail):
+                return True
     # A verb of any identity taking the infinitive
     # bare: the clause's verb phrase is auxiliaries
     # and adverbs ahead of one lexical verb, and that
@@ -723,9 +820,17 @@ def _clause_carries_infinitive(clause_words):
             not in _NOUN_COMPLEMENT_WORDS \
             and clause_words[-1] not in _PREPOSITION_WORDS \
             and clause_words[-1] not in _CLAUSE_DETERMINERS \
-            and (_verb_like(clause_words[-1])
-                 or clause_words[-1]
-                 in _BARE_INFINITIVE_VERBS):
+            and clause_words[-1] not in _AUX_WORDS \
+            and clause_words[-1] \
+            not in _CLAUSE_OBJECT_WORDS:
+        # The head standing last behind auxiliaries and
+        # adverbs alone is the verb phrase's head by its
+        # position (Q150), whatever its own form: a verb
+        # in its base form behind a modal ("would vow
+        # to ..."), and a raising predicate carried by
+        # an adjective, which reads as no verb at all
+        # ("is likely to ...", "is very likely to ..."),
+        # take the infinitive the way a listed verb does.
         return True
     if len(clause_words) >= 3 \
             and clause_words[-2] in _CLAUSE_DETERMINERS \
@@ -747,12 +852,20 @@ def _clause_carries_infinitive(clause_words):
                 or word in _CLAUSE_DETERMINERS \
                 or word in _CLAUSE_OBJECT_WORDS:
             continue
-        if not _verb_like(word):
+        if not _verb_like(word) \
+                and (word in _NOUN_COMPLEMENT_WORDS
+                     or _is_adverb(word)):
             continue
         if any(head not in _AUX_WORDS
                and not _is_adverb(head)
                for head in clause_words[:verb_at]):
             continue
+        # A verb standing in its base form behind a modal
+        # or an auxiliary ("would compel operators to
+        # ...") governs its object phrase the way its
+        # finite form does (Q150): the heads ahead of it
+        # are auxiliaries and adverbs alone, as the check
+        # above holds, so its position is its form.
         obj = clause_words[verb_at + 1:]
         if not obj:
             continue
@@ -760,6 +873,18 @@ def _clause_carries_infinitive(clause_words):
                 or obj[0] in _AUX_WORDS \
                 or "to" in obj \
                 or any(tail in _AUX_WORDS for tail in obj):
+            continue
+        if any(tail in _NOUN_COMPLEMENT_WORDS
+               for tail in obj) \
+                and all(tail in _CLAUSE_DETERMINERS
+                        or tail in _NOUN_COMPLEMENT_WORDS
+                        for tail in obj):
+            # A governed noun phrase that is a noun
+            # complement in full ("holds clearance to
+            # ...", "is assigned a duty to ...") is the
+            # verb's complement, not the infinitive's
+            # object phrase (Q150): the clause is the
+            # subject's, and is crossed below.
             continue
         return True
     # The inverted shape: the clause's subject stands
@@ -770,8 +895,43 @@ def _clause_carries_infinitive(clause_words):
     # ...") included -- and a verb of any identity
     # stands last, its object the head the clause
     # modifies.
+    if len(clause_words) >= 3 \
+            and clause_words[-2] in _AUX_WORDS \
+            and clause_words[-1] \
+            not in _NOUN_COMPLEMENT_WORDS \
+            and clause_words[-1] not in _PREPOSITION_WORDS \
+            and clause_words[-1] not in _CLAUSE_DETERMINERS \
+            and clause_words[-1] not in _AUX_WORDS:
+        # The inverted shape behind a modal (Q150:
+        # "the supervisor can compel to ..."): the
+        # inside subject stands ahead of the modal, and
+        # the base-form verb stands last.
+        subject = clause_words[:-2]
+        if subject and all(
+                word not in _PREPOSITION_WORDS
+                and word not in _AUX_WORDS
+                and word not in _OBJECT_CONTROL_VERBS
+                and word not in _BARE_INFINITIVE_VERBS
+                and word not in _GOVERNMENT_VERBS
+                and not _participle_like(word)
+                for word in subject):
+            return True
     if len(clause_words) >= 2 \
-            and _verb_like(clause_words[-1]):
+            and (_verb_like(clause_words[-1])
+                 or clause_words[-1]
+                 not in _NOUN_COMPLEMENT_WORDS
+                 and clause_words[-1]
+                 not in _PREPOSITION_WORDS
+                 and clause_words[-1]
+                 not in _CLAUSE_DETERMINERS
+                 and clause_words[-1] not in _AUX_WORDS
+                 and clause_words[-1]
+                 not in _CLAUSE_OBJECT_WORDS):
+        # The last word is the clause's verb by its
+        # position behind a pure noun-phrase subject
+        # (Q150), in its base form included, the form
+        # a plural inside subject takes ("the
+        # supervisors compel to ...").
         subject = clause_words[:-1]
         if all(word not in _PREPOSITION_WORDS
                and word not in _AUX_WORDS
@@ -807,9 +967,19 @@ def _zero_relative_carries(between):
     if len(words) < 5 or words[-1] != "to":
         return False
     core = words[:-1]
-    if not _verb_like(core[-1]) \
-            and core[-1] not in _OBJECT_CONTROL_VERBS:
+    if core[-1] in _AUX_WORDS \
+            or core[-1] in _PREPOSITION_WORDS \
+            or core[-1] in _CLAUSE_DETERMINERS \
+            or core[-1] in _NOUN_COMPLEMENT_WORDS:
         return False
+    # A verb standing last in its base form (Q150: "the
+    # supervisors compel to ...") reads by its form only
+    # where the inside subject it agrees with is a
+    # determiner-led plural noun phrase, the shape a
+    # plural subject and a base-form verb make together;
+    # any other plain word standing last is no verb.
+    base_form = not _verb_like(core[-1]) \
+        and core[-1] not in _OBJECT_CONTROL_VERBS
     for at in range(2, len(core) - 1):
         subject = core[:at]
         clause_subject = core[at:-1]
@@ -827,7 +997,13 @@ def _zero_relative_carries(between):
                and word not in _BARE_INFINITIVE_VERBS
                and word not in _GOVERNMENT_VERBS
                for word in clause_subject):
-            return True
+            if not base_form:
+                return True
+            if len(clause_subject) >= 2 \
+                    and clause_subject[0] \
+                    in _CLAUSE_DETERMINERS \
+                    and clause_subject[-1].endswith("s"):
+                return True
     return False
 
 
@@ -889,8 +1065,14 @@ def _drop_subject_relative_clause(between):
         if to < 0:
             return text
         clause = after[:to]
-        before_clean = _strip_parentheticals(before)
-        clause_clean = _strip_parentheticals(clause)
+        before_clean = _strip_parentheticals(
+            _strip_chained_parentheticals(before))
+        clause_clean = _strip_parentheticals(
+            _strip_chained_parentheticals(clause))
+        if "," in clause_clean:
+            clause_clean = \
+                _drop_dropped_head_parenthetical(
+                    clause_clean)
         clause_clean = clause_clean.strip()
         if clause_clean.endswith(","):
             clause_clean = clause_clean[:-1]
@@ -1105,7 +1287,10 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     " – ", "–", " - ", "(", ")", "/",
                     "|", "...", "…", "&", "\\", "[",
                     "]", "..", "•", "~", "／",
-                    "⸺", "*")
+                    "⸺", "*", "{", "}", "·",
+                    "―", "‐", "‒", "=", "+",
+                    "#", "@", "_", "§", "¶",
+                    "∙", "<", ">")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -1213,7 +1398,7 @@ def contradiction_findings(owner_text, standing_text):
         if not isinstance(owner_text, str) \
                 or not isinstance(standing_text, str):
             return []
-        owner = _fold(owner_text)
+        owner = _fold(owner_text, breaks=True)
         standing = _fold(standing_text)
         if not owner or not standing:
             return []
