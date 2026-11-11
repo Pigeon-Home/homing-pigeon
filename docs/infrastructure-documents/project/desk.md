@@ -9805,3 +9805,125 @@ client reading its own credential file: the rule is
 pinned on the file shapes, not on a client run.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+## Default-posture S5 refresh: suppositions recorded before the edit (2026-11-11)
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Packet 4 of the documentation overview closed with a
+cross-packet flag for the lane that owns the page:
+`docs/steady/security/default-posture.md`'s S5 finding,
+measured 2026-11-09, records the job-time confinement
+fallback as running the job weaker, which the Q135
+settlement has since retired in the code and in
+SECURITY.md; the page is Packet 1's, and its measurement
+record is for that lane to refresh. No later refresh is
+recorded in this desk. This section is that lane's
+supposition, written before the page is edited.
+
+What the stale text says, read first-hand on the current
+head. The S5 supposition (page lines 51-57) and the S5
+finding (lines 115-137) state the job-time step-downs as
+exactly two chains -- confinement and the job user --
+each warning, writing a `fallback` audit entry, and
+running the job weaker: confinement runs the job
+unsandboxed, and the job user runs the job as the
+current user. Conclusions point 2 (lines 189-196)
+repeats the step-down as the page's summary, and the
+phase-2 plan (lines 199-213) still presents the two
+refusals -- confinement at `enforce` fails the job, not
+open; the job user at `enforce` fails the job, not
+open -- as future work. The S5 finding's two softer
+degradations stand in the same paragraph: an `enforce`
+audience check with no runner id warns and is skipped,
+and the job user at `enforce` with no user named
+engages nothing and warns nowhere.
+
+What has since settled, read first-hand in the code.
+Phase 2 made `enforce` refuse rather than fall back.
+Q135 then settled the confinement decision's shape
+(the questions file's Q135 entry): the decision is a
+pure query that returns a decision triple for every
+config and never raises; a confinement that cannot
+engage returns a denial -- the empty argv, host env,
+not sandboxed -- writing the same `fallback` audit row
+and the same log line the raise used to leave, and the
+job-acceptance boundary in `runner/ops/exec.py`
+converts the denial into the refusal. A job whose
+confinement cannot engage is refused end to end and
+never runs weaker (`runner/runner.py`'s
+`_confinement_argv`; SECURITY.md's Confinement section
+states the same). The job-user chain settled the same
+way: `_job_user_preexec` in
+`runner/ops/remediation_ops.py` records the `fallback`
+first and then refuses the job under `enforce` for
+each of its three reasons (not root, user
+unresolvable, workdir not chown-able), and SECURITY.md's
+job-user section states that chain as a refusal too.
+
+Suppositions, to be settled in the conclusions of
+this section when the lane lands:
+
+- **DP-S1.** A search of the whole living doc set for
+  the retired fallback -- running a job weaker, running
+  unsandboxed, the job-time step-down stated as current
+  behaviour -- will find `default-posture.md` the only
+  living reader page that states it as current
+  behaviour with no current-behaviour note beside it.
+  The other hits will each stand as they are:
+  SECURITY.md and the README already state the refusal;
+  the remediation design and the senses page already
+  state refusal rather than a weaker run; the hardening
+  report and the campaign standing orders are dated
+  records that already carry the retirement note beside
+  the stale passage; the stage-4 proof is a record
+  against a named older tree; the live-examples page is
+  a dated capture, verbatim; and the changelog, the
+  archive and the reports shelf are historical records,
+  not edited by this lane.
+- **DP-S2.** The refresh shape that fits the page: the
+  2026-11-09 measurement text stands as the record of
+  what was measured then -- Packet 1's reasoning, and
+  the reason this lane adds beside it rather than
+  rewriting it -- and the refresh adds a dated
+  current-behaviour note beside the S5 finding, a dated
+  refresh sentence in Conclusions point 2, and a short
+  status line in the phase-2 plan naming items 1 and 2
+  as landed. Every place a reader could quote the
+  retired fallback as the page's present position then
+  carries the refusal beside it. The page itself states
+  the facts only: no question number, seat name or
+  pointer to the questions file or this desk goes into
+  the page, per the reader-page rule.
+- **DP-S3.** The refresh note's confinement sentence
+  will state the settled shape exactly: the decision
+  returns a denial instead of raising, the same
+  `fallback` record and warning are written, and the
+  job boundary refuses the job on the denial -- refused
+  end to end, never run weaker, on every backend;
+  `audit` and `off` are unchanged. The job-user
+  sentence will state its three reasons refusing the
+  job under `enforce` in the same shape.
+- **DP-S4.** The S5 finding's two softer degradations
+  have also moved since the measurement, and the
+  refresh note will say so in one sentence each,
+  verified against the code before the page edit:
+  audience at `enforce` with no runner id now refuses
+  startup instead of warning once and skipping the
+  check (`runner/ops/main.py`), and the job user at
+  `enforce` with no user named is now named at startup
+  and in the posture report as not engaged
+  (`runner/ops/main.py`, `runner/ops/posture.py`)
+  rather than engaging nothing silently. Nothing else
+  in S1-S4, S6 or S7 is touched by this lane.
+- **DP-S5.** The guard tests for this surface -- at
+  minimum `runner/tests/test_reader_docs_quiet.py`,
+  `runner/tests/test_default_posture.py` and the
+  figure-slot tests -- will pass on the landing tree
+  with the refresh in place, and no other living page
+  will need an edit in this lane.
+
+What this refresh will not change: the 2026-11-09
+supposition and findings text itself, which stands as
+that day's record; any historical or dated record
+named in DP-S1; any code; and no release is cut by
+this lane.
