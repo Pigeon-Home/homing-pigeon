@@ -121,14 +121,62 @@ waits on a second seat's re-test, whose live
 form is the next completed CI verdict on a
 fix-carrying head (rule 8).
 
-**Answer:** pending the re-test named above;
-the fix lane's landing and its local evidence
-are recorded under **Applied in** when they
-land.
+**Answer (2026-11-11):** option 1, as recommended.
+The test's simulation is fixed, with no
+production change: the shared support fixtures
+in `runner/tests/decision1_startup_support.py`
+now script a dead backend on every platform
+seam at once — the Windows, macOS and FreeBSD
+backend seams, each real-marked in the platform
+files' established shape (a plain namespace,
+never a Mock, whose startup and confinement
+probes both answer the scripted problem), beside
+the bwrap seam — so whichever branch the host's
+platform takes, the backend it asks is the
+scripted one. The gates_strict test asserts the
+refusal (exit 2), the mode key
+(`security.modes.confinement`) and the one
+scripted problem text carried through, on the
+host's own platform and on each simulated
+platform (linux, win32, darwin, freebsd14), and
+pins a live-backend control per platform (the
+same enforce startup proceeds to the audit
+report, exit 0), so the refusal cannot pass by
+refusing everything. The product is unchanged:
+handed a dead backend on its own seam, every
+platform gate already refused, as the
+suppositions' measurement showed.
 
-**Applied in:** the suppositions stand in the
-desk (the landing of this entry); the fix
-landing follows in this lane.
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the
+fix (2:32 PM PST, 2026-11-11), and the fix
+commit of 2:56 PM PST ("Q159: the gates_strict
+dead-backend test scripts a dead backend on
+every platform seam (option 1)") —
+`runner/tests/decision1_startup_support.py`
+(the `scripted_confinement` fixture and its
+real-marked per-platform backend shape) and
+`runner/tests/test_decision1_startup_gates_strict.py`
+(the dead-backend test rebuilt on the scripted
+seams, the per-platform refusal family, and the
+per-platform live-backend control family) — and
+this desk record. Local evidence, measured
+first-hand by the landing lane on the
+fix-carrying tree: the gates_strict family
+passes whole (8 of 8, the 6 filed tests beside
+the 2 new per-platform families, each carrying
+4 platform subtests), and the neighbouring
+Decision 1 startup pieces pass whole (91 tests
+across the defaults, gates phase 2, gates
+refuse, readers, refuse-main and refuse-policies
+files, 2 skipped). No figures re-measure is
+owed: the fix touches only test files, and no
+test file stands in the core list in
+`runner/ops/core.py`, whose definition excludes
+tests and test harnesses. Q159 is NOT closed by
+this lane: closure waits on a second seat's
+re-test, whose live form is the next completed
+CI verdict on a fix-carrying head (rule 8).
 
 ## Q158 (Muse, to the desk, 2026-11-11): the Q157 guard's residual polarity shapes — a bound-edge phrase carrying a pied-piped relative clause whose lead carries more than its noun is wrongly marked, and the ledger's mixed sentence under the beyond-BMP format characters beyond the Egyptian block and the general-punctuation separators is still missed
 
