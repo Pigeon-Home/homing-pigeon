@@ -3745,6 +3745,76 @@ run under the new table are their re-test under rule 8.
 **Applied in:** this addendum, the refreshed table, and
 the guard tests that pin the floors, in one landing.
 
+**Addendum (2026-11-11, the 3.16.20.4 re-pack —
+suppositions, recorded before the measurement):** the
+drift rule fired again. The table the shard-2 re-price
+left (442 files, 8,922.8 seconds in all) packs the
+discovered suite of the 3.16.20.4 tag tree (445 modules,
+12,184 tests) into 13 shards of about 693 seconds packed
+each, and the tag build (run 43003938484) still lost the
+build-windows leg to the wall in both attempts: attempt
+1 killed shard 0 at the 1,200.2-second wall (exit 124),
+attempt 2 killed shard 0 again and shard 4 with it, no
+individual test failure in any completed shard of
+attempt 1, and every other leg of the tag build passed
+both attempts. The same wall-clock family held the
+3.16.20.1, .2 and .3 cuts. This lane re-packs; it does
+not cut a release. The suppositions below are recorded
+before any estimator run, refreshed table or boundary
+measurement in this lane, against the filing evidence
+above and the two attempts' shard membership lines,
+which stand in the ship lane's kept logs:
+
+- Q136-RP-S1: the current table still under-prices
+  shard 0's head. Shard 0 of the .4 attempts carries
+  test_decision1_startup at its 650-second floor plus
+  19 further files priced at about 43 seconds in all;
+  a shard priced at 693 seconds that burns past the
+  1,200-second wall therefore puts its head file (or
+  one companion) above about 1,100 seconds true. The
+  killed shard's own last-lines dump will name where
+  the kill landed, the way the shard-2 dump did.
+- Q136-RP-S2: shard 4's attempt-2 kill is the same
+  family — its head, test_proof_content_cap at the
+  390-second floor the shard-2 re-price set, is still
+  under-priced at the .4 tree, whose suite has grown
+  since that floor was derived.
+- Q136-RP-S3: a refresh by the tool's own `--write
+  --from-logs` route over both .4 attempts plus the
+  newest main-build Windows logs at hand, each file
+  keeping its largest estimate across logs, raises
+  the table total well above 8,922.8 seconds — but it
+  prices the killed shards' head files BELOW their
+  standing floors, because a killed shard prints no
+  durations block and the estimator spreads its wall
+  by unlisted test count. The tool's output alone
+  therefore fails the guard family's floor pins, and
+  documented floors from boundary evidence — the
+  shard-5 and shard-2 precedent — are needed on top
+  of the refresh, not instead of it.
+- Q136-RP-S4: with the refresh and those floors
+  landed, the packing's shard count grows past 13
+  and every packed shard sits within the 720-second
+  budget, the guard family passing whole.
+- Q136-RP-S5: the red is concentrated, not uniform.
+  Attempt 1's completed shards ran 387 to 642 seconds
+  of internal time against about 693 packed, so the
+  .4 pool ran at or faster than priced for ordinary
+  files; the refresh's largest-across-logs prices for
+  ordinary files stay near their current values while
+  the heavy heads move most.
+- Q136-RP-S6: the files the table does not yet name
+  (445 discovered against 442 tabled, about 24 packed
+  at the median default across the 13 shards) are not
+  the cause; measured at refresh they take ordinary
+  prices and do not change the verdict's shape.
+
+The measurement, the refreshed table, the floors the
+boundary evidence supports (each stated as a floor,
+not a measurement), and the conclusions against these
+suppositions follow in this entry. The 12-minute
+budget and the 20-minute wall stand unchanged.
+
 ---
 
 ## Q135 (Muse, to the desk, 2026-11-10): the confinement decision raises where its contract is to answer — a denial must come back as a triple and be refused at the job boundary, not thrown from the decision
