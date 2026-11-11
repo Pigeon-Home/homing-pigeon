@@ -283,6 +283,32 @@ fix and a green test-macos on a head carrying it; the
 full verdict stands completed in
 `docs/steady/security/macos.md`.
 
+That fix has since landed. Its suppositions were
+recorded in `docs/steady/security/macos.md` before any
+fix was written — the launcher shim's 512 MiB
+address-space limit aborting the exec'd interpreter at
+startup, the profile's missing `/private` canonical
+twins for the temp-tree work directory, and the spawn
+seam's mixed platform signals routing a darwin host's
+windows simulation into the macOS branch — and the fix
+matches them one for one: the shim sets the data-size
+limit only, the profile names the canonical twin of
+every `/var` and `/tmp` path on its read and write
+lines and is built from the work directory's real path,
+and the spawn seam derives every platform from
+`sys.platform` alone. The contract proof runs green off
+darwin (the three confinement suites together, beside
+the neighbouring batteries), the live limits point is
+re-pinned to the data-size ceiling with the address
+space unlimited, a new live point carries a job refused
+for allocating past the ceiling, and the figures were
+re-measured over the fix's tree. The live proof is
+still owed: no `test-macos` job on a head carrying the
+fix has completed as this note stands, so the support
+level stays Supported, reduced confinement, and the
+conclusions stand in `docs/steady/security/macos.md`
+against the three suppositions.
+
 And a third round of the same reconciliation, for the one
 surface the first two could not see: fixtures that only fail
 where no confinement backend exists at all. On Linux the

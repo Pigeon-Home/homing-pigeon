@@ -28,10 +28,17 @@ states a `(deny network*)` line beside it so the record of
 the profile says what it does. The memory ceiling is applied
 at spawn: the job's command runs under a small launcher shim
 (the runner's own interpreter, a few lines) that sets the
-virtual-memory and data-size resource limits to 512 MiB per
-process with `setrlimit` and then `exec`s the job's command,
-the macOS shape of the FreeBSD backend's `limits(1)` step,
-which macOS has no equivalent of. `sandbox-exec` wraps the
+data-size resource limit to 512 MiB per process with
+`setrlimit` and then `exec`s the job's command, the macOS
+shape of the FreeBSD backend's `limits(1)` step, which
+macOS has no equivalent of. Only the data-size limit is
+set, never the virtual-memory (address-space) limit: the
+address space a macOS process maps at startup already
+exceeds 512 MiB, and a 512 MiB address-space ceiling made
+every confined spawn abort before its first line of job
+code in the backend's first live run — the fix for that
+failure, and its suppositions and conclusions, stand at
+the end of this page. `sandbox-exec` wraps the
 shim, so the profile is in force before the shim's first
 line runs, and the job never runs a line unconfined. The
 profile is generated per job and passed to `sandbox-exec`
@@ -312,3 +319,79 @@ fix keeps the fail-closed posture throughout: deny by
 default, no network allow rule, writes only inside the
 work directory, and a spawn that cannot apply its
 controls still refuses the job.
+
+## Conclusions for the fix, as they stand (2026-11-11)
+
+The fix has landed, built to the three suppositions
+above, in three parts that match them one for one. The
+launcher shim now sets the data-size limit only and
+never an address-space limit. The profile writer names
+the `/private` canonical twin of every `/var` and
+`/tmp` path it names, on the read line and the write
+line alike, deduplicated, and the composed spawn argv
+builds its profile from the work directory's real path,
+so a work directory reached through any alias enters
+the profile under the name Seatbelt matches. And the
+spawn seam derives all three platforms — Windows,
+FreeBSD, darwin — from `sys.platform` alone, the single
+signal the confinement gates beside it already used;
+the windows seam tests complete their simulation by
+patching `sys.platform`, as the FreeBSD and macOS seam
+tests already did. The figures were re-measured over
+the fix's tree in the landing that followed it. What
+each supposition now stands on, stated exactly:
+
+- S1's mechanism is addressed as supposed, and its
+  deterministic substrate is proven off darwin: the
+  contract tests pin the shim's source to the data-size
+  limit alone (no address-space or virtual-memory limit
+  name stands in it), and the live limits test is
+  re-pinned to read back exactly that — the data limit
+  at the ceiling, the address space unlimited — beside a
+  new live point the landed suite did not carry, a job
+  that tries to allocate 700 MiB past the ceiling and is
+  refused by it. Whether the abort is gone is not proven
+  here: that is a live fact, and no `test-macos` job on
+  a head carrying this fix has completed as this section
+  stands. If that verdict still shows exit -6, S1 is
+  wrong, exactly as its record said in advance.
+- S2 is proven in the substrate it named. The generated
+  profile text is deterministic off macOS, and the
+  contract tests pin it: a `/var/folders` work directory
+  and a `/tmp` work directory each name their
+  `/private` twin on both lines, a `/var` read path
+  names its twin once, a work directory already in
+  canonical form gains no duplicate and no doubled
+  `/private`, the `/private/etc` twin the system trees
+  already carried is not doubled, and a symlinked work
+  directory enters the profile under its real path. The
+  live staged read those rules exist to allow is proven
+  only by the same outstanding CI verdict.
+- S3 is proven off darwin. The seam tests pin both
+  directions of the single-signal rule: a `win32`
+  platform routes to the Windows backend even when
+  `os.name` still answers the host's `posix`, and on a
+  darwin platform an `os.name` of `nt` routes nowhere
+  but the macOS branch. The windows suite's simulations
+  now patch `sys.platform` beside `os.name`, and the
+  three confinement suites — macOS, Windows and FreeBSD
+  — run green together on a Linux host (159 tests, the
+  live macOS class among the skips, under its registered
+  reasons), beside the neighbouring batteries (the
+  skip registry, the reader-pages guard, the core and
+  figure guards after their re-measure). The 4
+  darwin-host windows failures' mechanism is removed by
+  construction; their confirmation on a darwin host is
+  the same outstanding CI verdict, not a claim made
+  here.
+- The support level does not move. It stands exactly
+  as the support matrix states it — Supported, reduced
+  confinement. The live proof remains open, and it
+  closes only when a `test-macos` job on a head carrying
+  this fix completes green; until then the live points
+  stand as the failure verdict left them — the probe
+  and the confined spawn refuted as originally landed
+  and now addressed by a fix whose live word has not
+  landed, the escape, network and limits points
+  unproven — and no field proof on project hardware is
+  claimed: there is no Mac in the project's own fleet.
