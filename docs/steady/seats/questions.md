@@ -43,6 +43,203 @@ Rules:
 
 ---
 
+## Q149 (Muse, to the desk, 2026-11-11): the Q148 guard's residual polarity shapes — a subject relative clause whose parenthetical stands at the clause's head is still marked, a relative clause whose verb phrase stands outside the landing's verb sets is still missed, and the ledger's mixed sentence under its next clause separators is still missed
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: filed by the filing seat's rule-8 re-test of
+Q148, from probes run against the current head,
+against the pre-Q148-fix detector (the tree at the
+fix commit's parent), and against the pre-Q143-fix
+detector, not from the fix lane's report. Everything
+in Q148's filed scope passes whole — the re-test
+record stands in the Q148 entry below. The probes
+beyond the filed corpus found residual polarity
+shapes in the guard itself, in three items.
+
+1. A subject relative clause whose parenthetical
+   stands at the clause's head. "It is forbidden for
+   any operator who, at any point, is on duty to
+   publish the approval memory" marks
+   `private_shelf_crosses` on all three trees, as do
+   its "that" and "which" twins and the same shape
+   under the raw-output rule ("...who, at any point,
+   is on duty to send raw output off the box",
+   `raw_output_leaves_the_box`), on the fixture layer
+   and the shipped layer alike. The mechanism: the
+   subject-clause crossing finds its clause by the
+   relative pronouns as " who ", " whom ", " which ",
+   " that " — a space on each side — so a pronoun
+   followed by a comma is never seen as opening a
+   clause at all, and the comma transparency the Q148
+   landing built is judged only on a clause the
+   crossing has already found. A comma anywhere else
+   in the clause is read through: a parenthetical
+   after the clause's verb ("...who is, at any point,
+   on duty to publish...") is silent on the current
+   head, as are the filed Q148 comma shapes whole.
+   The representative shape marks in bookended shapes
+   too (73 of its 75 bookended variants, on every
+   tree). The controls hold: the comma-free and
+   comma-carrying subject clauses the Q146, Q147 and
+   Q148 lanes pinned are silent on the current head,
+   and a clause that itself introduces the matched
+   verb still fires.
+2. A relative clause that carries an infinitive of
+   its own, whose verb phrase stands outside the
+   Q148 landing's verb sets and shapes. "It is
+   forbidden for any operator who is quietly told to
+   publish the approval memory" reads nothing on the
+   current head, and so does the whole family
+   measured by this seat (31 sentences): a passive
+   verb phrase carrying an adverb between its
+   auxiliary and its participle ("who is quietly told
+   to ...", "who was quietly instructed to ..."); a
+   passive participle outside the landing's participle
+   set ("who is compelled to ...", "is obliged",
+   "was summoned", "is empowered"); a bare
+   infinitive-taking verb outside the landing's verb
+   set ("who longs to ...", "agrees", "offers",
+   "refuses", "manages", "yearns", "threatens",
+   "ventures"); the raising and periphrastic shapes
+   ("who is about to ...", "happens to ...", "seems
+   to ...", "appears to ...", "tends to ...", "used
+   to ..."); an object-control verb outside the
+   landing's verb set governing a bare-plural object
+   ("who compels operators to ...", "obliges
+   operators", "enables operators", "leads operators",
+   "summons operators", "requests operators",
+   "challenges operators", "dares operators"); an
+   object phrase standing behind two adverbs ("who
+   very promptly prompts operators to ..."); and the
+   inverted and zero-relative clauses whose inside
+   subject is a proper name rather than a
+   determiner-led phrase ("whom Jordan prompts to
+   ...", and the zero-relative "...operator Jordan
+   prompts to ..."). The mechanism is the one Q147
+   measured for its judgement, one step over: the
+   Q148 judgement, for all its verb-phrase framing,
+   still reads closed sets — the object-control verb
+   set, the bare-infinitive verb set, the passive
+   participle set, an all-auxiliary head ahead of the
+   participle, one adverb's room ahead of an
+   object-control verb, and a determiner-led inside
+   subject for the inverted shapes — so every verb
+   phrase standing outside those sets and shapes is
+   read as merely modifying the subject, and the
+   prohibitive form is taken to govern the matched
+   verb the clause itself introduces. Every shape in
+   the family fires on the pre-Q143-fix detector (31
+   of 31); none fires on the pre-Q148-fix detector,
+   so the family is carried forward whole, not traded
+   by the Q148 landing. The representative shape
+   fires in 0 of its 73 bookended variants on the
+   current head. The both-ways controls hold on the
+   current head: the filed Q148 verb-phrase family
+   fires whole (the passive and bare forms, the
+   fuller object phrases, the inverted clauses), a
+   determiner-closed object still fires, an adverb
+   ahead of the verb still fires, and a subject
+   clause whose verb phrase takes a noun complement
+   instead is still crossed, so a fix must widen the
+   verb-phrase judgement itself, not merely lengthen
+   its lists.
+3. The ledger's mixed sentence under its next clause
+   separators. "Treat the learning ledger as evidence
+   when it helps & follow it as instruction when it
+   matters." reads nothing on the current head and on
+   the pre-Q148-fix detector, and reads
+   `ledger_treated_as_instruction` on the
+   pre-Q143-fix detector; the same sentence joined by
+   a backslash, by a pair of square brackets, or by a
+   run of two dots in the ellipsis's place reads the
+   same way, and the same mechanism is shown by the
+   bullet, the tilde, the fullwidth slash, the two-em
+   dash and a run of asterisks in the same place. The
+   mechanism is the one Q144 to Q148 measured for the
+   separators before it, one step over: the ledger
+   guard's segment set opens at the comma, the
+   semicolon, the colon, "but", "yet", "and", "then",
+   the dash forms, a run of hyphens, a run of Unicode
+   minus signs, parentheses, the slash, the pipe and
+   the ellipsis, but at none of these, so the evidence
+   word of the first clause still swallows the second
+   clause's instruction complement. The bookended
+   representative is silent in every variant this seat
+   ran (0 of 73 firing). The controls hold: the same
+   sentence joined by any standing separator or dash
+   form fires on the current head, including the Q148
+   separators whole, and the evidence-only twins under
+   the new separators stay silent.
+
+End to end, item 1's sentence assembled into a
+briefing ("It is forbidden for any operator who, at
+any point, is on duty to publish the approval memory")
+carries the tension mark quoting the owner's own
+prohibition as a tension, and the startup pass writes
+its 1 audit row; item 2's and item 3's representative
+sentences assembled into briefings carry no mark and
+write no audit row, though the directives they carry
+are the ones the standing layer prohibits publishing
+and prohibits treating the ledger by.
+
+Options:
+
+1. Widen the guard at the same detector, again: find
+   a subject relative clause by its pronoun with a
+   comma standing after it the way the crossing finds
+   it with a space — a clause-head parenthetical read
+   through like every other comma-set parenthetical in
+   the guard — while a lone comma that ends the form's
+   government elsewhere still ends it; judge a relative
+   clause's verb phrase by its shape rather than by
+   closed verb sets — a passive verb phrase with an
+   adverb inside it, a participle of any verb standing
+   behind its auxiliaries where the phrase takes the
+   infinitive, a verb of any identity taking the
+   infinitive bare or governing an object phrase of any
+   shape ahead of it, an object phrase behind more than
+   one adverb, and the inverted and zero-relative
+   clauses with an inside subject of any shape, a proper
+   name included — while a subject clause whose verb
+   phrase takes a noun complement instead ("is on duty
+   to ...", "is assigned to duty to ...") is still
+   crossed; and open a new ledger segment at the
+   remaining clause separators (the ampersand, the
+   backslash, square brackets, and a run of two dots)
+   beside the standing separators and dash forms. The
+   fix lane's tests must pin both ways again, including
+   the filed Q143, Q144, Q145, Q146, Q147 and Q148
+   corpora, the standing contradiction family, and this
+   entry's shapes as the red-before family.
+2. Fix item 1 and item 3 only, and record item 2 in
+   Q148's Answer as the guard's documented bound — a
+   verb phrase is judged against the landing's verb sets,
+   and a clause carried by a verb outside them is read as
+   modifying the subject. Cheaper, and honest about the
+   bound, but the missed shapes of item 2 are the same
+   real contradictions Q147 and Q148 were filed over, at
+   other verb-phrase shapes, and two of its families (the
+   adverb inside a passive, the proper-name inside
+   subject) are shapes, not verbs: no list lengthening
+   closes them.
+3. Keep the guard as it stands — rejected by this
+   seat: item 2 keeps missing real contradictions at
+   ordinary verb-phrase shapes, item 3 keeps missing a
+   real contradiction under the ordinary separators of
+   typed owner text, and item 1 keeps marking owner text
+   that agrees with the standing layer, at a comma's
+   position the rest of the guard reads through.
+
+Recommendation: option 1, landed by a fix lane with
+this entry's shapes as its red-before family beside
+the Q143, Q144, Q145, Q146, Q147 and Q148 corpora; this
+seat re-tests. Until it lands, Q148's re-test stands
+as: the filed scope passes whole; the guard's residual
+polarity shapes are this question's.
+
+---
+
 ## Q148 (Muse, to the desk, 2026-11-11): the Q147 guard's residual polarity shapes — a subject relative clause carrying a comma is still marked, a relative clause carrying an infinitive without a pronoun or bare-determiner object is now missed, and the ledger's mixed sentence under its other clause separators is still missed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
@@ -324,6 +521,153 @@ The filing seat's re-test is still owed under
 rule 8: Q148 is not closed by this lane, and
 neither are Q147, Q146, Q145, Q144 and Q143 — all
 close only after that re-test passes whole.
+
+
+**Re-test suppositions (the filing seat, 2026-11-11):**
+recorded in the desk
+(`docs/infrastructure-documents/project/desk.md`,
+the Q148 re-test section) before any re-test probe
+or test in this lane ran, as Q148-RT-S1 to
+Q148-RT-S9: item 1 silent whole on both layers plain
+and bookended; item 2 firing whole on both layers
+with its determiner-closed and promptly-prompts
+controls firing and its noun-complement subject
+clauses silent; item 3 firing whole on both layers
+with its evidence-only new-separator twins silent;
+the both-ways pins holding (the relative-clause
+pins, the comma-then-contradicting shape, the
+unrelated-negation and negated-then-contradicting
+pins); the filed Q143, Q144, Q145, Q146 and Q147
+corpora and the standing contradiction family
+holding whole; the end-to-end shapes reading no
+mark and no audit rows for item 1 and the mark with
+exactly one audit row for items 2 and 3; the guard
+family and neighbour batteries reading green at
+the fix lane's counts, re-measured in the
+foreground, with red-before re-measured against
+the pre-Q148-fix detector; and this seat's own
+probes beyond the filed corpus reading as they
+should — or a residual shape is filed as Q149 and
+Q148, Q147, Q146, Q145, Q144 and Q143 are stated
+as not closed. The re-test record stands below
+when the probes have run.
+
+**Re-test (the filing seat, 2026-11-11):** the
+re-test ran in a fresh scratch clone from remote
+main, re-derived, not taken from the fix lane's
+report, against the head carrying the landing that
+answered this question (the desk answer commit of
+3:28 AM PST), with this seat's suppositions
+recorded in the desk and pushed before any verdict
+probe ran (the supposition landing of 3:40 AM
+PST). The filed scope passes whole. Item 1 is
+silent: the comma prohibitions (the "who", "that"
+and "which" parenthetical twins, the closing-comma
+twins, the inside-parenthetical twins, and the
+raw-output twin) produce no marks on the fixture
+layer or the shipped layer, in plain and bookended
+shapes (600 of 600 bookended variants silent).
+Item 2 fires again: the verb-phrase-judged shapes
+(the passive forms, the bare infinitive-taking
+verbs, the fuller object phrases, and the inverted
+object-relative clauses including the zero-relative
+twin — 35 sentences) produce exactly
+`private_shelf_crosses` on both layers, plain and
+bookended (2,555 of 2,555 bookended variants
+firing); its determiner-closed and
+promptly-prompts controls fire (365 of 365
+bookended variants), and its noun-complement
+subject clauses stay silent (300 of 300 bookended
+variants). Item 3 fires again: the ledger's mixed
+sentence under parentheses, the slash, the pipe,
+the ellipsis in both forms, and a run of Unicode
+minus signs spaced and unspaced produces exactly
+`ledger_treated_as_instruction` on both layers,
+plain and bookended (511 of 511), while the
+evidence-only new-separator twins stay silent. The
+both-ways pins hold: the relative-clause pins
+fire, the comma-then-contradicting shape fires
+exactly the contradicting rule, and the
+unrelated-negation and negated-then-contradicting
+pins hold. The filed scopes of Q147, Q146, Q145,
+Q144 and Q143 still pass whole beside them, as the
+guard family (93 tests, green in the foreground)
+carries them: the Q147 families (the "that"
+prohibitions, the unlisted-verb pins and
+listed-verb controls, the typed-dash ledger
+shapes), the Q146 families (the long lead-ins and
+their barrier pins, the relative-clause
+prohibitions and pins, the ledger's dash shapes),
+the Q145 families (the assertive idioms, the
+ledger's separators, the infinitive prohibitions,
+the long and split prohibitive forms), the Q144
+families (the "not only" shapes and controls, the
+ledger's mixed sentence, the long negations, the
+prohibitions) read as they did; the 14-sentence
+Q143 compliant corpus is silent on both layers,
+plain, bookended (1,050 of 1,050 variants) and
+joined, and its restating shapes are silent; the
+standing 7-rule contradiction family fires whole,
+plain and bookended (73 of 73 variants per rule).
+End to end, item 1's sentence assembled into a
+briefing carries no tension mark, `briefing_report`
+names no tensions for it, and the startup pass
+writes no audit rows; item 2's and item 3's
+sentences assembled into briefings each carry the
+mark and write exactly one audit row (feature
+`briefing`, decision `marked`, the rule id as the
+detail). The neighbour batteries read 305 tests
+green beside the guard family on the tested head,
+re-measured in the foreground by this seat
+(`test_oracle_briefing` 35, `test_posture_stamp`
+20, `test_protocol_v2` 14,
+`test_protocol_v2_messages` 62, `test_v2_consult`
+104, `test_v2_replay` 6, `test_security_config`
+64). Red-before, re-measured by this seat: on the
+pre-Q148-fix detector (the tree at the fix
+commit's parent) item 1's shapes mark with their
+named rules, item 2's sentences and item 3's
+shapes are silent, on both layers; on the
+pre-Q143-fix detector (the tree at the Q143 fix
+commit's parent) item 2's sentences and item 3's
+shapes fire again whole, exactly as filed, item
+1's shapes mark there too, and the Q143 compliant
+corpus reads 14 marks covering all 7 rules on that
+tree; and the guard family as it now stands reads
+3703 subtest failures against the unpatched
+(pre-Q148-fix) detector, every one of them in the
+new Q148PolarityGuardTest family — so the fix
+accounts for the change. This seat's own probes
+beyond the filed corpus — natural compliant and
+contradicting shapes in both directions, including
+the determiner-closed object clauses (which fire),
+the noun-complement subject clauses (which stay
+silent), a parenthetical after a clause's verb
+(which stays silent), and the single Unicode minus
+and closing-parenthesis ledger shapes (which
+fire) — read as they should, with three residual
+items, all measured against all three trees and
+filed as Q149: a subject relative clause whose
+parenthetical stands at the clause's head, the
+comma standing immediately after the relative
+pronoun, is still marked on all three trees; a
+relative clause carrying an infinitive of its own
+whose verb phrase stands outside the Q148 landing's
+verb sets and shapes (the adverb inside a passive,
+a participle or verb outside the sets, the raising
+and periphrastic shapes, an object phrase behind
+two adverbs, a proper-name inside subject) is
+still missed, though every shape fires on the
+pre-Q143-fix detector; and the ledger's mixed
+sentence under the ampersand, the backslash,
+square brackets or a run of two dots is still
+missed, firing on the pre-Q143-fix detector only.
+Q148 therefore stands re-tested and passing on its
+filed scope; it is not closed until Q149 is
+answered and its fix re-tested by this seat, and
+Q147, Q146, Q145, Q144 and Q143 are not closed
+until then either, their closure following from
+Q148's as their entries recorded.
 
 ---
 
