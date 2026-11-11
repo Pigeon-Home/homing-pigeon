@@ -5078,6 +5078,95 @@ desk's fourth re-pack section, the refreshed
 table with its floors, and the guard tests that
 pin them, in one landing.
 
+**Addendum (2026-11-11, the fifth re-pack):** the
+re-test the fourth re-pack named produced the
+first completed build-windows verdict on a
+fourth-re-pack head, and shard 3 hit the wall a
+third time with the same composition. Build run
+43035985891, on the Q151-answer head carrying
+the fourth re-pack, ran its parallel-test step
+1,205 seconds to the wall: shard 3 failed exit
+124, and shards 10, 12, 16, 17 and 18 failed
+exit 1. Shard 3 carried test_decision1_startup
+at its 650-second floor plus 13 companions
+priced at 67.3 seconds in all (717.3 packed) --
+none of them among the seven companions the
+fourth re-pack pinned, so that pin held and the
+shard died anyway. The suppositions for this
+re-pack stand in the desk (Q136-RP5-S1 to S6,
+recorded before the measurement); the
+measurement ran first-hand over that run's log
+and the fourth re-pack's four (the two with a
+lost step label repaired the same way). The
+findings: test_decision1_startup has no
+completed appearance in any of the five logs --
+a killed shard in every one -- while every
+companion of this shard 3 appears inside
+completed shards of the older logs at an
+estimate of 14.2 seconds or less, about 45
+seconds in aggregate, so the overrun is the
+floored file's own and its cost stands at about
+1,100 seconds or more; a heavy file's companions
+are whoever fills the gap under the budget, an
+output of the prices, so named-companion pins
+cannot hold this shape. Completed shards ran
+99.5 to 484.0 seconds internally against 717.3
+packed, so the budget stands at 720 seconds
+with the 20-minute wall, and the file's floor
+rises to 720 exactly -- the budget itself, the
+largest price the table's own check can carry --
+at which it packs alone; if it still kills a
+shard alone, the defect is in the file (97
+in-process runner startups), not the packing,
+and the answer is a file split in its own lane.
+Eight files in completed shards are convicted
+by listed slowest-test sums and take floors just
+under them: test_transports 300 (302.9 listed
+against 158.2 priced), test_enforce_posture_
+reconciliation 280 (284.0 against 207.3),
+test_oracle_opinion 245 (247.0 against 172.8),
+test_negative_concurrency 160 (162.3 against
+103.0), test_audience 120 (123.3 against 32.8),
+test_protocol_examples 90 (90.7 against 11.3),
+test_concurrency_poison 70 (71.7 against 21.0)
+and test_oracle_chat 55 (56.4 against 33.7) --
+the last three the load-sensitive family whose
+timeouts and bad-answers failures failed shards
+10 and 17 of the same run, their sums taken
+under that load; test_concurrency's 250-second
+floor stands, and test_negative_oracle_and_
+extensions (57.6 listed under its 89.8 price) is
+recorded as a timing margin, not a duration.
+Shard 12's version-rot failure and shard 18's
+regression-guard skip-registry knock-on are
+excluded from every pricing judgement, as
+before; they clear with the next cut's bump.
+The refresh by the tool's own `--write
+--from-logs` route over the 5 logs priced
+test_decision1_startup at 512.9 by its share of
+the killed wall and the floored files under
+their floors, as every re-pack has found; the
+standing floors are re-applied on top, the new
+floors beside them, and the merged table takes
+each file's largest price across the refresh
+and the prior table. The table now carries 444
+files at 18,807.2 seconds and packs the
+discovered suite (466 modules, 12,410 tests)
+into 27 shards -- shard 0 the floored file alone
+at 720 seconds, the rest at about 704 packed
+each. The guard family (48 tests) pins the
+eight new floors and the floored file at its
+budget floor packing alone, both new pins red
+against the prior table. No claim is made that
+the red is cleared: the next completed
+tag-or-main build-windows verdict on a head
+carrying this re-pack is the re-test under
+rule 8, with the version-rot family judged
+separately. **Applied in:** this addendum, the
+desk's fifth re-pack sections, the refreshed
+table with its floors, and the guard tests that
+pin them, in one landing.
+
 ---
 
 ## Q135 (Muse, to the desk, 2026-11-10): the confinement decision raises where its contract is to answer — a denial must come back as a triple and be refused at the job boundary, not thrown from the decision

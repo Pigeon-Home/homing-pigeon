@@ -10310,3 +10310,134 @@ file in this landing. It is NOT closed: the filing
 seat's rule-8 re-test is still owed, and Q151, Q150,
 Q149, Q148, Q147, Q146, Q145, Q144 and Q143 close
 only if that re-test passes whole.
+## Q136 fifth re-pack: measurement and conclusions (2026-11-11)
+
+The measurement ran first-hand over 5 build-windows
+logs read by this lane through `gh`: run 43035985891
+(the completed verdict on the fourth-re-pack head)
+and the fourth re-pack's own set (runs 43026648905,
+43022614477, 43018894064 and 43016116636, the last
+two repaired from their lost step label as that lane
+repaired them). The next head's build (run
+43041188225) had produced no completed build-windows
+verdict at measurement time, so no sixth log stands
+in the set. Against the suppositions:
+
+- Q136-RP5-S1: confirmed. test_decision1_startup
+  has no completed appearance in any of the five
+  logs -- a killed shard in every one -- and its
+  shard-3 companions in run 43035985891 are
+  exonerated file by file: each appears inside
+  completed shards of the older logs at an estimate
+  of 14.2 seconds or less, about 45 seconds in
+  aggregate against the shard's 1,200.2-second
+  wall. Three duration-era kills share the
+  composition (the floored file plus companions
+  priced at about 63 to 67 seconds, a disjoint set
+  each time), so the overrun is the file's own:
+  its cost stands at about 1,100 seconds or more,
+  and its 650-second floor was a residual lower
+  bound, never a measurement.
+- Q136-RP5-S2: confirmed. The suite grew by 14
+  tests inside existing files since the fourth
+  re-pack; the reshuffle came from that re-pack's
+  own repricing and the shard count the run's
+  discovery produced (24). The fourth re-pack's
+  companion pin held -- none of its seven named
+  companions is in this shard 3 -- and the shard
+  died with a fresh set, so named-companion pins
+  cannot hold this shape. (The run's 445 modules
+  against this lane's 466 is the linux_* family:
+  21 files local discovery presents that Windows
+  discovery does not.)
+- Q136-RP5-S3: confirmed. The load-sensitive
+  files' listed sums under load convict their
+  prices -- test_oracle_chat 56.4 against 33.7,
+  test_concurrency_poison 71.7 against 21.0,
+  test_negative_concurrency 162.3 against 103.0 --
+  and floors land just under those sums (55, 70
+  and 160; their merged prices stand higher, at
+  60.1, 75.7 and 188.9). test_concurrency's
+  250-second floor stands (229.5 listed this run,
+  253.4 in the run before; its price is 254.6).
+  The exception held as stated:
+  test_negative_oracle_and_extensions lists 57.6
+  under its 89.8 price, so its concurrent-asks
+  failure is a timing margin under load, not a
+  duration the table can price away.
+- Q136-RP5-S4: confirmed to the tenth of a
+  second. The refresh by the tool's own
+  `--write --from-logs` route over the 5 logs
+  priced test_decision1_startup at 512.9 (its
+  97-of-227-test spread share of the killed
+  wall, as supposed) and test_approvalguard at
+  158.6, and priced the floored files under
+  their floors (test_regression_guard 188.1
+  against 250, test_v2_consult 326.8 against
+  600). The standing floors are re-applied on
+  top, and the merged table takes each file's
+  largest price across the refresh and the prior
+  table -- the largest across the union of the
+  two log sets.
+- Q136-RP5-S5: confirmed. Completed shards ran
+  99.5 to 484.0 seconds internally against 717.3
+  packed (at most 0.68x), and the leg's aggregate
+  internal time (9,262.4) stands against the old
+  table's 17,206.5 total, so the budget was never
+  the binding constraint: the 720-second budget
+  and the 20-minute wall stand unchanged.
+  test_decision1_startup's floor rises to 720
+  seconds exactly -- the budget itself, the
+  largest price the table's own check can carry --
+  and it now packs alone. The advance statement
+  stands with it: if the file kills a shard alone,
+  the defect is in the file, not the packing, and
+  the answer is a file split in its own lane.
+- Q136-RP5-S6: confirmed. Shard 12 fails on the
+  version-rot family and shard 18's
+  test_regression_guard failure is its
+  skip-registry knock-on; both shards' internal
+  times (455.2 and 483.9 seconds) sat within
+  their prices, the rot is excluded from every
+  pricing judgement here, and it clears with the
+  next cut's version bump, not with this lane.
+
+Five more listed-sum floors land beside the three
+load-sensitive ones, each just under its listed
+sum in run 43035985891's completed shards:
+test_transports 300 (302.9 listed against 158.2
+priced; its merged price stands at 329.2),
+test_enforce_posture_reconciliation 280 (284.0
+against 207.3; merged 284.7), test_oracle_opinion
+245 (247.0 against 172.8; merged 269.5),
+test_audience 120 (123.3 against 32.8; merged
+125.1) and test_protocol_examples 90 (90.7
+against 11.3; merged 91.6). One honest note the
+numbers force: test_v2_consult's 600-second
+residual price is now known to overstate the
+file -- shard 4 of run 43035985891 ran 442 tests,
+its 104 among them, in 99.5 seconds in all. Per
+the standing rule the merged table takes the
+largest price, so the 600 stands in this re-pack;
+it costs a light shard, not a kill, and a future
+lane with a completed measurement of the file
+can argue it down on evidence, the way this lane
+argued test_decision1_startup up.
+
+The landed table carries 444 files at 18,807.2
+seconds in all and packs the discovered suite
+(466 modules, 12,410 tests) into 27 shards:
+shard 0 is test_decision1_startup alone at 720
+seconds, the rest at about 704 seconds packed
+each, every one within the unchanged 720-second
+budget; the tool's own `--check` passes and the
+guard family reads 48 tests green in this lane,
+the 2 new pins among them (the eight listed-sum
+floors, and test_decision1_startup at its budget
+floor packing alone), both red against the prior
+table. This lane does not claim the red is
+cleared: what proves it is the next completed
+tag-or-main build-windows verdict on a head
+carrying this re-pack, under rule 8, with the
+version-rot family cleared by that cut's bump
+judged separately from the wall-clock question.

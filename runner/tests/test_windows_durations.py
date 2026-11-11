@@ -654,6 +654,103 @@ class CheckedInTableGuardTest(unittest.TestCase):
                         "%s, re-creating shard 3 of run "
                         "43026648905" % name)
 
+    def test_the_fifth_repack_listed_files_keep_their_floors(self):
+        # Build run 43035985891 (2026-11-11), the first
+        # completed build-windows verdict on a head
+        # carrying the fourth re-pack: shard 3 hit the
+        # wall again (below), every completed shard ran
+        # 99.5 to 484.0 seconds internally against
+        # 717.3 packed, and in those completed shards
+        # eight files are convicted by exact evidence --
+        # a file's listed slowest-tests sum is a floor
+        # on its whole cost. test_transports' listed
+        # tests sum to 302.9s against 158.2 priced,
+        # test_enforce_posture_reconciliation's to
+        # 284.0 against 207.3, test_oracle_opinion's to
+        # 247.0 against 172.8, test_negative_concurrency's
+        # to 162.3 against 103.0, test_audience's to
+        # 123.3 against 32.8, test_protocol_examples'
+        # to 90.7 against 11.3, test_concurrency_poison's
+        # to 71.7 against 21.0 and test_oracle_chat's to
+        # 56.4 against 33.7. The last three are the
+        # load-sensitive family: test_oracle_chat's two
+        # timeouts failed shard 10 of the same run and
+        # test_concurrency_poison listed in shard 17
+        # beside test_concurrency's bad-answers failure,
+        # so their sums were taken under the load that
+        # failed them. These floors, each just under
+        # its listed sum, keep the packer from pricing
+        # any of the eight back under the cost its own
+        # tests already measured.
+        table = wd.load_table_file(wd.default_table_path())
+        durations = table["durations"]
+        self.assertGreaterEqual(
+            durations["runner.tests.test_transports"], 300.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_enforce_posture_reconciliation"],
+            280.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_oracle_opinion"], 245.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_negative_concurrency"], 160.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_audience"], 120.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_protocol_examples"], 90.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_concurrency_poison"], 70.0)
+        self.assertGreaterEqual(
+            durations["runner.tests.test_oracle_chat"], 55.0)
+
+    def test_decision1_startup_keeps_its_budget_floor_and_packs_alone(self):
+        # Shard 3 of run 43035985891 carried
+        # test_decision1_startup at its 650s floor plus
+        # 13 companions priced at 67.3s in all (717.3
+        # packed) and burned past the 1,200s wall, exit
+        # 124 -- the third duration-era kill with that
+        # composition, each time with a disjoint
+        # companion set (shard 2 of run 42950872171,
+        # shard 3 of run 43026648905, shard 3 here).
+        # None of the seven companions the fourth
+        # re-pack pinned is in this shard, so that pin
+        # held and the shard died anyway: a heavy
+        # file's companions are whoever fills the gap
+        # under the budget, an output of the prices.
+        # The companions here are exonerated file by
+        # file in the older logs at hand -- each
+        # appears inside completed shards at an
+        # estimate of 14.2s or less, about 45s in
+        # aggregate -- and test_decision1_startup has
+        # no completed appearance in any of the five
+        # logs: it stands in a killed shard in every
+        # one. Its 650s floor was a residual lower
+        # bound from one killed shard's wall, not a
+        # measurement; the kill record puts its own
+        # cost at about 1,100s or more. The table's
+        # own check cannot carry a price over the
+        # 720s budget, so the floor rises to the
+        # budget itself -- the largest price the
+        # packing contract can express -- at which
+        # the file fills a shard alone and no
+        # companion can join it. If it still kills
+        # a shard alone, the defect is in the file
+        # (97 in-process runner startups), not in
+        # the packing.
+        table = wd.load_table_file(wd.default_table_path())
+        durations = table["durations"]
+        self.assertGreaterEqual(
+            durations["runner.tests.test_decision1_startup"],
+            720.0)
+        shards = wd.pack_modules(sorted(durations),
+                                 durations,
+                                 table["budget_seconds"])
+        for shard in shards:
+            if "runner.tests.test_decision1_startup" in shard:
+                self.assertEqual(
+                    shard, ["runner.tests.test_decision1_startup"],
+                    "test_decision1_startup packed with "
+                    "companions again: %r" % (shard,))
+
     def test_the_real_suite_packs_within_budget(self):
         table = wd.load_table_file(wd.default_table_path())
         counts = rtp.module_test_counts(
