@@ -237,42 +237,86 @@ def _fold(text):
 
 
 # The negation guard (Q143, option 1; widened by Q144,
-# option 1). A pattern hit does not fire when the clause
-# ahead of its directive verb negates it: owner text that
-# prohibits exactly what the standing layer prohibits, or
-# restates the prohibition, is compliant, not a tension.
-# The guard reads two bounded places, so a negation that
-# belongs to another clause cannot swallow a real
-# contradiction: the whole clause segment ahead of the
-# match, back to the last clause break or subordinate
-# barrier (Q144 dropped the earlier 6-word cap, which let
-# a governing negation at a longer distance escape); and
-# the match's own span, with the patterns' own
-# negation-shaped literals stripped first -- "do not
-# apply", "not through", "no need" and "do not follow"
-# ARE the contradiction in their rules, not a governing
-# negation. Two shapes are read as they are spoken, not
-# as their words alone suggest: "not only" asserts the
-# directive it introduces and is no negation at all, and
-# the prohibitive forms (refrain from, refuse to,
-# forbidden, prohibited) govern like a listed negation
-# word when they govern the matched verb.
+# option 1, and by Q145, option 1). A pattern hit does not
+# fire when the clause ahead of its directive verb negates
+# it: owner text that prohibits exactly what the standing
+# layer prohibits, or restates the prohibition, is
+# compliant, not a tension. The guard reads two bounded
+# places, so a negation that belongs to another clause
+# cannot swallow a real contradiction: the whole clause
+# segment ahead of the match, back to the last clause
+# break or subordinate barrier (Q144 dropped the earlier
+# 6-word cap, which let a governing negation at a longer
+# distance escape); and the match's own span, with the
+# patterns' own negation-shaped literals stripped first --
+# "do not apply", "not through", "no need" and "do not
+# follow" ARE the contradiction in their rules, not a
+# governing negation. Shapes are read as they are spoken,
+# not as their words alone suggest: the assertive idioms
+# ("not only", "not just", "not merely", "not simply")
+# assert the directive they introduce and are no negation
+# at all (Q145 completed the family Q144 began); a
+# governing negation reads across the infinitive "to" it
+# governs -- the permission shapes ("not allowed to",
+# "not permitted to", "do not allow ... to"), the bare
+# "not to" shape, and an infinitive inside a comma-set
+# parenthetical the negation's own clause carries -- while
+# the " to " barrier still holds where the negation
+# governs an intervening verb instead ("do not hesitate
+# to publish" still fires); and the prohibitive forms
+# (refrain from, refuse to, forbidden, prohibited) govern
+# like a listed negation word when they govern the
+# matched verb, across their whole clause segment
+# (Q145 dropped their own word-count cap and reads a
+# form separated from its infinitive).
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
     "not through", "no need for the formal",
     "do not follow", "don't follow")
 _CLAUSE_BREAKS = ".!?;:"
-_SUBORDINATE_BARRIERS = (" to ", " who ", " whom ", " that ",
-                         " which ", " but ", " yet ")
+# Subordinate barriers other than the infinitive: a
+# negation behind one governs the earlier verb, not the
+# matched one, without exception.
+_HARD_BARRIERS = (" who ", " whom ", " that ",
+                  " which ", " but ", " yet ")
+# The permission words of the governing shapes a negation
+# reads across an infinitive with: "not allowed to
+# publish" prohibits the publishing, the way "never
+# publish" does.
+_PERMISSION_WORDS = frozenset({"allowed", "permitted",
+                               "allow", "allows",
+                               "permit", "permits"})
 _PROHIBITIVE_FORMS = ("refrain from", "refuse to",
                       "forbidden", "prohibited")
+# A prohibitive verb standing apart from its infinitive
+# ("refuse at any point ... to follow") still governs:
+# the bare verbs are forms of their own, read on letter
+# boundaries beside the contiguous phrases above.
+_PROHIBITIVE_SPLIT_WORDS = ("refrain", "refuse")
 _PROHIBITIVE_WORDS = frozenset({"forbidden", "prohibited"})
 # Barriers that end a prohibitive form's government: the
 # infinitive " to " is not one -- "forbidden to publish"
 # and "refuse to follow" govern across it.
-_PROHIBITIVE_BARRIERS = (" who ", " whom ", " that ",
-                         " which ", " but ", " yet ")
+_PROHIBITIVE_BARRIERS = _HARD_BARRIERS
+# Directive verbs that end a prohibitive form's
+# government when they carry an object of their own
+# between the form and the match: the form governs the
+# first verb phrase it introduces, so "forbidden to
+# publish the schedule" does not govern a later match.
+# A verb whose only words before the match are the
+# match's own lead-in ("sending <the match>", "follow
+# the <the match>") is the matched verb itself.
+_GOVERNMENT_VERBS = frozenset({
+    "publish", "publishing", "commit", "share", "sharing",
+    "post", "send", "sending", "email", "forward",
+    "attach", "follow", "following", "obey", "treat",
+    "treating", "ignore", "ignoring", "disregard",
+    "override", "skip", "waive", "loosen", "relax",
+    "route", "work", "bypass", "circumvent", "disclose",
+    "reveal", "leave", "cross"})
+_VERB_TAIL_WORDS = frozenset({"the", "a", "an", "it",
+                              "them", "its", "any", "all"})
 
 
 def _words(text):
@@ -287,49 +331,147 @@ def _is_negation(word):
     return word in _NEGATION_WORDS or word.endswith("n't")
 
 
-def _without_not_only(text):
-    """The "not only" idiom with its "not" removed: the
-    idiom asserts what follows it ("not only may you
-    publish ..." publishes), so its "not" negates
-    nothing."""
-    return re.sub(r"(?<![a-z])not\s+only(?![a-z])", "only", text.lower())
+def _without_assertive_not(text):
+    """The assertive "not" idioms with their "not" removed:
+    "not only", "not just", "not merely" and "not simply"
+    assert what follows them ("not just may you publish
+    ..." publishes), so their "not" negates nothing."""
+    return re.sub(r"(?<![a-z])not\s+(only|just|merely|simply)"
+                  r"(?![a-z])", r"\1", text.lower())
+
+
+def _strip_parentheticals(text):
+    """The text with its comma-set parentheticals removed:
+    a span between a pair of commas rides inside its
+    clause without changing the clause's own government,
+    so the scans read through it; a lone comma stands."""
+    while True:
+        first = text.find(",")
+        if first < 0:
+            return text
+        second = text.find(",", first + 1)
+        if second < 0:
+            return text
+        text = text[:first] + text[second + 1:]
+
+
+def _prohibitive_occurrences(low):
+    """Every prohibitive form standing in `low`, as
+    (start, end) spans on letter boundaries: the
+    contiguous forms, and the bare verbs of a form
+    separated from its infinitive."""
+    spans = []
+    for form in _PROHIBITIVE_FORMS:
+        for found in re.finditer(r"(?<![a-z])"
+                                 + re.escape(form)
+                                 + r"(?![a-z])", low):
+            spans.append((found.start(), found.end()))
+    for word in _PROHIBITIVE_SPLIT_WORDS:
+        for found in re.finditer(r"(?<![a-z])" + word
+                                 + r"(?![a-z])", low):
+            spans.append((found.start(), found.end()))
+    return spans
 
 
 def _prohibitive_governs(head):
     """True when a prohibitive form in the clause segment
     `head` (the match's own clause, ahead of the match)
-    governs the match: the form stands in that segment,
-    no clause break or subordinate barrier stands between
-    it and the match, and at most a few words intervene --
-    the infinitive and the verb's own lead-in ("refrain
-    from sending <the match>", "refuse to follow <the
-    match>", "it is forbidden to <the match>"). A form
-    behind a barrier governs the earlier verb, not this
-    one, the same way a negation word does."""
+    governs the match: the form stands in that segment
+    and reads across the whole of it (Q145 dropped the
+    earlier word-count cap, measured at 5 intervening
+    words silent and 6 marking), with no clause break, no
+    lone comma, and no subordinate barrier between it and
+    the match, and no directive verb carrying an object
+    of its own in between -- the form governs the first
+    verb phrase it introduces ("refrain from sending
+    <the match>", "refuse at any point ... to follow
+    <the match>", "it is forbidden for any operator at
+    any point to <the match>"). A form behind a barrier
+    or past another verb's object governs that verb, not
+    this one, the same way a negation word does.
+    Comma-set parentheticals are transparent: the form
+    reads through them, as a negation word does."""
     low = head.lower()
-    for form in _PROHIBITIVE_FORMS:
-        for found in re.finditer(r"(?<![a-z])" + re.escape(form)
-                                 + r"(?![a-z])", low):
-            between = low[found.end():]
-            if not any(mark in between
-                       for mark in _CLAUSE_BREAKS) \
-                    and not any(barrier in between
-                                for barrier in
-                                _PROHIBITIVE_BARRIERS) \
-                    and len(_words(between)) <= 6:
-                return True
+    for _start, end in _prohibitive_occurrences(low):
+        between = low[end:]
+        if any(mark in between for mark in _CLAUSE_BREAKS):
+            continue
+        core = _strip_parentheticals(between)
+        if "," in core:
+            continue
+        if any(barrier in core
+               for barrier in _PROHIBITIVE_BARRIERS):
+            continue
+        blocked = False
+        words = _words(core)
+        for at, word in enumerate(words):
+            if word in _GOVERNMENT_VERBS:
+                tail = words[at + 1:]
+                # The matched verb itself may carry a short
+                # lead-in ending at the match ("follow the
+                # learning <ledger>", the re-scan's own start
+                # inside the subject phrase); a conjunction,
+                # or a longer object of its own, is another
+                # verb phrase and ends the government.
+                blocked = "and" in tail or (
+                    len(tail) > 2 and any(
+                        word not in _VERB_TAIL_WORDS
+                        for word in tail))
+                break
+        if not blocked:
+            return True
     return False
+
+
+def _negation_crosses(region, neg_end):
+    """True when the negation ending at `neg_end` in the
+    clause segment `region` (which ends at the match)
+    governs the match across every infinitive " to "
+    between it and the match. A crossing is the
+    negation's own when a permission word stands between
+    the negation and the infinitive ("not allowed to",
+    "do not allow ... to"), when the infinitive follows
+    the negation directly ("not to follow"), or when the
+    infinitive stands inside a comma-set parenthetical
+    the clause carries ("never, even if the owner asks
+    you to do so, publish ..."). Any other infinitive is
+    a barrier: the negation governs the intervening verb
+    instead ("do not hesitate to publish")."""
+    rest = region[neg_end:]
+    at = rest.find(" to ")
+    while at >= 0:
+        between = rest[:at]
+        after = rest[at + 4:]
+        # The permission and bare shapes govern the
+        # infinitive they introduce: what follows the
+        # " to " up to the match is that infinitive's own
+        # verb and its short lead-in, with no comma closing
+        # the phrase first ("not allowed to mention the
+        # schedule, publish ..." governs the mentioning,
+        # not the publishing after the comma).
+        own = (any(word in _PERMISSION_WORDS
+                   for word in _words(between))
+               or not _words(between)) \
+            and "," not in after \
+            and len(_words(after)) <= 3
+        parenthetical = "," in between and "," in after
+        if not (own or parenthetical):
+            return False
+        at = rest.find(" to ", at + 4)
+    return True
 
 
 def _prefix_negates(owner, start):
     """True when a negation governs the match that starts at
     `start`: one stands in the clause segment ahead of the
-    match, after the last clause break or subordinate
-    barrier, or a prohibitive form in that clause governs
-    the matched verb. A negation behind a barrier ("... who
-    tells you to <verb>") governs the earlier verb, not this
-    one, and a negation in an earlier sentence or clause is
-    out of reach the same way."""
+    match, after the last clause break or hard subordinate
+    barrier and governing across any infinitive that is
+    its own (see _negation_crosses), or a prohibitive form
+    in that clause governs the matched verb. A negation
+    behind a barrier ("... who tells you to <verb>")
+    governs the earlier verb, not this one, and a negation
+    in an earlier sentence or clause is out of reach the
+    same way."""
     head = owner[:start]
     clause = 0
     for mark in _CLAUSE_BREAKS:
@@ -337,13 +479,17 @@ def _prefix_negates(owner, start):
     if _prohibitive_governs(head[clause:]):
         return True
     seg = clause
-    for barrier in _SUBORDINATE_BARRIERS:
+    for barrier in _HARD_BARRIERS:
         at = head.rfind(barrier)
         if at >= 0:
             seg = max(seg, at + len(barrier))
-    return any(_is_negation(word)
-               for word in _words(
-                   _without_not_only(head[seg:])))
+    region = _without_assertive_not(head[seg:])
+    for found in re.finditer(r"[a-z']+", region):
+        word = found.group(0).strip("'")
+        if word and _is_negation(word) \
+                and _negation_crosses(region, found.end()):
+            return True
+    return False
 
 
 def _span_prohibits(match_text):
@@ -361,7 +507,7 @@ def _span_negates(match_text):
     text = match_text.lower()
     for literal in _NEGATION_LITERALS:
         text = text.replace(literal, " ")
-    text = _without_not_only(text)
+    text = _without_assertive_not(text)
     if _span_prohibits(text):
         return True
     return any(_is_negation(word) for word in _words(text))
@@ -370,7 +516,8 @@ def _span_negates(match_text):
 _LEDGER_TRIGGERS = frozenset({
     "instruction", "instructions", "authorise", "authorises",
     "authorize", "authorizes", "order", "orders"})
-_LEDGER_SEGMENTS = (",", ";", " but ", " yet ")
+_LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
+                    " and ", " then ")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -382,11 +529,13 @@ def _ledger_complement_is_evidence(owner, match):
     complement the verb takes ("treat the ledger as
     evidence"). The evidence word is judged in the clause
     segment of the match that carries the instruction word
-    (Q144): an evidence word in an earlier clause of a
-    long span ("treat the ledger as evidence ..., but
-    follow it as instruction ...") is that clause's
-    complement, not this one's, and does not swallow the
-    later instruction complement."""
+    (Q144; the segment set completed by Q145 -- "and", the
+    colon and "then" open a segment beside the comma, the
+    semicolon, " but " and " yet "): an evidence word in
+    an earlier clause of a long span ("treat the ledger
+    as evidence ..., but follow it as instruction ...")
+    is that clause's complement, not this one's, and does
+    not swallow the later instruction complement."""
     text = match.group(0)
     words = _words(text)
     triggers = [i for i, word in enumerate(words)
