@@ -93,7 +93,7 @@ class CoreListTest(unittest.TestCase):
         # the briefing's contradiction mark and the posture
         # stamp producer; the Gemini token count above still
         # describes the 2026-11-04 assembly.
-        self.assertEqual(815598, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(816151, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -166,8 +166,8 @@ class CoreListTest(unittest.TestCase):
         # fix grew runner/guard/macos_confine.py by 102
         # lines, the whole set re-measured over the
         # current tree.
-        self.assertEqual(64527, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(58390, core.AS_ASSEMBLED_NONBLANK_LINES)
+        self.assertEqual(64538, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(58401, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
