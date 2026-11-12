@@ -17372,3 +17372,291 @@ behaviour is claimed beyond what those calls
 and that family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q160: the Q158 guard's residual polarity shapes — the fix lane's suppositions, recorded before the fix (2026-11-11)
+
+Q160 (filed by the filing seat's rule-8 re-test
+of Q158) names residual polarity shapes in the
+negation guard in `runner/ops/briefing.py`, in
+four items: a bound-edge phrase is wrongly
+marked where the phrase carries a pied-piped
+relative clause whose lead carries two words
+ahead of its noun ahead of the preposition,
+with no determiner of its own ("prompts a duty
+official certified record of which is on file",
+"prompts a duty official file record of which
+is on file", "prompts a duty two official
+records of which are on file", "prompts a duty
+recently filed record of which is on file" — 4
+sentences, firing `private_shelf_crosses` on
+the current head on both layers, though all
+four are the Q153 Answer's bound edge itself
+carrying a pied-piped clause of its own),
+because the Q158 judgement sets a pied-piped
+lead aside by cutting the truncated span at
+the last determiner standing in it, or, where
+no determiner stands there, by dropping exactly
+its last three words (a modifier, the lead's
+noun and the preposition) where setting those
+aside leaves a governed phrase standing ahead
+of them, so a lead carrying two words ahead of
+its noun leaves the first of them standing as
+the judged phrase's tail ("a duty official",
+"a duty recently") and the object-control
+branch ("prompts") reads the span as the
+infinitive's object phrase; the ledger's mixed
+sentence is still missed under the clause
+boundaries the fold still does not read — the
+Kaithi number signs (U+110BD and U+110CD), the
+last format characters beyond the BMP the
+fold's ranges name none of, and the
+variation-selector characters beyond the BMP
+(U+E0100, U+E0101 and U+E01EF) standing between
+the clauses (5 shapes); the same sentence is
+still missed under the punctuation separators
+of the general punctuation block beyond the
+widened segment set — an undertie, a character
+tie, a caret insertion point, a left and a
+right square bracket with quill, a black
+leftwards bullet, a black rightwards bullet, a
+close up, two asterisks aligned vertically, a
+commercial minus sign, an inverted undertie, a
+flower punctuation mark, a three dot
+punctuation, a four dot punctuation, a five dot
+punctuation, a two dot punctuation, a four dot
+mark or a dotted cross in its place (U+203F,
+U+2040, U+2041, U+2045, U+2046, U+204C, U+204D,
+U+2050, U+2051, U+2052, U+2054, U+2055, U+2056,
+U+2058, U+2059, U+205A, U+205B and U+205C — 18
+shapes); and the same sentence is still missed
+under the punctuation separators of the
+supplemental punctuation block, a block the
+segment set has never opened at — a right angle
+substitution marker, a raised interpolation
+marker, an editorial coronis, a paragraphos, a
+hypodiastole, a dotted obelos, a double oblique
+hyphen, a ring point, a word separator middle
+dot or a vertical six dots in its place
+(U+2E00, U+2E06, U+2E0E, U+2E0F, U+2E12, U+2E13,
+U+2E17, U+2E30, U+2E31 and U+2E3D — 10 shapes).
+Q160's recommendation is option 1. This lane
+is a fresh fix lane — neither the Q158 fix
+lane nor the filing/re-test seat — and starts
+from a fresh scratch clone from remote main at
+the head carrying the Q160 filing (the desk
+commit of 3:55 PM PST, 2026-11-11, the remote
+head verified by foreground `git ls-remote` in
+the same call as the clone). The ship lane's
+clones, its state file and the in-flight ship
+are not touched (this lane cuts no release and
+touches no ship state), and neither are the
+earlier lanes' clones. This section is the fix
+lane's suppositions, written from the code
+read first-hand (the widened guard in
+`runner/ops/briefing.py` —
+`_clause_carries_infinitive`'s verb branch
+setting a pied-piped lead aside by cutting the
+truncated span at the last determiner standing
+in it, or by dropping exactly its last three
+words where no determiner stands there and
+setting those aside leaves a governed phrase
+standing ahead of them, so the first extra
+word of a two-word lead is left standing as
+the judged phrase's tail and the
+object-control branch reads the span as the
+infinitive's object phrase; `_fold` reading
+the filed spaces, joiners and format, bidi and
+invisible characters as boundaries, its ranges
+beyond the BMP stopping at the shorthand,
+musical and tag blocks; and `_LEDGER_SEGMENTS`
+opening at the filed separators — and the
+Q158PolarityGuardTest family in
+`runner/tests/test_briefing_contradiction.py`),
+the filed Q160 entry, the Q158 entry and its
+Answer and re-test, and the desk's Q158
+re-test suppositions and conclusions, before
+any fix in this lane is written; this lane's
+red-before measurement, run first-hand before
+these suppositions were committed, stands in
+the suppositions themselves, as the chain's
+lanes record it. The lane's conclusions stand
+at the end of this section when the lane
+lands.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q160-S1.** Red-before, item 1: the 4
+  bound-edge phrases carrying a pied-piped
+  relative clause whose lead carries two words
+  ahead of its noun produce findings on the
+  current head on the fixture layer and the
+  shipped layer, plain (4 of 4 firing
+  `private_shelf_crosses`), and bookended (292
+  of 300 variants firing under the full symbol
+  set; each sentence in 73 of 73 under the
+  non-word symbols), though they should stay
+  silent; the composed silent shapes of the
+  same family (an adjective-led governed phrase
+  and a possessive-led governed phrase, each
+  carrying the same two-word lead) are marked
+  the same way (2 of 2 plain, 146 of 150
+  bookended, each in 73 of 73 under the
+  non-word symbols); and the controls hold on
+  the current head (the complement-verb twins
+  of the same 4 lead shapes — 4 of 4 silent
+  plain on both layers; the determiner-led
+  two-word leads — 2 of 2 silent plain on both
+  layers; the true object phrases carrying the
+  same lead shapes — 4 of 4 firing plain on
+  both layers, 292 of 292 bookended under the
+  non-word symbols, the filed "compels a crew
+  official certified members of which are on
+  duty" among them beside its composed kin).
+- **Q160-S2.** Red-before, items 2, 3 and 4:
+  the ledger's mixed sentence under the 5
+  format characters beyond the BMP beyond
+  every range the fold now reads (the Kaithi
+  number signs and the variation-selector
+  characters beyond the BMP) and under the 28
+  punctuation separators beyond the segment set
+  (the 18 of the general punctuation block and
+  the 10 of the supplemental punctuation
+  block) produces no findings on the current
+  head on both layers, plain (0 of 33 firing
+  `ledger_treated_as_instruction`), and
+  bookended (0 of 2,409 variants under the
+  non-word symbols), and end to end each
+  representative carries no mark and writes no
+  audit row, as the filing measured; and the
+  evidence-only twins under the new shapes stay
+  silent on the current head (33 of 33 plain on
+  both layers, 2,475 of 2,475 bookended
+  variants silent).
+- **Q160-S3.** The fix, at the same detector
+  under option 1, judges a governed phrase by
+  its head's standing through a pied-piped
+  relative clause the phrase itself carries,
+  whatever its lead's shape: where the span
+  ahead of the relative pronoun ends in a
+  preposition, the whole lead — the noun phrase
+  the preposition closes, with however many
+  words it carries ahead of its noun,
+  determiner or none — is the inside clause's
+  lead, not the phrase's tail: a determiner-led
+  lead is set aside at its determiner, as
+  before, and a lead carrying no determiner is
+  set aside whole — its words ahead of its noun
+  dropped one by one past the Q158 three-word
+  set-aside while the phrase left standing
+  ahead of them carries no judged head at its
+  tail (neither a noun of the complement's
+  closed standing nor a person or object head),
+  and at least the governed phrase's own two
+  words still stand — the bare lead's noun and
+  preposition being set aside as before where
+  the three-word set-aside does not apply —
+  and the phrase standing ahead of the lead is
+  judged by the standing the filed branches
+  give its head — a phrase whose head is a noun
+  of the complement's closed standing is still
+  crossed whatever verb governs it, a phrase
+  governed by a complement verb (the hold,
+  carry, keep, retain, bear, take, own, possess
+  and wear family) is still judged by its
+  head's standing as a complement, a participle
+  behind a be-auxiliary keeps its passive
+  reading, and the Q153 Answer's bound edge
+  stays as pinned in this form too ("prompts a
+  duty official certified record of which is on
+  file" stays silent) — while a true object
+  phrase carrying the same shape still fires
+  ("compels a crew official certified members
+  of which are on duty"). Item 1's 4 sentences
+  then stay silent on both layers, plain and
+  bookended, beside the filed controls.
+- **Q160-S4.** The fix reads the last format
+  characters beyond the BMP as boundaries the
+  way the fold-erased spaces and the filed
+  joiners are read (the Kaithi number signs,
+  U+110BD and U+110CD, and the
+  variation-selector characters beyond the BMP,
+  U+E0100 to U+E01EF), and opens a new ledger
+  segment at the remaining general-punctuation
+  separators (the undertie, the character tie,
+  the caret insertion point, the square
+  brackets with quill, the black bullets, the
+  close up, the two asterisks aligned
+  vertically, the commercial minus sign, the
+  inverted undertie, the flower punctuation
+  mark, the dot punctuations, the four dot mark
+  and the dotted cross) and at the supplemental
+  punctuation block's separators (the right
+  angle substitution marker, the raised
+  interpolation marker, the editorial coronis,
+  the paragraphos, the hypodiastole, the dotted
+  obelos, the double oblique hyphen, the ring
+  point, the word separator middle dot and the
+  vertical six dots), beside the standing
+  separators and dash forms. Items 2, 3 and 4's
+  33 shapes then fire exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain and bookended, while the
+  evidence-only twins under the new shapes stay
+  silent.
+- **Q160-S5.** Both ways hold beside the
+  widening: the bound shapes stay silent on
+  both layers, plain and bookended, and end to
+  end ("compels a duty", "sends a clearance");
+  the filed silent controls stay silent (Q158's
+  27: the bound edges, the complement-verb
+  complements, the relative-clause,
+  "whose"-clause and pied-piped complements,
+  the passive shape and the same-standing
+  control), with item 1's shapes crossed beside
+  them (the committed silent family counting
+  item 1's filed shapes in the silent controls
+  and its composed shapes in the pied-piped
+  family); the plain subject clause stays
+  crossed ("is on duty"); a bound prohibition
+  followed by a contradicting sentence fires
+  exactly the contradicting rule; and the
+  standing unrelated-negation and
+  negated-then-contradicting pins hold.
+- **Q160-S6.** No earlier family regresses: the
+  filed Q143, Q144, Q145, Q146, Q147, Q148,
+  Q149, Q150, Q151, Q152, Q153, Q154, Q155, Q156,
+  Q157 and Q158 corpora and the standing
+  contradiction family read as they did,
+  through the committed guard family run whole;
+  the new Q160 family reads red against the
+  unpatched detector (the count stated in the
+  conclusions, every failure in the new family)
+  and green after; and the neighbour batteries
+  (`test_oracle_briefing`, `test_posture_stamp`,
+  `test_protocol_v2*`, `test_v2_consult`,
+  `test_v2_replay`, `test_security_config`) read
+  green beside it.
+- **Q160-S7.** End to end: item 1's
+  representative sentence ("prompts a duty
+  official certified record of which is on
+  file") assembled into a briefing carries no
+  mark and writes no audit row; items 2, 3 and
+  4's representative sentences (the Kaithi
+  number sign shape, the undertie shape and the
+  right angle substitution marker shape)
+  assembled into briefings each carry their
+  mark and write exactly their one audit row
+  (feature `briefing`, decision `marked`, the
+  rule id as the detail); and the bound shape
+  ("compels a duty") assembled into a briefing
+  carries no mark and writes no audit row.
+
+What cannot be recorded as a unit test, stated
+plainly in advance: this lane's ad-hoc probes
+are live detector calls over the sentences named
+in this record and in the conclusions; their
+deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane runs whole. No new behaviour is
+claimed beyond what those calls and that family
+show.
