@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.12 - 2026-11-12
+
+- CI: the relief window of 2026-11-12 closed at 18.8 hours (25 releases against 4 in the 48 hours before; 79 per cent of finished builds green against none) -- the proofs stay off pushes to main and superseded rolling builds keep cancelling; the three suites are real jobs again and the Linux suite and both Windows parts gate a release that carries core code by the cut gate's one rule (runner/tools/cut_gate.py, read by the cut, the promotion check and the train); the hourly seeded mutation walk is back
+- Tools: the cut counts the runs on the tag before it retries a dispatch; the train's watch and clock read past a cancelled run on the tag and the clock names the suites' verdicts beside the legs'
+
 ## 3.16.24.11 - 2026-11-12
 
 - CI: the Windows suite runs as two parts on two runners (run_tests_parallel.py --part K/N: every second shard of the one packing each, under the packing's shard numbers), halving the CPU work a box carries for the same runner-minutes; one box ran all 28 shards at once and ended them together 20 per cent under the wall
