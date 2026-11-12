@@ -1560,8 +1560,8 @@ only; it sets nothing.
 
 The suppositions above landed on `main` on their
 own, before any measurement ran. The measurement
-then ran, and the fix landed on the 3.16.21.3
-release head after a rebase over that cut (the
+then ran, and the fix landed on the 3.16.21.3 release head (2026-11-12)
+after a rebase over that cut (the
 release's own figures re-measure is preserved;
 this fix's figures were re-measured over it).
 What each supposition now stands on, stated

@@ -81,13 +81,19 @@ class NoVersionRotTest(unittest.TestCase):
         offenders = []
         for path in _evergreen_docs():
             with open(path, encoding="utf-8") as fh:
-                for line in fh:
+                for n, line in enumerate(fh, 1):
                     if version in line and not _DATED_RE.search(line):
-                        offenders.append(os.path.relpath(path, _root()))
+                        # The line is named, so the fix is one
+                        # glance: a date beside the version on the
+                        # same line, or the X.Y.Z placeholder.
+                        offenders.append("%s:%d: %s" % (
+                            os.path.relpath(path, _root()), n,
+                            line.strip()[:120]))
                         break
         self.assertEqual([], offenders,
-                         "current version %s hardcoded in evergreen "
-                         "docs (use an X.Y.Z placeholder): %s"
+                         "current version %s on an undated line of an "
+                         "evergreen doc (date the line, on that line, "
+                         "or use an X.Y.Z placeholder): %s"
                          % (version, offenders))
 
 

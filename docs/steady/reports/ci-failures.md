@@ -1165,3 +1165,65 @@ What this leaves as the cycle's floor: the two build-windows
 legs, 12 minutes each, on the gate side and the tag side. A
 cycle cannot be shorter than about 28 minutes until that leg
 is shorter or the tag build reuses the gate build's artifacts.
+
+## The 3.16.21.3 cycle: 11 minutes, the Windows suite out of the artifact leg (12 Nov 2026)
+
+The floor named above was the two build-windows legs, 12.7
+minutes each, all of it the Windows suite running as the first
+step of the artifact job -- advisory for the window, so a
+verdict the release did not read. The suite runs in its own job
+now (`test-windows`, beside `test-macos`, with its -v log
+uploaded as `ci-test-log-windows`), and build-windows packages
+alone. The next cycle, run as `release_train.py run`:
+
+```
+asked for                                            08:03:30Z             0.0 min
+release commit ea071cb1                              08:04:24Z    +0.9     0.9 min
+build 43179987340 started                            08:04:29Z    +0.1     1.0 min
+gate green (8 jobs)                                  08:06:34Z    +2.1     3.1 min
+cut-release 43180297670: success                     08:06:49Z    +0.2     3.3 min
+tag v3.16.21.3                                       08:07:04Z    +0.2     3.6 min
+tag build 43180336074 started                        08:07:06Z    +0.0     3.6 min
+release published (13 assets)                        08:11:33Z    +4.5     8.1 min
+release: success                                     08:11:37Z    +0.1     8.1 min
+pypi-publish: success                                08:12:29Z    +0.9     9.0 min
+gitlab: success                                      08:13:30Z    +1.0    10.0 min
+sourceforge: success                                 08:14:33Z    +1.1    11.1 min
+```
+
+Eleven minutes from the ask to the last mirror, against 31 for
+3.16.21.2 and 35 for 3.16.21.1: build-windows took 1.3 minutes
+on the gate side (08:04:49 to 08:06:09) where it had taken 12.7,
+and the artifact legs were all green 2.1 minutes after the build
+started. The three suites ran beside the cycle and showed their
+verdicts on the run without holding it.
+
+Two more findings from the same hour, each fixed in the tree:
+
+- A tag that cut-release places with GITHUB_TOKEN fires no
+  push-triggered run (GitHub's rule against workflows triggering
+  workflows). v3.16.20.10 and v3.16.21.2 ran build.yml and
+  docker.yml alone -- the two the cut dispatches by name -- while
+  the hand-placed v3.16.21.1 ran all nine proof workflows. With
+  the proofs off pushes to main for the relief window, the
+  release tag was where they were meant to run, and on a
+  pipeline cut they were not running at all. The cut dispatches
+  the nine by name now; v3.16.21.3 ran all of them (switch-proofs
+  green on both macOS legs with the refusal-arm fixes; the Arch
+  leg of the platform matrix red on a partial upgrade against
+  the image's openssl, which the portable proof now upgrades
+  whole).
+- Three web-editor edits of README.md ("Update README.md") took
+  the rolling concurrency group and cancelled a code build each,
+  and moved the `max_job_bytes` line from 448 to 442, which
+  turned the docs job red on the defaults registry's drift
+  guard. A message of the editor's shape takes the docs group
+  now, and the guard tells a line that moved (the key and its
+  token within sixty lines of the recorded one, named in a
+  notice) from a default that changed, which still fails.
+
+What the floor is now: the tag build's artifact legs (about 2
+minutes), the release job (about 2) and the three mirrors
+(about 3, in sequence after the release). A cycle cannot be
+shorter than about 8 minutes until the mirrors run from the
+gate build's artifacts instead of a second build.

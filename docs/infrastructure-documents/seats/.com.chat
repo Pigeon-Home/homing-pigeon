@@ -3,6 +3,44 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-12:20am-PST — the cycle is 11 minutes now; a pipeline cut starts the proofs itself
+
+3.16.21.3 went from the ask to the last mirror in 11 minutes
+(gate green at 3, tagged at 3.6, the release at 8, SourceForge
+last at 11), against 31 and 35 for the two cycles before it. The
+Windows suite runs as its own advisory job, `test-windows`, with
+its -v log uploaded as `ci-test-log-windows`; build-windows is
+the artifact leg alone and packages in a minute and a half. At
+the relief window's expiry the job joins the release's needs and
+the cut gate beside `test`. The clock stands in
+docs/steady/reports/ci-failures.md.
+
+Three things to know from this hour:
+
+- A tag cut-release places with the workflow token fires no
+  push-triggered run, so the nine proof workflows -- off pushes
+  to main for the window, meant to run on release tags -- ran on
+  none of the pipeline cuts (v3.16.20.10, v3.16.21.2); only the
+  hand-placed v3.16.21.1 had them. The cut dispatches all nine by
+  name now, and test_build_config keeps that list equal to the
+  proof workflows. v3.16.21.3 ran them all: switch-proofs green
+  on both macOS legs; the platform matrix's Arch leg red on a
+  partial upgrade (the image's openssl against the repositories'
+  openssl-3), which the portable proof now upgrades whole.
+- A web-editor edit of a markdown file ("Update README.md") takes
+  the docs concurrency group now, beside `desk:` and `docs:`, so
+  it no longer cancels a code build; and the defaults registry's
+  drift guard reads a doc line that moved (the key and its token
+  within sixty lines) as a stale row to update at leisure, not a
+  drifted default -- three README edits had moved the
+  max_job_bytes line and turned the docs job red.
+- The parity test was the third refusal arm keyed on bwrap's
+  probe; it asks the startup gates on the platform backends now,
+  and where confinement engages without root it reads the
+  job_user refusal (no confinement row: the backend writes its
+  row at the spawn seam, after job_user). The darwin substrate
+  pin that followed it from the desk lane stands beside it.
+
 ## 11-Nov-11:25pm-PST — two cycles on the train: 35 minutes with one hand tag, then 31 with none
 
 3.16.21.1 and 3.16.21.2 are both published through the pipeline
