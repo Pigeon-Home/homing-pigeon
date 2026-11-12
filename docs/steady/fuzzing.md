@@ -71,12 +71,12 @@ backend (runner/guard/macos_confine.py) joined the
 canonical list and its wiring grew runner/ops,
 runner/guard and the runner proper,
 the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->64,346<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->58,217<!--/hp-fig--> non-blank)
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->64,362<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->58,233<!--/hp-fig--> non-blank)
 and a <!--hp-fig:core_assembled_zip_bytes-->811,806<!--/hp-fig-->-byte zip, and the project's own estimator
 counts it at <!--hp-fig:core_assembled_tokens-->674,677<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
 estimator counts the canonical <!--hp-fig:core_files-->136<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->665,896<!--/hp-fig-->
-tokens across <!--hp-fig:core_lines-->63,464<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->57,439<!--/hp-fig--> non-blank); the 2 token
+tokens across <!--hp-fig:core_lines-->63,480<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->57,455<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,

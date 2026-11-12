@@ -6,6 +6,10 @@ build/
 *.egg-info/
 .coverage
 
+# The Windows-shaped loop's interpreter (runner/tools/windows_loop.py).
+# Scratch, never the record.
+.venv-windows-loop/
+
 mutants/
 
 # hypothesis example database, written beside the tests on every
