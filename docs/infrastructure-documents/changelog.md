@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.10 - 2026-11-12
+
+- Desk: Q168 re-test conclusions of the second seat — the deterministic re-test passes whole; Q168 stays open for a green test-windows job
+- Desk: Q167 re-test conclusions of the filing seat; Q167 closed, no residual filed
+- Docs: dormant-code audit 2026-11-12 — the supposition recorded before the measure, then the measure and the conclusions; near-duplicate and latent figures corrected in the statistics record
+- Tools: the release train warns on the recorded latent figure — from 4%, loudest at the 5% limit, never a refusal
+- Docs: the red window corrected to 15:47Z-20:17Z and the count to seven builds
+
 ## 3.16.24.9 - 2026-11-12
 
 - Tools: release_train.py measure re-records the core measure and the figures over the tree for a landing that grows a core file, and runs the local guards; the CI record carries the 3.16.24.6 to .8 cycles (7.0, 11.2 and 8.6 minutes) and the head's ten red minutes after a core file grew without its re-measure
