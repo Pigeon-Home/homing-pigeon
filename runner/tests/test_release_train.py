@@ -12,6 +12,7 @@ job's log."""
 import contextlib
 import importlib.util
 import io
+import json
 import os
 import sys
 import tempfile
@@ -435,6 +436,78 @@ class RunRetryTest(unittest.TestCase):
                 mock.patch.object(rt, "carriers", lambda root=None: {"pyproject.toml": "3.16.21.4"}):
             with self.assertRaises(RuntimeError):
                 rt.cmd_run(args)
+
+
+class LatentWarningTest(unittest.TestCase):
+    """The latent-code warning: it warns, and it never refuses.
+
+    The check reads the figure recorded in the statistics
+    record (near copies plus exact copies). Under 4% it is
+    silent; from 4% it warns and the cut proceeds; at or over
+    the standing 5% limit it warns at its loudest and the cut
+    still proceeds; a figure that cannot be read warns too.
+    Every case returns a string — the function has no refusal
+    path — and these tests pin exactly that.
+    """
+
+    def _root(self, facts=None, raw=None):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        if facts is not None or raw is not None:
+            path = os.path.join(tmp.name, "docs",
+                                "infrastructure-documents", "project")
+            os.makedirs(path)
+            with open(os.path.join(path, "statistics.md"), "w",
+                      encoding="utf-8") as fh:
+                if raw is not None:
+                    fh.write(raw)
+                else:
+                    fh.write("# statistics\n\n```json\n%s\n```\n"
+                             % json.dumps(facts))
+        return tmp.name
+
+    def _facts(self, near, exact):
+        return {"latent_near_percent": near,
+                "latent_exact_percent": exact,
+                "audit_date": "2026-11-12"}
+
+    def test_under_four_percent_is_silent(self):
+        root = self._root(self._facts(3.1, 0.02))
+        self.assertEqual("", rt.latent_warning(root))
+        root = self._root(self._facts(3.97, 0.02))
+        self.assertEqual("", rt.latent_warning(root))
+
+    def test_from_four_percent_it_warns_and_proceeds(self):
+        for near, exact in ((3.98, 0.02), (4.5, 0.25)):
+            root = self._root(self._facts(near, exact))
+            warn = rt.latent_warning(root)
+            self.assertIn("WARNING", warn)
+            self.assertIn("approaching the standing limit", warn)
+            self.assertIn("proceeds", warn)
+
+    def test_at_or_over_five_percent_it_warns_at_its_loudest(self):
+        for near, exact in ((4.98, 0.02), (6.0, 0.3)):
+            root = self._root(self._facts(near, exact))
+            warn = rt.latent_warning(root)
+            self.assertIn("AT OR OVER THE STANDING LIMIT", warn)
+            self.assertIn("never stops shipping", warn)
+            self.assertIn("duplication_audit.py", warn)
+
+    def test_an_unreadable_figure_warns_and_proceeds(self):
+        cases = [
+            self._root(),                                   # no file at all
+            self._root(raw="# statistics, no facts block\n"),
+            self._root(raw="```json\nnot json\n```\n"),    # malformed facts
+            self._root({"audit_date": "2026-11-12"}),       # keys missing
+            self._root(self._facts("3.1", 0.02)),           # not a number
+        ]
+        for root in cases:
+            warn = rt.latent_warning(root)
+            self.assertIn("could not be read", warn)
+            self.assertIn("proceeds", warn)
+
+    def test_the_live_record_is_under_the_warning_line(self):
+        self.assertEqual("", rt.latent_warning(REPO))
 
 
 class WaitTest(unittest.TestCase):

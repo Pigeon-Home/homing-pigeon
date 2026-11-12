@@ -21,7 +21,11 @@ the three carriers, writes the changelog entry from the notes given,
 re-records the core measure and the figures over the tree, runs the
 local guards, and commits and pushes a release-prefixed commit (the
 prefix keeps the build in its own concurrency group, so another
-push cannot cancel it).
+push cannot cancel it). A cut also reads the statistics record's
+recorded latent-code figure and warns — from 4% of the tree,
+loudest at or over the standing 5% limit, and also when the figure
+cannot be read — in its output and in the release commit's message;
+at the conductor's word the warning never refuses the cut.
 
 `cut` waits for the build on the commit, checks the jobs cut-release
 gates on, dispatches cut-release with the full sha, waits for the
@@ -360,6 +364,78 @@ def local_guards(root=ROOT):
 
 
 # ----------------------------------------------------------------
+# the latent-code warning (a warning, never a gate)
+# ----------------------------------------------------------------
+
+STATISTICS = os.path.join("docs", "infrastructure-documents", "project", "statistics.md")
+LATENT_WARN_PERCENT = 4.0
+LATENT_LIMIT_PERCENT = 5.0
+_FACTS_RE = re.compile(r"```json\n(.*?)```", re.S)
+
+
+def _statistics_facts(root):
+    """The statistics record's facts block, or None when it cannot be read."""
+    try:
+        with open(os.path.join(root, STATISTICS), encoding="utf-8") as fh:
+            text = fh.read()
+    except (OSError, UnicodeDecodeError):
+        return None
+    m = _FACTS_RE.search(text)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(1))
+    except ValueError:
+        return None
+
+
+def latent_warning(root=ROOT):
+    """The latent-code warning a cut carries, or '' when there is none.
+
+    Reads the recorded duplicate-and-latent figure from the
+    statistics record — near copies plus exact copies, as the
+    dormant-code audits state them. It does NOT run the audit in
+    the cut (the measure takes minutes; the record's freshness
+    is the desk's discipline). At the conductor's word
+    (2026-11-12) this check warns and never refuses: from 4%
+    the warning rides in the cut's output and in the release
+    commit's message, at or over the standing 5% limit it
+    rides at its loudest, and a figure that cannot be read
+    warns too — and in every case the cut proceeds.
+    """
+    unreadable = ("WARNING — the latent-code figure could not be read from the "
+                  "statistics record (docs/infrastructure-documents/project/"
+                  "statistics.md); the cut proceeds, and the figure wants "
+                  "checking by hand.")
+    facts = _statistics_facts(root)
+    if facts is None:
+        return unreadable
+    near = facts.get("latent_near_percent")
+    exact = facts.get("latent_exact_percent")
+    if not isinstance(near, (int, float)) or not isinstance(exact, (int, float)):
+        return unreadable
+    total = near + exact
+    if total < LATENT_WARN_PERCENT:
+        return ""
+    remedy = ("the remedy is a fresh dormant-code audit by hand "
+              "(runner/tools/duplication_audit.py), recorded under "
+              "docs/infrastructure-documents/project/, with the statistics "
+              "figures corrected from it")
+    audit = facts.get("audit_date") or "an unstated date"
+    if total >= LATENT_LIMIT_PERCENT:
+        return ("WARNING — LATENT CODE AT OR OVER THE STANDING LIMIT: the statistics "
+                "record puts duplicate and latent code at %.2f%% of the tree "
+                "(near copies %s%% + exact copies %s%%, audit of %s), at or over "
+                "the standing 5%% limit. The cut proceeds — this warning never "
+                "stops shipping — and %s." % (total, near, exact, audit, remedy))
+    return ("WARNING — latent code approaching the standing limit: the statistics "
+            "record puts duplicate and latent code at %.2f%% of the tree "
+            "(near copies %s%% + exact copies %s%%, audit of %s), under the "
+            "standing 5%% limit but at or over the 4%% warning line. The cut "
+            "proceeds, and %s." % (total, near, exact, audit, remedy))
+
+
+# ----------------------------------------------------------------
 # mirror evidence
 # ----------------------------------------------------------------
 
@@ -428,6 +504,11 @@ def cmd_status(args):
 
 
 def cmd_prepare(args):
+    # The latent-code warning rides in the cut's output and in the
+    # release commit's message; it never refuses (see latent_warning).
+    warn = latent_warning()
+    if warn:
+        _say(warn)
     # Tracked changes only: an untracked file (a scratch worktree, a
     # local note) is not a change and is never added below.
     if _git("status", "--porcelain", "--untracked-files=no"):
@@ -458,6 +539,8 @@ def cmd_prepare(args):
         raise RuntimeError("the local guards are red; the tree is left as prepared for a look:\n" + out[-3000:])
     subject = args.subject or (args.note[0] if args.note else "the cut")
     message = "release: %s — %s\n\n%s\n" % (version, subject, "\n".join("- " + n for n in args.note))
+    if warn:
+        message += "\n" + warn + "\n"
     if args.trailer:
         message += "\n" + "\n".join(args.trailer) + "\n"
     _git("add", "-u")
@@ -490,6 +573,9 @@ def cmd_prepare(args):
 
 
 def cmd_cut(args, sha=None):
+    warn = latent_warning()
+    if warn:
+        _say(warn)
     sha = sha or args.sha or _git("rev-parse", "HEAD")
     sha = _git("rev-parse", sha)
     if getattr(args, "watch", False):
