@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.2 - 2026-11-12
+
+- Extensions: upstream pins refreshed for the osquery, softflowd, suricata and zeek feeds — each feed's upstream ref resolved to its current tip, the pinned files refetched, and the drift tests green against them
+- Desk: Q165 re-test conclusions are on the record of the filing seat (Q167 filed, Q165 not closed); Q167 fix suppositions Q167-S1 to Q167-S6 are recorded before the fix
+- Measure: a fresh uncached recount at the cut head reads 24,899,345 tokens (24 whole millions), so the token component stays at 24 and the counter increments to 2
+
 ## 3.16.24.1 - 2026-11-12
 
 - Corpus: Germany bank 65 is banked — 2,504 entries and 9,053 coverage edges in the merged corpus; 6,162 new run records, 126,687,498 children tested, 60,919 crashes filed; on replay at the head, 1 slow query finding is now fast (retired), 2 race_state crashes still crash
