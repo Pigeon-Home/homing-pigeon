@@ -805,23 +805,22 @@ class CheckedInTableGuardTest(unittest.TestCase):
         self.assertGreaterEqual(
             durations["runner.tests.test_oracle_chat"], 55.0)
 
-    def test_the_decision1_split_family_still_carries_99_tests(self):
+    def test_the_decision1_split_family_still_carries_101_tests(self):
         # The split is a move, not a rewrite: the eight
         # pieces between them carry the original file's
         # 97 tests plus the two Q159 added to gates_strict
         # (the dead-backend refusal on every platform seam
-        # and the live-backend control beside it), at the
+        # and the live-backend control beside it) and the
+        # two the decision-1 every-seam landing added to
+        # gates_refuse (the refusal on each platform shape
+        # and the darwin live-backend control), at the
         # per-class counts (RefuseMain 43 across its two
-        # pieces, the gates classes 20 carried as
-        # gates_refuse 5, gates_strict 8 and gates_phase2
-        # 7 after that addition, RefuseReader 16, the
-        # default class and its table pin 20), plus the
-        # two the R6 landing of 2026-11-12 added to
-        # gates_refuse (the construction under each
-        # simulated platform shape, and the darwin
-        # live-backend control): 101. A test lost,
-        # duplicated or silently dropped in a future edit
-        # of a piece fails here.
+        # pieces, the gates classes 22 carried as
+        # gates_refuse 7, gates_strict 8 and gates_phase2
+        # 7 after those additions, RefuseReader 16, the
+        # default class and its table pin 20). A test
+        # lost, duplicated or silently dropped in a future
+        # edit of a piece fails here.
         import importlib
         import unittest as _unittest
         expected = {

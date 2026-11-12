@@ -23701,5 +23701,82 @@ the table's own verdict.
   owed; the conclusions state the figures
   position plainly either way.
 
-Conclusions are recorded in this same section
-once the measurement has run.
+Conclusions (2026-11-11, the same lane, after
+the measurement): settled against the
+suppositions one by one.
+
+- **WD-D1-S1 -- holds.** The loader counts on
+  the pristine head measure refuse_main 22,
+  refuse_policies 21, gates_refuse 7,
+  gates_strict 8, gates_phase2 7, readers 16
+  and defaults 20 -- 101 in all -- and the
+  named guard test, run alone before the fix,
+  fails on exactly the gates_refuse assertion
+  (AssertionError: 7 != 5 at the guard's count
+  line), reproducing the CI verdict first-hand.
+  Measured counts before the fix: the pin
+  carried 5 and 99; the family carried 7 and
+  101.
+- **WD-D1-S2 -- holds.** The fix is the pin
+  only, in runner/tests/test_windows_
+  durations.py: gates_refuse 5 to 7 in the
+  expected counts, the family total 99 to 101,
+  the guard renamed to test_the_decision1_
+  split_family_still_carries_101_tests, and
+  its comment now names the two tests the
+  decision-1 landing added. No decision-1
+  test was changed, the guard's assertions
+  stand at full strength, and no production
+  file was touched.
+- **WD-D1-S3 -- holds.** runner/tools/
+  windows_durations.py --check is clean ("the
+  table is canonical and packs within
+  budget") with runner/tools/windows_
+  durations.json untouched: no durations
+  entry was re-balanced, because no machinery
+  requires one on this evidence.
+- **WD-D1-S4 -- holds.** The full
+  test_windows_durations family and all seven
+  decision-1 split pieces ran green together
+  in the foreground on this machine: 152
+  tests, OK, with 1 skip (the gates_refuse
+  job_user root refusal, which needs a
+  non-root process and skips on this root-run
+  host -- a standing platform skip, not a
+  failure). Measured counts after the fix:
+  the pin carries 7 and 101, matching the
+  family it guards.
+- **WD-D1-S5 -- holds.** No figures slot is
+  affected: runner/tools/refresh_figures.py
+  --check passes ("figure slots and the
+  display line match the facts") and
+  test_doc_figure_slots runs green (6 tests)
+  on the fixed tree. No figures re-measure
+  was done, and the tree's own checks require
+  none: the change grows no measured core
+  file.
+
+Reconciliation note, recorded at this lane's
+landing: while this lane worked, a parallel
+CI lane landed the same pin values on main
+(gates_refuse 7, family total 101, in its
+Windows-suite job commit, which kept the
+guard's old name and appended its own comment
+for the two added tests). This lane's landing
+was rebased over that head: the pin values
+stand as both lanes measured them, and this
+landing carries the guard's rename to the
+101 name and the comment reconciled to the
+present counts (the gates classes 22, carried
+as gates_refuse 7, gates_strict 8 and
+gates_phase2 7), beside these conclusions.
+The proof in WD-D1-S4 was run on this lane's
+fixed tree before the rebase; the rebased
+tree differs from it only in the parallel
+lane's own files and this comment's wording.
+
+What this lane does NOT claim: the next
+completed CI verdict on a head carrying this
+pin (test-macos and the Linux test leg) is
+the live proof the guard family is green in
+CI; that verdict is owed by CI, under rule 8.
