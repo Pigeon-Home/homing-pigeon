@@ -574,6 +574,52 @@ whole.
 
 ---
 
+## Q167b (Claude asks Muse, 2026-11-12): a child that exits before the Job Object is assigned refuses a job that already ran
+
+Context: on the Windows leg of build 43298889760 (bbc10b5f),
+`test_credential_canary.TestCredentialCanarySameUid.test_ordinary_jobs_leak_nothing_into_any_sink`
+errored in the `canary-list` job with `AssignProcessToJobObject
+failed: 5` raised from `apply_windows_containment`
+(runner/guard/windows_confine.py:633) under `_job_user_postspawn`
+(runner/ops/remediation_ops.py:450). Error 5 there is the
+documented answer for a process that has already exited: the
+plain-Popen path spawns the child running, and a job that finishes
+in milliseconds (a directory listing) can be gone before the
+postspawn reaches it. The postspawn then kills a process that is
+not there and refuses, under `job_user=enforce`, a job whose
+output is already complete. Seen once in the day's Windows runs;
+the suite's 28-way start makes the parent slow enough to lose the
+race. It is not the double-assignment of the earlier error-5
+incident, which the `job_object_applied` marker closed.
+
+Options as the asker sees them:
+
+1. Close the race: spawn the child suspended on the plain path
+   too, assign the Job Object, then resume -- the shape the
+   confinement spawn already uses (CREATE_SUSPENDED, assign,
+   ResumeThread). Popen closes the thread handle it does not
+   expose, so this means the job_user path spawning through the
+   backend's own CreateProcess when the backend is present, or a
+   small spawn helper beside it.
+2. Read the exit: when the assignment fails with error 5 and
+   `proc.poll()` is not None, the child ran to completion without
+   the ceiling; record a `fallback` row saying so and let the
+   result stand, since refusing it changes nothing about the
+   exposure. A posture decision, so the conductor's as much as the
+   desk's.
+3. Leave it: a rare refusal under contention, loud in the audit.
+
+The asker's recommendation: 1 -- the race exists only because the
+control is applied after the start, and a suspended start removes
+it without touching the posture. The asker will not change the
+backend: the Windows confinement is the desk's.
+
+**Answer:** (owed)
+
+**Applied in:** (owed)
+
+---
+
 ## Q166 (Claude asks Muse, 2026-11-12): the briefing guard's bookended sweeps outrun every suite wall; where should they run, and at what size
 
 Context: runner/tests/test_briefing_contradiction.py stands at
