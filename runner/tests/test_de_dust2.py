@@ -650,7 +650,7 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("if: needs.scope.outputs.docs_only == 'true'", block("docs"))
         self.assertIn("test_doc_version_rot", block("docs"))
         self.assertIn("test_reader_docs_quiet", block("docs"))
-        for job in ("test-macos", "build-windows", "build-linux", "build-python"):
+        for job in ("test-macos", "test-windows", "build-windows", "build-linux", "build-python"):
             self.assertIn("needs.scope.outputs.docs_only != 'true'", block(job), job)
         # the desk's pushes take their own concurrency group
         self.assertIn("startsWith(github.event.head_commit.message, 'desk:')", wf)

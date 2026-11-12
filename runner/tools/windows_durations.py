@@ -48,7 +48,7 @@ at hand when the split landed; it is refreshed the same
 way from newer logs as they accumulate:
 
     python runner/tools/windows_durations.py --write \
-        --from-logs build-windows.log
+        --from-logs test-windows.log
 
 The drift rule rides with the table: if any shard exceeds
 15 minutes on 2 consecutive main builds, refresh the table

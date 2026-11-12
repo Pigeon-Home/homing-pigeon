@@ -367,11 +367,77 @@ jobs:
           name: ci-test-log-macos
           path: test-output-macos.log
 
+  test-windows:
+    # The suite on Windows, in its own job since 2026-11-12. It
+    # ran inside build-windows before that, as the first step of
+    # the artifact leg, so the release waited the suite's 12.7
+    # minutes twice per cycle -- once on the gate side, once on
+    # the tag side -- for a verdict it did not read: the step was
+    # advisory. The artifact leg packages in about a minute on
+    # its own; the suite runs here beside it, as test-macos runs
+    # beside the macOS legs, and shows its verdict on the run.
+    # It runs sharded, packed by measured duration rather than by
+    # test count: counts hid the suite's shape on this platform
+    # (a few files carry most of the wall time), and on
+    # 2026-11-10 the count split's shard 2 was still running
+    # when the 20-minute hang guard below killed it, on the
+    # attempt and on the rerun, while its siblings finished in 6
+    # to 12 minutes. The durations table
+    # (runner/tools/windows_durations.json, packed by
+    # runner/tools/windows_durations.py) budgets each shard at
+    # 12 minutes against the standing 20-minute wall; a file
+    # with no measurement enters at the table's median. The
+    # shard runner still discovers the same suite, runs every
+    # test exactly once, and fails if any shard fails or if
+    # discovery comes up empty. --durations makes each shard
+    # list its slowest tests; under Actions the runner also
+    # annotates every failed test by name, so a red Windows job
+    # names its tests on the run page. --wall-clock 20 runs each
+    # shard under runner/tools/suite_wall_clock.py (see the
+    # Linux suite step): a shard still running at 20 minutes
+    # stops and names its test instead of holding the job to
+    # its own limit. The wall is a hang guard, not a budget; it
+    # is not raised to fit the suite. --full-log keeps every
+    # shard's -v output, as the Linux and macOS legs do, so a
+    # walled shard names its test in the uploaded log.
+    # Every packed shard starts at once. The runner's --in-flight N
+    # can cap that; measured on 2026-11-11, --in-flight 8 took this
+    # step from 8 minutes to past 40 (the suite's shards are mostly
+    # waiting, so a cap serializes waits), while the loopback-server
+    # tests that the 28-way start had been starving carry 60-second
+    # hang guards now instead of 5-second latency bounds.
+    # RELIEF-48H expires 2026-11-14T03:45Z: advisory for the window, like
+    # the Linux and macOS suites -- it runs in full and shows red,
+    # and blocks nothing. At expiry remove the advisory line and
+    # add this job to the release's needs list and to the cut
+    # gate's set beside `test`, which is where the Windows suite's
+    # verdict gated the release before the split.
+    needs: scope
+    if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true'
+    continue-on-error: true
+    runs-on: windows-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - run: python runner/tools/run_tests_parallel.py --duration-table runner/tools/windows_durations.json --durations 15 --wall-clock 20 --full-log test-output-windows.log
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ci-test-log-windows
+          path: test-output-windows.log
+
   build-windows:
-    # Does not wait for the Ubuntu suite. They run together.
-    # The release waits for both, so a red suite still cannot
-    # publish. Waiting here was the suite's four minutes plus
-    # this job's six, in a line.
+    # The Windows artifact leg: the frozen binaries, their smoke,
+    # the archive. The suite runs beside it in test-windows (above)
+    # since 2026-11-12; until then it ran here first, and the
+    # release waited its 12.7 minutes on both sides of the tag for
+    # an advisory verdict. Does not wait for the Ubuntu suite
+    # either: the legs run together.
     needs: scope
     if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true'
     runs-on: windows-latest
@@ -382,43 +448,6 @@ jobs:
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
         with:
           python-version: "3.12"
-      - run: pip install -c .github/requirements-ci.txt hypothesis
-      # The suite is this job's long pole. It runs sharded,
-      # packed by measured duration rather than by test
-      # count: counts hid the suite's shape on this platform
-      # (a few files carry most of the wall time), and on
-      # 2026-11-10 the count split's shard 2 was still
-      # running when the 20-minute hang guard below killed
-      # it, on the attempt and on the rerun, while its
-      # siblings finished in 6 to 12 minutes. The durations
-      # table (runner/tools/windows_durations.json, packed
-      # by runner/tools/windows_durations.py) budgets each
-      # shard at 12 minutes against the standing 20-minute
-      # wall; a file with no measurement enters at the
-      # table's median. The shard runner still discovers
-      # the same suite, runs every test exactly once, and
-      # fails if any shard fails or if discovery comes up
-      # empty. --durations makes each shard list its
-      # slowest tests; under Actions the runner also
-      # annotates every failed test by name, so a red
-      # Windows job names its tests on the run page.
-      # --wall-clock 20 runs each shard under runner/tools/suite_wall_clock.py
-      # (see the Linux suite step): a shard still running at 20
-      # minutes stops and names its test instead of holding the
-      # job to its own limit. The wall is a hang guard, not
-      # a budget; it is not raised to fit the suite.
-      # Every packed shard starts at once. The runner's --in-flight N
-      # can cap that; measured on 2026-11-11, --in-flight 8 took this
-      # step from 8 minutes to past 40 (the suite's shards are mostly
-      # waiting, so a cap serializes waits), while the loopback-server
-      # tests that the 28-way start had been starving carry 60-second
-      # hang guards now instead of 5-second latency bounds.
-      # RELIEF-48H expires 2026-11-14T03:45Z: the Windows suite is advisory
-      # for the window -- the shards run in full and show red,
-      # but the packaging below proceeds, so the artifact leg
-      # stays the gate. Remove the advisory line at expiry.
-      - run: python runner/tools/run_tests_parallel.py --duration-table runner/tools/windows_durations.json --durations 15 --wall-clock 20
-        continue-on-error: true
       - run: pip install -c .github/requirements-ci.txt pyinstaller
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs" --hidden-import runner._version --hidden-import runner._build --hidden-import runner.ops.recipes --hidden-import runner.ops.cancel --hidden-import runner.ops.changes --hidden-import runner.ops.av --hidden-import runner.ops.exec --hidden-import runner.ops.mail --hidden-import runner.ops.main --hidden-import runner.ops.misc --hidden-import runner.ops.queries --hidden-import runner.ops.remediation_ops --hidden-import runner.ops.attest --hidden-import runner.ops.context --hidden-import runner.ops.firewall --hidden-import runner.ops.handlers --hidden-import runner.ops.oracle_ops --hidden-import runner.ops.paths --hidden-import runner.ops.poll --hidden-import runner.ops.sensors --hidden-import runner.ops.startup --hidden-import runner.ops.watch --hidden-import runner.ops.windows --hidden-import runner.ops.oracle_server --hidden-import runner.wire.oauth --hidden-import runner.oracle.senses --hidden-import runner.ops.live --hidden-import runner.ops.extensions --hidden-import runner.ops.extsources --hidden-import runner.oracle.review --hidden-import runner.oracle.opinion --hidden-import runner.oracle.learning --hidden-import runner.oracle.remediation --hidden-import runner.oracle.resources --hidden-import runner.oracle.dri --hidden-import runner.oracle.detection --hidden-import runner.ops.setup --hidden-import runner.guard.security --hidden-import runner.guard.sandbox --hidden-import runner.ops.winlog --hidden-import runner.ops.auditreport --hidden-import runner.ops.posture --hidden-import runner.ops.harness --hidden-import runner.ops.local_test --hidden-import runner.wire.transports --hidden-import runner.wire.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.wire.dtlsproto --hidden-import runner.wire.jobcrypto --hidden-import runner.wire.protocol_v2 --hidden-import runner.oracle.personal_docs --hidden-import runner.wire.platformcard --hidden-import runner.wire.board --hidden-import runner.guard.textutil --hidden-import runner.guard.extreview --hidden-import runner.guard.atomicio --hidden-import runner.guard.filenames --hidden-import runner.guard.panic --hidden-import runner.ops.cli --hidden-import runner.ops.oracle_page --hidden-import runner.ops.helpers --hidden-import runner.ops.oracle_tools --hidden-import runner.ops.tables --hidden-import runner.ops.policy --hidden-import runner.guard.confval --hidden-import runner.guard.defaulted --hidden-import runner.tools.disclosure --hidden-import runner.wire.verify --hidden-import runner.wire.subject --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --hidden-import runner.transport_extensions.queues.__main__ --hidden-import runner.ops.briefing --add-data "runner/transport_extensions;pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/ops/install.py --hidden-import runner._version --hidden-import runner.oracle.personal_docs --hidden-import runner.guard.atomicio --add-data "runner/guard/atomicio.py;pigeon-guard" --add-data "runner/guard/panic.py;pigeon-guard"

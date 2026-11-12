@@ -256,11 +256,20 @@ class MutationGateTest(unittest.TestCase):
                       "--full-log test-output-macos.log", macos)
         self.assertIn("name: ci-test-log-macos", macos)
         self.assertIn("path: test-output-macos.log", macos)
-        windows = _uncommented(_job_block(workflow, "build-windows"))
+        # The Windows suite runs in its own job since 2026-11-12
+        # (it ran as the first step of build-windows before, and
+        # the release waited its 12.7 minutes on both sides of the
+        # tag for an advisory verdict); the artifact leg no longer
+        # runs it.
+        windows = _uncommented(_job_block(workflow, "test-windows"))
         self.assertIn("python runner/tools/run_tests_parallel.py "
                       "--duration-table "
                       "runner/tools/windows_durations.json "
-                      "--durations 15 --wall-clock 20", windows)
+                      "--durations 15 --wall-clock 20 "
+                      "--full-log test-output-windows.log", windows)
+        self.assertIn("name: ci-test-log-windows", windows)
+        self.assertNotIn("run_tests_parallel.py",
+                         _uncommented(_job_block(workflow, "build-windows")))
         self.assertTrue(os.path.exists(
             os.path.join(_root(), "runner", "tools", "suite_wall_clock.py")))
 
@@ -268,15 +277,17 @@ class MutationGateTest(unittest.TestCase):
         # The mirror image of the pin above: if a job that gates
         # the release ever grows continue-on-error, a red suite
         # would publish. Only the signal job may carry it.
-        # RELIEF-48H (expires 2026-11-14T03:45Z): `test` and the
-        # suite step inside `build-windows` are advisory for the
-        # window and leave this list until it expires; every other
-        # gate -- typecheck, the artifact legs, the publish chain --
-        # stays a real gate throughout. ReliefModeTest pins the
-        # advisory pair and the expiry.
+        # RELIEF-48H (expires 2026-11-14T03:45Z): the three suite
+        # jobs (`test`, `test-macos`, `test-windows`) are advisory
+        # for the window and stay out of this list until it
+        # expires; every other gate -- typecheck, the artifact
+        # legs (build-windows among them, since the suite left it
+        # on 2026-11-12), the publish chain -- stays a real gate
+        # throughout. ReliefModeTest pins the advisory jobs and
+        # the expiry.
         workflow = _workflow()
         for job in ("typecheck", "build-linux", "build-linux-arm64",
-                    "build-macos", "build-macos-x86_64",
+                    "build-macos", "build-macos-x86_64", "build-windows",
                     "build-windows-arm64", "build-python", "build-pi-light",
                     "release", "pypi-publish", "sourceforge", "gitlab"):
             block = _job_block(workflow, job)
@@ -482,7 +493,8 @@ class PipelineLiftsTest(unittest.TestCase):
     def test_build_grants_are_exact_per_job(self):
         workflow = _workflow()
         read_only = {("contents", "read")}
-        for job in ("test", "typecheck", "mutation", "build-windows",
+        for job in ("test", "typecheck", "mutation", "test-macos",
+                    "test-windows", "build-windows",
                     "build-windows-arm64", "build-linux", "build-linux-arm64",
                     "build-pi-light", "build-macos", "build-macos-x86_64",
                     "build-python"):
@@ -933,16 +945,13 @@ class PipelineLessonsTest(unittest.TestCase):
                      and not ln.strip().startswith("#")]
             if name == "build.yml":
                 # The signal job, plus the RELIEF-48H advisory
-                # surfaces (expires 2026-11-14T03:45Z): the `test`
-                # job, the `test-macos` job and the suite step
-                # inside `build-windows`. Four, no more; each is
-                # pinned by ReliefModeTest below.
+                # surfaces (expires 2026-11-14T03:45Z): the `test`,
+                # `test-macos` and `test-windows` jobs. Four, no
+                # more; each is pinned by ReliefModeTest below.
                 self.assertEqual(len(lines), 4, lines)
-                for job in ("mutation", "test", "test-macos"):
+                for job in ("mutation", "test", "test-macos", "test-windows"):
                     block = _job_block(_workflow(), job)
                     self.assertIn("continue-on-error: true", block, job)
-                block = _job_block(_workflow(), "build-windows")
-                self.assertIn("continue-on-error: true", block)
             else:
                 self.assertEqual(lines, [], "%s uses continue-on-error" % name)
 
@@ -1038,7 +1047,12 @@ class ReliefModeTest(unittest.TestCase):
     docs/steady/reports/ci-failures.md).
 
     For the window: the full suites run advisory and reds are
-    triaged after publish; the nine proof workflows beside
+    triaged after publish (the Windows suite as its own job,
+    test-windows, since 2026-11-12: it ran as the first step of
+    the artifact leg before, and the release waited its 12.7
+    minutes on both sides of the tag for a verdict it did not
+    read; at expiry the job joins the release's needs and the cut
+    gate beside `test`); the nine proof workflows beside
     build.yml stop firing on pushes to main (release tags, a
     nightly schedule and dispatch still run them); superseded
     rolling builds cancel (release and tag builds never do); the
@@ -1104,16 +1118,32 @@ class ReliefModeTest(unittest.TestCase):
             self.assertIn("workflow_dispatch:", wf,
                           "%s lost manual dispatch" % name)
 
+    def test_cut_release_dispatches_every_proof_workflow_on_the_tag(self):
+        # A tag cut-release places with GITHUB_TOKEN fires no
+        # push-triggered run (GitHub's rule against workflows
+        # triggering workflows): v3.16.20.10 and v3.16.21.2 ran
+        # build.yml and docker.yml alone, both dispatched by name,
+        # while the hand-placed v3.16.21.1 ran all nine proofs.
+        # With the proofs off pushes to main for the window, the
+        # release tag is where they run, so the cut dispatches
+        # each one by name -- this list and PROOF_WORKFLOWS are
+        # the same set.
+        text = _workflow_text("cut-release.yml")
+        live = "\n".join(line for line in text.splitlines()
+                         if not line.lstrip().startswith("#"))
+        step = live.split("start the release pipeline on the tag", 1)[1]
+        self.assertIn('gh workflow run build.yml --ref "$TAG"', step)
+        named = set(re.findall(r"\b([a-z-]+\.yml)\b", step)) - {"build.yml", "docker.yml"}
+        self.assertEqual(named, set(self.PROOF_WORKFLOWS))
+        self.assertIn('gh workflow run "$wf" --ref "$TAG"', step)
+
     def test_the_suites_are_advisory_for_the_window(self):
         workflow = _workflow()
-        for job in ("test", "test-macos"):
+        for job in ("test", "test-macos", "test-windows"):
             block = _job_block(workflow, job)
+            self.assertIn("run_tests_parallel.py", block)
             self.assertIn("continue-on-error: true", block,
                           "%s is not advisory" % job)
-        block = _job_block(workflow, "build-windows")
-        self.assertIn("run_tests_parallel.py", block)
-        self.assertIn("continue-on-error: true", block,
-                      "the Windows suite step is not advisory")
 
     def test_the_gates_that_stay_are_ungated_and_real(self):
         # Scope, shape and typecheck carry the window's gate with

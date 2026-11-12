@@ -208,7 +208,7 @@ class TableValidationTest(unittest.TestCase):
         self.assertLess(text.index('"a"'), text.index('"b"'))
 
 
-_STEP = "build-windows\tRun python runner/tools/run_tests_parallel.py"
+_STEP = "test-windows\tRun python runner/tools/run_tests_parallel.py"
 
 
 def _gh(body):
@@ -274,7 +274,7 @@ class ParseLogTest(unittest.TestCase):
         self.assertEqual(estimates, {"pkg.test_a": 1200.1})
 
     def test_other_steps_lines_are_not_evidence(self):
-        decoy = ("build-windows\tSome other step\t"
+        decoy = ("test-windows\tSome other step\t"
                  "2026-11-10T19:49:15.0000000Z "
                  "shard 0: OK in 1.0s")
         self.assertEqual(wd.parse_log_text(decoy + "\n"), [])
@@ -419,11 +419,16 @@ class CheckedInTableGuardTest(unittest.TestCase):
                                "build.yml"),
                   encoding="utf-8") as fh:
             workflow = fh.read()
-        block = workflow.split("build-windows:", 1)[1]
-        block = block.split("build-windows-arm64:", 1)[0]
+        # The suite's own job since 2026-11-12; build-windows is
+        # the artifact leg alone and runs no shard.
+        block = workflow.split("  test-windows:", 1)[1]
+        block = block.split("  build-windows:", 1)[0]
         self.assertIn("--duration-table "
                       "runner/tools/windows_durations.json", block)
         self.assertIn("--wall-clock 20", block)
+        leg = workflow.split("  build-windows:", 1)[1]
+        leg = leg.split("  build-linux:", 1)[0]
+        self.assertNotIn("run_tests_parallel.py", leg)
         self.assertTrue(os.path.isfile(
             os.path.join(REPO, "runner", "tools",
                          "windows_durations.json")))
@@ -810,15 +815,19 @@ class CheckedInTableGuardTest(unittest.TestCase):
         # pieces, the gates classes 20 carried as
         # gates_refuse 5, gates_strict 8 and gates_phase2
         # 7 after that addition, RefuseReader 16, the
-        # default class and its table pin 20). A test
-        # lost, duplicated or silently dropped in a future
-        # edit of a piece fails here.
+        # default class and its table pin 20), plus the
+        # two the R6 landing of 2026-11-12 added to
+        # gates_refuse (the construction under each
+        # simulated platform shape, and the darwin
+        # live-backend control): 101. A test lost,
+        # duplicated or silently dropped in a future edit
+        # of a piece fails here.
         import importlib
         import unittest as _unittest
         expected = {
             "runner.tests.test_decision1_startup_refuse_main": 22,
             "runner.tests.test_decision1_startup_refuse_policies": 21,
-            "runner.tests.test_decision1_startup_gates_refuse": 5,
+            "runner.tests.test_decision1_startup_gates_refuse": 7,
             "runner.tests.test_decision1_startup_gates_strict": 8,
             "runner.tests.test_decision1_startup_gates_phase2": 7,
             "runner.tests.test_decision1_startup_readers": 16,
@@ -831,7 +840,7 @@ class CheckedInTableGuardTest(unittest.TestCase):
                 module).countTestCases()
             self.assertEqual(found, count, name)
             total += found
-        self.assertEqual(total, 99)
+        self.assertEqual(total, 101)
 
 
     def test_the_de_dust_corpus_file_keeps_its_budget_floor(self):
