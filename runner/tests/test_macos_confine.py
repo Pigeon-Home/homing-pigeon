@@ -429,11 +429,22 @@ class ShimFieldTest(unittest.TestCase):
         self.assertNotIn("RLIMIT_VMEM", MC.LIMIT_SHIM_SOURCE)
 
 
-@unittest.skipIf(os.name == "nt",
-                 "the profile names POSIX real paths; Windows realpath "
-                 "yields a drive path and symlinks need a privilege")
 class SandboxArgvFieldTest(unittest.TestCase):
     """build_sandbox_argv: the composed spawn argv."""
+
+    def test_a_host_that_rewrites_posix_paths_keeps_the_posix_form(self):
+        # The profile writer takes leading-slash paths only; a host
+        # whose realpath turns one into a drive path (Windows) gets
+        # the POSIX form back, normalized, so these field tests run
+        # on every leg. A host that keeps the slash gets realpath.
+        with mock.patch.object(MC.os.path, "realpath",
+                               return_value="D:\\work\\a\\b"):
+            self.assertEqual(MC._profile_realpath("/work/a/../a/b"),
+                             "/work/a/b")
+        with mock.patch.object(MC.os.path, "realpath",
+                               return_value="/private/tmp/w"):
+            self.assertEqual(MC._profile_realpath("/tmp/w"),
+                             "/private/tmp/w")
 
     def test_the_shape_is_sandbox_exec_profile_shim(self):
         argv, profile = MC.build_sandbox_argv(
@@ -450,6 +461,9 @@ class SandboxArgvFieldTest(unittest.TestCase):
             ["/bin/echo"], cwd="/work/elsewhere")
         self.assertIn('(subpath "/work/elsewhere")', profile)
 
+    @unittest.skipIf(os.name == "nt",
+                     "the profile names POSIX real paths; Windows realpath "
+                     "yields a drive path and symlinks need a privilege")
     def test_cwd_field_names_the_real_path_of_a_symlinked_workdir(self):
         # Seatbelt matches canonical paths: a work directory
         # handed over through a symlink alias must enter the

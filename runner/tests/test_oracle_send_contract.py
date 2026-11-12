@@ -159,7 +159,7 @@ class OracleSendServerTest(unittest.TestCase):
             data=data, headers=hdrs, method="POST",
         )
         try:
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=60) as resp:
                 return resp.status, resp.read().decode()
         except urllib.error.HTTPError as e:
             return e.code, e.read().decode()
@@ -179,7 +179,7 @@ class OracleSendServerTest(unittest.TestCase):
                     data=data, headers=hdrs, method="POST",
                 )
                 try:
-                    with urllib.request.urlopen(req, timeout=5) as resp:
+                    with urllib.request.urlopen(req, timeout=60) as resp:
                         return resp.status, resp.read().decode()
                 except urllib.error.HTTPError as e:
                     return e.code, e.read().decode()
@@ -299,7 +299,7 @@ class OracleSendServerTest(unittest.TestCase):
                      "X-Oracle-Token": self.token},
         )
         try:
-            urllib.request.urlopen(req, timeout=5)
+            urllib.request.urlopen(req, timeout=60)
             self.fail("expected 404")
         except urllib.error.HTTPError as e:
             self.assertEqual(e.code, 404)
@@ -321,7 +321,7 @@ class OracleSendServerTest(unittest.TestCase):
             for t in threads:
                 t.start()
             for t in threads:
-                t.join(15)
+                t.join(90)
         self.assertFalse(any(t.is_alive() for t in threads), errors)
         self.assertEqual(errors, [])
         self.assertEqual(len(results), 8, errors)

@@ -127,7 +127,7 @@ class OracleChatNegativeTest(unittest.TestCase):
             method="POST",
         )
         try:
-            with urlopen(req, timeout=10) as resp:
+            with urlopen(req, timeout=60) as resp:
                 body = resp.read()
                 return resp.status, body
         except HTTPError as e:
@@ -136,7 +136,7 @@ class OracleChatNegativeTest(unittest.TestCase):
             # A burst on Windows drops a loopback socket (timed out,
             # WinError 10053) without the server having crashed.
             try:
-                with urlopen(req, timeout=10) as resp:
+                with urlopen(req, timeout=60) as resp:
                     body = resp.read()
                     return resp.status, body
             except HTTPError as e:

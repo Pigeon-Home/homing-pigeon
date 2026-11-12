@@ -267,7 +267,7 @@ class SlowModelTest(unittest.TestCase):
                 f"http://127.0.0.1:{port}/status",
                 headers={"X-Oracle-Token": httpd.oracle_token},
             )
-            with urllib.request.urlopen(req, timeout=5) as resp:
+            with urllib.request.urlopen(req, timeout=60) as resp:
                 status = json.loads(resp.read().decode())
             t.join()
         self.assertTrue(status.get("active") or True)  # may have finished

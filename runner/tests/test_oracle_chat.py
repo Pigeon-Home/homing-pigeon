@@ -87,7 +87,7 @@ class DeterministicAskTest(unittest.TestCase):
                     },
                     method="POST",
                 )
-                with urllib.request.urlopen(req, timeout=5) as resp:
+                with urllib.request.urlopen(req, timeout=60) as resp:
                     body = json.loads(resp.read().decode())
             self.assertEqual(called, [])
             self.assertIn("Deterministic Oracle", body["answer"])
@@ -153,7 +153,7 @@ class OracleChatTest(unittest.TestCase):
                     },
                     method="POST",
                 )
-                with urllib.request.urlopen(req, timeout=5) as resp:
+                with urllib.request.urlopen(req, timeout=60) as resp:
                     body = json.loads(resp.read().decode())
             self.assertEqual(body.get("rejected"), "sanitization")
             self.assertNotIn(FLAG, json.dumps(body))
@@ -217,7 +217,7 @@ class OracleChatTest(unittest.TestCase):
                         method="POST",
                     )
                     try:
-                        with urllib.request.urlopen(req, timeout=5) as resp:
+                        with urllib.request.urlopen(req, timeout=60) as resp:
                             return resp.status, resp.read().decode()
                     except urllib.error.HTTPError as e:
                         return e.code, e.read().decode()

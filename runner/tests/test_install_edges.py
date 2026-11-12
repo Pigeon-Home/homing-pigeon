@@ -876,9 +876,13 @@ class TailTest(unittest.TestCase):
 
     def test_the_version_is_the_constant(self):
         # Frozen binaries hardcode the version; the constant is the
-        # source of truth. runner/tests/test_version.py checks it matches
-        # pyproject.toml.
-        self.assertEqual(inst.__version__, "3.16.20.7")
+        # source of truth, and it must agree with the package's own
+        # carrier (runner/tests/test_version.py checks that one
+        # against pyproject.toml). The three carriers are the
+        # release's; a literal here would be a fourth to bump.
+        from runner import _version
+        self.assertEqual(inst.__version__, _version.__version__)
+        self.assertRegex(inst.__version__, r"^\d+\.\d+\.\d+\.\d+$")
 
     def test_the_last_platform_decisions(self):
         args = mock.Mock(no_collector=False, collector=["osquery"],

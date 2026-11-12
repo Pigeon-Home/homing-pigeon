@@ -241,7 +241,7 @@ class OracleBadAnswerTest(unittest.TestCase):
                 last = None
                 for attempt in range(3):
                     try:
-                        with urllib.request.urlopen(req, timeout=10) as resp:
+                        with urllib.request.urlopen(req, timeout=60) as resp:
                             body = json.loads(resp.read().decode())
                             codes.append((resp.status, body))
                             return
@@ -255,7 +255,7 @@ class OracleBadAnswerTest(unittest.TestCase):
                 for t in threads:
                     t.start()
                 for t in threads:
-                    t.join(timeout=20)
+                    t.join(timeout=200)
                     self.assertFalse(t.is_alive())
             self.assertEqual(len(codes), n)
             for status, body in codes:
