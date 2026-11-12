@@ -23185,4 +23185,113 @@ which this lane runs whole. No new behaviour
 is claimed beyond what those calls and that
 family show.
 
+## macOS confinement: the post-fifth-fix failure shape — conclusions against R6-S1 to R6-S6 (2026-11-11)
+
+- **R6-S1 — holds.** Read from the code
+  first-hand: the canary's `ENGAGES` was
+  `SB.startup_problem() is None`, and that
+  probe returns its Linux-only string on
+  darwin, so the refusal arm ran on every
+  macOS host; the default-posture test's
+  platform arm read win32 alone over the
+  same probe. Production is the correct
+  side: the darwin branch of
+  `_confinement_argv` consults
+  `macos_confinement_problem`, returns the
+  normal argv when it engages, and denies
+  with the `fallback` row when it does
+  not; the spawn seam then confines and
+  writes the `confined` row. No production
+  file was changed by this lane and no
+  refusal was weakened.
+- **R6-S2 — holds.** Both outside landings
+  (the default-posture arm at 10:42 PM and
+  the canary re-keying at 10:45 PM,
+  2026-11-11) reviewed line by line: the
+  engaged and refusal arms now split on
+  the runner's own startup gate on
+  win32, darwin and FreeBSD, the engaged
+  arm expects the `confined` row a
+  platform backend writes, and the canary
+  accepts `sandboxed` and `confined`. The
+  macOS leg's new full log is pinned in
+  `test_build_config`, which this lane ran
+  green. Both landings shipped in the
+  3.16.21.2 release head before this lane
+  landed anything.
+- **R6-S3 — holds, reproduced off
+  darwin.** The old refuse-test
+  construction (bwrap-only skip, only the
+  Windows seam scripted, no one-shot argv)
+  was run in a subprocess under a
+  simulated darwin whose macOS backend
+  engages: it did not return within 30
+  seconds (killed at the timeout) —
+  `main()` proceeded past the confinement
+  gate into the poll loop, the unnamed
+  shard's shape. The dead-backend control
+  under the same simulation refused at
+  exit 2 in seconds, naming confinement
+  and carrying the scripted problem
+  through. Production refuses correctly
+  in both arms; the construction was the
+  defect.
+- **R6-S4 — done as supposed.** The
+  refuse test is rebuilt in the Q159
+  pattern: the skip asks the host's own
+  gate (the startup gate on
+  platform-backend hosts, the bwrap probe
+  on Linux; the skip reason is the
+  already-registered one, so the registry
+  needed no new entry), the refusal is
+  constructed through
+  `scripted_confinement`, job_user is
+  stated off, and the `--audit-report`
+  one-shot makes a step-down read as exit
+  0. Proof of work, committed with the
+  fix: a family around the failure — the
+  rebuilt host test, the same construction
+  under each simulated platform shape
+  (linux, win32, darwin, freebsd) each
+  carrying its own scripted problem text
+  through the refusal, and the darwin
+  live-backend control, which returns the
+  audit report at exit 0 on the shape
+  that once hung.
+- **R6-S5 — holds.** Off-darwin, this
+  lane ran the canary, the confinement
+  `FallbackTest` family, both decision-1
+  startup files (refuse and strict), the
+  skip registry and `test_build_config`:
+  87 tests, green (3 skips, the
+  host-keyed ones), before the fix for
+  the untouched families and after it for
+  all. The refuse file alone runs its 7
+  tests in seconds with the new family
+  executing (the host test skips on this
+  Linux VM, whose bwrap engages — the
+  skip working as keyed).
+- **R6-S6 — live verdict still owed,
+  stated plainly.** The builds for both
+  outside heads were cancelled by
+  supersession; the build for this lane's
+  suppositions head skipped the macOS
+  suite (a docs-only head); the
+  3.16.21.2 release head's build was
+  still running its `test-macos` job when
+  these conclusions were written, and it
+  does not carry this lane's decision-1
+  fix. The first completed `test-macos`
+  job on a head carrying all three
+  landings is the verdict; nothing here
+  claims it early. What cannot be
+  recorded as a unit test, stated
+  plainly: the live Seatbelt engagement
+  itself is a macOS-host fact; its
+  deterministic substrate — the gate
+  routing, the probe answers and the
+  audit rows each arm writes — is what
+  the committed families pin, on scripted
+  seams, on every platform shape.
+
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026

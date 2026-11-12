@@ -24,7 +24,7 @@ from runner.guard import sandbox as _sandbox  # noqa: E402
 from runner.ops import remediation_ops as REM  # noqa: E402
 from runner.tests.decision1_startup_support import (  # noqa: E402
     STRONG_SECRET, _backend_cannot_engage, _backend_stub,
-    run_main)
+    run_main, scripted_confinement)
 
 
 class RefuseStartupGatesTest(unittest.TestCase):
@@ -32,25 +32,99 @@ class RefuseStartupGatesTest(unittest.TestCase):
     enforce whose mechanism cannot engage on this machine is the
     refuse class in its purest form (Q9)."""
 
+    # The dead-backend text this family scripts on every
+    # confinement seam at once (scripted_confinement, the
+    # Q159 construction): the refusal must carry it through
+    # verbatim, so a seam the scripting missed -- answering
+    # in its own words, or engaging -- fails the test
+    # instead of silently passing it.
+    DEAD_BACKEND = "backend cannot engage (scripted dead backend)"
+
     def test_confinement_enforce_refused_when_sandbox_cannot_engage(self):
-        if _sandbox.startup_problem() is None:
+        # The skip is keyed to the probe the host's own
+        # startup gate consults: bwrap's trial on Linux; on
+        # Windows, macOS and FreeBSD the platform backend's
+        # probe, asked through the runner's startup gate --
+        # bwrap's answer there is only "Linux-only", so the
+        # bwrap-keyed skip read "cannot engage" on every
+        # macOS host even after the Seatbelt backend
+        # engaged (the post-fifth-fix test-macos shape,
+        # desk R6-S3).
+        if sys.platform == "win32" or sys.platform == "darwin" \
+                or sys.platform.startswith("freebsd"):
+            engages = RR._confinement_startup_problem(
+                {"security": {"modes": {"confinement": "enforce"}}}
+            ) is None
+        else:
+            engages = _sandbox.startup_problem() is None
+        if engages:
             self.skipTest("sandbox engages on this machine "
                           "(startup probe)")
-        # On Windows main() consults the Windows backend's
-        # probe for confinement, not bwrap's: script that
-        # lookup to the cannot-engage backend, so the
+        # On a platform-backend host main() consults that
+        # backend's probe for confinement, not bwrap's:
+        # script every seam the gate can route to, so the
         # condition this test states is the condition
-        # constructed on every host (Q136-GATES2-S2). Left
-        # unscripted on a host whose backend engages, no
-        # refusal fires and main() proceeds into the poll
-        # loop and never returns.
-        with mock.patch.object(
-                REM, "_windows_confine",
-                lambda backend=None: _backend_cannot_engage()):
-            rc, _out, err = run_main(
-                {"security": {"modes": {"confinement": "enforce"}}})
+        # constructed on every host (Q136-GATES2-S2, Q159).
+        # Left unscripted on a host whose backend engages,
+        # no refusal fires and main() proceeds into the poll
+        # loop and never returns -- on macOS that was the
+        # shard that ended without a named failure once the
+        # backend first engaged. job_user is stated off, as
+        # in the strict sibling file, so the one gate this
+        # test is about is the gate that fires; the
+        # --audit-report one-shot means a step-down would
+        # show up as a successful report (exit 0) instead
+        # of the refusal.
+        with scripted_confinement(self.DEAD_BACKEND):
+            rc, out, err = run_main(
+                {"security": {"modes": {"confinement": "enforce",
+                                        "job_user": "off"}}},
+                ("--audit-report",),
+                sandbox_problem=self.DEAD_BACKEND)
         self.assertEqual(rc, 2, err)
-        self.assertIn("confinement", err)
+        self.assertIn("security.modes.confinement", err)
+        self.assertIn(self.DEAD_BACKEND, err)
+        self.assertNotIn("Security audit report", out)
+
+    def test_confinement_enforce_refused_on_each_platform_shape(self):
+        # The R6-S3 regression family: the same construction
+        # through each simulated platform shape in turn,
+        # each with its own scripted problem text, so the
+        # per-platform routing itself is pinned -- whichever
+        # branch the platform selects, the seam it consults
+        # is the scripted one, the refusal names the mode,
+        # and the text that seam answered is the text the
+        # refusal carries. The darwin shape is the one that
+        # proceeded into the poll loop before this fix.
+        for platform in ("linux", "win32", "darwin", "freebsd14"):
+            dead = "backend cannot engage (scripted on %s)" % platform
+            with self.subTest(platform=platform):
+                with scripted_confinement(dead):
+                    rc, out, err = run_main(
+                        {"security": {"modes":
+                                      {"confinement": "enforce",
+                                       "job_user": "off"}}},
+                        ("--audit-report",), platform=platform,
+                        sandbox_problem=dead)
+                self.assertEqual(rc, 2, err)
+                self.assertIn("security.modes.confinement", err)
+                self.assertIn(dead, err)
+                self.assertNotIn("Security audit report", out)
+
+    def test_confinement_enforce_live_backend_starts_on_darwin(self):
+        # The control for the family above, on the
+        # regression platform: a macOS backend that can
+        # engage lets the same enforce startup proceed to
+        # the audit report, so the refusal pins cannot pass
+        # by refusing everything -- and the shape that once
+        # hung in the poll loop now returns.
+        with scripted_confinement(None):
+            rc, out, err = run_main(
+                {"security": {"modes": {"confinement": "enforce",
+                                        "job_user": "off"}}},
+                ("--audit-report",), platform="darwin")
+        self.assertEqual(rc, 0, err)
+        self.assertIn("Security audit report", out)
 
     def test_job_user_enforce_gate_names_job_user_on_windows(self):
         cfg = {"security": {"modes": {"job_user": "enforce"}}}
