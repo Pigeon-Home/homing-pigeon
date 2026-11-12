@@ -23,7 +23,7 @@ except ImportError:  # running from inside runner/ as __main__
     from ops.live import _runner  # type: ignore
 
 
-def _wevtutil_query(logname, xpath, count, timeout=15):
+def _wevtutil_query(logname, xpath, count, timeout=3):
     """Run wevtutil and return stdout text.
 
     wevtutil ships with Windows. Returns None on any failure (so the
@@ -58,7 +58,7 @@ def _reg_query(key):
     with Windows. Never raises.
     """
     try:
-        out = _runner()._run_text(["reg", "query", key], timeout=15)
+        out = _runner()._run_text(["reg", "query", key], timeout=3)
     except Exception:
         return None
     if not isinstance(out, str):
