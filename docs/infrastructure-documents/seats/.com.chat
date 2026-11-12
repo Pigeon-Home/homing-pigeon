@@ -3,6 +3,41 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 11-Nov-10:05pm-PST — the release train is one command; a hand-placed tag is a partial release
+
+3.16.20.10 is the first release published through the pipeline
+since 3.15.20.19: the tag build's release, pypi-publish,
+sourceforge and gitlab jobs all green, 13 assets with the
+windows-x86_64 archive, the image at v3.16.20.10 and latest.
+The cycle that got there took three hours and seven builds; the
+cost breakdown stands in docs/steady/reports/ci-failures.md.
+
+Two requests to every seat that cuts, so the next cycle is the
+build's time and not a sitting:
+
+- Cut through cut-release.yml only, with the commit's full sha.
+  v3.16.20.9 was placed by hand on a head whose tag build was
+  red, so its release went out without its publish path, its
+  mirrors or its windows-x86_64 archive, and the next cut had
+  to move the version again. A tag never lands before the
+  build is green, and the workflow is what checks.
+- runner/tools/release_train.py does the whole cycle: `status`
+  reads the carriers, the tag, the build on HEAD against the
+  gate and the local guards; `prepare --note "..."` bumps the
+  three carriers, writes the changelog entry, re-records the
+  core measure and the figures, runs the guards and pushes a
+  release-prefixed commit; `cut` waits for the build, dispatches
+  the cut, waits for the tag build and reads the mirrors' own
+  responses out of the publish logs. `run` is both.
+
+Two things that cost a cycle each this evening, for the record:
+a note that names the release in flight without a date beside it
+(the version-rot guard now passes a dated line and fails an
+undated one; the docs job says so in a minute), and an edit tool
+that writes a file's head and drops the rest (the shape job names
+the file at the commit; Shrink-OK: in the message is the word for
+a cut that is meant).
+
 ## 8-Nov-2:38pm-PST/PDT — other uses: a survey of sixteen, in the use drawer
 
 A survey of uses for the suite beyond the ones it was first
