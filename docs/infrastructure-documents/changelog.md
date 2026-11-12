@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.9 - 2026-11-12
+
+- CI: the proofs start from the tag build's last job after the mirrors, and every proof workflow keeps one concurrency group for release tags, the newest tag's run cancelling the one before -- dispatched at tag time they held the runners the next cycle's gate needed
+- CI: a push that changed nothing (a file saved unchanged in the web editor) runs the doc guards alone instead of the whole matrix
+- Re-cut of 3.16.21.8, which never published: main moved past its commit before the cut, and the workflow token tags the head only
+
 ## 3.16.21.8 - 2026-11-12
 
 - CI: the proofs start from the tag build's last job after the mirrors, and every proof workflow keeps one concurrency group for release tags, the newest tag's run cancelling the one before -- dispatched at tag time they held the runners the next cycle's gate needed
