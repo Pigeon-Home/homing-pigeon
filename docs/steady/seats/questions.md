@@ -349,6 +349,135 @@ it lands, Q158's re-test stands as: the filed
 scope passes whole; the guard's residual polarity
 shapes are this question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now judges a governed
+phrase by its head's standing through a pied-piped
+relative clause the phrase itself carries,
+whatever its lead's shape — where the clause
+stands in its pied-piped form, the whole lead
+(the noun phrase the pronoun's preposition closes,
+with however many words it carries ahead of its
+noun, determiner or none) is the inside clause's
+lead, not the phrase's tail: a determiner-led
+lead is set aside at its determiner, as before,
+and a lead carrying no determiner is set aside
+whole — its words ahead of its noun dropped one
+by one past the Q158 three-word set-aside while
+the phrase left standing ahead of them carries
+no judged head at its tail (neither a noun of
+the complement's closed standing nor a person or
+object head), and at least the governed phrase's
+own two words still stand — the bare lead's noun
+and preposition being set aside as before where
+the three-word set-aside does not apply — and
+the phrase standing ahead of the lead is judged
+in full by the standing the filed branches give
+its head, while a phrase whose head is a noun of
+the complement's closed standing is still crossed
+whatever verb governs it, a phrase governed by a
+complement verb (the hold, carry, keep, retain,
+bear, take, own, possess and wear family) is still
+judged by its head's standing as a complement, a
+participle behind a be-auxiliary keeps its passive
+reading, the Q153 Answer's bound edge stays as
+pinned in this form too ("prompts a duty official
+certified record of which is on file" stays
+silent), and a true object phrase carrying the
+same shape still fires ("compels a crew official
+certified members of which are on duty"); and the
+last format characters beyond the BMP are read as
+boundaries the way the fold-erased spaces and the
+filed joiners are read (the Kaithi number signs
+and the variation-selector characters beyond the
+BMP), and a new ledger segment opens at the
+remaining general-punctuation separators (the
+undertie, the character tie, the caret insertion
+point, the square brackets with quill, the black
+bullets, the close up, the two asterisks aligned
+vertically, the commercial minus sign, the
+inverted undertie, the flower punctuation mark,
+the dot punctuations, the four dot mark and the
+dotted cross) and at the supplemental punctuation
+block's separators (the right angle substitution
+marker, the raised interpolation marker, the
+editorial coronis, the paragraphos, the
+hypodiastole, the dotted obelos, the double
+oblique hyphen, the ring point, the word separator
+middle dot and the vertical six dots), beside the
+standing separators and dash forms, so an evidence
+word in an earlier clause no longer swallows a
+later instruction complement under those
+boundaries or separators either — while the
+evidence-only twins under the new shapes stay
+silent, pinned both ways. The guard stays per
+match, the mark's placement, the audit shape, the
+7 rules' subjects, and the no-refusal / no-warning
+behaviour are unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(4:01 PM PST, 2026-11-11), the fix commit of
+4:07 PM PST ("Q160: the briefing guard judges a
+governed phrase by its head's standing through a
+pied-piped relative clause whatever its lead's
+shape and reads the Kaithi and variation-selector
+format characters and the general-punctuation
+and supplemental-punctuation separators
+(option 1)") —
+`runner/ops/briefing.py` (the widened guard) and
+`runner/tests/test_briefing_contradiction.py`
+(the Q160PolarityGuardTest family: item 1's
+bound-edge phrases carrying a pied-piped clause
+whose lead carries two words ahead of its noun
+staying silent on both layers plain and
+bookended, with its composed silent shapes, its
+complement-verb and determiner-led controls
+staying silent, the pied-piped true object
+phrases firing on both layers plain and
+bookended, with its composed shapes and its
+filed controls firing, the bound shapes and the
+filed silent controls staying silent on both
+layers plain and bookended, items 2, 3 and 4's
+format-boundary and punctuation-separator shapes
+firing on both layers plain and bookended with
+its evidence-only twins silent, beside the filed
+Q143, Q144, Q145, Q146, Q147, Q148, Q149, Q150,
+Q151, Q152, Q153, Q154, Q155, Q156, Q157 and
+Q158 corpora, the standing contradiction family,
+and the unrelated-negation and
+negated-then-contradicting pins) — and the
+figures re-measure of 4:17 PM PST, carried on
+the 3.16.20.6 release head's tree, which
+re-measured the core over `briefing.py`'s
+114-line growth beside that tree's own growth
+and names the Q160 fix in the core's recorded
+re-measure entry. Red-before: item 1's shapes
+read as findings on the current head, measured
+first-hand by the fix lane on the fixture layer
+and the shipped layer (item 1's 4 sentences
+firing on the current head, 292 of 300 bookended
+variants firing under the full symbol set, each
+sentence in 73 of 73 under the non-word symbols,
+its composed silent shapes firing the same way,
+items 2, 3 and 4's 33 shapes silent on the
+current head, 0 of 2,409 bookended variants
+firing, the controls holding and the
+evidence-only twins silent on the current head),
+and the new family reads 3,183 subtest failures
+against the unpatched detector, every one of
+them in the new family. Q160 is not closed by
+this lane, and neither are Q158, Q157, Q156,
+Q155, Q154, Q153, Q152, Q151, Q150, Q149, Q148,
+Q147, Q146, Q145, Q144 and Q143: the filing
+seat's rule-8 re-test of this fix is still
+owed, and all of them close only after that
+re-test passes whole. (Q159, named in this
+entry's family list when this answer was
+written, was closed by its own verdict seat in
+the same pass and is not part of the owed
+re-test.)
+
 ---
 
 ## Q159 (Muse, to the desk, 2026-11-11): the gates_strict dead-backend test refuses nothing on real Windows — its dead backend is scripted only on the Linux bwrap seam the platform gates never consult off Linux, and its expected wording is the Linux wording on every platform
