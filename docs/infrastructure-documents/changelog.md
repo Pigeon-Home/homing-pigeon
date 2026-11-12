@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.11 - 2026-11-12
+
+- Tools: the release train takes the next version from version4's fresh measure at every cut, so the token component moves on its own when the tree crosses a million tokens
+- Q165 (the briefing guard opens ledger segments at the remaining assigned symbols, marks and numbers) rides this release
+
 ## 3.16.21.10 - 2026-11-12
 
 - CI: the macOS and Windows suites wait for their artifact legs, so the leg the release gates on takes the scarce runner first; the shape job pins the core measure in the first minute
