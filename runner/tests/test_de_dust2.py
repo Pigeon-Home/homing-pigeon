@@ -663,7 +663,7 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("!contains(needs.*.result, 'failure')", rel)
         self.assertIn("!contains(needs.*.result, 'cancelled')", rel)
         self.assertIn("(needs.scope.outputs.promote == 'true' || !contains(needs.*.result, 'skipped'))", rel)
-        self.assertIn("release_train.py promote-check --run \"${{ needs.scope.outputs.promote_run }}\" --sha \"${{ github.sha }}\"", rel)
+        self.assertIn("release_train.py promote-check --run \"${{ needs.scope.outputs.promote_run }}\" --sha \"${{ github.sha }}\" --version \"${{ github.ref_name }}\"", rel)
         run_id = "run-id: ${{ needs.scope.outputs.promote == 'true' && needs.scope.outputs.promote_run || github.run_id }}"
         self.assertIn(run_id, rel)
         self.assertLess(rel.index("promote-check"), rel.index(run_id))
@@ -676,7 +676,7 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("needs.scope.result == 'success'", block("pypi-publish"))
         self.assertIn("mv artifacts/test-output*.log ci/", rel)
         self.assertIn('pattern: "{homing-pigeon-*,ci-test-log*}"', rel)
-        self.assertIn('gh workflow run build.yml --ref "$TAG" -f promote_from="$GATE_RUN"', cut)
+        self.assertIn('dispatch build.yml --ref "$TAG" -f promote_from="$GATE_RUN"', cut)
         # the input rides only to a tree whose build.yml takes it
         self.assertIn('git show "$SHA:.github/workflows/build.yml" | grep -q "promote_from:"', cut)
         self.assertIn('fh.write(f"run_id={run[\'id\']}\\n")', cut)

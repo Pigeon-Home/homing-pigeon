@@ -74,6 +74,9 @@ import subprocess
 import sys
 import time
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__))))
+import cut_gate  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 REPO = "Pigeon-Home/homing-pigeon"
 API = "https://api.github.com/repos/" + REPO
@@ -139,15 +142,15 @@ def failed_step(run_id):
     return ""
 
 
-def gate_jobs():
-    """The job names cut-release.yml gates on, read from the file."""
-    with open(os.path.join(ROOT, ".github", "workflows", "cut-release.yml"),
-              encoding="utf-8") as fh:
-        text = fh.read()
-    m = re.search(r"need = \{([^}]+)\}", text)
-    if not m:
-        return set()
-    return set(re.findall(r'"([a-z0-9_-]+)"', m.group(1)))
+def gate_jobs(sha=None, version=None):
+    """The job names the release on `sha` waits for: the rule in
+    runner/tools/cut_gate.py, read by the cut, the promotion check
+    and this train alike. Without a commit and a version, the legs
+    that always gate (the eight artifact legs)."""
+    if sha is None or version is None:
+        return set(cut_gate.LEGS)
+    need, _why = cut_gate.need(sha, version, api=api)
+    return need
 
 
 def build_runs(sha):
@@ -169,20 +172,19 @@ def run_jobs(run_id):
     return {j["name"]: j for j in d.get("jobs", [])}
 
 
-def gate_verdict(sha):
-    """(state, detail): state is 'green', 'red', 'running' or 'none'."""
+def gate_verdict(sha, version=None):
+    """(state, detail): state is 'green', 'red', 'running' or 'none'.
+    With the version, the gate is the release's own (the suites too
+    when the release carries runner code); without, the legs."""
     runs = build_runs(sha)
     if not runs:
         return "none", "no build run on this commit (cancelled runs are not verdicts)"
     run = runs[0]
     jobs = run_jobs(run["id"])
-    need = gate_jobs()
-    missing = sorted(need - set(jobs))
-    bad = [n for n in need if n in jobs and jobs[n]["status"] == "completed"
-           and jobs[n]["conclusion"] != "success"]
-    pending = [n for n in need if n in jobs and jobs[n]["status"] != "completed"]
+    need = gate_jobs(sha, version)
+    missing, bad, pending = cut_gate.verdict(need, jobs)
     if bad:
-        return "red", "run %s: %s" % (run["id"], ", ".join("%s=%s" % (n, jobs[n]["conclusion"]) for n in bad))
+        return "red", "run %s: %s" % (run["id"], ", ".join(bad))
     if missing or pending:
         return "running", "run %s: waiting on %s" % (run["id"], ", ".join(sorted(set(missing) | set(pending))))
     return "green", "run %s: %d gate jobs green" % (run["id"], len(need))
@@ -491,7 +493,7 @@ def cmd_status(args):
     tag = api("/git/ref/tags/v%s" % version)
     _say("tag v%s: %s" % (version, "exists" if tag and tag.get("object") else "not yet"))
     sha = _git("rev-parse", "HEAD")
-    state, detail = gate_verdict(sha)
+    state, detail = gate_verdict(sha, version)
     _say("build on HEAD %s: %s (%s)" % (sha[:8], state, detail))
     rel = api("/releases/latest") or {}
     _say("latest release: %s published %s with %d assets" % (rel.get("tag_name"), rel.get("published_at"), len(rel.get("assets", []))))
@@ -580,17 +582,18 @@ def cmd_cut(args, sha=None):
     sha = _git("rev-parse", sha)
     if getattr(args, "watch", False):
         return watch_tag_build((getattr(args, "version", None) or carriers()["pyproject.toml"]).lstrip("v"), args.limit)
-    _say("waiting for the build on %s" % sha[:8])
+    version = carriers()["pyproject.toml"]
+    need, why = cut_gate.need(sha, version, api=api)
+    _say("waiting for the build on %s: %s" % (sha[:8], why))
 
     def probe():
-        state, detail = gate_verdict(sha)
+        state, detail = gate_verdict(sha, version)
         if state == "green":
             return detail
         if state == "red":
             raise RuntimeError("the build is red: " + detail)
         return None
     _say(_wait("the build", probe, 45, args.limit))
-    version = carriers()["pyproject.toml"]
     if api("/git/ref/tags/v%s" % version) and api("/git/ref/tags/v%s" % version).get("object"):
         raise RuntimeError("tag v%s already exists; prepare a new version" % version)
     before = {r["id"] for r in (api("/actions/workflows/cut-release.yml/runs?per_page=10") or {}).get("workflow_runs", [])}
@@ -708,15 +711,16 @@ PROMOTED_ARTIFACTS = ("homing-pigeon-linux-x86_64-", "homing-pigeon-linux-arm64-
                       "homing-pigeon-pi-light-arm64-", "homing-pigeon-python")
 
 
-def promote_problem(run_id, sha, run=None, jobs=None, artifacts=None):
+def promote_problem(run_id, sha, run=None, jobs=None, artifacts=None, version=None):
     """Why the build run `run_id` may not be promoted to the tag on
     `sha`, or None when it may.
 
     The run must be a build.yml run of main (a push or a dispatch:
     a pull_request run's head_sha is the PR's head but its tree is
     the head merged into the base, so its artifacts are another
-    tree's) on exactly that commit; every job cut-release gates on
-    (gate_jobs()) must have completed success in it -- the run as a
+    tree's) on exactly that commit; every job the cut gate names
+    (gate_jobs(sha, version): the legs, and the suites when the
+    release carries runner code) must have completed success in it -- the run as a
     whole may still be going, or have been cancelled after the legs
     completed, since the advisory suites outlast the legs; and the
     eight artifacts a release is made of must be there, none
@@ -741,17 +745,15 @@ def promote_problem(run_id, sha, run=None, jobs=None, artifacts=None):
         return "run %s is a build of %s, not of main" % (run_id, run.get("head_branch"))
     if jobs is None:
         jobs = run_jobs(run_id)
-    need = gate_jobs()
+    need = gate_jobs(sha, version)
     if not need:
-        return "cut-release.yml names no gate jobs"
-    missing = sorted(need - set(jobs))
+        return "the cut gate names no jobs"
+    missing, bad, pending = cut_gate.verdict(need, jobs)
     if missing:
         return "run %s has no job for: %s" % (run_id, ", ".join(missing))
-    bad = sorted(n for n in need
-                 if jobs[n].get("status") != "completed" or jobs[n].get("conclusion") != "success")
-    if bad:
+    if bad or pending:
         return "run %s: %s" % (run_id, ", ".join(
-            "%s=%s/%s" % (n, jobs[n].get("status"), jobs[n].get("conclusion")) for n in bad))
+            bad + ["%s=in_progress/None" % n for n in pending]))
     if artifacts is None:
         artifacts = (api("/actions/runs/%s/artifacts?per_page=100" % run_id) or {}).get("artifacts")
     if artifacts is None:
@@ -765,7 +767,8 @@ def promote_problem(run_id, sha, run=None, jobs=None, artifacts=None):
 
 
 def cmd_promote_check(args):
-    problem = promote_problem(args.run, args.sha)
+    version = (getattr(args, "version", None) or carriers()["pyproject.toml"] or "").lstrip("v")
+    problem = promote_problem(args.run, args.sha, version=version)
     if problem:
         _say("::error title=promotion::%s" % problem)
         return 1
@@ -830,9 +833,10 @@ def cycle_clock(version, since=None):
         run = runs[0]
         rows.append(("build %s started" % run["id"], _ts(run.get("run_started_at") or run.get("created_at"))))
         jobs = run_jobs(run["id"])
-        need = gate_jobs()
-        done = [_ts(jobs[n].get("completed_at")) for n in need if n in jobs and jobs[n].get("completed_at")]
-        if len(done) == len(need) and need:
+        need = gate_jobs(sha, version)
+        legs = [j for n in need for j in cut_gate.match(n, jobs)]
+        done = [_ts(j.get("completed_at")) for j in legs if j.get("completed_at")]
+        if legs and len(done) == len(legs) and not cut_gate.verdict(need, jobs)[0]:
             rows.append(("gate green (%d jobs)" % len(need), max(done)))
         else:
             rows.append(("gate green", None))
@@ -944,6 +948,8 @@ def main(argv=None):
                        help="the tag build's reading of the gate build it promotes")
     p.add_argument("--run", required=True, help="the build run id to promote")
     p.add_argument("--sha", required=True, help="the tag's commit (full sha)")
+    p.add_argument("--version", default=None,
+                   help="the version being released (default: the carriers')")
     sub.add_parser("measure", help="re-record the core measure and the figures over the tree (prepare's re-measure, alone)")
     p = sub.add_parser("clock", help="one cycle's timeline from the hosted record")
     p.add_argument("--version", default=None, help="the version (default: the carriers')")

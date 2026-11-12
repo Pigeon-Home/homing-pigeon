@@ -952,7 +952,7 @@ jobs:
         if: needs.scope.outputs.promote == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 runner/tools/release_train.py promote-check --run "${{ needs.scope.outputs.promote_run }}" --sha "${{ github.sha }}"
+        run: python3 runner/tools/release_train.py promote-check --run "${{ needs.scope.outputs.promote_run }}" --sha "${{ github.sha }}" --version "${{ github.ref_name }}"
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           path: artifacts

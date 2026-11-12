@@ -6,9 +6,9 @@ The tool exists because the 3.16.20.10 cycle of 2026-11-11 took
 three hours of attention for steps a tool can take: the version
 moves one step on its rightmost component in three carriers, the
 changelog takes its entry before the newest heading, the gate's
-job names are read from cut-release.yml rather than kept in a
-second place, and a mirror's own words are read out of its publish
-job's log."""
+job names come from one rule (runner/tools/cut_gate.py, which the
+cut and the promotion check read too) rather than a second place,
+and a mirror's own words are read out of its publish job's log."""
 import contextlib
 import importlib.util
 import io
@@ -78,7 +78,7 @@ class ChangelogTest(unittest.TestCase):
 
 
 class GateTest(unittest.TestCase):
-    def test_the_gate_jobs_are_read_from_cut_release(self):
+    def test_the_gate_jobs_are_the_cut_gates_legs(self):
         need = rt.gate_jobs()
         self.assertIn("build-windows", need)
         self.assertIn("build-python", need)

@@ -1202,7 +1202,12 @@ class ReliefModeTest(unittest.TestCase):
         self.assertIn("fetch-depth: 0", block)
         cut = _uncommented(_workflow_text("cut-release.yml"))
         step = cut.split("start the release pipeline on the tag", 1)[1]
-        self.assertIn('gh workflow run build.yml --ref "$TAG"', step)
+        # each dispatch through the retrying wrapper (a 502 on the
+        # 3.16.24.11 cut left a tag with no build)
+        self.assertIn('dispatch build.yml --ref "$TAG"', step)
+        self.assertIn("for n in 1 2 3; do", step)
+        self.assertIn('if gh workflow run "$@"; then return 0; fi', step)
+        self.assertNotIn('\n            gh workflow run build.yml', step)
         self.assertEqual(set(re.findall(r"\b([a-z-]+\.yml)\b", step)) - {"build.yml", "docker.yml"}, set())
 
     def test_the_proofs_cancel_a_superseded_tags_run(self):
@@ -1233,20 +1238,26 @@ class ReliefModeTest(unittest.TestCase):
             self.assertNotIn("refs/tags", block, job)
 
     def test_cut_release_reads_the_artifact_legs_not_the_suite(self):
+        # The gate's set is runner/tools/cut_gate.py's rule since
+        # 2026-11-12, read by the cut, the promotion check and the
+        # train: for the window it names the legs alone (it reads
+        # the marker in build.yml); the eight legs always.
         with open(os.path.join(_root(), ".github", "workflows",
                                "cut-release.yml"),
                   encoding="utf-8") as fh:
             text = fh.read()
-        m = re.search(r"need = \{([^}]+)\}", text)
-        self.assertIsNotNone(m, "cut-release has no need set")
-        need = m.group(1)
-        self.assertNotIn('"test"', need,
-                         "cut-release still gates on the suite")
+        self.assertIn("import cut_gate", text)
+        self.assertIn("cut_gate.need(os.environ[\"SHA\"], os.environ[\"VERSION\"])", text)
+        self.assertNotIn("need = {", text, "cut-release carries a need set of its own")
+        sys.path.insert(0, os.path.join(_root(), "runner", "tools"))
+        import cut_gate
+        need, why = cut_gate.need("0" * 40, "0.0.0.0", api=lambda path: None, root=_root())
+        self.assertEqual(need, set(cut_gate.LEGS), why)
+        self.assertNotIn("test", need, "the gate still names the suite")
         for leg in ("build-python", "build-linux", "build-linux-arm64",
                     "build-windows", "build-windows-arm64", "build-macos",
                     "build-macos-x86_64", "build-pi-light"):
-            self.assertIn('"%s"' % leg, need,
-                          "cut-release no longer reads %s" % leg)
+            self.assertIn(leg, need, "the gate no longer reads %s" % leg)
 
     def test_the_release_does_not_wait_on_the_suite(self):
         # RELIEF-48H (expires 2026-11-14T03:45Z): the release job's
