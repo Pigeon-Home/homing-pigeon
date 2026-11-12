@@ -286,7 +286,12 @@ def _fold(text, breaks=False):
     characters beyond the BMP the same way -- the
     shorthand format controls, the musical format
     characters and the tag characters are clause
-    boundaries too, read before the fold."""
+    boundaries too, read before the fold; Q160 reads
+    the last format characters beyond the BMP the
+    same way -- the Kaithi number signs and the
+    variation-selector characters beyond the BMP
+    are clause boundaries too, read before the
+    fold."""
     if breaks:
         text = re.sub(r"\r\n|[\r\n\t\x0b\x0c\x85\u2028\u2029"
                       r"\u00a0\u1680\u2000-\u200d\u202f"
@@ -299,7 +304,8 @@ def _fold(text, breaks=False):
                       r"\u08e2\U00013430-\U0001343f"
                       r"\U0001bca0-\U0001bca3"
                       r"\U0001d173-\U0001d17a\U000e0001"
-                      r"\U000e0020-\U000e007f]",
+                      r"\U000e0020-\U000e007f\U000110bd"
+                      r"\U000110cd\U000e0100-\U000e01ef]",
                       " \u00b6 ", text)
     return re.sub(r"\s+", " ", text).strip()
 
@@ -606,6 +612,38 @@ def _fold(text, breaks=False):
 # Tironian sign et, the reversed pilcrow sign, the
 # low asterisk, the swung dash, the tricolon and
 # the vertical four dots).
+# Q160 widened the guard once more at the same
+# detector: a governed phrase is judged by its
+# head's standing through a pied-piped relative
+# clause the phrase itself carries, whatever its
+# lead's shape -- where the lead carries two
+# words ahead of its noun ahead of the
+# preposition, with no determiner of its own, the
+# whole lead is the inside clause's lead, not the
+# phrase's tail, while a true object phrase
+# carrying the same shape still fires and the
+# Q153 Answer's bound edge stays as pinned in
+# this form too; the last format characters
+# beyond the BMP are read as boundaries the way
+# the fold-erased spaces and the filed joiners
+# are read (the Kaithi number signs and the
+# variation-selector characters beyond the BMP);
+# and the ledger guard opens a new segment at
+# the last general-punctuation separators (the
+# undertie, the character tie, the caret
+# insertion point, the square brackets with
+# quill, the black bullets, the close up, the two
+# asterisks aligned vertically, the commercial
+# minus sign, the inverted undertie, the flower
+# punctuation mark, the dot punctuations, the
+# four dot mark and the dotted cross) and at the
+# supplemental punctuation block's separators
+# (the right angle substitution marker, the
+# raised interpolation marker, the editorial
+# coronis, the paragraphos, the hypodiastole, the
+# dotted obelos, the double oblique hyphen, the
+# ring point, the word separator middle dot and
+# the vertical six dots).
 _NEGATION_WORDS = frozenset({"never", "not", "no", "cannot"})
 _NEGATION_LITERALS = (
     "do not apply", "does not apply", "did not apply",
@@ -1433,7 +1471,13 @@ def _clause_carries_infinitive(clause_words):
         # its noun, with no determiner of its own, the
         # same way: the whole lead is the inside
         # clause's, and the phrase standing ahead of
-        # it is judged by its head's standing.
+        # it is judged by its head's standing. Q160
+        # reads a pied-piped lead carrying two words
+        # ahead of its noun the same way: the whole
+        # lead is the inside clause's, however many
+        # words it carries ahead of its noun, and the
+        # phrase standing ahead of it is judged by
+        # its head's standing.
         rel_at = next((at for at, tail in enumerate(obj)
                        if tail in ("who", "whom", "which",
                                    "that", "whose")), None)
@@ -1496,6 +1540,48 @@ def _clause_carries_infinitive(clause_words):
                     # and preposition alone are set
                     # aside, as before.
                     obj = obj[:-3]
+                    # A pied-piped lead carrying two
+                    # words ahead of its noun (Q160:
+                    # "prompts a duty official certified
+                    # record of which is on file to
+                    # ...", "a duty official file record
+                    # of which", "a duty two official
+                    # records of which", "a duty
+                    # recently filed record of which"):
+                    # the three-word set-aside leaves
+                    # the lead's first extra word
+                    # standing as the judged phrase's
+                    # tail ("a duty official", "a duty
+                    # recently"), and that tail is no
+                    # noun of the complement's closed
+                    # standing, so the whole lead is set
+                    # aside instead -- its remaining
+                    # word ahead of the lead's noun is
+                    # dropped too, while the phrase left
+                    # standing ahead of the lead carries
+                    # no judged head at its tail
+                    # (neither a noun of the
+                    # complement's closed standing nor a
+                    # person or object head) and at
+                    # least the governed phrase's own
+                    # two words still stand -- and the
+                    # phrase standing ahead of the whole
+                    # lead is judged by its head's
+                    # standing, below, the way the filed
+                    # shapes are judged. A true object
+                    # phrase carrying the same shape
+                    # stops at its person head, or at
+                    # its own two words, and still fires
+                    # ("compels a crew official certified
+                    # members of which are on duty").
+                    while len(obj) > 2 \
+                            and not _noun_complement_head(
+                                obj[-1]) \
+                            and obj[-1] \
+                            not in _PERSON_HEADS \
+                            and obj[-1] \
+                            not in _CLAUSE_OBJECT_WORDS:
+                        obj = obj[:-1]
                 elif len(obj) > 2:
                     obj = obj[:-2]
                 if not obj:
@@ -2027,7 +2113,14 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     "‴", "‷", "‸", "※",
                     "‾", "⁂", "⁃", "⁊",
                     "⁋", "⁎", "⁓", "⁝",
-                    "⁞")
+                    "⁞", "‿", "⁀", "⁁",
+                    "⁅", "⁆", "⁌", "⁍",
+                    "⁐", "⁑", "⁒", "⁔",
+                    "⁕", "⁖", "⁘", "⁙",
+                    "⁚", "⁛", "⁜", "⸀",
+                    "⸆", "⸎", "⸏", "⸒",
+                    "⸓", "⸗", "⸰", "⸱",
+                    "⸽")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -2159,7 +2252,28 @@ def _ledger_complement_is_evidence(owner, match):
     asterism, the hyphen bullet, the Tironian sign
     et, the reversed pilcrow sign, the low asterisk,
     the swung dash, the tricolon and the vertical
-    four dots)): an evidence word in
+    four dots) -- and by Q160, where the last format
+    characters beyond the BMP are read as boundaries
+    before the fold beside the characters it already
+    reads (the Kaithi number signs and the
+    variation-selector characters beyond the BMP,
+    standing in the folded text as the pilcrow), and
+    the last general-punctuation separators open a
+    segment too (the undertie, the character tie,
+    the caret insertion point, the square brackets
+    with quill, the black bullets, the close up, the
+    two asterisks aligned vertically, the commercial
+    minus sign, the inverted undertie, the flower
+    punctuation mark, the dot punctuations, the four
+    dot mark and the dotted cross), and the
+    supplemental punctuation block's separators open
+    one too, a block the set has never opened at
+    (the right angle substitution marker, the raised
+    interpolation marker, the editorial coronis, the
+    paragraphos, the hypodiastole, the dotted
+    obelos, the double oblique hyphen, the ring
+    point, the word separator middle dot and the
+    vertical six dots)): an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does
