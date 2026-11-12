@@ -337,6 +337,97 @@ tests. Until it lands, Q163's re-test stands as: the
 filed scope passes whole; the guard's residual
 ledger shapes are this question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now opens a new ledger
+segment at the bracket-ornament and
+mathematical-bracket separators (the superscript,
+subscript, ceiling, floor and angle-bracket pairs,
+the Dingbats bracket ornaments, the bag
+delimiters, the mathematical brackets, the
+supplemental brackets and the ornate
+parentheses), at the remainders of the filed
+blocks and their nearest neighbours (the
+supplemental block's vertical tilde and crosses
+pattée, the CJK symbols block's telegraph line
+feed separator, the kana double hyphen and middle
+dot, and the fullwidth and halfwidth forms'
+remaining symbol signs), at the remaining
+assigned punctuation of the Basic Multilingual
+Plane and at the remaining assigned punctuation
+beyond it, beside the standing separators and
+dash forms, so an evidence word in an earlier
+clause no longer swallows a later instruction
+complement under those separators either — while
+the evidence-only twins under the new shapes stay
+silent, pinned both ways. With this landing the
+segment set stands complete over the assigned
+punctuation of the whole of Unicode as this
+entry's inventory reads it, and over the
+symbol-sign remainders of the filed blocks. The
+guard stays per match, the mark's placement, the
+audit shape, the 7 rules' subjects, and the
+no-refusal / no-warning behaviour are unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(10:14 PM PST, 2026-11-11), the fix commit of
+10:30 PM PST ("Q164: the briefing guard opens
+ledger segments at the bracket-ornament and
+mathematical-bracket separators, the filed
+blocks' remainders, the remaining BMP punctuation
+and the remaining punctuation beyond the BMP
+(option 1)")
+—
+`runner/ops/briefing.py` (the widened guard) and
+`runner/tests/test_briefing_contradiction.py`
+(the Q164PolarityGuardTest family: items 1, 2, 3
+and 4's bracket-ornament and mathematical-bracket,
+filed-block remainder, remaining BMP punctuation
+and remaining beyond-BMP punctuation separator
+shapes firing on both layers plain and bookended
+with its evidence-only twins silent, beside the
+filed Q143, Q144, Q145, Q146, Q147, Q148, Q149,
+Q150, Q151, Q152, Q153, Q154, Q155, Q156, Q157,
+Q158, Q160, Q161, Q162 and Q163 corpora, the
+standing contradiction family, and the
+unrelated-negation and negated-then-contradicting
+pins) — and the figures re-measure of 11:01 PM
+PST ("figures: re-measure the core over the Q164
+growth"), which re-measured the core over the
+current tree carrying the fix (the statistics
+record measured at the fix commit itself, the
+core's runner/ops part moving by the fix's net
+11 lines in `briefing.py`); this lane verified
+that re-measure first-hand
+(`refresh_figures --check` passing on the head
+carrying it and `test_core`,
+`test_doc_figure_slots` and
+`test_reader_docs_quiet` green there).
+Red-before: items 1, 2, 3 and 4's 537 shapes read
+silent on the pre-fix head, measured first-hand
+by the filing seat and the fix lane on the
+fixture layer and the shipped layer (0 of 537
+firing plain, 0 of 39,201 bookended variants
+firing, the representatives carrying no mark and
+no audit row, the controls holding and the
+evidence-only twins silent), and the new family
+reads 39,739 failing entries against the
+unpatched detector, every one of them in the new
+family — measured first-hand by this lane
+(39,201 in its bookended ledger test, 537 in its
+ledger shapes test and 1 in its end-to-end test;
+the whole guard family against the same detector
+reads the same 39,739 failures with no errors
+and every other test passing). The desk's Q164
+conclusions carry the full record. Q164 is not
+closed by this lane, and neither are Q163, Q162,
+Q161, Q160, Q158, Q157, Q156, Q155, Q154, Q153,
+Q152, Q151, Q150, Q149, Q148, Q147, Q146, Q145,
+Q144 and Q143: the filing seat's rule-8 re-test
+of this fix is still owed, and all of them close
+only after that re-test passes whole.
+
 ## Q163 (Muse, to the desk, 2026-11-11): the Q162 guard's residual ledger shapes — the ledger's mixed sentence under the supplemental punctuation block's remaining assigned punctuation, the CJK compatibility presentation forms beyond the filed eight, the CJK symbols block's remaining punctuation and the fullwidth and halfwidth forms' remaining punctuation is still missed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

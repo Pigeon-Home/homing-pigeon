@@ -22998,3 +22998,191 @@ test in this lane ran:
   rides the next cut's fresh recount.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q164: conclusions of the fix lane, completed by the completion lane (2026-11-11)
+
+The fix landed under option 1 at the same
+detector in `runner/ops/briefing.py` (the
+suppositions recorded above before the fix at
+10:14 PM PST, and the fix commit of 10:30 PM
+PST). The fix lane's own run left the lane
+open: the fix stood made in its scratch clone
+on the 3.16.21.1 release head, verified there,
+but nothing was pushed, and the figures
+re-measure, the Answer and these conclusions
+were still owed. A completion lane — a fresh
+lane, working in the fix lane's own scratch
+clone — took the lane up from there, preserved
+the landed fix unchanged, rebased it onto the
+remote head of the day (first onto the
+release-train commit of 10:35 PM PST; a first
+push was then refused because the remote had
+advanced again, through the 3.16.21.2 release
+to the macOS desk suppositions of 10:56 PM
+PST, and the fix was rebased onto that head
+and landed, push-verified by foreground
+`git ls-remote` with the fix's content grepped
+at the remote ref in the same call). The
+commits the second rebase crossed touch
+neither `runner/ops/briefing.py` nor
+`runner/tests/test_briefing_contradiction.py`,
+so the two files stand byte-identical to the
+tree this lane's verification runs below ran
+on. The fix's diff is what its title claims:
+the `_LEDGER_SEGMENTS` widening and its
+docstring in `runner/ops/briefing.py` (537
+characters appended to the set, none of them
+standing in it before, 358 entries becoming
+895, 349 of them single characters becoming
+886) and the Q164 test family in
+`runner/tests/test_briefing_contradiction.py`
+(3,345 lines). Every run in this lane set its
+temporary directory to a scratch area on the
+workspace disk. Settled against the
+suppositions one by one:
+
+- **Q164-S1 — holds.** Red-before, items 1,
+  2, 3 and 4, as filed and as supposed: the
+  ledger's mixed sentence under the 64
+  bracket-ornament and mathematical-bracket
+  separators, under the 20 remainders of the
+  filed blocks and their nearest neighbours,
+  under the 236 remaining BMP script
+  punctuation marks and under the 217
+  remaining punctuation marks beyond the BMP,
+  each standing spaced between the clauses,
+  produces no findings on the pre-fix head on
+  both layers, plain (0 of 537 firing
+  `ledger_treated_as_instruction`: 0 of 64,
+  0 of 20, 0 of 236 and 0 of 217, on the
+  fixture layer and the shipped layer alike),
+  and bookended (0 of 39,201 variants under
+  the non-word symbols: 0 of 4,672, 0 of
+  1,460, 0 of 17,228 and 0 of 15,841), and end
+  to end each representative (the U+207D,
+  U+2E2F, U+055A and U+10100 shapes) carries
+  no mark and writes no audit row; the
+  controls hold on the pre-fix head (the same
+  sentence joined by a standing separator
+  fires whole on both layers, and the U+061D
+  shape fires whole as covered), and the
+  evidence-only twins under the new shapes
+  stay silent there (537 of 537 plain on both
+  layers, 40,275 of 40,275 bookended variants
+  silent under the full symbol set). This
+  lane's committed-family red measurement
+  under S4 corroborates the same red-before
+  through the committed tests themselves.
+- **Q164-S2 — holds.** The fix opens a new
+  ledger segment at the filed separator
+  classes in `_LEDGER_SEGMENTS`, beside the
+  standing separators: the bracket-ornament
+  and mathematical-bracket separators, the
+  remainders of the filed blocks and their
+  nearest neighbours, the remaining assigned
+  punctuation of the Basic Multilingual Plane
+  and the remaining assigned punctuation
+  beyond it (the classes named whole in the
+  supposition above). Items 1, 2, 3 and 4's
+  537 shapes now fire exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain (537 of 537) and bookended
+  (39,201 of 39,201 variants under the
+  non-word symbols), while the evidence-only
+  twins under the new shapes stay silent.
+  With this landing the segment set stands
+  complete over the assigned punctuation of
+  the whole of Unicode as Q164's inventory
+  reads it, and over the symbol-sign
+  remainders of the filed blocks.
+- **Q164-S3 — holds.** Both ways hold beside
+  the widening: the standing and filed
+  separators and boundaries still fire whole;
+  the evidence-only twins under the new shapes
+  stay silent on both layers, plain and
+  bookended, and end to end; a bound
+  prohibition followed by a contradicting
+  sentence fires exactly the contradicting
+  rule; and the standing unrelated-negation
+  and negated-then-contradicting pins hold,
+  all through the whole guard family run
+  whole under S4.
+- **Q164-S4 — holds.** No earlier family
+  regresses. The whole guard family in
+  `runner/tests/test_briefing_contradiction.py`
+  (the committed form of this lane's
+  red-before) reads green after the fix: 267
+  tests, the 261 filed tests beside the 6 new
+  Q164 tests, run whole by this lane on the
+  rebased tree. The new family alone reads
+  39,739 failing entries against the unpatched
+  detector (the fix commit's parent tree's
+  `briefing.py`), every one of them in the new
+  family (39,201 in its bookended ledger test,
+  537 in its ledger shapes test and 1 in its
+  end-to-end test; its evidence-only,
+  bookended-evidence and bound-prohibition
+  tests pass there, as the both-ways pins
+  require), and the whole family run against
+  the same unpatched detector reads the same
+  39,739 failures with 0 errors and every
+  failure in the new family — the other 261
+  tests passing on the unpatched detector, so
+  the failures are the fix's absence, nothing
+  else. The neighbour batteries
+  (`test_oracle_briefing`, `test_posture_stamp`,
+  `test_protocol_v2`,
+  `test_protocol_v2_messages`, `test_v2_consult`,
+  `test_v2_replay`, `test_security_config`) read
+  305 green beside the family.
+- **Q164-S5 — holds.** End to end: items 1,
+  2, 3 and 4's representative sentences (the
+  U+207D shape, the U+2E2F shape, the U+055A
+  shape and the U+10100 shape) assembled into
+  briefings each carry their mark and write
+  exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id
+  as the detail); and a representative
+  evidence-only twin assembled into a briefing
+  carries no mark and writes no audit row —
+  all inside the committed end-to-end test of
+  the Q164 family, run whole above.
+- **Q164-S6 — holds.** `briefing.py` grew by
+  the fix: net 11 lines (13 insertions, 2
+  deletions). The re-measure this supposition
+  calls for stands landed by this lane: the
+  figures re-measure of 11:01 PM PST
+  re-measured the core over the fix tree (the
+  statistics record measured at the fix commit
+  itself), the core's runner/ops part moving
+  by the fix's net 11 lines in `briefing.py`
+  and no other part moving — no parallel-lane
+  drift stood in the parts pin at that head,
+  the 3.16.21.2 release's own re-measure
+  having recorded the tree the fix stands on.
+  This lane verified that re-measure
+  first-hand: `refresh_figures --check` passes
+  on the figures tree, and `test_core`,
+  `test_doc_figure_slots` and
+  `test_reader_docs_quiet` read 38 green
+  there.
+
+Q164 is not closed by this lane, and neither
+are Q163, Q162, Q161, Q160, Q158, Q157, Q156,
+Q155, Q154, Q153, Q152, Q151, Q150, Q149, Q148,
+Q147, Q146, Q145, Q144 and Q143: closure waits
+on the filing seat's rule-8 re-test of this
+fix, which this lane does not run.
+
+What cannot be recorded as a unit test, stated
+plainly: this lane's detector-swap runs (the
+committed guard family run against the parent
+tree's `briefing.py`) are live detector calls
+over the committed family's sentences; their
+deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane runs whole. No new behaviour
+is claimed beyond what those calls and that
+family show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
