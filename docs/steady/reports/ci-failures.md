@@ -1597,3 +1597,14 @@ count for nothing); the suites too when the record cannot be read.
 Read against the day's releases: 3.16.24.8 (the Q168 fix) carries
 four core files and would wait for the suites; 3.16.24.11 carries
 none and keeps the short path.
+
+### 3.16.24.12: the first cycle under the posture (12 Nov 2026)
+
+The train's wait named the rule as it read it -- "no runner code
+since v3.16.24.11: the legs alone" -- and the gate was green at
+2.9 minutes, the tag at 3.6, the suites running as real jobs
+beside them (the Windows parts 5.0 and 7.0 minutes). The release
+published at 11.4 and the last mirror at 13.1: the tag build's
+checkout step took 346 seconds against the usual five, GitHub's
+side, with nothing of ours in the way; the publish jobs took their
+usual two minutes after it.
