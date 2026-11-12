@@ -746,12 +746,18 @@ class CiScopeTest(unittest.TestCase):
             self.assertIsNotNone(m, job)
             return m.group(1)
 
-        for job in ("test-macos", "build-windows", "build-windows-arm64", "build-linux",
+        for job in ("build-windows", "build-windows-arm64", "build-linux",
                     "build-linux-arm64", "build-macos", "build-macos-x86_64",
                     "build-pi-light", "build-python"):
             b = block(job)
             self.assertIn("needs: scope", b, job)
             self.assertIn("if: needs.scope.outputs.corpus_only != 'true'", b, job)
+        # the macOS and Windows suites wait for their artifact legs,
+        # so the leg the release gates on takes the scarce runner first
+        self.assertIn("needs: [scope, build-macos]", block("test-macos"))
+        self.assertIn("needs: [scope, build-windows]", block("test-windows"))
+        for job in ("test-macos", "test-windows"):
+            self.assertIn("if: needs.scope.outputs.corpus_only != 'true'", block(job), job)
         for job in ("test", "typecheck", "scope"):
             self.assertNotIn("corpus_only != 'true'", block(job), job)
         self.assertIn("runner/tools/ci_scope.py", block("scope"))

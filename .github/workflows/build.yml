@@ -366,8 +366,12 @@ jobs:
     # Linux's word. Sharded like the Windows suite; three cores on
     # macos-15. A signal, not a gate: cut-release reads `test` and
     # the build-* jobs, so a red here shows on the run and blocks
-    # nothing until it has held green for a while.
-    needs: scope
+    # nothing until it has held green for a while. It waits for the
+    # macOS artifact leg: the arm64 macOS runners are the scarcest
+    # on the account, and with the suite started first the one-
+    # minute leg the release gates on sat queued behind the suite's
+    # shards for ten (the 3.16.21.8 gate build, 2026-11-12).
+    needs: [scope, build-macos]
     if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.promote != 'true'
     # RELIEF-48H expires 2026-11-14T03:45Z: advisory for the window, like the
     # Linux suite -- it runs and shows red, and blocks nothing.
@@ -436,7 +440,10 @@ jobs:
     # add this job to the release's needs list and to the cut
     # gate's set beside `test`, which is where the Windows suite's
     # verdict gated the release before the split.
-    needs: scope
+    # It waits for the Windows artifact leg for the same reason the
+    # macOS suite waits for its own: the leg the release gates on
+    # takes the runner first.
+    needs: [scope, build-windows]
     if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.promote != 'true'
     continue-on-error: true
     runs-on: windows-latest
