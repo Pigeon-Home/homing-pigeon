@@ -652,8 +652,11 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("test_reader_docs_quiet", block("docs"))
         for job in ("test-macos", "test-windows", "build-windows", "build-linux", "build-python"):
             self.assertIn("needs.scope.outputs.docs_only != 'true'", block(job), job)
-        # the desk's pushes take their own concurrency group
+        # the desk's pushes take their own concurrency group, and so
+        # does a web-editor edit of a markdown file ("Update X.md")
         self.assertIn("startsWith(github.event.head_commit.message, 'desk:')", wf)
+        self.assertIn("startsWith(github.event.head_commit.message, 'Update ')", wf)
+        self.assertIn("endsWith(github.event.head_commit.message, '.md')", wf)
 
     def test_the_heavy_jobs_wait_on_scope_and_the_suite_does_not(self):
         import re

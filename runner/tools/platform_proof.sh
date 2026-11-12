@@ -57,7 +57,11 @@ if ! command -v python3 >/dev/null 2>&1; then
   elif command -v dnf      >/dev/null 2>&1; then dnf install -y -q python3
   elif command -v yum      >/dev/null 2>&1; then yum install -y -q python3
   elif command -v zypper   >/dev/null 2>&1; then zypper -n -q install python3
-  elif command -v pacman   >/dev/null 2>&1; then pacman -Sy --noconfirm --quiet python >/dev/null
+  # Arch: a full upgrade, not a partial one. -Sy with an install on
+  # the image's old package set fails the moment the repositories
+  # split or replace a package the image carries (2026-11-12,
+  # openssl-3 against the image's openssl: conflicting files).
+  elif command -v pacman   >/dev/null 2>&1; then pacman -Syu --noconfirm --quiet python >/dev/null
   elif command -v pkg      >/dev/null 2>&1; then pkg install -y python3
   elif command -v pkg_add  >/dev/null 2>&1 && [ "$(uname -s)" = NetBSD ]; then pkg_add -I python312 || pkg_add -I python311
   elif command -v pkg_add  >/dev/null 2>&1; then pkg_add -I python%3

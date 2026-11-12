@@ -52,12 +52,15 @@ permissions: {}
 concurrency:
   # A push whose message starts with "desk:" or "docs:" (the desk's
   # notes, several an hour) takes the docs group, so it supersedes
-  # only the previous docs push and never cancels a code build. The
-  # message prefix is the only signal this expression has: the
-  # head commit in the workflow context carries no file list
-  # (printed and checked on 2026-11-12), so a documentation push
-  # under another prefix still takes the rolling group.
-  group: build-${{ github.ref }}-${{ startsWith(github.event.head_commit.message, 'release:') && github.sha || ((startsWith(github.event.head_commit.message, 'desk:') || startsWith(github.event.head_commit.message, 'docs:')) && 'docs' || 'rolling') }}
+  # only the previous docs push and never cancels a code build. So
+  # does an edit made in the web editor to a markdown file, whose
+  # default message is "Update <file>.md" (or Create/Delete): three
+  # such edits on 2026-11-12 cancelled a code build each. The
+  # message is the only signal this expression has: the head commit
+  # in the workflow context carries no file list (printed and
+  # checked on 2026-11-12), so a documentation push under another
+  # message still takes the rolling group.
+  group: build-${{ github.ref }}-${{ startsWith(github.event.head_commit.message, 'release:') && github.sha || ((startsWith(github.event.head_commit.message, 'desk:') || startsWith(github.event.head_commit.message, 'docs:') || ((startsWith(github.event.head_commit.message, 'Update ') || startsWith(github.event.head_commit.message, 'Create ') || startsWith(github.event.head_commit.message, 'Delete ')) && endsWith(github.event.head_commit.message, '.md'))) && 'docs' || 'rolling') }}
   cancel-in-progress: ${{ !(startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.head_commit.message, 'release:')) }}
 
 jobs:
