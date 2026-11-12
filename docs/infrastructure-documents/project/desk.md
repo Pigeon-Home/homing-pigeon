@@ -23957,3 +23957,122 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   and the same latent keying gap; it has
   no hosted leg in this failure and is
   named here, not changed.
+
+Conclusions against P-S1 to P-S4
+(2026-11-11):
+
+- **P-S1 — holds.** The gap is (a) + (c),
+  not (b): the recorded expectations were
+  keyed to the bwrap probe and never
+  extended to the darwin backend shape,
+  and no live outcome is missing — the
+  exec jobs are refused fail-closed by the
+  job_user wrap on the hosted shape, their
+  rejection results delivered and seen, as
+  the passing rejection leg already
+  recorded.
+
+- **P-S2 — holds, measured.** The settling
+  measurement ran scripted off darwin
+  against the current head, all three
+  parts as named: (1) the engageable gate
+  returns the normal argv and writes no
+  confinement row; (2) the dead-backend
+  gate returns the empty argv and writes
+  exactly the `fallback` row, reason
+  `confinement_unavailable`; (3) the
+  composed hosted shape — engageable gate,
+  then the non-root job_user preexec in
+  `exec.py`'s order — raises `JobRejected`
+  after exactly one job_user `fallback`
+  row (`job_user_needs_root`) and no
+  confinement row: the line-836 shape,
+  reproduced deterministically on a Linux
+  host. Eight checks, all passing.
+
+- **P-S3 — holds, per point.** Parity-02,
+  03, 04, 06, 10 and 13 take the one
+  disposition named above; the composed
+  measurement and the committed family
+  below each run per job id over exactly
+  those six. No parity point was deleted
+  and no enforce refusal was weakened: no
+  production file changed in either
+  landing of this record.
+
+- **P-S4 — the fix landed mid-lane, by an
+  outside landing, and is preserved.**
+  While this lane's suppositions were
+  being written and rebased over the
+  parallel lanes' desk appends, the
+  decision-1 lane landed the fix itself
+  (the 11:56 PM PST commit, "the parity
+  test keys its backend arm on every
+  platform backend, and reads the job_user
+  refusal where confinement engages
+  without root"): `backend_host` now
+  covers win32, darwin and FreeBSD, both
+  gates are the runner's own startup
+  gates, and the wrap block carries the
+  three backend shapes — both engage
+  (`confined` rows; `contained` on win32,
+  `run_as` elsewhere), confinement alone
+  engages (no confinement rows, job_user
+  `fallback` rows for all six), and
+  confinement cannot engage (the standing
+  `fallback` shape). This lane reviewed
+  that landing line by line against the
+  measurement: the arms match production
+  on every shape the gates can split,
+  the rejection leg still runs exactly
+  where the jobs are refused, and the
+  Linux arms are unchanged. Two review
+  notes, neither blocking: on win32 the
+  confinement-alone arm expects job_user
+  `fallback` rows where the preexec's own
+  record for a non-engaging backend is
+  `unsupported_platform` — a shape the
+  gates cannot produce, since job_user's
+  win32 gate asks the weaker creation
+  probe and confinement's asks the trial;
+  and the class docstring still words the
+  backend arm as Windows' alone. This
+  lane did not duplicate the fix. What it
+  adds is the proof-of-work family the
+  landing did not carry:
+  `DarwinParitySubstrateTest` in
+  `runner/tests/test_security_parity.py`
+  (4 tests, scripted seams, every host) —
+  the engageable gate's silence, the dead
+  gate's denial and `fallback` row, the
+  composed hosted shape per exec job, and
+  the root shape's `run_as` row.
+  FreeBSD's arm arrived with the outside
+  landing, beyond this lane's supposition
+  naming it unchanged; its substrate is
+  the same POSIX shape the family pins
+  for darwin.
+
+- **Local results and the verdict owed.**
+  In the foreground on this lane's clone,
+  temporary directory on the workspace
+  disk: the substrate family 4 tests
+  green; `test_security_parity` whole
+  green before the family (69 tests) and,
+  with `test_macos_confine` and
+  `test_windows_durations` beside it after
+  (225 tests, OK, 14 skipped). Figures:
+  neither landing touches a production
+  file — the fix and the family are
+  test-only, the rest is this desk record
+  — so the core figures do not move.
+  What cannot be recorded as a unit test,
+  stated plainly: the live Seatbelt
+  engagement on a hosted macOS runner is
+  a macOS-host fact. The live verdict is
+  the first completed `test-macos` CI job
+  on a head carrying the backend-arm fix;
+  it is still owed and nothing here
+  claims it.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
