@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.12 - 2026-11-12
+
+- Tools: the release train takes the next version from version4's fresh measure at every cut, so the token component moves on its own when the tree crosses a million tokens
+- CI: the proofs are dispatched only for a release that changed the runner, as their push trigger's runner/** filter always said; a release of workflows or documentation alone leaves the macOS runners to the next cycle's gate
+- Q165 (the briefing guard opens ledger segments at the remaining assigned symbols, marks and numbers) rides this release
+- Re-cut of 3.16.21.11, which never published: its gate build's macOS leg was queued behind a previous tag's proofs for fifteen minutes and cancelled by the service without starting
+
 ## 3.16.21.11 - 2026-11-12
 
 - Tools: the release train takes the next version from version4's fresh measure at every cut, so the token component moves on its own when the tree crosses a million tokens
