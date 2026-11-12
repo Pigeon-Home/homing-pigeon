@@ -18511,3 +18511,156 @@ claimed beyond what those calls and that family
 show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+### Q136 shard-7 follow-on: measurement and conclusions (2026-11-11)
+
+Measured by the lane that continues from the
+suppositions above, before any fix in this lane
+landed. Both build-windows logs were re-read
+first-hand (jobs 130862971205 and 130863017632),
+the packing re-derived with the durations tool,
+and the race below reproduced deterministically
+on this Linux host.
+
+- Q136-S7-S1 CONFIRMED. Shard 7's kill dump
+  names one running test, exactly as supposed:
+  the suite wall clock killed the shard inside
+  test_runner_last_edges
+  .RunnerFailSoftLegs6Test.test_oracle_cli_ctrl_c.
+  The shard packs 16 modules at 707 seconds in
+  the release log (715 by the current table
+  here) against the 720-second budget; its
+  siblings completed at 836 to 853 seconds on
+  the release head (about 1.19x packed), and
+  the named module is tabled at 21.8 seconds.
+  No re-pack follows from this: the wall was
+  one test's unbounded run, not the packing.
+  The 720-second budget and the 20-minute wall
+  stand unchanged, and no duration table was
+  touched by this lane.
+- Q136-S7-S2 CONFIRMED, mechanism and race both.
+  The shard-7 output carries the supposed
+  evidence verbatim: an oracle-server request
+  thread's traceback (Thread-442) shows the
+  test's scripted record_oracle_turn raising
+  KeyboardInterrupt in that thread, at
+  test_runner_last_edges.py's interrupt helper,
+  reached from the server handler's own record
+  call -- the counted interrupt consumed off
+  the main thread. The local reproduction is
+  deterministic: with the test's own shapes
+  (record scripted to interrupt on its second
+  call, input answering "status?" forever), the
+  CLI finishes in 0.1 seconds with 3 record
+  calls when no stray call intervenes, and
+  never finishes when a background thread takes
+  the second call first -- 238 record calls and
+  still looping at the probe's 15-second cut,
+  each pass re-computing the deterministic
+  answer, registry snapshot included, which is
+  why the kill dump's main thread sits inside
+  _reg_query's subprocess call. The fix stands
+  at the test's seam, in the fix commit: the
+  scripted interrupt counts only calls made on
+  the main thread, and the scripted input
+  carries a finite backstop (/quit after two
+  questions), so no interleaving can leave the
+  loop exitless.
+- Q136-S7-S3 CONFIRMED by the CPython 3.12.10
+  source, read first-hand: subprocess.run's
+  Windows timeout path kills the child and then
+  calls communicate() with no timeout to
+  collect output, and that collect joins the
+  pipe reader threads; a pipe held open past
+  the kill makes it unbounded. _reg_query and
+  _wevtutil_query in runner/ops/windows.py were
+  the two remaining probes on that shape in the
+  deterministic answer's path. Both now read
+  through the bounded _run_text seam (timeout
+  15, the caller's timeout for wevtutil), with
+  their never-raises contract kept, in the fix
+  commit; the tests that mocked their
+  subprocess.run seam (test_oracle_watch,
+  test_runner_watch_gaps,
+  test_runner_last_edges -- including the
+  creation-flags test, which now covers all
+  three probes at the one Popen seam) are
+  re-seamed to _run_text, and
+  test_low_profile's WindowsProbesBoundTest
+  family (5 tests) pins the seam, the parse,
+  and the timeout carriage.
+- Q136-S7-S4 CONFIRMED for the shape it was
+  written against, and SUPERSEDED in part while
+  this lane worked: the suppositions were
+  recorded against the 3.16.20.5 head, whose
+  _run_text made its bounded second communicate
+  and then closed the streams -- the close
+  behind the reader thread's read being the
+  unbounded step, the elapsed 30.07 and 30.14
+  seconds standing at the grandchild's
+  30-second sleep in both runs. The 3.16.20.6
+  release commit that landed mid-lane
+  re-shaped _run_text to wait on the process
+  handle first, which removes the named test's
+  leak (no reader thread exists on its timeout
+  path, and that path's abandon closes safely).
+  The same trap survived on the new shape's
+  collect path: a child that exits inside the
+  timeout while a grandchild holds its pipe
+  sends the collect's communicate into its
+  grace timeout, and that path's abandon closed
+  the streams the communicate reader threads
+  were reading -- the close-behind-the-read
+  hold again, one shape over. The fix commit
+  closes that: past a communicate(), _abandon
+  never closes the streams (they belong to the
+  daemon readers and the garbage collector);
+  before any communicate() it still does.
+  Pinned by test_low_profile's RunTextBoundTest
+  additions: the timeout abandon closes, the
+  collect abandon does not (mock pins), and two
+  end-to-end collect shapes (a grandchild
+  holding stdout, and one holding stderr, past
+  an exited child) return None inside the
+  grace on this host. The Windows end-to-end
+  proof of both collect shapes remains
+  CI-owed, stated plainly: the stream-lock
+  behaviour is Windows-only and cannot be
+  reproduced on this Linux host.
+- Q136-S7-S5 HELD. At this lane's start both
+  named tests passed quickly on Linux (7 tests
+  in 2.5 seconds, the ctrl_c test alone in half
+  a second class), and Linux green after the
+  fix proves the seams only. This lane does NOT
+  claim either red cleared: the clearing proof
+  is the next completed build-windows verdict
+  on a head carrying the fix commit -- shard 7
+  with no exit 124 and shard 11 with the bound
+  family green on real Windows.
+
+The fix landed as one commit (the _run_text
+collect-path abandon, the two Windows probes,
+the ctrl_c test, the re-seamed tests, the new
+families, and the core line record re-measured
+over the current tree -- that measure also
+takes up the install.py split and the macOS
+confinement growth of runner/guard that landed
+in parallel, which the earlier records had not
+carried). Local batteries green beside it:
+test_low_profile, test_oracle_watch,
+test_runner_last_edges, test_runner_seams,
+test_runner_watch_gaps, test_linux_platform,
+test_windows_platform_proofs with
+test_runner_tail, test_core, and
+test_windows_durations.
+
+Out of scope, seen in both runs' logs and NOT
+touched by this lane: the oracle-timeout family
+(test_oracle_send_contract, test_local_signals,
+test_concurrency and kin failing across shards
+8, 9, 12, 19, 21, 22, 23 and 25), the
+test_macos_confine LiveBackend and
+SandboxArgvFieldTest errors on the test-macos
+jobs, the defaults_registry doc-drift guard,
+the test_doc_version_rot evergreen guard, and
+the test_runner_seams posture-parse failure.
