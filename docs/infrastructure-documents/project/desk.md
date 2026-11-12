@@ -19240,3 +19240,200 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   carrying the same person word in its lead)
   carries its mark as pinned.
 
+
+## Q161: conclusions of the fix lane (2026-11-11)
+
+The fix landed under option 1 at the same
+detector in `runner/ops/briefing.py` (the
+suppositions recorded above before the fix at
+5:15 PM PST, the fix commit of 5:25 PM PST, the
+figures commit of 5:34 PM PST re-measuring the
+core over `briefing.py`'s 91-line growth,
+carried on the Q161 fix head's tree, and the
+desk answer commit that carries this record).
+This lane is a fresh fix lane — neither the
+Q160 fix lane nor the filing/re-test seat —
+working from a fresh scratch clone from remote
+main. Settled against the suppositions one by
+one:
+
+- **Q161-S1 — holds.** Red-before, item 1,
+  measured first-hand by this lane on the
+  current head: the 2 bound-edge phrases
+  carrying a pied-piped relative clause whose
+  lead carries a person head among the words
+  ahead of its noun produce findings on the
+  fixture layer and the shipped layer, plain (2
+  of 2 firing `private_shelf_crosses`) and
+  bookended (146 of 150 variants under the full
+  symbol set, silent only in the 4
+  underscore-fused variants; each sentence in
+  73 of 73 under the non-word symbols), though
+  they should stay silent; the complement-verb
+  twin of the two-word shape is marked the same
+  way (1 of 1 plain on both layers, 73 of 75
+  bookended under the full symbol set); the
+  composed silent shapes of the same family are
+  marked the same way (2 of 2 plain, 146 of 150
+  bookended); and the controls hold on the
+  current head (the determiner-led lead carrying
+  the same person word silent plain on both
+  layers and bookended, and the true object
+  phrase carrying the same person word in its
+  lead firing whole — 1 of 1 plain on both
+  layers, 73 of 73 bookended under the non-word
+  symbols).
+- **Q161-S2 — holds.** Red-before, items 2, 3
+  and 4, measured first-hand the same way: the
+  17 ledger shapes (the 3 variation-selector
+  characters of the BMP, the 10
+  supplemental-punctuation separators beyond the
+  filed span and the 4 small forms) produce no
+  findings on the current head on both layers,
+  plain (0 of 17 firing
+  `ledger_treated_as_instruction`) and bookended
+  (0 of 1,241 variants under the non-word
+  symbols), and end to end each representative
+  carries no mark and writes no audit row, as
+  the filing measured; and the evidence-only
+  twins under the new shapes stay silent on the
+  current head (17 of 17 plain on both layers,
+  1,275 of 1,275 bookended variants silent under
+  the full symbol set).
+- **Q161-S3 — holds.** The fix, at the same
+  detector under option 1, judges a governed
+  phrase by its head's standing through a
+  pied-piped relative clause the phrase itself
+  carries, whatever its lead's shape: past the
+  Q158 three-word set-aside and the Q160
+  dropping, the governed phrase ends at its
+  first judged head — the first word of the
+  span, past its determiner, that is a noun of
+  the complement's closed standing or a person
+  or object head is the phrase's head, and every
+  word standing past it is the lead's — and a
+  person or object head standing as the span's
+  tail is dropped too where the phrase left
+  standing ahead of it is a noun complement in
+  full, which is the complement-verb twin's
+  shape (its head "credential" carries the
+  complement's generic standing, not the closed
+  set's, so no first judged head stands ahead of
+  the lead's person word in that span); a tail
+  that is a noun of the closed standing is never
+  dropped that way. Item 1's 2 sentences now
+  stay silent on both layers, plain (0 of 2
+  firing) and bookended (0 of 150 variants
+  firing), its complement-verb twin beside them
+  (0 of 1 plain, 0 of 75 bookended) and its
+  composed silent shapes beside them (0 of 2
+  plain, 0 of 150 bookended), the determiner-led
+  controls silent, while the true object phrase
+  carrying the same person word in its lead
+  still fires whole (1 of 1 plain on both
+  layers, 73 of 73 bookended under the non-word
+  symbols: its first judged head is "crew", and
+  the phrase ahead of the lead's person word is
+  no complement in full).
+- **Q161-S4 — holds.** The fix reads the
+  variation-selector characters of the BMP
+  (U+FE00 to U+FE0F) as boundaries the way the
+  fold-erased spaces and the filed joiners are
+  read, and opens a new ledger segment at the
+  supplemental punctuation block's remaining
+  separators (the right angle dotted
+  substitution marker, the substitution
+  brackets, the dotted substitution brackets,
+  the dotted transposition marker, the raised
+  square, the tilde with ring above, the left
+  vertical bar with quill and the two dots over
+  one dot punctuation) and at the small forms
+  (the small comma, semicolon, colon and
+  question mark), beside the standing separators
+  and dash forms. Items 2, 3 and 4's 17 shapes
+  now fire exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain (17 of 17) and bookended (1,241
+  of 1,241 variants under the non-word symbols),
+  while the evidence-only twins under the new
+  shapes stay silent (17 of 17 plain, 1,275 of
+  1,275 bookended under the full symbol set).
+- **Q161-S5 — holds.** Both ways hold beside
+  the widening: the bound shapes stay silent on
+  both layers, plain and bookended, and end to
+  end; the filed silent controls stay silent
+  (Q160's family plain on both layers, bookended
+  through the committed family); a plain subject
+  clause with no contradictory polarity is still
+  crossed; a sentence both forbidding the
+  private shelf and contradicting it still fires
+  exactly the contradiction rule; and the
+  standing pins of the earlier entries — the
+  subordinator crossings, the full-sentence
+  prohibitions, the private-shelf crossing
+  prohibiting the private shelf, and the audits
+  of the earlier marks — hold, all through the
+  whole guard family run whole.
+- **Q161-S6 — holds.** The whole guard family
+  in `runner/tests/test_briefing_contradiction.py`
+  (the committed form of this lane's red-before)
+  reads green after the fix: 242 tests, the 229
+  filed tests beside the 13 new Q161 tests (the
+  filed governed phrases carrying a person-head
+  pied-piped lead staying silent on both layers
+  plain and bookended and composed, the
+  complement-verb twin and determiner-led
+  controls staying silent, the pied-piped true
+  objects firing plain and bookended, the
+  controls firing and silent on both layers
+  plain and bookended, the ledger shapes firing
+  on both layers plain and bookended with its
+  twins silent, the end-to-end representatives,
+  and the determinism and wording guards), and
+  the new family alone reads 1,777 failing
+  entries against the unpatched detector, every
+  one of them in the new family (1,241 in its
+  bookended ledger test, 292 in its bookended
+  pied-piped silent test, 219 in its bookended
+  controls-silent test, 17 in its ledger shapes
+  test, 4 in its pied-piped complements test, 3
+  in its controls-silent test and 1 in its
+  end-to-end test). The wider checks read green
+  beside it: the neighbour batteries
+  (`test_oracle_briefing`, `test_posture_stamp`,
+  `test_protocol_v2`, `test_protocol_v2_messages`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read 305 green, and
+  `test_core`, `test_doc_figure_slots` and
+  `test_reader_docs_quiet` read green beside the
+  figures re-measure.
+- **Q161-S7 — holds.** End to end: item 1's
+  representative shape (the officer-certified
+  bound shape) assembled into a briefing carries
+  no mark and writes no audit row; items 2, 3
+  and 4's representative shapes (the U+FE00
+  shape, the U+2E01 shape and the U+FE50 shape)
+  assembled into briefings each carry their mark
+  and write exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id as
+  the detail); and the bound shape ("compels a
+  crew officer certified members of which are on
+  duty") carries its mark as pinned.
+
+Q161 is not closed by this lane, and neither
+are Q160, Q158, Q157, Q156, Q155, Q154, Q153,
+Q152, Q151, Q150, Q149, Q148, Q147, Q146, Q145,
+Q144 and Q143: closure waits on the filing
+seat's rule-8 re-test of this fix, which this
+lane does not run.
+
+What cannot be recorded as a unit test, stated
+plainly: this lane's ad-hoc probes are live
+detector calls over the sentences named in this
+record; their deterministic substrate is those
+sentences themselves beside the committed guard
+family, which this lane runs whole. No new
+behaviour is claimed beyond what those calls
+and that family show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
