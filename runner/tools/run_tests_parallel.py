@@ -25,6 +25,7 @@ Usage:
                                        [--wall-clock MINUTES]
                                        [--duration-table PATH]
                                        [--in-flight N]
+                                       [--full-log PATH]
                                        [module ...]
 
 With explicit modules, only those run (still sharded). Exit code
@@ -436,8 +437,68 @@ def passing_tail(output, durations):
     return "\n".join(lines[-4:])
 
 
+_SHARD_RAN_RE = re.compile(r"^Ran (\d+) tests? in ([0-9.]+)s", re.M)
+_SHARD_VERDICT_RE = re.compile(r"^(OK|FAILED)\b(?: \((.*)\))?\s*$", re.M)
+
+
+def combined_summary(outputs, elapsed, interrupted=()):
+    """The suite's one verdict over every shard's output, in
+    unittest's own two-line shape, for a log that tools read the
+    way they read a single ``python -m unittest -v`` run
+    (runner/tools/skip_guard.py and make_snapshot.py take the
+    last "Ran N tests" line and the verdict after it).
+
+    ``outputs`` maps shard index to its captured text; a shard with
+    no "Ran" line (killed at the wall, or never started) counts as
+    one error, named in the detail, so the verdict is never an OK
+    that a lost shard could hide behind.
+    """
+    ran = 0
+    counts = {"failures": 0, "errors": 0, "skipped": 0,
+              "expected failures": 0, "unexpected successes": 0}
+    lost = []
+    for i in sorted(outputs):
+        text = outputs[i]
+        m = None
+        for m in _SHARD_RAN_RE.finditer(text):
+            pass
+        if m is None:
+            lost.append(i)
+            continue
+        ran += int(m.group(1))
+        v = None
+        for v in _SHARD_VERDICT_RE.finditer(text[m.end():]):
+            pass
+        if v is None:
+            lost.append(i)
+            continue
+        for part in (v.group(2) or "").split(","):
+            part = part.strip()
+            if "=" not in part:
+                continue
+            key, _eq, num = part.partition("=")
+            key = key.strip()
+            if key in counts and num.strip().isdigit():
+                counts[key] += int(num)
+    for i in interrupted:
+        if i not in lost:
+            lost.append(i)
+    if lost:
+        counts["errors"] += len(lost)
+    detail = ["%s=%d" % (k, n) for k, n in counts.items() if n]
+    if lost:
+        detail.append("shards without a verdict=%s"
+                      % "/".join(str(i) for i in lost))
+    ok = not (counts["failures"] or counts["errors"]
+              or counts["unexpected successes"] or lost)
+    verdict = "OK" if ok else "FAILED"
+    if detail:
+        verdict += " (" + ", ".join(detail) + ")"
+    return "Ran %d tests in %.3fs\n\n%s\n" % (ran, elapsed, verdict)
+
+
 def run_shards(shards, top_level_dir, durations=None, annotate=None,
-               wall_clock=0, in_flight=0):
+               wall_clock=0, in_flight=0, full_log=None):
     """Run each shard as a unittest subprocess; return exit code.
 
     Output is captured per shard and printed when the shard
@@ -464,10 +525,17 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
     all together, N keeps at most N running and starts the next
     the moment one finishes, in shard order. A shard's wall clock
     and hard stop count from its own start, not the parent's.
+    ``full_log`` names a file that receives every shard's complete
+    output, in the order the shards finish, followed by one
+    combined "Ran N tests" line and verdict (combined_summary), so
+    the file reads like a single ``python -m unittest -v`` log to
+    the tools that read one; the shards run with -v for it.
     """
     if annotate is None:
         annotate = under_actions()
     extra = durations_args(durations)
+    if full_log:
+        extra = ["-v"] + extra
     if durations and not extra:
         _emit("durations: unittest --durations needs Python 3.12+; "
               "this is %d.%d, running without it"
@@ -478,9 +546,13 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
     tmp = tempfile.TemporaryDirectory(prefix="hp-test-shards-", **kwargs)
     grace = wall_clock * 60.0 + _HARD_STOP_GRACE_SEC if wall_clock else None
     limit = len(shards) if not in_flight or in_flight < 1 else in_flight
+    started = time.monotonic()
     running = []      # (i, proc, fh, out_path, started_at)
     failed = []
     pending = list(enumerate(shards))
+    outputs = {}
+    interrupted_shards = []
+    log_fh = open(full_log, "w", encoding="utf-8") if full_log else None
 
     def launch(i, shard):
         out_path = os.path.join(tmp.name, "shard-%d.log" % i)
@@ -534,6 +606,16 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
             with open(out_path, encoding="utf-8",
                       errors="replace") as rf:
                 output = rf.read()
+            outputs[i] = output
+            if interrupted:
+                interrupted_shards.append(i)
+            if log_fh is not None:
+                try:
+                    log_fh.write("=== shard %d (exit %s, %.1fs) ===\n%s\n"
+                                 % (i, rc, elapsed, output))
+                    log_fh.flush()
+                except Exception:
+                    pass
             if rc != 0:
                 _emit("=== shard %d FAILED (exit %s) ===\n(%.1fs)\n%s"
                       % (i, rc, elapsed, output))
@@ -591,6 +673,20 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
                               "signalled first" % i)
             pending = []
     finally:
+        if log_fh is not None:
+            try:
+                summary = combined_summary(
+                    outputs, time.monotonic() - started,
+                    interrupted=interrupted_shards
+                    + [i for i, _s in pending])
+                log_fh.write("\n=== combined ===\n" + summary)
+                _emit("combined: " + summary.strip().splitlines()[-1])
+            except Exception:
+                _emit_quietly("the combined summary could not be written")
+            try:
+                log_fh.close()
+            except Exception:
+                pass
         _discard_tmpdir(tmp)
     if failed:
         _emit("FAILED shard(s): %s" % ", ".join(str(i) for i in failed))
@@ -624,6 +720,11 @@ def main(argv=None):
                         metavar="SECONDS",
                         help="shard budget for --duration-table "
                              "(default: the table's own budget)")
+    parser.add_argument("--full-log", default=None, metavar="PATH",
+                        help="write every shard's complete output "
+                             "(the shards run with -v) and one combined "
+                             "verdict to PATH, a log that reads like a "
+                             "single python -m unittest -v run")
     parser.add_argument("--in-flight", type=int, default=0, metavar="N",
                         help="run at most N shards at once and start "
                              "the next as one finishes (default 0: "
@@ -674,7 +775,8 @@ def main(argv=None):
         _emit("in flight: at most %d of the %d shard(s) at once"
               % (args.in_flight, len(shards)))
     rc = run_shards(shards, args.top_level_dir, durations=args.durations,
-                    wall_clock=args.wall_clock, in_flight=args.in_flight)
+                    wall_clock=args.wall_clock, in_flight=args.in_flight,
+                    full_log=args.full_log)
     _emit("sharded run finished in %.1fs (exit %d)"
           % (time.monotonic() - started, rc))
     return rc

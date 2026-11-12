@@ -997,3 +997,65 @@ are restored.
 ### Conclusions
 
 (Recorded below once the change and its tests land.)
+
+## The 3.16.20.10 cycle: three hours from a red head to a published release, and what each hour was (11 Nov 2026)
+
+The first release published through the pipeline since
+3.15.20.19 is 3.16.20.10 (tag build 43152532925: release,
+pypi-publish, sourceforge and gitlab all green, 13 assets
+with the windows-x86_64 archive, the image pushed as
+`v3.16.20.10` and `latest`). Getting there from the red
+3.16.20.6 head took three hours of wall time. Where it went,
+from the Actions record:
+
+- **Seven full build cycles at 20 to 25 minutes each.** The
+  Linux suite ran serially (12,700 tests, 17 to 20 minutes)
+  and was the long pole of every build; the Windows leg
+  took 12 to 14 once its probe deadlock was fixed. Every
+  fix, however small, cost a whole cycle to confirm.
+- **Four of those heads went red for reasons that landed
+  between cycles**: two desk notes naming the release in
+  flight (the version-rot guard), five files cut to a few
+  lines by an API edit on main (install.py, pyproject,
+  macos_confine.py twice, the changelog, test_low_profile),
+  and a probe-runner change that deadlocked every Windows
+  poll. None of them were in the head being tested when the
+  cycle began.
+- **Rolling builds cancelled each other.** With the desk
+  landing a note every few minutes, no rolling build
+  completed for an hour; only release-prefixed commits,
+  which keep their own concurrency group, ever reached a
+  verdict.
+- **One dead end of my own**: capping the Windows shards at
+  8 in flight, which took that leg from 8 minutes past 40
+  before the real cause (the probe runner reading nothing
+  until the process exited) was read from the kill dumps.
+- **Two hand-published releases in the way**: v3.16.20.9 was
+  tagged on a head whose tag build was red, so the version
+  had to move again before a pipeline cut could run.
+
+What changed in the same evening, so the next cycle is not
+this one:
+
+- The Linux suite runs in 4 shards through the parallel
+  runner, which now writes the -v log the skip guard and the
+  release snapshot read (`--full-log`, one combined verdict
+  at the end); expected 6 to 8 minutes instead of 17 to 20.
+- A documentation-only push (the desk's notes, the manuals)
+  runs the documentation guards in about a minute and none
+  of the matrix; pushes whose message starts with `desk:` or
+  `docs:` take their own concurrency group and never cancel
+  a code build.
+- The `shape` job names a file cut to a fraction of itself
+  at the commit that did it (3.16.20.8).
+- The probe runner drains its pipes while it waits
+  (3.16.20.8); the loopback tests carry hang guards instead
+  of latency bounds (3.16.20.9 and .10).
+- The cut gate reads the build run's own jobs, not check
+  runs by name (3.16.20.8).
+
+What still costs a cycle: a desk note that names the
+release in flight in a reader-facing guide (desk.md is a
+record to the version-rot guard now; the guides are not),
+and an edit tool that writes a file's head and drops the
+rest, which the `shape` job can only name after the push.

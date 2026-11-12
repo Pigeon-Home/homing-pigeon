@@ -32,6 +32,36 @@ CORPUS_ONLY = (
 )
 ZERO = "0" * 40
 
+# A push that changes only documentation: anything under docs/, the
+# manuals at the root, and the ledgers above. The desk lands these
+# several times an hour, and each one was starting (and, under a
+# cancelling concurrency group, cancelling) a full matrix whose
+# every leg ignores them. Such a push runs the documentation guards
+# alone (build.yml's `docs` job); a code path anywhere in the push
+# runs the matrix.
+DOCS_ONLY = CORPUS_ONLY + (
+    "docs/*",
+    "*.md",
+)
+
+
+def docs_only(paths):
+    """True when every changed path is documentation or a ledger and
+    at least one path changed. A root *.md and anything under docs/
+    count; a path with a directory part outside docs/ does not."""
+    paths = [p for p in paths if p]
+    if not paths:
+        return False
+    for p in paths:
+        if any(fnmatch.fnmatch(p, pat) for pat in CORPUS_ONLY):
+            continue
+        if p.startswith("docs/"):
+            continue
+        if "/" not in p and p.endswith(".md"):
+            continue
+        return False
+    return True
+
 
 def corpus_only(paths):
     """True when every changed path is a corpus or ledger file and at
@@ -58,21 +88,24 @@ def changed_paths(before, after, run=subprocess.run):
     return proc.stdout.split("\n")
 
 
-def decide(event, before, after, run=subprocess.run):
-    """'true' or 'false' for the corpus_only output."""
+def decide(event, before, after, run=subprocess.run, rule=None):
+    """'true' or 'false' for the corpus_only output (``rule`` names
+    another path rule, docs_only, for its own output)."""
+    rule = corpus_only if rule is None else rule
     if event != "push" or not after or after.startswith("refs/tags/"):
         return "false"
     paths = changed_paths(before, after, run=run)
     if paths is None:
         return "false"
-    return "true" if corpus_only(paths) else "false"
+    return "true" if rule(paths) else "false"
 
 
 def main(argv=None, environ=None, out=print):
     env = os.environ if environ is None else environ
-    verdict = decide(env.get("EVENT", ""), env.get("BEFORE", ""),
-                     env.get("AFTER", ""))
-    out(f"corpus_only={verdict}")
+    args = (env.get("EVENT", ""), env.get("BEFORE", ""),
+            env.get("AFTER", ""))
+    out(f"corpus_only={decide(*args)}")
+    out(f"docs_only={decide(*args, rule=docs_only)}")
     return 0
 
 

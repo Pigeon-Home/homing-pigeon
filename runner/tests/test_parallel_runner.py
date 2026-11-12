@@ -627,6 +627,60 @@ class InFlightTest(_OutsideActions):
         self.assertNotIn("TIMED OUT", text)
 
 
+class FullLogTest(_OutsideActions):
+    """--full-log: one file that reads like a single -v run.
+
+    The Linux suite leg ran serially for its -v log, which the
+    skip guard and the release snapshot read; the parallel
+    runner now writes that log itself, every shard's complete
+    output in finish order and one combined verdict, so the leg
+    can run its shards at once."""
+
+    def _run(self, modules, extra=()):
+        with tempfile.TemporaryDirectory() as d:
+            for name, body in modules.items():
+                _write(d, name + ".py", body)
+            log = os.path.join(d, "full.log")
+            with contextlib.redirect_stdout(io.StringIO()):
+                rc = rtp.main(["--jobs", "2", "--top-level-dir", d,
+                               "--full-log", log, *extra, *modules])
+            with open(log, encoding="utf-8") as fh:
+                return rc, fh.read()
+
+    def test_every_shards_verbose_lines_and_one_combined_verdict(self):
+        rc, text = self._run({"test_alpha": _PASS2, "test_beta": _PASS})
+        self.assertEqual(rc, 0)
+        self.assertEqual(text.count("=== shard "), 2)
+        self.assertIn("test_one (test_alpha.T.test_one) ... ok", text)
+        self.assertIn("test_one (test_beta.T.test_one) ... ok", text)
+        tail = text.split("=== combined ===", 1)[1]
+        self.assertRegex(tail, r"Ran 3 tests in [0-9.]+s\n\nOK\n")
+
+    def test_a_failing_shard_fails_the_combined_verdict(self):
+        if os.name == "nt":
+            self.skipTest("temp test file leaks into discovery on Windows")
+        rc, text = self._run({"test_alpha": _PASS, "test_gamma": _FAIL})
+        self.assertEqual(rc, 1)
+        tail = text.split("=== combined ===", 1)[1]
+        self.assertRegex(tail, r"Ran 2 tests in [0-9.]+s\n\nFAILED \(failures=1\)\n")
+
+    def test_a_shard_without_a_verdict_is_an_error_not_a_green(self):
+        rc, text = self._run({"test_alpha": _PASS, "test_stuck": _HANG},
+                             extra=["--wall-clock", "0.05"])
+        self.assertEqual(rc, 1)
+        tail = text.split("=== combined ===", 1)[1]
+        self.assertIn("FAILED (errors=1, shards without a verdict=", tail)
+
+    def test_the_combined_summary_sums_the_parenthetical(self):
+        outputs = {0: "...\nRan 10 tests in 1.0s\n\nOK (skipped=2)\n",
+                   1: "F\nRan 5 tests in 2.0s\n\nFAILED (failures=1, errors=2, skipped=1)\n"}
+        self.assertEqual(
+            rtp.combined_summary(outputs, 3.5),
+            "Ran 15 tests in 3.500s\n\nFAILED (failures=1, errors=2, skipped=3)\n")
+        self.assertEqual(rtp.combined_summary({0: "Ran 1 test in 0.1s\n\nOK\n"}, 0.2),
+                         "Ran 1 tests in 0.200s\n\nOK\n")
+
+
 class AnnotationTest(unittest.TestCase):
     def test_a_windows_socket_flake_is_named(self):
         out = "Traceback\nOSError: [WinError 10038] not a socket\n"

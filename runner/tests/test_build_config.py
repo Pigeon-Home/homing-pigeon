@@ -234,11 +234,18 @@ class MutationGateTest(unittest.TestCase):
         # registry row does -- the gate is that the clock is
         # there and names the test, not the number it started at.
         # (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
+        # Since 2026-11-11 the Linux suite runs its shards through
+        # the same parallel runner as the other two legs, with the
+        # 30-minute clock per shard (--wall-clock runs each shard
+        # under suite_wall_clock.py) and --full-log for the -v log
+        # the skip guard and the release snapshot read.
         workflow = _workflow()
         linux = _uncommented(_job_block(workflow, "test"))
-        self.assertIn("python runner/tools/suite_wall_clock.py --minutes 30 -- "
-                      "discover -s runner/tests -t . -v --durations 25", linux)
+        self.assertIn("python runner/tools/run_tests_parallel.py --jobs 4 "
+                      "--wall-clock 30 --durations 25 "
+                      "--full-log test-output.log", linux)
         self.assertNotIn("python -m unittest discover", linux)
+        self.assertIn("skip_guard.py test-output.log", linux)
         windows = _uncommented(_job_block(workflow, "build-windows"))
         self.assertIn("python runner/tools/run_tests_parallel.py "
                       "--duration-table "

@@ -50,7 +50,10 @@ permissions: {}
 # restore `cancel-in-progress: false` -- test_build_config.py
 # fails after the date until the window is reverted whole.
 concurrency:
-  group: build-${{ github.ref }}-${{ startsWith(github.event.head_commit.message, 'release:') && github.sha || 'rolling' }}
+  # A push whose message starts with "desk:" or "docs:" (the desk's
+  # notes, several an hour) takes the docs group, so it supersedes
+  # only the previous docs push and never cancels a code build.
+  group: build-${{ github.ref }}-${{ startsWith(github.event.head_commit.message, 'release:') && github.sha || ((startsWith(github.event.head_commit.message, 'desk:') || startsWith(github.event.head_commit.message, 'docs:')) && 'docs' || 'rolling') }}
   cancel-in-progress: ${{ !(startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.head_commit.message, 'release:')) }}
 
 jobs:
@@ -67,6 +70,7 @@ jobs:
       contents: read
     outputs:
       corpus_only: ${{ steps.scope.outputs.corpus_only }}
+      docs_only: ${{ steps.scope.outputs.docs_only }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -102,6 +106,9 @@ jobs:
     # after publish. The gates that stay are scope, shape,
     # typecheck, the artifact legs and the rig battery.
     continue-on-error: true
+    # A documentation-only push runs the `docs` job instead.
+    needs: scope
+    if: needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -156,10 +163,15 @@ jobs:
       # because it runs last. 30 aligns this job with the
       # python-range and freebsd full-suite clocks.
       # (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
+      # The suite ran serially here for its -v log, which the skip
+      # guard below and the release snapshot read; at 12,700 tests
+      # that was 17 to 20 minutes, the long pole of every build.
+      # The parallel runner now writes that log itself (--full-log:
+      # every shard's complete -v output and one combined verdict),
+      # so the suite runs in 4 shards under the same 30-minute clock
+      # per shard, as the macOS leg has run since 2026-10-25.
       - name: run the suite
-        run: |
-          set -o pipefail
-          python runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25 2>&1 | tee test-output.log
+        run: python runner/tools/run_tests_parallel.py --jobs 4 --wall-clock 30 --durations 25 --full-log test-output.log
       # A skipped proof is green from the outside. On this box the
       # sandbox proofs must run; any other skip is listed, not fatal.
       # --annotate is the piece worth keeping from diag/bwrap-suite:
@@ -178,6 +190,23 @@ jobs:
         with:
           name: ci-test-log
           path: test-output.log
+
+  docs:
+    # A documentation-only push: the guards that read the docs
+    # (version rot, the quiet reader pages, the figure slots, the
+    # defaults registry, the link resolution) in about a minute,
+    # instead of the full matrix the push cannot have broken.
+    needs: scope
+    if: needs.scope.outputs.docs_only == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+      - run: python -m unittest runner.tests.test_doc_version_rot runner.tests.test_reader_docs_quiet runner.tests.test_doc_figure_slots runner.tests.test_doc_default_divergences runner.tests.defaults_registry runner.tests.test_design_docs runner.tests.test_doc_link_resolution runner.tests.test_doc_feature_tiers runner.tests.test_security_md_claims runner.tests.test_ietf_draft_conformance runner.tests.test_doc_gmail_discipline runner.tests.test_core
 
   typecheck:
     needs: test
@@ -308,7 +337,7 @@ jobs:
     # the build-* jobs, so a red here shows on the run and blocks
     # nothing until it has held green for a while.
     needs: scope
-    if: needs.scope.outputs.corpus_only != 'true'
+    if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true'
     # RELIEF-48H expires 2026-11-14T03:45Z: advisory for the window, like the
     # Linux suite -- it runs and shows red, and blocks nothing.
     continue-on-error: true
@@ -329,7 +358,7 @@ jobs:
     # publish. Waiting here was the suite's four minutes plus
     # this job's six, in a line.
     needs: scope
-    if: needs.scope.outputs.corpus_only != 'true'
+    if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true'
     runs-on: windows-latest
     permissions:
       contents: read
@@ -466,7 +495,7 @@ jobs:
 
   build-linux:
     needs: scope
-    if: needs.scope.outputs.corpus_only != 'true'
+    if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-22.04
     permissions:
       contents: read
@@ -516,7 +545,7 @@ jobs:
     # .github/workflows/minimal-userland.yml, which runs
     # runner/tests/test_minimal_userland.py inside .github/docker/minimal-userland.
     needs: scope
-    if: needs.scope.outputs.corpus_only != 'true'
+    if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-22.04-arm
     permissions:
       contents: read
@@ -550,7 +579,7 @@ jobs:
 
   build-macos:
     needs: scope
-    if: needs.scope.outputs.corpus_only != 'true'
+    if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true'
     runs-on: macos-15
     permissions:
       contents: read
@@ -587,7 +616,7 @@ jobs:
     # the interpreter it is built with, so this is not a cross
     # compile. No default_profile marker.
     needs: scope
-    if: needs.scope.outputs.corpus_only != 'true'
+    if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-22.04-arm
     permissions:
       contents: read
@@ -626,7 +655,7 @@ jobs:
     # Native Windows on ARM. Same freeze rule as the Linux
     # arm64 job: built on an arm runner, not cross-compiled.
     needs: scope
-    if: needs.scope.outputs.corpus_only != 'true'
+    if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true'
     runs-on: windows-11-arm
     # Scarce runner: a retired label parks the release for hours
     # (ci-failures.md finding 3); 30 minutes fails it fast instead.
@@ -734,7 +763,7 @@ jobs:
     # the release never publishes. macos-15-intel is the
     # standard runner that still freezes x86_64.
     needs: scope
-    if: needs.scope.outputs.corpus_only != 'true'
+    if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true'
     runs-on: macos-15-intel
     # Scarce runner: when its label is retired (macos-13 was, and
     # parked release runs ~16 h -- ci-failures.md finding 3), fail
@@ -771,7 +800,7 @@ jobs:
 
   build-python:
     needs: scope
-    if: needs.scope.outputs.corpus_only != 'true'
+    if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read

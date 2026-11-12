@@ -613,7 +613,47 @@ class CiScopeTest(unittest.TestCase):
         with mock.patch.object(C, "decide", return_value="true"):
             self.assertEqual(0, C.main(environ={"EVENT": "push", "BEFORE": "a", "AFTER": "b"},
                                        out=out.append))
-        self.assertEqual(["corpus_only=true"], out)
+        self.assertEqual(["corpus_only=true", "docs_only=true"], out)
+
+    def test_docs_only_means_documentation_and_ledgers_and_nothing_else(self):
+        from runner.tools import ci_scope as C
+        self.assertTrue(C.docs_only(["docs/infrastructure-documents/project/desk.md"]))
+        self.assertTrue(C.docs_only(["AGENTS.md", "docs/steady/security/macos.md",
+                                     "docs/steady/seats/status.txt"]))
+        self.assertTrue(C.docs_only(["runner/tests/de_dust/wire.jsonl"]))
+        self.assertFalse(C.docs_only(["docs/a.md", "runner/wire/verify.py"]))
+        self.assertFalse(C.docs_only([".github/workflows/build.yml"]))
+        self.assertFalse(C.docs_only(["pyproject.toml"]))
+        self.assertFalse(C.docs_only(["runner/README.md"]))
+        self.assertFalse(C.docs_only([]))
+
+        def diff(paths):
+            def run(cmd, **kw):
+                return mock.Mock(returncode=0, stdout="\n".join(paths) + "\n")
+            return run
+        self.assertEqual("true", C.decide("push", "abc", "def", run=diff(["docs/x.md"]),
+                                          rule=C.docs_only))
+        self.assertEqual("false", C.decide("push", "abc", "def", run=diff(["docs/x.md"])))
+
+    def test_a_docs_only_push_runs_the_docs_job_and_skips_the_rest(self):
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        with open(os.path.join(root, ".github", "workflows", "build.yml"), encoding="utf-8") as fh:
+            wf = fh.read()
+
+        def block(job):
+            m = re.search(r"^  %s:\n(.*?)(?=^  [a-z0-9_-]+:|\Z)" % re.escape(job), wf, re.M | re.S)
+            self.assertIsNotNone(m, job)
+            return m.group(1)
+        self.assertIn("docs_only: ${{ steps.scope.outputs.docs_only }}", block("scope"))
+        self.assertIn("if: needs.scope.outputs.docs_only != 'true'", block("test"))
+        self.assertIn("if: needs.scope.outputs.docs_only == 'true'", block("docs"))
+        self.assertIn("test_doc_version_rot", block("docs"))
+        self.assertIn("test_reader_docs_quiet", block("docs"))
+        for job in ("test-macos", "build-windows", "build-linux", "build-python"):
+            self.assertIn("needs.scope.outputs.docs_only != 'true'", block(job), job)
+        # the desk's pushes take their own concurrency group
+        self.assertIn("startsWith(github.event.head_commit.message, 'desk:')", wf)
 
     def test_the_heavy_jobs_wait_on_scope_and_the_suite_does_not(self):
         import re
