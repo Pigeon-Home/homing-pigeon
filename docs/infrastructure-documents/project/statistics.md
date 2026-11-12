@@ -1,7 +1,7 @@
 # The project's statistics: the 21-million-token measure
 
-Dated 2026-11-11. Measured on main at commit
-c5c1e3cbb2bb16bb7bc99e255ddd6672630cbf20, the head this
+Dated 2026-11-12. Measured on main at commit
+8c439cb3ccb25ffe8247493af3b73a35a4dbf05d, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
@@ -51,12 +51,12 @@ stays their source of truth.
 
 ```json
 {
-  "as_of": "2026-11-11",
-  "commit": "c5c1e3cbb2bb16bb7bc99e255ddd6672630cbf20",
+  "as_of": "2026-11-12",
+  "commit": "8c439cb3ccb25ffe8247493af3b73a35a4dbf05d",
   "counter": "runner/ops/version4.py",
-  "tokens": 21019043,
-  "lines_tracked": 1395876,
-  "commits": 5515,
+  "tokens": 21031832,
+  "lines_tracked": 1397144,
+  "commits": 5526,
   "display_commits": 6000,
   "display_lines": 1400000,
   "non_latent_percent": 96.83,
@@ -64,13 +64,13 @@ stays their source of truth.
   "latent_exact_percent": 0.03,
   "audit_date": "2026-11-09",
   "core_files": 136,
-  "core_lines": 63497,
-  "core_lines_nonblank": 57469,
-  "core_tokens": 666204,
-  "core_assembled_lines": 64481,
-  "core_assembled_nonblank": 58344,
-  "core_assembled_zip_bytes": 814692,
-  "core_assembled_tokens": 676062
+  "core_lines": 63521,
+  "core_lines_nonblank": 57493,
+  "core_tokens": 666765,
+  "core_assembled_lines": 64505,
+  "core_assembled_nonblank": 58368,
+  "core_assembled_zip_bytes": 814864,
+  "core_assembled_tokens": 676623
 }
 ```
 
