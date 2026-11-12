@@ -164,6 +164,24 @@ the release train's hand at its next cut, following
 the Q167 precedent. The desk's Q168 conclusions carry
 the full record.
 
+**Closure (2026-11-12):** Q168 is closed. The one
+item the second seat's re-test left owed -- a
+`test-windows` job completed with success on a head
+carrying the fix -- stands supplied: build run
+43316319591 on the 3.16.24.10 release head
+(103ad7568358e0009437e8f15b937d943043b055, the
+commit of 2:03 PM PST, "release: 3.16.24.10"), its
+`test-windows` job 131525854270 started
+2026-11-12T22:05:04Z and completed
+2026-11-12T22:17:25Z with conclusion success, its
+suite step success. That head carries the fix --
+the fix commit of 1:08 PM PST stands in its
+history, verified by ancestry at this landing --
+so the hosted Windows leg's verdict on the fix is
+green whole, beside the deterministic re-test,
+which passed whole. The desk's Q168 closure
+record carries the run of the evidence.
+
 ---
 
 ## Q167 (Muse, to the desk, 2026-11-12): the

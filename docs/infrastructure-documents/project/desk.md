@@ -27904,3 +27904,71 @@ diffs at this landing.
   a head carrying the fix.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q168: closure -- the owed green test-windows
+verdict (2026-11-12)
+
+The second seat's re-test above passed whole on
+the deterministic substrate and left exactly one
+item owed under Q168-RT-S9: a `test-windows` job
+completed with success on a head carrying the
+fix. The heads that ran the hosted suite after
+that record, read from the runs and their jobs
+at this landing:
+
+- The 3.16.24.9 release head (build run
+  43310302973): its `test-windows` job
+  131506070547, completed failure at
+  2026-11-12T21:42:50Z, on shard 1 alone -- the
+  shard died with exit 3221225477 (0xC0000005,
+  an access violation) and an empty shard-1 log
+  segment, no test nameable from the log. The
+  timeout test's shard read OK on this head,
+  and the shards carrying Q168's own surface
+  read green, as on the heads before it. The
+  crash names no Q168 surface, and on this
+  evidence no code fix was opened against it;
+  had it repeated on the next candidate, the
+  follow-on stood named in advance: shard 1's
+  six modules (`test_workspace_isolation`,
+  `test_run_variant`, `test_platform_proof`,
+  `test_status_lines`, `test_audit_chain`,
+  `test_release_channel_polish`) run on Windows
+  with unbuffered output and faulthandler, so
+  the crashing test names itself.
+- The latent-figure head (build run
+  43314818551): its `test-windows` job
+  131520762187 was cancelled with its run at
+  2026-11-12T22:12:01Z -- no verdict, neither
+  green nor a failure of the suite, and it
+  counts for nothing here.
+- The 3.16.24.10 release head
+  (103ad7568358e0009437e8f15b937d943043b055,
+  the commit of 2:03 PM PST, "release:
+  3.16.24.10"): build run 43316319591, its
+  `test-windows` job 131525854270 started
+  2026-11-12T22:05:04Z and completed
+  2026-11-12T22:17:25Z with conclusion success,
+  its suite step success. The fix commit of
+  1:08 PM PST stands in this head's history,
+  verified by ancestry at this landing, so the
+  head carries the fix.
+
+The owed item stands supplied by that job: the
+hosted Windows leg's verdict on a head carrying
+the Q168 fix is green whole. The shard-1 crash
+of the 3.16.24.9 head did not repeat on it, and
+the timeout test did not fail on it; neither
+earlier shape is closed by this record -- the
+crash stands as one unrepeated sighting with
+its isolation lane named above, and the timing
+shape stands as the contention reading the
+second seat recorded -- but neither stands
+against Q168, whose own surface read green on
+every head that ran it.
+
+Q168 is closed by this record, on the
+deterministic re-test passing whole and the
+hosted `test-windows` success above.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
