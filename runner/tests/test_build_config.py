@@ -825,6 +825,19 @@ class PipelineLessonsTest(unittest.TestCase):
                          "only; no per-platform skips")
         self.assertNotIn("skipIf", proof)
 
+    def test_the_platform_fan_out_is_capped(self):
+        # The nine container legs and the native legs start a few
+        # at a time since 2026-11-12: all at once, with the other
+        # proof workflows a release tag starts, they held the
+        # account's job concurrency and queued the next cycle's
+        # gate legs for minutes. The proofs run after the mirrors;
+        # a slower fan-out costs the release nothing.
+        wf = _workflow_text("platform-matrix.yml")
+        container = wf.split("\n  container:\n", 1)[1].split("\n  native:\n", 1)[0]
+        native = wf.split("\n  native:\n", 1)[1].split("\n  vm:\n", 1)[0]
+        self.assertIn("max-parallel: 3", _uncommented(container))
+        self.assertIn("max-parallel: 2", _uncommented(native))
+
     def test_platform_proof_finds_a_versioned_bsd_python(self):
         # vm-netbsd-10 failed every nightly from 2026-10-24: the
         # workflow's prepare step installs python312 (python3.12, no

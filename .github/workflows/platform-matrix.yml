@@ -83,6 +83,14 @@ jobs:
       contents: read
     strategy:
       fail-fast: false
+      # Three legs at a time since 2026-11-12: the nine container
+      # legs starting at once, with the other proof workflows a
+      # release tag starts, held the account's job concurrency and
+      # queued the next cycle's gate legs for minutes (3.16.24.7:
+      # build-windows waited 4.1 minutes, 3.16.24.9: 8). The proofs
+      # run after the mirrors and are off the cycle's path; a
+      # slower fan-out costs nothing the release waits for.
+      max-parallel: 3
       matrix: ${{ fromJSON(needs.plan.outputs.container) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -112,6 +120,7 @@ jobs:
       contents: read
     strategy:
       fail-fast: false
+      max-parallel: 2
       matrix: ${{ fromJSON(needs.plan.outputs.native) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
