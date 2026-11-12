@@ -24076,3 +24076,66 @@ Conclusions against P-S1 to P-S4
   claims it.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## DocDriftGuard / support-matrix registry failure — supposition before the measurement (2026-11-12)
+
+A read-only CI verdict lane reported, on the
+3.16.21.3 release head, that the Linux test,
+test-macos and test-windows jobs all failed with
+exactly the same two tests:
+
+- `runner.tests.defaults_registry.DocDriftGuardTests.test_doc_lines_still_carry_their_default`
+  — `[] != [('max_job_bytes', 'README.md', 448, '4 MiB')]`
+- `runner.tests.test_enforce_posture_reconciliation.RoundTwoHarnessStatedModesTest.test_support_matrix_and_registry_follow_the_landings`
+  — `[448] != [442]`
+
+Supposition, written before the settling
+measurement (running those two tests and their
+families in the foreground on a fresh clone of
+the current remote head), to be judged against it:
+
+- **D-S1 — the direction is the reverse of the
+  first report's guess.** File inspection alone
+  (no test run yet) shows: on the 3.16.21.3 head
+  the README's size-caps line stands at line 442
+  and the defaults registry row for
+  `max_job_bytes` records line 448. In the
+  history, the line stood at 448 and three
+  web-editor README edits (`Update README.md`)
+  moved it 448 to 444 to 443 to 442 — a net
+  move of 6 lines up, not a growth of 6 lines
+  down. The recorded line was therefore stale
+  at 448; the default itself (`4 MiB`,
+  4194304) did not move, and the README content
+  is not to be edited to fit a stale record.
+- **D-S2 — an outside landing has already
+  fixed it, and it is to be preserved, not
+  duplicated.** On the current remote head, the
+  registry row already reads 442. The landing
+  that did it, by Claude, also changed the
+  drift guard to tell a line that moved (the
+  key and its token within sixty lines of the
+  recorded one, named in a notice) from a
+  default that changed (still a failure), and
+  the reconciliation test to allow the same
+  trailing. If D-S2 holds, this lane lands no
+  code fix at all: it peer-reviews that landing
+  line by line, runs the two named tests plus
+  their families green in the foreground, and
+  lands only this desk record with its
+  conclusions.
+- **D-S3 — the alternative.** If the two named
+  tests still fail on the current head, the
+  fix is at the record layer only: update the
+  stale record to the true line (442), never
+  weaken a guard assertion and never change
+  the `max_job_bytes` default. If the evidence
+  instead shows the default itself moved, this
+  lane stops and reports rather than deciding
+  alone.
+
+The settling measurement and the conclusions
+against D-S1 to D-S3 follow in this same
+section, after this supposition has landed.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
