@@ -32,7 +32,8 @@ CORPUS_ONLY = (
 )
 ZERO = "0" * 40
 
-# A push that changes only documentation: anything under docs/, the
+# A push that changes only documentation (build.yml's docs group reads
+# the same rule from the push event's file list): anything under docs/, the
 # manuals at the root, and the ledgers above. The desk lands these
 # several times an hour, and each one was starting (and, under a
 # cancelling concurrency group, cancelling) a full matrix whose
