@@ -64,11 +64,11 @@ stays their source of truth.
   "latent_exact_percent": 0.03,
   "audit_date": "2026-11-09",
   "core_files": 136,
-  "core_lines": 63480,
-  "core_lines_nonblank": 57455,
+  "core_lines": 63485,
+  "core_lines_nonblank": 57460,
   "core_tokens": 665896,
-  "core_assembled_lines": 64362,
-  "core_assembled_nonblank": 58233,
+  "core_assembled_lines": 64367,
+  "core_assembled_nonblank": 58238,
   "core_assembled_zip_bytes": 811806,
   "core_assembled_tokens": 674677
 }

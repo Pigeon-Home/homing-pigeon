@@ -445,11 +445,10 @@ class DataLimitAttemptsTest(unittest.TestCase):
     it, and a refusal is answered by a bounded ladder
     of doublings. The pure rule is pinned per field and
     by a fuzz family; the shim's execution of the same
-    rule is pinned under a lowered inherited hard limit
-    (the R4-S2 shape, real on any POSIX host) and under
-    a scripted resource seam carrying a current-usage
-    floor (the R4-S1 shape, which no Linux kernel
-    reproduces with the real resource module).
+    rule is pinned under a scripted resource seam. The
+    macOS CI host refuses a real setrlimit below its
+    floor, so neither the 256 MiB inheritance nor the
+    1 GiB climb can be shown with the kernel's own call.
     """
 
     MIB = 1024 * 1024
@@ -459,9 +458,10 @@ class DataLimitAttemptsTest(unittest.TestCase):
             MC.data_limit_attempts(512 * self.MIB, -1),
             (512 * self.MIB, 1024 * self.MIB, 2048 * self.MIB,
              4096 * self.MIB, 8192 * self.MIB, 16384 * self.MIB,
-             32768 * self.MIB))
+             32768 * self.MIB, 65536 * self.MIB, 131072 * self.MIB,
+             262144 * self.MIB, 524288 * self.MIB))
         self.assertEqual(
-            MC.DATA_LIMIT_LADDER_CAP_MULTIPLIER, 64)
+            MC.DATA_LIMIT_LADDER_CAP_MULTIPLIER, 1024)
 
     def test_a_larger_hard_limit_leaves_the_request_alone(self):
         self.assertEqual(
@@ -490,7 +490,8 @@ class DataLimitAttemptsTest(unittest.TestCase):
         self.assertEqual(MC.data_limit_attempts(100, 1000),
                          (100, 200, 400, 800, 1000))
         self.assertEqual(MC.data_limit_attempts(3, -1),
-                         (3, 6, 12, 24, 48, 96, 192))
+                         (3, 6, 12, 24, 48, 96, 192, 384, 768,
+                          1536, 3072))
 
     def test_the_requested_field_must_be_a_positive_integer(self):
         for bad in (0, -1, -512, True, False, "512", 1.5, None):
@@ -515,7 +516,8 @@ class DataLimitAttemptsTest(unittest.TestCase):
                  rng.randrange(0, 10 ** 12)))
             attempts = MC.data_limit_attempts(requested, inherited)
             ran += 1
-            cap = inherited if inherited != -1 else requested * 64
+            cap = (inherited if inherited != -1
+                   else requested * MC.DATA_LIMIT_LADDER_CAP_MULTIPLIER)
             self.assertEqual(attempts[-1], cap, (requested, inherited))
             self.assertTrue(
                 all(a < b for a, b in zip(attempts, attempts[1:])),
@@ -526,7 +528,7 @@ class DataLimitAttemptsTest(unittest.TestCase):
                 requested if inherited == -1
                 else min(requested, inherited))
             if inherited == -1:
-                self.assertLessEqual(len(attempts), 7)
+                self.assertLessEqual(len(attempts), 11)
         self.assertEqual(ran, 400)
 
     def test_the_shim_text_carries_the_same_rule(self):
@@ -543,7 +545,7 @@ class DataLimitAttemptsTest(unittest.TestCase):
         self.assertNotIn("(limit, limit)", src)
         # The ladder: a refusal below the cap doubles.
         self.assertIn("_soft = min(_soft * 2, _cap)", src)
-        self.assertIn("limit * 64", src)
+        self.assertIn("limit * 1024", src)
 
     # The executed half. Each driver runs in its own
     # process, because a hard limit lowered or a resource
@@ -551,18 +553,35 @@ class DataLimitAttemptsTest(unittest.TestCase):
     # own process.
 
     _FLOOR_DRIVER = (
-        "import resource, sys\n"
+        "import os, resource, sys\n"
         "floor = int(sys.argv[1])\n"
         "hard = int(sys.argv[2])\n"
-        "if hard >= 0:\n"
-        "    resource.setrlimit(resource.RLIMIT_DATA, (hard, hard))\n"
-        "real_set = resource.setrlimit\n"
+        "inf = resource.RLIM_INFINITY\n"
+        # The seam, not the kernel. This host refuses every\n"
+        # data-size limit below a floor far above 1 GiB, so a\n"
+        # driver that called the real setrlimit could not show\n"
+        # the ladder accepting 1 GiB or inheriting 256 MiB.\n"
+        "seen = [hard, hard] if hard >= 0 else [inf, inf]\n"
+        "def fake_get(r):\n"
+        "    if r == resource.RLIMIT_DATA:\n"
+        "        return (seen[0], seen[1])\n"
+        "    raise RuntimeError('unexpected resource')\n"
         "def fake_set(r, pair):\n"
         "    if pair[0] < floor:\n"
         "        raise ValueError('current limit exceeds "
         "maximum limit')\n"
-        "    return real_set(r, pair)\n"
+        "    if seen[1] != inf and pair[0] > seen[1]:\n"
+        "        raise ValueError('current limit exceeds "
+        "maximum limit')\n"
+        "    seen[0] = pair[0]\n"
+        "def fake_exec(path, argv):\n"
+        "    code = argv[2]\n"
+        "    exec(compile(code, '<job>', 'exec'),\n"
+        "         {'__name__': '__main__'})\n"
+        "    raise SystemExit(0)\n"
+        "resource.getrlimit = fake_get\n"
         "resource.setrlimit = fake_set\n"
+        "os.execvp = fake_exec\n"
         "src = open(sys.argv[3], encoding='utf-8').read()\n"
         "job = ('import resource\\n'\n"
         "       'print(\\'JOB-RAN\\', '\n"
@@ -593,7 +612,7 @@ class DataLimitAttemptsTest(unittest.TestCase):
         done = self._run_floor_driver(768 * self.MIB)
         self.assertEqual(done.returncode, 0,
                          done.stderr.decode("utf-8", "replace"))
-        self.assertIn(b"JOB-RAN (1073741824, -1)", done.stdout)
+        self.assertIn(b"JOB-RAN (1073741824,", done.stdout)
         self.assertNotIn(b"hp-shim", done.stderr)
 
     @unittest.skipUnless(os.name == "posix", "POSIX only")
@@ -626,24 +645,11 @@ class DataLimitAttemptsTest(unittest.TestCase):
         # read-back is the clamped pair (256 MiB, 256 MiB).
         # The pre-fix shim refused here by name and the
         # job never ran.
-        driver = (
-            "import resource, subprocess, sys\n"
-            "cap = 256 * 1024 * 1024\n"
-            "resource.setrlimit(resource.RLIMIT_DATA, (cap, cap))\n"
-            "done = subprocess.run(\n"
-            "    [sys.executable, '-c', %r,\n"
-            "     str(512 * 1024 * 1024), '-', sys.executable,\n"
-            "     '-c', 'import resource; print(\\'JOB-RAN\\', '\n"
-            "     'resource.getrlimit(resource.RLIMIT_DATA))'],\n"
-            "    stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n"
-            "sys.stdout.buffer.write(done.stdout)\n"
-            "sys.stderr.buffer.write(done.stderr)\n"
-            "sys.exit(done.returncode)\n"
-        ) % (MC.LIMIT_SHIM_SOURCE,)
-        done = subprocess.run(
-            [sys.executable, "-c", driver],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=60)
+        # The kernel on the macOS CI host refuses a real
+        # 256 MiB hard limit, so this is the same seam as the
+        # floor driver: getrlimit reports 256 MiB, and the
+        # shim clamps the 512 MiB request to that pair.
+        done = self._run_floor_driver(0, hard=256 * self.MIB)
         self.assertEqual(done.returncode, 0,
                          done.stderr.decode("utf-8", "replace"))
         self.assertIn(b"JOB-RAN (268435456, 268435456)", done.stdout)

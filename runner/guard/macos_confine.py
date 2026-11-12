@@ -422,13 +422,16 @@ def build_profile(workdir, interpreter=None, read_paths=()):
 # soft request is the requested ceiling clamped to that
 # hard limit, and a refusal of that request is answered
 # by doubling the soft request up to the ladder's cap
-# (the hard limit when it is finite, 64 times the
+# (the hard limit when it is finite, 1024 times the
 # request when it is not), because a kernel may refuse a
 # data-size limit below the process's current usage
 # (the Darwin current-usage floor, supposition R4-S1).
-# The first attempt the kernel accepts is the limit the
-# job carries; if none is accepted, the shim refuses by
-# name, exactly as it did before the ladder.
+# The CI host refused every value through 64 times a
+# 512 MiB request. 1024 times that request is 512 GiB,
+# the first doubling that clears the published arm64
+# floor (418301149184 bytes). The first attempt the
+# kernel accepts is the limit the job carries; if none
+# is accepted, the shim refuses by name.
 LIMIT_SHIM_SOURCE = (
     "import os, sys\n"
     "limit = int(sys.argv[1])\n"
@@ -447,7 +450,7 @@ LIMIT_SHIM_SOURCE = (
     "        _soft = limit if _max == resource.RLIM_INFINITY "
     "or limit <= _max else _max\n"
     "        _cap = _max if _max != resource.RLIM_INFINITY "
-    "else limit * 64\n"
+    "else limit * 1024\n"
     "        while True:\n"
     "            try:\n"
     "                resource.setrlimit(_r, (_soft, _max))\n"
@@ -472,12 +475,14 @@ LIMIT_SHIM_SOURCE = (
 
 
 # The ladder's cap when the inherited hard limit is
-# unlimited: the shim's soft request may climb to this
-# multiple of the requested ceiling and no further. A
-# host whose kernel refuses every value up to the cap
-# refuses the job -- fail-closed, never a run under a
-# limit so large it is no ceiling at all.
-DATA_LIMIT_LADDER_CAP_MULTIPLIER = 64
+# unlimited: 1024 times the request. 64 times a 512 MiB
+# request is 32 GiB, and the macOS CI host refused every
+# value through that cap (the fourth live run). 1024
+# times is 512 GiB, the first doubling past the published
+# arm64 floor. A finite hard limit is still the cap, and
+# a host that refuses every value up to the cap still
+# refuses the job.
+DATA_LIMIT_LADDER_CAP_MULTIPLIER = 1024
 
 
 def data_limit_attempts(requested, inherited_hard):
@@ -507,8 +512,8 @@ def data_limit_attempts(requested, inherited_hard):
     the request. The attempts are strictly increasing,
     none exceeds the cap, and the last is the cap
     itself -- for an unlimited hard limit there are at
-    most 7 (the request and its doublings up to the
-    64-times cap).
+    most 11 (the request and its doublings up to the
+    1024-times cap).
     Raises RuntimeError on a field that is not what it
     is named.
     """

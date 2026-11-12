@@ -166,8 +166,8 @@ class CoreListTest(unittest.TestCase):
         # fix grew runner/guard/macos_confine.py by 102
         # lines, the whole set re-measured over the
         # current tree.
-        self.assertEqual(64362, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(58233, core.AS_ASSEMBLED_NONBLANK_LINES)
+        self.assertEqual(64367, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(58238, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
