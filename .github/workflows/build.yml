@@ -85,6 +85,16 @@ jobs:
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.sha }}
         run: python3 runner/tools/ci_scope.py >> "$GITHUB_OUTPUT"
+      # The concurrency group above reads the head commit's file list
+      # from the event; this prints what it read, so a docs push that
+      # took the rolling group can be understood from the log.
+      - name: the head commit as the concurrency group read it
+        env:
+          HEAD_COMMIT: ${{ toJSON(github.event.head_commit) }}
+          DOCS_GROUP: ${{ !(contains(toJSON(github.event.head_commit), '"runner/') || contains(toJSON(github.event.head_commit), '".github/') || contains(toJSON(github.event.head_commit), '"pyproject.toml"')) }}
+        run: |
+          echo "docs group by file list: $DOCS_GROUP"
+          printf '%s\n' "$HEAD_COMMIT" | head -c 3000
 
   shape:
     # Names any tracked file this commit cut to a fraction of itself
