@@ -28,10 +28,21 @@ states a `(deny network*)` line beside it so the record of
 the profile says what it does. The memory ceiling is applied
 at spawn: the job's command runs under a small launcher shim
 (the runner's own interpreter, a few lines) that sets the
-data-size resource limit to 512 MiB per process with
-`setrlimit` and then `exec`s the job's command, the macOS
-shape of the FreeBSD backend's `limits(1)` step, which
-macOS has no equivalent of. Only the data-size limit is
+data-size resource limit with `setrlimit` and then `exec`s
+the job's command, the macOS shape of the FreeBSD backend's
+`limits(1)` step, which macOS has no equivalent of. The
+limit it applies is computed from the limits the shim
+inherits: the requested ceiling is 512 MiB per process,
+the inherited hard limit is kept exactly as it stands and
+the soft request is clamped to it, and a kernel that
+refuses the request because the process's current usage
+already exceeds it — Darwin enforces this limit over the
+process's whole VM map, whose startup size can exceed
+512 MiB — is answered by a bounded ladder of larger
+requests, so the applied limit is the strongest the host
+accepts at or above the requested ceiling, and a spawn
+for which no ladder value is accepted is refused, never
+run under a weaker limit. Only the data-size limit is
 set, never the virtual-memory (address-space) limit: the
 address space a macOS process maps at startup already
 exceeds 512 MiB, and a 512 MiB address-space ceiling made

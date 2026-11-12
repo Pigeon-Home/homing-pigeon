@@ -417,6 +417,14 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # 3.16.20.7 release head and the macOS
 # confinement fixes in runner/guard -- which the
 # earlier records had not carried.
+# Re-measured again the same day after the macOS
+# confinement fourth fix (the launcher shim's
+# data-size computation: the inherited hard limit
+# kept, the soft request clamped to it, and a
+# bounded ladder of attempts against the kernel's
+# current-usage floor) grew
+# runner/guard/macos_confine.py by 102 lines, the
+# whole set re-measured over the current tree.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 136 since
@@ -429,9 +437,9 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 139
-AS_ASSEMBLED_ZIP_BYTES = 811845
-AS_ASSEMBLED_LINES = 64244
-AS_ASSEMBLED_NONBLANK_LINES = 58122
+AS_ASSEMBLED_ZIP_BYTES = 811806
+AS_ASSEMBLED_LINES = 64346
+AS_ASSEMBLED_NONBLANK_LINES = 58217
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
@@ -442,7 +450,7 @@ AS_ASSEMBLED_PART_LINES = {
     "runner/runner.py": 7178,
     "runner/oracle": 5055,
     "runner/transport_extensions": 2775,
-    "runner/guard": 5325,
+    "runner/guard": 5427,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,

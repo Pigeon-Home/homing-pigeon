@@ -31,8 +31,18 @@ own tool (/usr/bin/sandbox-exec). One seam uses this module:
   The memory ceiling is applied at spawn by a small launcher
   shim: sandbox-exec first runs the runner's own interpreter
   on the shim text in this module, which sets the data-size
-  resource limit to DEFAULT_PROCESS_MEMORY_BYTES (512 MiB)
-  with setrlimit, drops to the job user when the job_user
+  resource limit with setrlimit -- the requested value is
+  DEFAULT_PROCESS_MEMORY_BYTES (512 MiB), computed against
+  the limits the shim inherits by data_limit_attempts below:
+  the inherited hard limit is kept exactly as it stands,
+  the soft request is clamped to it, and a kernel that
+  refuses the request because the process's current usage
+  already exceeds it (the Darwin current-usage floor,
+  supposition R4-S1 in docs/steady/security/macos.md) is
+  answered by the bounded ladder of larger attempts, so
+  the applied limit is the strongest the host accepts at
+  or above the request and never a weaker one. The shim
+  then drops to the job user when the job_user
   seam hands one over (the POSIX preexec demote cannot ride
   a spawn that replaces process creation, so the demote
   happens in the shim, at the spawn door -- the FreeBSD
@@ -47,7 +57,7 @@ own tool (/usr/bin/sandbox-exec). One seam uses this module:
   first live failure (build run 43089173541, recorded in
   docs/steady/security/macos.md, supposition S1). The
   data-size limit is the ceiling macOS enforces on a
-  process's data mappings, and it is the one this backend
+  process's VM map, and it is the one this backend
   has applied since that fix. The profile is in force before
   the shim's first line runs (sandbox-exec applies it to the
   process it starts), so there is no race in which the job
@@ -405,6 +415,20 @@ def build_profile(workdir, interpreter=None, read_paths=()):
 # maps at startup, and the exec'd interpreter aborts in
 # the loader before job code (supposition S1 in
 # docs/steady/security/macos.md).
+# The pair it asks for is computed from the limits it
+# inherits, by the same rule data_limit_attempts states:
+# the inherited hard limit is kept exactly as it stands
+# (never raised, never lowered -- supposition R4-S2), the
+# soft request is the requested ceiling clamped to that
+# hard limit, and a refusal of that request is answered
+# by doubling the soft request up to the ladder's cap
+# (the hard limit when it is finite, 64 times the
+# request when it is not), because a kernel may refuse a
+# data-size limit below the process's current usage
+# (the Darwin current-usage floor, supposition R4-S1).
+# The first attempt the kernel accepts is the limit the
+# job carries; if none is accepted, the shim refuses by
+# name, exactly as it did before the ladder.
 LIMIT_SHIM_SOURCE = (
     "import os, sys\n"
     "limit = int(sys.argv[1])\n"
@@ -415,11 +439,25 @@ LIMIT_SHIM_SOURCE = (
     "    _r = getattr(resource, _name, None)\n"
     "    if _r is not None:\n"
     "        try:\n"
-    "            resource.setrlimit(_r, (limit, limit))\n"
+    "            _cur, _max = resource.getrlimit(_r)\n"
     "        except Exception as _e:\n"
     "            sys.stderr.write('hp-shim: could not set the "
     "data-size limit: %s\\n' % (_e,))\n"
     "            sys.exit(1)\n"
+    "        _soft = limit if _max == resource.RLIM_INFINITY "
+    "or limit <= _max else _max\n"
+    "        _cap = _max if _max != resource.RLIM_INFINITY "
+    "else limit * 64\n"
+    "        while True:\n"
+    "            try:\n"
+    "                resource.setrlimit(_r, (_soft, _max))\n"
+    "                break\n"
+    "            except Exception as _e:\n"
+    "                if _soft >= _cap:\n"
+    "                    sys.stderr.write('hp-shim: could not "
+    "set the data-size limit: %s\\n' % (_e,))\n"
+    "                    sys.exit(1)\n"
+    "                _soft = min(_soft * 2, _cap)\n"
     "if user != '-':\n"
     "    import pwd\n"
     "    _pw = pwd.getpwnam(user)\n"
@@ -431,6 +469,70 @@ LIMIT_SHIM_SOURCE = (
     "    os.setuid(_pw.pw_uid)\n"
     "os.execvp(argv[0], argv)\n"
 )
+
+
+# The ladder's cap when the inherited hard limit is
+# unlimited: the shim's soft request may climb to this
+# multiple of the requested ceiling and no further. A
+# host whose kernel refuses every value up to the cap
+# refuses the job -- fail-closed, never a run under a
+# limit so large it is no ceiling at all.
+DATA_LIMIT_LADDER_CAP_MULTIPLIER = 64
+
+
+def data_limit_attempts(requested, inherited_hard):
+    """The soft data-size limits the shim asks for, in order.
+
+    The deterministic substrate of the shim's limit
+    computation (the shim text carries the same rule
+    inline, because the shim runs as interpreter text
+    with no module to import). Fields, one by one:
+
+    - requested: the ceiling the backend means to apply
+      (a positive integer; a boolean is not a ceiling).
+    - inherited_hard: the hard data-size limit the
+      shim's process inherits, as getrlimit reports it:
+      -1 for RLIM_INFINITY (unlimited), else a
+      non-negative integer.
+
+    The rule, stated whole: the hard limit is never
+    moved, so no attempt pairs a soft value with a hard
+    value other than the inherited one, and the first
+    attempt is the requested ceiling clamped to the
+    inherited hard limit when that limit is finite and
+    smaller. Each later attempt doubles the one before,
+    up to the cap: the inherited hard limit when it is
+    finite (no soft value above it may ever be asked
+    for), else DATA_LIMIT_LADDER_CAP_MULTIPLIER times
+    the request. The attempts are strictly increasing,
+    none exceeds the cap, and the last is the cap
+    itself -- for an unlimited hard limit there are at
+    most 7 (the request and its doublings up to the
+    64-times cap).
+    Raises RuntimeError on a field that is not what it
+    is named.
+    """
+    if isinstance(requested, bool) \
+            or not isinstance(requested, int) or requested <= 0:
+        raise RuntimeError(
+            "the requested data-size ceiling must be a "
+            "positive integer")
+    if isinstance(inherited_hard, bool) \
+            or not isinstance(inherited_hard, int) \
+            or inherited_hard < -1:
+        raise RuntimeError(
+            "the inherited hard data limit must be -1 "
+            "(unlimited) or a non-negative integer")
+    if inherited_hard == -1:
+        first = requested
+        cap = requested * DATA_LIMIT_LADDER_CAP_MULTIPLIER
+    else:
+        first = min(requested, inherited_hard)
+        cap = inherited_hard
+    attempts = [first]
+    while attempts[-1] < cap:
+        attempts.append(min(attempts[-1] * 2, cap))
+    return tuple(attempts)
 
 
 def build_shim_argv(argv, memory_bytes=DEFAULT_PROCESS_MEMORY_BYTES,

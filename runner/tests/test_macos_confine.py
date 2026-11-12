@@ -429,6 +429,226 @@ class ShimFieldTest(unittest.TestCase):
         self.assertNotIn("RLIMIT_VMEM", MC.LIMIT_SHIM_SOURCE)
 
 
+class DataLimitAttemptsTest(unittest.TestCase):
+    """data_limit_attempts and the shim's limit computation.
+
+    The fourth live verdict (docs/steady/security/
+    macos.md): every shim-carrying live point failed on
+    the shim's named refusal -- `hp-shim: could not set
+    the data-size limit: current limit exceeds maximum
+    limit` -- while the 2 profile-alone points passed.
+    Suppositions R4-S1 (the kernel refuses a data-size
+    limit below the process's current usage) and R4-S2
+    (the old pair (limit, limit) moved the hard limit)
+    name the computation this class pins: the hard
+    limit never moves, the soft request is clamped to
+    it, and a refusal is answered by a bounded ladder
+    of doublings. The pure rule is pinned per field and
+    by a fuzz family; the shim's execution of the same
+    rule is pinned under a lowered inherited hard limit
+    (the R4-S2 shape, real on any POSIX host) and under
+    a scripted resource seam carrying a current-usage
+    floor (the R4-S1 shape, which no Linux kernel
+    reproduces with the real resource module).
+    """
+
+    MIB = 1024 * 1024
+
+    def test_an_unlimited_hard_limit_ladders_to_the_cap(self):
+        self.assertEqual(
+            MC.data_limit_attempts(512 * self.MIB, -1),
+            (512 * self.MIB, 1024 * self.MIB, 2048 * self.MIB,
+             4096 * self.MIB, 8192 * self.MIB, 16384 * self.MIB,
+             32768 * self.MIB))
+        self.assertEqual(
+            MC.DATA_LIMIT_LADDER_CAP_MULTIPLIER, 64)
+
+    def test_a_larger_hard_limit_leaves_the_request_alone(self):
+        self.assertEqual(
+            MC.data_limit_attempts(512 * self.MIB, 4096 * self.MIB),
+            (512 * self.MIB, 1024 * self.MIB, 2048 * self.MIB,
+             4096 * self.MIB))
+
+    def test_an_equal_hard_limit_is_the_single_attempt(self):
+        self.assertEqual(
+            MC.data_limit_attempts(512 * self.MIB, 512 * self.MIB),
+            (512 * self.MIB,))
+
+    def test_a_smaller_hard_limit_clamps_the_request_to_it(self):
+        # The R4-S2 shape: the request may never exceed
+        # the allowable maximum the process inherited,
+        # and there is nothing above it to ladder to.
+        self.assertEqual(
+            MC.data_limit_attempts(512 * self.MIB, 256 * self.MIB),
+            (256 * self.MIB,))
+
+    def test_a_zero_hard_limit_is_the_single_attempt_zero(self):
+        self.assertEqual(MC.data_limit_attempts(512 * self.MIB, 0),
+                         (0,))
+
+    def test_a_non_power_of_two_request_caps_by_doubling(self):
+        self.assertEqual(MC.data_limit_attempts(100, 1000),
+                         (100, 200, 400, 800, 1000))
+        self.assertEqual(MC.data_limit_attempts(3, -1),
+                         (3, 6, 12, 24, 48, 96, 192))
+
+    def test_the_requested_field_must_be_a_positive_integer(self):
+        for bad in (0, -1, -512, True, False, "512", 1.5, None):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.data_limit_attempts(bad, -1)
+
+    def test_the_hard_field_must_be_unlimited_or_nonnegative(self):
+        for bad in (-2, -100, True, False, "inf", 1.5, None):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.data_limit_attempts(512 * self.MIB, bad)
+
+    def test_random_pairs_keep_the_ladder_invariants(self):
+        rng = random.Random(20261112)
+        ran = 0
+        for _ in range(400):
+            requested = rng.choice(
+                (1, 2, 3, 7, 100, 512 * self.MIB,
+                 rng.randrange(1, 10 ** 12)))
+            inherited = rng.choice(
+                (-1, 0, 1, requested - 1 if requested > 1 else 0,
+                 requested, requested + 1,
+                 rng.randrange(0, 10 ** 12)))
+            attempts = MC.data_limit_attempts(requested, inherited)
+            ran += 1
+            cap = inherited if inherited != -1 else requested * 64
+            self.assertEqual(attempts[-1], cap, (requested, inherited))
+            self.assertTrue(
+                all(a < b for a, b in zip(attempts, attempts[1:])),
+                (requested, inherited, attempts))
+            self.assertTrue(all(a <= cap for a in attempts))
+            self.assertEqual(
+                attempts[0],
+                requested if inherited == -1
+                else min(requested, inherited))
+            if inherited == -1:
+                self.assertLessEqual(len(attempts), 7)
+        self.assertEqual(ran, 400)
+
+    def test_the_shim_text_carries_the_same_rule(self):
+        # The shim runs as interpreter text with no module
+        # to import, so its computation is inline text; the
+        # fragments that carry the rule are pinned here
+        # beside the pure function's own tests.
+        src = MC.LIMIT_SHIM_SOURCE
+        self.assertIn("resource.getrlimit", src)
+        self.assertIn("resource.RLIM_INFINITY", src)
+        # The pair it sets keeps the inherited hard limit:
+        # (_soft, _max), never (_soft, _soft) or (limit, limit).
+        self.assertIn("resource.setrlimit(_r, (_soft, _max))", src)
+        self.assertNotIn("(limit, limit)", src)
+        # The ladder: a refusal below the cap doubles.
+        self.assertIn("_soft = min(_soft * 2, _cap)", src)
+        self.assertIn("limit * 64", src)
+
+    # The executed half. Each driver runs in its own
+    # process, because a hard limit lowered or a resource
+    # seam scripted there must never touch this suite's
+    # own process.
+
+    _FLOOR_DRIVER = (
+        "import resource, sys\n"
+        "floor = int(sys.argv[1])\n"
+        "hard = int(sys.argv[2])\n"
+        "if hard >= 0:\n"
+        "    resource.setrlimit(resource.RLIMIT_DATA, (hard, hard))\n"
+        "real_set = resource.setrlimit\n"
+        "def fake_set(r, pair):\n"
+        "    if pair[0] < floor:\n"
+        "        raise ValueError('current limit exceeds "
+        "maximum limit')\n"
+        "    return real_set(r, pair)\n"
+        "resource.setrlimit = fake_set\n"
+        "src = open(sys.argv[3], encoding='utf-8').read()\n"
+        "job = ('import resource\\n'\n"
+        "       'print(\\'JOB-RAN\\', '\n"
+        "       'resource.getrlimit(resource.RLIMIT_DATA))\\n')\n"
+        "sys.argv = ['-c', str(512 * 1024 * 1024), '-', "
+        "sys.executable, '-c', job]\n"
+        "exec(compile(src, 'hp-shim', 'exec'))\n"
+    )
+
+    def _run_floor_driver(self, floor, hard=-1):
+        with tempfile.TemporaryDirectory() as tmp:
+            shim_path = os.path.join(tmp, "shim-source.txt")
+            with open(shim_path, "w", encoding="utf-8") as fh:
+                fh.write(MC.LIMIT_SHIM_SOURCE)
+            return subprocess.run(
+                [sys.executable, "-c", self._FLOOR_DRIVER,
+                 str(floor), str(hard), shim_path],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=60)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_the_shim_climbs_past_a_current_usage_floor(self):
+        # R4-S1 executed against a scripted seam: any soft
+        # limit below a 768 MiB floor is refused with the
+        # fourth verdict's own error text; the ladder's
+        # second attempt (1 GiB) is accepted and the job
+        # runs carrying exactly it, hard still unlimited.
+        done = self._run_floor_driver(768 * self.MIB)
+        self.assertEqual(done.returncode, 0,
+                         done.stderr.decode("utf-8", "replace"))
+        self.assertIn(b"JOB-RAN (1073741824, -1)", done.stdout)
+        self.assertNotIn(b"hp-shim", done.stderr)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_the_shim_refuses_when_the_floor_stands_above_the_cap(self):
+        done = self._run_floor_driver(2 ** 40)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn(
+            b"hp-shim: could not set the data-size limit: "
+            b"current limit exceeds maximum limit", done.stderr)
+        self.assertNotIn(b"JOB-RAN", done.stdout)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_the_shim_refuses_when_the_floor_stands_above_the_hard_limit(self):
+        # A finite inherited hard limit caps the ladder at
+        # itself: a floor above it leaves no allowable
+        # value, and the spawn refuses rather than asking
+        # for a soft limit above the hard limit.
+        done = self._run_floor_driver(768 * self.MIB, hard=256 * self.MIB)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn(b"hp-shim: could not set the data-size limit",
+                      done.stderr)
+        self.assertNotIn(b"JOB-RAN", done.stdout)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_the_shim_clamps_to_a_lowered_inherited_hard_limit(self):
+        # R4-S2 executed with the real resource module: a
+        # driver lowers its own hard data limit to
+        # 256 MiB, and the shim it then spawns -- which
+        # inherits that hard limit -- runs the job, whose
+        # read-back is the clamped pair (256 MiB, 256 MiB).
+        # The pre-fix shim refused here by name and the
+        # job never ran.
+        driver = (
+            "import resource, subprocess, sys\n"
+            "cap = 256 * 1024 * 1024\n"
+            "resource.setrlimit(resource.RLIMIT_DATA, (cap, cap))\n"
+            "done = subprocess.run(\n"
+            "    [sys.executable, '-c', %r,\n"
+            "     str(512 * 1024 * 1024), '-', sys.executable,\n"
+            "     '-c', 'import resource; print(\\'JOB-RAN\\', '\n"
+            "     'resource.getrlimit(resource.RLIMIT_DATA))'],\n"
+            "    stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n"
+            "sys.stdout.buffer.write(done.stdout)\n"
+            "sys.stderr.buffer.write(done.stderr)\n"
+            "sys.exit(done.returncode)\n"
+        ) % (MC.LIMIT_SHIM_SOURCE,)
+        done = subprocess.run(
+            [sys.executable, "-c", driver],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=60)
+        self.assertEqual(done.returncode, 0,
+                         done.stderr.decode("utf-8", "replace"))
+        self.assertIn(b"JOB-RAN (268435456, 268435456)", done.stdout)
+
+
 class SandboxArgvFieldTest(unittest.TestCase):
     """build_sandbox_argv: the composed spawn argv."""
 
@@ -1006,19 +1226,37 @@ class LiveBackendTest(unittest.TestCase):
         # address-space limit is below the startup mappings of
         # every macOS process and aborted the exec'd
         # interpreter at -6 in the first live run (supposition
-        # S1). The job reads both back, in this order.
+        # S1). The applied soft value is re-pinned by the
+        # fourth fix (supposition R4-S3): it is exactly one
+        # of the values on the attempt ladder for the hard
+        # limit this test process itself inherits -- the
+        # requested ceiling when the host allows it, the
+        # inherited hard limit when that is smaller, a
+        # ladder value above the request when the kernel's
+        # current-usage floor (R4-S1) requires it -- the
+        # hard limit reads back unchanged, and the address
+        # space stays unlimited. The job reads all three
+        # back, in this order.
+        import resource
+        inherited_hard = resource.getrlimit(resource.RLIMIT_DATA)[1]
         with tempfile.TemporaryDirectory() as work:
             proc = MC.spawn_confined_process(
                 [sys.executable, "-c",
                  "import resource\n"
                  "print(resource.getrlimit(resource.RLIMIT_DATA)[0])\n"
+                 "print(resource.getrlimit(resource.RLIMIT_DATA)[1])\n"
                  "print(resource.getrlimit(resource.RLIMIT_AS)[0])\n"],
                 cwd=work, env=dict(os.environ))
             out, _err = proc.communicate(timeout=30)
             proc.close()
             limits = [int(x) for x in out.decode().split()]
-            self.assertEqual(
-                limits, [MC.DEFAULT_PROCESS_MEMORY_BYTES, -1])
+            self.assertEqual(len(limits), 3)
+            self.assertIn(
+                limits[0],
+                MC.data_limit_attempts(
+                    MC.DEFAULT_PROCESS_MEMORY_BYTES, inherited_hard))
+            self.assertEqual(limits[1], inherited_hard)
+            self.assertEqual(limits[2], -1)
 
     def test_a_native_binary_runs_inside_the_profile(self):
         # The full confined chain (profile, shim, limits)
@@ -1129,14 +1367,25 @@ class LiveBackendTest(unittest.TestCase):
     def test_the_memory_ceiling_refuses_a_700mb_job(self):
         # The data-size ceiling is a real ceiling, not a
         # read-back: a job that tries to allocate and touch
-        # 700 MiB -- past the 512 MiB limit -- does not
-        # complete the allocation, and the refusal is the
-        # ceiling's (a MemoryError), not a failure to start.
+        # 256 MiB past its own applied limit -- 768 MiB
+        # against the 512 MiB request on a host that
+        # applies it exactly, which is the shape this point
+        # was first written with -- does not complete the
+        # allocation, and the refusal is the ceiling's (a
+        # MemoryError), not a failure to start. The size is
+        # read from the job's own limit (re-pinned by the
+        # fourth fix, supposition R4-S3), because the
+        # applied value is the ladder's, not always the
+        # requested one.
         with tempfile.TemporaryDirectory() as work:
             proc = MC.spawn_confined_process(
                 [sys.executable, "-c",
-                 "a = bytearray(700 * 1024 * 1024); "
-                 "a[::4096] = b'1' * 179200; print('MEM-DONE')"],
+                 "import resource\n"
+                 "lim = resource.getrlimit(resource.RLIMIT_DATA)[0]\n"
+                 "n = lim + 256 * 1024 * 1024\n"
+                 "a = bytearray(n); "
+                 "a[::4096] = b'1' * ((n + 4095) // 4096); "
+                 "print('MEM-DONE')"],
                 cwd=work, env=dict(os.environ))
             out, err = proc.communicate(timeout=60)
             rc = proc.returncode
