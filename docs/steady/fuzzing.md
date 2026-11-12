@@ -92,16 +92,16 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 7,178 lines; the core around it is
-57,360. The set as assembled, part by part (re-measured
+57,433. The set as assembled, part by part (re-measured
 2026-11-12):
 
 - runner/ops: 21,431 lines
-- runner/tools: 9,832
+- runner/tools: 9,857
 - runner/wire: 9,033
 - runner/runner.py: 7,178
 - runner/oracle: 5,055
 - runner/transport_extensions: 2,775
-- runner/guard: 5,448
+- runner/guard: 5,496
 - runner/cloud: 2,049
 - runner/hosting: 1,704
 - runner/__init__.py: 23
@@ -109,7 +109,7 @@ The runner proper is 7,178 lines; the core around it is
 
 The canonical list's breakdown is the same except
 runner/tools, where the 3 excluded suite runners account
-for 984 of the lines, leaving 8,848 in the canonical list.
+for 984 of the lines, leaving 8,873 in the canonical list.
 The tool prints the
 canonical breakdown live, beside the totals.
 
