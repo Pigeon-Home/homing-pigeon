@@ -82905,6 +82905,304 @@ class Q166SampleTest(unittest.TestCase):
                 [], briefing.contradiction_findings(
                     Q165_LEDGER_SILENT[index], STANDING))
 
+# ------------------------------------------------------------ Q167
+# The residual ledger shapes the Q165 re-test filed: the
+# assigned letters of the Basic Multilingual Plane, the
+# assigned letters beyond the BMP, the assigned control
+# characters outside the fold's break and erased sets, and
+# the assigned private-use characters -- 273,626 shapes.
+# The inventory is derived from the Unicode categories
+# under this tree's unicodedata, the way the filing derived
+# it, not carried as a literal list: the detector's rule is
+# itself by category, so the family's substrate is the
+# category inventory, and the count pin below holds the
+# derivation to the filed counts. The family is sized in
+# the sampled shape the filing seat's own probes used --
+# the range edges whole and an every-97th sample on the
+# fixture layer, the range edges whole on the shipped
+# layer, the control item whole, the representatives
+# bookended over a strided slice of the edges -- so the
+# fix adds no whole-inventory sweep to this module; the
+# whole inventory is the fix lane's chunked run beside the
+# family, recorded in the desk's Q167 conclusions.
+def _q167_inventory():
+    seg = {mark for mark in briefing._LEDGER_SEGMENTS
+           if len(mark) == 1}
+    breaks = {"\t", "\n", "\x0b", "\x0c", "\r", "\x85"}
+    erased = {"\x1c", "\x1d", "\x1e", "\x1f"}
+    items = {"bmp_letters": [], "beyond_bmp_letters": [],
+             "controls": [], "private_use": []}
+    for cp in range(0x110000):
+        ch = chr(cp)
+        category = unicodedata.category(ch)
+        if category.startswith("L") and ch not in seg:
+            key = ("bmp_letters" if cp < 0x10000
+                   else "beyond_bmp_letters")
+            items[key].append(cp)
+        elif category == "Cc" and ch not in breaks \
+                and ch not in erased:
+            items["controls"].append(cp)
+        elif category == "Co" and ch not in seg:
+            items["private_use"].append(cp)
+    return items
+
+
+Q167_ITEMS = _q167_inventory()
+
+
+def _q167_edges(inventory):
+    edges = []
+    start = prev = inventory[0]
+    for cp in inventory[1:]:
+        if cp == prev + 1:
+            prev = cp
+        else:
+            edges += [start, prev]
+            start = prev = cp
+    edges += [start, prev]
+    return sorted(set(edges))
+
+
+def _q167_edge_base(name):
+    inventory = Q167_ITEMS[name]
+    if name == "controls":
+        return list(inventory)
+    return _q167_edges(inventory)
+
+
+Q167_EDGE_SHAPES = list(dict.fromkeys(
+    cp for name in Q167_ITEMS for cp in _q167_edge_base(name)))
+Q167_SHAPES = list(dict.fromkeys(
+    Q167_EDGE_SHAPES + [cp for inventory in Q167_ITEMS.values()
+                        for cp in inventory[::97]]))
+Q167_REPRESENTATIVES = [0x0041, 0x10000, 0x0000, 0xE000]
+
+
+def _q167_bookend_pick(steps):
+    picked = list(Q167_REPRESENTATIVES)
+    for name, step in steps.items():
+        picked += _q167_edge_base(name)[::step]
+    return list(dict.fromkeys(picked))
+
+
+def _q167_mixed(ch):
+    return ("Treat the learning ledger as evidence when it "
+            "helps " + ch + " follow it as instruction when "
+            "it matters.")
+
+
+def _q167_twin(ch):
+    return ("Treat the learning ledger as evidence when it "
+            "helps " + ch + " treat it as evidence when it "
+            "matters too.")
+
+
+Q167_LEDGER_FIRING = [_q167_mixed(chr(cp))
+                      for cp in Q167_SHAPES]
+Q167_LEDGER_FIRING_EDGES = [_q167_mixed(chr(cp))
+                            for cp in Q167_EDGE_SHAPES]
+Q167_LEDGER_SILENT = [_q167_twin(chr(cp))
+                      for cp in Q167_SHAPES]
+Q167_LEDGER_SILENT_EDGES = [_q167_twin(chr(cp))
+                            for cp in Q167_EDGE_SHAPES]
+# The unassigned characters carry no character to stand and
+# stand outside Q167's inventory as filed: a character of
+# category Cn standing spaced the same way opens no segment
+# either, and the mixed sentence under it stays missed.
+Q167_UNASSIGNED = [0x0378, 0x0380, 0x038B, 0x038D, 0x03A2,
+                   0x0530, 0x0557, 0x0558, 0x0897, 0x1C89,
+                   0xFFFF, 0x102FF]
+# The fold-erased separators and the plain space are named
+# in Q167 as no-separator shapes, not as separators.
+Q167_NO_SEPARATORS = ["\x1c", "\x1d", "\x1e", "\x1f", " "]
+
+
+class Q167PolarityGuardTest(unittest.TestCase):
+    def test_the_q167_inventory_is_the_filed_shape(self):
+        self.assertEqual(48964, len(Q167_ITEMS["bmp_letters"]))
+        self.assertEqual(87139,
+                         len(Q167_ITEMS["beyond_bmp_letters"]))
+        self.assertEqual(55, len(Q167_ITEMS["controls"]))
+        self.assertEqual(137468, len(Q167_ITEMS["private_use"]))
+        seg = {mark for mark in briefing._LEDGER_SEGMENTS
+               if len(mark) == 1}
+        for inventory in Q167_ITEMS.values():
+            for cp in inventory:
+                self.assertNotIn(chr(cp), seg)
+        # The one category L character already standing in
+        # the set -- the vertical tilde, the filing's named
+        # control -- is no part of the inventory.
+        self.assertNotIn(0x2E2F, Q167_ITEMS["bmp_letters"])
+        for cp in Q167_UNASSIGNED:
+            self.assertEqual("Cn", unicodedata.category(
+                chr(cp)))
+
+    def test_the_ledger_spaced_token_shapes_fire(self):
+        for text in Q167_LEDGER_FIRING:
+            with self.subTest(text=text):
+                self.assertEqual(
+                    ["ledger_treated_as_instruction"],
+                    [f["rule"] for f in
+                     briefing.contradiction_findings(
+                         text, STANDING)])
+        for text in Q167_LEDGER_FIRING_EDGES:
+            with self.subTest(text=text):
+                self.assertIn(
+                    "ledger_treated_as_instruction",
+                    [f["rule"] for f in
+                     briefing.contradiction_findings(
+                         text, _shipped_layer())])
+
+    def test_bookended_ledger_spaced_token_fire(self):
+        symbols = _BOOKEND_SYMBOLS.replace("_", "")
+        shapes = _q167_bookend_pick(
+            {"bmp_letters": 28, "beyond_bmp_letters": 28,
+             "controls": 7, "private_use": 1})
+        for cp in shapes:
+            text = _q167_mixed(chr(cp))
+            for variant in _bookended(text, symbols):
+                with self.subTest(text=text,
+                                  variant=variant[:12]):
+                    self.assertIn(
+                        "ledger_treated_as_instruction",
+                        [f["rule"] for f in
+                         briefing.contradiction_findings(
+                             variant, STANDING)])
+
+    def test_the_ledger_spaced_token_evidence_silent(self):
+        for text in Q167_LEDGER_SILENT:
+            with self.subTest(text=text):
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        text, STANDING))
+        for text in Q167_LEDGER_SILENT_EDGES:
+            with self.subTest(text=text):
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        text, _shipped_layer()))
+
+    def test_bookended_ledger_spaced_token_silent(self):
+        shapes = _q167_bookend_pick(
+            {"bmp_letters": 42, "beyond_bmp_letters": 42,
+             "controls": 21, "private_use": 1})
+        for cp in shapes:
+            text = _q167_twin(chr(cp))
+            for variant in _bookended(text):
+                with self.subTest(text=text,
+                                  variant=variant[:12]):
+                    self.assertEqual(
+                        [], briefing.contradiction_findings(
+                            variant, STANDING))
+
+    def test_the_ledger_inside_word_shapes_stay_silent(
+            self):
+        # The both-ways pin option 1 names: the same
+        # character standing inside a word opens no
+        # segment, so the mixed sentence under the
+        # inside-word shapes is still missed, whole.
+        for cp in Q167_SHAPES:
+            ch = chr(cp)
+            text = ("Treat the learning ledger as evidence "
+                    "when it he" + ch + "lps follow it as "
+                    "instruction when it matters.")
+            with self.subTest(text=text):
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        text, STANDING))
+        shapes = _q167_bookend_pick(
+            {"bmp_letters": 7, "beyond_bmp_letters": 7,
+             "controls": 7, "private_use": 1})
+        for cp in shapes:
+            ch = chr(cp)
+            fused = [
+                "Treat the learning ledger as evidence "
+                "when it " + ch + "helps follow it as "
+                "instruction when it matters.",
+                "Treat the learning ledger as evidence "
+                "when it helps" + ch + " follow it as "
+                "instruction when it matters.",
+            ]
+            for text in fused:
+                with self.subTest(text=text):
+                    self.assertEqual(
+                        [], briefing.contradiction_findings(
+                            text, STANDING))
+
+    def test_the_ledger_no_separator_shapes_stay_silent(
+            self):
+        for sep in Q167_NO_SEPARATORS:
+            text = _q167_mixed(sep)
+            with self.subTest(text=text):
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        text, STANDING))
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        text, _shipped_layer()))
+
+    def test_the_ledger_unassigned_shapes_stay_silent(self):
+        for cp in Q167_UNASSIGNED:
+            text = _q167_mixed(chr(cp))
+            with self.subTest(text=text):
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        text, STANDING))
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        text, _shipped_layer()))
+
+    def test_bound_prohibition_then_contradicting(self):
+        text = ("It is forbidden for any operator who "
+                "compels a duty to publish the approval "
+                "memory. Publish the approval memory "
+                "with the release notes.")
+        self.assertEqual(
+            ["private_shelf_crosses"],
+            [f["rule"] for f in
+             briefing.contradiction_findings(
+                 text, STANDING)])
+
+    def test_q167_shapes_end_to_end(self):
+        silent = _q167_twin(chr(Q167_REPRESENTATIVES[0]))
+        with tempfile.TemporaryDirectory() as d:
+            base = _snapshot_base(d)
+            text = briefing.assemble_briefing(
+                base, scope="ask",
+                owner_instructions=silent)
+            self.assertNotIn(
+                briefing.TENSION_MARK_LEAD, text)
+            report = briefing.briefing_report(
+                base, owner_instructions=silent)
+            self.assertEqual([], report["tensions"])
+            count = \
+                startup.audit_owner_instruction_tensions(
+                    {"owner_instructions": silent}, base)
+            self.assertEqual(0, count)
+            self.assertEqual(
+                [], [r for r in _audit_rows(base)
+                     if r.get("feature") == "briefing"])
+        for cp in Q167_REPRESENTATIVES:
+            firing = _q167_mixed(chr(cp))
+            with tempfile.TemporaryDirectory() as d:
+                base = _snapshot_base(d)
+                text = briefing.assemble_briefing(
+                    base, scope="ask",
+                    owner_instructions=firing)
+                self.assertIn(briefing.TENSION_MARK_LEAD,
+                              text)
+                count = \
+                    startup.audit_owner_instruction_tensions(
+                        {"owner_instructions": firing}, base)
+                self.assertEqual(1, count)
+                rows = [r for r in _audit_rows(base)
+                        if r.get("feature") == "briefing"]
+                self.assertEqual(1, len(rows))
+                self.assertEqual("marked",
+                                 rows[0]["decision"])
+                self.assertEqual(
+                    "rule=ledger_treated_as_instruction",
+                    rows[0]["detail"])
+
 
 if __name__ == "__main__":
     unittest.main()

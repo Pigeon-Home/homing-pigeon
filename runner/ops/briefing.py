@@ -68,6 +68,7 @@ does not fire on an evidence complement.
 import json
 import os
 import re
+import unicodedata
 
 ORACLE_LAYER_PATH = "docs/steady/oracle/instructions.md"
 SNAPSHOT_INDEX = "PROJECT-SNAPSHOT.md"
@@ -3420,7 +3421,19 @@ def _ledger_complement_is_evidence(owner, match):
     over the assigned symbols, marks and numbers
     of the whole of Unicode as Q165's inventory
     reads it, beside its completeness over the
-    assigned punctuation)):
+    assigned punctuation)) -- and by Q167, where a
+    character of category L, Cc or Co standing as
+    its own spaced token opens a segment too (the
+    assigned letters of the Basic Multilingual
+    Plane and beyond it, the assigned control
+    characters outside the fold's break and erased
+    sets, and the assigned private-use characters),
+    while the same character standing inside a word
+    opens none: the widening this round is by
+    category and standing, not by set membership,
+    because a letter stands inside every word and
+    the set's last-occurrence scan would cut every
+    clause at its own letters:
     an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
@@ -3441,6 +3454,40 @@ def _ledger_complement_is_evidence(owner, match):
             seg = max(seg, run.end())
         for run in re.finditer("−+", low):
             seg = max(seg, run.end())
+        # Q167: a character of category L, Cc or Co
+        # standing as its own spaced token opens a
+        # segment too. The scan reads the match's own
+        # tokens, not the set: a token is one run of
+        # non-space characters, it qualifies only when
+        # it is a single such character with a space on
+        # either side of it, and the same character
+        # fused inside a word is part of that word's
+        # token and opens none. The token lists of the
+        # match and of its lowercased form align one to
+        # one (lowercasing neither adds nor removes
+        # whitespace), so the boundary is read off the
+        # lowercased token's end; where they do not
+        # align, the lowercased tokens are read as they
+        # stand.
+        text_tokens = list(re.finditer(r"\S+", text))
+        low_tokens = list(re.finditer(r"\S+", low))
+        if len(text_tokens) == len(low_tokens):
+            pairs = zip(text_tokens, low_tokens)
+        else:
+            pairs = zip(low_tokens, low_tokens)
+        for own_tok, low_tok in pairs:
+            tok = own_tok.group(0)
+            if len(tok) != 1:
+                continue
+            if own_tok.start() == 0 \
+                    or own_tok.end() == len(text) \
+                    or text[own_tok.start() - 1] != " " \
+                    or text[own_tok.end()] != " ":
+                continue
+            category = unicodedata.category(tok)
+            if category.startswith("L") \
+                    or category in ("Cc", "Co"):
+                seg = max(seg, low_tok.end())
         segment = _words(low[seg:])
         seg_triggers = [i for i, word in enumerate(segment)
                         if word in _LEDGER_TRIGGERS]
