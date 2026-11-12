@@ -17787,3 +17787,141 @@ behaviour is claimed beyond what those logs
 show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+## Q136 shard-7 follow-on: suppositions, recorded before the measurement (2026-11-11)
+
+The shard-5 follow-on of 3:37 PM PST landed, and
+the wall-clock family moved again. Verified
+first-hand by this lane from the build-windows
+job logs: on the follow-on head (build run
+43121351485) all 28 shards produced verdicts and
+none exited 124 -- shard 0 (test_de_dust_corpus
+alone) OK in 380.5 seconds, shard 5 OK in 534.1
+seconds. On the 3.16.20.5 release head (build
+run 43121516173, completed failure),
+build-windows read: shard 0 OK in 624.3 seconds,
+shard 5 OK in 839.4 seconds, shard 7 FAILED exit
+124 at 1,201.4 seconds. In both runs shard 11
+failed the follow-on's own bound test,
+test_low_profile.RunTextBoundTest
+.test_a_grandchild_holding_the_pipe_cannot_hold_the_caller,
+with AssertionError 30.07 not less than 15 on
+the follow-on head and 30.14 not less than 15
+on the release head. This lane's scope is only
+those two items; the other failing shards in
+both runs (the oracle-timeout family, the
+test_macos_confine SandboxArgvFieldTest errors,
+and the core and doc-drift guards) belong to
+other lanes and are named, not chased, in this
+lane's closing record.
+
+Suppositions, written before any local timing,
+estimator run or fix in this lane:
+
+- Q136-S7-S1 (shard 7 is a single-test hang, not
+  aggregate creep): shard 7 packs 16 modules at
+  about 707 seconds against the 720-second
+  budget, in family with its sibling shards,
+  which completed at 836 to 853 seconds on the
+  release head (about 1.19x packed). The
+  suite's kill dump is expected to name one
+  running test, as the shard-5 dump did, and
+  that test's tabled price (tens of seconds) is
+  expected to be nowhere near the wall: the
+  shard's packed load does not explain a
+  1,201.4-second kill, and a re-pack is NOT the
+  expected fix. If the dump instead shows the
+  shard mid-list with many modules unrun, this
+  supposition fails and the re-pack follows.
+- Q136-S7-S2 (the named test is the ctrl_c test
+  again, by a race): the kill dump is expected
+  to name test_runner_last_edges
+  .RunnerFailSoftLegs6Test.test_oracle_cli_ctrl_c
+  -- the same test the shard-5 dump named, now
+  riding in shard 7 -- with its main thread
+  inside a subprocess communicate reached from
+  the deterministic Oracle answer. The mechanism
+  this lane expects: the test scripts
+  record_oracle_turn to raise KeyboardInterrupt
+  on its second call and feeds oracle_cli an
+  input function that answers "status?" forever,
+  so the ONLY exit is that interrupt landing on
+  the main thread. A background oracle-server
+  request thread calling the same mocked
+  function can consume the counted interrupt
+  (KeyboardInterrupt in a non-main thread is
+  printed and the thread dies; the main thread
+  never sees it), after which the loop has no
+  exit at all and re-computes the deterministic
+  answer, registry snapshot included, until the
+  wall. The shard-7 output is expected to carry
+  the server thread's KeyboardInterrupt
+  traceback as evidence. The fix this supports
+  is at the test's seam: the interrupt must be
+  deliverable only on the main thread, and the
+  scripted input must carry a finite backstop,
+  so no interleaving can leave the loop exitless.
+- Q136-S7-S3 (a second unbounded seam stands in
+  the same path): runner/ops/windows.py's
+  _reg_query (in the kill dump's stack in the
+  shard-5 record) and _wevtutil_query still call
+  subprocess.run with a timeout. On Windows,
+  CPython's run() answers a timeout by killing
+  the child and calling communicate() with NO
+  timeout to collect output; that collect joins
+  the pipe reader threads unbounded, so a pipe
+  held open past the kill hangs the caller --
+  the exact family the shard-5 follow-on removed
+  from _run_text, still standing in the two
+  Windows probes the deterministic answer walks
+  through (registry watch and event-log tail).
+  The fix this supports: both probes read
+  through the bounded _run_text seam like the
+  firewall and AV probes already do.
+- Q136-S7-S4 (the bound test's 30 seconds is
+  the abandon path, not the waits): for
+  test_a_grandchild_holding_the_pipe, the
+  elapsed 30.07 and 30.14 seconds are, to the
+  overhead, exactly the grandchild's 30-second
+  sleep. The two communicate waits in
+  runner/ops/av.py's _run_text are both bounded
+  (the probe timeout, then the 2-second grace)
+  and on Windows each is a reader-thread join
+  bounded by its remaining time, so neither wait
+  is expected to be the leak. The unbounded step
+  is expected to be the abandon path's
+  stream.close() calls: on Windows the
+  communicate reader thread sits inside
+  fh.read() on the very stream object being
+  closed, and closing a buffered text stream
+  waits behind that read's lock until the pipe
+  reaches EOF -- which is the grandchild's exit
+  at 30 seconds. The fix this supports: after
+  the kill, wait for the PROCESS with a bounded
+  wait (which never touches the pipes) and
+  return None WITHOUT a second communicate and
+  WITHOUT closing the streams; the abandoned
+  pipes belong to daemon reader threads and to
+  the garbage collector, and no step on the
+  return path may touch them. What cannot be
+  reproduced on this Linux host (the Windows
+  reader-thread and stream-lock behaviour) is
+  to be pinned at the seams by unit tests and
+  stated plainly as CI-owed.
+- Q136-S7-S5 (local time is a proxy only, as
+  before): the ctrl_c test and the bound test
+  are both expected to pass quickly on this
+  Linux host at the current head (POSIX
+  communicate is selector-driven and bounded,
+  and the registry watch returns None off
+  Windows), so local green proves the seams,
+  not the Windows behaviour; the clearing proof
+  for both items remains the next completed
+  build-windows verdict on a head carrying this
+  lane's fixes. The 720-second budget and the
+  20-minute wall stand unchanged, and no
+  duration-table re-pack is expected to land
+  unless S1 fails.
+
+The measurement, the fixes, and the conclusions
+against these suppositions follow in this
+section.>>>>>>> 4935751c1 (desk: Q136 shard-7 follow-on suppositions, recorded before the measurement)
