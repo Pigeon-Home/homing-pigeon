@@ -18138,3 +18138,376 @@ behaviour is claimed beyond what those calls
 and that family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q160 re-test: suppositions of the filing seat, recorded before the re-test (2026-11-11)
+
+Q160 (filed by this seat's rule-8 re-test of
+Q158) was answered under option 1 by a fix lane
+(the suppositions recorded in the desk before
+the fix at 4:01 PM PST, 2026-11-11, the fix
+commit of 4:07 PM PST, the figures re-measure
+of 4:17 PM PST and the desk answer commit of
+4:21 PM PST). Rule 8: the fix lane does not
+close its own question. This section is the
+filing seat's suppositions for the re-test,
+written from the code read first-hand (the
+widened guard in `runner/ops/briefing.py` --
+`_clause_carries_infinitive`'s verb branch, on
+meeting a relative pronoun, truncating the
+governed span at the pronoun and, where the
+pronoun is "which" or "whom" and the truncated
+span ends in a preposition, setting a pied-piped
+lead aside: the span is cut at the last
+determiner standing in it (searched backwards
+from its penultimate word, the span's first
+word excluded), or, where no determiner stands
+there and the span carries more than three
+words with no determiner ahead of its last
+three, its last three words are dropped and the
+remaining lead words ahead of the lead's noun
+are then dropped one by one while the phrase
+left standing ahead of them carries no judged
+head at its tail (neither a noun of the
+complement's closed standing nor a person or
+object head) and at least the governed phrase's
+own two words still stand, its last two words
+(the lead's noun and the preposition) being
+dropped where the three-word set-aside does not
+apply, and the phrase standing ahead of the
+lead is then judged by the filed branches;
+`_fold` reading the Kaithi number signs
+(U+110BD and U+110CD) and the
+variation-selector characters beyond the BMP
+(U+E0100 to U+E01EF) as clause boundaries beside
+the ranges it already read; and
+`_LEDGER_SEGMENTS` gaining the 18 remaining
+general-punctuation separators (the undertie
+through the dotted cross) and opening at the
+supplemental punctuation block's 10 separators
+(the right angle substitution marker through
+the vertical six dots) -- and the
+Q160PolarityGuardTest family in
+`runner/tests/test_briefing_contradiction.py`),
+the filed Q160 entry, the fix lane's
+suppositions and conclusions, and this seat's
+own code read, before any verdict probe or test
+in this lane is run; the re-test's conclusions
+stand at the end of this section when the lane
+lands. The lane starts from a fresh scratch
+clone from remote main at a head carrying the
+Q160 landing (the desk answer commit of
+4:21 PM PST in its history, under the README
+commit of 4:24 PM PST, the remote head verified
+by foreground `git ls-remote` in the same call
+as the clone). The six trees of the measurement:
+the current head; the pre-Q160-fix detector
+(the tree at the fix commit's parent); the
+pre-Q158-fix detector (the tree at the Q158 fix
+commit's parent); the pre-Q157-fix detector
+(the tree at the Q157 fix commit's parent); the
+pre-Q156-fix detector (the tree at the Q156 fix
+commit's parent); and the pre-Q143-fix detector
+(the tree at the Q143 fix commit's parent),
+each verified from its own history. The ship
+lane's clones, its state file and the in-flight
+ship are not touched, and neither are the Q160
+fix lane's clone, the Q158 lanes' clones, the
+gates lanes' clones, the macOS lanes' clones or
+the Q136 lanes' files.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q160-RT-S1.** Item 1 stays silent, whole:
+  the 4 bound-edge phrases carrying a pied-piped
+  relative clause whose lead carries two words
+  ahead of its noun, with no determiner of its
+  own ("prompts a duty official certified record
+  of which is on file", "prompts a duty official
+  file record of which is on file", "prompts a
+  duty two official records of which are on
+  file", "prompts a duty recently filed record
+  of which is on file", each inside its filed
+  prohibition sentence), produce no findings on
+  the fixture layer and on the shipped layer, in
+  plain and bookended shapes (every symbol at
+  the front AND the back, runs included), beside
+  their composed silent shapes (an adjective-led
+  governed phrase and a possessive-led governed
+  phrase, each carrying the same two-word lead
+  -- 2 sentences, plain and bookended) and
+  beside the filed controls of the same family
+  that stay silent (the complement-verb twins of
+  the same 4 lead shapes and the determiner-led
+  two-word leads -- 6 sentences, plain and
+  bookended).
+- **Q160-RT-S2.** Items 2, 3 and 4 fire again,
+  whole: the ledger's mixed sentence under the
+  format characters beyond the BMP beyond every
+  range the fold read before this landing (the
+  Kaithi number signs U+110BD and U+110CD and
+  the variation-selector characters beyond the
+  BMP U+E0100, U+E0101 and U+E01EF -- 5 shapes),
+  under the general-punctuation separators
+  beyond the widened segment set (the undertie,
+  the character tie, the caret insertion point,
+  the left and right square brackets with quill,
+  the black leftwards and rightwards bullets,
+  the close up, the two asterisks aligned
+  vertically, the commercial minus sign, the
+  inverted undertie, the flower punctuation
+  mark, the dot punctuations, the four dot mark
+  and the dotted cross -- 18 shapes) and under
+  the supplemental punctuation block's
+  separators (the right angle substitution
+  marker, the raised interpolation marker, the
+  editorial coronis, the paragraphos, the
+  hypodiastole, the dotted obelos, the double
+  oblique hyphen, the ring point, the word
+  separator middle dot and the vertical six dots
+  -- 10 shapes) -- 33 shapes in all -- produces
+  exactly `ledger_treated_as_instruction` on
+  both layers, in plain and bookended shapes,
+  while the evidence-only twins under the new
+  shapes (one twin per firing shape, 33 in all)
+  stay silent.
+- **Q160-RT-S3.** Item 1's, item 2's, item 3's
+  and item 4's both-ways controls hold: the
+  filed controls fire whole beside the widening
+  (the pied-piped true object phrases of the
+  Q160 family, its filed forms and composed
+  shapes -- 4 sentences, plain and bookended,
+  both layers -- and the Q158 family's filed
+  controls beside them); and the silent controls
+  stay silent, plain and bookended, on both
+  layers -- the Q153 Answer's bound edge under
+  the unlisted verbs ("compels a duty", "sends a
+  clearance"), the earlier families' silent
+  controls (the bound edges, the complements
+  under complement verbs, the relative-clause,
+  "whose"-clause and pied-piped complements, the
+  passive shape and the same-standing control
+  beside the plain subject clause), with item
+  1's filed shapes crossed beside them.
+- **Q160-RT-S4.** The both-ways pins hold beside
+  the widening: the bound prohibition followed
+  by a contradicting sentence fires exactly the
+  contradicting rule, and the standing
+  unrelated-negation pins and the
+  negated-then-contradicting shapes hold, the
+  last two verified through the committed guard
+  family beside this seat's own probes.
+- **Q160-RT-S5.** All sixteen earlier families
+  hold whole beside the widening: the filed Q143
+  compliant corpus (14 sentences, both layers,
+  plain / bookended / joined) is silent and its
+  restating shapes are silent; the Q144, Q145,
+  Q146, Q147, Q148, Q149, Q150, Q151, Q152, Q153,
+  Q154, Q155, Q156, Q157, Q158 and Q159 families
+  read as they did; and the standing 7-rule
+  contradiction family fires whole, plain and
+  bookended.
+- **Q160-RT-S6.** End to end: item 1's
+  representative sentence ("prompts a duty
+  official certified record of which is on
+  file", in its filed prohibition sentence)
+  assembled into a briefing carries no mark,
+  names no tensions, and writes no audit row;
+  items 2, 3 and 4's representative sentences
+  (the Kaithi number sign shape, the undertie
+  shape and the right angle substitution marker
+  shape) and the pied-piped object
+  representative ("compels a crew official
+  certified members of which are on duty", in
+  its filed prohibition sentence) assembled into
+  briefings each carry their mark,
+  `briefing_report` names their tensions, and
+  the startup pass writes exactly their one
+  audit row (feature `briefing`, decision
+  `marked`, the rule id as the detail); and the
+  bound shape ("compels a duty", in its filed
+  prohibition sentence) assembled into a briefing
+  carries no tension mark, names no tensions,
+  and writes no audit row.
+- **Q160-RT-S7.** The guard family and the
+  neighbour batteries read green on the tested
+  head (the guard family 229 in all -- the 216
+  of the Q158 re-test beside the 13 of the new
+  Q160 family -- and the neighbour batteries
+  `test_oracle_briefing`, `test_posture_stamp`,
+  `test_protocol_v2*`, `test_v2_consult`,
+  `test_v2_replay`, `test_security_config` green
+  beside it, their count stated in the
+  conclusions), re-measured in the foreground by
+  this seat, not taken from the fix lane's
+  report. Red-before, re-derived by this seat
+  against the pre-Q160-fix detector (the tree at
+  the fix commit's parent): item 1's shapes fire
+  there and items 2, 3 and 4's shapes are silent
+  there, on both layers, plain and bookended,
+  and the guard family as it now stands reads
+  its failures against the pre-Q160-fix detector
+  in the new Q160PolarityGuardTest family alone
+  (the count stated in the conclusions; the fix
+  lane reported 3,183 subtest failures for the
+  new family against that detector). Against
+  the pre-Q158-fix detector, the pre-Q157-fix
+  detector and the pre-Q156-fix detector the
+  filed shapes read the way they read at those
+  landings (item 1's shapes fire and items 2, 3
+  and 4's shapes are silent, plain, both
+  layers); against the pre-Q143-fix detector
+  (the tree at the Q143 fix commit's parent)
+  item 1's, item 2's, item 3's and item 4's
+  shapes all fire again whole, as filed, and
+  the Q143 compliant corpus reads its marks
+  there.
+- **Q160-RT-S8.** This seat's own probes beyond
+  the filed corpus, in the shapes the widening
+  itself composes, hold as the Answer states, in
+  the first group: noun complements through a
+  two-word pied-piped lead composed otherwise --
+  a past form of the governing verb ("held a
+  credential official certified record of which
+  was on file"), a bare plural head ("holds
+  credentials official certified records of
+  which are on file"), a past inside clause
+  ("holds a credential official certified record
+  of which was filed"), and an adverb inside the
+  clause ("holds a credential official certified
+  record of which is currently on file"), each
+  inside its prohibition sentence -- stay silent
+  on both layers, plain and bookended; object
+  phrases through a two-word pied-piped lead
+  composed -- a past governing verb ("compelled
+  a crew official certified members of which
+  were on duty"), a bare plural head ("compels
+  crews official certified members of which are
+  on duty"), an adverb inside the clause
+  ("compels a crew official certified members of
+  which are currently on duty"), and a listed
+  verb ("deploys a crew official certified
+  members of which are on duty"), each inside
+  its prohibition sentence -- fire exactly
+  `private_shelf_crosses` on both layers, plain
+  and bookended; a pied-piped "whom" clause
+  carrying the same two-word lead ("prompts a
+  duty official certified officer by whom the
+  record was filed", inside its prohibition
+  sentence) stays silent on both layers, plain
+  and bookended; the filed ledger shapes in
+  their other spacings fire (a Kaithi number
+  sign standing spaced between the clauses, an
+  undertie standing unspaced between them, a
+  right angle substitution marker standing
+  unspaced between them); and the evidence-only
+  twin under a spaced Kaithi number sign stays
+  silent.
+- **Q160-RT-S9.** This seat's own probes beyond
+  the filed corpus, in the directions that are
+  shapes of the filed judgement, read as they
+  should, in a second group that names the
+  residual directions this seat will measure in
+  advance of any finding. (1) A governed phrase
+  carrying a pied-piped relative clause whose
+  lead carries a person head among the words
+  ahead of its noun, with no determiner of its
+  own: the Q160 set-aside drops the lead's words
+  one by one only while the phrase left standing
+  carries no person head at its tail, so a lead
+  whose first extra word is itself a person head
+  ("prompts a duty officer certified record of
+  which is on file", a two-word lead, and
+  "prompts a duty officer certified filed record
+  of which is on file", a three-word lead, each
+  inside its prohibition sentence) leaves "a
+  duty officer" standing as the judged phrase,
+  which the object-control branch reads by the
+  verb's own standing -- 2 shapes, which may
+  still be marked the way item 1 was marked
+  before the landing. Beside them, three control
+  shapes in the same family, expected to hold as
+  controls: the complement-verb twin ("holds a
+  credential officer certified record of which
+  is on file") stays silent, judged by its verb;
+  the determiner-led shape ("prompts a duty the
+  officer certified record of which is on file")
+  stays silent, the code cutting the span at
+  that determiner; and a true object phrase
+  carrying the same person word in its lead
+  ("compels a crew officer certified members of
+  which are on duty") fires whole -- 3 control
+  shapes in all. (2) The ledger's mixed sentence
+  under the variation-selector characters of the
+  BMP (U+FE00, U+FE08 and U+FE0F -- 3 shapes),
+  standing unspaced between the clauses the way
+  the filed format shapes stand -- the fold's
+  character ranges name the Mongolian free
+  variation selectors and the astral
+  variation-selector block, not this block, so
+  these shapes may still be missed the way item
+  2 was missed before the landing. (3) The
+  ledger's mixed sentence under a representative
+  span of the supplemental punctuation block
+  beyond the filed 10 (a right angle dotted
+  substitution marker U+2E01, a left substitution
+  bracket U+2E02, a right substitution bracket
+  U+2E03, a left dotted substitution bracket
+  U+2E04, a right dotted substitution bracket
+  U+2E05, a dotted transposition marker U+2E08,
+  a raised square U+2E0B, a tilde with ring above
+  U+2E1B, a left vertical bar with quill U+2E20
+  and a two dots over one dot punctuation
+  U+2E2A -- 10 shapes), standing spaced between
+  the clauses the way the filed separators stand
+  -- the segment set opens at none of these, so
+  these shapes may still be missed the same way.
+  (4) The ledger's mixed sentence under the
+  small forms (a small comma U+FE50, a small
+  semicolon U+FE54, a small colon U+FE55 and a
+  small question mark U+FE56 -- 4 shapes),
+  standing spaced between the clauses -- a
+  separator class the segment set has never
+  opened at, so these shapes may still be missed
+  the same way. If the full measurement confirms
+  a residual item in this second group, it is
+  filed as Q161 in the questions file (complete
+  entry: context, options, recommendation), this
+  seat does not fix it (rule 8), and Q160, Q158,
+  Q157, Q156, Q155, Q154, Q153, Q152, Q151, Q150,
+  Q149, Q148, Q147, Q146, Q145, Q144 and Q143 are
+  stated plainly as not closed. If everything
+  passes whole instead, Q160 is closed by this
+  re-test, and with it Q158, Q157, Q156, Q155,
+  Q154, Q153, Q152, Q151, Q150, Q149, Q148, Q147,
+  Q146, Q145, Q144 and Q143 per their entries'
+  closure logic (Q159 stands closed by its own
+  verdict seat and is not part of this chain's
+  closure).
+- **Q160-RT-S10.** The figures stand as
+  re-measured: the figures re-measure of
+  4:17 PM PST, carried on the 3.16.20.6 release
+  head's tree, re-measured the core over
+  `briefing.py`'s 114-line growth beside that
+  tree's own growth and names the Q160 fix in
+  the core's recorded re-measure entry in
+  `runner/ops/core.py`, and the canonical record
+  in
+  `docs/infrastructure-documents/project/statistics.md`
+  stands at the measure that re-measure carried,
+  verified by this seat from the record and the
+  core's own entry, with any growth landed after
+  that measure by other lanes stated plainly in
+  the conclusions rather than read as a Q160
+  residual.
+
+What cannot be recorded as a unit test, stated
+plainly in advance: the re-test's ad-hoc probes
+are live detector calls over the sentences
+named in this record and in the conclusions;
+their deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane runs whole. No new behaviour is
+claimed beyond what those calls and that family
+show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
