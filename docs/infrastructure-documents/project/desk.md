@@ -26470,3 +26470,428 @@ claimed beyond what those calls and that
 family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q167 re-test: suppositions of the filing
+seat, recorded before the re-test
+(2026-11-12)
+
+Q167 (filed by this seat's rule-8 re-test of
+Q165) was answered under option 1 by the fix
+commit of 8:51 AM PST, 2026-11-12 ("Q167: the
+briefing guard opens ledger segments at a
+spaced token of category L, Cc or Co — the
+assigned letters of the BMP and beyond it, the
+assigned controls outside the fold's break and
+erased sets and the assigned private-use
+characters (option 1)"), with the desk
+conclusions of the fix lane, completed by the
+completion lane, landed at 10:52 AM PST the
+same day. This re-test re-derives the filed
+scope from the Q167 entry itself, not from
+the fix lane's report, and it does not wait
+on any other record. Rule 8: neither the fix
+lane nor the completion lane closes the
+question they landed; the filing seat
+re-tests. This section is the filing seat's
+suppositions for the re-test, written from
+the code read first-hand (the spaced-token
+segment scan in `_ledger_complement_is_evidence`
+in `runner/ops/briefing.py` — a token of the
+match, one run of non-space characters,
+qualifies only when it is a single character
+with a space on either side of it and its
+Unicode category is L, Cc or Co; no character
+was added to `_LEDGER_SEGMENTS` this round,
+the tuple standing at 12,640 entries, 12,631
+of them single characters, verified by this
+seat at the tested head — and the
+Q167PolarityGuardTest family in
+`runner/tests/test_briefing_contradiction.py`),
+the filed Q167 entry, and this seat's own
+code read, before any verdict probe or test
+in this lane is run; the re-test's
+conclusions stand at the end of this section
+when the lane lands. The lane starts from a
+fresh scratch clone at
+`~/workspace/hp-q167-rt` (cloned direct from
+the remote, the remote head verified by
+foreground `git ls-remote` in the same call
+as the clone's own head check), at the head
+carrying the Q167 landing (the fix and the
+desk conclusions; `runner/ops/briefing.py`
+and `runner/tests/test_briefing_contradiction.py`
+are unchanged on that head since the fix,
+verified from the fix commit's diff). The
+trees of the measurement: the tested head
+(the current head, the commit of 10:52 AM
+PST, 2026-11-12, "desk: Q167 conclusions of
+the fix lane, completed by the completion
+lane; Q167 answered under option 1"); the
+pre-Q167-fix detector (the tree at the fix
+commit's parent, the 3.16.24.3 release head);
+and the pre-Q143-fix detector (the tree at
+the Q143 fix commit's parent, which carries
+no negation guard at all) beside it, each
+verified from its own history. The filed
+inventory is re-derived count for count from
+the Unicode categories under this tree's
+`unicodedata` 15.0.0, read against the
+segment set itself: 48,964 assigned BMP
+letters, 87,139 assigned letters beyond the
+BMP, 55 assigned control characters outside
+the fold's break and erased sets, and
+137,468 assigned private-use characters —
+273,626 shapes in all; the one category L
+character already standing in the set, the
+vertical tilde U+2E2F, is the filing's named
+control and no part of the inventory, and
+the category totals close (136,104 letters
+in all, 65 controls in all: the 55 beside
+the 6 break characters and the 4 erased
+separators). Every run in this lane sets its
+temporary directory to a scratch area on the
+workspace disk with real space (109 GB
+available at this lane's start, verified);
+a run that hits a space error is re-run
+clean and never counted. The ship lane's
+clones, its state file and the in-flight
+ship are not touched, and neither are the
+Q167 fix lane's clone, the Q165 lanes'
+clones or the macOS lanes' clones, and
+work/next is not touched or recreated.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q167-RT-S1.** Items 1, 2, 3 and 4 fire
+  again, whole: the ledger's mixed sentence
+  under the assigned letters of the Basic
+  Multilingual Plane (48,964 shapes, the
+  letter A U+0041 among the first of them),
+  under the assigned letters beyond the BMP
+  (87,139 shapes, the Linear B syllable
+  U+10000 among the first of them), under
+  the assigned control characters outside
+  the fold's break and erased sets (55
+  shapes, the null character U+0000 among
+  the first of them) and under the assigned
+  private-use characters (137,468 shapes,
+  U+E000 among the first of them) — 273,626
+  shapes in all, each standing as its own
+  spaced token between the clauses —
+  produces exactly
+  `ledger_treated_as_instruction` on the
+  fixture layer, whole, plain, and on the
+  shipped layer on the filing's own probe
+  shape (the range edges whole — the first
+  and last shape of every contiguous range:
+  677, 503, 55 whole and 6 shapes — and an
+  every-97th sample of 505, 899, 55 whole
+  and 1,418 shapes), and bookended (every
+  symbol at the front AND the back, runs
+  included) on the filing's bookended shape
+  (the every-7th range-edge sample: 7,081,
+  5,256, 4,015 bookended whole for the
+  control item and 438 variants).
+
+- **Q167-RT-S2.** The evidence-only twins
+  under the new shapes stay silent: one
+  twin per firing shape, silent on the
+  fixture layer on the same probe shape as
+  S1 (the range edges whole and the
+  every-97th sample, plain) and bookended
+  on the filing's bookended twin samples
+  (7,275, 5,400, 4,125 bookended whole for
+  the control item and 450 variants), and
+  silent on the shipped layer on the range
+  edges whole, plain.
+
+- **Q167-RT-S3.** The both-ways controls
+  hold beside the widening: the same
+  sentence joined by any standing or filed
+  separator or boundary fires on the tested
+  head whole (the filing's named controls —
+  the 170 assigned format characters, the
+  line and paragraph separators U+2028 and
+  U+2029, the 16 non-space space separators,
+  the 260 covered marks, the vertical tilde
+  U+2E2F, the spaced hyphen-minus and the
+  Arabic end of text mark U+061D — beside
+  the comma shape); the same character
+  standing inside a word opens no segment
+  (the four representatives fused inside
+  the clause's own word, fused on the left
+  and fused on the right, stay silent,
+  plain, on both layers, and bookended on
+  the filing's fused sample); the
+  fold-erased separators U+001C to U+001F
+  and the plain space U+0020 stay silent as
+  the no-separator shapes the filing names;
+  the unassigned shapes stay silent as the
+  filing names them (outside the inventory:
+  the fix family's twelve, beside a strided
+  sample of the BMP's unassigned
+  characters); a bound prohibition followed
+  by a contradicting sentence fires exactly
+  the contradicting rule; and the standing
+  unrelated-negation pins and the
+  negated-then-contradicting shapes hold,
+  the last three verified through the
+  committed guard family beside this seat's
+  own probes.
+
+- **Q167-RT-S4.** All twenty-two earlier
+  families hold whole beside the widening:
+  the filed Q143 compliant corpus is silent
+  and its restating shapes are silent; the
+  Q144, Q145, Q146, Q147, Q148, Q149, Q150,
+  Q151, Q152, Q153, Q154, Q155, Q156, Q157,
+  Q158, Q160, Q161, Q162, Q163, Q164 and
+  Q165 families read as they did; and the
+  standing 7-rule contradiction family
+  fires whole, plain and bookended — all
+  through the committed guard family run
+  whole beside this seat's own probes. The
+  segment set's completeness over the
+  assigned punctuation, symbols, marks and
+  numbers the chain filed stands as the
+  Q165 re-test verified it: of the assigned
+  characters of categories P, S, M and N,
+  only the hyphen-minus, the Arabic end of
+  text mark U+061D, the minus sign U+2212
+  and the 260 covered marks stand outside
+  the set's single characters, each firing
+  by its own named mechanism, re-verified
+  by this seat against the set itself
+  before this record was committed.
+
+- **Q167-RT-S5.** End to end: items 1, 2, 3
+  and 4's representative sentences (the
+  U+0041 shape, the U+10000 shape, the
+  U+0000 shape and the U+E000 shape)
+  assembled into briefings each carry their
+  mark, `briefing_report` names exactly
+  their rule, and the startup pass writes
+  exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule
+  id as the detail); and a representative
+  evidence-only twin assembled into a
+  briefing carries no mark, names no
+  tensions, and writes no audit row.
+
+- **Q167-RT-S6.** The guard family and the
+  neighbour batteries read green on the
+  tested head (the guard family 295 in all
+  — the 285 of the Q165 re-test beside the
+  10 of the new Q167 family — and the
+  neighbour batteries `test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2`,
+  `test_protocol_v2_messages`, `test_v2_consult`,
+  `test_v2_replay`, `test_security_config`
+  green beside it, their count stated in
+  the conclusions), re-measured in the
+  foreground by this seat with its
+  temporary directory on the workspace
+  disk, not taken from the fix lane's
+  reports. The two bookended sweeps of the
+  Q165 family are Q166's subject, sampled
+  on a push by that answer; where this
+  lane's whole-family run relies on them it
+  runs them as they stand and says so.
+
+- **Q167-RT-S7.** Red-before, re-derived by
+  this seat against the pre-Q167-fix
+  detector (the tree at the fix commit's
+  parent): items 1, 2, 3 and 4's shapes are
+  silent there, on the fixture layer on the
+  same probe shape as S1 (the range edges
+  whole and the every-97th sample, plain,
+  0 firing), the evidence-only twins stay
+  silent there, and the committed Q167
+  family as it now stands reads its
+  failures against that detector in the new
+  Q167PolarityGuardTest family alone (the
+  count stated in the conclusions; the fix
+  lane recorded 9,447 failing entries for
+  the new family against the unpatched
+  detector, and this seat re-derives that
+  count rather than taking it). Against
+  the pre-Q143-fix detector the filed
+  shapes read the way the Q167 entry filed
+  them (the range edges whole and the
+  every-97th sample firing plain there, on
+  the fixture layer).
+
+- **Q167-RT-S8.** This seat's own probes
+  beyond the filed corpus, in the shapes
+  the widening itself composes, hold as
+  the widening states, in a first group:
+  the clauses in their other order fire
+  (the instruction clause first and the
+  evidence clause second, joined by a
+  spaced token of each item — 4 sentences,
+  the representatives); a spaced token of
+  each item standing in the first clause
+  ahead of its evidence word, beside the
+  real separator token between the clauses,
+  does not disturb the firing (4 sentences,
+  the representatives, each firing exactly
+  `ledger_treated_as_instruction`); a
+  spaced token of each item standing inside
+  the second clause ahead of its trigger
+  word fires (4 sentences); two spaced
+  tokens of an item standing in a row
+  between the clauses fire (4 sentences);
+  and the representatives in their other
+  spacings fire (the token spaced by a tab
+  and a line feed, by a non-breaking space,
+  and by doubled plain spaces — the fold
+  reads each spacing as the token's own
+  spaces or as a boundary beside it). The
+  group's silent shapes hold as the
+  widening's own bound states: the filed
+  shapes in their unspaced form stay
+  silent (a character of an item fused
+  inside the clause's own word is the
+  inside-word shape of S3, not a separator
+  — where Q165's other-spacings group read
+  firing for its set characters, Q167's
+  reads silent, because this widening is
+  by standing, not by set membership); a
+  spaced token of an item standing in the
+  first clause ahead of its evidence word,
+  with no separator between the clauses,
+  stays silent (the token cuts too early to
+  separate the clauses, and the evidence
+  word still swallows the complement); and
+  a multi-character spaced token built
+  only of an item's characters stays
+  silent (a token of more than one
+  character is a word of the clause it
+  stands in, under option 1's own terms).
+  One casing shape is named apart: the
+  letter U+0130, the one character of
+  categories L, Cc or Co in the whole
+  inventory whose lowercased form is not a
+  single character (it lowercases to the
+  letter i and the combining dot above
+  U+0307, a mark standing in the segment
+  set itself, re-derived by this seat
+  against the categories before this
+  record was committed), fires on the
+  tested head; its three-tree reading is
+  recorded as found, since the mark in its
+  lowercase may fire it on the earlier
+  detectors by the set's own scan rather
+  than by the spaced-token scan.
+
+- **Q167-RT-S9.** This seat's own probes
+  beyond the filed corpus, in the
+  directions that are shapes of the filed
+  judgement, read as they should, in a
+  second group that names the residual
+  directions this seat will measure in
+  advance of any finding. Q167's fix
+  completes the segment judgement over the
+  assigned characters of categories L, Cc
+  and Co in their standalone spaced form,
+  beside the set's completeness over the
+  assigned punctuation, symbols, marks and
+  numbers and the fold's boundaries over
+  the format, space and separator classes;
+  a later direction would have to name a
+  class outside that whole judgement to
+  find the same mechanism again. This seat
+  verified that completeness against the
+  code itself before this record was
+  committed: the spaced-token scan reads
+  category and standing only, the set scan
+  reads every character of the match
+  wherever it stands, and the fold reads
+  its boundary ranges before either. This
+  group therefore names the assigned
+  classes outside the filed inventories.
+  (1) The ledger's mixed sentence under a
+  spaced token whose character stands
+  outside categories L, Cc and Co and
+  outside the segment set and the fold's
+  boundaries — the classes that remain are
+  the unassigned characters (category Cn)
+  and the surrogates (category Cs), named
+  in the filing itself as outside the
+  inventory (the unassigned carry no
+  character to stand, and the surrogates
+  cannot stand in valid UTF-8 owner text):
+  these shapes are measured as controls,
+  on a strided sample, and read silent as
+  the filing names them; a silent reading
+  is the supposed outcome, not a residual.
+  (2) The ledger's mixed sentence under a
+  spaced token of an item fused with one
+  bookend symbol on either side (the
+  representatives, fused left and fused
+  right with every non-word symbol of the
+  bookend set): the token is more than one
+  character and the spaced-token scan
+  passes it by, so these shapes fire only
+  where the fusing symbol is itself a
+  segment character or a fold boundary,
+  and stay silent where it is not (the
+  bare hyphen among them) — the fused
+  bound option 1 states, measured whole
+  so the record shows which side of it
+  each symbol stands on. If the full
+  measurement confirms a residual item in
+  this second group — a shape that stands
+  inside the filed judgement (an assigned
+  character, standing as owner text can
+  carry it, in the standalone spaced form
+  the fix names) and still reads missed —
+  it is filed as Q168 in the questions
+  file (complete entry: context, options,
+  recommendation), this seat does not fix
+  it (rule 8), and Q167, Q165, Q164, Q163,
+  Q162, Q161, Q160, Q158, Q157, Q156, Q155,
+  Q154, Q153, Q152, Q151, Q150, Q149, Q148,
+  Q147, Q146, Q145, Q144 and Q143 are
+  stated plainly as not closed. If
+  everything passes whole instead, Q167 is
+  closed by this re-test, and with it
+  Q165, Q164, Q163, Q162, Q161, Q160, Q158,
+  Q157, Q156, Q155, Q154, Q153, Q152, Q151,
+  Q150, Q149, Q148, Q147, Q146, Q145, Q144
+  and Q143 per Q167's Answer (Q159 stands
+  closed by its own verdict seat and is not
+  part of this chain's closure).
+
+- **Q167-RT-S10.** The figures stand as the
+  fix lane left them, and this lane does
+  not move them: `briefing.py` grew by the
+  fix, net 47 lines, and the core's parts
+  pin names the growth exactly (the
+  runner/ops part 22,420 against 22,467
+  measured), so `test_core`'s
+  canonical-breakdown pin reads that one
+  difference on the tested head and no
+  other, and `refresh_figures --check`
+  passes there; the re-measure over that
+  growth is the release train's hand at
+  its next cut, as Q167's Answer assigns
+  it, and any growth landed after that
+  measure by other lanes is stated plainly
+  in the conclusions rather than read as a
+  Q167 residual. This lane cuts no release
+  and touches no ship state.
+
+What cannot be recorded as a unit test,
+stated plainly in advance: the re-test's
+ad-hoc probes are live detector calls over
+the sentences named in this record and in
+the conclusions; their deterministic
+substrate is those sentences themselves
+beside the committed guard family, which
+this lane runs whole. No new behaviour is
+claimed beyond what those calls and that
+family show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
