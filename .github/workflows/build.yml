@@ -50,10 +50,14 @@ permissions: {}
 # restore `cancel-in-progress: false` -- test_build_config.py
 # fails after the date until the window is reverted whole.
 concurrency:
-  # A push whose message starts with "desk:" or "docs:" (the desk's
-  # notes, several an hour) takes the docs group, so it supersedes
-  # only the previous docs push and never cancels a code build.
-  group: build-${{ github.ref }}-${{ startsWith(github.event.head_commit.message, 'release:') && github.sha || ((startsWith(github.event.head_commit.message, 'desk:') || startsWith(github.event.head_commit.message, 'docs:')) && 'docs' || 'rolling') }}
+  # A documentation push takes the docs group, so it supersedes only
+  # the previous documentation push and never cancels a code build:
+  # a message that starts with "desk:" or "docs:" (the desk's notes,
+  # several an hour), or a head commit whose file list names no
+  # path under runner/ or .github/ and not pyproject.toml (read from
+  # the event's JSON, where a path sits in quotes; a tag push has no
+  # head commit and keys by its ref anyway).
+  group: build-${{ github.ref }}-${{ startsWith(github.event.head_commit.message, 'release:') && github.sha || ((startsWith(github.event.head_commit.message, 'desk:') || startsWith(github.event.head_commit.message, 'docs:') || !(contains(toJSON(github.event.head_commit), '"runner/') || contains(toJSON(github.event.head_commit), '".github/') || contains(toJSON(github.event.head_commit), '"pyproject.toml"'))) && 'docs' || 'rolling') }}
   cancel-in-progress: ${{ !(startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.head_commit.message, 'release:')) }}
 
 jobs:
