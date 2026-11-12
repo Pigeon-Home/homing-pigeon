@@ -1327,17 +1327,33 @@ jobs:
     needs: [release, pypi-publish, sourceforge, gitlab]
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       actions: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      # The push trigger the proofs carry is filtered to runner/**;
+      # the dispatch keeps the same rule, read against the previous
+      # release tag: a release that changed only the workflows or
+      # the documentation (most of the cuts of 2026-11-12) proves
+      # nothing new about the runner, and its proofs' macOS legs
+      # held the one arm64 runner the next cycle's macOS artifact
+      # leg needed, for ten minutes at a time.
       - env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+          prev=$(git tag --list 'v*' --sort=-v:refname | grep -v -x "$TAG" | head -n 1 || true)
+          if [ -n "$prev" ] && [ -z "$(git diff --name-only "$prev" "$TAG" -- runner/ | head -n 1)" ]; then
+            echo "::notice::$TAG changes nothing under runner/ since $prev; the proofs are not dispatched (the nightly covers them)"
+            exit 0
+          fi
           for wf in platform-matrix.yml python-range.yml switch-proofs.yml \
                     minimal-userland.yml env-axes.yml job-user.yml \
                     queues-worker.yml upgrade-proof.yml freebsd.yml; do
             gh workflow run "$wf" --repo "$REPO" --ref "$TAG" || echo "::warning title=$wf::could not dispatch $wf on $TAG"
           done
-          echo "::notice::the nine proof workflows dispatched on $TAG"
+          echo "::notice::the nine proof workflows dispatched on $TAG (runner/ changed since ${prev:-the start})"

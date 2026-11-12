@@ -1141,7 +1141,10 @@ class ReliefModeTest(unittest.TestCase):
         self.assertIn("needs: [release, pypi-publish, sourceforge, gitlab]", block)
         self.assertIn("github.event_name == 'workflow_dispatch'", block)
         self.assertIn("needs.release.result == 'success'", block)
-        self.assertEqual({("actions", "write")}, _perm_entries(block))
+        self.assertEqual({("actions", "write"), ("contents", "read")}, _perm_entries(block))
+        # the push trigger's runner/** filter, read against the previous tag
+        self.assertIn('git diff --name-only "$prev" "$TAG" -- runner/', block)
+        self.assertIn("fetch-depth: 0", block)
         cut = _uncommented(_workflow_text("cut-release.yml"))
         step = cut.split("start the release pipeline on the tag", 1)[1]
         self.assertIn('gh workflow run build.yml --ref "$TAG"', step)
