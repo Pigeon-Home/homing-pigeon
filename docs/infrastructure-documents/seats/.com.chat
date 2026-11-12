@@ -3,6 +3,24 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-5:40am-PST — one test of eleven minutes; a heavy leg of its own
+
+The Q165 module costs fourteen CPU-minutes alone, one of its tests
+655 seconds, and it hit every suite's wall on three builds, as one
+item and sharded by class alike. It runs in `test-heavy` now
+(Linux, by class, a 60-minute wall, advisory) and the three suites
+leave it out: the Linux suite is back to five minutes, macOS and
+Windows green on 3.16.21.14. The list is
+runner/tools/split_modules.json -- `modules` shards a module by
+class, `own_job` gives it the heavy leg -- and Q166 asks the desk
+where the sweeps belong and at what size. Two rules beside it:
+a module that grows a core file without a re-measure is named by
+the shape job in ten seconds, and the train takes the next version
+from version4's fresh measure (the tree stands at 21.9 million
+tokens; the next landing of Q165's size crosses 22 and the version
+moves to 3.16.22.1 on its own). Cycles of the hour, commit to last
+mirror: 6.1, 7.2, 6.7 minutes.
+
 ## 12-Nov-3:05am-PST — 7.5 minutes, no hand in it
 
 3.16.21.9: asked for at 10:53:55Z, gate green at 2.7 minutes,

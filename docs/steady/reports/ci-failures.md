@@ -1372,3 +1372,37 @@ under runner/ leaves the proofs to the nightly. The re-cut,
 3.16.21.12, went from its release commit to the last mirror in 6.1
 minutes (gate green 2.2, tagged 2.7, release 4.7, mirrors 6.1),
 promoted, every mirror, Q165 riding.
+
+## One test of eleven minutes: the briefing guard's sweeps and the heavy leg (12 Nov 2026)
+
+The Q165 landing (770949e9) put 273 tests in one module of 82,357
+lines, runner/tests/test_briefing_contradiction.py, and that module
+costs fourteen CPU-minutes alone on Linux: one test,
+`Q165PolarityGuardTest.test_bookended_ledger_symbol_mark_number_fire`,
+655 seconds; its `_silent` twin 122. The macOS shard and the
+Windows shard that drew the module hit their 20-minute walls on
+the 3.16.21.11 and 3.16.21.12 builds. Sharded by class
+(runner/tools/split_modules.json; `run_tests_parallel.py --split`,
+27 classes spread over the shards), the single tests still outran
+the walls -- 30 minutes on Linux, 20 on macOS and Windows, each in
+a shard of its own (build 43218128334). The module runs in a leg
+of its own now, `test-heavy` (Linux, sharded by class, a
+60-minute wall, advisory), and the three suites leave it out:
+on the 3.16.21.14 build the Linux suite took 5.4 minutes (9 to
+10 before), the macOS suite 13.3, the Windows suite 14.5, the
+heavy leg 25.2. Q166 asks the desk where the sweeps belong and
+at what size; the desk's answer suppositions are on file.
+
+Two Windows reds the same build, both latency bounds under the
+leg's 28-way start, both hang guards now: the oracle A/B
+fixture's five-second wait for a brief written on a daemon
+thread, and the last-slot race's five-second barrier for
+thirty-two threads.
+
+The cycles of the hour, from the commit to the last mirror,
+promoted and every mirror: 3.16.21.12 6.1 minutes, 3.16.21.13
+7.2, 3.16.21.14 6.7. The shape job pins the core measure in the
+first minute, so a landing that grows a core file without a
+re-measure names itself at once (the Q165 landing did, in ten
+seconds); the train takes the next version from version4's fresh
+measure, and the tree stands at 21.9 million tokens.
