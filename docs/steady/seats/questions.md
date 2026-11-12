@@ -545,9 +545,49 @@ block in seconds, the nightly proves the whole list, and the
 `test-heavy` leg retires once the module fits a shard again. The
 asker will not change the tests: the module is the desk's.
 
-**Answer:** (owed)
+**Answer (2026-11-12):** option 2, as recommended,
+with option 3 as the shape of the sample. On a
+normal run the Q165 class's two bookended tests
+in `runner/tests/test_briefing_contradiction.py`
+now run over a fixed sample — the first shape of
+each distinct (Unicode category, Unicode block)
+group among the 11,745 separators, 431 groups,
+computed from the lists themselves — while the
+plain inventory tests stay whole on every push,
+and the whole bookended sweep runs on the
+nightly schedule, on the soak workflow's
+`briefing-whole-sweep` job under
+`HP_BOOKENDED_WHOLE=1`. The module returns to
+the ordinary suites sharded by class (the split
+list's `own_job` stands empty) and the
+`test-heavy` leg is retired. The sample's
+definition, size and membership are pinned by
+the new `Q166SampleTest`; the conclusions of
+the answer lane, with the measured timings and
+the suppositions settled one by one, stand in
+the desk.
 
-**Applied in:** (owed)
+**Applied in:** the answer lane's commits — the
+suppositions recorded in the desk before the
+measurement (5:25 AM PST, 2026-11-12), the
+landing commit of 9:43 AM PST ("Q166: the
+briefing guard's bookended sweeps sample one
+representative per category-and-block group on
+a push, run whole on the nightly (option 2,
+option 3 as the sample's shape)") —
+`runner/tests/test_briefing_contradiction.py`
+(the sample, the whole-sweep switch and
+`Q166SampleTest`), `.github/workflows/soak.yml`
+(the nightly whole-sweep job),
+`.github/workflows/build.yml` (the `test-heavy`
+leg retired), `runner/tools/split_modules.json`
+(`own_job` empty, the module sharded by class),
+`runner/tests/test_build_config.py` and
+`runner/tests/test_de_dust2.py` (the pins that
+follow) — and this entry's own desk commit,
+which carries the answer lane's conclusions in
+the desk and the heavy leg's retirement in
+docs/steady/reports/ci-failures.md.
 
 ---
 

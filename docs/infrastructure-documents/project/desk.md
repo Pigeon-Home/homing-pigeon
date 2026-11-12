@@ -26197,3 +26197,110 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   parts pin, if any stands there, is named
   plainly rather than re-measured over
   another lane's growth.
+
+## Q166: conclusions of the answer lane (2026-11-12)
+
+The answer landed under option 2 with option 3
+as the sample's shape, at the landing commit
+of 9:43 AM PST, 2026-11-12, on the 3.16.24.2
+release head, push-verified by foreground
+`git ls-remote` with the landing's content
+grepped at the remote ref in the same call.
+Several earlier Q166 lanes were interrupted
+and left divergent uncommitted work; this lane
+reconciled it and stacked nothing blindly. The
+set that won is the one preserved in
+`hp-q166-land` — the newest base of the five
+(the Q165 re-test head) and the only complete
+one: the sampling in the test module, the
+whole sweep on the nightly soak workflow, the
+`test-heavy` retirement and the split list,
+carried together with their build-config and
+CI-scope pins. Discarded: the `hp-q166-cont`
+set (a separate sweep workflow and the heavy
+leg's retirement, but no sampling in the tests
+themselves — the whole sweep would have run
+nightly while a push still ran it whole); the
+`hp-q166-impl` set (the same sampling under a
+different switch, `HP_BRIEFING_WHOLE_SWEEP`,
+and a separate `briefing-sweep.yml` workflow —
+the soak job rides a schedule that already
+exists, and one switch name is enough); the
+first `hp-q166` attempt (an opt-in sample,
+superseded); and `hp-q166b` (the winning set's
+test half without its CI half). No detector
+behaviour changes: `runner/ops/briefing.py`
+is untouched by this landing. Settled against
+the suppositions one by one:
+
+- **Q166-S1 — holds.** The cost sits on the
+  bookended axis. This lane's before
+  measurement, on a shared VM at load ~14:
+  the whole bookended fire test alone had
+  consumed about 185 CPU-seconds and was
+  still running when the lane stopped it at
+  30 minutes of wall; the desk's unloaded
+  record (fire 655, silent 122, plain shapes
+  18 of the class's 800 seconds) stands as
+  the before figure. After the landing the
+  two sampled bookended tests together
+  consumed 74.8 CPU-seconds all-in, module
+  import counted twice.
+- **Q166-S2 — holds on size, with one plain
+  correction.** The groups number 431, not
+  inside the supposed 100-to-400 band — the
+  count stands 31 above it, recorded here
+  rather than rounded into the prediction.
+  The timing side holds: `Q166SampleTest`
+  runs its 12 tests in 0.7 seconds, and the
+  sampled Q165 class (6 tests, all passing)
+  consumed on the order of 110 CPU-seconds
+  all-in on this lane's contended VM (771.7
+  seconds of wall at load ~14), against 800
+  seconds unloaded for the whole class — the
+  bookended axis falls by the inventory
+  ratio, 11,745 shapes to 431.
+- **Q166-S3 — holds.** Pinned by
+  `Q166SampleTest`: every text of both lists
+  names its separator in exactly one
+  character, a text off the template shape is
+  refused, the two lists carry the same
+  separators in order, and the four
+  representatives Q165 names (the U+00A2,
+  U+10137, U+0300 and U+0030 shapes) stand in
+  the sample, each the first shape of its
+  group, with its block and category pinned.
+- **Q166-S4 — holds as its substrate.**
+  Every representative stands in
+  `_LEDGER_SEGMENTS` (pinned); the plain
+  inventory tests stay whole on every run, so
+  an inventory hole inside a group is bounded
+  on a push, and the nightly whole sweep
+  under `HP_BOOKENDED_WHOLE=1` closes it —
+  the switch's selection of the whole lists
+  is itself pinned by `Q166SampleTest`. The
+  whole sweep's first scheduled CI run is a
+  live-runner fact this lane does not claim.
+
+Runs on the landing head, every run with its
+temporary directory in a scratch area on the
+workspace disk: `Q165PolarityGuardTest` 6
+tests OK (sampled), `Q166SampleTest` 12 tests
+OK, `test_build_config` 58 tests OK,
+`test_de_dust2.CiScopeTest` 8 tests OK,
+`test_parallel_runner` 50 tests OK, and the
+shrink guard clean over the working tree
+(the module grows; nothing shrinks).
+
+What cannot be recorded as a unit test,
+stated plainly: the CI wall behaviour itself,
+as the suppositions said in advance — its
+deterministic substrate is the sample's
+definition, size and membership, pinned by
+`Q166SampleTest`, beside the timings above.
+The wall figures here are one contended VM's;
+the CPU axis is the comparable one, and on
+that axis the sampled class fits an ordinary
+shard again.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026

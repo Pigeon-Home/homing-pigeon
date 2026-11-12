@@ -1406,3 +1406,22 @@ first minute, so a landing that grows a core file without a
 re-measure names itself at once (the Q165 landing did, in ten
 seconds); the train takes the next version from version4's fresh
 measure, and the tree stands at 21.9 million tokens.
+
+## The heavy leg retires: the sweeps sampled (12 Nov 2026)
+
+Q166 is answered (option 2, with option 3 as the sample's
+shape). The Q165 class's two bookended tests now run on a
+push over a fixed sample — the first shape of each distinct
+(Unicode category, Unicode block) group among the 11,745
+separators, 431 groups, computed from the lists themselves
+and pinned by `Q166SampleTest` — the plain inventory tests
+stay whole, and the whole bookended sweep runs nightly on
+the soak workflow's `briefing-whole-sweep` job under
+`HP_BOOKENDED_WHOLE=1`. The module rides the ordinary
+suites again, sharded by class (the split list's `own_job`
+stands empty), and `test-heavy` is retired. On the answer
+lane's contended VM the sampled class consumed on the
+order of 110 CPU-seconds all-in against the whole class's
+800 unloaded, and the whole fire test alone had not
+finished in 30 minutes of wall there before the landing;
+the desk carries the conclusions and the timings.
