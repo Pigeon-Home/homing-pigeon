@@ -1005,6 +1005,24 @@ class DarwinParitySubstrateTest(unittest.TestCase):
                 "/work/script.py", work, [], {},
                 backend=_ScriptedMacBackend(problem))
 
+    def _preexec(self, cfg, base, job_id, work, face):
+        # A darwin host presents two platform signals, and the
+        # seams read different ones: _confinement_argv reads
+        # sys.platform, _job_user_preexec reads os.name. The
+        # simulation patches both, to the pair a real darwin
+        # host presents (darwin, posix); patching sys.platform
+        # alone left os.name at the host's value, so on a
+        # Windows host the preexec took its Windows arm and
+        # recorded unsupported_platform -- the test-windows
+        # failures named in the desk's W-S record. The
+        # Windows-host shape itself is pinned, unmoved, in
+        # DarwinParityHostSignalTest below.
+        from runner import runner as _runner_mod
+        with mock.patch.object(sys, "platform", "darwin"), \
+                mock.patch.object(os, "name", "posix"):
+            return _runner_mod._job_user_preexec(
+                cfg, base, job_id, work, face=face)
+
     def test_engageable_darwin_gate_writes_no_confinement_row(self):
         with tempfile.TemporaryDirectory() as base:
             argv, _host_env, _boxed = self._argv_gate(
@@ -1044,13 +1062,10 @@ class DarwinParitySubstrateTest(unittest.TestCase):
                         cfg, base, job_id, None)
                     self.assertNotEqual(argv, [])
                     work = os.path.join(base, "work")
-                    with mock.patch.object(sys, "platform",
-                                           "darwin"):
-                        with self.assertRaises(
-                                _runner_mod.JobRejected):
-                            _runner_mod._job_user_preexec(
-                                cfg, base, job_id, work,
-                                face=_NonRootFace())
+                    with self.assertRaises(
+                            _runner_mod.JobRejected):
+                        self._preexec(cfg, base, job_id, work,
+                                      _NonRootFace())
                     entries = self._rows(base)
                     ju = [e for e in entries
                           if e.get("feature") == "job_user"]
@@ -1073,14 +1088,178 @@ class DarwinParitySubstrateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as base:
             work = os.path.join(base, "work")
             os.makedirs(work)
-            with mock.patch.object(sys, "platform", "darwin"):
-                demote = _runner_mod._job_user_preexec(
-                    cfg, base, "parity-02", work, face=_RootFace())
+            demote = self._preexec(cfg, base, "parity-02", work,
+                                   _RootFace())
             self.assertTrue(callable(demote))
             ju = [e for e in self._rows(base)
                   if e.get("feature") == "job_user"]
             self.assertEqual([e["decision"] for e in ju],
                              ["run_as"])
+
+
+class _ScriptedWinBackend:
+    """A Windows backend whose startup probe answers as scripted."""
+
+    IS_WINDOWS_BACKEND = True
+
+    def __init__(self, problem):
+        self._problem = problem
+
+    def windows_startup_problem(self, cfg=None):
+        return self._problem
+
+
+class DarwinParityHostSignalTest(unittest.TestCase):
+    """The other host-signal shape, pinned so it cannot drift.
+
+    _job_user_preexec keys its Windows arm on os.name, by its
+    own documented contract (the demote it guards is a POSIX
+    syscall surface, and its dedicated win32 tests simulate
+    the arm by patching os.name). A simulated darwin
+    (sys.platform patched) running on a Windows host therefore
+    reaches the preexec's Windows arm, not its POSIX one: that
+    is the shape the test-windows leg runs, and the shape whose
+    record the substrate family originally misread as the
+    darwin record. These tests pin the Windows-host record
+    exactly as production writes it -- unsupported_platform
+    under enforce, refused; the audit-mode record without a
+    refusal; the engageable backend's deferral -- so completing
+    the substrate family's darwin simulation (both signals
+    patched, in DarwinParitySubstrateTest) is a keying fix,
+    not a moved expectation: on a real Windows host nothing
+    here changes.
+    """
+
+    def _cfg(self, job_user_mode="enforce"):
+        block = all_enforce_block()
+        block["modes"]["job_user"] = job_user_mode
+        block["job_user"] = {"user": "pigeon-test"}
+        return {"security": block}
+
+    def _rows(self, base):
+        return [json.loads(line)
+                for line in read_audit_lines(base) or []]
+
+    def _preexec_on_windows_host(self, cfg, base, job_id, work,
+                                 face, backend=None):
+        from runner import runner as _runner_mod
+        kw = {} if backend is None else {"backend": backend}
+        with mock.patch.object(sys, "platform", "darwin"), \
+                mock.patch.object(os, "name", "nt"):
+            return _runner_mod._job_user_preexec(
+                cfg, base, job_id, work, face=face, **kw)
+
+    def test_windows_host_ci_shape_records_unsupported_platform(self):
+        # Per exec job: the argv gate, keyed on sys.platform,
+        # still answers the darwin shape (normal argv, no
+        # confinement row); the preexec, keyed on os.name,
+        # records the Windows arm's unsupported_platform and
+        # refuses under enforce, before any face is consulted.
+        from runner import runner as _runner_mod
+        substrate = DarwinParitySubstrateTest(
+            "test_ci_shape_refuses_at_job_user_with_no_"
+            "confinement_row")
+        cfg = self._cfg()
+        for job_id in sorted(
+                AllEnforceParityTest.ENFORCE_EXEC_JOBS):
+            with self.subTest(job_id=job_id):
+                with tempfile.TemporaryDirectory() as base:
+                    argv, _h, _b = substrate._argv_gate(
+                        cfg, base, job_id, None)
+                    self.assertNotEqual(argv, [])
+                    work = os.path.join(base, "work")
+                    with self.assertRaises(
+                            _runner_mod.JobRejected):
+                        self._preexec_on_windows_host(
+                            cfg, base, job_id, work,
+                            _NonRootFace())
+                    entries = self._rows(base)
+                    ju = [e for e in entries
+                          if e.get("feature") == "job_user"]
+                    self.assertEqual(len(ju), 1)
+                    self.assertEqual(ju[0]["decision"],
+                                     "unsupported_platform")
+                    self.assertEqual(ju[0]["reason"],
+                                     "job_user_posix_only")
+                    self.assertEqual(
+                        [e for e in entries
+                         if e.get("feature") == "confinement"], [])
+
+    def test_windows_host_root_shape_records_unsupported_platform(self):
+        # The root face changes nothing on the Windows arm: the
+        # branch is taken before the face is consulted, the
+        # record is unsupported_platform, and the job is
+        # refused -- no demote, no run_as row.
+        from runner import runner as _runner_mod
+        cfg = self._cfg()
+        with tempfile.TemporaryDirectory() as base:
+            work = os.path.join(base, "work")
+            os.makedirs(work)
+            with self.assertRaises(_runner_mod.JobRejected):
+                self._preexec_on_windows_host(
+                    cfg, base, "parity-02", work, _RootFace())
+            ju = [e for e in self._rows(base)
+                  if e.get("feature") == "job_user"]
+            self.assertEqual([e["decision"] for e in ju],
+                             ["unsupported_platform"])
+
+    def test_windows_host_audit_mode_records_without_refusing(self):
+        # In audit mode the Windows arm records the same
+        # unsupported_platform entry and lets the job proceed:
+        # the record is the mode's, not a refusal.
+        cfg = self._cfg(job_user_mode="audit")
+        with tempfile.TemporaryDirectory() as base:
+            work = os.path.join(base, "work")
+            os.makedirs(work)
+            out = self._preexec_on_windows_host(
+                cfg, base, "parity-02", work, _NonRootFace())
+            self.assertIsNone(out)
+            ju = [e for e in self._rows(base)
+                  if e.get("feature") == "job_user"]
+            self.assertEqual([e["decision"] for e in ju],
+                             ["unsupported_platform"])
+
+    def test_windows_host_engageable_backend_defers(self):
+        # With an engageable Windows backend injected, the
+        # Windows arm defers to the postspawn application: the
+        # record is would_contain / windows_job_object and the
+        # job is not refused at the preexec.
+        cfg = self._cfg()
+        with tempfile.TemporaryDirectory() as base:
+            work = os.path.join(base, "work")
+            os.makedirs(work)
+            out = self._preexec_on_windows_host(
+                cfg, base, "parity-02", work, _NonRootFace(),
+                backend=_ScriptedWinBackend(None))
+            self.assertIsNone(out)
+            ju = [e for e in self._rows(base)
+                  if e.get("feature") == "job_user"]
+            self.assertEqual(len(ju), 1)
+            self.assertEqual(ju[0]["decision"], "would_contain")
+            self.assertEqual(ju[0]["reason"],
+                             "windows_job_object")
+
+    def test_completed_simulation_audit_mode_records_would_run_as(self):
+        # The completed darwin simulation's audit shape: both
+        # signals patched to the darwin pair, job_user in audit
+        # mode -- the POSIX arm records would_run_as and
+        # returns without refusing, at either face.
+        substrate = DarwinParitySubstrateTest(
+            "test_root_shape_passes_the_preexec_gate_with_a_"
+            "run_as_row")
+        cfg = self._cfg(job_user_mode="audit")
+        for face in (_NonRootFace(), _RootFace()):
+            with self.subTest(face=type(face).__name__):
+                with tempfile.TemporaryDirectory() as base:
+                    work = os.path.join(base, "work")
+                    os.makedirs(work)
+                    out = substrate._preexec(
+                        cfg, base, "parity-02", work, face)
+                    self.assertIsNone(out)
+                    ju = [e for e in self._rows(base)
+                          if e.get("feature") == "job_user"]
+                    self.assertEqual([e["decision"] for e in ju],
+                                     ["would_run_as"])
 
 
 if __name__ == "__main__":

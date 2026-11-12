@@ -24878,3 +24878,113 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   itself is a Windows-host fact; the
   `os.name` "nt" replay above is its
   deterministic substrate, pinned here.
+
+Conclusions against W-S1 to W-S4
+(2026-11-12):
+
+- **W-S1 — holds.** The root cause is the
+  test's platform keying, not a production
+  classification: `_job_user_preexec` keys
+  its Windows arm on `os.name`, the
+  substrate family simulated darwin on
+  `sys.platform` alone, and on a Windows
+  host the unpatched signal routed the
+  simulated darwin into the Windows arm.
+  No real host presents the divergent pair
+  (darwin with `os.name` "nt"), so no real
+  host was ever misclassified.
+
+- **W-S2 — holds, measured, with one
+  refinement.** The settling measurement
+  ran on a Linux host against the head the
+  suppositions landed on. Part (1), the
+  Windows-host replay (`sys.platform`
+  "darwin", `os.name` "nt"): per exec job
+  — all six — the argv gate returned the
+  normal argv with no confinement row, and
+  the preexec recorded exactly one job_user
+  row, `unsupported_platform` /
+  `job_user_posix_only`, and refused: the
+  reported 'unsupported_platform' !=
+  'fallback', reproduced deterministically
+  off Windows. The root shape under the
+  same replay records `unsupported_platform`
+  and raises `JobRejected` after writing
+  it, so on the hosted leg the root-shape
+  test errors at the preexec call rather
+  than failing an assertion — the one
+  refinement to W-S2's wording, which had
+  the shape as a bare return of None.
+  Part (2), the completed simulation
+  (`sys.platform` "darwin", `os.name`
+  "posix"): per exec job the preexec
+  recorded `fallback` / `job_user_needs_root`
+  and refused, with no confinement row, and
+  the root shape recorded `run_as` and
+  returned a callable demote — the darwin
+  records, on a Linux host exactly as on a
+  darwin one.
+
+- **W-S3 — holds, per test.** Both named
+  failures are the one preexec shape; the
+  family's argv-gate tests, whose seam the
+  standing patch does key, are untouched by
+  the added `os.name` patch in either part
+  of the measurement (normal argv, no
+  confinement row on the engageable shape),
+  as the verdict's silence on them said.
+
+- **W-S4 — the fix landed, test-only.**
+  `DarwinParitySubstrateTest` now drives
+  the preexec through a `_preexec` helper
+  that patches both signals to the darwin
+  pair, with the reason recorded at the
+  helper. Beside it, the committed family
+  `DarwinParityHostSignalTest` in
+  `runner/tests/test_security_parity.py`
+  (5 tests, scripted seams, every host)
+  pins the shapes this lane measured: the
+  Windows-host CI shape per exec job
+  (`unsupported_platform`, refused, the
+  argv gate's darwin answer unchanged), the
+  Windows-host root shape, the Windows-host
+  audit record (recorded, not refused), the
+  engageable-backend deferral on the
+  Windows arm (`would_contain`), and the
+  completed simulation's audit record
+  (`would_run_as` at both faces). No
+  production file changed, no refusal was
+  weakened and no parity expectation moved:
+  the Windows arm's records stand pinned
+  exactly as production writes them. No
+  new skip was added, so the skip registry
+  is untouched.
+
+- **Local results and the verdict owed.**
+  In the foreground on this lane's clone,
+  temporary directory on the workspace
+  disk: the two families together 9 tests
+  green; `test_security_parity` whole,
+  beside `test_macos_confine`,
+  `test_windows_confine`,
+  `test_freebsd_confine` and
+  `test_windows_durations`, 329 tests, OK
+  (19 skipped). Figures: the landing is
+  test-only beside this desk record, so
+  the core figures do not move —
+  `refresh_figures --check` reads "figure
+  slots and the display line match the
+  facts", and `test_core`,
+  `test_doc_figure_slots` and
+  `test_reader_docs_quiet` run green
+  beside it (38 tests, OK). What cannot be
+  recorded as a unit test, stated plainly:
+  the hosted Windows leg itself is a
+  Windows-host fact; its deterministic
+  substrate — the `os.name` "nt" replay —
+  is what is pinned here. The live verdict
+  is the first completed `test-windows` CI
+  leg on a head carrying this fix; it is
+  still owed and nothing here claims it.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
