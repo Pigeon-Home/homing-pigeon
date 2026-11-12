@@ -1555,3 +1555,106 @@ as unlimited exactly for the two named reports,
 so both representations' meaning is pinned where
 it cannot silently drift. The helper classifies
 only; it sets nothing.
+
+## Conclusions for the spawn-limits fix, against R6-S1 to R6-S2
+
+The suppositions above landed on `main` on their
+own, before any measurement ran. The measurement
+then ran, and the fix landed on the 3.16.21.3
+release head after a rebase over that cut (the
+release's own figures re-measure is preserved;
+this fix's figures were re-measured over it).
+What each supposition now stands on, stated
+exactly:
+
+- The measurement, as run. (a) The shim
+  pass-through, executed on a Linux host through
+  the real shim text: a job spawned through
+  `build_shim_argv` read back its data-size pair
+  as (512 MiB, unlimited) -- the ceiling applied
+  -- and its address-space pair exactly as
+  inherited, untouched. The backend sets no
+  address-space limit, measured, not only pinned
+  in source. (b) The platform constant on the
+  measuring host: `resource.RLIM_INFINITY` reads
+  -1 and the inherited address-space pair reads
+  (-1, -1) -- the Linux report, in the open.
+  (c) The other report: Python's `resource`
+  module states in its own documentation that it
+  does not mask platform differences, the
+  BSD-family definition of `RLIM_INFINITY` is
+  ((uint64_t)1 << 63) - 1, this project's ladder
+  comment records the Darwin sentinel as
+  2**63 - 1, and the CI verdict printed exactly
+  9223372036854775807 for a limit nothing in the
+  chain sets. The only consistent reading is
+  R6-S1's: the verdict's value IS darwin's report
+  of unlimited.
+- R6-S1 is answered: the test's expectation was
+  wrong and the backend is right. The fix is in
+  the expectation's form. The live point now
+  reads the inherited address-space soft limit in
+  the parent and asserts the read-back value
+  against it and against `resource.RLIM_INFINITY`
+  as the same process reads them -- the
+  `limits[1]` shape -- and classifies it through
+  the new pure substrate,
+  `reported_limit_is_unlimited` in
+  `runner/guard/macos_confine.py`, which names
+  both reports exactly in
+  `UNLIMITED_LIMIT_REPORTS` (-1 and 2**63 - 1).
+  That `limits[0]` and `limits[1]` already held
+  on the darwin legs is consistent end to end:
+  derived from the sentinel as a finite hard
+  limit, the parent's ladder carries the shim's
+  whole unlimited ladder as its prefix, so the
+  applied value stands on both.
+- R6-S2 is answered: the defect was local to the
+  one assertion. No production limit-carrying
+  code moved: the shim text is unchanged, no
+  limit is set, raised, lowered, or normalized
+  anywhere, and the classifier classifies only --
+  no spawn path consults it, so the fail-closed
+  shape cannot move through it. The point's
+  protection is stronger than the one it
+  replaces: a job whose address space came back
+  finite, or different from what the parent
+  inherited, now fails on two comparisons and a
+  classification instead of one hardcoded value.
+- P1 and P2 are proven off darwin. The macOS
+  suite stands at 114 tests locally (the 12 live
+  points skip off darwin, as registered), the new
+  ReportedLimitTest family carrying 13 of them:
+  both named reports pinned per value, the
+  sentinel's bookends, the field's refusals, a
+  400-draw randomized membership family, the
+  verdict's own triple shape, and a darwin-staged
+  read-back executed through a scripted resource
+  seam in both directions -- the sentinel
+  satisfying the fixed shape while failing the
+  old one, a finite value satisfying neither.
+  The combined local run over the macOS suite,
+  the neighbouring confinement suites, the skip
+  registry, the reader-docs guard, the core
+  figure guards and the figures check stands
+  green (236 tests in the final combined run,
+  all green but the registered skips). The core
+  grew by the classifier's 48 lines in
+  `runner/guard`: the as-assembled set now
+  stands at 64,586 lines, 58,442 of them
+  non-blank, the `runner/guard` part at 5,496,
+  re-measured over the current tree with the
+  token figures left to the next release cut's
+  fresh measure, as is their standing route.
+- P3 is NOT yet judged: it is a live-darwin
+  claim, and the verdict that judges it is the
+  first completed `test-macos` CI job on a head
+  carrying this fix -- the one outstanding proof,
+  by the standing rule that a macOS claim is
+  proven by the leg that runs it and by nothing
+  else. Live Seatbelt engagement cannot be
+  proven on this Linux host, and no part of this
+  record claims it early. If that leg fails the
+  point in either direction P3 names, R6-S1
+  stands convicted in the open and the backend
+  is the next round's subject.
