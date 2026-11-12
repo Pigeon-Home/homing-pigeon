@@ -22864,3 +22864,137 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   parts pin, if any stands there, is named
   plainly rather than re-measured over
   another lane's growth.
+
+## macOS confinement: the post-fifth-fix failure shape — suppositions recorded before the diagnostic tests (2026-11-11)
+
+The fifth fix cleared its defect and exposed a
+new shape, read first-hand by this lane from
+the check-run annotations of the two completed
+post-fifth-fix main builds (the build for the
+fifth-fix conclusions head and the build for
+the 3.16.21.1 release head): the `test-macos`
+job failed in both with exactly two named
+failures, identical in both —
+`test_confinement.FallbackTest.test_default_is_enforce_and_refuses_without_a_sandbox`
+and
+`test_campaign_canary.CanaryCrossWorkspaceTests.test_enforce_refuses_where_the_sandbox_cannot_engage`,
+each `AssertionError: JobRejected not raised`
+in shard 2 — plus one shard that ended without
+a named failure, its tail carrying
+ResourceWarning lines from
+`test_remediation_gaps.py`. No
+`LiveBackendTest` or `DataLimitAttemptsTest`
+failure recurs and the data-size shim string
+is gone: the fifth fix worked. While this
+lane read the evidence, two landings by
+another seat reached main carrying the
+keying fix for the two named failures (the
+default-posture test's backend arm extended
+to macOS and FreeBSD, and the canary's
+enforce arms re-keyed to the startup gate,
+with the macOS leg gaining a full log). This
+lane is the second seat for those landings:
+it reviews them, tests the residual below,
+and lands what is still owed. Its
+suppositions, recorded before any diagnostic
+test in this lane ran:
+
+- **R6-S1 (primary).** Both named failures
+  are test keying, not production. The
+  canary's `ENGAGES` read the bwrap probe
+  alone (`SB.startup_problem()`), which
+  answers Linux-only on darwin, so the
+  refusal arm ran on every macOS host; the
+  default-posture test's platform arm read
+  win32 alone, above the same Linux-only
+  probe. Now that the Seatbelt trial
+  engages on the CI host, an enforce job
+  runs confined (the argv gate returns the
+  normal argv, the spawn seam confines and
+  writes its `confined` row) and no
+  `JobRejected` is raised — correctly: the
+  refusal guarantee is refusal where the
+  backend cannot engage, and it still
+  fires there (the darwin argv denial and
+  its `fallback` row are untouched).
+- **R6-S2.** The two outside landings
+  implement exactly that keying and read
+  correct under review: on an engaging
+  darwin host the default-posture test
+  takes the engaged arm and finds the one
+  `confined` confinement row at enforce;
+  on a non-engaging one it falls through
+  to the refusal arm and finds the
+  `fallback` row; the canary's arms split
+  on the runner's own startup gate
+  (`R._confinement_startup_problem({})`)
+  on the platform-backend hosts, and its
+  engaged arm accepts the backend's
+  `confined` row beside bwrap's
+  `sandboxed`.
+- **R6-S3 (the unnamed shard).**
+  `test_decision1_startup_gates_refuse`'s
+  confinement-refusal test carries the
+  same mis-keying in startup form: it
+  gates on the bwrap probe alone, scripts
+  only the Windows backend seam, states
+  no second gate off, and passes no
+  one-shot argv. On a darwin host whose
+  backend engages, `main()` does not
+  refuse at the confinement gate; startup
+  proceeds past it toward the poll loop,
+  and the test runs until its shard's
+  wall — the shard that ended without a
+  named failure in both evidence builds.
+  Prediction, testable off darwin with
+  scripted seams: a simulated darwin
+  whose macOS backend engages shows
+  `main()` proceeding past the
+  confinement gate (no exit-2 confinement
+  refusal), and the every-seam-dead
+  construction refuses at exit 2 naming
+  confinement on every platform shape.
+- **R6-S4.** The R6-S3 fix belongs in that
+  test's construction, in the Q159 house
+  pattern the strict sibling file already
+  uses: a platform-aware skip (the
+  runner's startup gate on
+  platform-backend hosts, the bwrap probe
+  on Linux), the refusal constructed
+  through `scripted_confinement` so every
+  seam the host's branch consults answers
+  dead, the other gate stated off, and
+  the `--audit-report` one-shot so a
+  step-down would show as exit 0. No
+  production change, and no refusal
+  weakened: the strict file's dead-backend
+  family pins the production refusal per
+  platform and stays green beside it.
+- **R6-S5.** No other point in the
+  evidence builds shares the mis-keying:
+  the annotations name exactly the two
+  failures in both builds; the remaining
+  bwrap-keyed `ENGAGES` uses are
+  bwrap-specific classes (the wall, race
+  and parity families) that correctly
+  skip off Linux, and the darwin live
+  points live in `test_macos_confine`.
+  Off-darwin runs of the canary, the
+  confinement fallback family and the
+  decision-1 refuse and strict families
+  read green before and after this lane's
+  change.
+- **R6-S6.** The live verdict is CI's:
+  the first completed `test-macos` job on
+  a head carrying both outside landings
+  and this lane's decision-1 fix shows
+  neither named failure and no unnamed
+  shard ending. At supposition time the
+  builds for the two outside heads stand
+  cancelled by supersession, so the live
+  verdict is owed, not claimed. No
+  production file changes in this lane,
+  so no core re-measure; the token figure
+  rides the next cut's fresh recount.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
