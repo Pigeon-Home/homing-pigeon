@@ -3,8 +3,7 @@
 Your cloud AI (called the SI throughout this repo) is smart, but it
 can't touch your computer. This new Homing Pigeon protocol gives them
 a signed channel to your machine. You may run the tests, read the
-failure, fix, repeat, from your phone or anywhere. Install the
-homing-pigeon runner and try it with the prompt below. It works with
+failure, fix, repeat, from your phone or anywhere. It works with
 Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a message.
 
 Try this careful prompt with Grok for example:
