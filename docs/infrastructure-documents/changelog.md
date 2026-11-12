@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.7 - 2026-11-12
+
+- Tools: the release train's prepare rebases its release commit onto main and pushes again when another seat lands first, three tries; the README names v2 as the Runner-to-SI exchange
+
 ## 3.16.24.6 - 2026-11-12
 
 - Desk: Q168 asks the desk about a Windows job that exits before its Job Object is assigned and is refused though it already ran; the CI record carries the afternoon's four hours of red and the green 3.16.24.5 build
