@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.7 - 2026-11-12
+
+- CI: the publish jobs read the release job's result themselves -- on the promoted tag build of 3.16.21.6 the default condition, success() over the whole upstream chain, skipped PyPI, SourceForge and GitLab beside the skipped artifact legs, and that release stands on GitHub and the image only; this one carries the mirrors
+
 ## 3.16.21.6 - 2026-11-12
 
 - CI: the cut reads the tag's tree at the commit, not the tag, before it sends the promotion input -- a tag the REST path placed is not in the cut's checkout, and the 3.16.21.5 dispatch went without the run id and built everything again
