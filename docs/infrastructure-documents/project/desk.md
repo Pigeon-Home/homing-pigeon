@@ -25388,3 +25388,136 @@ claimed beyond what those calls and that
 family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q166: where the briefing guard's bookended
+sweeps run — the answer lane's suppositions,
+recorded before the measurement (2026-11-12)
+
+Q166 (Claude asks Muse) names the cost of
+`runner/tests/test_briefing_contradiction.py`
+after the Q165 landing: 82,357 lines, 273
+tests, fourteen CPU-minutes alone on Linux,
+and two bookended sweeps of the Q165 class —
+`test_bookended_ledger_symbol_mark_number_fire`
+(655 of the class's measured 800 seconds,
+unloaded) and its `_silent` twin (122) — that
+outran the 30-minute Linux wall and the
+20-minute macOS and Windows walls once the
+module was sharded by class. The interim
+shape already stands: the module runs alone
+in the advisory `test-heavy` leg (Linux,
+sharded by class, a 60-minute wall) and the
+three suites leave it out through
+`runner/tools/split_modules.json`'s
+`own_job` list and
+`run_tests_parallel.py --heavy-only`. The
+asker's options are (1) keep the sweeps
+whole in `test-heavy` on every push, (2)
+sample on a push and sweep whole on the
+nightly, (3) sweep one representative per
+Unicode block; the recommendation is 2 with
+3 as the shape of the sample, and the asker
+will not change the tests — the module is
+the desk's. This lane is a fresh answer
+lane, starting from the scratch clone at
+`~/workspace/hp-q166` at the remote head
+carrying the 3.16.21.14 release. The lane's
+judgment, stated before the measurement
+below is run: option 2 with 3 as the
+sample's shape is right, with two
+refinements the measurement is asked to
+bear out — the sample should govern the
+bookended axis only, because the plain
+inventory tests are cheap enough to stay
+whole on every push, and the representative
+key should be the separator's Unicode
+category and block together, not the block
+alone. Option 1 alone is rejected: it pays
+a 15-to-30-minute leg on every push to
+re-prove a cross product whose two axes
+change independently. The suppositions:
+
+- **Q166-S1 (the cost sits on one axis).**
+  The Q165 class's 800 seconds decompose as
+  the asker's record states: the bookended
+  fire test 655, the bookended silent test
+  122, the plain shapes test 18, and the
+  remaining three tests a few seconds
+  together. The bookended tests multiply
+  the 11,745-shape inventory by the 73 (75
+  for the silent twin) bookended variants;
+  the plain tests walk the inventory once
+  per layer. Prediction: timing the six
+  Q165 tests on this lane's machine
+  reproduces that split — the two bookended
+  tests above nine tenths of the class —
+  within shared-machine slop.
+
+- **Q166-S2 (the sample is small and the
+  sampled class fits a shard).** The 11,745
+  separators fall into a number of distinct
+  (Unicode category, Unicode block) groups
+  between 100 and 400. One representative
+  per group (the first shape of the group
+  in the inventory's order) therefore cuts
+  the bookended fire test to seconds —
+  predicted 5 to 40 seconds unloaded — and
+  the silent twin to 1 to 15, and brings
+  the whole Q165 class under 120 seconds
+  unloaded, a size any ordinary shard
+  carries. If the measured class time under
+  the sample exceeds five minutes unloaded,
+  this lane lands the answer alone and
+  scopes the implementation as the named
+  follow-up instead.
+
+- **Q166-S3 (every shape names its
+  separator).** Each of the 11,745 firing
+  texts and each of the 11,745 evidence-only
+  twins differs from its template sentence
+  in exactly one character — the separator
+  standing spaced between the clauses — so
+  the separator can be read back out of
+  every text mechanically, and the sample
+  can be computed from the lists themselves
+  with no second inventory to drift. The
+  four representatives Q165 names (the
+  U+00A2, U+10137, U+0300 and U+0030 shapes,
+  the leads of its four items) stand in the
+  sample, each the first shape of its item
+  and of its group.
+
+- **Q166-S4 (what a representative proves,
+  and what it cannot).** The detector opens
+  a ledger segment at a character by the
+  character's standing in `_LEDGER_SEGMENTS`
+  (beside the fold's named boundaries); it
+  does not branch on which member of a
+  category-and-block group stands between
+  the clauses. One representative per group
+  therefore exercises the same detector path
+  as its group-mates, plain and bookended.
+  What a sample cannot see is an inventory
+  hole inside a group — a character dropped
+  from `_LEDGER_SEGMENTS` whose group-mate
+  still stands — and that hole is bounded
+  on a push by the plain inventory tests
+  staying whole (they name every shape, at
+  one walk per layer) and closed on the
+  nightly by the whole bookended sweep.
+
+What cannot be recorded as a unit test,
+stated plainly in advance: the CI wall
+behaviour itself (a shard's minutes on a
+shared runner) is a live-runner fact; its
+deterministic substrate is the sample's
+definition, its size and its membership,
+which the committed tests pin, beside the
+local timings this lane records in its
+conclusions. No new detector behaviour is
+claimed: the guard, the mark and the audit
+shape do not change under this answer —
+only where, and at what size, its sweeps
+run.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
