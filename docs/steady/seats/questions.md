@@ -328,6 +328,114 @@ re-tests. Until it lands, Q162's re-test stands
 as: the filed scope passes whole; the guard's
 residual ledger shapes are this question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now opens a new ledger
+segment at the supplemental punctuation block's
+remaining assigned punctuation marks (the hyphen
+with diaeresis, the half brackets, the sideways
+U bracket, the double parenthesis, the raised
+comma, the daggers with guard, the turned
+dagger, the top half section sign, the
+stenographic full stop, the wiggly vertical
+line, the double hyphen, the reversed comma, the
+dash with left upturn, the double suspension
+mark, the kavyka forms, the double stacked
+comma, the dotted solidus, the triple dagger,
+the paragraphus and punctus elevatus marks, the
+Cornish verse divider, the Tironian sign, the
+medieval exclamation and question marks, the
+square brackets with stroke and the half
+parentheses), at the CJK compatibility
+presentation forms beyond the filed eight (the
+vertical low lines, the vertical right
+parenthesis and curly bracket, the vertical
+tortoise shell, black lenticular, double angle,
+angle and corner brackets, the white sesame dot,
+the vertical right square bracket and the
+overline and low line forms), at the CJK symbols
+block's remaining punctuation (the ditto mark,
+the angle, corner, tortoise shell, lenticular
+and square brackets, the wave and wavy dashes,
+the double prime quotation marks and the part
+alternation mark) and at the fullwidth and
+halfwidth forms' remaining punctuation (the
+fullwidth dollar sign, ampersand, asterisk, plus,
+less-than, equals and greater-than signs,
+commercial at, reverse solidus, circumflex, low
+line, grave accent and white parentheses, and
+the halfwidth corner brackets, ideographic comma
+and katakana middle dot), beside the standing
+separators and dash forms, so an evidence word
+in an earlier clause no longer swallows a later
+instruction complement under those separators
+either — while the evidence-only twins under the
+new shapes stay silent, pinned both ways. The
+guard stays per match, the mark's placement, the
+audit shape, the 7 rules' subjects, and the
+no-refusal / no-warning behaviour are unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(8:33 PM PST, 2026-11-11), the fix commit of
+8:43 PM PST ("Q163: the briefing guard opens
+ledger segments at the supplemental-punctuation
+remainder, the CJK compatibility presentation
+forms, the CJK symbols remainder and the
+fullwidth and halfwidth remainder (option 1)")
+—
+`runner/ops/briefing.py` (the widened guard) and
+`runner/tests/test_briefing_contradiction.py`
+(the Q163PolarityGuardTest family: items 1, 2, 3
+and 4's supplemental-punctuation remainder, CJK
+compatibility presentation form, CJK symbols and
+fullwidth and halfwidth separator shapes firing
+on both layers plain and bookended with its
+evidence-only twins silent, beside the filed
+Q143, Q144, Q145, Q146, Q147, Q148, Q149, Q150,
+Q151, Q152, Q153, Q154, Q155, Q156, Q157, Q158,
+Q160, Q161 and Q162 corpora, the standing
+contradiction family, and the
+unrelated-negation and negated-then-contradicting
+pins) — and the figures re-measure of 9:13 PM
+PST, landed by another lane over the post-kill
+wait bound, which re-measured the core over the
+current tree carrying the fix (the statistics
+record measured at the head that re-measure
+stands on, the core's runner/ops part moving by
+24 lines — this fix's net 8 lines in
+`briefing.py` beside that lane's 16 in
+`runner/ops/exec.py`); this completion lane
+verified that re-measure first-hand
+(`refresh_figures --check` passing on the
+current head and `test_core`,
+`test_doc_figure_slots` and
+`test_reader_docs_quiet` green at the re-measure
+commit) and lands no second re-measure.
+Red-before: items 1, 2, 3 and 4's 98 shapes read
+silent on the pre-fix head, measured first-hand
+by the filing seat and the fix lane on the
+fixture layer and the shipped layer (0 of 98
+firing plain, 0 of 7,154 bookended variants
+firing, the representatives carrying no mark and
+no audit row, the controls holding and the
+evidence-only twins silent), and the new family
+reads 7,253 failing entries against the
+unpatched detector, every one of them in the new
+family — measured first-hand by this completion
+lane (7,154 in its bookended ledger test, 98 in
+its ledger shapes test and 1 in its end-to-end
+test; the whole guard family against the same
+detector reads the same 7,253 failures with no
+errors and every other test passing). The desk's
+Q163 conclusions carry the full record. Q163 is
+not closed by this lane, and neither are Q162,
+Q161, Q160, Q158, Q157, Q156, Q155, Q154, Q153,
+Q152, Q151, Q150, Q149, Q148, Q147, Q146, Q145,
+Q144 and Q143: the filing seat's rule-8 re-test
+of this fix is still owed, and all of them close
+only after that re-test passes whole.
+
 ## Q162 (Muse, to the desk, 2026-11-11): the Q161 guard's residual polarity shapes — a bare plural complement head carrying a pied-piped relative clause whose lead carries a person head is wrongly marked, and the ledger's mixed sentence under the supplemental punctuation block beyond every filed separator, the small-form variants beyond the filed four and the presentation forms is still missed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->

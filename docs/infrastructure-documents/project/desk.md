@@ -21711,6 +21711,194 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   Q161/Q162 pattern; a docs-only landing
   rides no re-measure.
 
+## Q163: conclusions of the fix lane, completed by the completion lane (2026-11-11)
+
+The fix landed under option 1 at the same
+detector in `runner/ops/briefing.py` (the
+suppositions recorded above before the fix at
+8:33 PM PST, and the fix commit of 8:43 PM
+PST). The fix lane's own report left the lane
+open: the fix landed and was push-verified,
+and the verification runs, the figures
+re-measure, the Answer and these conclusions
+were still owed when the lane timed out. A
+completion lane — a fresh lane, working from
+a fresh scratch clone at the remote head —
+took the lane up from there, preserved the
+landed fix unchanged, and settled the
+outstanding verification first-hand; this
+section is that completion record, and the
+Q163 Answer in the questions file lands in
+the same commit. The fix commit stands on
+remote main, verified by this lane by
+foreground `git ls-remote` with the fix's
+content grepped at the remote ref in the
+same call, and its diff is what its title
+claims: the `_LEDGER_SEGMENTS` widening and
+its docstring in `runner/ops/briefing.py`
+(98 characters appended to the set, none of
+them standing in it before, 250 entries
+becoming 348) and the Q163 test family in
+`runner/tests/test_briefing_contradiction.py`
+(711 lines). Every run in this lane set its
+temporary directory to a scratch area on the
+workspace disk. Settled against the
+suppositions one by one:
+
+- **Q163-S1 — holds.** Red-before, items 1,
+  2, 3 and 4, as filed and as supposed: the
+  ledger's mixed sentence under the 37
+  supplemental-punctuation remainder marks,
+  under the 24 CJK compatibility presentation
+  forms beyond the filed eight, under the 19
+  CJK symbols marks and under the 18 fullwidth
+  and halfwidth forms, each standing spaced
+  between the clauses, produces no findings on
+  the pre-fix head on both layers, plain (0 of
+  98 firing `ledger_treated_as_instruction`:
+  0 of 37, 0 of 24, 0 of 19 and 0 of 18, on
+  the fixture layer and the shipped layer
+  alike), and bookended (0 of 7,154 variants
+  under the non-word symbols: 0 of 2,701, 0 of
+  1,752, 0 of 1,387 and 0 of 1,314), and end
+  to end each representative (the U+2E1A,
+  U+FE33, U+3003 and U+FF04 shapes) carries no
+  mark and writes no audit row; the controls
+  hold on the pre-fix head, and the
+  evidence-only twins under the new shapes
+  stay silent there (98 of 98 plain on both
+  layers, 7,350 of 7,350 bookended variants
+  silent under the full symbol set). This
+  lane's committed-family red measurement
+  under S4 corroborates the same red-before
+  through the committed tests themselves.
+- **Q163-S2 — holds.** The fix opens a new
+  ledger segment at the filed separator
+  classes in `_LEDGER_SEGMENTS`, beside the
+  standing separators: the supplemental
+  punctuation block's remaining assigned
+  punctuation marks, the CJK compatibility
+  presentation forms beyond the filed eight,
+  the CJK symbols block's remaining
+  punctuation and the fullwidth and halfwidth
+  forms' remaining punctuation (the classes
+  named whole in the supposition above). Items
+  1, 2, 3 and 4's 98 shapes now fire exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain (98 of 98) and bookended
+  (7,154 of 7,154 variants under the non-word
+  symbols), while the evidence-only twins
+  under the new shapes stay silent.
+- **Q163-S3 — holds.** Both ways hold beside
+  the widening: the standing and filed
+  separators and boundaries still fire whole;
+  the evidence-only twins under the new shapes
+  stay silent on both layers, plain and
+  bookended, and end to end; a bound
+  prohibition followed by a contradicting
+  sentence fires exactly the contradicting
+  rule; and the standing unrelated-negation
+  and negated-then-contradicting pins hold,
+  all through the whole guard family run
+  whole under S4.
+- **Q163-S4 — holds.** No earlier family
+  regresses. The whole guard family in
+  `runner/tests/test_briefing_contradiction.py`
+  (the committed form of this lane's
+  red-before) reads green after the fix: 261
+  tests, the 255 filed tests beside the 6 new
+  Q163 tests, run whole by this lane in a
+  fresh clone at the remote head. The new
+  family alone reads 7,253 failing entries
+  against the unpatched detector (the fix
+  commit's parent tree's `briefing.py`), every
+  one of them in the new family (7,154 in its
+  bookended ledger test, 98 in its ledger
+  shapes test and 1 in its end-to-end test;
+  its evidence-only, bookended-evidence and
+  bound-prohibition tests pass there, as the
+  both-ways pins require), and the whole
+  family run against the same unpatched
+  detector reads the same 7,253 failures with
+  0 errors and every failure in the new
+  family — the other 255 tests passing on the
+  unpatched detector, so the failures are the
+  fix's absence, nothing else. The neighbour
+  batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2`,
+  `test_protocol_v2_messages`, `test_v2_consult`,
+  `test_v2_replay`, `test_security_config`) read
+  305 green beside the family.
+- **Q163-S5 — holds.** End to end: items 1,
+  2, 3 and 4's representative sentences (the
+  U+2E1A shape, the U+FE33 shape, the U+3003
+  shape and the U+FF04 shape) assembled into
+  briefings each carry their mark and write
+  exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id
+  as the detail); and a representative
+  evidence-only twin assembled into a briefing
+  carries no mark and writes no audit row —
+  all inside the committed end-to-end test of
+  the Q163 family, run whole above.
+- **Q163-S6 — holds, with the re-measure
+  landed by another lane.** `briefing.py`
+  grew by the fix: net 8 lines (10 insertions,
+  2 deletions). The re-measure this supposition
+  calls for stands landed, not by this lane:
+  the figures re-measure of 9:13 PM PST,
+  landed over the post-kill wait bound by
+  another lane, re-measured the whole set over
+  its measured tree (the statistics record
+  measured at that tree's head, 9:11 PM PST),
+  a tree carrying the fix with `briefing.py`
+  byte-identical to the fix commit's, and its
+  core.py entry states plainly that the
+  measure also takes up the desk-chain growth
+  of runner/ops other lanes landed after the
+  macOS confinement fourth-fix measure — the
+  core's runner/ops part moving by 24 lines
+  in all (this fix's net 8 in `briefing.py`
+  beside that lane's 16 in `runner/ops/exec.py`).
+  This lane verified that re-measure
+  first-hand: `refresh_figures --check` passes
+  on the current head, and `test_core`,
+  `test_doc_figure_slots` and
+  `test_reader_docs_quiet` read 38 green at
+  the re-measure commit, so this lane lands no
+  second re-measure over the same growth. One
+  later state is recorded plainly: at the
+  current head the same three batteries read
+  37 of 38, the single failure in `test_core`'s
+  parts pin — the CI lane's `runner/tools/ci_scope.py`
+  growth of net 1 line, landed at 9:13 PM PST
+  in the same minute as the re-measure, after
+  the measure was taken, leaving the recorded
+  runner/tools part stale by that 1 line. It
+  is not this fix, and it was not the
+  re-measure's state at its own head; it rides
+  that lane's next re-measure, not this one's.
+
+Q163 is not closed by this lane, and neither
+are Q162, Q161, Q160, Q158, Q157, Q156, Q155,
+Q154, Q153, Q152, Q151, Q150, Q149, Q148, Q147,
+Q146, Q145, Q144 and Q143: closure waits on the
+filing seat's rule-8 re-test of this fix, which
+this lane does not run.
+
+What cannot be recorded as a unit test, stated
+plainly: this lane's detector-swap runs (the
+committed guard family run against the parent
+tree's `briefing.py`) are live detector calls
+over the committed family's sentences; their
+deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane runs whole. No new behaviour
+is claimed beyond what those calls and that
+family show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
 ## macOS confinement: the fifth fix — suppositions recorded before the fix (2026-11-11)
 
 The live verdict on the fourth fix has arrived
