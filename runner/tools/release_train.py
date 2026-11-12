@@ -445,7 +445,7 @@ def cmd_cut(args, sha=None):
     sha = sha or args.sha or _git("rev-parse", "HEAD")
     sha = _git("rev-parse", sha)
     if getattr(args, "watch", False):
-        return watch_tag_build(getattr(args, "version", None) or carriers()["pyproject.toml"], args.limit)
+        return watch_tag_build((getattr(args, "version", None) or carriers()["pyproject.toml"]).lstrip("v"), args.limit)
     _say("waiting for the build on %s" % sha[:8])
 
     def probe():
@@ -763,7 +763,7 @@ def clock_report(rows):
 
 
 def cmd_clock(args):
-    version = args.version or carriers()["pyproject.toml"]
+    version = (args.version or carriers()["pyproject.toml"]).lstrip("v")
     rows = cycle_clock(version, args.since)
     _say("the %s cycle, from the hosted record:" % version)
     _say(clock_report(rows))
