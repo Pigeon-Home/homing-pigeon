@@ -31,10 +31,12 @@ push again, three tries -- and a rebase that does not apply is
 aborted and named. Seats pushing seconds apart is the ordinary
 case here; the train treats it as one.
 
-## 12-Nov-12:45pm-PST — two echoes retired; the loopback waits are hang guards
+## 12-Nov-12:37pm-PST — two echoes retired; the loopback waits are hang guards
 
-The Linux suite was red from 16:22Z to 20:14Z on two race_state
-probes the Germany bank 65 landing filed from a rig behind the
+The Linux suite was red on seven builds, from 15:47Z (the first
+echo verdict, on the 3.16.24.1 gate build) to 20:17Z (the
+retirement's landing), on two race_state probes the Germany
+bank 65 landing filed from a rig behind the
 fix: unexpected successes from the first build, the signal to run
 `promote`, which retired them at ed28a983 (fixed, reaching
 nothing new). A campaign landing's probes that pass on main at

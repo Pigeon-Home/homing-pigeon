@@ -1428,9 +1428,11 @@ the desk carries the conclusions and the timings.
 
 ### Four hours of red on two echoes; the suites green on 3.16.24.5 (12 Nov 2026)
 
-Between 16:22Z and 20:14Z the Linux suite was red on every build
-and four releases went out beside it: the Germany bank 65 landing
-(82f5c5af4) had filed two race_state crashes -- a retained record
+Between 15:47Z (the first echo verdict, on the 3.16.24.1 gate
+build) and 20:17Z (the retirement's landing) the Linux suite was
+red on seven builds and four releases went out beside it: the
+Germany bank 65 landing (82f5c5af4) had filed two race_state
+crashes -- a retained record
 saved under a case-variant id, absent after the join -- from a
 rig whose head predated the fix, and on main their probes passed
 from the first build, two unexpected successes the suite reports

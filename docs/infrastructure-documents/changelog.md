@@ -23,7 +23,7 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.16.24.5 - 2026-11-12
 
-- Tests: two race_state echoes the Germany bank 65 landing filed from a rig behind the fix are retired (their probes passed from the first build and kept the Linux suite red through six builds); the loopback clients of the oracle-send and runner-edge tests wait a minute, not ten seconds, under the Windows leg's 28-way start
+- Tests: two race_state echoes the Germany bank 65 landing filed from a rig behind the fix are retired (their probes passed from the first build and kept the Linux suite red through seven builds); the loopback clients of the oracle-send and runner-edge tests wait a minute, not ten seconds, under the Windows leg's 28-way start
 
 ## 3.16.24.4 - 2026-11-12
 
