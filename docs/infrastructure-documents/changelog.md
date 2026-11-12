@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.3 - 2026-11-12
+
+- CI: the Windows suite runs in its own advisory job (test-windows, with its -v log uploaded as ci-test-log-windows); build-windows is the artifact leg alone, so the release no longer waits the suite's 12.7 minutes on either side of the tag
+- CI: a pipeline cut dispatches the nine proof workflows on its tag; a tag placed with the workflow token fires no push-triggered run, so v3.16.20.10 and v3.16.21.2 ran build.yml and docker.yml alone
+- Fix: the parity test keys its backend arm on every platform backend and reads the job_user refusal where confinement engages without root (the third refusal arm keyed on bwrap's Linux-only probe)
+- Tests: the decision-1 split family's census pin reads the two tests the every-seam landing added (101); the macOS guide dates the sentence that names the release head
+
 ## 3.16.21.2 - 2026-11-11
 
 - Fix: the default-posture confinement tests ask the runner's startup gate on macOS and FreeBSD as they do on Windows; the macOS backend engaged on the CI runners for the first time at the v3.16.21.1 tag build and the refusal arms of test_confinement and test_campaign_canary failed on a job that ran confined
