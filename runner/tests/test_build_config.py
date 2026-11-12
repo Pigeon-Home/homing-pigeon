@@ -241,7 +241,7 @@ class MutationGateTest(unittest.TestCase):
         # the skip guard and the release snapshot read.
         workflow = _workflow()
         linux = _uncommented(_job_block(workflow, "test"))
-        self.assertIn("python runner/tools/run_tests_parallel.py --jobs 4 "
+        self.assertIn("python runner/tools/run_tests_parallel.py --jobs 8 "
                       "--wall-clock 30 --durations 25 "
                       "--full-log test-output.log", linux)
         self.assertNotIn("python -m unittest discover", linux)

@@ -168,10 +168,13 @@ jobs:
       # that was 17 to 20 minutes, the long pole of every build.
       # The parallel runner now writes that log itself (--full-log:
       # every shard's complete -v output and one combined verdict),
-      # so the suite runs in 4 shards under the same 30-minute clock
-      # per shard, as the macOS leg has run since 2026-10-25.
+      # so the suite runs in 8 shards under the same 30-minute clock
+      # per shard, as the macOS leg has run since 2026-10-25. Eight,
+      # not the runner's 4 cores: the shards are count-balanced and
+      # mostly waiting (4 shards measured 229, 417, 467 and 682
+      # seconds on the first run), so more of them overlap better.
       - name: run the suite
-        run: python runner/tools/run_tests_parallel.py --jobs 4 --wall-clock 30 --durations 25 --full-log test-output.log
+        run: python runner/tools/run_tests_parallel.py --jobs 8 --wall-clock 30 --durations 25 --full-log test-output.log
       # A skipped proof is green from the outside. On this box the
       # sandbox proofs must run; any other skip is listed, not fatal.
       # --annotate is the piece worth keeping from diag/bwrap-suite:
