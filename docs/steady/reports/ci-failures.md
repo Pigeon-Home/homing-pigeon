@@ -1059,3 +1059,5 @@ release in flight in a reader-facing guide (desk.md is a
 record to the version-rot guard now; the guides are not),
 and an edit tool that writes a file's head and drops the
 rest, which the `shape` job can only name after the push.
+
+The docs-only scoping ran first on the support-matrix push of 2026-11-12T05:04Z: scope, shape and the docs job, the matrix skipped.
