@@ -45,14 +45,19 @@ def _evergreen_docs():
             if name.endswith(".md") and name not in (
                     "CHANGELOG.md", "changelog.md"):
                 found.append(os.path.join(dirpath, name))
-    # The two logs cite releases by number the way the CHANGELOG
+    # The three logs cite releases by number the way the CHANGELOG
     # does: the questions file records which release applied an
     # answer, the standing orders' ledger which release proved an
-    # item. Records, not evergreen prose.
+    # item, and the desk's ledger which release a lane's landing
+    # rode, dated entry by dated entry. Records, not evergreen
+    # prose; a desk note that names the release in flight is
+    # history the moment that release is cut.
     logs = {os.path.join(root, "docs", "steady", "seats",
                          "questions.md"),
             os.path.join(root, "docs", "infrastructure-documents",
-                         "project", "campaign-standing-orders.md")}
+                         "project", "campaign-standing-orders.md"),
+            os.path.join(root, "docs", "infrastructure-documents",
+                         "project", "desk.md")}
     return [p for p in found if p not in logs]
 
 
