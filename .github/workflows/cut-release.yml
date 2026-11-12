@@ -158,7 +158,11 @@ jobs:
                "--jq", "[.jobs[] | {name, status, conclusion}]"],
               capture_output=True, text=True, check=True).stdout
           jobs = {j["name"]: j for j in json.loads(out)}
-          need = {"test", "build-python", "build-linux", "build-linux-arm64",
+          # RELIEF-48H expires 2026-11-14T03:45Z: `test` is advisory for the
+          # window (build.yml runs it advisory) and is not read
+          # here; the gate is the artifact legs below. Restore
+          # "test" to the set at expiry.
+          need = {"build-python", "build-linux", "build-linux-arm64",
                   "build-windows", "build-windows-arm64", "build-macos",
                   "build-macos-x86_64", "build-pi-light"}
           missing = sorted(need - set(jobs))

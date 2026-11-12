@@ -14,12 +14,15 @@ name: mutation-seeded
 # that seed on that commit: set PYTHONHASHSEED and HP_MUTATION_SEED
 # to it locally and `mutmut run` walks the same space.
 on:
-  schedule:
-    # Hourly at :17, off the hour (owner, 2026-10-25: main takes a
-    # commit every few minutes, and a weekly walk saw four seeds a
-    # month). Each run takes about the release job's seven minutes.
-    # (Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab)
-    - cron: "17 * * * *"
+  # RELIEF-48H expires 2026-11-14T03:45Z: the hourly schedule is paused for
+  # the window (~7 minutes a run); a walk still runs on dispatch.
+  # The paused shape, to restore at expiry -- hourly at :17, off
+  # the hour (owner, 2026-10-25: main takes a commit every few
+  # minutes, and a weekly walk saw four seeds a month); each run
+  # takes about the release job's seven minutes:
+  # schedule:
+  #   - cron: "17 * * * *"
+  # (Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab)
   workflow_dispatch:
     inputs:
       seed:

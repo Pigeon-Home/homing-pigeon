@@ -27,8 +27,15 @@ name: platform-matrix
 # via fromJSON. The "Proven platforms" table in docs/steady/use/platforms.md is pinned to
 # the leg names in that file by runner/tests/test_build_config.py.
 on:
+  # RELIEF-48H expires 2026-11-14T03:45Z: for the relief window this workflow
+  # does not fire on pushes to main -- it runs on release tags, on
+  # its schedule and on dispatch, so a push pays for build.yml
+  # alone. At expiry restore `branches: [main]` under push (and
+  # drop the schedule if the window added it);
+  # runner/tests/test_build_config.py fails after the date
+  # until the window is reverted whole.
   push:
-    branches: [main]
+    tags: ["v*"]
   pull_request:
   schedule:
     - cron: '17 9 * * *'

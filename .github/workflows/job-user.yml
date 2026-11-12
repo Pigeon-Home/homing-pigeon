@@ -13,8 +13,15 @@ name: job-user
 # _demote fell back to the user's primary group alone (Q18's
 # answer); it is green now, and would go red again on a regression.
 on:
+  # RELIEF-48H expires 2026-11-14T03:45Z: for the relief window this workflow
+  # does not fire on pushes to main -- it runs on release tags, on
+  # its schedule and on dispatch, so a push pays for build.yml
+  # alone. At expiry restore `branches: [main]` under push (and
+  # drop the schedule if the window added it);
+  # runner/tests/test_build_config.py fails after the date
+  # until the window is reverted whole.
   push:
-    branches: [main]
+    tags: ["v*"]
     paths:
       - "runner/tests/test_secret_files_job_user.py"
       - "runner/tests/test_credential_canary.py"
@@ -22,6 +29,10 @@ on:
       - "runner/ops/remediation_ops.py"
       - "runner/guard/security.py"
       - ".github/workflows/job-user.yml"
+  schedule:
+    # RELIEF-48H: the nightly the window adds, so the proof still
+    # runs daily while pushes to main do not fire it.
+    - cron: "53 8 * * *"
   workflow_dispatch:
 
 permissions: {}

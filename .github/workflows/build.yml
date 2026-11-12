@@ -41,9 +41,17 @@ permissions: {}
 # campaign pushes a test every minute (2026-10-25). The expression
 # is false on tag dispatches, where head_commit is absent.
 # (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
+# RELIEF-48H expires 2026-11-14T03:45Z: for the window a superseded ROLLING
+# build is cancelled by the next push, so the newest head's
+# verdict is the one that completes (the four-day review's root
+# cause 5 in docs/steady/reports/ci-failures.md). Release commits
+# (their own group, via the expression below) and tag builds are
+# never cancelled: the expression is false for both. At expiry
+# restore `cancel-in-progress: false` -- test_build_config.py
+# fails after the date until the window is reverted whole.
 concurrency:
   group: build-${{ github.ref }}-${{ startsWith(github.event.head_commit.message, 'release:') && github.sha || 'rolling' }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ !(startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.head_commit.message, 'release:')) }}
 
 jobs:
   scope:
@@ -88,6 +96,12 @@ jobs:
       - run: python3 runner/tools/shrink_guard.py --commit HEAD
 
   test:
+    # RELIEF-48H expires 2026-11-14T03:45Z: the suite is advisory for the
+    # window -- it runs in full and shows red on the run page,
+    # but a red does not hold the release; reds are triaged
+    # after publish. The gates that stay are scope, shape,
+    # typecheck, the artifact legs and the rig battery.
+    continue-on-error: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -295,6 +309,9 @@ jobs:
     # nothing until it has held green for a while.
     needs: scope
     if: needs.scope.outputs.corpus_only != 'true'
+    # RELIEF-48H expires 2026-11-14T03:45Z: advisory for the window, like the
+    # Linux suite -- it runs and shows red, and blocks nothing.
+    continue-on-error: true
     runs-on: macos-15
     permissions:
       contents: read
@@ -352,7 +369,12 @@ jobs:
       # waiting, so a cap serializes waits), while the loopback-server
       # tests that the 28-way start had been starving carry 60-second
       # hang guards now instead of 5-second latency bounds.
+      # RELIEF-48H expires 2026-11-14T03:45Z: the Windows suite is advisory
+      # for the window -- the shards run in full and show red,
+      # but the packaging below proceeds, so the artifact leg
+      # stays the gate. Remove the advisory line at expiry.
       - run: python runner/tools/run_tests_parallel.py --duration-table runner/tools/windows_durations.json --durations 15 --wall-clock 20
+        continue-on-error: true
       - run: pip install -c .github/requirements-ci.txt pyinstaller
       - run: pyinstaller --onefile --noconfirm --clean --name homing-pigeon runner/runner.py --add-data "PROTOCOL.md;pigeon-docs" --hidden-import runner._version --hidden-import runner._build --hidden-import runner.ops.recipes --hidden-import runner.ops.cancel --hidden-import runner.ops.changes --hidden-import runner.ops.av --hidden-import runner.ops.exec --hidden-import runner.ops.mail --hidden-import runner.ops.main --hidden-import runner.ops.misc --hidden-import runner.ops.queries --hidden-import runner.ops.remediation_ops --hidden-import runner.ops.attest --hidden-import runner.ops.context --hidden-import runner.ops.firewall --hidden-import runner.ops.handlers --hidden-import runner.ops.oracle_ops --hidden-import runner.ops.paths --hidden-import runner.ops.poll --hidden-import runner.ops.sensors --hidden-import runner.ops.startup --hidden-import runner.ops.watch --hidden-import runner.ops.windows --hidden-import runner.ops.oracle_server --hidden-import runner.wire.oauth --hidden-import runner.oracle.senses --hidden-import runner.ops.live --hidden-import runner.ops.extensions --hidden-import runner.ops.extsources --hidden-import runner.oracle.review --hidden-import runner.oracle.opinion --hidden-import runner.oracle.learning --hidden-import runner.oracle.remediation --hidden-import runner.oracle.resources --hidden-import runner.oracle.dri --hidden-import runner.oracle.detection --hidden-import runner.ops.setup --hidden-import runner.guard.security --hidden-import runner.guard.sandbox --hidden-import runner.ops.winlog --hidden-import runner.ops.auditreport --hidden-import runner.ops.posture --hidden-import runner.ops.harness --hidden-import runner.ops.local_test --hidden-import runner.wire.transports --hidden-import runner.wire.mailbox --hidden-import runner.transport_extensions.dtls.__main__ --hidden-import runner.wire.dtlsproto --hidden-import runner.wire.jobcrypto --hidden-import runner.wire.protocol_v2 --hidden-import runner.oracle.personal_docs --hidden-import runner.wire.platformcard --hidden-import runner.wire.board --hidden-import runner.guard.textutil --hidden-import runner.guard.extreview --hidden-import runner.guard.atomicio --hidden-import runner.guard.filenames --hidden-import runner.guard.panic --hidden-import runner.ops.cli --hidden-import runner.ops.oracle_page --hidden-import runner.ops.helpers --hidden-import runner.ops.oracle_tools --hidden-import runner.ops.tables --hidden-import runner.ops.policy --hidden-import runner.guard.confval --hidden-import runner.guard.defaulted --hidden-import runner.tools.disclosure --hidden-import runner.wire.verify --hidden-import runner.wire.subject --hidden-import runner.transport_extensions --hidden-import runner.transport_extensions.channel --hidden-import runner.transport_extensions.email.__main__ --hidden-import runner.transport_extensions.file.__main__ --hidden-import runner.transport_extensions.nats.__main__ --hidden-import runner.transport_extensions.queues.__main__ --hidden-import runner.ops.briefing --add-data "runner/transport_extensions;pigeon-transport-extensions"
       - run: pyinstaller --onefile --noconfirm --clean --name install runner/ops/install.py --hidden-import runner._version --hidden-import runner.oracle.personal_docs --hidden-import runner.guard.atomicio --add-data "runner/guard/atomicio.py;pigeon-guard" --add-data "runner/guard/panic.py;pigeon-guard"
@@ -768,7 +790,13 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [test, build-python, build-windows, build-windows-arm64, build-linux, build-linux-arm64, build-macos, build-macos-x86_64, build-pi-light]
+    # RELIEF-48H expires 2026-11-14T03:45Z: for the window the release does
+    # not wait on the `test` job at all -- the suite is advisory
+    # (flagged so above) and the release gates on the
+    # artifact legs alone. Restore `test` to this needs list at
+    # expiry; ReliefModeTest in test_build_config.py pins both
+    # shapes and fails after the date until the window is reverted.
+    needs: [build-python, build-windows, build-windows-arm64, build-linux, build-linux-arm64, build-macos, build-macos-x86_64, build-pi-light]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -163,20 +163,30 @@ class MutationGateTest(unittest.TestCase):
         block = _job_block(_workflow(), "mutation")
         self.assertNotIn("timeout-minutes", _uncommented(block))
 
-    def test_a_running_build_is_never_cancelled_by_the_next_push(self):
-        # Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c. With
-        # cancel-in-progress on branch pushes, a push every five
+    def test_relief_rolling_builds_cancel_release_and_tag_never_do(self):
+        # RELIEF-48H (owner-approved 2026-11-11, expires
+        # 2026-11-14T03:45Z): the pin this replaces --
+        # cancel-in-progress: false, a running build never
+        # cancelled -- held from 2026-10-23, when a push every five
         # minutes against a seven-minute build meant no main commit
-        # ever finished building (six cancelled in a row on
-        # 2026-10-23), so nothing could be green and cut-release
-        # could never run. The group still serializes builds per
-        # ref; the running one finishes and the newest push waits.
+        # ever finished building. The four-day review's root cause
+        # 5 is the same starvation from the other side: at the
+        # relief window's landing rate the no-cancel queue starves
+        # the verdicts the hourly train gates on. For the window a
+        # superseded ROLLING build cancels; a release commit (its
+        # own group) and a tag build never do -- the expression is
+        # false for both. ReliefModeTest carries the expiry: this
+        # pin is reverted with the window.
         workflow = _workflow()
         m = re.search(r"^concurrency:\n((?:  .*\n)+)", workflow, re.M)
         self.assertIsNotNone(m, "build.yml has no concurrency block")
         block = _uncommented(m.group(1))
         self.assertIn("group: build-${{ github.ref }}", block)
-        self.assertIn("cancel-in-progress: false", block)
+        self.assertIn("cancel-in-progress: ${{", block)
+        self.assertIn("startsWith(github.ref, 'refs/tags/v')", block)
+        self.assertIn("startsWith(github.event.head_commit.message, "
+                      "'release:')", block)
+        self.assertNotIn("cancel-in-progress: false", block)
 
     def test_only_scarce_runners_carry_a_timer(self):
         # The measurement experiment is over. The one timer the
@@ -241,9 +251,15 @@ class MutationGateTest(unittest.TestCase):
         # The mirror image of the pin above: if a job that gates
         # the release ever grows continue-on-error, a red suite
         # would publish. Only the signal job may carry it.
+        # RELIEF-48H (expires 2026-11-14T03:45Z): `test` and the
+        # suite step inside `build-windows` are advisory for the
+        # window and leave this list until it expires; every other
+        # gate -- typecheck, the artifact legs, the publish chain --
+        # stays a real gate throughout. ReliefModeTest pins the
+        # advisory pair and the expiry.
         workflow = _workflow()
-        for job in ("test", "typecheck", "build-linux", "build-linux-arm64",
-                    "build-macos", "build-macos-x86_64", "build-windows",
+        for job in ("typecheck", "build-linux", "build-linux-arm64",
+                    "build-macos", "build-macos-x86_64",
                     "build-windows-arm64", "build-python", "build-pi-light",
                     "release", "pypi-publish", "sourceforge", "gitlab"):
             block = _job_block(workflow, job)
@@ -888,17 +904,27 @@ class PipelineLessonsTest(unittest.TestCase):
     def test_continue_on_error_only_where_documented(self):
         # continue-on-error reports the step as `success` in the API
         # even when the command failed. The bwrap diagnosis on PR #87
-        # read "EnforceTest alone: passes" off exactly that. The one
-        # allowed use is build.yml's release-only mutation job, whose
-        # comment explains it is a signal, not a gate. Anywhere else
-        # it hides a failure.
+        # read "EnforceTest alone: passes" off exactly that. The
+        # allowed uses are build.yml's release-only mutation job,
+        # whose comment explains it is a signal, not a gate, and --
+        # for the RELIEF-48H window only (expires 2026-11-14T03:45Z)
+        # -- the three advisory suite surfaces. Anywhere else it
+        # hides a failure.
         for name in self.ALL:
             lines = [ln for ln in _workflow_text(name).splitlines()
                      if "continue-on-error" in ln
                      and not ln.strip().startswith("#")]
             if name == "build.yml":
-                self.assertEqual(len(lines), 1, lines)
-                block = _job_block(_workflow(), "mutation")
+                # The signal job, plus the RELIEF-48H advisory
+                # surfaces (expires 2026-11-14T03:45Z): the `test`
+                # job, the `test-macos` job and the suite step
+                # inside `build-windows`. Four, no more; each is
+                # pinned by ReliefModeTest below.
+                self.assertEqual(len(lines), 4, lines)
+                for job in ("mutation", "test", "test-macos"):
+                    block = _job_block(_workflow(), job)
+                    self.assertIn("continue-on-error: true", block, job)
+                block = _job_block(_workflow(), "build-windows")
                 self.assertIn("continue-on-error: true", block)
             else:
                 self.assertEqual(lines, [], "%s uses continue-on-error" % name)
@@ -987,3 +1013,131 @@ class PythonFloorTest(unittest.TestCase):
                   encoding="utf-8") as fh:
             self.assertIn('requires-python = ">=3.9"', fh.read())
         self.assertIn("python-3.9-floor-x86_64", _matrix_leg_names())
+
+
+class ReliefModeTest(unittest.TestCase):
+    """The 48-hour relief mode (owner-approved 2026-11-11 evening;
+    suppositions and the accepted risk are recorded in
+    docs/steady/reports/ci-failures.md).
+
+    For the window: the full suites run advisory and reds are
+    triaged after publish; the nine proof workflows beside
+    build.yml stop firing on pushes to main (release tags, a
+    nightly schedule and dispatch still run them); superseded
+    rolling builds cancel (release and tag builds never do); the
+    hourly seeded mutation walk is paused. The mode carries its
+    own expiry: every touched workflow names the same instant in
+    a RELIEF-48H marker, and the last test here fails once that
+    instant passes, so the suite itself holds the restore open
+    until the window is reverted whole -- the pins in this class
+    and the ones it names in MutationGateTest, PipelineLessonsTest
+    and test_seeded_mutation_workflow.py are reverted in the same
+    change that restores the triggers.
+    """
+
+    PROOF_WORKFLOWS = ("platform-matrix.yml", "python-range.yml",
+                       "switch-proofs.yml", "minimal-userland.yml",
+                       "env-axes.yml", "job-user.yml",
+                       "queues-worker.yml", "upgrade-proof.yml",
+                       "freebsd.yml")
+    RELIEF_FILES = PROOF_WORKFLOWS + ("build.yml", "cut-release.yml",
+                                      "mutation-seeded.yml")
+
+    def _all_markers(self):
+        stamps = set()
+        for name in self.RELIEF_FILES:
+            stamps |= set(re.findall(
+                r"RELIEF-48H expires (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z)",
+                _workflow_text(name)))
+        return stamps
+
+    def test_every_relief_file_names_the_same_expiry(self):
+        for name in self.RELIEF_FILES:
+            self.assertIn("RELIEF-48H expires", _workflow_text(name),
+                          "%s carries no relief marker" % name)
+        self.assertEqual(len(self._all_markers()), 1,
+                         self._all_markers())
+
+    def test_the_relief_window_has_not_expired(self):
+        # The forcing function: once the instant passes, every CI
+        # run of this suite is red until the window is reverted.
+        import datetime
+        (stamp,) = self._all_markers()
+        expiry = datetime.datetime.strptime(
+            stamp, "%Y-%m-%dT%H:%MZ").replace(
+                tzinfo=datetime.timezone.utc)
+        self.assertLess(
+            datetime.datetime.now(datetime.timezone.utc), expiry,
+            "the 48-hour relief window expired at %s: restore the "
+            "push triggers, the gates and the mutation schedule, "
+            "and revert the relief pins" % stamp)
+
+    def test_proof_workflows_do_not_fire_on_pushes_to_main(self):
+        for name in self.PROOF_WORKFLOWS:
+            wf = _workflow_text(name)
+            live = "\n".join(
+                line for line in wf.splitlines()
+                if not line.lstrip().startswith("#"))
+            self.assertNotIn("branches: [main]", live,
+                             "%s still fires on pushes to main" % name)
+            self.assertIn('tags: ["v*"]', wf,
+                          "%s does not run on release tags" % name)
+            self.assertIn("schedule:", wf,
+                          "%s lost its nightly" % name)
+            self.assertIn("workflow_dispatch:", wf,
+                          "%s lost manual dispatch" % name)
+
+    def test_the_suites_are_advisory_for_the_window(self):
+        workflow = _workflow()
+        for job in ("test", "test-macos"):
+            block = _job_block(workflow, job)
+            self.assertIn("continue-on-error: true", block,
+                          "%s is not advisory" % job)
+        block = _job_block(workflow, "build-windows")
+        self.assertIn("run_tests_parallel.py", block)
+        self.assertIn("continue-on-error: true", block,
+                      "the Windows suite step is not advisory")
+
+    def test_the_gates_that_stay_are_ungated_and_real(self):
+        # Scope, shape and typecheck carry the window's gate with
+        # the artifact legs: none may be advisory or tag-gated.
+        workflow = _workflow()
+        for job in ("scope", "shape", "typecheck"):
+            block = _job_block(workflow, job)
+            self.assertNotIn("continue-on-error", block, job)
+            self.assertNotIn("refs/tags", block, job)
+
+    def test_cut_release_reads_the_artifact_legs_not_the_suite(self):
+        with open(os.path.join(_root(), ".github", "workflows",
+                               "cut-release.yml"),
+                  encoding="utf-8") as fh:
+            text = fh.read()
+        m = re.search(r"need = \{([^}]+)\}", text)
+        self.assertIsNotNone(m, "cut-release has no need set")
+        need = m.group(1)
+        self.assertNotIn('"test"', need,
+                         "cut-release still gates on the suite")
+        for leg in ("build-python", "build-linux", "build-linux-arm64",
+                    "build-windows", "build-windows-arm64", "build-macos",
+                    "build-macos-x86_64", "build-pi-light"):
+            self.assertIn('"%s"' % leg, need,
+                          "cut-release no longer reads %s" % leg)
+
+    def test_the_release_does_not_wait_on_the_suite(self):
+        # RELIEF-48H (expires 2026-11-14T03:45Z): the release job's
+        # needs are the artifact legs alone -- the advisory suite
+        # is not among them, so the publish does not even wait for
+        # the suite to finish, let alone pass. Restoring `test` to
+        # the needs list is part of reverting the window.
+        block = _job_block(_workflow(), "release")
+        m = re.search(r"needs: \[([^\]]+)\]", block)
+        self.assertIsNotNone(m, "release job has no needs list")
+        needs = [part.strip() for part in m.group(1).split(",")]
+        self.assertNotIn("test", needs,
+                         "the release still waits on the suite")
+        for leg in ("build-python", "build-windows",
+                    "build-windows-arm64", "build-linux",
+                    "build-linux-arm64", "build-macos",
+                    "build-macos-x86_64", "build-pi-light"):
+            self.assertIn(leg, needs,
+                          "the release no longer waits on %s" % leg)
