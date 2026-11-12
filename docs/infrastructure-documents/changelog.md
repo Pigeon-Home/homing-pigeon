@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.8 - 2026-11-12
+
+- Runner: Q168 answered under option 1 — on Windows the job_user plain path spawns its child suspended through the backend and assigns it to the Job Object before it resumes, so a child that exits at once is no longer refused as a job that already ran
+- Core: the core is re-measured over the Q168 growth — runner/ops/exec.py and runner/ops/remediation_ops.py grew by net 118 lines and the runner/ops part stands at 22,585
+
 ## 3.16.24.7 - 2026-11-12
 
 - Tools: the release train's prepare rebases its release commit onto main and pushes again when another seat lands first, three tries; the README names v2 as the Runner-to-SI exchange

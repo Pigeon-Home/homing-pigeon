@@ -93,7 +93,7 @@ class CoreListTest(unittest.TestCase):
         # the briefing's contradiction mark and the posture
         # stamp producer; the Gemini token count above still
         # describes the 2026-11-04 assembly.
-        self.assertEqual(854035, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(855728, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -168,8 +168,8 @@ class CoreListTest(unittest.TestCase):
         # confinement spawn-limits fix grew
         # runner/guard/macos_confine.py by 48 lines, the
         # whole set re-measured over the current tree.
-        self.assertEqual(65730, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(59578, core.AS_ASSEMBLED_NONBLANK_LINES)
+        self.assertEqual(65933, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(59767, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
@@ -262,7 +262,7 @@ class CoreLinesTest(unittest.TestCase):
 
 class CorePartsTest(unittest.TestCase):
     def test_the_recorded_breakdown_stays_named(self):
-        self.assertEqual(7178, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
+        self.assertEqual(7179, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
         self.assertEqual(core.AS_ASSEMBLED_LINES,
                          sum(core.AS_ASSEMBLED_PART_LINES.values()))
 
