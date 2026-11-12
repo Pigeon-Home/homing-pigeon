@@ -24696,3 +24696,185 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   parts pin, if any stands there, is named
   plainly rather than re-measured over
   another lane's growth.
+
+## Darwin parity substrate on the Windows leg:
+the job_user seam's second platform signal —
+suppositions recorded before the measurement
+(2026-11-12)
+
+A read-only CI verdict lane found the
+`test-windows` leg failing identically on
+both 3.16.21.4 builds — the main build and
+the tag build — shard 21, named from
+check-run annotations:
+
+- `runner.tests.test_security_parity.
+  DarwinParitySubstrateTest.
+  test_ci_shape_refuses_at_job_user_with_no_
+  confinement_row` — AssertionError:
+  'unsupported_platform' != 'fallback'
+- `runner.tests.test_security_parity.
+  DarwinParitySubstrateTest.
+  test_root_shape_passes_the_preexec_gate_
+  with_a_run_as_row`
+
+`test-windows` is advisory under the
+48-hour CI relief mode (the .4 release
+published anyway), but the failure is
+deterministic across two builds, not a
+wall-clock flake. The substrate family was
+pinned by the all-enforce parity on darwin
+record above (its conclusions stand at the
+end of that section): four scripted-seam
+tests that claim to run on every host.
+This lane is a fresh lane: not the Q165
+fix lane, not any macOS confinement lane,
+and not the ship lane. It starts from a
+fresh scratch clone direct from the
+remote, the remote head verified by
+foreground `git ls-remote` in the same
+call as the clone's own head check. The
+suppositions below are written from the
+code read first-hand, before any
+measurement in this lane is run; the
+settling measurement is named in W-S2,
+and the conclusions stand at the end of
+this section when the lane lands.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **W-S1 — the keying never completed the
+  darwin simulation (test keying, not
+  production classification).** The two
+  seams the family drives key on two
+  different platform signals, each by its
+  own documented contract.
+  `_confinement_argv` (in `runner/runner.py`)
+  branches on `sys.platform` alone.
+  `_job_user_preexec` (in
+  `runner/ops/remediation_ops.py`) branches
+  on `os.name == "nt"` first: the POSIX
+  setuid demote it guards has no Windows
+  form, its dedicated win32 tests simulate
+  the branch by patching `os.name` (the
+  `PreexecWin32Test` family in
+  `runner/tests/test_windows_confine.py`),
+  and its own comment records that a
+  simulated `os.name` keeps the
+  long-standing behaviour. The substrate
+  family simulates darwin by patching
+  `sys.platform` only. On a POSIX host that
+  simulation is complete by accident —
+  `os.name` is "posix" either way, so the
+  preexec takes its POSIX arm, the non-root
+  face records `fallback` /
+  `job_user_needs_root` and refuses, and
+  the root face records `run_as` and
+  returns the demote. On a Windows host
+  `os.name` stays "nt" under the darwin
+  patch, the preexec takes its Windows arm
+  before any face is consulted, records
+  `unsupported_platform` /
+  `job_user_posix_only`, and returns None:
+  the CI-shape test reads exactly the
+  reported 'unsupported_platform' !=
+  'fallback', and the root-shape test gets
+  no demote and no `run_as` row. On every
+  real host the two signals agree (darwin
+  is always `os.name` "posix", win32 always
+  "nt"), so no real host is misclassified:
+  the divergence exists only inside the
+  incomplete simulation.
+
+- **W-S2 — the settling measurement.**
+  Scripted, on this Linux host, against the
+  current head, replaying the host
+  condition the Windows leg supplies. (1)
+  The two failing tests' exact shapes with
+  `os.name` additionally patched to "nt"
+  beside the standing `sys.platform`
+  "darwin" patch: the CI shape records the
+  job_user decision `unsupported_platform`
+  (the reported failure, reproduced
+  deterministically off Windows), and the
+  root shape returns no demote and records
+  `unsupported_platform` instead of
+  `run_as`. (2) The same shapes with the
+  simulation completed — `sys.platform`
+  "darwin" and `os.name` "posix" patched
+  together, the pair a real darwin host
+  presents: the CI shape records `fallback`
+  per exec job with no confinement row, and
+  the root shape records `run_as` and
+  returns a callable demote, on this host
+  exactly as on a darwin host. If either
+  part shows a different record, this
+  supposition falls and the fix layer
+  changes with it.
+
+- **W-S3 — per test, one shape.** Both
+  named failures call `_job_user_preexec`
+  under the simulated darwin; both are the
+  one shape above. The family's other two
+  tests drive only `_confinement_argv`,
+  whose signal the standing patch does set,
+  and the verdict names neither of them —
+  consistent with this supposition and part
+  of its check: the measurement in W-S2
+  part (1) leaves the argv gate's records
+  (normal argv, no confinement row on the
+  engageable shape) unchanged under the
+  added `os.name` patch.
+
+- **W-S4 — the fix layer is the test.**
+  Complete the simulation: wherever the
+  family drives the preexec under a
+  simulated darwin, patch `os.name` to
+  "posix" beside `sys.platform`, the pair
+  a real darwin host presents. No
+  production file changes, and no refusal
+  or parity expectation is weakened: on a
+  real Windows host the preexec's
+  `unsupported_platform` record and its
+  enforce refusal stand exactly as before
+  (pinned, not moved, by the new family
+  below), and the darwin expectations the
+  family asserts are the records a real
+  darwin host produces. The production
+  alternative — rekeying `_job_user_preexec`
+  (and its postspawn pair, also
+  `os.name`-keyed) from `os.name` to
+  `sys.platform` to match
+  `_confinement_spawn` — is not taken:
+  `_confinement_spawn` was unified on
+  `sys.platform` because one function was
+  deriving two platforms from two signals
+  at once (its own comment records the
+  S3 failure that caused), while the
+  job_user pair uses the one signal
+  consistently, that signal is the
+  availability of the POSIX syscall
+  surface the demote is made of, and its
+  simulation contract is the one its
+  dedicated tests already use. Proof of
+  work: a committed family beside the
+  substrate family pinning both host-signal
+  shapes on scripted seams — the completed
+  darwin simulation per exec job and at
+  the root shape, and the Windows-host
+  shape (darwin `sys.platform`, host
+  `os.name` "nt") recording
+  `unsupported_platform` at both faces —
+  so the substrate is pinned under every
+  host the suite runs on, not only the
+  POSIX ones. `test_security_parity` runs
+  whole and green locally in the
+  foreground beside its neighbours; the
+  live verdict is the first completed
+  `test-windows` CI leg on a head carrying
+  the fix, and is not claimed here. What
+  cannot be recorded as a unit test,
+  stated plainly: the hosted Windows leg
+  itself is a Windows-host fact; the
+  `os.name` "nt" replay above is its
+  deterministic substrate, pinned here.
