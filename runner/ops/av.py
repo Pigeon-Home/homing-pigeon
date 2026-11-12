@@ -26,13 +26,34 @@ except ImportError:  # running from inside runner/ as __main__
 _KILL_GRACE_SECONDS = 2.0
 
 
+def _abandon(proc):
+    """Kill a probe and close its pipes. Never raises."""
+    try:
+        proc.kill()
+    except Exception:
+        pass
+    for stream in (getattr(proc, "stdout", None),
+                   getattr(proc, "stderr", None),
+                   getattr(proc, "stdin", None)):
+        try:
+            if stream is not None:
+                stream.close()
+        except Exception:
+            pass
+
+
 def _run_text(argv, timeout=5):
     """stdout of a short read-only command, or None. Never raises.
 
-    Returns within timeout + _KILL_GRACE_SECONDS (plus the
-    kill itself) on every platform, even when the command
-    times out and a process it spawned keeps the output
-    pipe open after the command itself is killed.
+    The wait is on the process, not on its pipes. On Windows,
+    communicate() joins a reader thread blocked in ReadFile; a
+    grandchild that inherited the pipe keeps that read open for
+    the child's whole life, so a timeout passed to communicate()
+    did not return (Q136, build-windows 2026-11-11: the
+    grandchild case took 30s against a 1s timeout). wait() uses
+    the process handle and returns when the timeout says. A pipe
+    still held after the process exits is then read under
+    _KILL_GRACE_SECONDS and abandoned if it does not end.
     """
     try:
         flags = {}
@@ -46,28 +67,17 @@ def _run_text(argv, timeout=5):
     except Exception:
         return None
     try:
-        out, _err = proc.communicate(timeout=timeout)
+        proc.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
-        try:
-            proc.kill()
-        except Exception:
-            pass
-        try:
-            proc.communicate(timeout=_KILL_GRACE_SECONDS)
-        except Exception:
-            # The pipe is still held open past the grace --
-            # by a grandchild, most likely. Abandon it: the
-            # probe's answer is None either way, and an
-            # unbounded wait here is the failure this
-            # function exists to never repeat.
-            for stream in (proc.stdout, proc.stderr):
-                try:
-                    if stream is not None:
-                        stream.close()
-                except Exception:
-                    pass
+        _abandon(proc)
         return None
     except Exception:
+        _abandon(proc)
+        return None
+    try:
+        out, _err = proc.communicate(timeout=_KILL_GRACE_SECONDS)
+    except Exception:
+        _abandon(proc)
         return None
     if proc.returncode != 0 or not isinstance(out, str):
         return None

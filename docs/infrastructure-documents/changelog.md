@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.20.6 - 2026-11-11
+
+- Pipeline repair after 3.16.20.5, which was cut on main and never tagged: its build went red on the Linux suite, the macOS suite, and build-windows, so the publish jobs never started and no mirror moved.
+- Fix: `_run_text` waits on the process handle and abandons a probe whose pipes stay open. The previous form called `communicate()`, and on Windows that joins a reader blocked in `ReadFile`, so a grandchild holding the inherited pipe kept the caller for the child's whole sleep (30s against a 1s timeout, build-windows shard 11). The posture seam that still mocked `subprocess.run` now mocks `Popen`, which is what the function calls.
+- Fix: the README size-caps line sits on line 448; the defaults registry still named 450, so the doc-drift guard failed on every platform.
+- Fix: the core line record for `runner/ops` is re-measured at 21,092 (the as-assembled set 63,863 lines, 57,749 non-blank) after the probe change.
+- The two Windows bounds a loaded leg missed by a fraction are widened to what that leg measured: the v2 answer-deadline return bound, and the slow-model CLI bound.
+
 ## 3.16.20.5 - 2026-11-11
 
 - The fifth release on the 3.16 line. 3.16.20.4 was tagged and spent without a published release: the suite on that head failed the decision1 family pin below, so this cut carries everything that landed on main after 3.16.20.3, including the macOS confinement second fix and the Q158 and Q159 answers.

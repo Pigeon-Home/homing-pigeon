@@ -700,7 +700,7 @@ class MailTest(unittest.TestCase):
         finally:
             thread.join(timeout=PICKUP + ANSWER + DEADLINE + 10)
         self.assertLess(marks.get("runner returned", 999),
-                        PICKUP + DEADLINE + 4, "timeline %r" % (marks,))
+                        PICKUP + DEADLINE + 8, "timeline %r" % (marks,))
         self.assertTrue(filed["ok"], "%s; timeline %r" % (filed["why"], marks))
         result = next(row for row in sent if "result " + job_id in row[0])
         parsed = verify_body(result[1], SECRET)

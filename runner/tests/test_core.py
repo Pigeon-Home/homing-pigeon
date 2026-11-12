@@ -162,8 +162,8 @@ class CoreListTest(unittest.TestCase):
         # the same day after the job_user postspawn fix
         # grew runner/ops/remediation_ops.py by 36 lines,
         # which that landing left unrecorded.
-        self.assertEqual(63809, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(57700, core.AS_ASSEMBLED_NONBLANK_LINES)
+        self.assertEqual(63863, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(57749, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

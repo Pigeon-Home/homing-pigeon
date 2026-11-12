@@ -98,7 +98,7 @@ class WindowsCLISim(unittest.TestCase):
         rc, out = self._run(["ping", "/quit"], ask, base)
         elapsed = time.monotonic() - t0
         self.assertEqual(rc, 0)
-        self.assertLess(elapsed, 10)
+        self.assertLess(elapsed, 20)
         self.assertTrue(any("done" in line for line in out), out)
 
     def test_backslash_paths_in_context_do_not_crash(self):

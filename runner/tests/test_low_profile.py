@@ -177,58 +177,45 @@ class FirewallParseTest(unittest.TestCase):
 
 class RunTextBoundTest(unittest.TestCase):
     """_run_text must return within a bounded time on every
-    platform (Q136 shard-5 follow-on, 2026-11-11).
+    platform (Q136, 2026-11-11).
 
-    The failure these pin: on Windows, subprocess.run
-    follows a timeout kill with a communicate() carrying
-    no timeout, so a probe child that leaves its output
-    pipe held open (a grandchild that inherited stdout)
-    hangs the caller for as long as the pipe stays open --
-    in build run 43101076872 that was the rest of the
-    20-minute wall, inside test_oracle_cli_ctrl_c's
-    deterministic answer. _run_text now drives Popen by
-    hand and bounds every wait. The mock tests pin that
-    substrate deterministically on any platform; the real
-    child tests pin the shapes end to end where the
-    platform's own run() shape allows them to bite.
+    The failure these pin: communicate() on Windows joins a
+    reader blocked in ReadFile, so a grandchild holding the
+    inherited pipe keeps the caller until that process exits.
+    _run_text now waits on the process handle and abandons a
+    probe whose pipes do not close. The mock tests pin that
+    substrate; the real child tests pin the shapes end to end.
     """
 
-    def _timed_out_proc(self, second):
+    def _timed_out_proc(self):
         proc = mock.Mock()
-        proc.communicate.side_effect = [
-            R.subprocess.TimeoutExpired(cmd="probe", timeout=1),
-            second]
+        proc.wait.side_effect = R.subprocess.TimeoutExpired(
+            cmd="probe", timeout=1)
         return proc
 
-    def test_a_second_wait_after_the_kill_is_bounded(self):
-        # The deterministic core: after a timeout and a
-        # kill, whatever wait follows carries a finite
-        # timeout -- never the unbounded communicate() of
-        # the old Windows shape.
-        proc = self._timed_out_proc(("late output", ""))
+    def test_a_timeout_kills_without_an_unbounded_read(self):
+        # The wait is on the process handle, with the caller's
+        # timeout, and a timeout abandons the probe. No
+        # communicate() without a timeout follows the kill:
+        # that was the Windows hang.
+        proc = self._timed_out_proc()
         with mock.patch.object(R.subprocess, "Popen",
                                return_value=proc):
             self.assertIsNone(R._run_text(["netsh"], timeout=1))
         proc.kill.assert_called_once_with()
-        waits = [call.kwargs.get("timeout")
-                 for call in proc.communicate.call_args_list]
-        self.assertEqual(len(waits), 2)
-        self.assertTrue(all(
-            isinstance(wait, (int, float)) and wait > 0
-            for wait in waits), waits)
+        self.assertEqual(proc.wait.call_args.kwargs.get("timeout"), 1)
+        for call in proc.communicate.call_args_list:
+            self.assertIsNotNone(call.kwargs.get("timeout"), call)
 
-    def test_a_pipe_held_past_the_grace_still_returns_none(self):
-        # The second wait times out too (the pipe is still
-        # held): the answer is None, not a third wait.
-        proc = self._timed_out_proc(
-            R.subprocess.TimeoutExpired(cmd="probe", timeout=2))
+    def test_a_wait_that_raises_still_returns_none(self):
+        proc = mock.Mock()
+        proc.wait.side_effect = OSError("already gone")
         with mock.patch.object(R.subprocess, "Popen",
                                return_value=proc):
             self.assertIsNone(R._run_text(["netsh"], timeout=1))
-        self.assertEqual(proc.communicate.call_count, 2)
 
     def test_a_kill_that_raises_still_returns_none(self):
-        proc = self._timed_out_proc(("late output", ""))
+        proc = self._timed_out_proc()
         proc.kill.side_effect = OSError("already gone")
         with mock.patch.object(R.subprocess, "Popen",
                                return_value=proc):

@@ -612,11 +612,15 @@ class PostureParseTest(unittest.TestCase):
         self.assertIn("changed", flipped)
 
     def test_a_command_that_fails_is_none_and_a_symlink_posture_is_ignored(self):
-        with mock.patch.object(rr.subprocess, "run",
+        # _run_text waits with Popen.wait, not subprocess.run
+        # (the run() mock this test used to hold never fired,
+        # so `true` ran for real and an empty stdout came back).
+        with mock.patch.object(rr.subprocess, "Popen",
                                side_effect=OSError("no")):
             self.assertIsNone(rr._run_text(["true"]))
-        proc = mock.Mock(returncode=1, stdout="x")
-        with mock.patch.object(rr.subprocess, "run", return_value=proc):
+        proc = mock.Mock(returncode=1)
+        proc.communicate.return_value = ("x", "")
+        with mock.patch.object(rr.subprocess, "Popen", return_value=proc):
             self.assertIsNone(rr._run_text(["true"]))
         tmp = tempfile.TemporaryDirectory()
         self.addCleanup(tmp.cleanup)
