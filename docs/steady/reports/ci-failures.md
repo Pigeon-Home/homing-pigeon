@@ -298,6 +298,12 @@ on is pinned in `runner/tests/test_audience_transport_record.py`
 control, the tampered sibling's distinguishable record, and
 mail-path parity).
 
+Verification (2026-11-11, ~8:05 PM PST): the full rig battery
+with the fixed driver, run against the 9faa6b62 tree in a clean
+dev folder on the Germany rig, returned VERDICT pass=True --
+all 17 steps, wrong-audience-refused passing for the first
+time in seven battery heads, production runner untouched.
+
 ## Four-day release-failure review — 8–11 Nov 2026
 
 Landed 2026-11-11 from the Germany-rig Windows loop lane. Sources: `ship-state.txt`, the diag folders under `ship-work/`, the desk record, the GitHub Actions API (checked 2026-11-12T01:34Z), and first-hand rig battery evidence gathered the same evening.
