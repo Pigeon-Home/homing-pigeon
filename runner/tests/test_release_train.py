@@ -328,6 +328,48 @@ class WatchTest(unittest.TestCase):
             self.assertEqual(rt.watch_tag_build("3.16.21.2", 1), 1)
 
 
+class RunRetryTest(unittest.TestCase):
+    def test_run_prepares_again_when_main_moved_past_the_commit(self):
+        calls = []
+
+        def prepare(args):
+            calls.append(("prepare", list(args.note)))
+            return "sha%d" % sum(1 for c in calls if c[0] == "prepare")
+
+        def cut(args, sha=None):
+            calls.append(("cut", sha))
+            if sha == "sha1":
+                raise RuntimeError("cut-release 9 concluded failure at step 'tag': url; the workflow's "
+                                   "token could not place the tag (main's head abcdef12 has moved past "
+                                   "the commit; the token tags the head's tree, so cut the head or prepare again)")
+            return 0
+        args = mock.Mock(note=["Fix: a thing"], no_retry=False)
+        with mock.patch.object(rt, "cmd_prepare", prepare), mock.patch.object(rt, "cmd_cut", cut), \
+                mock.patch.object(rt, "carriers", lambda root=None: {"pyproject.toml": "3.16.21.4"}), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(rt.cmd_run(args), 0)
+        self.assertEqual([c[0] for c in calls], ["prepare", "cut", "prepare", "cut"])
+        self.assertEqual(calls[3], ("cut", "sha2"))
+        self.assertIn("Re-cut of 3.16.21.4, which never published", calls[2][1][-1])
+        self.assertIn("preparing the next version at the head", out.getvalue())
+
+    def test_any_other_refusal_and_no_retry_are_reported_as_they_stand(self):
+        def cut(args, sha=None):
+            raise RuntimeError("cut-release 9 concluded failure at step 'the build on this commit is green': url")
+        args = mock.Mock(note=["x"], no_retry=False)
+        with mock.patch.object(rt, "cmd_prepare", lambda a: "sha1"), mock.patch.object(rt, "cmd_cut", cut):
+            with self.assertRaises(RuntimeError):
+                rt.cmd_run(args)
+
+        def cut2(args, sha=None):
+            raise RuntimeError("... has moved past the commit ...")
+        args = mock.Mock(note=["x"], no_retry=True)
+        with mock.patch.object(rt, "cmd_prepare", lambda a: "sha1"), mock.patch.object(rt, "cmd_cut", cut2), \
+                mock.patch.object(rt, "carriers", lambda root=None: {"pyproject.toml": "3.16.21.4"}):
+            with self.assertRaises(RuntimeError):
+                rt.cmd_run(args)
+
+
 class WaitTest(unittest.TestCase):
     def test_wait_returns_the_first_value_and_gives_up_on_time(self):
         hits = iter([None, None, "done"])

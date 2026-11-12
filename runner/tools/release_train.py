@@ -538,7 +538,25 @@ def watch_tag_build(version, limit):
 
 def cmd_run(args):
     sha = cmd_prepare(args)
-    return cmd_cut(args, sha=sha)
+    try:
+        return cmd_cut(args, sha=sha)
+    except RuntimeError as exc:
+        # The one refusal a second try answers: a push landed between
+        # the release commit and the cut, and the workflow's token
+        # tags main's head only (3.16.21.4, 2026-11-12). The version
+        # moves one more step at the head, with the same notes and
+        # the record of the cut that did not publish, and the cycle
+        # runs again; any other refusal is reported as it stands.
+        if "has moved past the commit" not in str(exc) or getattr(args, "no_retry", False):
+            raise
+        stale = carriers()["pyproject.toml"]
+        _say("release train: %s" % exc)
+        _say("main moved past %s before the cut; preparing the next version at the head and cutting again" % stale)
+        args.note = list(args.note) + [
+            "Re-cut of %s, which never published: main moved past its commit "
+            "before the cut, and the workflow token tags the head only" % stale]
+        sha = cmd_prepare(args)
+        return cmd_cut(args, sha=sha)
 
 
 # ----------------------------------------------------------------
@@ -760,6 +778,9 @@ def main(argv=None):
         p.add_argument("--subject", default=None, help="the release commit's subject after the version")
         p.add_argument("--trailer", action="append", default=[], help="a commit trailer line (repeatable)")
         p.add_argument("--limit", type=int, default=60, help="minutes to wait for a build")
+        p.add_argument("--no-retry", action="store_true",
+                       help="run: do not prepare the next version and cut again when "
+                            "main moved past the release commit before the cut")
     p = sub.add_parser("cut")
     p.add_argument("--sha", default=None)
     p.add_argument("--limit", type=int, default=60)
