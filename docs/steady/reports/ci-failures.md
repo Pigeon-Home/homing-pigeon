@@ -185,3 +185,46 @@ back to asserting it; delete
 `test_no_job_in_the_pipeline_carries_a_timer` or scope it to the
 jobs that should stay timer-free. Everything else in this release
 stays useful after the measurement.
+
+## 2026-11-11 — Windows on the Germany rig: suppositions before the local loop
+
+Four days of release failures (8-Nov to 11-Nov) share one loop:
+a Windows failure is found by a GitHub run, a fix is written
+against the run's annotations, and the next GitHub run — tens of
+minutes later — is the first place the fix is exercised. The
+conductor's direction (11-Nov, ~5:30 PM PST) moves the Windows
+loop onto the Germany rig (Windows Server 2022, 8 logical
+processors, 15.6 GB, Python 3.12.7, MinGit 2.47 — the CI job's
+own Python) and reserves GitHub for confirmation. The rig loop
+runs the build-windows job's exact test command:
+
+    python runner/tools/run_tests_parallel.py \
+      --duration-table runner/tools/windows_durations.json \
+      --durations 15 --wall-clock 20 --in-flight 8
+
+Suppositions, recorded before any rig measurement:
+
+- **W1 (the wall is throughput, not shape).** The 1200-second
+  shard wall on the 4-core `windows-latest` pool is primarily a
+  throughput artifact: packed by the same duration table, every
+  shard completes on the rig in under 720 seconds (the table's
+  own 12-minute budget). Any shard that exceeds 720 seconds
+  locally will trace to named files in the `--durations`
+  output, not to the platform in general.
+- **W2 (the audience refusal is silent, not absent).** The rig
+  battery's wrong-audience-refused step fails with
+  `noResult=True` on five consecutive heads while the sibling
+  tampered-refused step passes: the wrong-audience job is
+  refused (no result is produced) but neither
+  `security-audit.jsonl` nor `runner.log` gains the word
+  "audience" on Windows — the refusal is recorded through a
+  different path or wording than the signature refusal the
+  tampered step matches on. Reproducing the step against a rig
+  runner instance and reading both files after the drop will
+  show which record the refusal actually writes.
+- **W3 (gates_strict reproduces locally).** The gates_strict
+  dead-backend failure in the CI build-windows job reproduces
+  on the rig with the same shape; it is platform behaviour, not
+  a CI-runner artifact, so the rig loop can iterate on it.
+
+Conclusions land in this section after the measurement.
