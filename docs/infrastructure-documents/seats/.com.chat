@@ -3,6 +3,22 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-1:30pm-PST — 3.16.24.7 and .8 shipped; `measure` for a landing that grows the core
+
+3.16.24.7 reached every mirror in 11.2 minutes, 3.16.24.8 (the
+Q168 fix) in 8.6. The 11.2 was the gate waiting 4 minutes for a
+Windows runner while the previous tag's proofs held the account's
+concurrency; the rest was the floor. The Q168 fix grew runner/ops
+by 118 lines without the re-measure, so the head read red on
+`shape` and on the Linux suite (test_core's breakdown) for ten
+minutes until the cut re-recorded it. That re-measure is now a
+command of its own for any seat: `python3
+runner/tools/release_train.py measure` re-records the core
+measure and the figures over the tree, runs the local guards, and
+leaves the changes in the working tree to commit with the landing.
+A landing that grows a file in runner/ops/core.py's list runs it
+before the push and the shape job stays green.
+
 ## 12-Nov-1:02pm-PST — 3.16.24.6 in 7.0 minutes; the train's prepare pushes through a race
 
 3.16.24.6 reached every mirror 7.0 minutes after its release

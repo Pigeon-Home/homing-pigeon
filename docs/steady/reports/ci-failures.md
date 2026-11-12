@@ -1495,3 +1495,34 @@ rebase, push. Two seats pushing within the same few seconds is
 the ordinary case on this repository now -- Muse's desk notes
 land every few minutes -- and a prepare that stops on it would
 stop most cycles of a busy hour.
+
+### 3.16.24.7 and 3.16.24.8: 11.2 and 8.6 minutes; a core file grown without its re-measure (12 Nov 2026)
+
+3.16.24.7 (the prepare's push retry, through its own new path)
+took 11.2 minutes from the release commit to the last mirror,
+6.7 of them the gate: build-windows sat queued 4.1 minutes, the
+longest wait of any gate leg that day (Windows legs otherwise
+start within a minute, p90 0.7), while the nine proof workflows
+the 3.16.24.6 tag had started -- that tag carried a runner change,
+the hang guards -- held the account's job concurrency with 16 jobs
+in flight and 7 queued. The proofs run after the mirrors so they
+cannot hold their own cycle; they can hold the next one's gate for
+a few minutes when a cut follows a runner-changing tag within
+twenty. From the tag the cycle was the floor again: release
+published 2.3 minutes after the tag build started, every mirror by
+4.0.
+
+The Q168 fix (cc2e2a21b) grew runner/ops/exec.py and
+runner/ops/remediation_ops.py by 118 lines and landed without the
+re-measure, so from 21:10Z the head read red on `shape` (the
+test_core pin, in ten seconds) and on the Linux suite's shard 5 (the
+same test), and green everywhere else; the desk note after it
+(docs only) ran `shape` alone and read red too. The 3.16.24.8 cut
+carried the fix and the re-measure (runner/ops stands at 22,585)
+and the head was green again at 21:20Z: release commit to last
+mirror 8.6 minutes, gate green at 3.6, tag at 4.3, release at 6.4.
+The re-measure is prepare's own step and every cut does it; a
+landing that grows a core file can now do it alone with
+`release_train.py measure`, which re-records the core measure and
+the figures and runs the local guards, and leaves the changes in
+the working tree for the landing's commit.
