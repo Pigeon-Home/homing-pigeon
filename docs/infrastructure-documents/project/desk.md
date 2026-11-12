@@ -19901,3 +19901,299 @@ claimed beyond what those calls and that family
 show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q161 re-test: conclusions of the filing seat (2026-11-11)
+
+The re-test ran in a fresh scratch clone from
+remote main (the remote head verified by
+foreground `git ls-remote` in the same call as
+the clone, at the head carrying the Q161
+re-test suppositions of 5:48 PM PST, which
+carries the Q161 landing — the fix of
+5:25 PM PST, the figures re-measure of
+5:34 PM PST and the desk answer of 5:37 PM PST,
+under the release of 5:36 PM PST and the CI
+commit of 5:39 PM PST — in its history;
+`runner/ops/briefing.py` and
+`runner/tests/test_briefing_contradiction.py`
+are unchanged on that head since the fix),
+re-derived first-hand, not taken from the fix
+lane's report. The trees: the current head; the
+pre-Q161-fix detector (the tree at the fix
+commit's parent); the pre-Q160-fix detector,
+the pre-Q158-fix detector, the pre-Q157-fix
+detector and the pre-Q156-fix detector beside
+it; and the pre-Q143-fix detector (the tree at
+the Q143 fix commit's parent). Settled against
+the suppositions one by one:
+
+- **Q161-RT-S1 — holds.** Item 1 stays silent,
+  whole: the 4 governed phrases carrying a
+  pied-piped relative clause whose lead carries
+  a person head (the 2 filed bound-edge phrases
+  and their 2 composed shapes) produce no
+  findings on the fixture layer and the shipped
+  layer, plain (4 of 4 silent on each) and
+  bookended (300 of 300 variants silent), and
+  the 3 filed controls of the same family (the
+  complement-verb twin of the two-word shape and
+  the 2 determiner-led leads) stay silent the
+  same way (3 of 3 plain on each layer, 225 of
+  225 bookended).
+- **Q161-RT-S2 — holds.** Items 2, 3 and 4
+  fire again, whole: the 17 shapes (the 3
+  variation-selector characters of the BMP, the
+  10 supplemental-punctuation separators beyond
+  the filed span and the 4 small forms) produce
+  exactly `ledger_treated_as_instruction` on
+  both layers, plain (17 of 17) and bookended
+  (1,241 of 1,241), and the evidence-only twins
+  under the new shapes stay silent (17 of 17
+  plain on both layers, 1,275 of 1,275
+  bookended).
+- **Q161-RT-S3 — holds.** The both-ways
+  controls hold: the pied-piped true object
+  phrases of the Q161 family fire whole (3 of 3
+  plain on both layers, 219 of 219 bookended)
+  and the filed controls fire whole beside them
+  (6 of 6 plain on both layers, 438 of 438
+  bookended); the silent controls stay silent
+  (42 of 42 plain on both layers, 3,150 of
+  3,150 bookended), and the bound shapes
+  "compels a duty" and "sends a clearance" stay
+  silent (2 of 2 plain on both layers, 150 of
+  150 bookended).
+- **Q161-RT-S4 — holds.** The both-ways pins
+  hold beside the widening: the bound
+  prohibition followed by a contradicting
+  sentence fires exactly
+  `private_shelf_crosses` on both layers, the
+  unrelated-negation shapes fire exactly their
+  rules (6 of 6 plain on both layers, 438 of
+  438 bookended), the negated-then-contradicting
+  shapes fire exactly their rules (5 of 5 plain
+  on both layers, 365 of 365 bookended), and
+  the standing pins hold through the committed
+  guard family run whole (242 green, below).
+- **Q161-RT-S5 — holds.** The filed Q143
+  compliant corpus is silent on both layers
+  (14 of 14 plain, 1,050 of 1,050 bookended,
+  joined silent on both layers) and its
+  restating shapes are silent (7 of 7 plain,
+  525 of 525 bookended); the standing 7-rule
+  contradiction family fires whole (7 of 7
+  plain with exactly their rule on the fixture
+  layer, and whole through the committed guard
+  family); and the Q144, Q145, Q146, Q147, Q148,
+  Q149, Q150, Q151, Q152, Q153, Q154, Q155,
+  Q156, Q157, Q158, Q159, Q160 and Q161 families
+  read as they did through the committed guard
+  family run whole.
+- **Q161-RT-S6 — holds.** End to end: item
+  1's representative ("prompts a duty officer
+  certified record of which is on file", in its
+  filed prohibition sentence) assembled into a
+  briefing carries no mark, names no tensions,
+  and writes no audit row; items 2, 3 and 4's
+  representatives (the U+FE00 shape, the U+2E01
+  shape and the U+FE50 shape) and the pied-piped
+  object representative ("compels a crew officer
+  certified members of which are on duty")
+  assembled into briefings each carry their
+  mark, `briefing_report` names exactly their
+  rule, and the startup pass writes exactly
+  their one audit row (feature `briefing`,
+  decision `marked`, the rule id as the detail);
+  the bound shape ("compels a duty") carries no
+  mark, names no tensions, and writes no audit
+  row.
+- **Q161-RT-S7 — holds.** The guard family
+  reads 242 green and the neighbour batteries
+  (`test_oracle_briefing`, `test_posture_stamp`,
+  `test_protocol_v2`, `test_protocol_v2_messages`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read 305 green,
+  re-measured in the foreground by this seat.
+  Red-before, re-measured by this seat against
+  the pre-Q161-fix detector: item 1's shapes
+  fire there (0 of 4 silent plain on both
+  layers; bookended silent only in the 8
+  underscore-fused variants of 300, the fused
+  shape the standing patterns cannot see on
+  either tree) and items 2, 3 and 4's shapes are
+  silent there (0 of 17 plain on both layers, 0
+  of 1,241 bookended), and the guard family as
+  it now stands reads 1,777 failing entries
+  against that detector, every one in the
+  Q161PolarityGuardTest family (1,776 subtest
+  failures — 1,241 in its bookended ledger test,
+  292 in its bookended pied-piped silent test,
+  219 in its bookended controls-silent test, 17
+  in its ledger shapes test, 4 in its pied-piped
+  complements test and 3 in its controls-silent
+  test — beside its 1 end-to-end test failure;
+  the other 229 tests read green against that
+  detector whole) — the fix lane's count,
+  re-derived. Against the pre-Q160-fix detector,
+  the pre-Q158-fix detector, the pre-Q157-fix
+  detector and the pre-Q156-fix detector the
+  filed shapes read the same way plain (item 1:
+  0 of 4 silent; items 2, 3 and 4: 0 of 17
+  firing); against the pre-Q143-fix detector
+  item 1's, item 2's, item 3's and item 4's
+  shapes all fire again whole, as filed (0 of 4
+  silent and 17 of 17 firing plain, 1,241 of
+  1,241 bookended), and the Q143 compliant
+  corpus reads its marks there (0 of 14 silent).
+- **Q161-RT-S8 — holds in all but one shape.**
+  The first group holds as the Answer states in
+  every shape but one: the composed complements
+  through a person-head pied-piped lead stay
+  silent (4 of 5 plain on both layers, 300 of
+  300 bookended for those four), the composed
+  object phrases through a person-head
+  pied-piped lead fire (4 of 4 plain on both
+  layers, 292 of 292 bookended), the
+  pied-piped "whom" clause carrying the same
+  lead stays silent inside the four above, the
+  filed ledger shapes in their other spacings
+  fire (3 of 3 plain, 219 of 219 bookended), and
+  the evidence-only twin under a spaced
+  variation-selector character stays silent (1
+  of 1 plain, 75 of 75 bookended). The one shape
+  that does not hold is the bare plural head:
+  "holds credentials officer certified records
+  of which are on file", inside its prohibition
+  sentence, fires `private_shelf_crosses` on the
+  current head plain on both layers (bookended
+  silent only in the 2 underscore-fused variants
+  of 75), and end to end it carries the mark and
+  writes exactly its one audit row. It is filed
+  as Q162's item 1 below in the questions file,
+  not held as an S8 pass.
+- **Q161-RT-S9 — second group confirms three
+  residual ledger items; its first direction
+  holds whole and its second direction holds as
+  the controls it named.** (1) A governed phrase
+  carrying a pied-piped lead whose person or
+  object head stands at a position the filed
+  shapes do not stand in is judged whole on the
+  current head: the person head as the lead's
+  second extra word behind a participle (the
+  bound shape and its complement-verb twin, 2 of
+  2 silent plain on both layers, bookended
+  whole, beside its true object control firing
+  1 of 1 plain and 73 of 73 bookended), the
+  longer leads carrying the person head (2 of 2
+  bound shapes silent, beside the
+  complement-verb twin silent), the same lead
+  under the other complement verbs (2 of 2
+  silent) and the lead's noun itself a person
+  head (2 of 2 silent) — 9 sentences silent
+  whole, no residual in this direction. (2) The
+  ledger's mixed sentence under the remaining
+  variation-selector characters of the BMP
+  (U+FE01 to U+FE07 and U+FE09 to U+FE0E — 13
+  shapes), standing unspaced between the
+  clauses, fires whole on the current head, as
+  the controls they were named as: 13 of 13
+  plain on both layers, 949 of 949 bookended,
+  the evidence-only twins silent (13 of 13
+  plain on both layers). (3) The ledger's mixed
+  sentence under the representative span of the
+  supplemental punctuation block beyond every
+  separator the chain has filed (30 shapes, the
+  codes named in Q162's item 2), standing spaced
+  between the clauses, is missed whole on the
+  current head: 0 of 30 firing on both layers
+  plain, 0 of 2,190 bookended, and end to end
+  the representative (the U+2E07 shape) carries
+  no mark and writes no audit row; the same
+  shapes are missed on the pre-Q161-fix,
+  pre-Q160-fix, pre-Q158-fix, pre-Q157-fix and
+  pre-Q156-fix detectors (0 of 30 plain on each)
+  and fire whole on the pre-Q143-fix detector
+  (30 of 30 plain, 2,190 of 2,190 bookended).
+  (4) The ledger's mixed sentence under the
+  separator classes the segment set has never
+  opened at beside the filed four small forms —
+  the small-form variants beyond the filed four
+  (22 shapes), the presentation forms for
+  vertical punctuation (10 shapes) and the CJK
+  compatibility presentation forms (8 shapes),
+  each standing spaced between the clauses — is
+  missed whole the same way: 0 of 22, 0 of 10
+  and 0 of 8 firing on both layers plain, 0 of
+  1,606, 0 of 730 and 0 of 584 bookended, the
+  representatives (the U+FE51, U+FE10 and U+FE30
+  shapes) with no mark and no audit row end to
+  end; missed on the same five pre-fix detectors
+  (0 plain on each) and firing whole on the
+  pre-Q143-fix detector (22 of 22, 10 of 10 and
+  8 of 8 plain, bookended whole). The
+  evidence-only twins under the second group's
+  ledger shapes stay silent on the current head
+  (83 of 83 plain on both layers: 13 beside
+  direction (2), 30 beside item (3) and 40
+  beside item (4)).
+- **Q161-RT-S10 — holds, with the post-measure
+  growth stated plainly.** The figures stand as
+  re-measured: `refresh_figures --check` passes
+  on the tested head ("figure slots and the
+  display line match the facts"), the canonical
+  record in `statistics.md` stands, as read on
+  the tested head, at the measure carried on
+  the Q161 fix head's tree
+  (21,066,737 tokens, measured at the figures
+  commit of 5:34 PM PST), the core's recorded
+  re-measure entry in `runner/ops/core.py` names
+  the Q161 fix and its 91-line growth of
+  `runner/ops/briefing.py`, and
+  `test_doc_figure_slots`, `test_reader_docs_quiet`
+  and `test_core` read green beside it on the
+  tested head (38 tests). Growth landed after
+  that measure by other lanes — the release
+  commits of 5:36 PM PST (3.16.20.8), the CI
+  shape-job commit of 5:39 PM PST and this
+  re-test's own suppositions commit of
+  5:48 PM PST — stands on the tested head beyond
+  the measure and is stated here plainly; it is
+  other lanes' landings and this lane's own
+  record, not a Q161 residual, and no figure in
+  the Q161 record is moved by it. Further growth
+  landed after the tested head by the release
+  lane — the Windows probe fixes and the
+  3.16.20.9 cut of 6:16 PM PST, with its own
+  figures re-measure — does not touch
+  `runner/ops/briefing.py`, its test family, the
+  desk's Q161 record or the questions file,
+  verified from its diff at the landing of this
+  record, and is likewise not a Q161 residual.
+
+Verdict: everything in Q161's filed scope
+passes whole. The S8 shape and the S9
+second-group ledger residuals confirm, so they
+are filed as Q162 in the questions file, this
+seat does not fix them (rule 8), and Q161 is
+NOT closed by this re-test — and neither are
+Q160, Q158, Q157, Q156, Q155, Q154, Q153, Q152,
+Q151, Q150, Q149, Q148, Q147, Q146, Q145, Q144
+and Q143. Q161 therefore stands re-tested and
+passing on its filed scope; the chain closes
+only after Q162 is answered and its fix
+re-tested by this seat.
+
+What cannot be recorded as a unit test, stated
+plainly: the re-test's ad-hoc probes are live
+detector calls over the sentences named in the
+suppositions and in these conclusions; their
+deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane ran whole (242 green on the
+head; 1,777 failing entries for the new family
+against the pre-Q161-fix detector). No new
+behaviour is claimed beyond what those calls
+and that family show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
