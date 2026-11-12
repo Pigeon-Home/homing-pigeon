@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.20.9 - 2026-11-11
+
+- The ninth release on the 3.16 line: everything that landed on main after 3.16.20.3 ships here. The 3.16.20.5, 3.16.20.6, 3.16.20.7 and 3.16.20.8 carriers were prepared on main and never tagged — their sections below are the batch's record — and this cut publishes the whole stack.
+- Fix: the Windows probes are bounded at 3 seconds, so a slow `wevtutil` or `reg query` cannot eat the suite's wall clock, and the probe pins match the bound; the probe runner drains its pipes while it waits on the handle (recorded under 3.16.20.8 below).
+- Fix: `runner/guard/macos_confine.py` stands whole again with its `_profile_realpath` helper, after edits that had cut the file were restored in full; the macOS confinement third fix rides in this batch (recorded under 3.16.20.7 below).
+- The Oracle briefing's contradiction guard completes two more desk rounds (Q160, Q161): each filed by the previous round's re-test, answered under option 1, and recorded at the desk with its suppositions written before the work and its conclusions after; the Q161 re-test stands in flight at this cut and its outcome rides a later release.
+- Method: the suppositions for developing the Windows pipeline in a local loop on the Germany rig, recorded before measurement — the pipeline's discovery work moves to the rig and CI becomes the confirmation.
+- Figures: a fresh measure of the tree at this cut, 20,955,983 tokens (still 20 million, so the counter increments), 1,390,326 tracked lines, 5,491 commits on main before this release commit.
+
 ## 3.16.20.8 - 2026-11-11
 
 - Fix: the probe runner (`_run_text`) drains a probe's pipes on reader threads from the start and waits on the process handle, so a probe whose output outgrows the pipe buffer comes back whole instead of blocking on its write until the timeout. Routing `reg query` and `wevtutil` through the wait-first form had made every poll of the local watch spend 15 seconds a probe, nine probes a poll, and 20 of the Windows leg's 28 shards hit the 20-minute wall with the same frames in every kill dump. The grandchild-held pipe still cannot hold the caller, a pipe still held after the exit is still abandoned unclosed, and a killed probe is reaped inside the grace.
