@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.10 - 2026-11-12
+
+- CI: the macOS and Windows suites wait for their artifact legs, so the leg the release gates on takes the scarce runner first; the shape job pins the core measure in the first minute
+
 ## 3.16.21.9 - 2026-11-12
 
 - CI: the proofs start from the tag build's last job after the mirrors, and every proof workflow keeps one concurrency group for release tags, the newest tag's run cancelling the one before -- dispatched at tag time they held the runners the next cycle's gate needed
