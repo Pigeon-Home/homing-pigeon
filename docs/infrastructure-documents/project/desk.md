@@ -23623,6 +23623,244 @@ committed guard family, which this lane runs
 whole. No new behaviour is claimed beyond
 what those calls and that family show.
 
+Conclusions of the filing seat (2026-11-11):
+
+The re-test ran in a fresh scratch clone from
+remote main (the remote head verified by
+foreground `git ls-remote` in the same call as
+the clone's own head check, at a head one commit
+past the spawn-limits conclusions the driver
+named — a CI commit touching neither
+`runner/ops/briefing.py`,
+`runner/tests/test_briefing_contradiction.py`,
+the desk nor the questions file, verified by
+diff; the Q164 files are unchanged on the tested
+head since the fix, verified from the fix
+commit's diff), re-derived first-hand, not taken
+from the fix or completion lanes' reports. Two
+earlier re-test lanes of this same seat were
+interrupted after the suppositions landed; their
+probe record was preserved and this lane
+re-measured every count below in its own clone
+and its own temporary area on the workspace disk
+(115 GB available at this lane's start; no run
+of this lane hit a space error, and no run was
+counted twice). The trees: the current head; the
+pre-Q164-fix detector (the tree at the fix
+commit's parent); and the pre-Q143-fix detector
+(the tree at the Q143 fix commit's parent).
+Settled against the suppositions one by one:
+
+- **Q164-RT-S1 — holds.** Items 1, 2, 3 and 4
+  fire again, whole: the 537 shapes (64
+  bracket-ornament and mathematical-bracket
+  separators, 20 remainders of the filed blocks
+  and their nearest neighbours, 236 remaining
+  BMP punctuation marks and 217 remaining
+  punctuation marks beyond the BMP) produce
+  exactly `ledger_treated_as_instruction` on
+  both layers, plain (537 of 537: 64 of 64, 20
+  of 20, 236 of 236 and 217 of 217 on each
+  layer) and bookended (39,201 of 39,201
+  variants under the non-word symbols).
+- **Q164-RT-S2 — holds.** The evidence-only
+  twins under the new shapes stay silent,
+  whole: 537 of 537 plain on both layers,
+  40,275 of 40,275 bookended under the full
+  symbol set.
+- **Q164-RT-S3 — holds.** The both-ways
+  controls hold beside the widening: this
+  seat's own standing-separator controls (the
+  comma, the semicolon, the spaced "but" and
+  the spaced em dash) fire whole (4 of 4 plain
+  on both layers, 292 of 292 bookended); the
+  bound prohibition followed by a contradicting
+  sentence fires exactly
+  `private_shelf_crosses` on both layers; and
+  the standing unrelated-negation and
+  negated-then-contradicting pins hold through
+  the committed guard family run whole (267
+  green, below).
+- **Q164-RT-S4 — holds.** All twenty earlier
+  families hold whole beside the widening, and
+  the standing 7-rule contradiction family
+  fires whole, through the committed guard
+  family run whole (267 green, below) beside
+  this seat's own probes (the Q143 compliant
+  corpus silent 14 of 14 plain and 1,050 of
+  1,050 bookended, its restating shapes silent
+  7 of 7 plain and 525 of 525 bookended, the
+  contradiction family firing 7 of 7 plain and
+  511 of 511 bookended).
+- **Q164-RT-S5 — holds.** End to end: items 1,
+  2, 3 and 4's representatives (the U+207D,
+  U+2E2F, U+055A and U+10100 shapes) assembled
+  into briefings each carry their mark,
+  `briefing_report` names exactly
+  `ledger_treated_as_instruction`, and the
+  startup pass writes exactly their one audit
+  row (feature `briefing`, decision `marked`,
+  the rule id as the detail); and the
+  representative evidence-only twin carries no
+  mark, names no tensions, and writes no audit
+  row.
+- **Q164-RT-S6 — holds.** The guard family
+  reads 267 green (the 261 of the Q163 re-test
+  beside the 6 of the new Q164 family) and the
+  neighbour batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2`,
+  `test_protocol_v2_messages`,
+`test_v2_consult`,
+  `test_v2_replay`, `test_security_config`) read
+  305 green, re-measured in the foreground by
+  this seat with its temporary directory on the
+  workspace disk.
+- **Q164-RT-S7 — holds.** Red-before,
+  re-derived by this seat against the
+  pre-Q164-fix detector: items 1, 2, 3 and 4's
+  shapes are silent there (0 of 537 firing
+  plain on both layers, 0 of 39,201 bookended
+  variants), the evidence-only twins stay
+  silent there whole (537 of 537 plain, 40,275
+  of 40,275 bookended), and the guard family as
+  it now stands reads 39,739 failing entries
+  against that detector with 0 errors, every
+  one of them in the new Q164PolarityGuardTest
+  family (39,201 in its bookended ledger test,
+  537 in its ledger shapes test and 1 in its
+  end-to-end test; its evidence-only,
+  bookended-evidence and bound-prohibition
+  tests pass there) — the completion lane's
+  count, re-derived exactly. Against the
+  pre-Q143-fix detector the filed shapes fire
+  whole plain (537 of 537 on both layers), as
+  the Q164 entry filed them.
+- **Q164-RT-S8 — holds whole.** The filed
+  ledger shapes in their other spacings fire
+  (4 of 4 unspaced shapes plain on both layers,
+  292 of 292 bookended); the clauses in their
+  other order fire exactly
+  `ledger_treated_as_instruction` (4 of 4 plain
+  on both layers, 292 of 292 bookended); and a
+  filed separator standing in the first clause
+  ahead of its evidence word does not swallow
+  the second clause's instruction complement
+  (4 of 4 firing whole, the same counts).
+- **Q164-RT-S9 — all four directions confirm
+  residuals, with the covered shapes excepted.**
+  (1) The remaining assigned symbols of the
+  Basic Multilingual Plane are missed: of its
+  3,799 shapes, 3,798 read silent (0 of 3,798
+  firing plain on both layers, 0 of
+  277,254 of their bookended variants
+  firing), and the one exception — the minus
+  sign, U+2212 — fires whole on the current
+  head (1 of 1 plain on both layers), read as
+  a dash by the fold, so it is covered and not
+  a residual; the representative residual (the
+  U+00A2 shape) carries no mark and no audit
+  row end to end. (2) The remaining assigned
+  symbols beyond the BMP are missed whole: 0
+  of 3,926 firing plain on both layers, 0 of
+  286,598 bookended, the
+  representative (the U+10137 shape) with no
+  mark and no audit row. (3) The remaining
+  assigned marks are missed with 260 covered
+  shapes excepted: of its 2,450 shapes, 2,190
+  read silent (0 of 2,190 firing plain on both
+  layers, 0 of 159,870 bookended), and the
+  260 that fire whole (the combining grapheme
+  joiner U+034F, the Mongolian free variation
+  selectors U+180B to U+180D, the variation
+  selectors U+FE00 to U+FE0F and the
+  supplementary variation selectors U+E0100 to
+  U+E01EF, all non-spacing marks the fold
+  already reads as boundaries) are covered and
+  not residuals; the representative residual
+  (the U+0300 shape) carries no mark and no
+  audit row end to end. (4) The remaining
+  assigned numbers are missed whole: 0 of
+  1,831 firing plain on both layers, 0 of
+  133,663 bookended, the representative
+  (the U+0030 shape) with no mark and no audit
+  row. (5) The controls of this group hold as
+  covered, verified whole: the 170 remaining
+  assigned format characters fire whole (170
+  of 170 plain on both layers, none left
+  over), the line and paragraph separators
+  U+2028 and U+2029 fire whole as boundaries
+  (2 of 2 plain on both layers), the spaced
+  hyphen-minus fires whole (1 of 1), and the
+  Arabic end of text mark U+061D fires whole
+  as a fold boundary (1 of 1 plain, 73 of 73
+  bookended). The evidence-only twins under
+  the second group's shapes stay silent on the
+  current head (12,006 of 12,006 plain on both
+  layers over the whole inventory; over the
+  11,745 residual shapes, 880,875
+  of 880,875 bookended). The
+  residual shapes read the same on the
+  pre-Q164-fix detector plain (the same firing
+  counts group by group: 1 of 3,799, 0 of
+  3,926, 260 of 2,450 and 0 of 1,831, the
+  covered shapes firing there too) and fire
+  whole plain on the pre-Q143-fix detector
+  (3,799 of 3,799, 3,926 of 3,926, 2,450 of
+  2,450 and 1,831 of 1,831 on both layers).
+  Every one of the 11,745 residual shapes was
+  verified against the segment set itself:
+  none of their characters stands in
+  `_LEDGER_SEGMENTS` on the current head. The
+  four residual items are filed as Q165 in
+  the questions file (3,798, 3,926, 2,190 and
+  1,831 shapes, 11,745 in all), not fixed by
+  this seat (rule 8).
+- **Q164-RT-S10 — holds.** The figures stand
+  as re-measured: on the tested head,
+  `refresh_figures --check` passes ("figure
+  slots and the display line match the facts")
+  and `test_core`, `test_doc_figure_slots` and
+  `test_reader_docs_quiet` read 38 green. The
+  tested head stands one CI commit past the
+  head the driver named for this lane; that
+  commit touches no measured core file of the
+  Q164 record, and the growth is stated
+  plainly here rather than read as a Q164
+  residual. This landing is docs-only (the
+  desk and the questions file), so no figures
+  re-measure rides it, following the prior
+  re-test landings.
+
+Verdict: everything in Q164's filed scope
+passes whole. The S9 second group's four
+directions confirm residuals (11,745 shapes,
+with the covered shapes of directions (1) and
+(3) excepted), so they are filed as Q165 in the
+questions file, this seat does not fix them
+(rule 8), and Q164 is NOT closed by this
+re-test — and neither are Q163, Q162, Q161,
+Q160, Q158, Q157, Q156, Q155, Q154, Q153,
+Q152, Q151, Q150, Q149, Q148, Q147, Q146,
+Q145, Q144 and Q143. Q164 therefore stands
+re-tested and passing on its filed scope; the
+chain closes only after Q165 is answered and
+its fix re-tested by this seat.
+
+What cannot be recorded as a unit test, stated
+plainly: the re-test's ad-hoc probes are live
+detector calls over the sentences named in the
+suppositions and in these conclusions; their
+deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane ran whole (267 green on the
+head; 39,739 failing entries for the new
+family against the pre-Q164-fix detector). No
+new behaviour is claimed beyond what those
+calls and that family show.
+
+Agent-Stamp:
+00000000-muse-7e57-d0c5-58316a922026
+
 ## Windows durations: the decision-1 count pin -- suppositions recorded before the fix (2026-11-11)
 
 A fresh fix lane (not the decision-1 lane, not

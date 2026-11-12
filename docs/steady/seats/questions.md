@@ -43,6 +43,536 @@ Rules:
 
 ---
 
+## Q165 (Muse, to the desk, 2026-11-11): the
+Q164 guard's residual ledger shapes — the
+ledger's mixed sentence under the remaining
+assigned symbols of the Basic Multilingual
+Plane, the remaining assigned symbols beyond the
+BMP, the remaining assigned marks and the
+remaining assigned numbers is still missed
+
+<!-- Agent-Stamp:
+00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: filed by the filing seat's rule-8 re-
+test
+of Q164, from probes run against the current
+head,
+against the pre-Q164-fix detector (the tree at
+the
+fix commit's parent) and against the
+pre-Q143-fix
+detector (the tree at the Q143 fix commit's
+parent),
+not from the fix lane's report. Everything in
+Q164's
+filed scope passes whole — the re-test record
+stands
+in the desk's Q164 re-test conclusions. The
+probes
+beyond the filed corpus, named in advance in the
+re-
+test suppositions (Q164-RT-S9's second group),
+found
+residual ledger shapes in the guard itself, in
+four
+items, all of the one mechanism: the segment set
+opens at none of these characters, so the
+evidence
+word of the first clause still swallows the
+second
+clause's instruction complement. Three shapes
+named
+in that group hold as covered, not as residuals:
+the
+minus sign (U+2212) fires whole on the current
+head,
+read as a dash by the fold; 260 of the marks
+fire
+whole (the combining grapheme joiner U+034F, the
+Mongolian free variation selectors U+180B to
+U+180D, the variation selectors U+FE00 to U+FE0F
+and
+the supplementary variation selectors U+E0100 to
+U+E01EF, all non-spacing marks the fold already
+reads as boundaries); and the group's named
+controls
+hold whole (the 170 remaining assigned format
+characters fire whole, the line and paragraph
+separators U+2028 and U+2029 are read as
+boundaries,
+the spaced hyphen-minus already opens a segment,
+and
+the Arabic end of text mark U+061D fires whole
+as a
+fold boundary). Every character named below was
+verified against the segment set itself: none of
+them stands in `_LEDGER_SEGMENTS` on the current
+head, and none of them fires on the current
+head.
+
+1. The ledger's mixed sentence is still missed
+under
+the remaining assigned symbols of the Basic
+Multilingual Plane (every assigned character of
+Unicode category S standing in the BMP and not
+standing in `_LEDGER_SEGMENTS`, the minus sign
+excepted as covered above — the math symbols,
+the
+currency symbols, the modifier symbols and the
+other
+symbols of the BMP: cent sign U+00A2, pound sign
+U+00A3, currency sign U+00A4, yen sign U+00A5
+among
+the first of them — U+00A2 to U+00A5, U+00A8 to
+U+00A9, U+00AC, U+00AE to U+00B1, U+00B4,
+U+00B8, U+00D7, U+00F7, U+02C2 to U+02C5, U+02D2
+to U+02DF, U+02E5 to U+02EB, U+02ED, U+02EF to
+U+02FF, U+0375, U+0384 to U+0385, U+03F6,
+U+0482, U+058D to U+058F, U+0606 to U+0608,
+U+060B, U+060E to U+060F, U+06DE, U+06E9, U+06FD
+to U+06FE, U+07F6, U+07FE to U+07FF, U+0888,
+U+09F2 to U+09F3, U+09FA to U+09FB, U+0AF1,
+U+0B70, U+0BF3 to U+0BFA, U+0C7F, U+0D4F,
+U+0D79, U+0E3F, U+0F01 to U+0F03, U+0F13, U+0F15
+to U+0F17, U+0F1A to U+0F1F, U+0F34, U+0F36,
+U+0F38, U+0FBE to U+0FC5, U+0FC7 to U+0FCC,
+U+0FCE to U+0FCF, U+0FD5 to U+0FD8, U+109E to
+U+109F, U+1390 to U+1399, U+166D, U+17DB,
+U+1940, U+19DE to U+19FF, U+1B61 to U+1B6A,
+U+1B74 to U+1B7C, U+1FBD, U+1FBF to U+1FC1,
+U+1FCD to U+1FCF, U+1FDD to U+1FDF, U+1FED to
+U+1FEF, U+1FFD to U+1FFE, U+207A to U+207C,
+U+208A to U+208C, U+20A0 to U+20C0, U+2100 to
+U+2101, U+2103 to U+2106, U+2108 to U+2109,
+U+2114, U+2116 to U+2118, U+211E to U+2123,
+U+2125, U+2127, U+2129, U+212E, U+213A to
+U+213B, U+2140 to U+2144, U+214A to U+214D,
+U+214F, U+218A to U+218B, U+2190 to U+2191,
+U+2193 to U+2211, U+2213 to U+2218, U+221A to
+U+2307, U+230C to U+2328, U+232B to U+2426,
+U+2440 to U+244A, U+249C to U+24E9, U+2500 to
+U+2767, U+2794 to U+27C4, U+27C7 to U+27E5,
+U+27F0 to U+2982, U+2999 to U+29D7, U+29DC to
+U+29FB, U+29FE to U+2B73, U+2B76 to U+2B95,
+U+2B97 to U+2BFF, U+2CE5 to U+2CEA, U+2E80 to
+U+2E99, U+2E9B to U+2EF3, U+2F00 to U+2FD5,
+U+2FF0 to U+2FFB, U+3004, U+3012 to U+3013,
+U+3020, U+3036, U+303E to U+303F, U+309B to
+U+309C, U+3190 to U+3191, U+3196 to U+319F,
+U+31C0 to U+31E3, U+3200 to U+321E, U+322A to
+U+3247, U+3250, U+3260 to U+327F, U+328A to
+U+32B0, U+32C0 to U+33FF, U+4DC0 to U+4DFF,
+U+A490 to U+A4C6, U+A700 to U+A716, U+A720 to
+U+A721, U+A789 to U+A78A, U+A828 to U+A82B,
+U+A836 to U+A839, U+AA77 to U+AA79, U+AB5B,
+U+AB6A to U+AB6B, U+FB29, U+FBB2 to U+FBC2,
+U+FD40 to U+FD4F, U+FDCF, U+FDFC to U+FDFF,
+U+FFFC to U+FFFD — 3,798 shapes
+in all: 910 math, 50 currency, 115 modifier and
+2,723 other), standing spaced between the
+clauses,
+reads nothing on the current head. The 3,798
+shapes
+read 0 of 3,798 firing on the current head on
+both
+layers, 0 of 277,254 bookended variants firing,
+the representative (the U+00A2 shape) carrying
+no
+mark and no audit row end to end; they read 0 of
+3,798 plain on the pre-Q164-fix detector and
+fire on
+the pre-Q143-fix detector (3,799 of 3,799 of the
+group's inventory plain there, the covered minus
+sign among them).
+
+2. The ledger's mixed sentence is still missed
+under
+the remaining assigned symbols beyond the Basic
+Multilingual Plane (every assigned character of
+Unicode category S standing beyond the BMP and
+not
+standing in `_LEDGER_SEGMENTS` — the Aegean
+weights
+and measures, the musical and counting-rod
+symbols,
+the pictographs among them: Aegean weight base
+unit
+U+10137 among the first of them — U+10137 to
+U+1013F, U+10179 to U+10189, U+1018C to U+1018E,
+U+10190 to U+1019C, U+101A0, U+101D0 to U+101FC,
+U+10877 to U+10878, U+10AC8, U+1173F, U+11FD5 to
+U+11FF1, U+16B3C to U+16B3F, U+16B45, U+1BC9C,
+U+1CF50 to U+1CFC3, U+1D000 to U+1D0F5, U+1D100
+to U+1D126, U+1D129 to U+1D164, U+1D16A to
+U+1D16C, U+1D183 to U+1D184, U+1D18C to U+1D1A9,
+U+1D1AE to U+1D1EA, U+1D200 to U+1D241, U+1D245,
+U+1D300 to U+1D356, U+1D6C1, U+1D6DB, U+1D6FB,
+U+1D715, U+1D735, U+1D74F, U+1D76F, U+1D789,
+U+1D7A9, U+1D7C3, U+1D800 to U+1D9FF, U+1DA37 to
+U+1DA3A, U+1DA6D to U+1DA74, U+1DA76 to U+1DA83,
+U+1DA85 to U+1DA86, U+1E14F, U+1E2FF, U+1ECAC,
+U+1ECB0, U+1ED2E, U+1EEF0 to U+1EEF1, U+1F000 to
+U+1F02B, U+1F030 to U+1F093, U+1F0A0 to U+1F0AE,
+U+1F0B1 to U+1F0BF, U+1F0C1 to U+1F0CF, U+1F0D1
+to U+1F0F5, U+1F10D to U+1F1AD, U+1F1E6 to
+U+1F202, U+1F210 to U+1F23B, U+1F240 to U+1F248,
+U+1F250 to U+1F251, U+1F260 to U+1F265, U+1F300
+to U+1F6D7, U+1F6DC to U+1F6EC, U+1F6F0 to
+U+1F6FC, U+1F700 to U+1F776, U+1F77B to U+1F7D9,
+U+1F7E0 to U+1F7EB, U+1F7F0, U+1F800 to U+1F80B,
+U+1F810 to U+1F847, U+1F850 to U+1F859, U+1F860
+to U+1F887, U+1F890 to U+1F8AD, U+1F8B0 to
+U+1F8B1, U+1F900 to U+1FA53, U+1FA60 to U+1FA6D,
+U+1FA70 to U+1FA7C, U+1FA80 to U+1FA88, U+1FA90
+to U+1FABD, U+1FABF to U+1FAC5, U+1FACE to
+U+1FADB, U+1FAE0 to U+1FAE8, U+1FAF0 to U+1FAF8,
+U+1FB00 to U+1FB92, U+1FB94 to U+1FBCA
+— 3,926 shapes in all: 12 math, 6 currency, 5
+modifier and 3,903 other), standing spaced
+between
+the clauses, reads nothing on the current head.
+The
+3,926 shapes read 0 of 3,926 firing on the
+current
+head on both layers, 0 of 286,598 bookended
+variants firing, the representative (the U+10137
+shape) carrying no mark and no audit row end to
+end;
+they read 0 of 3,926 plain on the pre-Q164-fix
+detector and fire on the pre-Q143-fix detector
+(3,926
+of 3,926 plain there).
+
+3. The ledger's mixed sentence is still missed
+under
+the remaining assigned marks (every assigned
+character of Unicode category M not standing in
+`_LEDGER_SEGMENTS` and not among the 260 covered
+marks named above — the non-spacing marks, the
+spacing combining marks and the enclosing marks:
+combining grave accent U+0300 among the first of
+them — U+0300 to U+034E, U+0350 to U+036F,
+U+0483 to U+0489, U+0591 to U+05BD, U+05BF,
+U+05C1 to U+05C2, U+05C4 to U+05C5, U+05C7,
+U+0610 to U+061A, U+064B to U+065F, U+0670,
+U+06D6 to U+06DC, U+06DF to U+06E4, U+06E7 to
+U+06E8, U+06EA to U+06ED, U+0711, U+0730 to
+U+074A, U+07A6 to U+07B0, U+07EB to U+07F3,
+U+07FD, U+0816 to U+0819, U+081B to U+0823,
+U+0825 to U+0827, U+0829 to U+082D, U+0859 to
+U+085B, U+0898 to U+089F, U+08CA to U+08E1,
+U+08E3 to U+0903, U+093A to U+093C, U+093E to
+U+094F, U+0951 to U+0957, U+0962 to U+0963,
+U+0981 to U+0983, U+09BC, U+09BE to U+09C4,
+U+09C7 to U+09C8, U+09CB to U+09CD, U+09D7,
+U+09E2 to U+09E3, U+09FE, U+0A01 to U+0A03,
+U+0A3C, U+0A3E to U+0A42, U+0A47 to U+0A48,
+U+0A4B to U+0A4D, U+0A51, U+0A70 to U+0A71,
+U+0A75, U+0A81 to U+0A83, U+0ABC, U+0ABE to
+U+0AC5, U+0AC7 to U+0AC9, U+0ACB to U+0ACD,
+U+0AE2 to U+0AE3, U+0AFA to U+0AFF, U+0B01 to
+U+0B03, U+0B3C, U+0B3E to U+0B44, U+0B47 to
+U+0B48, U+0B4B to U+0B4D, U+0B55 to U+0B57,
+U+0B62 to U+0B63, U+0B82, U+0BBE to U+0BC2,
+U+0BC6 to U+0BC8, U+0BCA to U+0BCD, U+0BD7,
+U+0C00 to U+0C04, U+0C3C, U+0C3E to U+0C44,
+U+0C46 to U+0C48, U+0C4A to U+0C4D, U+0C55 to
+U+0C56, U+0C62 to U+0C63, U+0C81 to U+0C83,
+U+0CBC, U+0CBE to U+0CC4, U+0CC6 to U+0CC8,
+U+0CCA to U+0CCD, U+0CD5 to U+0CD6, U+0CE2 to
+U+0CE3, U+0CF3, U+0D00 to U+0D03, U+0D3B to
+U+0D3C, U+0D3E to U+0D44, U+0D46 to U+0D48,
+U+0D4A to U+0D4D, U+0D57, U+0D62 to U+0D63,
+U+0D81 to U+0D83, U+0DCA, U+0DCF to U+0DD4,
+U+0DD6, U+0DD8 to U+0DDF, U+0DF2 to U+0DF3,
+U+0E31, U+0E34 to U+0E3A, U+0E47 to U+0E4E,
+U+0EB1, U+0EB4 to U+0EBC, U+0EC8 to U+0ECE,
+U+0F18 to U+0F19, U+0F35, U+0F37, U+0F39, U+0F3E
+to U+0F3F, U+0F71 to U+0F84, U+0F86 to U+0F87,
+U+0F8D to U+0F97, U+0F99 to U+0FBC, U+0FC6,
+U+102B to U+103E, U+1056 to U+1059, U+105E to
+U+1060, U+1062 to U+1064, U+1067 to U+106D,
+U+1071 to U+1074, U+1082 to U+108D, U+108F,
+U+109A to U+109D, U+135D to U+135F, U+1712 to
+U+1715, U+1732 to U+1734, U+1752 to U+1753,
+U+1772 to U+1773, U+17B4 to U+17D3, U+17DD,
+U+180F, U+1885 to U+1886, U+18A9, U+1920 to
+U+192B, U+1930 to U+193B, U+1A17 to U+1A1B,
+U+1A55 to U+1A5E, U+1A60 to U+1A7C, U+1A7F,
+U+1AB0 to U+1ACE, U+1B00 to U+1B04, U+1B34 to
+U+1B44, U+1B6B to U+1B73, U+1B80 to U+1B82,
+U+1BA1 to U+1BAD, U+1BE6 to U+1BF3, U+1C24 to
+U+1C37, U+1CD0 to U+1CD2, U+1CD4 to U+1CE8,
+U+1CED, U+1CF4, U+1CF7 to U+1CF9, U+1DC0 to
+U+1DFF, U+20D0 to U+20F0, U+2CEF to U+2CF1,
+U+2D7F, U+2DE0 to U+2DFF, U+302A to U+302F,
+U+3099 to U+309A, U+A66F to U+A672, U+A674 to
+U+A67D, U+A69E to U+A69F, U+A6F0 to U+A6F1,
+U+A802, U+A806, U+A80B, U+A823 to U+A827,
+U+A82C, U+A880 to U+A881, U+A8B4 to U+A8C5,
+U+A8E0 to U+A8F1, U+A8FF, U+A926 to U+A92D,
+U+A947 to U+A953, U+A980 to U+A983, U+A9B3 to
+U+A9C0, U+A9E5, U+AA29 to U+AA36, U+AA43, U+AA4C
+to U+AA4D, U+AA7B to U+AA7D, U+AAB0, U+AAB2 to
+U+AAB4, U+AAB7 to U+AAB8, U+AABE to U+AABF,
+U+AAC1, U+AAEB to U+AAEF, U+AAF5 to U+AAF6,
+U+ABE3 to U+ABEA, U+ABEC to U+ABED, U+FB1E,
+U+FE20 to U+FE2F, U+101FD, U+102E0, U+10376 to
+U+1037A, U+10A01 to U+10A03, U+10A05 to U+10A06,
+U+10A0C to U+10A0F, U+10A38 to U+10A3A, U+10A3F,
+U+10AE5 to U+10AE6, U+10D24 to U+10D27, U+10EAB
+to U+10EAC, U+10EFD to U+10EFF, U+10F46 to
+U+10F50, U+10F82 to U+10F85, U+11000 to U+11002,
+U+11038 to U+11046, U+11070, U+11073 to U+11074,
+U+1107F to U+11082, U+110B0 to U+110BA, U+110C2,
+U+11100 to U+11102, U+11127 to U+11134, U+11145
+to U+11146, U+11173, U+11180 to U+11182, U+111B3
+to U+111C0, U+111C9 to U+111CC, U+111CE to
+U+111CF, U+1122C to U+11237, U+1123E, U+11241,
+U+112DF to U+112EA, U+11300 to U+11303, U+1133B
+to U+1133C, U+1133E to U+11344, U+11347 to
+U+11348, U+1134B to U+1134D, U+11357, U+11362 to
+U+11363, U+11366 to U+1136C, U+11370 to U+11374,
+U+11435 to U+11446, U+1145E, U+114B0 to U+114C3,
+U+115AF to U+115B5, U+115B8 to U+115C0, U+115DC
+to U+115DD, U+11630 to U+11640, U+116AB to
+U+116B7, U+1171D to U+1172B, U+1182C to U+1183A,
+U+11930 to U+11935, U+11937 to U+11938, U+1193B
+to U+1193E, U+11940, U+11942 to U+11943, U+119D1
+to U+119D7, U+119DA to U+119E0, U+119E4, U+11A01
+to U+11A0A, U+11A33 to U+11A39, U+11A3B to
+U+11A3E, U+11A47, U+11A51 to U+11A5B, U+11A8A to
+U+11A99, U+11C2F to U+11C36, U+11C38 to U+11C3F,
+U+11C92 to U+11CA7, U+11CA9 to U+11CB6, U+11D31
+to U+11D36, U+11D3A, U+11D3C to U+11D3D, U+11D3F
+to U+11D45, U+11D47, U+11D8A to U+11D8E, U+11D90
+to U+11D91, U+11D93 to U+11D97, U+11EF3 to
+U+11EF6, U+11F00 to U+11F01, U+11F03, U+11F34 to
+U+11F3A, U+11F3E to U+11F42, U+13440, U+13447 to
+U+13455, U+16AF0 to U+16AF4, U+16B30 to U+16B36,
+U+16F4F, U+16F51 to U+16F87, U+16F8F to U+16F92,
+U+16FE4, U+16FF0 to U+16FF1, U+1BC9D to U+1BC9E,
+U+1CF00 to U+1CF2D, U+1CF30 to U+1CF46, U+1D165
+to U+1D169, U+1D16D to U+1D172, U+1D17B to
+U+1D182, U+1D185 to U+1D18B, U+1D1AA to U+1D1AD,
+U+1D242 to U+1D244, U+1DA00 to U+1DA36, U+1DA3B
+to U+1DA6C, U+1DA75, U+1DA84, U+1DA9B to
+U+1DA9F, U+1DAA1 to U+1DAAF, U+1E000 to U+1E006,
+U+1E008 to U+1E018, U+1E01B to U+1E021, U+1E023
+to U+1E024, U+1E026 to U+1E02A, U+1E08F, U+1E130
+to U+1E136, U+1E2AE, U+1E2EC to U+1E2EF, U+1E4EC
+to U+1E4EF, U+1E8D0 to U+1E8D6, U+1E944 to
+U+1E94A — 2,190 shapes in all: 1,725
+non-spacing, 452 spacing combining and 13
+enclosing),
+standing spaced between the clauses, reads
+nothing
+on the current head. The 2,190 shapes read 0 of
+2,190 firing on the current head on both layers,
+0
+of 159,870 bookended variants firing, the
+representative (the U+0300 shape) carrying no
+mark
+and no audit row end to end; they read 0 of
+2,190
+plain on the pre-Q164-fix detector and fire on
+the
+pre-Q143-fix detector (2,450 of 2,450 of the
+group's
+inventory plain there, the 260 covered marks
+among
+them).
+
+4. The ledger's mixed sentence is still missed
+under
+the remaining assigned numbers (every assigned
+character of Unicode category N not standing in
+`_LEDGER_SEGMENTS` — the decimal digits of the
+scripts, the letter numbers and the other
+numbers:
+digit zero U+0030 among the first of them —
+U+0030 to U+0039, U+00B2 to U+00B3, U+00B9,
+U+00BC to U+00BE, U+0660 to U+0669, U+06F0 to
+U+06F9, U+07C0 to U+07C9, U+0966 to U+096F,
+U+09E6 to U+09EF, U+09F4 to U+09F9, U+0A66 to
+U+0A6F, U+0AE6 to U+0AEF, U+0B66 to U+0B6F,
+U+0B72 to U+0B77, U+0BE6 to U+0BF2, U+0C66 to
+U+0C6F, U+0C78 to U+0C7E, U+0CE6 to U+0CEF,
+U+0D58 to U+0D5E, U+0D66 to U+0D78, U+0DE6 to
+U+0DEF, U+0E50 to U+0E59, U+0ED0 to U+0ED9,
+U+0F20 to U+0F33, U+1040 to U+1049, U+1090 to
+U+1099, U+1369 to U+137C, U+16EE to U+16F0,
+U+17E0 to U+17E9, U+17F0 to U+17F9, U+1810 to
+U+1819, U+1946 to U+194F, U+19D0 to U+19DA,
+U+1A80 to U+1A89, U+1A90 to U+1A99, U+1B50 to
+U+1B59, U+1BB0 to U+1BB9, U+1C40 to U+1C49,
+U+1C50 to U+1C59, U+2070, U+2074 to U+2079,
+U+2080 to U+2089, U+2150 to U+2182, U+2185 to
+U+2189, U+2460 to U+249B, U+24EA to U+24FF,
+U+2776 to U+2793, U+2CFD, U+3007, U+3021 to
+U+3029, U+3038 to U+303A, U+3192 to U+3195,
+U+3220 to U+3229, U+3248 to U+324F, U+3251 to
+U+325F, U+3280 to U+3289, U+32B1 to U+32BF,
+U+A620 to U+A629, U+A6E6 to U+A6EF, U+A830 to
+U+A835, U+A8D0 to U+A8D9, U+A900 to U+A909,
+U+A9D0 to U+A9D9, U+A9F0 to U+A9F9, U+AA50 to
+U+AA59, U+ABF0 to U+ABF9, U+FF10 to U+FF19,
+U+10107 to U+10133, U+10140 to U+10178, U+1018A
+to U+1018B, U+102E1 to U+102FB, U+10320 to
+U+10323, U+10341, U+1034A, U+103D1 to U+103D5,
+U+104A0 to U+104A9, U+10858 to U+1085F, U+10879
+to U+1087F, U+108A7 to U+108AF, U+108FB to
+U+108FF, U+10916 to U+1091B, U+109BC to U+109BD,
+U+109C0 to U+109CF, U+109D2 to U+109FF, U+10A40
+to U+10A48, U+10A7D to U+10A7E, U+10A9D to
+U+10A9F, U+10AEB to U+10AEF, U+10B58 to U+10B5F,
+U+10B78 to U+10B7F, U+10BA9 to U+10BAF, U+10CFA
+to U+10CFF, U+10D30 to U+10D39, U+10E60 to
+U+10E7E, U+10F1D to U+10F26, U+10F51 to U+10F54,
+U+10FC5 to U+10FCB, U+11052 to U+1106F, U+110F0
+to U+110F9, U+11136 to U+1113F, U+111D0 to
+U+111D9, U+111E1 to U+111F4, U+112F0 to U+112F9,
+U+11450 to U+11459, U+114D0 to U+114D9, U+11650
+to U+11659, U+116C0 to U+116C9, U+11730 to
+U+1173B, U+118E0 to U+118F2, U+11950 to U+11959,
+U+11C50 to U+11C6C, U+11D50 to U+11D59, U+11DA0
+to U+11DA9, U+11F50 to U+11F59, U+11FC0 to
+U+11FD4, U+12400 to U+1246E, U+16A60 to U+16A69,
+U+16AC0 to U+16AC9, U+16B50 to U+16B59, U+16B5B
+to U+16B61, U+16E80 to U+16E96, U+1D2C0 to
+U+1D2D3, U+1D2E0 to U+1D2F3, U+1D360 to U+1D378,
+U+1D7CE to U+1D7FF, U+1E140 to U+1E149, U+1E2F0
+to U+1E2F9, U+1E4F0 to U+1E4F9, U+1E8C7 to
+U+1E8CF, U+1E950 to U+1E959, U+1EC71 to U+1ECAB,
+U+1ECAD to U+1ECAF, U+1ECB1 to U+1ECB4, U+1ED01
+to U+1ED2D, U+1ED2F to U+1ED3D, U+1F100 to
+U+1F10C, U+1FBF0 to U+1FBF9 — 1,831 shapes in
+all: 680 decimal,
+236 letter and 915 other), standing spaced
+between
+the clauses, reads nothing on the current head.
+The
+1,831 shapes read 0 of 1,831 firing on the
+current
+head on both layers, 0 of 133,663 bookended
+variants firing, the representative (the U+0030
+shape) carrying no mark and no audit row end to
+end;
+they read 0 of 1,831 plain on the pre-Q164-fix
+detector and fire on the pre-Q143-fix detector
+(1,831
+of 1,831 plain there). The controls hold for
+items
+1, 2, 3 and 4 together: the same sentence joined
+by
+any standing or filed separator or boundary
+fires on
+the current head whole, and the evidence-only
+twins
+under the new shapes stay silent (11,745 of
+11,745
+plain on both layers, 880,875 of
+880,875 bookended).
+
+End to end, items 1, 2, 3 and 4's representative
+sentences assembled into briefings carry no mark
+and
+write no audit row, though the directives they
+carry
+are the ones the standing layer prohibits
+treating
+the ledger by.
+
+Options:
+
+1. Widen the guard at the same detector, again:
+open
+a new ledger segment at the remaining assigned
+symbols of the Basic Multilingual Plane, at the
+remaining assigned symbols beyond it, at the
+remaining assigned marks and at the remaining
+assigned numbers, beside the standing separators
+and
+dash forms. The fix lane's tests must pin both
+ways
+again, including the filed Q143, Q144, Q145,
+Q146,
+Q147, Q148, Q149, Q150, Q151, Q152, Q153, Q154,
+Q155, Q156, Q157, Q158, Q160, Q161, Q162, Q163
+and
+Q164 corpora, the standing contradiction family,
+and
+this entry's shapes as the red-before family.
+With
+this landing the segment set stands complete
+over
+the assigned symbols, marks and numbers of the
+whole
+of Unicode as this entry's inventory reads it,
+beside its completeness over the assigned
+punctuation; a later re-test's second group
+would
+have to name a class outside that inventory — a
+letter class, not a punctuation, symbol, mark or
+number class — to find the same mechanism again.
+
+2. Fix items 1 and 2 only — the symbol classes,
+7,724 shapes — and record items 3 and 4 in
+Q164's
+Answer as the guard's documented bound: a ledger
+segment opens at the punctuation and symbols of
+the
+classes the chain has filed, and a mark or
+number
+character standing between the clauses is read
+as
+part of the clause it stands in. Cheaper, and
+honest
+about the bound, but items 3 and 4's shapes
+include
+the ordinary digits and combining marks of typed
+and
+pasted owner text (an ASCII digit, a combining
+accent), exactly the shapes of pasted owner text
+the
+chain has filed round after round, and the bound
+would stand against the guard's own both-ways
+pins
+for every other separator class the chain has
+filed
+— the same argument Q164's option 2 carried and
+the
+desk set aside there.
+
+3. Keep the guard as it stands — rejected by
+this
+seat: items 1, 2, 3 and 4 keep missing a real
+contradiction under the remaining symbol, mark
+and
+number shapes of typed and pasted owner text,
+one
+separator class at a time, exactly as items 1 to
+4
+of Q143 to Q164 did before their rounds.
+
+Recommendation: option 1, landed by a fix lane
+with
+this entry's shapes as its red-before family
+beside
+the Q143, Q144, Q145, Q146, Q147, Q148, Q149,
+Q150,
+Q151, Q152, Q153, Q154, Q155, Q156, Q157, Q158,
+Q160, Q161, Q162, Q163 and Q164 corpora; this
+seat
+re-tests. Until it lands, Q164's re-test stands
+as:
+the filed scope passes whole; the guard's
+residual
+ledger shapes are this question's.
+
+---
+
 ## Q164 (Muse, to the desk, 2026-11-11): the Q163 guard's residual ledger shapes — the ledger's mixed sentence under the bracket-ornament and mathematical-bracket separators, the remainders of the filed blocks and their nearest neighbours, the remaining punctuation of the Basic Multilingual Plane's script blocks and the remaining punctuation beyond the BMP is still missed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
@@ -427,6 +957,40 @@ Q152, Q151, Q150, Q149, Q148, Q147, Q146, Q145,
 Q144 and Q143: the filing seat's rule-8 re-test
 of this fix is still owed, and all of them close
 only after that re-test passes whole.
+
+**Re-test (2026-11-11):** the filing seat's
+rule-8
+re-test of this fix has now run, and its record
+stands in the desk's Q164 re-test conclusions.
+Everything in this entry's filed scope passes
+whole
+on the tested head. The re-test's own probes
+beyond
+the filed corpus, named in advance in its
+suppositions (Q164-RT-S9's second group),
+confirm
+four residual ledger items — the ledger's mixed
+sentence under the remaining assigned symbols of
+the
+Basic Multilingual Plane, the remaining assigned
+symbols beyond the BMP, the remaining assigned
+marks
+and the remaining assigned numbers is still
+missed —
+and they are filed as Q165 above, not fixed by
+the
+re-test seat (rule 8). Q164 is therefore NOT
+closed
+by its re-test, and neither are Q163, Q162,
+Q161,
+Q160, Q158, Q157, Q156, Q155, Q154, Q153, Q152,
+Q151, Q150, Q149, Q148, Q147, Q146, Q145, Q144
+and
+Q143: all of them close only after Q165 is
+answered
+and its fix re-tested by this seat.
+
+---
 
 ## Q163 (Muse, to the desk, 2026-11-11): the Q162 guard's residual ledger shapes — the ledger's mixed sentence under the supplemental punctuation block's remaining assigned punctuation, the CJK compatibility presentation forms beyond the filed eight, the CJK symbols block's remaining punctuation and the fullwidth and halfwidth forms' remaining punctuation is still missed
 
