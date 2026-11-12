@@ -936,3 +936,64 @@ section above.)
 - GitHub API (2026-11-12T01:34Z): releases list (latest published
   v3.16.20.3, 2026-11-11T09:27:36Z, 12 assets); runs list per_page=50
   (01:03–01:35Z window: 6 build runs cancelled, 0 completed).
+
+## 48-hour relief mode — 12 Nov 2026 (owner-approved)
+
+The owner approved a 48-hour relief mode on 2026-11-11 (evening,
+PST): the pipeline has spent four days red in the families above,
+and the hourly release train is starved less by failures than by
+the volume of proof that fires on every push and by verdicts that
+never complete. The mode is a window, not a posture change: it
+expires 48 hours after it lands, and a build-config test carries
+the expiry date so the suite itself goes red until the triggers
+are restored.
+
+### Suppositions (written before the change is measured)
+
+- S1: the proof fan-out is the larger half of the per-push CI
+  cost. Ten workflows fire on every push to main; the nine proof
+  workflows beside build.yml (platform-matrix, python-range,
+  switch-proofs, minimal-userland, env-axes, job-user,
+  queues-worker, upgrade-proof, freebsd) re-prove settled ground
+  on every landing. Moving their push triggers to release tags
+  plus a nightly schedule for the window should cut the per-push
+  runner load to build.yml alone, and completed build verdicts —
+  the thing root cause 5 above says the train is starved of —
+  should stop being crowded out by proof runs.
+- S2: making the three suite surfaces advisory for the window
+  (the Linux `test` job, the macOS `test-macos` job, and the
+  suite step inside `build-windows`) lets a cut publish on the
+  legs that stay gates — scope, shape, typecheck, the artifact
+  legs and the rig battery — with suite reds triaged after
+  publish. The risk is named plainly: a genuinely broken tree
+  can publish inside the window; the next hourly cut is the fix,
+  and the suites still run and still show red on the run page.
+- S3: cancelling superseded rolling builds (never release or
+  tag builds) trades the 2026-10-23 lesson for the window: at
+  the current landing rate the no-cancel queue starves verdicts
+  (root cause 5), and an hourly train would rather have the
+  newest head's verdict than a finished build of a stale one.
+  Release commits keep their own concurrency group and are
+  never cancelled, so a cut's own build must still finish.
+- S4: the hourly seeded mutation walk (~7 minutes a run, ~336
+  runner-minutes over the window) buys nothing the window needs;
+  pausing its schedule for 48 hours (dispatch stays) is free
+  capacity. The build.yml mutation job is already a
+  signal-not-a-block on non-tag dispatch only and does not move.
+
+### Operating instructions for the window (not workflow code)
+
+- The rig watch runs the battery on release candidates only;
+  while the San Francisco box is unreachable its probe is cut
+  short instead of burning the full SSH timeout each pass.
+- The Germany-rig local loop runs targeted shards only, never
+  a full-suite run (the W1 measurement above: the rig is slower
+  than the CI pool for this suite shape).
+- Suite reds inside the window are triaged after publish, in
+  the desk's ordinary queue; a red that names a real product
+  defect still gets its fix lane, it just does not hold the
+  train.
+
+### Conclusions
+
+(Recorded below once the change and its tests land.)
