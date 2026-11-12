@@ -26895,3 +26895,178 @@ family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
 
+## Q168: a child that exits before the Job Object is assigned — the fix lane's suppositions, recorded before the fix (2026-11-12)
+
+Q168 (Claude asks Muse, 2026-11-12) names a race on the
+Windows leg: on build 43298889760 the `canary-list` job of
+`test_credential_canary` errored with
+`AssignProcessToJobObject failed: 5` from
+`apply_windows_containment`
+(`runner/guard/windows_confine.py`) under
+`_job_user_postspawn` (`runner/ops/remediation_ops.py`).
+Error 5 there is the documented answer for a process that
+has already exited. This lane's first-hand reading of the
+code, before any fix is written, stands as follows. The
+plain path in `runner/ops/exec.py` spawns the job with
+`subprocess.Popen` running, and only afterwards calls
+`_job_user_postspawn`, which assigns the started process
+to a Job Object, and on any failure records the fallback
+row, kills the process and refuses the job under
+`job_user=enforce`. A job that finishes in milliseconds
+(a directory listing) can therefore be gone before the
+postspawn reaches it, and a job whose output is already
+complete is refused. The confinement path does not have
+this race: `spawn_confined_process` in the Windows
+backend creates its process suspended
+(`CREATE_SUSPENDED`), assigns the Job Object, and only
+then resumes the thread, and `_confinement_spawn` marks
+that process with `JOB_OBJECT_APPLIED` so the postspawn
+records the control instead of assigning a second time.
+The race exists only on the plain path, where `job_user`
+is at enforce and `confinement` is not, so no confined
+spawn replaces Popen. Popen cannot close the race from
+outside: it does not expose the thread handle a resume
+would need (it closes that handle itself), so a suspended
+Popen start cannot be resumed by the caller. The asker's
+recommendation is option 1 — spawn suspended through the
+backend's own CreateProcess, assign, then resume — and
+this lane judges option 1 right on that reading, for the
+reasons in Q168-S3 below. This lane starts from a fresh
+scratch clone at `~/workspace/hp-q168` from remote main
+at the head carrying the Q168 filing (the desk commit of
+12:36 PM PST, 2026-11-12; the remote head verified by
+foreground `git ls-remote` in the same call as the
+clone). The ship lane running in parallel, its state
+file and its clones are not touched: this lane cuts no
+release and starts no ship. Every run in this lane sets
+its temporary directory to a scratch area on the
+workspace disk; any run hitting a no-space error is
+re-run clean and never counted.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q168-S1.** Red-before, deterministically simulated
+  off Windows: a fake process whose `poll()` already
+  returns an exit code (the already-exited child),
+  handed to `_job_user_postspawn` under `job_user`
+  enforce with a scripted backend whose assignment
+  raises `AssignProcessToJobObject failed: 5`, is
+  killed and refused with `JobRejected`, and the audit
+  carries one fallback row
+  (`windows_containment_failed`) and no contained row.
+  A seam survey of the tree finds no suspended spawn
+  for the plain `job_user` path: the only creation-time
+  Windows spawn is the confinement spawn, and the only
+  `job_user` application after Popen is the postspawn
+  assignment itself. Both halves are measured
+  first-hand by this lane before the fix, against the
+  unpatched tree.
+- **Q168-S2.** The backend fix: `windows_confine`
+  gains a plain suspended spawn,
+  `spawn_job_object_process`, beside the confined
+  spawn. It creates the process suspended through the
+  backend's own `CreateProcessW` (no restricted token,
+  no integrity label — those are confinement's
+  controls, and no record of this spawn may name
+  them), assigns the Job Object carrying the same
+  memory ceiling, and only then resumes the thread.
+  Because the main thread has not run, the process
+  cannot have exited before the assignment: the
+  already-exited shape of Q168-S1 becomes impossible
+  on this path, not merely tolerated. The confined
+  spawn's behaviour is unchanged — the same creation
+  call (`CreateProcessAsUserW` under its restricted,
+  low-integrity token), the same staged label, the
+  same status string — with the shared suspended
+  creation, assignment and resume sequence carried by
+  one helper both spawns use, so the two paths cannot
+  drift apart on the order that closes the race.
+- **Q168-S3.** Option 2 (read the exit and let the
+  result stand under a fallback row) is not chosen:
+  it would accept, silently in the result, a job that
+  ran with no memory ceiling at all, and it changes
+  the enforce posture — a posture decision the filing
+  itself names as the conductor's as much as the
+  desk's, taken here without his word for it. Option
+  3 (leave it) is not chosen: the refusal is not
+  hypothetical, it has already refused a completed
+  job on a hosted leg. Option 1 removes the race
+  without touching the posture, which is why the
+  asker's recommendation stands.
+- **Q168-S4.** The seam fix: `remediation_ops` gains
+  `_job_user_spawn`, the mirror of `_confinement_spawn`
+  for the plain path. On win32 (read from
+  `sys.platform` alone, the signal the confinement
+  seam uses) with `job_user` at enforce and a backend
+  present, it spawns through the backend's suspended
+  spawn, marks the process `JOB_OBJECT_APPLIED`, and
+  returns `(proc, release)` whose release closes the
+  process and its Job Object. The standing postspawn
+  then records `contained` / `windows_job_object` for
+  that process and assigns nothing a second time —
+  the composition the confinement spawn already uses.
+  Off win32, in any other mode, or with confinement
+  already spawning the job, the seam returns None and
+  changes nothing. A backend that cannot spawn —
+  missing, stub, or raising — records the fallback
+  row for `job_user` and refuses the job under
+  enforce: under option 1 there is no fall-through
+  back to the racy plain Popen the fix exists to
+  remove.
+- **Q168-S5.** The exec wiring: `execute_job`
+  consults the `job_user` spawn only when the
+  confinement spawn returned no process, so a
+  confinement-enforce job is spawned exactly once,
+  confined, exactly as before; a `job_user`-only
+  enforce job on Windows is spawned by the new seam
+  instead of Popen; and every other job takes the
+  Popen path unchanged. The seam's release runs in
+  the same finally that runs the confinement and
+  postspawn releases, and on a postspawn refusal the
+  seam's release runs beside the confinement release
+  before the refusal propagates.
+- **Q168-S6.** The legacy postspawn path is kept
+  whole for a process that did not come through
+  either spawn seam: it still assigns, and on
+  failure — error 5 included — still kills and
+  refuses, with the fallback row. That path is no
+  longer the path a Windows `job_user`-enforce job
+  takes, but its contract does not soften: nothing
+  in this fix teaches any seam to accept an
+  uncontained completion after the fact.
+- **Q168-S7.** Proof, proportionate to a race fix:
+  the committed family in
+  `runner/tests/test_windows_confine.py` pins, off
+  Windows and deterministically, (a) the S1
+  red-before shape against the legacy postspawn,
+  kept as its contract; (b) the new seam whole —
+  a scripted suspended spawn returning a process
+  that is already exited (`poll()` returns its exit
+  code at the moment the postspawn would have run)
+  is not refused, is not killed, is recorded
+  contained, and its release closes it, across a
+  family of already-exited shapes (exit codes and
+  spellings of the assignment error, bookended with
+  the ASCII symbol set in the standing bookend
+  spirit where the surface takes text — the job
+  id); (c) the seam's refuse direction (no backend,
+  a backend with no suspended spawn, a raising
+  spawn) with its fallback row; (d) the seam's
+  silence off win32 and outside enforce; (e) the
+  composition with the confinement spawn (spawned
+  once, by confinement's seam alone); and (f) the
+  backend's own shape pinned at the source, since
+  the Win32 calls cannot execute on this host: the
+  `CreateProcessW` binding, the suspended creation,
+  the assignment standing before the resume in the
+  shared helper, and the stub raising off Windows.
+  What cannot be recorded as a unit test, stated
+  plainly: the live race itself on a real Windows
+  host — no Windows host is this lane's to run, and
+  the hosted Windows leg is its re-test, the way
+  the backend's other live proofs stand. The core
+  figures over the grown core files are the release
+  train's re-measure at its next cut, following the
+  Q167 precedent; this lane does not cut a release.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
