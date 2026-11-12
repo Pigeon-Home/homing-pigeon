@@ -757,3 +757,93 @@ becomes readable by the metadata line), or that
 Seatbelt has allowed any escape (no escape point has
 ever been exercised — the process still dies before
 them).
+
+## Conclusions for the third fix, against R3-S1 to R3-S3
+
+The third fix has since landed, built to the
+suppositions above. Because the fix grew
+`runner/guard/macos_confine.py` — a file on the
+canonical core list — the core figures stood to be
+re-measured over its tree, as the second fix's
+landing was. That re-measure has since been carried
+on the current head in the 3.16.20.7 release landing
+that followed the fix, whose core record states that
+its measure also takes up the macOS confinement
+growth of `runner/guard` that landed in parallel:
+the file itself grew from 756 to 778 lines, the
+`runner/guard` part from 5,283 to 5,305, the
+as-assembled set stands at 64,050 lines, 57,933 of
+them non-blank, zipped to 809,693 bytes, and the
+canonical set at 63,168 lines over 136 files, the
+runner proper at 7,178 — and the figure check passes
+against those facts on that head. No separate
+re-measure is owed for this fix beyond that landing.
+What each supposition now stands on, stated exactly:
+
+- R3-S1's grant is landed exactly as supposed, and
+  its deterministic substrate is proven off darwin:
+  the generated profile carries
+  `(allow file-read-metadata)` exactly once, metadata
+  on any path and never contents, and
+  `file-read-data` still stands only on the root's
+  literal line, pinned by a contract test beside the
+  profile writer's other field tests. Whether the
+  realpath refusal is gone is not proven here: that
+  is a live fact, and no `test-macos` job on a head
+  carrying this fix has completed as this section
+  stands. If that verdict still prints the realpath
+  line, R3-S1 is wrong, exactly as its record said
+  in advance.
+- R3-S2's reading is carried into the widened bisect
+  exactly as supposed. The round-2 native leg shared
+  the shim interpreter's death; the live suite now
+  also drives a native binary directly under the
+  profile, with no shim anywhere, and drives a
+  native binary through the shim, with no profile —
+  so a native start is isolated for the first time,
+  and the profile-alone and shim-alone interpreter
+  legs stand beside them in their pure forms.
+- R3-S3's production change is landed exactly as
+  supposed, and neither of its two alternatives is
+  guessed at: the shim still refuses a job whose
+  limit it cannot set — that fail-closed shape
+  stands, and the limit's value and kind are
+  unchanged — but it now refuses by name, writing
+  `hp-shim: could not set the data-size limit: ...`
+  to stderr and exiting 1, instead of dying by a
+  bare exception no assertion captured. The named
+  refusal is pinned in the shim's source and
+  executed off darwin against a ceiling too large
+  for the platform's limit type, exiting 1 with the
+  marker on stderr and never running the job. Every
+  bisect assertion now carries the captured stderr,
+  and the two new legs join the bisect (12 live
+  points in all: the original 7, the round-2
+  bisect's 3, and this round's 2), whose pattern in
+  the next verdict separates the alternatives:
+  under (a) the shim-to-native leg fails carrying
+  the shim's named line; under (b) it passes while
+  the shim-to-interpreter leg fails without that
+  line.
+- The contract proof runs green off darwin: the
+  macOS suite runs 83 tests on a Linux host, OK with
+  the 12 live Seatbelt tests skipped under their
+  registered reason, beside the neighbouring
+  confinement suites (the three together run 169
+  tests, OK with 18 skipped), the figure guards
+  after their re-measure, and the skip registry —
+  which first flagged, and now registers, the
+  Windows skip the release landing added to this
+  suite's argv field tests.
+- The support level does not move. It stands exactly
+  as the support matrix states it — Supported,
+  reduced confinement. The live proof remains open,
+  and it closes only when a `test-macos` job on a
+  head carrying this fix completes green; until then
+  the live points stand as the third failure verdict
+  left them — every live point failing at exit 1
+  with the realpath line, the escape, network and
+  limits points unproven because the process dies
+  before them — and no field proof on project
+  hardware is claimed: there is no Mac in the
+  project's own fleet.

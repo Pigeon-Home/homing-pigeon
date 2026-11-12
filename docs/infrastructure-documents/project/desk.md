@@ -370,6 +370,37 @@ carrying the third fix has completed as this note
 stands, so the support level stays Supported,
 reduced confinement.
 
+A third fix has since landed, built to those
+suppositions: the profile carries exactly one
+`(allow file-read-metadata)` line — metadata on any
+path, never contents, with `file-read-data` still
+standing only on the root's literal line — and the
+launcher shim still refuses a job whose data-size
+limit it cannot set, but by name (`hp-shim: could
+not set the data-size limit: ...` on stderr, exit 1)
+instead of by a bare exception. The live bisect is
+widened and instrumented: every bisect assertion
+carries the captured stderr, and two legs join it
+(the profile driving a native binary directly, the
+shim driving a native binary), 12 live points in
+all, whose pattern in the next verdict separates
+R3-S3's two alternatives. The contract proof runs
+green off darwin (the macOS suite runs 83 tests, OK
+with the 12 live tests skipped, beside the
+neighbouring confinement suites and the figure
+guards). The core figures stood to be re-measured
+over the fix's growth of a core-list file, and that
+measure has since been carried on the current head
+in the 3.16.20.7 release landing that followed the
+fix, whose core record names the macOS confinement
+growth of `runner/guard` it took up. The live proof
+is still owed: no `test-macos` job on a head
+carrying the third fix has completed as this note
+stands, so the support level stays Supported,
+reduced confinement, and the conclusions stand in
+`docs/steady/security/macos.md` against R3-S1 to
+R3-S3.
+
 And a third round of the same reconciliation, for the one
 surface the first two could not see: fixtures that only fail
 where no confinement backend exists at all. On Linux the
