@@ -1016,7 +1016,12 @@ jobs:
           generate_release_notes: true
 
   pypi-publish:
-    if: startsWith(github.ref, 'refs/tags/v')
+    # A job's default condition is success() over its whole upstream
+    # chain, so the artifact legs a promoted tag build skips would
+    # skip the publish jobs too, their own need (release) green: the
+    # three mirrors stood skipped on v3.16.21.6 (2026-11-12). Each
+    # reads its needs' results itself.
+    if: startsWith(github.ref, 'refs/tags/v') && !cancelled() && needs.release.result == 'success' && needs.scope.result == 'success'
     needs: [scope, release]
     runs-on: ubuntu-latest
     permissions:
@@ -1040,7 +1045,10 @@ jobs:
     # blocked on SourceForge. Upload user: dru555444, unless
     # SOURCEFORGE_USER is set. Secrets: SOURCEFORGE_SSH_KEY,
     # SOURCEFORGE_API_KEY. Variable or secret: SOURCEFORGE_PROJECT.
-    if: startsWith(github.ref, 'refs/tags/v')
+    # The condition reads the release job's result itself (see
+    # pypi-publish): on a promoted tag build the legs upstream are
+    # skipped, and the default condition would skip this job too.
+    if: startsWith(github.ref, 'refs/tags/v') && !cancelled() && needs.release.result == 'success'
     needs: [release]
     runs-on: ubuntu-latest
     permissions:
@@ -1197,7 +1205,9 @@ jobs:
     # until GITLAB_TOKEN exists. Variable or secret:
     # GITLAB_PROJECT (default pigeon-home/homing-pigeon),
     # GITLAB_USER (default pigeon-home).
-    if: startsWith(github.ref, 'refs/tags/v')
+    # As pypi-publish and sourceforge: the condition reads the
+    # release job's result itself.
+    if: startsWith(github.ref, 'refs/tags/v') && !cancelled() && needs.release.result == 'success'
     needs: [release]
     runs-on: ubuntu-latest
     permissions:

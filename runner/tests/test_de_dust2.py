@@ -668,6 +668,12 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn(run_id, rel)
         self.assertLess(rel.index("promote-check"), rel.index(run_id))
         self.assertIn(run_id, block("pypi-publish"))
+        # the publish jobs read the release job's result themselves:
+        # the default success() over the whole upstream chain skipped
+        # all three on the first promoted tag build (v3.16.21.6)
+        for job in ("pypi-publish", "sourceforge", "gitlab"):
+            self.assertIn("!cancelled() && needs.release.result == 'success'", block(job), job)
+        self.assertIn("needs.scope.result == 'success'", block("pypi-publish"))
         self.assertIn("mv artifacts/test-output*.log ci/", rel)
         self.assertIn('pattern: "{homing-pigeon-*,ci-test-log*}"', rel)
         self.assertIn('gh workflow run build.yml --ref "$TAG" -f promote_from="$GATE_RUN"', cut)
