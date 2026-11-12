@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.4 - 2026-11-12
+
+- Fix: the macOS confinement spawn-limits read-back classifies both reports of unlimited (-1 and 9223372036854775807) through a pure classifier in the backend module; the live point now compares the read-back against the inherited address-space limit, and no production limit-carrying code moved
+- Tests: the darwin parity substrate is pinned on scripted seams on every host, a 13-point ReportedLimitTest family pins both unlimited representations, and the host-constant limit report is a POSIX-only test so the Windows suite no longer errors on the resource import
+- CI: web-editor markdown edits take the docs concurrency group and no longer cancel code builds, the platform matrix's Arch leg runs a full upgrade, and the defaults drift guard tells a moved doc line from a changed default (the registry row reads 442)
+- Desk: the Q164 re-test passes its filed scope whole and files four residual ledger items as Q165; the DocDriftGuard registry failure is closed against its suppositions, and the 3.16.21.3 cycle is on the record at 11 minutes with the version-rot guard now naming the file, line and text
+
 ## 3.16.21.3 - 2026-11-12
 
 - CI: the Windows suite runs in its own advisory job (test-windows, with its -v log uploaded as ci-test-log-windows); build-windows is the artifact leg alone, so the release no longer waits the suite's 12.7 minutes on either side of the tag
