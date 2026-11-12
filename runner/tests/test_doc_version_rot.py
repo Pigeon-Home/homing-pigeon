@@ -13,9 +13,13 @@ supposed to carry the versions they describe.
 """
 
 import os
+import re
 import unittest
 
 from runner.tests._compat import project_version
+
+
+_DATED_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 
 
 def _root():
@@ -66,12 +70,21 @@ class NoVersionRotTest(unittest.TestCase):
         self.assertGreater(len(_evergreen_docs()), 10)
 
     def test_current_version_appears_in_no_evergreen_doc(self):
+        # A line that carries the version beside a date is a record
+        # ("measured on 2026-11-11, in the X.Y.Z cycle"), not a
+        # procedure that goes quietly wrong at the next tag: the
+        # date says when it was true. Three builds in one evening
+        # went red on such lines (2026-11-11), each a dated
+        # evidence sentence in a guide. The undated mention, the
+        # one this guard exists for, still fails.
         version = _current_version()
         offenders = []
         for path in _evergreen_docs():
             with open(path, encoding="utf-8") as fh:
-                if version in fh.read():
-                    offenders.append(os.path.relpath(path, _root()))
+                for line in fh:
+                    if version in line and not _DATED_RE.search(line):
+                        offenders.append(os.path.relpath(path, _root()))
+                        break
         self.assertEqual([], offenders,
                          "current version %s hardcoded in evergreen "
                          "docs (use an X.Y.Z placeholder): %s"
