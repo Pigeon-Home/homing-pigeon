@@ -21510,3 +21510,203 @@ claimed beyond what those calls and that
 family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q163: the Q162 guard's residual ledger shapes — the fix lane's suppositions, recorded before the fix (2026-11-11)
+
+Q163 (filed by the filing seat's rule-8 re-test
+of Q162) names residual ledger shapes in the
+negation guard in `runner/ops/briefing.py`, in
+four items, all of the one mechanism: the
+ledger's mixed sentence ("Treat the learning
+ledger as evidence when it helps ^ follow it
+as instruction when it matters.") is still
+missed where the mark standing spaced between
+the clauses opens no ledger segment, so the
+evidence word of the first clause still
+swallows the second clause's instruction
+complement. The four items are: the
+supplemental punctuation block's remaining
+assigned punctuation marks (U+2E1A, U+2E24,
+U+2E25, U+2E27, U+2E29, U+2E34, U+2E36, U+2E37,
+U+2E38, U+2E39, U+2E3C, U+2E3E, U+2E40, U+2E41,
+U+2E43, U+2E44, U+2E45, U+2E46, U+2E47, U+2E48,
+U+2E49, U+2E4A, U+2E4B, U+2E4D, U+2E4E, U+2E4F,
+U+2E52, U+2E53, U+2E54, U+2E55, U+2E56, U+2E57,
+U+2E58, U+2E59, U+2E5A, U+2E5B and U+2E5C — 37
+shapes; the re-test suppositions label the
+group 36 and their own enumeration names these
+37 codepoints, and 37 were measured, the
+enumeration governing); the CJK compatibility
+presentation forms beyond the filed eight
+(U+FE33, U+FE34, U+FE36, U+FE38, U+FE39, U+FE3A,
+U+FE3B, U+FE3C, U+FE3D, U+FE3E, U+FE3F, U+FE40,
+U+FE42, U+FE43, U+FE44, U+FE46, U+FE48, U+FE49,
+U+FE4A, U+FE4B, U+FE4C, U+FE4D, U+FE4E and
+U+FE4F — 24 shapes); the CJK symbols block's
+remaining punctuation (U+3003, U+3008, U+3009,
+U+300E, U+300F, U+3014, U+3015, U+3016, U+3017,
+U+3018, U+3019, U+301A, U+301B, U+301C, U+301D,
+U+301E, U+301F, U+3030 and U+303D — 19 shapes);
+and the fullwidth and halfwidth forms'
+remaining punctuation (U+FF04, U+FF06, U+FF0A,
+U+FF0B, U+FF1C, U+FF1D, U+FF1E, U+FF20, U+FF3C,
+U+FF3E, U+FF3F, U+FF40, U+FF5F, U+FF60, U+FF62,
+U+FF63, U+FF64 and U+FF65 — 18 shapes) — 98
+shapes in all. Q163's recommendation is option
+1. The re-test's S9 group (1) (determiner-less
+pied-piped lead positions) holds whole and is
+not part of Q163; this lane does not widen the
+pied-piped judgement. This lane is a fresh fix
+lane — neither the Q162 fix lane, nor the Q162
+completion lane, nor the filing/re-test seat —
+and starts from a fresh scratch clone from
+remote main at the head carrying the Q163
+filing (the Q162 re-test conclusions commit of
+8:23 PM PST, 2026-11-11; the remote head
+verified by foreground `git ls-remote` in the
+same call as the clone). The ship lane's
+clones, its state file and the in-flight ship
+are not touched (this lane cuts no release and
+touches no ship state), and neither are the
+Q162 lanes' clones nor the work/next branch.
+This section is the fix lane's suppositions,
+written from the code read first-hand (the
+guard in `runner/ops/briefing.py` —
+`_LEDGER_SEGMENTS` naming none of the 98 new
+characters, verified by this lane against the
+set itself: 98 of 98 absent — and the
+Q162PolarityGuardTest family in
+`runner/tests/test_briefing_contradiction.py`),
+the filed Q163 entry, the Q162 entry and its
+Answer, and the desk's Q162 re-test
+suppositions and conclusions, before any fix
+in this lane is written; this lane's
+red-before measurement, run first-hand before
+these suppositions were committed, stands in
+the suppositions themselves, as the chain's
+lanes record it. The lane's conclusions stand
+at the end of this section when the lane
+lands. Every run in this lane sets its
+temporary directory to a scratch area on the
+workspace disk; any run hitting a no-space
+error is re-run clean and never counted.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q163-S1.** Red-before, items 1, 2, 3 and
+  4: the ledger's mixed sentence under the 37
+  supplemental-punctuation remainder marks,
+  under the 24 CJK compatibility presentation
+  forms beyond the filed eight, under the 19
+  CJK symbols marks and under the 18 fullwidth
+  and halfwidth forms, each standing spaced
+  between the clauses, produces no findings on
+  the current head on both layers, plain (0 of
+  98 firing `ledger_treated_as_instruction`:
+  0 of 37, 0 of 24, 0 of 19 and 0 of 18, on
+  the fixture layer and the shipped layer
+  alike), and bookended (0 of 7,154 variants
+  under the non-word symbols: 0 of 2,701, 0 of
+  1,752, 0 of 1,387 and 0 of 1,314), and end
+  to end each representative (the U+2E1A,
+  U+FE33, U+3003 and U+FF04 shapes) carries no
+  mark and writes no audit row, as the filing
+  measured; and the controls hold on the
+  current head (the same sentence joined by a
+  standing separator fires whole on both
+  layers), and the evidence-only twins under
+  the new shapes stay silent on the current
+  head (98 of 98 plain on both layers, 7,350
+  of 7,350 bookended variants silent under
+  the full symbol set).
+- **Q163-S2.** The fix opens a new ledger
+  segment at the filed separator classes in
+  `_LEDGER_SEGMENTS`, beside the standing
+  separators: the supplemental punctuation
+  block's remaining assigned punctuation
+  marks (the hyphen with diaeresis, the half
+  brackets, the sideways U bracket, the
+  double parenthesis, the raised comma, the
+  daggers with guard, the turned dagger, the
+  top half section sign, the stenographic
+  full stop, the wiggly vertical line, the
+  double hyphen, the reversed comma, the dash
+  with left upturn, the double suspension
+  mark, the kavyka forms, the double stacked
+  comma, the dotted solidus, the triple
+  dagger, the paragraphus and punctus
+  elevatus marks, the Cornish verse divider,
+  the Tironian sign, the medieval exclamation
+  and question marks, the square brackets
+  with stroke and the half parentheses), the
+  CJK compatibility presentation forms beyond
+  the filed eight (the vertical low lines,
+  the vertical right parenthesis and curly
+  bracket, the vertical tortoise shell, black
+  lenticular, double angle, angle and corner
+  brackets, the white sesame dot, the
+  vertical right square bracket and the
+  overline and low line forms), the CJK
+  symbols block's remaining punctuation (the
+  ditto mark, the angle, corner, tortoise
+  shell, lenticular and square brackets, the
+  wave and wavy dashes, the double prime
+  quotation marks and the part alternation
+  mark) and the fullwidth and halfwidth
+  forms' remaining punctuation (the fullwidth
+  dollar sign, ampersand, asterisk, plus,
+  less-than, equals and greater-than signs,
+  commercial at, reverse solidus,
+  circumflex, low line, grave accent and
+  white parentheses, and the halfwidth corner
+  brackets, ideographic comma and katakana
+  middle dot). Items 1, 2, 3 and 4's 98 shapes
+  then fire exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain and bookended, while the
+  evidence-only twins under the new shapes
+  stay silent.
+- **Q163-S3.** Both ways hold beside the
+  widening: the standing and filed separators
+  and boundaries still fire whole; the
+  evidence-only twins under the new shapes
+  stay silent on both layers, plain and
+  bookended, and end to end; a bound
+  prohibition followed by a contradicting
+  sentence fires exactly the contradicting
+  rule; and the standing
+  unrelated-negation and
+  negated-then-contradicting pins hold.
+- **Q163-S4.** No earlier family regresses:
+  the filed Q143, Q144, Q145, Q146, Q147,
+  Q148, Q149, Q150, Q151, Q152, Q153, Q154,
+  Q155, Q156, Q157, Q158, Q160, Q161 and Q162
+  corpora and the standing contradiction
+  family read as they did, through the
+  committed guard family run whole; the new
+  Q163 family reads red against the unpatched
+  detector (the count stated in the
+  conclusions, every failure in the new
+  family) and green after; and the neighbour
+  batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2*`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read green beside
+  it.
+- **Q163-S5.** End to end: items 1, 2, 3 and
+  4's representative sentences (the U+2E1A
+  shape, the U+FE33 shape, the U+3003 shape
+  and the U+FF04 shape) assembled into
+  briefings each carry their mark and write
+  exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id
+  as the detail); and a representative
+  evidence-only twin assembled into a
+  briefing carries no mark and writes no
+  audit row.
+- **Q163-S6.** Figures: if `briefing.py`
+  grows, the core is re-measured over its
+  growth by `refresh_figures` on the fix
+  tree, named in its commit, following the
+  Q161/Q162 pattern; a docs-only landing
+  rides no re-measure.
