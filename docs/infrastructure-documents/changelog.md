@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.5 - 2026-11-12
+
+- CI: the tag build promotes the gate build's artifacts instead of building them again -- cut-release hands the tag dispatch the gate build's run id, the tag build reads that run back (a build of exactly the tag's commit on main, every artifact leg green, every artifact present) and publishes its archives, wheel and sdist; what ships is what the gate judged
+- CI: web-editor markdown edits take the docs concurrency group; the platform matrix's Arch leg runs a full upgrade before installing python; the defaults registry's drift guard tells a doc line that moved from a default that changed; the version-rot guard names the line
+- Tools: release_train.py run prepares the next version at the head and cuts again when main moved past the release commit before the cut; promote-check is the tag build's own reading of the gate build; prepare reads and adds tracked files only
+- Tests: the host-constant limit report skips on Windows (the resource module is POSIX)
+
 ## 3.16.21.4 - 2026-11-12
 
 - Fix: the macOS confinement spawn-limits read-back classifies both reports of unlimited (-1 and 9223372036854775807) through a pure classifier in the backend module; the live point now compares the read-back against the inherited address-space limit, and no production limit-carrying code moved
