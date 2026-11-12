@@ -246,6 +246,16 @@ class MutationGateTest(unittest.TestCase):
                       "--full-log test-output.log", linux)
         self.assertNotIn("python -m unittest discover", linux)
         self.assertIn("skip_guard.py test-output.log", linux)
+        # The macOS leg keeps its -v log too (a walled shard
+        # names its test there), uploaded under its own name so
+        # the release snapshot's merged download keeps the
+        # Linux log at test-output.log.
+        macos = _uncommented(_job_block(workflow, "test-macos"))
+        self.assertIn("python runner/tools/run_tests_parallel.py --jobs 3 "
+                      "--durations 15 --wall-clock 20 "
+                      "--full-log test-output-macos.log", macos)
+        self.assertIn("name: ci-test-log-macos", macos)
+        self.assertIn("path: test-output-macos.log", macos)
         windows = _uncommented(_job_block(workflow, "build-windows"))
         self.assertIn("python runner/tools/run_tests_parallel.py "
                       "--duration-table "

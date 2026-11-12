@@ -81,8 +81,21 @@ FLAG_TEXT = (
 MARKER = "FLAG{pretend-credential-flag-7f3a}"
 
 # The startup probe, as in test_confinement: the enforce arms
-# gate on whether bwrap can actually confine a job here.
-ENGAGES = SB.startup_problem() is None
+# gate on whether confinement can actually engage here -- bwrap's
+# own trial on Linux; on Windows, macOS and FreeBSD the platform
+# backend's probe, asked through the runner's startup gate, since
+# bwrap's answer there is only "Linux-only". The macOS backend
+# first engaged on the CI runners at the v3.16.21.1 tag build
+# (2026-11-12); until then the macOS leg took the refusal arm.
+_PLATFORM_BACKEND = (sys.platform == "win32" or sys.platform == "darwin"
+                     or sys.platform.startswith("freebsd"))
+if _PLATFORM_BACKEND:
+    ENGAGES = R._confinement_startup_problem({}) is None
+else:
+    ENGAGES = SB.startup_problem() is None
+# The audit row an engaged confinement writes: bwrap's says
+# "sandboxed", a platform backend's says "confined".
+_ENGAGED_DECISIONS = ("sandboxed", "confined")
 
 
 def _job(jid, script):
@@ -201,11 +214,11 @@ class CanaryCrossWorkspaceTests(unittest.TestCase):
         self.assertNotIn(MARKER, result["stdout"])
         self.assertNotIn("cat-exit=0", result["stdout"])
         # The denial is the sandbox's: an audit row says the
-        # job ran sandboxed, so the missing marker is
-        # confinement's doing and not an accident of the
-        # environment.
+        # job ran sandboxed (confined, under a platform
+        # backend), so the missing marker is confinement's
+        # doing and not an accident of the environment.
         rows = [r for r in _audit(away)
-                if r.get("decision") == "sandboxed"]
+                if r.get("decision") in _ENGAGED_DECISIONS]
         self.assertTrue(rows, _audit(away))
 
     @unittest.skipIf(ENGAGES,

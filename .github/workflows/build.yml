@@ -357,7 +357,15 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -c .github/requirements-ci.txt hypothesis
-      - run: python runner/tools/run_tests_parallel.py --jobs 3 --durations 15 --wall-clock 20
+      # --full-log, as on the Linux leg: a shard that hits its wall
+      # ends the job log with a row of dots and no test name (the
+      # 3.16.21.1 build, shard 1, 20 minutes); the -v log names it.
+      - run: python runner/tools/run_tests_parallel.py --jobs 3 --durations 15 --wall-clock 20 --full-log test-output-macos.log
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ci-test-log-macos
+          path: test-output-macos.log
 
   build-windows:
     # Does not wait for the Ubuntu suite. They run together.
