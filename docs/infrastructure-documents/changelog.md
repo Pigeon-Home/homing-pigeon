@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.1 - 2026-11-12
+
+- Corpus: Germany bank 65 is banked — 2,504 entries and 9,053 coverage edges in the merged corpus; 6,162 new run records, 126,687,498 children tested, 60,919 crashes filed; on replay at the head, 1 slow query finding is now fast (retired), 2 race_state crashes still crash
+- Measure: a fresh uncached recount at the cut head reads 24,885,027 tokens (24 whole millions), so the token component moves from 21 to 24 and the counter restarts at 1
+
 ## 3.16.21.15 - 2026-11-12
 
 - Tests: two more latency bounds become hang guards on the Windows leg — the oracle A/B fixture's five-second wait and the last-slot race's five-second barrier for thirty-two threads now wait up to a minute and return the moment the condition holds
