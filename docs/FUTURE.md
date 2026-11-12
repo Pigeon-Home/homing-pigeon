@@ -1,8 +1,5 @@
 # Future work and local v3 transport notes
-- kernel mods
 - Helper bots stumble into repair-mode machine
-- 90% stops critical hd overage
-- Egress control
 - oracle as key dist
 - Firewall?
 - **Board delegation over ping** Ping reply carries the box's open task
