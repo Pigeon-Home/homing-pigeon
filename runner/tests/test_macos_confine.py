@@ -815,7 +815,10 @@ class ReportedLimitTest(unittest.TestCase):
         self.assertTrue(
             MC.reported_limit_is_unlimited(9223372036854775807))
 
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
     def test_the_host_constant_is_a_named_report(self):
+        # The resource module is POSIX; the Windows suite imported it
+        # here on 2026-11-12 (test-windows, run 43181991886).
         import resource
         self.assertIn(resource.RLIM_INFINITY,
                       MC.UNLIMITED_LIMIT_REPORTS)
