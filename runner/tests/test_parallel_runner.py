@@ -368,6 +368,56 @@ class ReporterRobustnessTest(_OutsideActions):
         self.assertEqual(rc, 0)
 
 
+class PartTest(_OutsideActions):
+    """--part K/N: N runners each take every Nth shard of one
+    packing, with the global shard numbers, and together run every
+    shard exactly once. The Windows leg runs as two parts on two
+    runners since 2026-11-12 (one runner's 66 CPU-minutes stood 20
+    per cent under the 20-minute wall with all 28 shards at once)."""
+
+    def test_parse_part_takes_k_of_n_and_refuses_the_rest(self):
+        self.assertEqual(rtp.parse_part("1/2"), (1, 2))
+        self.assertEqual(rtp.parse_part("3/3"), (3, 3))
+        for bad in ("0/2", "3/2", "a/b", "2", "1/0", ""):
+            with self.assertRaises(ValueError, msg=bad):
+                rtp.parse_part(bad)
+
+    def test_the_parts_are_the_packing_exactly_once(self):
+        shards = [["m%d" % i] for i in range(7)]
+        seen = []
+        for k in (1, 2, 3):
+            part, numbers = rtp.part_of(shards, k, 3)
+            self.assertEqual([shards[n] for n in numbers], part)
+            self.assertEqual(numbers, list(range(k - 1, 7, 3)))
+            seen += numbers
+        self.assertEqual(sorted(seen), list(range(7)))
+        self.assertEqual(rtp.part_of(shards[:1], 2, 2), ([], []))
+
+    def test_a_part_runs_its_shards_under_their_global_numbers(self):
+        with tempfile.TemporaryDirectory() as d:
+            for name in ("test_a", "test_b", "test_c"):
+                _write(d, name + ".py", _PASS)
+            with contextlib.redirect_stdout(io.StringIO()) as out:
+                rc = rtp.main(["--jobs", "3", "--top-level-dir", d,
+                               "--part", "2/2", "test_a", "test_b", "test_c"])
+        self.assertEqual(rc, 0)
+        text = out.getvalue()
+        self.assertIn("part 2 of 2: shard(s) 1 -- 1 of the 3 shard(s)", text)
+        self.assertIn("shard 1: 1 module(s)", text)
+        self.assertNotIn("shard 0:", text)
+        self.assertNotIn("shard 2:", text)
+
+    def test_an_empty_part_is_an_error_not_a_green(self):
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_a.py", _PASS)
+            with contextlib.redirect_stdout(io.StringIO()), \
+                    contextlib.redirect_stderr(io.StringIO()) as err:
+                rc = rtp.main(["--jobs", "1", "--top-level-dir", d,
+                               "--part", "2/2", "test_a"])
+        self.assertEqual(rc, 2)
+        self.assertIn("part 2 of 2 has no shard", err.getvalue())
+
+
 class MainContractTest(_OutsideActions):
     def test_zero_discovered_is_an_error_not_a_green(self):
         with tempfile.TemporaryDirectory() as d:

@@ -263,18 +263,26 @@ class MutationGateTest(unittest.TestCase):
         # the release waited its 12.7 minutes on both sides of the
         # tag for an advisory verdict); the artifact leg no longer
         # runs it.
+        # Two parts on two runners since 2026-11-12: every second
+        # shard of the one packing each, under the packing's shard
+        # numbers (one box ran all 28 at once and ended them
+        # together 20 per cent under the wall).
         windows = _uncommented(_job_block(workflow, "test-windows"))
         self.assertIn("python runner/tools/run_tests_parallel.py "
                       "--duration-table "
                       "runner/tools/windows_durations.json "
                       "--durations 15 --wall-clock 20 "
-                      "--full-log test-output-windows.log "
-                      "--split runner/tools/split_modules.json", windows)
+                      "--full-log test-output-windows-${{ matrix.part }}.log "
+                      "--split runner/tools/split_modules.json "
+                      "--part ${{ matrix.part }}/2", windows)
+        self.assertIn("part: [1, 2]", windows)
+        self.assertIn("fail-fast: false", windows)
         # the split list every leg reads: a module whose tests cost
         # more than a shard can carry rides as its classes
         self.assertTrue(os.path.exists(
             os.path.join(_root(), "runner", "tools", "split_modules.json")))
-        self.assertIn("name: ci-test-log-windows", windows)
+        self.assertIn("name: ci-test-log-windows-${{ matrix.part }}", windows)
+        self.assertIn("path: test-output-windows-${{ matrix.part }}.log", windows)
         self.assertNotIn("run_tests_parallel.py",
                          _uncommented(_job_block(workflow, "build-windows")))
         self.assertTrue(os.path.exists(

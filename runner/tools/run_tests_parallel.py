@@ -25,6 +25,7 @@ Usage:
                                        [--wall-clock MINUTES]
                                        [--duration-table PATH]
                                        [--in-flight N]
+                                       [--part K/N]
                                        [--full-log PATH]
                                        [module ...]
 
@@ -55,6 +56,16 @@ read from the run page, not only from a downloaded log
   80 minutes. The parent keeps a hard stop 90 seconds past the
   deadline for a shard whose clock could not fire; that shard is
   reported as timed out with whatever it had printed.
+- ``--part K/N`` runs every Nth shard from the Kth of the packed
+  list (shards K-1, K-1+N, ...), keeping the global shard numbers,
+  so N runners each take a part of one packing and together run
+  every shard exactly once. The Windows leg runs as two parts on
+  two runners since 2026-11-12: its 28 shards all start at once on
+  a four-core box and the suite ends when the box's CPU work is
+  done, so one runner's 66 CPU-minutes stood 20 per cent under the
+  20-minute wall; two runners halve the work each box carries for
+  the same runner-minutes. A part with no shard is an error (exit
+  2), never a silent green.
 """
 
 import argparse
@@ -550,8 +561,27 @@ def combined_summary(outputs, elapsed, interrupted=()):
     return "Ran %d tests in %.3fs\n\n%s\n" % (ran, elapsed, verdict)
 
 
+def parse_part(spec):
+    """'K/N' -> (K, N) with 1 <= K <= N; ValueError otherwise."""
+    try:
+        k, n = (int(x) for x in str(spec).split("/", 1))
+    except ValueError:
+        raise ValueError("--part wants K/N, two integers")
+    if n < 1 or k < 1 or k > n:
+        raise ValueError("--part wants 1 <= K <= N, not %s" % spec)
+    return k, n
+
+
+def part_of(shards, k, n):
+    """The Kth of N parts of a shard list: the shards at positions
+    K-1, K-1+N, ..., with those global positions, so the parts
+    together are the list exactly once."""
+    numbers = list(range(k - 1, len(shards), n))
+    return [shards[i] for i in numbers], numbers
+
+
 def run_shards(shards, top_level_dir, durations=None, annotate=None,
-               wall_clock=0, in_flight=0, full_log=None):
+               wall_clock=0, in_flight=0, full_log=None, numbers=None):
     """Run each shard as a unittest subprocess; return exit code.
 
     Output is captured per shard and printed when the shard
@@ -583,6 +613,8 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
     combined "Ran N tests" line and verdict (combined_summary), so
     the file reads like a single ``python -m unittest -v`` log to
     the tools that read one; the shards run with -v for it.
+    ``numbers`` names each shard's number in the report (default:
+    its position); a part of a packing keeps its global numbers.
     """
     if annotate is None:
         annotate = under_actions()
@@ -602,7 +634,7 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
     started = time.monotonic()
     running = []      # (i, proc, fh, out_path, started_at)
     failed = []
-    pending = list(enumerate(shards))
+    pending = list(zip(numbers if numbers is not None else range(len(shards)), shards))
     outputs = {}
     interrupted_shards = []
     log_fh = open(full_log, "w", encoding="utf-8") if full_log else None
@@ -782,6 +814,11 @@ def main(argv=None):
                         help="run at most N shards at once and start "
                              "the next as one finishes (default 0: "
                              "every shard at once)")
+    parser.add_argument("--part", default=None, metavar="K/N",
+                        help="run the Kth of N parts of the packed "
+                             "shard list (every Nth shard from the "
+                             "Kth), keeping the shard numbers; N "
+                             "runners with K=1..N run every shard once")
     parser.add_argument("--split", default=None, metavar="PATH",
                         help="a JSON file naming modules to shard by "
                              "class, and modules a leg of their own runs "
@@ -801,6 +838,12 @@ def main(argv=None):
         parser.error("--budget-seconds must be > 0")
     if args.in_flight < 0:
         parser.error("--in-flight must be >= 0")
+    part = None
+    if args.part:
+        try:
+            part = parse_part(args.part)
+        except ValueError as exc:
+            parser.error(str(exc))
 
     split, own_job = set(), set()
     if args.split:
@@ -848,13 +891,27 @@ def main(argv=None):
         shards = shard_modules(counts, args.jobs)
         _emit("running %d test(s) from %d module(s) in %d shard(s)"
               % (total, len(counts), len(shards)))
+    numbers = None
+    if part:
+        packed = len(shards)
+        shards, numbers = part_of(shards, *part)
+        if not shards:
+            print("error: part %d of %d has no shard (%d packed) -- "
+                  "refusing to report a vacuous green"
+                  % (part[0], part[1], packed), file=sys.stderr)
+            return 2
+        tests = sum(counts.get(item, 0) for shard in shards for item in shard)
+        _emit("part %d of %d: shard(s) %s -- %d of the %d shard(s), "
+              "%d of the %d test(s)"
+              % (part[0], part[1], ", ".join(str(n) for n in numbers),
+                 len(shards), packed, tests, total))
     started = time.monotonic()
     if args.in_flight and args.in_flight < len(shards):
         _emit("in flight: at most %d of the %d shard(s) at once"
               % (args.in_flight, len(shards)))
     rc = run_shards(shards, args.top_level_dir, durations=args.durations,
                     wall_clock=args.wall_clock, in_flight=args.in_flight,
-                    full_log=args.full_log)
+                    full_log=args.full_log, numbers=numbers)
     _emit("sharded run finished in %.1fs (exit %d)"
           % (time.monotonic() - started, rc))
     return rc

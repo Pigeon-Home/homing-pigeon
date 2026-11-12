@@ -439,6 +439,15 @@ jobs:
     # waiting, so a cap serializes waits), while the loopback-server
     # tests that the 28-way start had been starving carry 60-second
     # hang guards now instead of 5-second latency bounds.
+    # Two parts on two runners since 2026-11-12 (--part K/2): on one
+    # box the 28 shards all ended together, 981 to 987 seconds, when
+    # the box's 66 CPU-minutes were done -- 20 per cent under the
+    # wall, and every shard would have hit it in the same minute on
+    # the next fifth of growth. Each runner takes every second shard
+    # of the one packing, under the packing's own shard numbers, for
+    # the same runner-minutes and half the CPU work a box carries;
+    # the two logs ride as ci-test-log-windows-1 and -2 and the
+    # release moves both out of its file list.
     # RELIEF-48H expires 2026-11-14T03:45Z: advisory for the window, like
     # the Linux and macOS suites -- it runs in full and shows red,
     # and blocks nothing. At expiry remove the advisory line and
@@ -451,6 +460,10 @@ jobs:
     needs: [scope, build-windows]
     if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.promote != 'true'
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [1, 2]
     runs-on: windows-latest
     permissions:
       contents: read
@@ -460,12 +473,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -c .github/requirements-ci.txt hypothesis
-      - run: python runner/tools/run_tests_parallel.py --duration-table runner/tools/windows_durations.json --durations 15 --wall-clock 20 --full-log test-output-windows.log --split runner/tools/split_modules.json
+      - run: python runner/tools/run_tests_parallel.py --duration-table runner/tools/windows_durations.json --durations 15 --wall-clock 20 --full-log test-output-windows-${{ matrix.part }}.log --split runner/tools/split_modules.json --part ${{ matrix.part }}/2
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
-          name: ci-test-log-windows
-          path: test-output-windows.log
+          name: ci-test-log-windows-${{ matrix.part }}
+          path: test-output-windows-${{ matrix.part }}.log
 
   build-windows:
     # The Windows artifact leg: the frozen binaries, their smoke,
@@ -979,10 +992,10 @@ jobs:
           set -euo pipefail
           mkdir -p ci
           # The suites' logs ride as artifacts beside the archives
-          # (test-output.log the snapshot reads; the macOS and
-          # Windows legs' logs since 2026-11-12) and are moved out
-          # before the listing below, so none of them ships as a
-          # release asset.
+          # (test-output.log the snapshot reads; the macOS log and
+          # the Windows leg's two part logs since 2026-11-12) and
+          # are moved out before the listing below, so none of them
+          # ships as a release asset.
           mv artifacts/test-output*.log ci/ 2>/dev/null || true
           log=""; [ -f ci/test-output.log ] && log="--test-log ci/test-output.log"
           lock=""; [ -f ci/EXTENSION-SOURCES.lock.json ] && lock="--sources-lock ci/EXTENSION-SOURCES.lock.json"
