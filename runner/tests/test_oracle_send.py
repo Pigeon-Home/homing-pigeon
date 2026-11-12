@@ -53,7 +53,11 @@ def _server(cfg):
     return httpd, port
 
 
-def _post(port, body, headers, timeout=10):
+def _post(port, body, headers, timeout=60):
+    # The timeout is a hang guard, not a latency bound: the server
+    # is a thread of this process, and under the Windows leg's
+    # 28-way start it took longer than ten seconds to answer four
+    # tests of this module on build 43290049241 (2026-11-12).
     data = body if isinstance(body, bytes) else json.dumps(body).encode()
     req = urllib.request.Request(
         f"http://127.0.0.1:{port}/ask",
@@ -236,7 +240,7 @@ class SlowModelTest(unittest.TestCase):
                                {"Content-Type": "application/json",
                                 "X-Oracle-Token": httpd.oracle_token,
                                 "Origin": f"http://127.0.0.1:{port}"},
-                               timeout=10)
+                               timeout=60)
         self.assertEqual(code, 200)
         self.assertEqual(json.loads(body)["answer"], "done")
         # A hang guard, not a latency bound: the 1.2-second model

@@ -1051,7 +1051,7 @@ class RunnerFailSoftLegs6Test(unittest.TestCase):
         th.start()
         try:
             conn = http.client.HTTPConnection(
-                "127.0.0.1", port, timeout=10)
+                "127.0.0.1", port, timeout=60)
             conn.request(
                 "POST", "/ask",
                 body=json.dumps({"question": "status?"}),
@@ -1423,7 +1423,7 @@ class RunnerResidualLegsTest(unittest.TestCase):
         th.start()
         try:
             conn = http.client.HTTPConnection(
-                "127.0.0.1", port, timeout=10)
+                "127.0.0.1", port, timeout=60)
             conn.request("GET", "/")
             resp = conn.getresponse()
             body = resp.read().decode("utf-8", "replace")
