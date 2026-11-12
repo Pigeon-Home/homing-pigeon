@@ -100,6 +100,15 @@ def api(path, method="GET", body=None, raw=False):
         return None
 
 
+def failed_step(run_id):
+    """The name of the first failed step of a run's first job, or ''."""
+    for j in run_jobs(run_id).values():
+        for st in j.get("steps", []):
+            if st.get("conclusion") == "failure":
+                return st.get("name", "")
+    return ""
+
+
 def gate_jobs():
     """The job names cut-release.yml gates on, read from the file."""
     with open(os.path.join(ROOT, ".github", "workflows", "cut-release.yml"),
@@ -409,6 +418,8 @@ def cmd_prepare(args):
 def cmd_cut(args, sha=None):
     sha = sha or args.sha or _git("rev-parse", "HEAD")
     sha = _git("rev-parse", sha)
+    if getattr(args, "watch", False):
+        return watch_tag_build(carriers()["pyproject.toml"], args.limit)
     _say("waiting for the build on %s" % sha[:8])
 
     def probe():
@@ -436,15 +447,29 @@ def cmd_cut(args, sha=None):
         return None
     cut = _wait("the cut", cut_probe, 20, 15)
     if cut["conclusion"] != "success":
-        raise RuntimeError("cut-release %s concluded %s: %s" % (cut["id"], cut["conclusion"], cut["html_url"]))
+        step = failed_step(cut["id"])
+        remedy = ""
+        if step == "tag":
+            remedy = ("; the workflow's token could not place the tag (the tree's "
+                      ".github/workflows changed since the last tag): add the "
+                      "RELEASE_TOKEN secret (Q30), or push the tag by hand: "
+                      "git tag -a v%s %s -m 'Version %s' && git push origin v%s"
+                      % (version, sha[:12], version, version))
+        raise RuntimeError("cut-release %s concluded %s at step %r: %s%s"
+                           % (cut["id"], cut["conclusion"], step, cut["html_url"], remedy))
     _say("tagged v%s" % version)
+    return watch_tag_build(version, args.limit)
 
+
+def watch_tag_build(version, limit):
+    """Wait for the tag build of v<version>; report its publish jobs
+    and the mirrors' own words from their logs."""
     def tag_probe():
         runs = (api("/actions/workflows/build.yml/runs?branch=v%s&per_page=5" % version) or {}).get("workflow_runs", [])
         if runs and runs[0]["status"] == "completed":
             return runs[0]
         return None
-    tag_build = _wait("the tag build", tag_probe, 60, args.limit)
+    tag_build = _wait("the tag build", tag_probe, 60, limit)
     jobs = run_jobs(tag_build["id"])
     report = ["tag build %s: %s" % (tag_build["id"], tag_build["conclusion"])]
     for name in ("release", "pypi-publish", "sourceforge", "gitlab"):
@@ -485,6 +510,9 @@ def main(argv=None):
     p = sub.add_parser("cut")
     p.add_argument("--sha", default=None)
     p.add_argument("--limit", type=int, default=60)
+    p.add_argument("--watch", action="store_true",
+                   help="the tag is already placed: skip the gate and the "
+                        "dispatch, wait for the tag build and read the mirrors")
     args = ap.parse_args(argv)
     try:
         if args.cmd == "status":
