@@ -327,18 +327,24 @@ class FallbackTest(unittest.TestCase):
                         pass
             return rows
 
-        if sys.platform == "win32":
-            # Windows has its own confinement backend (Job
-            # Object + restricted token + low integrity), and
-            # the bwrap probe below is not its measure: ask the
-            # runner's own startup gate whether the backend
-            # engages. Engaged, the default-enforce job runs
-            # confined -- never refused, never run weaker --
-            # and the record says so; what the confined job
-            # itself prints is the backend's field behavior,
-            # not asserted here. Not engaged, the refusal arm
-            # below is the shape, exactly as on a backend-less
-            # POSIX host.
+        if sys.platform == "win32" or sys.platform == "darwin" \
+                or sys.platform.startswith("freebsd"):
+            # Windows, macOS and FreeBSD have confinement
+            # backends of their own (Job Object + restricted
+            # token + low integrity; a Seatbelt profile; a
+            # jail), and the bwrap probe below is not their
+            # measure: ask the runner's own startup gate
+            # whether the backend engages. Engaged, the
+            # default-enforce job runs confined -- never
+            # refused, never run weaker -- and the record says
+            # so; what the confined job itself prints is the
+            # backend's field behavior, not asserted here. Not
+            # engaged, the refusal arm below is the shape,
+            # exactly as on a backend-less POSIX host. The
+            # macOS backend first engaged on the CI runners at
+            # the v3.16.21.1 tag build (2026-11-12), when its
+            # fifth fix landed; until then the macOS legs took
+            # the refusal arm, and this arm read win32 alone.
             from runner import runner as R
             if R._confinement_startup_problem({}) is None:
                 r1, a1, _ = _run({}, _job("m6-a", "print(40 + 2)"))
