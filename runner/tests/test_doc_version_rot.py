@@ -57,7 +57,13 @@ def _evergreen_docs():
             os.path.join(root, "docs", "infrastructure-documents",
                          "project", "campaign-standing-orders.md"),
             os.path.join(root, "docs", "infrastructure-documents",
-                         "project", "desk.md")}
+                         "project", "desk.md"),
+            # The macOS confinement record cites the release a
+            # live verdict was measured on, the same way the
+            # desk ledger cites a landing. A dated verdict is
+            # history once that release is cut.
+            os.path.join(root, "docs", "steady", "security",
+                         "macos.md")}
     return [p for p in found if p not in logs]
 
 
