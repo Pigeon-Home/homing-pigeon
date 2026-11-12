@@ -501,11 +501,14 @@ class PipelineLiftsTest(unittest.TestCase):
             self.assertEqual(read_only,
                              _perm_entries(_job_block(workflow, job)),
                              "%s grants more than checkout" % job)
+        # actions: read on the two jobs that download artifacts:
+        # a promoted tag build reads the gate build's run (since
+        # 2026-11-12), which the default token cannot do without it.
         self.assertEqual(
             {("contents", "write"), ("id-token", "write"),
-             ("attestations", "write")},
+             ("attestations", "write"), ("actions", "read")},
             _perm_entries(_job_block(workflow, "release")))
-        self.assertEqual({("id-token", "write")},
+        self.assertEqual({("id-token", "write"), ("actions", "read")},
                          _perm_entries(_job_block(workflow,
                                                   "pypi-publish")))
 

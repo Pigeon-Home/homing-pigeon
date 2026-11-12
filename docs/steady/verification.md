@@ -8,9 +8,13 @@ command for each link. Nothing here needs project credentials;
 the anchor of trust is a Sigstore attestation that anyone can
 verify with the `gh` CLI.
 
-The chain, in one paragraph: the tag build stamps a
-`BUILD-PROVENANCE.json` into each archive, generates an SBOM,
-hashes every release file into `SHA384SUMS`, and attests the
+The chain, in one paragraph: the build on the release commit
+stamps a `BUILD-PROVENANCE.json` into each archive; the tag build
+takes those archives as they are (it reads that build back — a
+build of exactly the tag's commit on main, every artifact leg
+green — and publishes its artifacts rather than building them a
+second time, so what ships is what the gate judged), generates an
+SBOM, hashes every release file into `SHA384SUMS`, and attests the
 whole set — sums and SBOM included — with
 `actions/attest-build-provenance`. PyPI publishing runs over
 OIDC trusted publishing (no stored token exists) and uploads
@@ -132,9 +136,14 @@ PowerShell, or read the file after extracting the zip.)
 
 It names the product, the version, the commit SHA, the ref,
 and the workflow run (`run_id`, as run/attempt) that built the
-archive. A file that arrives detached from any release page —
-a mirror, a forwarded email — can still say which build it
-is, and the commit can be checked against the tag.
+archive. In a release the tag build published from the gate
+build, the ref is `refs/heads/main` and the run is the gate
+build's — the build that made the bytes — while the snapshot's
+`CI-SNAPSHOT.json` names the tag build that published them; the
+commit is the same in both. A file that arrives detached from
+any release page — a mirror, a forwarded email — can still say
+which build it is, and the commit can be checked against the
+tag.
 
 ## The project snapshot
 

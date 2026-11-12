@@ -613,7 +613,71 @@ class CiScopeTest(unittest.TestCase):
         with mock.patch.object(C, "decide", return_value="true"):
             self.assertEqual(0, C.main(environ={"EVENT": "push", "BEFORE": "a", "AFTER": "b"},
                                        out=out.append))
-        self.assertEqual(["corpus_only=true", "docs_only=true"], out)
+        self.assertEqual(["corpus_only=true", "docs_only=true",
+                          "promote=false", "promote_run="], out)
+        out = []
+        with mock.patch.object(C, "decide", return_value="false"):
+            C.main(environ={"EVENT": "workflow_dispatch", "AFTER": "b",
+                            "REF": "refs/tags/v3.16.21.4", "PROMOTE_FROM": "43179987340"},
+                   out=out.append)
+        self.assertEqual(["corpus_only=false", "docs_only=false",
+                          "promote=true", "promote_run=43179987340"], out)
+
+    def test_promote_needs_a_tag_dispatch_and_a_run_id(self):
+        # The gate build's run id rides the tag dispatch from
+        # cut-release; a push, a branch dispatch, a hand-placed tag
+        # (no input) or a non-numeric input all build as before.
+        from runner.tools import ci_scope as C
+        self.assertEqual(("true", "43179987340"),
+                         C.promote("workflow_dispatch", "refs/tags/v3.16.21.4", " 43179987340 "))
+        self.assertEqual(("false", ""), C.promote("push", "refs/tags/v3.16.21.4", "43179987340"))
+        self.assertEqual(("false", ""), C.promote("workflow_dispatch", "refs/heads/main", "43179987340"))
+        self.assertEqual(("false", ""), C.promote("workflow_dispatch", "refs/tags/v3.16.21.4", ""))
+        self.assertEqual(("false", ""), C.promote("workflow_dispatch", "refs/tags/v3.16.21.4", "latest"))
+        self.assertEqual(("false", ""), C.promote("workflow_dispatch", "refs/tags/v3.16.21.4", None))
+
+    def test_a_promoted_tag_build_skips_the_legs_and_publishes_the_gate_builds_artifacts(self):
+        import re
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        with open(os.path.join(root, ".github", "workflows", "build.yml"), encoding="utf-8") as fh:
+            wf = fh.read()
+        with open(os.path.join(root, ".github", "workflows", "cut-release.yml"), encoding="utf-8") as fh:
+            cut = fh.read()
+
+        def block(job):
+            m = re.search(r"^  %s:\n(.*?)(?=^  [a-z0-9_-]+:|\Z)" % re.escape(job), wf, re.M | re.S)
+            self.assertIsNotNone(m, job)
+            return m.group(1)
+        live = "\n".join(l for l in wf.splitlines() if not l.lstrip().startswith("#"))
+        self.assertIn("promote_from:", live.split("jobs:", 1)[0])
+        self.assertIn("promote: ${{ steps.scope.outputs.promote }}", block("scope"))
+        self.assertIn("promote_run: ${{ steps.scope.outputs.promote_run }}", block("scope"))
+        self.assertIn("PROMOTE_FROM: ${{ inputs.promote_from }}", block("scope"))
+        for job in ("test", "test-macos", "test-windows", "build-windows", "build-windows-arm64",
+                    "build-linux", "build-linux-arm64", "build-macos", "build-macos-x86_64",
+                    "build-pi-light", "build-python"):
+            self.assertIn("needs.scope.outputs.promote != 'true'", block(job), job)
+        rel = block("release")
+        self.assertIn("!cancelled()", rel)
+        self.assertIn("needs.scope.result == 'success'", rel)
+        self.assertIn("!contains(needs.*.result, 'failure')", rel)
+        self.assertIn("!contains(needs.*.result, 'cancelled')", rel)
+        self.assertIn("(needs.scope.outputs.promote == 'true' || !contains(needs.*.result, 'skipped'))", rel)
+        self.assertIn("release_train.py promote-check --run \"${{ needs.scope.outputs.promote_run }}\" --sha \"${{ github.sha }}\"", rel)
+        run_id = "run-id: ${{ needs.scope.outputs.promote == 'true' && needs.scope.outputs.promote_run || github.run_id }}"
+        self.assertIn(run_id, rel)
+        self.assertLess(rel.index("promote-check"), rel.index(run_id))
+        self.assertIn(run_id, block("pypi-publish"))
+        self.assertIn("mv artifacts/test-output*.log ci/", rel)
+        self.assertIn('pattern: "{homing-pigeon-*,ci-test-log*}"', rel)
+        self.assertIn('gh workflow run build.yml --ref "$TAG" -f promote_from="$GATE_RUN"', cut)
+        # the input rides only to a tree whose build.yml takes it
+        self.assertIn('git show "$TAG:.github/workflows/build.yml" | grep -q "promote_from:"', cut)
+        self.assertIn('fh.write(f"run_id={run[\'id\']}\\n")', cut)
+        # the gate reads main's push and dispatch runs, never a PR's
+        self.assertIn('{id, status, conclusion, run_attempt, event, head_branch}', cut)
+        self.assertIn('r.get("event") in ("push", "workflow_dispatch")', cut)
+        self.assertIn('r.get("head_branch") == "main"', cut)
 
     def test_docs_only_means_documentation_and_ledgers_and_nothing_else(self):
         from runner.tools import ci_scope as C

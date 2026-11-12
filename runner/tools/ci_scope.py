@@ -14,8 +14,19 @@ cannot produce. The heavy jobs read the output and skip when it is
 true; a release commit changes pyproject.toml and is never corpus
 only, so the release gate still sees a full matrix on its sha.
 
-Usage (in the workflow): BEFORE, AFTER and EVENT in the environment,
-the output appended to $GITHUB_OUTPUT.
+A third output, `promote`, is the release's: a tag build that
+cut-release dispatches with `promote_from=<run id>` names the build
+on the same commit whose artifacts are already made and already
+read by the cut gate, so the tag build packages nothing and runs no
+suite -- its release job verifies that run against the tag's commit
+and publishes its artifacts. `promote=true` and `promote_run=<id>`
+come out only for a workflow_dispatch on a tag ref that carries a
+numeric PROMOTE_FROM; every other event prints `promote=false` and
+builds as before (a tag placed by hand, a dispatch without the
+input).
+
+Usage (in the workflow): BEFORE, AFTER, EVENT, REF and PROMOTE_FROM
+in the environment, the output appended to $GITHUB_OUTPUT.
 """
 import fnmatch
 import os
@@ -101,12 +112,26 @@ def decide(event, before, after, run=subprocess.run, rule=None):
     return "true" if rule(paths) else "false"
 
 
+def promote(event, ref, promote_from):
+    """('true', run id) when a tag dispatch names a build to
+    promote, else ('false', '')."""
+    run = (promote_from or "").strip()
+    if event == "workflow_dispatch" and (ref or "").startswith("refs/tags/v") \
+            and run.isdigit():
+        return "true", run
+    return "false", ""
+
+
 def main(argv=None, environ=None, out=print):
     env = os.environ if environ is None else environ
     args = (env.get("EVENT", ""), env.get("BEFORE", ""),
             env.get("AFTER", ""))
     out(f"corpus_only={decide(*args)}")
     out(f"docs_only={decide(*args, rule=docs_only)}")
+    flag, run = promote(env.get("EVENT", ""), env.get("REF", ""),
+                        env.get("PROMOTE_FROM", ""))
+    out(f"promote={flag}")
+    out(f"promote_run={run}")
     return 0
 
 

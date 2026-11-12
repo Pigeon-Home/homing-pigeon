@@ -114,7 +114,14 @@ push, wait for the build on that commit to go green on the jobs
 `cut-release.yml` gates on, dispatch `cut-release.yml` with the
 commit's full sha (it places the tag; a tag is never pushed by
 hand), then verify the tag build's publish jobs and the mirrors'
-own responses in their logs. `runner/tools/release_train.py` does
+own responses in their logs. The tag build does not build the
+artifacts again: the cut hands it the gate build's run id, it
+reads that run back (a build of exactly the tag's commit, every
+gate job green), and its release job publishes that run's
+artifacts -- so the release is the artifacts the gate judged, and
+the tag build is the publish jobs and nothing else. A tag placed
+without that run id (by hand, or a dispatch without the input)
+builds everything again, as before. `runner/tools/release_train.py` does
 all of that as one command — `status` to read the state, `prepare
 --note "..."` to land the release commit, `cut` to wait, cut and
 verify, `run` for the whole cycle — so a release is one invocation

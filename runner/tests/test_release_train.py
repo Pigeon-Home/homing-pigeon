@@ -74,10 +74,15 @@ class GateTest(unittest.TestCase):
         self.assertGreaterEqual(len(need), 8)
 
     def test_the_verdict_reads_the_newest_uncancelled_run(self):
+        # ... of main, by a push or a dispatch: a pull_request run
+        # (its tree is the head merged into the base) and a tag build
+        # on the same sha are not the gate's build, however new.
         runs = {"workflow_runs": [
-            {"id": 1, "conclusion": "cancelled"},
-            {"id": 3, "conclusion": "success"},
-            {"id": 2, "conclusion": "failure"}]}
+            {"id": 1, "conclusion": "cancelled", "event": "push", "head_branch": "main"},
+            {"id": 5, "conclusion": "success", "event": "pull_request", "head_branch": "work/next"},
+            {"id": 4, "conclusion": "success", "event": "workflow_dispatch", "head_branch": "v3.16.21.4"},
+            {"id": 3, "conclusion": "success", "event": "push", "head_branch": "main"},
+            {"id": 2, "conclusion": "failure", "event": "push", "head_branch": "main"}]}
         jobs = {"jobs": [{"name": n, "status": "completed", "conclusion": "success"}
                          for n in rt.gate_jobs()]}
 
@@ -97,18 +102,21 @@ class GateTest(unittest.TestCase):
         jobs = [{"name": n, "status": "completed", "conclusion": "success"} for n in need]
         jobs[0]["conclusion"] = "failure"
         jobs[1]["status"] = "in_progress"
-        with mock.patch.object(rt, "api", lambda path, **kw: {"workflow_runs": [{"id": 7, "conclusion": None}]} if "head_sha" in path else {"jobs": jobs}):
+        main_run = {"workflow_runs": [{"id": 7, "conclusion": None, "event": "push", "head_branch": "main"}]}
+        with mock.patch.object(rt, "api", lambda path, **kw: main_run if "head_sha" in path else {"jobs": jobs}):
             state, detail = rt.gate_verdict("abc")
         self.assertEqual(state, "red")
         self.assertIn(need[0], detail)
         jobs[0]["conclusion"] = "success"
-        with mock.patch.object(rt, "api", lambda path, **kw: {"workflow_runs": [{"id": 7, "conclusion": None}]} if "head_sha" in path else {"jobs": jobs}):
+        with mock.patch.object(rt, "api", lambda path, **kw: main_run if "head_sha" in path else {"jobs": jobs}):
             state, detail = rt.gate_verdict("abc")
         self.assertEqual(state, "running")
         self.assertIn(need[1], detail)
 
     def test_no_run_is_no_verdict(self):
-        with mock.patch.object(rt, "api", lambda path, **kw: {"workflow_runs": [{"id": 1, "conclusion": "cancelled"}]}):
+        with mock.patch.object(rt, "api", lambda path, **kw: {"workflow_runs": [
+                {"id": 1, "conclusion": "cancelled", "event": "push", "head_branch": "main"},
+                {"id": 2, "conclusion": "success", "event": "pull_request", "head_branch": "work/next"}]}):
             self.assertEqual(rt.gate_verdict("abc")[0], "none")
 
 
@@ -157,9 +165,10 @@ class ClockTest(unittest.TestCase):
             return {"commit": {"committer": {"date": "2026-11-12T06:17:22Z"}}}
         if "/build.yml/runs?head_sha" in path:
             return {"workflow_runs": [
-                {"id": 2, "head_branch": "v3.16.21.1", "conclusion": None, "status": "in_progress",
+                {"id": 2, "head_branch": "v3.16.21.1", "event": "workflow_dispatch", "conclusion": None,
+                 "status": "in_progress",
                  "run_started_at": "2026-11-12T06:37:13Z", "created_at": "2026-11-12T06:37:13Z"},
-                {"id": 1, "head_branch": "main", "conclusion": "success", "status": "completed",
+                {"id": 1, "head_branch": "main", "event": "push", "conclusion": "success", "status": "completed",
                  "run_started_at": "2026-11-12T06:17:27Z", "updated_at": "2026-11-12T06:38:09Z"}]}
         if "/build.yml/runs?branch=v3.16.21.1" in path:
             return {"workflow_runs": [{"id": 2, "status": "in_progress",
@@ -203,6 +212,89 @@ class ClockTest(unittest.TestCase):
         self.assertIn("asked for", text.splitlines()[2])
         self.assertRegex(text, r"release published \(0 assets\)\s+--$")
         self.assertRegex(text, r"gate green \(\d+ jobs\)\s+06:27:51Z\s+\+[\d.]+\s+10\.5 min")
+
+
+class PromoteCheckTest(unittest.TestCase):
+    """The tag build's reading of the gate build it promotes: a
+    build.yml run on exactly the tag's commit, not cancelled, every
+    gate job green. Anything less is named and refused, and a record
+    that cannot be read refuses too."""
+    SHA = "ea071cb16745efe6032ceefb9564c71b3681239f"
+
+    def _run(self, **kw):
+        run = {"id": 43179987340, "head_sha": self.SHA, "path": ".github/workflows/build.yml",
+               "conclusion": "success", "event": "push", "head_branch": "main"}
+        run.update(kw)
+        return run
+
+    def _jobs(self, **kw):
+        jobs = {n: {"name": n, "status": "completed", "conclusion": "success"}
+                for n in rt.gate_jobs()}
+        for n, v in kw.items():
+            jobs[n].update(v)
+        return jobs
+
+    def _artifacts(self, drop=None, expire=None):
+        names = ["ci-test-log", "ci-test-log-macos", "homing-pigeon-python"] + [
+            p + "3.16.21.4" for p in rt.PROMOTED_ARTIFACTS if p.endswith("-")]
+        out = [{"name": n, "expired": n == expire} for n in names if n != drop]
+        return out
+
+    def _ok(self, **kw):
+        args = dict(run=self._run(), jobs=self._jobs(), artifacts=self._artifacts())
+        args.update(kw)
+        return rt.promote_problem("43179987340", self.SHA, **args)
+
+    def test_a_green_build_of_the_commit_passes(self):
+        self.assertIsNone(self._ok())
+        # the whole run may still be going (the advisory suites), or
+        # have been cancelled after the legs completed: the legs are
+        # the verdict
+        self.assertIsNone(self._ok(run=self._run(conclusion=None, status="in_progress")))
+        self.assertIsNone(self._ok(run=self._run(conclusion="cancelled")))
+        self.assertIsNone(self._ok(run=self._run(event="workflow_dispatch")))
+
+    def test_every_refusal_is_named(self):
+        need = sorted(rt.gate_jobs())
+        self.assertIn("not a run id", rt.promote_problem("latest", self.SHA))
+        self.assertIn("not a run id", rt.promote_problem("\u0663", self.SHA))
+        self.assertIn("cannot be read", rt.promote_problem("1", self.SHA, run={}, jobs={}))
+        self.assertIn("is on ", self._ok(run=self._run(head_sha="f" * 40)))
+        self.assertIn("not build.yml", self._ok(run=self._run(path=".github/workflows/docker.yml")))
+        # a pull_request run's tree is the head merged into the base
+        self.assertIn("pull_request run", self._ok(run=self._run(event="pull_request")))
+        # a tag build on the same sha, or a branch build
+        self.assertIn("build of v3.16.21.4, not of main", self._ok(run=self._run(head_branch="v3.16.21.4")))
+        jobs = self._jobs(); del jobs[need[0]]
+        self.assertIn("no job for: " + need[0], self._ok(jobs=jobs))
+        self.assertIn("%s=completed/failure" % need[1],
+                      self._ok(jobs=self._jobs(**{need[1]: {"conclusion": "failure"}})))
+        self.assertIn("%s=in_progress/None" % need[2],
+                      self._ok(jobs=self._jobs(**{need[2]: {"status": "in_progress", "conclusion": None}})))
+        with mock.patch.object(rt, "api", lambda path, **kw: {}):
+            self.assertIn("artifacts cannot be read", self._ok(artifacts=None))
+        self.assertIn("no artifact for: homing-pigeon-python",
+                      self._ok(artifacts=self._artifacts(drop="homing-pigeon-python")))
+        self.assertIn("no artifact for: homing-pigeon-windows-x86_64-",
+                      self._ok(artifacts=self._artifacts(expire="homing-pigeon-windows-x86_64-3.16.21.4")))
+
+    def test_the_command_reads_the_record_and_exits_by_the_verdict(self):
+        def fake_api(path, method="GET", body=None, raw=False):
+            if path == "/actions/runs/43179987340":
+                return self._run()
+            if path.startswith("/actions/runs/43179987340/jobs"):
+                return {"jobs": list(self._jobs().values())}
+            if path.startswith("/actions/runs/43179987340/artifacts"):
+                return {"artifacts": self._artifacts()}
+            raise AssertionError(path)
+        with mock.patch.object(rt, "api", fake_api), contextlib.redirect_stdout(io.StringIO()) as out:
+            rc = rt.main(["promote-check", "--run", "43179987340", "--sha", self.SHA])
+        self.assertEqual(rc, 0)
+        self.assertIn("promoting its artifacts", out.getvalue())
+        with mock.patch.object(rt, "api", fake_api), contextlib.redirect_stdout(io.StringIO()) as out:
+            rc = rt.main(["promote-check", "--run", "43179987340", "--sha", "0" * 40])
+        self.assertEqual(rc, 1)
+        self.assertIn("::error title=promotion::run 43179987340 is on ea071cb16745, not 000000000000", out.getvalue())
 
 
 class WatchTest(unittest.TestCase):

@@ -123,6 +123,7 @@ jobs:
           fi
 
       - name: the build on this commit is green
+        id: gate
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ steps.ver.outputs.sha }}
@@ -138,14 +139,21 @@ jobs:
           # the newest check run named `test` would have read the
           # Worker's green over the suite's red.
           gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yml/runs?head_sha=${SHA}&per_page=20" \
-            --jq '[.workflow_runs[] | {id, status, conclusion, run_attempt}]' > runs.json
+            --jq '[.workflow_runs[] | {id, status, conclusion, run_attempt, event, head_branch}]' > runs.json
           python3 - <<'EOF'
           import json, os, subprocess, sys
           # A cancelled run was superseded by concurrency; it is not
-          # a verdict on the commit and is ignored. The newest run
-          # left is the verdict, and its jobs are its latest attempt.
+          # a verdict on the commit and is ignored. A pull_request
+          # run is not one either: its head_sha is the PR's head but
+          # its tree is the head merged into the base, so its verdict
+          # and its artifacts are another tree's. Nor is a tag build
+          # on the same sha (a re-cut). The newest push or dispatch
+          # run of main left is the verdict, and its jobs are its
+          # latest attempt; the tag build promotes its artifacts.
           runs = [r for r in json.load(open("runs.json"))
-                  if r["conclusion"] != "cancelled"]
+                  if r["conclusion"] != "cancelled"
+                  and r.get("event") in ("push", "workflow_dispatch")
+                  and r.get("head_branch") == "main"]
           if not runs:
               print("::error::no build run on this commit")
               sys.exit(1)
@@ -176,6 +184,10 @@ jobs:
           if bad:
               sys.exit(1)
           print(f"{len(need)} jobs green on this commit (build run {run['id']})")
+          # The tag build promotes this run's artifacts instead of
+          # building them again (build.yml's promote_from input).
+          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
+              fh.write(f"run_id={run['id']}\n")
           EOF
 
       - name: tag
@@ -224,9 +236,25 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.ver.outputs.tag }}
+          GATE_RUN: ${{ steps.gate.outputs.run_id }}
         run: |
           set -euo pipefail
-          gh workflow run build.yml --ref "$TAG"
+          # The tag build promotes the gate build's artifacts (the
+          # eight legs this workflow just read green on the same
+          # commit) instead of building them a second time: it
+          # verifies that run against the tag's commit, downloads
+          # its artifacts and publishes. Since 2026-11-12; the two
+          # builds were 24 of a 31-minute cycle before the Windows
+          # suite left the artifact leg, and the second build was
+          # most of the 11 minutes after.
+          # The input is sent only to a tree whose build.yml takes it:
+          # a dispatch is validated against the workflow at the tag,
+          # and an older tree would refuse the dispatch outright.
+          if git show "$TAG:.github/workflows/build.yml" | grep -q "promote_from:"; then
+            gh workflow run build.yml --ref "$TAG" -f promote_from="$GATE_RUN"
+          else
+            gh workflow run build.yml --ref "$TAG"
+          fi
           gh workflow run docker.yml --ref "$TAG" -f tag="$TAG"
           gh workflow run docker.yml --ref "$TAG" -f tag=latest
           # A tag this workflow places with GITHUB_TOKEN starts no

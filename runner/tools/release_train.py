@@ -6,6 +6,7 @@
     python3 runner/tools/release_train.py cut [--sha SHA]
     python3 runner/tools/release_train.py run --note "..." [--note ...]
     python3 runner/tools/release_train.py clock [--version V] [--since ISO-TIME]
+    python3 runner/tools/release_train.py promote-check --run RUN_ID --sha SHA
 
 `status` reads the tree and the hosted record: the three version
 carriers and whether they agree, whether the tag for that version
@@ -28,6 +29,13 @@ own responses out of those jobs' logs (PyPI's "View at", the
 SourceForge file listing and git push, the GitLab uploads and
 release, the image tags) and prints the verdict. `run` is prepare
 then cut.
+
+`promote-check` is the tag build's own step: cut-release dispatches
+the tag build with the gate build's run id (build.yml's promote_from
+input), the tag build packages nothing, and before its release job
+downloads that run's artifacts it reads the run back -- a build.yml
+run on exactly the tag's commit, not cancelled, every gate job green
+-- and refuses the release by name otherwise.
 
 `clock` reads one cycle's timeline out of the hosted record -- the
 release commit, the build's start, the gate going green, every
@@ -130,9 +138,16 @@ def gate_jobs():
 
 
 def build_runs(sha):
-    """build.yml runs on `sha`, newest first, cancelled ones dropped."""
+    """build.yml runs of main on `sha`, newest first: cancelled ones
+    dropped, and pull_request runs never counted -- a PR run's
+    head_sha is the PR's head but its tree is the head merged into
+    the base, so its verdict and its artifacts are another tree's.
+    A tag build on the same sha is not the gate's build either."""
     d = api("/actions/workflows/build.yml/runs?head_sha=%s&per_page=20" % sha) or {}
-    runs = [r for r in d.get("workflow_runs", []) if r.get("conclusion") != "cancelled"]
+    runs = [r for r in d.get("workflow_runs", [])
+            if r.get("conclusion") != "cancelled"
+            and r.get("event") in ("push", "workflow_dispatch")
+            and r.get("head_branch") == "main"]
     return sorted(runs, key=lambda r: r["id"], reverse=True)
 
 
@@ -527,6 +542,85 @@ def cmd_run(args):
 
 
 # ----------------------------------------------------------------
+# the promotion check (the tag build's own reading of the gate build)
+# ----------------------------------------------------------------
+
+# The artifacts a gate build carries, one per archive leg plus the
+# wheel and sdist: what a promoted release is made of. Each archive
+# artifact is named with the version; the python one is not.
+PROMOTED_ARTIFACTS = ("homing-pigeon-linux-x86_64-", "homing-pigeon-linux-arm64-",
+                      "homing-pigeon-macos-arm64-", "homing-pigeon-macos-x86_64-",
+                      "homing-pigeon-windows-x86_64-", "homing-pigeon-windows-arm64-",
+                      "homing-pigeon-pi-light-arm64-", "homing-pigeon-python")
+
+
+def promote_problem(run_id, sha, run=None, jobs=None, artifacts=None):
+    """Why the build run `run_id` may not be promoted to the tag on
+    `sha`, or None when it may.
+
+    The run must be a build.yml run of main (a push or a dispatch:
+    a pull_request run's head_sha is the PR's head but its tree is
+    the head merged into the base, so its artifacts are another
+    tree's) on exactly that commit; every job cut-release gates on
+    (gate_jobs()) must have completed success in it -- the run as a
+    whole may still be going, or have been cancelled after the legs
+    completed, since the advisory suites outlast the legs; and the
+    eight artifacts a release is made of must be there, none
+    expired. `run`, `jobs` and `artifacts` are the records, fetched
+    when not given; a record that cannot be read is a refusal,
+    never a pass.
+    """
+    if not re.fullmatch(r"[0-9]+", str(run_id)):
+        return "promote_from %r is not a run id" % (run_id,)
+    if run is None:
+        run = api("/actions/runs/%s" % run_id)
+    if not run or "head_sha" not in run:
+        return "run %s cannot be read" % run_id
+    if run.get("head_sha") != sha:
+        return "run %s is on %s, not %s" % (run_id, str(run.get("head_sha"))[:12], sha[:12])
+    path = str(run.get("path") or "")
+    if not path.endswith("/build.yml"):
+        return "run %s is %s, not build.yml" % (run_id, path or run.get("name"))
+    if run.get("event") not in ("push", "workflow_dispatch"):
+        return "run %s is a %s run, whose tree is not the commit it names" % (run_id, run.get("event"))
+    if run.get("head_branch") != "main":
+        return "run %s is a build of %s, not of main" % (run_id, run.get("head_branch"))
+    if jobs is None:
+        jobs = run_jobs(run_id)
+    need = gate_jobs()
+    if not need:
+        return "cut-release.yml names no gate jobs"
+    missing = sorted(need - set(jobs))
+    if missing:
+        return "run %s has no job for: %s" % (run_id, ", ".join(missing))
+    bad = sorted(n for n in need
+                 if jobs[n].get("status") != "completed" or jobs[n].get("conclusion") != "success")
+    if bad:
+        return "run %s: %s" % (run_id, ", ".join(
+            "%s=%s/%s" % (n, jobs[n].get("status"), jobs[n].get("conclusion")) for n in bad))
+    if artifacts is None:
+        artifacts = (api("/actions/runs/%s/artifacts?per_page=100" % run_id) or {}).get("artifacts")
+    if artifacts is None:
+        return "run %s: its artifacts cannot be read" % run_id
+    names = [a.get("name", "") for a in artifacts if not a.get("expired")]
+    absent = [p for p in PROMOTED_ARTIFACTS
+              if not any(n == p or (p.endswith("-") and n.startswith(p)) for n in names)]
+    if absent:
+        return "run %s has no artifact for: %s" % (run_id, ", ".join(absent))
+    return None
+
+
+def cmd_promote_check(args):
+    problem = promote_problem(args.run, args.sha)
+    if problem:
+        _say("::error title=promotion::%s" % problem)
+        return 1
+    _say("run %s is a build of %s with every gate job green; promoting its artifacts"
+         % (args.run, args.sha[:12]))
+    return 0
+
+
+# ----------------------------------------------------------------
 # the clock
 # ----------------------------------------------------------------
 
@@ -675,6 +769,10 @@ def main(argv=None):
     p.add_argument("--version", default=None,
                    help="with --watch: the version to watch (default: the carriers', "
                         "which a prepared next release has already moved past)")
+    p = sub.add_parser("promote-check",
+                       help="the tag build's reading of the gate build it promotes")
+    p.add_argument("--run", required=True, help="the build run id to promote")
+    p.add_argument("--sha", required=True, help="the tag's commit (full sha)")
     p = sub.add_parser("clock", help="one cycle's timeline from the hosted record")
     p.add_argument("--version", default=None, help="the version (default: the carriers')")
     p.add_argument("--since", default=None, help="when the cycle was asked for (ISO time), as the first row")
@@ -684,6 +782,8 @@ def main(argv=None):
             return cmd_status(args)
         if args.cmd == "clock":
             return cmd_clock(args)
+        if args.cmd == "promote-check":
+            return cmd_promote_check(args)
         if args.cmd == "prepare":
             if not args.note:
                 ap.error("prepare needs at least one --note")
