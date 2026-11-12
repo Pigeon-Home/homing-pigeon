@@ -1317,3 +1317,42 @@ The record over the day, from the Actions listing at 10:20Z: the
 releases, both partial; the last 12 hours had 153 builds, 24 green
 of 61 completed, and 8 releases, 7 whole; the last 4 hours had 48
 builds, 20 green of 26 completed, and 6 releases, all whole.
+
+### The floor, measured: 3.16.21.9 in 7.5 minutes (12 Nov 2026)
+
+Two more cycles after the section above. 3.16.21.8's gate build
+waited ten minutes for a one-minute leg: the arm64 macOS runners
+are the scarcest on the account, and the macOS suite, started at
+the same moment as the macOS artifact leg, took the runner first.
+The suites now wait for their artifact legs (test-macos needs
+build-macos, test-windows needs build-windows), and that landing
+moved main past the 3.16.21.8 release commit before its cut, so
+the token refused the tag and the train did what it now does on
+its own: prepared 3.16.21.9 at the head, with the same notes and
+the line recording the cut that did not publish, and cut again.
+
+```
+asked for                                            10:53:55Z             0.0 min
+release commit 316b3571                              10:54:12Z    +0.3     0.3 min
+gate green (8 jobs)                                  10:56:39Z    +2.4     2.7 min
+cut-release 43204888507: success                     10:57:23Z    +0.7     3.5 min
+tag v3.16.21.9                                       10:57:39Z    +0.3     3.7 min
+release published (13 assets)                        10:59:38Z    +1.9     5.7 min
+pypi-publish: success                                11:00:01Z    +0.3     6.1 min
+gitlab: success                                      11:00:52Z    +0.8     7.0 min
+sourceforge: success                                 11:01:27Z    +0.6     7.5 min
+```
+
+Promoted, every mirror, the nine proofs dispatched by the tag
+build's last job at 11:01:30 once the mirrors were done, and no
+hand in it. Seven and a half minutes against thirty-five at the
+start of the night; what remains is the gate's 2.4 minutes (the
+artifact legs), the cut's minute, the release job's two and the
+mirrors' two.
+
+One more thing the record showed while this ran: nineteen runs
+from the evening before the relief window (20:25Z to 20:40Z on the
+11th) stand listed as queued with no jobs and cannot be cancelled
+("Cannot cancel a workflow run that has not been queued yet", the
+force-cancel endpoint included). They hold no runner; they are
+the hosting service's leftovers, and the listing carries them.

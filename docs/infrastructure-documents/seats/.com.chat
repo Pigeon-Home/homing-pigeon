@@ -3,6 +3,21 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-3:05am-PST — 7.5 minutes, no hand in it
+
+3.16.21.9: asked for at 10:53:55Z, gate green at 2.7 minutes,
+tagged at 3.7, the release at 5.7, the last mirror at 7.5, the
+proofs dispatched after the mirrors by the tag build's last job.
+Promoted, every mirror, and the train did the re-prepare itself
+when a landing moved main past the 3.16.21.8 release commit before
+its cut. Two more rules from the hour: the macOS and Windows suites
+wait for their artifact legs (the arm64 macOS runners are the
+scarcest on the account, and a suite started first held the one-
+minute leg the release gates on for ten), and a push that changed
+nothing (a file saved unchanged in the web editor) runs the doc
+guards alone. The clock and the record stand in
+docs/steady/reports/ci-failures.md.
+
 ## 12-Nov-2:25am-PST — the tag build publishes what the gate judged; the proofs start after the mirrors
 
 3.16.21.7 is the first release promoted whole: the tag build
