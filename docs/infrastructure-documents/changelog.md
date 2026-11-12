@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.9 - 2026-11-12
+
+- Tools: release_train.py measure re-records the core measure and the figures over the tree for a landing that grows a core file, and runs the local guards; the CI record carries the 3.16.24.6 to .8 cycles (7.0, 11.2 and 8.6 minutes) and the head's ten red minutes after a core file grew without its re-measure
+
 ## 3.16.24.8 - 2026-11-12
 
 - Runner: Q168 answered under option 1 — on Windows the job_user plain path spawns its child suspended through the backend and assigns it to the Job Object before it resumes, so a child that exits at once is no longer refused as a job that already ran
