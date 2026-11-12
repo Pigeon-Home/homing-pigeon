@@ -37,12 +37,144 @@ Changelog = "https://github.com/Pigeon-Home/homing-pigeon/releases"
 
 [tool.setuptools.packages.find]
 include = ["runner*"]
-exclude = ["runner.tests", "runner.tests.*", "runner.tools", "runner.tools.*", "runner.extension*"]
+# The suite, the build tools and the shipped sense extensions never
+# ship in the wheel (AGENTS.md, "Where things live"): the suite is
+# development, the tools are the build's, and a sense is installed
+# from the tree into the owner's extensions directory, never imported.
+exclude = ["runner.tests", "runner.tests.*", "runner.tools", "runner.tools.*",
+           "runner.extension*"]
 
 [tool.setuptools.package-data]
 runner = ["config.example.json"]
+# The shipped transports are found by their manifests, and they bring
+# their sources by their declarations (docs/steady/extensions.md, "Sources"):
+# a wheel without these files has no transport at all.
 "runner.transport_extensions.dtls" = ["extension.json", "sources.json"]
 "runner.transport_extensions.email" = ["extension.json", "sources.json"]
 "runner.transport_extensions.file" = ["extension.json", "sources.json"]
 "runner.transport_extensions.nats" = ["extension.json", "sources.json"]
 "runner.transport_extensions.queues" = ["extension.json", "sources.json"]
+
+[tool.mutmut]
+source_paths = ["runner"]
+# Core scope: security.py is the pure policy/audit logic (392 lines, ~7 min).
+# Broader scopes were measured: 4 files (security/senses/dri/posture,
+# 1567 mutants) extrapolates to ~45-50 min -- too slow for per-push CI.
+# Full runner/ (~10k lines) would be hours. Expand deliberately.
+only_mutate = ["runner/guard/security.py"]
+# The suite sits inside the source path (runner/tests/); it is the
+# oracle that kills mutants, never a mutation target.
+do_not_mutate = ["runner/tests/**", "runner/tools/**", "runner/extensions/**"]
+pytest_add_cli_args = [
+    "-x",
+    "-q",
+    "-p", "no:cacheprovider",
+    # The suite is what `unittest discover -s runner/tests -t .` runs:
+    # the folder beside it (the airgap sweep) is outside discovery
+    # and must be outside pytest's collection here too. The archived
+    # campaign probes sat under the same ignore until their removal
+    # on 2026-11-01; while they existed, two archived files with the
+    # same basename made pytest's collection fail, and under -x that
+    # ended mutmut's coverage pass before any test ran, so only the
+    # import-time lines of security.py counted as covered and three
+    # mutants were generated where 443 had been (Q22).
+    "--ignore=runner/tests/airgap",
+    # Timing-sensitive: hostile-regex perf probe (73s); not mutation-relevant.
+    "--deselect", "runner/tests/test_policy_constraints.py::ArgsPatternTimingTest::test_hostile_pattern_rejected_at_parse",
+]
+pytest_add_cli_args_test_selection = ["runner/tests/"]
+mutate_only_covered_lines = true
+also_copy = [
+    # docs/ includes docs/steady/security/. runner/cloud/ and
+    # runner/extensions/ (the shipped extensions, which
+    # runner/tests/test_extensions.py loads from the tree) come with
+    # source_paths.
+    "docs/",
+    # .github/ carries the CI pin file (.github/requirements-ci.txt,
+    # which runner/tests/test_build_config.py reads). The CI tools
+    # (runner/tools/; runner/tests/test_parallel_runner.py imports the
+    # Windows shard runner at load time) come with source_paths.
+    # mutmut's stats run dies if the mutant tree lacks the pin file.
+    # Name the folder once: a nested entry would be copied over a copy.
+    ".github/",
+    # Root manuals. The doc guards locate the tree from the runner
+    # package, and mutmut's copy is only source_paths plus this list
+    # (plus pyproject.toml, which it adds itself; the suite in
+    # runner/tests/ comes with source_paths). Without
+    # these, stats collection dies on "INSTALL.md not found" before
+    # any mutant runs.
+    "AGENTS.md", "INSTALL.md",
+    "PROTOCOL.md", "README.md",
+    "SECURITY.md",
+]
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+
+[tool.ruff.lint]
+# Day-one set: pyflakes everywhere (F) plus pycodestyle
+# errors (E) outside the grandfathered files below. The list grows
+# only with a commit that keeps the gate green.
+select = ["E", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# Grandfathered E501 debt, counted 2026-10-18: runner/runner.py 64,
+# runner/ops/install.py 10, runner/cloud/send_job.py 3, runner/oracle/senses.py 1,
+# runner/oracle/dri.py 1. New files conform from birth; these shrink as
+# their files are touched. Do not add files to this list.
+"runner/runner.py" = ["E501"]
+"runner/ops/install.py" = ["E501"]
+"runner/cloud/send_job.py" = ["E501"]
+"runner/oracle/senses.py" = ["E501"]
+"runner/oracle/dri.py" = ["E501"]
+# The test suite's idiom: sys.path setup before imports (E402) and
+# long scenario/fixture lines (E501) are deliberate there.
+"runner/tests/**" = ["E402", "E501"]
+
+[tool.pyrefly]
+# Type-check gate: pyrefly (Meta's Rust checker). `pyrefly check`
+# reads this table from pyproject.toml.
+project-includes = [
+    "runner/**/*.py",
+]
+# The suite (runner/tests/) is not part of the type gate.
+project-excludes = [
+    "runner/tests/**",
+    "runner/tools/**",
+    "runner/extensions/**",
+]
+
+# Sibling modules are imported in two forms: `from runner.wire.oauth import X`
+# (primary) and `from oauth import X` (fallback when a file runs as
+# __main__ from inside runner/). The fallback names resolve to nothing
+# statically; treat them as Any instead of erroring.
+ignore-missing-imports = [
+    "oauth",
+    "send_job",
+    "_version",
+    "install",
+    "setup",
+    "security",
+    "senses",
+    "sandbox",
+    "review",
+    "resources",
+    "posture",
+    "local_test",
+    "harness",
+    "dri",
+    "auditreport",
+    "winlog",
+    "detection",
+    "jobcrypto",
+    # Role folders (runner/<role>/): the script-mode fallback imports
+    # `from guard import ...`, `from wire.oauth import ...` and so on,
+    # with runner/ on sys.path.
+    "guard", "guard.*", "wire", "wire.*", "oracle", "oracle.*",
+    "ops", "ops.*",
+]
+
+# Lenient to start: only check bodies of annotated functions.
+# Unannotated code is still parsed (syntax, imports), but its bodies
+# are not type-checked. Annotating a function opts it into checking.
+check-unannotated-defs = false
