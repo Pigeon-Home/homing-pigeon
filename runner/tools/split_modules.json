@@ -1,9 +1,1 @@
-{
-  "why": "runner/tools/run_tests_parallel.py --split reads this file. 'modules': a module whose tests cost more than a shard can carry is sharded by class instead of as one item. 'own_job': a module the per-push legs leave out and the test-heavy leg runs alone under a longer wall (--heavy-only) -- single tests of test_briefing_contradiction (bookended sweeps over thousands of code points, Q165) outran a 30-minute wall on Linux and 20-minute walls on macOS and Windows on 2026-11-12, each in its own shard.",
-  "modules": [
-    "runner.tests.test_briefing_contradiction"
-  ],
-  "own_job": [
-    "runner.tests.test_briefing_contradiction"
-  ]
-}
+{"modules":["runner.tests.test_briefing_contradiction"],"own_job":[],"why":"runner/tools/run_tests_parallel.py --split reads this file. 'modules': a module whose tests cost more than a shard can carry is sharded by class instead of as one item. 'own_job': modules the per-push legs leave out and a leg of their own runs alone under a longer wall (--heavy-only). The own_job list stands empty since the desk's Q166 answer (2026-11-12): test_briefing_contradiction rode here while its Q165 bookended sweeps ran whole on every push and outran the suites' walls; under Q166 its bookended tests sample one representative per (Unicode category, block) group on a normal run, the whole sweep runs nightly (the soak workflow's briefing-whole-sweep job), the module fits an ordinary shard again sharded by class, and the test-heavy leg is retired."}

@@ -43,3 +43,34 @@ jobs:
         with:
           name: soak-samples
           path: soak-samples.json
+
+  briefing-whole-sweep:
+    # The Q165 briefing guard's whole bookended sweep (the
+    # desk's Q166 answer, 2026-11-12): on a normal run the
+    # Q165 class's two bookended tests in
+    # runner/tests/test_briefing_contradiction.py sample one
+    # representative per (Unicode category, block) group of
+    # the 11,745-shape inventories, which is what fits the
+    # module in an ordinary suite shard again; the whole
+    # lists run here, on this workflow's nightly schedule
+    # and on demand, under HP_BOOKENDED_WHOLE=1. The
+    # plain inventory tests stay whole on every run, here
+    # included: this job runs the Q165 class whole, exactly
+    # as a push runs it, except that its bookended axis is
+    # unsampled. Too long for every push -- the class's
+    # whole bookended axis alone measured 777 of its 800
+    # seconds unloaded -- and a signal, not a gate: nothing
+    # publishes off this job.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - name: the whole Q165 bookended sweep
+        env:
+          HP_BOOKENDED_WHOLE: "1"
+        run: python -m unittest runner.tests.test_briefing_contradiction.Q165PolarityGuardTest runner.tests.test_briefing_contradiction.Q166SampleTest

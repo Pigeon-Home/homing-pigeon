@@ -501,7 +501,7 @@ class PipelineLiftsTest(unittest.TestCase):
         workflow = _workflow()
         read_only = {("contents", "read")}
         for job in ("test", "typecheck", "mutation", "test-macos",
-                    "test-windows", "test-heavy", "build-windows",
+                    "test-windows", "build-windows",
                     "build-windows-arm64", "build-linux", "build-linux-arm64",
                     "build-pi-light", "build-macos", "build-macos-x86_64",
                     "build-python"):
@@ -532,6 +532,30 @@ class PipelineLiftsTest(unittest.TestCase):
                              _perm_entries(block), job)
             self.assertIn("refs/tags/v", block)
             self.assertIn("needs: [release]", block)
+
+    def test_the_briefing_whole_sweep_rides_the_nightly_soak(self):
+        # The desk's Q166 answer (2026-11-12): the briefing
+        # guard's whole bookended sweep runs nightly on the
+        # soak workflow's own schedule, under the whole-sweep
+        # switch, and the per-push test-heavy leg is retired --
+        # the module rides the ordinary suites again, sampled.
+        soak = self._wf("soak.yml")
+        self.assertIn("schedule:", soak)
+        block = _job_block(soak, "briefing-whole-sweep")
+        self.assertIn('HP_BOOKENDED_WHOLE: "1"', block)
+        self.assertIn("Q165PolarityGuardTest", block)
+        self.assertIn("Q166SampleTest", block)
+        self.assertEqual({("contents", "read")},
+                         _perm_entries(block))
+        self.assertNotIn("test-heavy", _uncommented(_workflow()))
+        import json
+        with open(os.path.join(
+                _root(), "runner", "tools",
+                "split_modules.json"), encoding="utf-8") as fh:
+            split = json.load(fh)
+        self.assertEqual([], split["own_job"])
+        self.assertIn("runner.tests.test_briefing_contradiction",
+                      split["modules"])
 
     def test_codeql_ignores_tests_and_extensions_only(self):
         workflow = self._wf("security.yml")
@@ -956,12 +980,13 @@ class PipelineLessonsTest(unittest.TestCase):
             if name == "build.yml":
                 # The signal job, plus the RELIEF-48H advisory
                 # surfaces (expires 2026-11-14T03:45Z): the `test`,
-                # `test-macos` and `test-windows` jobs, and the
-                # `test-heavy` leg (a signal about one family of
-                # tests, advisory past the window too). Five, no
-                # more; each is pinned by ReliefModeTest below.
-                self.assertEqual(len(lines), 5, lines)
-                for job in ("mutation", "test", "test-macos", "test-windows", "test-heavy"):
+                # `test-macos` and `test-windows` jobs. (The
+                # `test-heavy` leg, the fourth advisory surface,
+                # retired with the desk's Q166 answer on
+                # 2026-11-12.) Four, no more; each is pinned by
+                # ReliefModeTest below.
+                self.assertEqual(len(lines), 4, lines)
+                for job in ("mutation", "test", "test-macos", "test-windows"):
                     block = _job_block(_workflow(), job)
                     self.assertIn("continue-on-error: true", block, job)
             else:

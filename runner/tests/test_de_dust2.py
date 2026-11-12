@@ -653,7 +653,7 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("promote: ${{ steps.scope.outputs.promote }}", block("scope"))
         self.assertIn("promote_run: ${{ steps.scope.outputs.promote_run }}", block("scope"))
         self.assertIn("PROMOTE_FROM: ${{ inputs.promote_from }}", block("scope"))
-        for job in ("test", "test-macos", "test-windows", "test-heavy", "build-windows", "build-windows-arm64",
+        for job in ("test", "test-macos", "test-windows", "build-windows", "build-windows-arm64",
                     "build-linux", "build-linux-arm64", "build-macos", "build-macos-x86_64",
                     "build-pi-light", "build-python"):
             self.assertIn("needs.scope.outputs.promote != 'true'", block(job), job)
@@ -727,7 +727,7 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("if: needs.scope.outputs.docs_only == 'true'", block("docs"))
         self.assertIn("test_doc_version_rot", block("docs"))
         self.assertIn("test_reader_docs_quiet", block("docs"))
-        for job in ("test-macos", "test-windows", "test-heavy", "build-windows", "build-linux", "build-python"):
+        for job in ("test-macos", "test-windows", "build-windows", "build-linux", "build-python"):
             self.assertIn("needs.scope.outputs.docs_only != 'true'", block(job), job)
         # the desk's pushes take their own concurrency group, and so
         # does a web-editor edit of a markdown file ("Update X.md")
