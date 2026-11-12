@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.3 - 2026-11-12
+
+- Tests: Q166 answered under option 2 with 3 as the sample's shape — the briefing guard's bookended sweeps sample one representative per category-and-block group on a push and run whole on the nightly; the module returns to the ordinary suites and the test-heavy leg is retired
+- Desk: Q166 conclusions of the answer lane are on the record
+- Measure: a fresh uncached recount at the cut head reads 24,909,663 tokens (24 whole millions), so the token component stays at 24 and the counter increments to 3
+
 ## 3.16.24.2 - 2026-11-12
 
 - Extensions: upstream pins refreshed for the osquery, softflowd, suricata and zeek feeds — each feed's upstream ref resolved to its current tip, the pinned files refetched, and the drift tests green against them
