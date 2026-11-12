@@ -23,6 +23,8 @@ Usage:
                                        [--top-level-dir .]
                                        [--durations N]
                                        [--wall-clock MINUTES]
+                                       [--duration-table PATH]
+                                       [--in-flight N]
                                        [module ...]
 
 With explicit modules, only those run (still sharded). Exit code
@@ -435,7 +437,7 @@ def passing_tail(output, durations):
 
 
 def run_shards(shards, top_level_dir, durations=None, annotate=None,
-               wall_clock=0):
+               wall_clock=0, in_flight=0):
     """Run each shard as a unittest subprocess; return exit code.
 
     Output is captured per shard and printed when the shard
@@ -458,6 +460,10 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
     runner/tools/suite_wall_clock.py and hard-stops a shard that outlives
     the deadline by more than a grace period; a timed-out shard is
     a failed shard.
+    ``in_flight`` bounds how many shards run at once: 0 starts them
+    all together, N keeps at most N running and starts the next
+    the moment one finishes, in shard order. A shard's wall clock
+    and hard stop count from its own start, not the parent's.
     """
     if annotate is None:
         annotate = under_actions()
@@ -470,100 +476,120 @@ def run_shards(shards, top_level_dir, durations=None, annotate=None,
     if sys.version_info >= (3, 10):
         kwargs["ignore_cleanup_errors"] = True
     tmp = tempfile.TemporaryDirectory(prefix="hp-test-shards-", **kwargs)
-    procs = []
+    grace = wall_clock * 60.0 + _HARD_STOP_GRACE_SEC if wall_clock else None
+    limit = len(shards) if not in_flight or in_flight < 1 else in_flight
+    running = []      # (i, proc, fh, out_path, started_at)
     failed = []
-    started = time.monotonic()
-    try:
-        for i, shard in enumerate(shards):
-            out_path = os.path.join(tmp.name, "shard-%d.log" % i)
-            fh = open(out_path, "wb")
-            popen_kw = {}
-            if os.name == "nt":
-                # A console control event is delivered to every process
-                # in the group. A shard that raises one was interrupting
-                # this wait (KeyboardInterrupt, two minutes in, no log).
-                # Its own group keeps the event there. taskkill /T still
-                # reaches it.
-                popen_kw["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
-            elif wall_clock:
-                # Its own process group, so the hard stop can take
-                # the shard and anything it spawned together.
-                popen_kw["start_new_session"] = True
-            try:
-                proc = subprocess.Popen(
-                    shard_command(extra, shard, wall_clock),
-                    cwd=top_level_dir, stdout=fh,
-                    stderr=subprocess.STDOUT,
-                    env=_child_env(), **popen_kw)
-            except Exception:
-                fh.close()
-                raise
-            procs.append((i, proc, fh, out_path))
-            _emit("shard %d: %d module(s): %s"
-                  % (i, len(shard), ", ".join(shard)))
-        hard_stop = (started + wall_clock * 60.0 + _HARD_STOP_GRACE_SEC
-                     if wall_clock else None)
-        for i, proc, fh, out_path in procs:
-            timed_out = False
-            interrupted = False
-            try:
-                if hard_stop is None:
-                    rc = proc.wait()
-                else:
-                    try:
-                        rc = proc.wait(
-                            timeout=max(0.0, hard_stop - time.monotonic()))
-                    except subprocess.TimeoutExpired:
-                        timed_out = True
-                        _kill_tree(proc)
-                        rc = "timeout"
-            except KeyboardInterrupt:
-                # BaseException, so the Exception handler below never
-                # saw it, and the shard log died with the parent.
-                interrupted = True
-                _kill_tree(proc)
-                rc = "interrupted"
-            except Exception:
-                rc = None
-            finally:
-                fh.close()
-            elapsed = time.monotonic() - started
+    pending = list(enumerate(shards))
+
+    def launch(i, shard):
+        out_path = os.path.join(tmp.name, "shard-%d.log" % i)
+        fh = open(out_path, "wb")
+        popen_kw = {}
+        if os.name == "nt":
+            # A console control event is delivered to every process
+            # in the group. A shard that raises one was interrupting
+            # this wait (KeyboardInterrupt, two minutes in, no log).
+            # Its own group keeps the event there. taskkill /T still
+            # reaches it.
+            popen_kw["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
+        elif wall_clock:
+            # Its own process group, so the hard stop can take
+            # the shard and anything it spawned together.
+            popen_kw["start_new_session"] = True
+        try:
+            proc = subprocess.Popen(
+                shard_command(extra, shard, wall_clock),
+                cwd=top_level_dir, stdout=fh,
+                stderr=subprocess.STDOUT,
+                env=_child_env(), **popen_kw)
+        except Exception:
+            fh.close()
+            raise
+        running.append((i, proc, fh, out_path, time.monotonic()))
+        _emit("shard %d: %d module(s): %s"
+              % (i, len(shard), ", ".join(shard)))
+
+    def report(i, fh, out_path, rc, elapsed, timed_out, interrupted):
+        fh.close()
+        if rc != 0:
+            failed.append(i)
+        if timed_out:
+            _emit_quietly(
+                "=== shard %d TIMED OUT: still running %.0fs past "
+                "its %g-minute wall clock; stopped by the parent ==="
+                % (i, _HARD_STOP_GRACE_SEC, wall_clock))
+            if annotate:
+                _emit_quietly(
+                    "::error title=shard %d::still running %g minutes "
+                    "past its wall clock and stopped by the parent; "
+                    "its partial output is in the log"
+                    % (i, _HARD_STOP_GRACE_SEC / 60.0))
+        if interrupted:
+            _emit_quietly(
+                "=== shard %d INTERRUPTED: the parent was signalled "
+                "while waiting; the shard was stopped and its log "
+                "follows ===" % i)
+        try:
+            with open(out_path, encoding="utf-8",
+                      errors="replace") as rf:
+                output = rf.read()
             if rc != 0:
-                failed.append(i)
-            if timed_out:
-                _emit_quietly(
-                    "=== shard %d TIMED OUT: still running %.0fs past "
-                    "its %g-minute wall clock; stopped by the parent ==="
-                    % (i, _HARD_STOP_GRACE_SEC, wall_clock))
+                _emit("=== shard %d FAILED (exit %s) ===\n(%.1fs)\n%s"
+                      % (i, rc, elapsed, output))
                 if annotate:
-                    _emit_quietly(
-                        "::error title=shard %d::still running %g minutes "
-                        "past its wall clock and stopped by the parent; "
-                        "its partial output is in the log"
-                        % (i, _HARD_STOP_GRACE_SEC / 60.0))
-            if interrupted:
-                _emit_quietly(
-                    "=== shard %d INTERRUPTED: the parent was signalled "
-                    "while waiting; the shard was stopped and its log "
-                    "follows ===" % i)
-            try:
-                with open(out_path, encoding="utf-8",
-                          errors="replace") as rf:
-                    output = rf.read()
-                if rc != 0:
-                    _emit("=== shard %d FAILED (exit %s) ===\n(%.1fs)\n%s"
-                          % (i, rc, elapsed, output))
-                    if annotate:
-                        for line in annotations_for(output, i):
-                            _emit_quietly(line)
-                else:
-                    _emit("shard %d: OK in %.1fs\n%s"
-                          % (i, elapsed,
-                             passing_tail(output, bool(extra))))
-            except Exception:
-                _emit_quietly(
-                    "shard %d: its captured output could not be printed"
-                    % i)
+                    for line in annotations_for(output, i):
+                        _emit_quietly(line)
+            else:
+                _emit("shard %d: OK in %.1fs\n%s"
+                      % (i, elapsed,
+                         passing_tail(output, bool(extra))))
+        except Exception:
+            _emit_quietly(
+                "shard %d: its captured output could not be printed"
+                % i)
+
+    try:
+        try:
+            while pending or running:
+                while pending and len(running) < limit:
+                    i, shard = pending.pop(0)
+                    launch(i, shard)
+                # Wait on the shard that started first; the others
+                # keep running meanwhile and are collected in turn.
+                i, proc, fh, out_path, started_at = running[0]
+                timed_out = False
+                try:
+                    if grace is None:
+                        rc = proc.wait()
+                    else:
+                        try:
+                            rc = proc.wait(timeout=max(
+                                0.0, started_at + grace - time.monotonic()))
+                        except subprocess.TimeoutExpired:
+                            timed_out = True
+                            _kill_tree(proc)
+                            rc = "timeout"
+                except Exception:
+                    rc = None
+                running.pop(0)
+                report(i, fh, out_path, rc, time.monotonic() - started_at,
+                       timed_out, False)
+        except KeyboardInterrupt:
+            # BaseException, so the Exception handler above never
+            # saw it, and the shard logs died with the parent. Every
+            # running shard is stopped and reported; a shard not yet
+            # started is simply not run, and counted failed.
+            for i, proc, fh, out_path, started_at in running:
+                _kill_tree(proc)
+                report(i, fh, out_path, "interrupted",
+                       time.monotonic() - started_at, False, True)
+            running = []
+            for i, _shard in pending:
+                failed.append(i)
+                _emit_quietly("shard %d: not started; the parent was "
+                              "signalled first" % i)
+            pending = []
     finally:
         _discard_tmpdir(tmp)
     if failed:
@@ -598,6 +624,10 @@ def main(argv=None):
                         metavar="SECONDS",
                         help="shard budget for --duration-table "
                              "(default: the table's own budget)")
+    parser.add_argument("--in-flight", type=int, default=0, metavar="N",
+                        help="run at most N shards at once and start "
+                             "the next as one finishes (default 0: "
+                             "every shard at once)")
     parser.add_argument("modules", nargs="*",
                         help="explicit modules to run instead of "
                              "discovering the whole suite")
@@ -608,6 +638,8 @@ def main(argv=None):
         parser.error("--wall-clock must be >= 0")
     if args.budget_seconds is not None and args.budget_seconds <= 0:
         parser.error("--budget-seconds must be > 0")
+    if args.in_flight < 0:
+        parser.error("--in-flight must be >= 0")
 
     if args.modules:
         counts = {mod: 1 for mod in args.modules}
@@ -638,8 +670,11 @@ def main(argv=None):
         _emit("running %d test(s) from %d module(s) in %d shard(s)"
               % (total, len(counts), len(shards)))
     started = time.monotonic()
+    if args.in_flight and args.in_flight < len(shards):
+        _emit("in flight: at most %d of the %d shard(s) at once"
+              % (args.in_flight, len(shards)))
     rc = run_shards(shards, args.top_level_dir, durations=args.durations,
-                    wall_clock=args.wall_clock)
+                    wall_clock=args.wall_clock, in_flight=args.in_flight)
     _emit("sharded run finished in %.1fs (exit %d)"
           % (time.monotonic() - started, rc))
     return rc

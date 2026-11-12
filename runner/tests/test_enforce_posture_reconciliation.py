@@ -457,7 +457,15 @@ class RoundTwoHarnessStatedModesTest(unittest.TestCase):
                 fh.read())
         from runner.tests.defaults_registry import ROWS
         row = [r for r in ROWS if r["key"] == "max_job_bytes"][0]
-        self.assertEqual(row["doc_line"], 450)
+        self.assertEqual(row["doc_file"], "README.md")
+        with open(os.path.join(REPO, "README.md"), encoding="utf-8") as fh:
+            lines = fh.read().splitlines()
+        stated = [n for n, line in enumerate(lines, 1)
+                  if "`max_job_bytes` (default 4 MiB)" in line]
+        # The registry names the README line where the default is
+        # stated; this reads that line from the README rather than
+        # pinning a number that moves with every edit above it.
+        self.assertEqual([row["doc_line"]], stated)
 
 
 class AudienceStartupRefusalStaysLandedTest(unittest.TestCase):

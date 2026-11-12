@@ -429,6 +429,9 @@ class ShimFieldTest(unittest.TestCase):
         self.assertNotIn("RLIMIT_VMEM", MC.LIMIT_SHIM_SOURCE)
 
 
+@unittest.skipIf(os.name == "nt",
+                 "the profile names POSIX real paths; Windows realpath "
+                 "yields a drive path and symlinks need a privilege")
 class SandboxArgvFieldTest(unittest.TestCase):
     """build_sandbox_argv: the composed spawn argv."""
 

@@ -233,7 +233,8 @@ class MutationGateTest(unittest.TestCase):
         self.assertIn("python runner/tools/run_tests_parallel.py "
                       "--duration-table "
                       "runner/tools/windows_durations.json "
-                      "--durations 15 --wall-clock 20", windows)
+                      "--durations 15 --wall-clock 20 --in-flight 8",
+                      windows)
         self.assertTrue(os.path.exists(
             os.path.join(_root(), "runner", "tools", "suite_wall_clock.py")))
 

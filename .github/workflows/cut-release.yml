@@ -130,38 +130,48 @@ jobs:
           set -euo pipefail
           # The `test` job of build.yml is the suite; the build-* jobs
           # are the binaries. Every one of them must have concluded
-          # success on this exact commit.
-          gh api "repos/${GITHUB_REPOSITORY}/commits/${SHA}/check-runs?per_page=100" \
-            --jq '[.check_runs[] | select(.name == "test" or (.name | startswith("build-"))) | {name, status, conclusion, id}]' > runs.json
+          # success on this exact commit. The verdict is read from
+          # the build workflow's own run on the commit, never from
+          # check runs by name: another workflow's job can share a
+          # job's name (the Worker's suite was `test` too) and post
+          # its check run after the suite's, and a gate that took
+          # the newest check run named `test` would have read the
+          # Worker's green over the suite's red.
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yml/runs?head_sha=${SHA}&per_page=20" \
+            --jq '[.workflow_runs[] | {id, status, conclusion, run_attempt}]' > runs.json
           python3 - <<'EOF'
-          import json, sys
-          # A superseded run (cancelled by a newer push) leaves its
-          # own check run beside the live one; the newest per job
-          # is the verdict.
+          import json, os, subprocess, sys
           # A cancelled run was superseded by concurrency; it is not
-          # a verdict on the commit and is ignored.
-          newest = {}
-          for r in json.load(open("runs.json")):
-              if r["conclusion"] == "cancelled":
-                  continue
-              if r["name"] not in newest or r["id"] > newest[r["name"]]["id"]:
-                  newest[r["name"]] = r
-          runs = list(newest.values())
-          names = set(newest)
+          # a verdict on the commit and is ignored. The newest run
+          # left is the verdict, and its jobs are its latest attempt.
+          runs = [r for r in json.load(open("runs.json"))
+                  if r["conclusion"] != "cancelled"]
+          if not runs:
+              print("::error::no build run on this commit")
+              sys.exit(1)
+          run = max(runs, key=lambda r: r["id"])
+          if run["status"] != "completed":
+              print(f"::error::the build run on this commit is still {run['status']}")
+              sys.exit(1)
+          out = subprocess.run(
+              ["gh", "api", f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run['id']}/jobs?per_page=100",
+               "--jq", "[.jobs[] | {name, status, conclusion}]"],
+              capture_output=True, text=True, check=True).stdout
+          jobs = {j["name"]: j for j in json.loads(out)}
           need = {"test", "build-python", "build-linux", "build-linux-arm64",
                   "build-windows", "build-windows-arm64", "build-macos",
                   "build-macos-x86_64", "build-pi-light"}
-          missing = sorted(need - names)
+          missing = sorted(need - set(jobs))
           if missing:
-              print(f"::error::no check run on this commit for: {', '.join(missing)}")
+              print(f"::error::no job in the build run on this commit for: {', '.join(missing)}")
               sys.exit(1)
-          bad = [r for r in runs if r["name"] in need
-                 and (r["status"] != "completed" or r["conclusion"] != "success")]
-          for r in bad:
-              print(f"::error::{r['name']}: {r['status']}/{r['conclusion']}")
+          bad = [j for name, j in jobs.items() if name in need
+                 and (j["status"] != "completed" or j["conclusion"] != "success")]
+          for j in bad:
+              print(f"::error::{j['name']}: {j['status']}/{j['conclusion']}")
           if bad:
               sys.exit(1)
-          print(f"{len(need)} jobs green on this commit")
+          print(f"{len(need)} jobs green on this commit (build run {run['id']})")
           EOF
 
       - name: tag

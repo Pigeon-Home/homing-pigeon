@@ -4,6 +4,15 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.20.7 - 2026-11-11
+
+- Pipeline repair after 3.16.20.6, which was cut on main and never tagged: its build went red on the Linux suite (two test pins), the Windows suite (the loopback-server timeouts below and four macOS argv tests that needed POSIX paths), and the macOS suite (the live Seatbelt points, whose third fix rides here).
+- Fix: the Windows suite leg runs at most 8 of its duration-packed shards at once (`run_tests_parallel.py --in-flight 8`). The packing had grown to 28 shards, every one started together on the 4-core runner, and the Oracle's loopback chat tests then timed out at their 5-second client bound while the process waited for the scheduler: `TimeoutError: timed out` across test_oracle_chat, test_oracle_send_contract, test_oracle_send and test_concurrency on three consecutive main builds, each time a different handful. The cap is the runner's; the shard count stays the packing's. Default unchanged (every shard at once) for the Linux and macOS legs, which run 3 or 4 shards.
+- Fix: the release cut reads its green-build verdict from the build workflow's own run on the commit, not from check runs by name. The hosted queue Worker's workflow also had a job named `test`, and on the 3.16.20.6 head its green check run was newer than the suite's red one, so a gate reading the newest check run named `test` would have passed a red suite. The Worker's job is `worker-test` now.
+- Fix: `runner/ops/install.py` is whole at 3,824 lines with the version carrier at 3.16.20.7; a version-carrier edit on the way to this release had left 309.
+- Fix: the posture-reconciliation test reads the README line that states the `max_job_bytes` default and compares the defaults registry to it, instead of pinning a line number that moves with every edit above it.
+- macOS confinement, third fix for the live failure: the profile grants file metadata on any path (the interpreter's startup `realpath()` stats every component of its install path), the launcher shim refuses a limit it cannot set by name, and the live bisect is wider and carries its captured stderr. Contract proof off macOS; the live verdict is the tag build's.
+
 ## 3.16.20.6 - 2026-11-11
 
 - Pipeline repair after 3.16.20.5, which was cut on main and never tagged: its build went red on the Linux suite, the macOS suite, and build-windows, so the publish jobs never started and no mirror moved.

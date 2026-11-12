@@ -13,6 +13,7 @@ import io
 import os
 import subprocess
 import sys
+import re
 import tempfile
 import time
 import unittest
@@ -521,6 +522,109 @@ class WallClockTest(_OutsideActions):
                 contextlib.redirect_stderr(io.StringIO()):
             rtp.main(["--wall-clock", "-1"])
         self.assertEqual(cm.exception.code, 2)
+
+
+_STAMPED = (
+    "import os, time, unittest\n"
+    "class T(unittest.TestCase):\n"
+    "    def test_one(self):\n"
+    "        d = os.environ['HP_STAMP_DIR']\n"
+    "        t0 = time.monotonic()\n"
+    "        time.sleep(0.6)\n"
+    "        with open(os.path.join(d, os.path.basename(__file__)), 'w') as fh:\n"
+    "            fh.write('%r %r' % (t0, time.monotonic()))\n"
+)
+
+
+class InFlightTest(_OutsideActions):
+    """--in-flight bounds how many shards run at once. The Windows
+    leg packs the suite into dozens of duration-balanced shards,
+    and starting them all together on a 4-core runner is what
+    turned its loopback-server tests into timeouts; the cap keeps
+    the shard count the packing's business and the concurrency
+    the runner's."""
+
+    def _run(self, in_flight, n=5):
+        with tempfile.TemporaryDirectory() as d, \
+                tempfile.TemporaryDirectory() as stamps:
+            names = []
+            for i in range(n):
+                name = "test_stamp%d" % i
+                _write(d, name + ".py", _STAMPED)
+                names.append(name)
+            argv = ["--jobs", str(n), "--top-level-dir", d]
+            if in_flight is not None:
+                argv += ["--in-flight", str(in_flight)]
+            with mock.patch.dict(os.environ, {"HP_STAMP_DIR": stamps}), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                rc = rtp.main(argv + names)
+            spans = []
+            for name in os.listdir(stamps):
+                with open(os.path.join(stamps, name), encoding="utf-8") as fh:
+                    a, b = fh.read().split()
+                spans.append((float(a), float(b)))
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(spans), n)
+        # the most shards whose sleeps overlapped at any instant
+        peak = 0
+        for a, _b in spans:
+            peak = max(peak, sum(1 for c, e in spans if c <= a < e))
+        return peak
+
+    def test_the_cap_bounds_the_shards_in_flight(self):
+        self.assertLessEqual(self._run(2), 2)
+
+    def test_a_cap_of_one_runs_the_shards_one_at_a_time(self):
+        self.assertEqual(self._run(1, n=3), 1)
+
+    def test_no_cap_starts_every_shard_together(self):
+        # Five 0.6-second sleeps started together overlap; the
+        # default keeps the behaviour the Linux and macOS legs run.
+        self.assertGreaterEqual(self._run(None), 3)
+
+    def test_a_cap_past_the_shard_count_changes_nothing(self):
+        self.assertGreaterEqual(self._run(50), 3)
+
+    def test_a_negative_cap_is_a_usage_error(self):
+        with self.assertRaises(SystemExit) as cm, \
+                contextlib.redirect_stderr(io.StringIO()):
+            rtp.main(["--in-flight", "-1"])
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_a_failing_shard_behind_the_cap_still_fails_the_run(self):
+        if os.name == "nt":
+            self.skipTest("temp test file leaks into discovery on Windows")
+        fake = io.StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_alpha.py", _PASS)
+            _write(d, "test_beta.py", _PASS2)
+            _write(d, "test_gamma.py", _FAIL)
+            with contextlib.redirect_stdout(fake):
+                rc = rtp.main(["--jobs", "3", "--in-flight", "1",
+                               "--top-level-dir", d,
+                               "test_alpha", "test_beta", "test_gamma"])
+        self.assertEqual(rc, 1)
+        text = fake.getvalue()
+        self.assertIn("in flight: at most 1 of the 3 shard(s) at once", text)
+        self.assertEqual(text.count("FAILED (exit 1)"), 1)
+        self.assertEqual(len(re.findall(r"shard \d: OK in", text)), 2)
+
+    def test_a_stuck_shard_behind_the_cap_is_clocked_from_its_own_start(self):
+        fake = io.StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_alpha.py", _PASS)
+            _write(d, "test_stuck.py", _HANG)
+            with contextlib.redirect_stdout(fake):
+                rc = rtp.main(["--jobs", "2", "--in-flight", "1",
+                               "--top-level-dir", d,
+                               "--wall-clock", "0.05",
+                               "test_alpha", "test_stuck"])
+        self.assertEqual(rc, 1)
+        text = fake.getvalue()
+        self.assertIn("FAILED (exit 124)", text)
+        self.assertIn("running test: test_stuck.T.test_stuck", text)
+        self.assertRegex(text, r"shard \d: OK in")
+        self.assertNotIn("TIMED OUT", text)
 
 
 class AnnotationTest(unittest.TestCase):

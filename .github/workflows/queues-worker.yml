@@ -18,7 +18,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  test:
+  # Not `test`: that is the suite's job name in build.yml, and a
+  # second check run under the same name on the same commit is
+  # one a gate reading check runs by name can mistake for it.
+  worker-test:
     runs-on: ubuntu-latest
     permissions:
       contents: read
