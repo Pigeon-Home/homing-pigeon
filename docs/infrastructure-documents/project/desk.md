@@ -17660,3 +17660,130 @@ themselves beside the committed guard family,
 which this lane runs whole. No new behaviour is
 claimed beyond what those calls and that family
 show.
+
+## Q159 re-test: conclusions of the verdict seat (2026-11-11)
+
+Q159 (option 1, the test-side fix landed at
+2:56 PM PST, 2026-11-11, in
+`runner/tests/decision1_startup_support.py` and
+`runner/tests/test_decision1_startup_gates_strict.py`)
+was not closed by its own landing: its Answer
+named the closure condition as a second seat's
+re-test, whose live form is the next completed
+CI verdict on a fix-carrying head (rule 8).
+This section is that re-test's conclusions,
+read first-hand by this seat through the
+GitHub API — the completed runs' job lists and
+the per-job logs — not taken from the fix
+lane's report and not from another lane's
+summary.
+
+The verdict read is the build workflow's
+completed run on the fix commit's own head
+(build run 43115883568, completed
+2026-11-11). Per leg:
+
+- **Linux (`test` job).** Every gates_strict
+  test reads ok (8 of 8): the filed
+  `test_confinement_enforce_with_a_dead_backend_refuses_startup`,
+  both new per-platform families
+  (`test_confinement_enforce_dead_backend_refuses_on_each_platform`
+  and
+  `test_confinement_enforce_live_backend_starts_on_each_platform`),
+  and the family's other 5 tests beside them.
+  The job as a whole reads 4 failures, every
+  one another test: the core canonical
+  breakdown, the doc-version-rot test, the
+  regression guard wrapping that rot, and the
+  windows-durations split-family count pin
+  (then expecting 97 in the family and 6
+  gates_strict tests against the family's 8 —
+  the count the Q159 landing itself created,
+  reported inside that guard, not a failure of
+  a gates_strict test).
+- **Windows (`build-windows` job).** Shard 27
+  — the shard whose module list carries
+  `runner.tests.test_decision1_startup_gates_strict`
+  — reads OK. The job's failed shards are
+  other shards (3, 5, 6, 8, 9, 14, 15, 16, 22,
+  23 and 25), carrying other tests' failures
+  and the shard wall clock; shard 6's failure
+  is that same split-family count pin, again
+  inside the guard, not in the gates_strict
+  family itself.
+- **macOS (`test-macos` job).** The verdict
+  here is by accounted-failure elimination,
+  stated as such: the parallel runner's log
+  prints no per-test ok lines, so the family's
+  pass is established by accounting for every
+  failure in shard 2, the shard whose module
+  list carries the family. Shard 2 reads 10
+  failures, and every one belongs to another
+  test: the 7 live Seatbelt tests of
+  `runner.tests.test_macos_confine`'s
+  LiveBackendTest (the probe engages, a spawn
+  runs inside the profile, the escape read,
+  the escape write, the network refusal, the
+  memory ceiling and the spawn limits), the
+  windows-durations split-family count pin,
+  the core canonical breakdown, and the
+  doc-version-rot test. No dead-backend
+  failure and no refusal-wording failure
+  stands among them — the two shapes Q159
+  filed (the Windows refusal that never came,
+  and the macOS refusal carrying the wrong
+  wording) are both absent from the completed
+  verdict on the fix-carrying head.
+
+The distinction the closure rests on, stated
+plainly exactly as the verdict supports it:
+the builds are red for other tests, on this
+head and on the later ones. Q159's closure
+condition is the verdict on its own test, not
+a green build, and on its own test the verdict
+passes on every leg above.
+
+Corroboration, read first-hand the same way:
+two later completed runs on fix-carrying
+heads (build runs 43118076619 and
+43121516173) also show the whole gates_strict
+family passing on the Linux leg (8 of 8 ok in
+each, the filed dead-backend test and both
+new per-platform families among them). The
+windows-durations pin reconciliation
+follow-on (the desk record of 3:53 PM PST,
+2026-11-11) is consistent with this verdict:
+the pin already stands at 8 gates_strict
+tests and 99 in the split family, carried by
+the 3.16.20.5 release landing — the count
+disagreement that coloured this head's other
+legs is reconciled, and no part of it was
+ever a gates_strict test failure.
+
+No figures re-measure is owed for this
+landing, verified against the tree's own
+convention: this landing touches only the
+questions file and this desk record, prior
+docs-only landings on this desk carry no
+figures re-measure, and no documentation file
+stands in the core list in
+`runner/ops/core.py`, whose definition is the
+running code stripped of tests, test harnesses
+and documentation alike. No code and no test
+changes in this landing.
+
+Verdict: the rule-8 re-test passes on the
+live form Q159's Answer named. Q159 is
+CLOSED. The matching closure note stands in
+Q159's entry in the questions file.
+
+What cannot be recorded as a unit test,
+stated plainly: a completed CI verdict is a
+live platform run; its deterministic
+substrate is the committed gates_strict
+family itself, which the verdict above reads
+on real Linux, Windows and macOS legs. No new
+behaviour is claimed beyond what those logs
+show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026

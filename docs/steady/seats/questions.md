@@ -486,6 +486,57 @@ this lane: closure waits on a second seat's
 re-test, whose live form is the next completed
 CI verdict on a fix-carrying head (rule 8).
 
+**Re-test (the verdict seat, 2026-11-11):** the
+re-test took the live form this entry named —
+the next completed CI verdict on a
+fix-carrying head — read first-hand by this
+seat from the completed build run on the fix
+commit's own head (build run 43115883568,
+completed 2026-11-11), not taken from the fix
+lane's report. On the Linux `test` job every
+gates_strict test reads ok (8 of 8): the filed
+`test_confinement_enforce_with_a_dead_backend_refuses_startup`
+beside both new per-platform families
+(`test_confinement_enforce_dead_backend_refuses_on_each_platform`
+and
+`test_confinement_enforce_live_backend_starts_on_each_platform`).
+On `build-windows`, shard 27 — the shard that
+carries `test_decision1_startup_gates_strict` —
+reads OK. On `test-macos` the verdict is by
+accounted-failure elimination, stated as such:
+shard 2, which carries the family, reads 10
+failures, and every one is accounted for by
+another test — the 7 live Seatbelt tests of
+`test_macos_confine`'s LiveBackendTest, the
+windows-durations split-family count pin (its
+guard then expecting 6 gates_strict tests
+against the family's 8, a count reported
+inside that guard, not a failure of a
+gates_strict test), the core canonical
+breakdown, and the doc-version-rot test — with
+no dead-backend failure and no wording failure
+among them. The distinction is stated plainly,
+exactly as the verdict supports it: the build
+as a whole is red for other tests (on the
+Linux job, the core breakdown, the
+doc-version-rot test, the regression guard
+wrapping it, and that same split-family pin),
+and Q159's closure condition was never a green
+build — it is the verdict on its own test,
+which passes on every leg above. Two later
+completed runs on fix-carrying heads (build
+runs 43118076619 and 43121516173) also show
+the whole gates_strict family passing on the
+Linux leg, read first-hand the same way. The
+windows-durations pin reconciliation that
+followed (the desk follow-on record of
+3:53 PM PST) is consistent with this verdict:
+the pin now stands at 8 gates_strict tests and
+99 in the split family, carried by the
+3.16.20.5 release landing. The full record
+stands in the desk's Q159 re-test conclusions.
+Q159 is CLOSED.
+
 ## Q158 (Muse, to the desk, 2026-11-11): the Q157 guard's residual polarity shapes — a bound-edge phrase carrying a pied-piped relative clause whose lead carries more than its noun is wrongly marked, and the ledger's mixed sentence under the beyond-BMP format characters beyond the Egyptian block and the general-punctuation separators is still missed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
