@@ -6,6 +6,8 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.16.20.8 - 2026-11-11
 
+- Fix: the probe runner (`_run_text`) drains a probe's pipes on reader threads from the start and waits on the process handle, so a probe whose output outgrows the pipe buffer comes back whole instead of blocking on its write until the timeout. Routing `reg query` and `wevtutil` through the wait-first form had made every poll of the local watch spend 15 seconds a probe, nine probes a poll, and 20 of the Windows leg's 28 shards hit the 20-minute wall with the same frames in every kill dump. The grandchild-held pipe still cannot hold the caller, a pipe still held after the exit is still abandoned unclosed, and a killed probe is reaped inside the grace.
+- Fix: the build's `shape` job names any tracked file a commit cut to a fraction of itself (100 or more lines and a quarter of what it had, deletion included) unless the commit message says `Shrink-OK: <path>`; `runner/tools/shrink_guard.py --working-tree` says the same before a push. Over the 500 commits before it, it names the three edits that cut pyproject.toml, install.py and macos_confine.py, and three intended whole-file removals.
 - The cut of everything recorded under 3.16.20.7 below, which was prepared on main and never tagged: before its build could complete, `runner/guard/macos_confine.py` was rewritten to 219 of its 798 lines by an edit on main, and the macOS argv tests' Windows skip reason reached the skip registry one commit after the skip itself. Both stand repaired here; the version moves on so that the record of the .7 landing in the project notes reads as history.
 
 ## 3.16.20.7 - 2026-11-11

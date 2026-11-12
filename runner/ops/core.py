@@ -51,8 +51,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 64,161 lines,
-58,041 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 64,195 lines,
+58,073 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -429,14 +429,14 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 139
-AS_ASSEMBLED_ZIP_BYTES = 810740
-AS_ASSEMBLED_LINES = 64161
-AS_ASSEMBLED_NONBLANK_LINES = 58041
+AS_ASSEMBLED_ZIP_BYTES = 811152
+AS_ASSEMBLED_LINES = 64195
+AS_ASSEMBLED_NONBLANK_LINES = 58073
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 21313,
+    "runner/ops": 21347,
     "runner/tools": 9696,
     "runner/wire": 9033,
     "runner/runner.py": 7178,

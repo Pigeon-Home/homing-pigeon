@@ -2268,9 +2268,12 @@ class PosixKillTest(unittest.TestCase):
         # Windows timeout path waits unboundedly after the
         # kill. The seam pinned here is the Popen factory.
         def fake_proc(returncode=0, out="Status: active\n"):
+            # _run_text drains the pipes on reader threads and
+            # waits on the handle; the fake answers the reads.
             proc = mock.Mock()
             proc.returncode = returncode
-            proc.communicate.return_value = (out, "")
+            proc.stdout.read.return_value = out
+            proc.stderr.read.return_value = ""
             return proc
 
         def fake_popen(argv, **kwargs):

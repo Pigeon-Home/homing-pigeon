@@ -4,6 +4,7 @@ Extracted from runner.py.
 """
 import os
 import subprocess
+import threading
 import time
 
 
@@ -27,22 +28,26 @@ _KILL_GRACE_SECONDS = 2.0
 
 
 def _abandon(proc, close_streams=True):
-    """Kill a probe and walk away from it. Never raises.
+    """Kill a probe, reap it inside the grace, and walk away. Never raises.
 
     Closing the pipes is safe only while no reader thread
-    exists -- that is, before any communicate() call. Once
-    communicate() has started its readers, a reader sits
+    exists. _run_text starts a reader on each pipe the moment
+    the child exists, so it never closes them: a reader sits
     inside a read on the very stream object a close would
     touch, and on Windows the close waits behind that read
-    until the pipe reaches EOF: a grandchild holding the
-    pipe would hold the caller after all (the collect path
-    below, Q136 shard-7 follow-on, 2026-11-11). Past a
-    communicate() the streams are therefore abandoned
-    unclosed; they belong to the daemon reader threads and
-    to the garbage collector.
+    until the pipe reaches EOF -- a grandchild holding the
+    pipe would hold the caller after all (Q136 shard-7
+    follow-on, 2026-11-11). Abandoned streams belong to the
+    daemon reader threads and to the garbage collector. The
+    reap after the kill is bounded too; it is what keeps a
+    killed probe from lingering as an unwaited child.
     """
     try:
         proc.kill()
+    except Exception:
+        pass
+    try:
+        proc.wait(timeout=_KILL_GRACE_SECONDS)
     except Exception:
         pass
     if not close_streams:
@@ -57,18 +62,35 @@ def _abandon(proc, close_streams=True):
             pass
 
 
+def _drain(stream, sink):
+    """Read `stream` to EOF into `sink`; a reader thread's whole job."""
+    try:
+        sink.append(stream.read())
+    except Exception:
+        pass
+
+
 def _run_text(argv, timeout=5):
     """stdout of a short read-only command, or None. Never raises.
 
-    The wait is on the process, not on its pipes. On Windows,
-    communicate() joins a reader thread blocked in ReadFile; a
-    grandchild that inherited the pipe keeps that read open for
-    the child's whole life, so a timeout passed to communicate()
-    did not return (Q136, build-windows 2026-11-11: the
-    grandchild case took 30s against a 1s timeout). wait() uses
-    the process handle and returns when the timeout says. A pipe
-    still held after the process exits is then read under
-    _KILL_GRACE_SECONDS and abandoned if it does not end.
+    The pipes are drained by two daemon reader threads from
+    the moment the child exists, and the wait is on the
+    process handle with the caller's timeout. Both halves
+    are load-bearing. Reading first: a probe whose output
+    outgrows the pipe buffer (reg query on the Services key,
+    wevtutil's XML) blocks on its write until someone reads,
+    so a wait that read nothing timed out on every such probe
+    and the Windows suite leg spent 15 seconds a probe, nine
+    probes a poll, until 20 of its 28 shards hit the wall
+    (build-windows, 2026-11-11). Waiting on the handle: on
+    Windows, communicate() joins a reader blocked in ReadFile,
+    and a grandchild that inherited the pipe keeps that read
+    open for its whole life, so a timeout passed to
+    communicate() did not return (Q136, the grandchild case
+    took 30s against a 1s timeout). After the process exits
+    the readers get _KILL_GRACE_SECONDS to reach EOF; a pipe
+    still held past that is a grandchild's, and the probe is
+    abandoned, its output not an answer.
     """
     try:
         flags = {}
@@ -81,29 +103,41 @@ def _run_text(argv, timeout=5):
             text=True, **flags)
     except Exception:
         return None
+    out_chunks, err_chunks = [], []
+    readers = []
+    try:
+        for stream, sink in ((proc.stdout, out_chunks),
+                             (proc.stderr, err_chunks)):
+            if stream is None:
+                continue
+            thread = threading.Thread(target=_drain, args=(stream, sink),
+                                      daemon=True)
+            thread.start()
+            readers.append(thread)
+    except Exception:
+        _abandon(proc, close_streams=False)
+        return None
     try:
         proc.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
-        _abandon(proc)
-        return None
-    except Exception:
-        _abandon(proc)
-        return None
-    try:
-        out, _err = proc.communicate(timeout=_KILL_GRACE_SECONDS)
-    except Exception:
-        # The process is gone but a pipe it left open did
-        # not reach EOF inside the grace -- a grandchild
-        # holds it. communicate()'s reader threads are
-        # inside reads on these streams now, so the pipes
-        # are abandoned unclosed (see _abandon): closing
-        # them here would wait for the grandchild's exit,
-        # the very hold this function exists to never take.
         _abandon(proc, close_streams=False)
         return None
-    if proc.returncode != 0 or not isinstance(out, str):
+    except Exception:
+        _abandon(proc, close_streams=False)
         return None
-    return out
+    deadline = time.monotonic() + _KILL_GRACE_SECONDS
+    for thread in readers:
+        thread.join(max(0.0, deadline - time.monotonic()))
+        if thread.is_alive():
+            # The process is gone but a pipe it left open did
+            # not reach EOF inside the grace -- a grandchild
+            # holds it, and the reader sits inside that read.
+            _abandon(proc, close_streams=False)
+            return None
+    if proc.returncode != 0 or not out_chunks:
+        return None
+    out = out_chunks[0]
+    return out if isinstance(out, str) else None
 
 
 def _av_posture():

@@ -18696,6 +18696,56 @@ jobs, the defaults_registry doc-drift guard,
 the test_doc_version_rot evergreen guard, and
 the test_runner_seams posture-parse failure.
 
+### Q136 shard-7 follow-on: the hosted verdict, and the probe runner's second shape (2026-11-11)
+
+The first two build-windows runs on heads carrying the
+shard-7 follow-on (runs 43129868071 and 43135649612)
+did not reach a verdict: 20 of 28 shards hit the
+20-minute wall in the second, 8 of 28 in the first,
+and the kill dumps of every one name the same frames
+-- the main thread inside av.py's _run_text at
+proc.wait(), reached from _reg_query or
+_wevtutil_query, from the registry watch or the event
+log tail, from _local_watch inside poll_once, under
+tests across the whole suite (test_workspace_isolation,
+test_oracle_alphabet, test_result_stash,
+test_policy_constraints, test_oracle_cli_encoding,
+test_low_profile and more). The second run's log
+carries 3,214 "subprocess N is still running"
+warnings against 6 in the 3.16.20.6 build's.
+
+The mechanism, read from the frames and reproduced
+here: a wait on the process handle that reads nothing
+first deadlocks every probe whose output outgrows the
+pipe buffer. reg query on the Services key and
+wevtutil's XML write more than the pipe holds, the
+child blocks on its write, nobody reads, the wait
+times out at 15 seconds, and the probe is killed with
+nothing to show. Nine such probes a poll, on every
+poll of every test that runs the local watch, is the
+whole of the slowdown. The shard-5 fix introduced the
+wait-first shape and the shard-7 follow-on routed the
+two large-output probes through it; the posture
+probes it had carried until then (sc query) write a
+few lines, which is why neither release head showed
+it.
+
+The fix keeps both of the lane's findings and adds
+the third: _run_text drains each pipe on a daemon
+reader thread from the moment the child exists,
+waits on the process handle with the caller's
+timeout (the grandchild-held pipe cannot hold it),
+gives the readers a bounded grace after the exit,
+and abandons the probe with its streams unclosed when
+a pipe is still held (the collect-path trap). The
+abandon reaps the killed child inside the grace, so a
+killed probe no longer lingers as an unwaited child.
+RunTextBoundTest pins the substrate in its new shape
+and adds the regression: a probe that writes two
+million characters comes back whole inside the
+timeout. The hosted verdict on this shape is the next
+completed build-windows job on a head that carries it.
+
 ## Q160 re-test: conclusions of the filing seat (2026-11-11)
 
 The re-test ran in a fresh scratch clone from

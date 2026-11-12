@@ -210,8 +210,9 @@ class IoEdgeTest(_Binary, unittest.TestCase):
         self.assertTrue(state)
 
     def test_windows_creation_flags_are_passed_when_present(self):
-        proc = mock.Mock(returncode=0, stdout="")
-        proc.communicate.return_value = ("", "")
+        proc = mock.Mock(returncode=0)
+        proc.stdout.read.return_value = ""
+        proc.stderr.read.return_value = ""
         with mock.patch.object(rr.sys, "platform", "win32"), \
                 mock.patch.object(rr.subprocess, "CREATE_NO_WINDOW",
                                   1, create=True), \

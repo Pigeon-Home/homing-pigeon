@@ -14,6 +14,7 @@ from unittest import mock
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
 from runner import runner as R
+from runner.ops import av as _av
 
 
 AUDIT_XML = """<Events xmlns="http://schemas.microsoft.com/win/2004/08/events/event">
@@ -177,14 +178,24 @@ class FirewallParseTest(unittest.TestCase):
 
 class RunTextBoundTest(unittest.TestCase):
     """_run_text must return within a bounded time on every
-    platform (Q136, 2026-11-11).
+    platform (Q136, 2026-11-11), and must return the output of
+    a probe that writes more than a pipe buffer.
 
-    The failure these pin: communicate() on Windows joins a
+    Two failures these pin. communicate() on Windows joins a
     reader blocked in ReadFile, so a grandchild holding the
-    inherited pipe keeps the caller until that process exits.
-    _run_text now waits on the process handle and abandons a
-    probe whose pipes do not close. The mock tests pin that
-    substrate; the real child tests pin the shapes end to end.
+    inherited pipe kept the caller until that process exited.
+    And a wait on the process handle that read nothing first
+    deadlocked every probe whose output outgrew the pipe
+    buffer (reg query on the Services key, wevtutil's XML):
+    the child blocked on its write, the wait timed out, and
+    the Windows suite leg spent 15 seconds a probe until 20
+    of its 28 shards hit the wall (build-windows, 2026-11-11).
+    _run_text now drains each pipe on a daemon reader thread
+    from the start, waits on the process handle with the
+    caller's timeout, gives the readers a bounded grace after
+    the exit, and abandons the probe, streams unclosed, when
+    a pipe is still held. The mock tests pin that substrate;
+    the real child tests pin the shapes end to end.
     """
 
     def _timed_out_proc(self):
@@ -195,17 +206,21 @@ class RunTextBoundTest(unittest.TestCase):
 
     def test_a_timeout_kills_without_an_unbounded_read(self):
         # The wait is on the process handle, with the caller's
-        # timeout, and a timeout abandons the probe. No
-        # communicate() without a timeout follows the kill:
-        # that was the Windows hang.
+        # timeout, and a timeout abandons the probe: a kill, a
+        # bounded reap, and no communicate() at all -- a
+        # communicate() without a timeout after the kill was
+        # the Windows hang.
         proc = self._timed_out_proc()
         with mock.patch.object(R.subprocess, "Popen",
                                return_value=proc):
             self.assertIsNone(R._run_text(["netsh"], timeout=1))
         proc.kill.assert_called_once_with()
-        self.assertEqual(proc.wait.call_args.kwargs.get("timeout"), 1)
-        for call in proc.communicate.call_args_list:
-            self.assertIsNotNone(call.kwargs.get("timeout"), call)
+        waits = [call.kwargs.get("timeout")
+                 for call in proc.wait.call_args_list]
+        self.assertEqual(waits[0], 1)
+        self.assertTrue(all(isinstance(w, (int, float)) and w > 0
+                            for w in waits), waits)
+        proc.communicate.assert_not_called()
 
     def test_a_wait_that_raises_still_returns_none(self):
         proc = mock.Mock()
@@ -251,42 +266,64 @@ class RunTextBoundTest(unittest.TestCase):
         self.assertIsNone(out)
         self.assertLess(time.time() - start, 15)
 
-    def test_a_timeout_abandon_closes_the_streams(self):
-        # Before any communicate() call no reader thread
-        # exists, so the timeout path's abandon may (and
-        # does) close the pipes: nothing can be waiting
-        # behind a read on them.
+    def test_a_timeout_abandon_leaves_the_streams_to_the_readers(self):
+        # A reader thread sits inside a read on each pipe from
+        # the start, so no abandon closes them: on Windows a
+        # close waits behind that read until the pipe reaches
+        # EOF, which is the very hold the abandon exists to
+        # never take. The streams belong to the readers and
+        # the garbage collector.
         proc = self._timed_out_proc()
         with mock.patch.object(R.subprocess, "Popen",
                                return_value=proc):
             self.assertIsNone(R._run_text(["netsh"], timeout=1))
-        proc.stdout.close.assert_called_once_with()
-        proc.stderr.close.assert_called_once_with()
+        proc.stdout.close.assert_not_called()
+        proc.stderr.close.assert_not_called()
 
     def test_a_held_pipe_past_the_collect_grace_is_abandoned_unclosed(self):
         # The collect path's trap (Q136 shard-7 follow-on):
-        # the process exits inside the timeout, but the
-        # collect's communicate() times out because a
-        # grandchild holds the pipe. Reader threads are
-        # inside reads on the streams by then, so the
-        # abandon must NOT close them -- on Windows a close
-        # waits behind the reader's read until the pipe
-        # reaches EOF, which is the grandchild's exit.
+        # the process exits inside the timeout, but a pipe
+        # never reaches EOF because a grandchild holds it, so
+        # its reader never returns. The caller walks away at
+        # the grace: a kill, a bounded reap, the streams left
+        # unclosed -- on Windows a close waits behind the
+        # reader's read until the pipe reaches EOF, which is
+        # the grandchild's exit -- and None, because output
+        # behind a pipe that never closed is not an answer.
         proc = mock.Mock()
         proc.wait.return_value = 0
-        proc.communicate.side_effect = R.subprocess.TimeoutExpired(
-            cmd="probe", timeout=2)
+        proc.returncode = 0
+        proc.stdout.read.side_effect = lambda: time.sleep(
+            _av._KILL_GRACE_SECONDS + 3) or "posture-line"
+        proc.stderr.read.return_value = ""
+        start = time.time()
         with mock.patch.object(R.subprocess, "Popen",
                                return_value=proc):
             self.assertIsNone(R._run_text(["netsh"], timeout=5))
+        self.assertLess(time.time() - start, _av._KILL_GRACE_SECONDS + 2)
         proc.kill.assert_called_once_with()
         proc.stdout.close.assert_not_called()
         proc.stderr.close.assert_not_called()
-        waits = [call.kwargs.get("timeout")
-                 for call in proc.communicate.call_args_list]
-        self.assertTrue(all(
-            isinstance(wait, (int, float)) and wait > 0
-            for wait in waits), waits)
+        proc.communicate.assert_not_called()
+
+    def test_output_past_the_pipe_buffer_comes_back_whole(self):
+        # The deadlock the Windows leg measured: a probe that
+        # writes more than the pipe holds blocks on its write
+        # until someone reads, so a wait that read nothing
+        # timed out on every such probe. The readers drain
+        # from the start, so the whole output comes back
+        # inside the timeout.
+        child = "import sys\nsys.stdout.write('x' * 2000000)\n"
+        start = time.time()
+        out = R._run_text([sys.executable, "-c", child], timeout=20)
+        self.assertEqual(len(out or ""), 2000000)
+        self.assertLess(time.time() - start, 20)
+
+    def test_a_probe_that_fails_or_misses_is_none(self):
+        self.assertIsNone(R._run_text(
+            [sys.executable, "-c", "import sys; print('x'); sys.exit(3)"],
+            timeout=10))
+        self.assertIsNone(R._run_text(["hp-no-such-probe-zz9"], timeout=1))
 
     def test_a_collect_that_raises_still_returns_none_unclosed(self):
         proc = mock.Mock()
