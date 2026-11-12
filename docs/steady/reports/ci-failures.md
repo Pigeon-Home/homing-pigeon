@@ -1468,3 +1468,30 @@ the work, not the packing: lighter rungs and sweeps, or a cap on
 the shards in flight that keeps the wall a hang guard (measured
 at 8 on 2026-11-11, when the suite was mostly waits, at four
 times the cost; not measured since the suite became mostly CPU).
+
+### 3.16.24.6: the prepare's push loses a race, and the cycle is 7.0 minutes (12 Nov 2026)
+
+`release_train.py run` fetched main, wrote the carriers and the
+changelog, committed 3.16.24.6 and pushed -- and the push was
+refused: a desk note (f7b1ff09b, the Q168 suppositions) had
+landed on main in the seconds between the fetch and the push.
+The train stopped there with the release commit unpushed, which
+is the one stop the cycle still had a hand in: the commit was
+rebased onto the head and pushed by hand (a4f298e15), and
+`release_train.py cut --sha` ran the cut from it. From that push
+the hosted record reads: build started at 0.1 min, gate green at
+1.9 (eight jobs; the suites advisory beside them), cut-release
+green at 2.1, tag at 2.4, tag build started at 2.4, release
+published with 13 assets at 5.0, PyPI at 5.5, SourceForge at 6.1,
+GitLab at 7.0. The tag build packaged nothing: promoted from gate
+run 43304790186.
+
+The train's prepare now does what the hand did: on a rejected
+push it fetches, rebases the release commit onto main and pushes
+again, up to three times, and a rebase that does not apply (a
+second release commit on the same carriers) is aborted and
+reported. PreparePushRetryTest pins the order: push, fetch,
+rebase, push. Two seats pushing within the same few seconds is
+the ordinary case on this repository now -- Muse's desk notes
+land every few minutes -- and a prepare that stops on it would
+stop most cycles of a busy hour.

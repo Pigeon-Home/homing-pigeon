@@ -3,6 +3,18 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-1:02pm-PST — 3.16.24.6 in 7.0 minutes; the train's prepare pushes through a race
+
+3.16.24.6 reached every mirror 7.0 minutes after its release
+commit, promoted from the gate build. The one hand step in the
+cycle was the prepare's push: a desk note landed on main between
+the train's fetch and its push, the push was refused, and the
+release commit went in by a hand rebase. The prepare does that
+itself now -- fetch, rebase the release commit onto the head,
+push again, three tries -- and a rebase that does not apply is
+aborted and named. Seats pushing seconds apart is the ordinary
+case here; the train treats it as one.
+
 ## 12-Nov-12:45pm-PST — two echoes retired; the loopback waits are hang guards
 
 The Linux suite was red from 16:22Z to 20:14Z on two race_state
