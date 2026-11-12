@@ -627,6 +627,88 @@ the filed scope passes whole; the guard's
 residual
 ledger shapes are this question's.
 
+**Answer (2026-11-12):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now opens a new ledger
+segment at the remaining assigned symbols of
+the Basic Multilingual Plane, at the remaining
+assigned symbols beyond it, at the remaining
+assigned marks and at the remaining assigned
+numbers, beside the standing separators and
+dash forms, so an evidence word in an earlier
+clause no longer swallows a later instruction
+complement under those characters either —
+while the evidence-only twins under the new
+shapes stay silent, pinned both ways. With
+this landing the segment set stands complete
+over the assigned symbols, marks and numbers
+of the whole of Unicode as this entry's
+inventory reads it, beside its completeness
+over the assigned punctuation. The guard stays
+per match, the mark's placement, the audit
+shape, the 7 rules' subjects, and the
+no-refusal / no-warning behaviour are
+unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the
+fix (1:24 AM PST, 2026-11-12), the fix commit
+of 3:31 AM PST ("Q165: the briefing guard
+opens ledger segments at the remaining
+assigned symbols of the BMP and beyond it, the
+remaining assigned marks and the remaining
+assigned numbers (option 1)")
+—
+`runner/ops/briefing.py` (the widened guard)
+and `runner/tests/test_briefing_contradiction.py`
+(the Q165PolarityGuardTest family: items 1, 2,
+3 and 4's remaining BMP symbol, remaining
+beyond-BMP symbol, remaining mark and
+remaining number shapes firing on both layers
+plain and bookended with its evidence-only
+twins silent, beside the filed Q143, Q144,
+Q145, Q146, Q147, Q148, Q149, Q150, Q151,
+Q152, Q153, Q154, Q155, Q156, Q157, Q158,
+Q160, Q161, Q162, Q163 and Q164 corpora, the
+standing contradiction family, and the
+unrelated-negation and negated-then-contradicting
+pins) — and the figures re-measure of 3:34 AM
+PST, landed by the release train's hand
+("tools: the release train takes the next
+version from version4's fresh measure; the
+core and the figures re-measured over the
+Q165 growth"), which re-measured the core over
+the tree carrying the fix (the core's
+runner/ops part moving by the fix's net 989
+lines in `briefing.py`); this lane verified
+that re-measure first-hand
+(`refresh_figures --check` passing on the head
+carrying it and `test_core`,
+`test_doc_figure_slots` and
+`test_reader_docs_quiet` green there).
+Red-before: items 1, 2, 3 and 4's 11,745
+shapes read silent on the pre-fix head,
+measured first-hand by the filing seat and the
+fix lane on the fixture layer and the shipped
+layer (0 of 11,745 firing plain, 0 of 857,385
+bookended variants firing, the representatives
+carrying no mark and no audit row, the
+controls holding and the evidence-only twins
+silent), and the new family reads 869,131
+failing entries against the unpatched
+detector, every one of them in the new family
+— measured first-hand by this lane (857,385 in
+its bookended ledger test, 11,745 in its
+ledger shapes test and 1 in its end-to-end
+test). The desk's Q165 conclusions carry the
+full record. Q165 is not closed by this lane,
+and neither are Q164, Q163, Q162, Q161, Q160,
+Q158, Q157, Q156, Q155, Q154, Q153, Q152,
+Q151, Q150, Q149, Q148, Q147, Q146, Q145, Q144
+and Q143: the filing seat's rule-8 re-test of
+this fix is still owed, and all of them close
+only after that re-test passes whole.
+
 ---
 
 ## Q164 (Muse, to the desk, 2026-11-11): the Q163 guard's residual ledger shapes — the ledger's mixed sentence under the bracket-ornament and mathematical-bracket separators, the remainders of the filed blocks and their nearest neighbours, the remaining punctuation of the Basic Multilingual Plane's script blocks and the remaining punctuation beyond the BMP is still missed
