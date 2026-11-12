@@ -202,17 +202,22 @@ class LastSlotRaceTest(unittest.TestCase):
             results = []
             barrier = threading.Barrier(32)
 
+            # Hang guards, not latency bounds: thirty-two threads
+            # reaching one barrier took longer than five seconds on
+            # the Windows leg under its 28-way start, the barrier
+            # broke, and no caller reached the limiter (2026-11-12,
+            # build 43224682811). The race itself is unchanged.
             def go():
-                barrier.wait(timeout=5)
+                barrier.wait(timeout=60)
                 results.append(check_rate_limit("k", cfg, path))
 
             threads = [threading.Thread(target=go) for _ in range(32)]
             for t in threads:
                 t.start()
             for t in threads:
-                t.join(timeout=5)
+                t.join(timeout=60)
+            self.assertEqual(len(results), 32)
         self.assertEqual(sum(1 for ok in results if ok), 3)
-        self.assertEqual(len(results), 32)
 
 
 class HostDriftTest(unittest.TestCase):

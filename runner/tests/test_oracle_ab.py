@@ -129,7 +129,12 @@ class OracleABFixture(unittest.TestCase):
 
     def _briefs(self, base):
         path = os.path.join(base, "oracle-briefs.jsonl")
-        deadline = time.time() + 5
+        # A hang guard, not a latency bound: the brief runs on a
+        # daemon thread, and the wait returns the moment the file is
+        # there and the wake is no longer in flight. Five seconds
+        # failed twice on the Windows leg under its 28-way start
+        # (2026-11-12, builds 43218128334 and 43224682811).
+        deadline = time.time() + 60
         while time.time() < deadline:
             if os.path.exists(path) and not R._LOCAL_WAKE_INFLIGHT:
                 break
