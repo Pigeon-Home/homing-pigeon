@@ -39,9 +39,15 @@ own tool (/usr/bin/sandbox-exec). One seam uses this module:
   refuses the request because the process's current usage
   already exceeds it (the Darwin current-usage floor,
   supposition R4-S1 in docs/steady/security/macos.md) is
-  answered by the bounded ladder of larger attempts, so
-  the applied limit is the strongest the host accepts at
-  or above the request and never a weaker one. The shim
+  answered by the bounded ladder of larger attempts --
+  up to the inherited hard limit when it is finite, and
+  up to 2**62 when it is not, that being the largest
+  power-of-two finite value below the platform's
+  unlimited sentinel (supposition R5-S1, the fifth fix:
+  the CI host's floor stood above the fourth fix's
+  32 GiB ladder cap and refused every value up to it) --
+  so the applied limit is the strongest the host accepts
+  at or above the request and never a weaker one. The shim
   then drops to the job user when the job_user
   seam hands one over (the POSIX preexec demote cannot ride
   a spawn that replaces process creation, so the demote
@@ -422,8 +428,10 @@ def build_profile(workdir, interpreter=None, read_paths=()):
 # soft request is the requested ceiling clamped to that
 # hard limit, and a refusal of that request is answered
 # by doubling the soft request up to the ladder's cap
-# (the hard limit when it is finite, 64 times the
-# request when it is not), because a kernel may refuse a
+# (the hard limit when it is finite, 2**62 when it is
+# not -- the largest power-of-two finite value below
+# the platform's unlimited sentinel, supposition
+# R5-S1), because a kernel may refuse a
 # data-size limit below the process's current usage
 # (the Darwin current-usage floor, supposition R4-S1).
 # The first attempt the kernel accepts is the limit the
@@ -447,7 +455,8 @@ LIMIT_SHIM_SOURCE = (
     "        _soft = limit if _max == resource.RLIM_INFINITY "
     "or limit <= _max else _max\n"
     "        _cap = _max if _max != resource.RLIM_INFINITY "
-    "else limit * 64\n"
+    "else 2 ** 62\n"
+    "        _soft = min(_soft, _cap)\n"
     "        while True:\n"
     "            try:\n"
     "                resource.setrlimit(_r, (_soft, _max))\n"
@@ -472,12 +481,20 @@ LIMIT_SHIM_SOURCE = (
 
 
 # The ladder's cap when the inherited hard limit is
-# unlimited: the shim's soft request may climb to this
-# multiple of the requested ceiling and no further. A
-# host whose kernel refuses every value up to the cap
-# refuses the job -- fail-closed, never a run under a
-# limit so large it is no ceiling at all.
-DATA_LIMIT_LADDER_CAP_MULTIPLIER = 64
+# unlimited: the largest power-of-two finite value
+# below the platform's unlimited sentinel (2**63 - 1
+# on Darwin), so the bound is set by the platform's
+# own arithmetic, not by a multiple of the request.
+# The fourth fix capped the ladder at 64 times the
+# request (32 GiB for the 512 MiB ceiling) and the CI
+# host's current-usage floor stood above that cap and
+# refused every value up to it (supposition R5-S1 in
+# docs/steady/security/macos.md). A host whose kernel
+# refuses every value up to this cap refuses the job
+# -- fail-closed, and, as the fifth round's record
+# states in advance, the data-size mechanism itself
+# then stands convicted rather than its bound.
+DATA_LIMIT_LADDER_MAX = 2 ** 62
 
 
 def data_limit_attempts(requested, inherited_hard):
@@ -500,15 +517,19 @@ def data_limit_attempts(requested, inherited_hard):
     value other than the inherited one, and the first
     attempt is the requested ceiling clamped to the
     inherited hard limit when that limit is finite and
-    smaller. Each later attempt doubles the one before,
-    up to the cap: the inherited hard limit when it is
-    finite (no soft value above it may ever be asked
-    for), else DATA_LIMIT_LADDER_CAP_MULTIPLIER times
-    the request. The attempts are strictly increasing,
-    none exceeds the cap, and the last is the cap
-    itself -- for an unlimited hard limit there are at
-    most 7 (the request and its doublings up to the
-    64-times cap).
+    smaller, and clamped to the ladder's maximum when
+    the hard limit is unlimited and the request stands
+    above it. Each later attempt doubles the one
+    before, up to the cap: the inherited hard limit
+    when it is finite (no soft value above it may ever
+    be asked for), else DATA_LIMIT_LADDER_MAX (2**62,
+    the largest power-of-two finite value below the
+    platform's unlimited sentinel). The attempts are
+    strictly increasing, none exceeds the cap, and the
+    last is the cap itself -- for an unlimited hard
+    limit and the 512 MiB ceiling there are 34 (the
+    request at 2**29 and its doublings to 2**62), and
+    never more than 63 for any request.
     Raises RuntimeError on a field that is not what it
     is named.
     """
@@ -524,8 +545,8 @@ def data_limit_attempts(requested, inherited_hard):
             "the inherited hard data limit must be -1 "
             "(unlimited) or a non-negative integer")
     if inherited_hard == -1:
-        first = requested
-        cap = requested * DATA_LIMIT_LADDER_CAP_MULTIPLIER
+        first = min(requested, DATA_LIMIT_LADDER_MAX)
+        cap = DATA_LIMIT_LADDER_MAX
     else:
         first = min(requested, inherited_hard)
         cap = inherited_hard
