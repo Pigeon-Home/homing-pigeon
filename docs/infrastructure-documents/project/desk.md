@@ -27070,3 +27070,91 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   Q167 precedent; this lane does not cut a release.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q168: the fix lane's conclusions (2026-11-12)
+
+The suppositions stand at Q168-S1 to Q168-S7 above,
+recorded and landed before the fix. The conclusions,
+one by one:
+
+- **Q168-S1 — confirmed.** Measured first-hand against
+  the unpatched head: a scripted process whose `poll()`
+  already returned 0, handed to `_job_user_postspawn`
+  under `job_user` enforce with a backend whose
+  assignment raised `AssignProcessToJobObject failed:
+  5`, was killed and refused (`JobRejected`), the audit
+  carrying the one fallback row and no contained row;
+  and the seam survey found no suspended spawn for the
+  plain path anywhere in the tree — the confinement
+  spawn was the only creation-time Windows spawn, and
+  the postspawn assignment was the only `job_user`
+  application after Popen.
+- **Q168-S2 — landed as supposed.** The backend gains
+  `spawn_job_object_process`: a `CreateProcessW` binding
+  (typed, beside `CreateProcessAsUserW`), creation
+  suspended under the caller's own token, assignment to
+  the Job Object with the standing memory ceiling, then
+  resume. The creation sequence is the shared
+  `_spawn_suspended` helper both spawns drive; the
+  confined spawn's own calls, token recipe, staged
+  label and status string are unchanged, pinned at the
+  source by the committed family. The stub raises off
+  Windows, as the backend's other spawns do.
+- **Q168-S3 — held.** Option 2 was not taken and no
+  posture changed: no seam in this landing accepts a
+  completed-but-uncontained result, and the answer in
+  the questions file records why in the open. Option 3
+  was not taken: the race is closed.
+- **Q168-S4 — landed as supposed.** `_job_user_spawn`
+  stands in `runner/ops/remediation_ops.py`: win32 from
+  `sys.platform` alone, `job_user` enforce only, the
+  suspended spawn through the injected or real backend,
+  the `JOB_OBJECT_APPLIED` mark, `(proc, release)`
+  returned, and a cannot-spawn backend answered with
+  the fallback row and a refusal — no fall-through to
+  Popen. The postspawn records the marked process
+  contained, exactly as it already did for the
+  confinement spawn's processes.
+- **Q168-S5 — landed as supposed.** `execute_job`
+  consults the seam only when the confinement spawn
+  returned no process (pinned at the source); the
+  release runs in the standing finally, and beside the
+  confinement release on a postspawn refusal.
+- **Q168-S6 — held and pinned.** The legacy postspawn
+  contract is unchanged and now carries an explicit
+  already-exited-child pin: error 5 on a process that
+  came through neither seam still kills and refuses.
+- **Q168-S7 — the proof as sized.** The committed
+  family (`runner/tests/test_windows_confine.py`, 77
+  tests in the module, 17 of them new) runs green on
+  this host, beside the neighbouring batteries run
+  whole by this lane: the confinement, FreeBSD and
+  macOS confinement suites, the skip registry and the
+  credential canary together (283 tests, OK, the
+  standing skips), and the enforce-posture
+  reconciliation and Windows platform proofs together
+  (177 tests, OK). The security parity suite runs
+  green beside them; its run shares a command with
+  `test_core`, whose one failure is the figures point
+  below, not parity's. The live Windows proof is owed
+  exactly as the supposition stated: no Windows host is
+  this lane's to run, the Win32 calls are pinned at the
+  source and through the scripted seams, and the hosted
+  Windows leg on a head carrying the fix is the
+  re-test. Q168 is not closed by this lane.
+- **Figures.** `refresh_figures --check` passes on the
+  head carrying the fix; `test_core`'s
+  canonical-breakdown pin reads the one growth this
+  landing made to a recorded part — `runner/ops`
+  22,585 measured against 22,467 recorded — and the
+  re-measure over it is the release train's hand at
+  its next cut, following the Q167 precedent, as
+  Q168-S7 recorded in advance. This lane cut no
+  release and touched no ship state; the 3.16.24.6 and
+  3.16.24.7 cuts the train landed while this lane was
+  in flight were rebased over, not disturbed, and the
+  fix was push-verified at the remote (foreground
+  `git ls-remote` and a content grep at the remote ref
+  in the same call).
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026

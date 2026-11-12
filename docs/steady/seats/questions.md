@@ -83,9 +83,86 @@ control is applied after the start, and a suspended start removes
 it without touching the posture. The asker will not change the
 backend: the Windows confinement is the desk's.
 
-**Answer:** (owed)
+**Answer (2026-11-12):** option 1, as recommended. The
+`job_user` plain path no longer spawns a running child and
+assigns the Job Object afterwards. Where `confinement` did
+not already spawn the job, `execute_job` now spawns it
+through the new `_job_user_spawn` seam
+(`runner/ops/remediation_ops.py`), which drives the
+backend's new `spawn_job_object_process`
+(`runner/guard/windows_confine.py`): the process is created
+suspended through the backend's own `CreateProcessW` --
+under the caller's own token, with no restricted token and
+no integrity label, which are confinement's controls and
+no record of this spawn names them -- assigned to the Job
+Object carrying the same memory ceiling, and only then
+resumed, so a child cannot have exited before the
+assignment and the already-exited shape cannot arise on
+this path. The suspended creation, assignment and resume
+sequence is one helper (`_spawn_suspended`) both Windows
+spawns use, so the confined spawn -- unchanged in its
+creation call, its token, its label and its status string
+-- and the plain spawn cannot drift apart on the order
+that closes the race. The spawn marks the process
+`JOB_OBJECT_APPLIED`, and the standing postspawn records
+`contained` / `windows_job_object` for it instead of
+assigning a second time, the composition the confinement
+spawn already used. A backend that cannot spawn refuses
+the job at the seam, after the fallback row: under
+enforce there is no fall-through back to the
+running-then-assigned Popen the fix removes. Option 2 was
+not taken: letting a completed-but-uncontained result
+stand under a fallback row would change the enforce
+posture, a decision the filing names as the conductor's
+as much as the desk's, and it is not taken here without
+his word. The legacy postspawn assignment stands whole
+for a process that came through neither spawn seam: it
+still assigns, and on failure -- error 5 included --
+still kills and refuses; nothing in this fix teaches any
+seam to accept an uncontained completion after the fact.
+Q168 is not closed by this lane: the hosted Windows
+leg's verdict on a head carrying the fix is the live
+re-test, the way the backend's other live proofs stand.
 
-**Applied in:** (owed)
+**Applied in:** the fix lane's commits -- the
+suppositions recorded in the desk before the fix
+(Q168-S1 to Q168-S7, 2026-11-12), the fix commit of
+1:08 PM PST ("Q168: the job_user plain path spawns
+suspended through the backend and is assigned before it
+resumes (option 1)") --
+`runner/guard/windows_confine.py` (the `CreateProcessW`
+binding, the shared `_spawn_suspended` helper, and
+`spawn_job_object_process`, with the stub raising off
+Windows), `runner/ops/remediation_ops.py` (the
+`_job_user_spawn` seam and the postspawn's note),
+`runner/ops/exec.py` (the seam consulted only when the
+confinement spawn returned no process, its release in
+the standing finally and beside the confinement release
+on a postspawn refusal), `runner/runner.py` (the seam's
+export), and `runner/tests/test_windows_confine.py`
+(the Q168 family: the legacy postspawn's
+already-exited-child refusal kept as its contract, the
+seam whole against a scripted spawn returning an
+already-exited process -- not refused, not killed,
+recorded contained, its release closing it -- across
+exit codes and bookended job ids, the seam's refuse
+directions and its silence off win32 and outside
+enforce, the confinement composition spawned once, and
+the backend's suspended order pinned at the source).
+Red-before, measured first-hand by the fix lane against
+the unpatched head: a scripted already-exited process
+(`poll()` returning 0) under the postspawn with an
+assignment answering error 5 was killed and refused
+with the fallback row alone, and no suspended plain
+spawn existed in the tree. Figures: the core grew in
+`runner/ops` and `runner/guard` by the fix;
+`refresh_figures --check` passes on the head carrying
+it, and `test_core`'s canonical-breakdown pin reads
+the `runner/ops` growth (22,585 measured against
+22,467 recorded) -- the re-measure over that growth is
+the release train's hand at its next cut, following
+the Q167 precedent. The desk's Q168 conclusions carry
+the full record.
 
 ---
 
