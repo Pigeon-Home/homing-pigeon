@@ -20460,3 +20460,240 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   certified members of which are on duty", in
   its prohibition sentence) carries its mark
   as pinned.
+
+## Q162: conclusions of the fix lane, completed by the completion lane (2026-11-11)
+
+The fix landed under option 1 at the same
+detector in `runner/ops/briefing.py` (the
+suppositions recorded above before the fix at
+6:40 PM PST, the fix commit of 6:49 PM PST, and
+the figures re-measure of 6:54 PM PST, carried
+on the release head's tree by the release lane,
+which re-measured the core over `briefing.py`'s
+growth with the statistics record measured at
+the fix commit itself). The fix lane's own
+report left the lane open: its first
+whole-family run after the test splice returned
+18 errors it did not diagnose before its
+timeout, and the neighbour batteries, the
+figures verification, the Answer and these
+conclusions were still owed. A completion lane
+— a fresh lane, working from a fresh scratch
+clone at the remote head — took the lane up
+from there, preserved the landed fix unchanged,
+and settled the outstanding verification
+first-hand; this section is that completion
+record, and the Q162 Answer in the questions
+file lands in the same commit. Settled against
+the suppositions one by one:
+
+- **Q162-S1 — holds.** Red-before, item 1,
+  measured first-hand by the fix lane on the
+  current head and re-measured by the completion
+  lane through the committed family against the
+  unpatched detector: the bare plural complement
+  head carrying a pied-piped relative clause
+  whose lead carries a person head ("holds
+  credentials officer certified records of which
+  are on file", inside its prohibition sentence)
+  produces findings on the fixture layer and the
+  shipped layer, plain (0 of 1 silent, firing
+  `private_shelf_crosses`), and bookended (silent
+  only in the 2 underscore-fused variants of 75
+  under the full symbol set), and end to end it
+  carries the mark and writes exactly its one
+  audit row, though it should stay silent; and
+  the controls hold on the current head (the
+  bare plural object phrase carrying the same
+  lead shape fires whole — 1 of 1 plain on both
+  layers, 73 of 73 bookended under the non-word
+  symbols — the singular twin stays silent
+  whole, the re-test's other composed
+  complements stay silent, 4 of 4 plain, and its
+  composed objects fire, 3 of 3 plain).
+- **Q162-S2 — holds.** Red-before, items 2, 3
+  and 4, measured the same way: the ledger's
+  mixed sentence under the 30
+  supplemental-punctuation separators beyond
+  every filed separator, under the 22 small-form
+  variants beyond the filed four and under the
+  18 presentation forms (the 10 vertical forms
+  and the 8 CJK compatibility forms), each
+  standing spaced between the clauses, produces
+  no findings on the current head on both
+  layers, plain (0 of 70 firing
+  `ledger_treated_as_instruction`) and bookended
+  (0 of 5,110 variants under the non-word
+  symbols), and end to end each representative
+  (the U+2E07, U+FE51, U+FE10 and U+FE30 shapes)
+  carries no mark and writes no audit row, as
+  the filing measured; and the evidence-only
+  twins under the new shapes stay silent on the
+  current head (70 of 70 plain on both layers,
+  5,250 of 5,250 bookended variants silent under
+  the full symbol set).
+- **Q162-S3 — holds.** The fix, at the same
+  detector under option 1, judges a governed
+  phrase by its head's standing through a
+  pied-piped relative clause the phrase itself
+  carries, whatever its lead's shape and
+  whatever the phrase's own shape: the
+  first-judged-head cut searches from the span's
+  first word where no determiner stands, and
+  from past its determiner where one does, and
+  the person-or-object-head tail-drop runs while
+  at least two words stand, so the two-word
+  plural span "credentials officer" drops its
+  lead word where the word ahead of it is a noun
+  complement in full. Item 1's sentence now stays
+  silent on both layers, plain (0 of 1 firing)
+  and bookended (0 of 75 variants firing under
+  the full symbol set), while the true object
+  phrase carrying the same shape still fires
+  whole (1 of 1 plain on both layers, 73 of 73
+  bookended under the non-word symbols: the
+  phrase ahead of its lead's person word,
+  "crews", is a person head and no complement in
+  full, so no drop runs), a complement under a
+  complement verb is crossed, and the Q153
+  Answer's bound edge and the filed Q161 shapes
+  stay as pinned in this form too.
+- **Q162-S4 — holds.** The fix opens a new
+  ledger segment at the supplemental punctuation
+  block's remaining separators, at the small-form
+  variants beyond the filed four and at the
+  presentation forms, beside the standing
+  separators and dash forms (70 characters
+  appended to `_LEDGER_SEGMENTS`, none of them
+  standing in the set before). Items 2, 3 and
+  4's 70 shapes now fire exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain (70 of 70) and bookended (5,110
+  of 5,110 variants under the non-word symbols),
+  while the evidence-only twins under the new
+  shapes stay silent (70 of 70 plain, 5,250 of
+  5,250 bookended under the full symbol set).
+- **Q162-S5 — holds.** Both ways hold beside
+  the widening: the bound shapes stay silent on
+  both layers, plain and bookended, and end to
+  end ("compels a duty", "sends a clearance");
+  the filed silent controls stay silent (Q161's
+  family: the bound edges, the complements under
+  complement verbs, the relative-clause,
+  "whose"-clause and pied-piped complements, the
+  passive shape and the same-standing control),
+  with item 1's shape crossed beside them; the
+  plain subject clause stays crossed ("is on
+  duty"); a bound prohibition followed by a
+  contradicting sentence fires exactly the
+  contradicting rule; and the standing
+  unrelated-negation and
+  negated-then-contradicting pins hold, all
+  through the whole guard family run whole.
+- **Q162-S6 — holds, with the fix lane's 18
+  errors diagnosed and discharged.** The whole
+  guard family in
+  `runner/tests/test_briefing_contradiction.py`
+  (the committed form of this lane's red-before)
+  reads green after the fix: 255 tests, the 242
+  filed tests beside the 13 new Q162 tests, run
+  whole by the completion lane in a fresh clone
+  at the remote head (255 green) and again in
+  the fix lane's own clone at the fix commit
+  (255 green; the two clones' detector and
+  family files are byte-identical, so no splice
+  artefact stands in the landed tree), and the
+  family at the fix commit's parent — the
+  pristine pre-fix tree — reads its 242 tests
+  green, so the errors are not pre-existing
+  either. The new family alone reads 5,329
+  failing entries against the unpatched
+  detector, every one of them in the new family
+  (5,110 in its bookended ledger test, 73 in its
+  bookended controls-silent test, 73 in its
+  bookended pied-piped silent test, 70 in its
+  ledger shapes test, 1 in its controls-silent
+  test, 1 in its pied-piped silent test and 1 in
+  its end-to-end test), re-measured first-hand
+  by the completion lane with the same count and
+  breakdown the fix lane recorded. The 18
+  errors themselves: the fix lane's run captured
+  only its summary tail (`FAILED (errors=18)`),
+  its follow-up run to name the erroring tests
+  was aborted by its timeout, and no record of
+  the 18 names exists — they cannot be
+  retro-named, and this record does not pretend
+  otherwise. What the reproductions prove is
+  what they were not (not the fix, not the
+  splice, not pre-existing), and the error
+  signature points at the run's environment: an
+  error, not a failure, is what the family's
+  temp-using tests produce when their temporary
+  filesystem has no space — the completion lane
+  reproduced it deterministically under a
+  no-space temporary filesystem (the end-to-end
+  test erroring with `OSError: [Errno 28] No
+  space left on device` in `_snapshot_base`) —
+  and this machine's `/tmp` is a 512 MB tmpfs
+  shared by every lane running in parallel,
+  observed by the completion lane at 0 bytes
+  available repeatedly during its own runs, with
+  sibling lanes' suites holding it full for
+  stretches at a time (the completion lane's
+  first neighbour run showed the same transient
+  shape — 1 failure and 2 errors that did not
+  reproduce — before the neighbour batteries
+  read 305 green twice, the second time with the
+  default temporary directory). The neighbour
+  batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2`,
+  `test_protocol_v2_messages`, `test_v2_consult`,
+  `test_v2_replay`, `test_security_config`) read
+  305 green beside the family, and `test_core`,
+  `test_doc_figure_slots` and
+  `test_reader_docs_quiet` read 38 green beside
+  the figures verification: the re-measure of
+  6:54 PM PST stands measured at the fix commit
+  in the statistics record, the core's
+  runner/ops part moving by the fix's net 49
+  lines (53 insertions, 4 deletions in
+  `briefing.py`), `refresh_figures --check`
+  passes on that head, and this lane lands no
+  second re-measure over the same growth.
+- **Q162-S7 — holds.** End to end: item 1's
+  sentence ("holds credentials officer certified
+  records of which are on file", in its filed
+  prohibition sentence) assembled into a briefing
+  carries no mark and writes no audit row; items
+  2, 3 and 4's representative sentences (the
+  U+2E07 shape, the U+FE51 shape, the U+FE10
+  shape and the U+FE30 shape) assembled into
+  briefings each carry their mark and write
+  exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id as
+  the detail); and the bare plural object shape
+  ("compels crews officer certified members of
+  which are on duty", in its prohibition
+  sentence) carries its mark as pinned — all
+  inside the committed end-to-end test of the
+  Q162 family, run whole above.
+
+Q162 is not closed by this lane, and neither
+are Q161, Q160, Q158, Q157, Q156, Q155, Q154,
+Q153, Q152, Q151, Q150, Q149, Q148, Q147, Q146,
+Q145, Q144 and Q143: closure waits on the filing
+seat's rule-8 re-test of this fix, which this
+lane does not run.
+
+What cannot be recorded as a unit test, stated
+plainly: this lane's ad-hoc probes and its
+no-space reproduction are live detector and
+filesystem calls over the sentences and
+conditions named in this record; their
+deterministic substrate is those sentences
+themselves beside the committed guard family,
+which this lane runs whole. No new behaviour is
+claimed beyond what those calls and that family
+show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026

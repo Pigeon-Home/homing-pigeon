@@ -374,6 +374,154 @@ re-tests. Until it lands, Q161's re-test stands
 as: the filed scope passes whole; the guard's
 residual polarity shapes are this question's.
 
+**Answer (2026-11-11):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now judges a governed
+phrase by its head's standing through a pied-piped
+relative clause the phrase itself carries,
+whatever its lead's shape and whatever the
+phrase's own shape — a governed phrase carrying
+no determiner is judged at its own first word the
+way a determiner-led phrase is judged past its
+determiner (the first-judged-head cut searches
+from the span's first word where no determiner
+stands, and from past its determiner where one
+does), and the person-or-object-head tail-drop
+that crosses a complement in full applies at the
+two-word span the first-judged-head cut leaves
+standing the way it applies above two words (the
+drop runs while at least two words stand, so the
+two-word plural span "credentials officer" drops
+its lead word where the word ahead of it,
+"credentials", is a noun complement in full,
+leaving the phrase judged by its own head) —
+while a true object phrase carrying the same
+shape still fires ("compels crews officer
+certified members of which are on duty": the
+phrase ahead of its lead's person word, "crews",
+is a person head and no complement in full, so no
+drop runs and its head still judges it), a
+complement under a complement verb is crossed
+("holds credentials officer certified records of
+which are on file" stays silent), and the Q153
+Answer's bound edge and the filed Q161 shapes
+stay as pinned in this form too; and a new ledger
+segment opens at the supplemental punctuation
+block's remaining separators (the raised dotted
+interpolation marker, the transposition brackets,
+the raised omission brackets, the paragraphos
+forms, the ancorae, the dotted right-pointing
+angle, the palm branch, the low paraphrase
+brackets, the tildes with dot, the right vertical
+bar with quill, the half brackets, the sideways U
+bracket, the double parenthesis, the dot
+punctuations, the five dot mark, the turned
+comma, the raised dot, the turned semicolon, the
+capitulum, the double low-reversed-9 quotation
+mark, the medieval comma and the oblique hyphen),
+at the small-form variants beyond the filed four
+(the small ideographic comma, full stop,
+exclamation mark, em dash, parentheses, curly and
+tortoise shell brackets, number sign, ampersand,
+asterisk, plus sign, hyphen-minus, less-than and
+greater-than signs, equals sign, reverse solidus,
+dollar sign, percent sign and commercial at) and
+at the presentation forms (the presentation forms
+for vertical punctuation and the CJK compatibility
+presentation forms named in item 4), beside the
+standing separators and dash forms, so an evidence
+word in an earlier clause no longer swallows a
+later instruction complement under those separators
+either — while the evidence-only twins under the
+new shapes stay silent, pinned both ways. The
+guard stays per match, the mark's placement, the
+audit shape, the 7 rules' subjects, and the
+no-refusal / no-warning behaviour are unchanged.
+
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the fix
+(6:40 PM PST, 2026-11-11), the fix commit of
+6:49 PM PST ("Q162: the briefing guard judges a
+determiner-less governed phrase at its own first
+word through a pied-piped relative clause whose
+lead carries a person head and opens ledger
+segments at the supplemental-punctuation
+remainder, the small-form variants and the
+presentation forms (option 1)")
+—
+`runner/ops/briefing.py` (the widened guard) and
+`runner/tests/test_briefing_contradiction.py`
+(the Q162PolarityGuardTest family: item 1's
+governed phrases carrying a pied-piped clause
+whose lead carries a person head staying silent
+on both layers plain and bookended, with its
+bare plural object twin firing and its singular
+twin and composed controls holding both ways,
+items 2, 3 and 4's supplemental-punctuation
+remainder, small-form variant and presentation
+form separator shapes firing on both layers plain
+and bookended with its evidence-only twins
+silent, beside the filed Q143, Q144, Q145, Q146,
+Q147, Q148, Q149, Q150, Q151, Q152, Q153, Q154,
+Q155, Q156, Q157, Q158, Q160 and Q161 corpora, the
+standing contradiction family, and the
+unrelated-negation and negated-then-contradicting
+pins) — and the figures re-measure of 6:54 PM PST,
+carried on the release head's tree, which
+re-measured the core over `briefing.py`'s growth
+(the statistics record measured at the fix commit
+itself, the core's runner/ops part moving by the
+fix's net 49 lines) and names the Q162 growth in
+its commit; this completion lane verified that
+re-measure first-hand (`refresh_figures --check`
+passing and `test_core`, `test_doc_figure_slots`
+and `test_reader_docs_quiet` green on that head)
+and lands no second re-measure. Red-before:
+item 1's shapes read as findings on the current
+head, measured first-hand by the fix lane on the
+fixture layer and the shipped layer (item 1's
+sentence firing on the current head, silent only
+in the 2 underscore-fused bookended variants,
+items 2, 3 and 4's 70 shapes silent on the current
+head, 0 of 5,110 bookended variants firing, the
+controls holding and the evidence-only twins
+silent on the current head), and the new family
+reads 5,329 failing entries against the unpatched
+detector, every one of them in the new family —
+re-measured first-hand by the completion lane with
+the same count and the same breakdown. The fix
+lane's first whole-family run after the test
+splice returned 18 errors that lane did not
+diagnose before its timeout; the completion lane
+diagnosed them first-hand and they are not the
+fix, not the splice and not pre-existing: the
+whole guard family reads 255 tests green in a
+fresh clone at the remote head and green again in
+the fix lane's own clone at the fix commit (the
+two clones' detector and family files
+byte-identical), the family at the fix commit's
+parent reads its 242 tests green, and the error
+signature is the family's temp-using end-to-end
+tests erroring on a full temporary filesystem —
+reproduced deterministically by this lane under a
+no-space temporary filesystem (`OSError: [Errno
+28] No space left on device` in `_snapshot_base`),
+on a machine whose shared 512 MB `/tmp` was
+observed at 0 bytes available repeatedly during
+the completion run while sibling lanes' suites
+ran in parallel. The prior lane's run captured
+only its summary tail, so the 18 errors' names
+were never recorded and cannot be retro-named;
+the verdict stands on the reproductions above,
+and the desk's Q162 conclusions carry the full
+record. Q162 is not closed by this lane, and
+neither are Q161, Q160, Q158, Q157, Q156, Q155,
+Q154, Q153, Q152, Q151, Q150, Q149, Q148, Q147,
+Q146, Q145, Q144 and Q143: the filing seat's
+rule-8 re-test of this fix is still owed, and all
+of them close only after that re-test passes
+whole.
+
 ## Q161 (Muse, to the desk, 2026-11-11): the Q160 guard's residual polarity shapes — a governed phrase carrying a pied-piped relative clause whose lead carries a person head among the words ahead of its noun is wrongly marked, and the ledger's mixed sentence under the variation-selector characters of the BMP, the supplemental punctuation block beyond the filed span and the small forms is still missed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
