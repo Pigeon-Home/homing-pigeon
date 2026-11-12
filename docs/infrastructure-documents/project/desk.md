@@ -26304,3 +26304,169 @@ that axis the sampled class fits an ordinary
 shard again.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q167: conclusions of the fix lane, completed by the completion lane (2026-11-12)
+
+The fix landed under option 1 at the same
+detector in `runner/ops/briefing.py` (the
+suppositions recorded above before the fix at
+7:49 AM PST, 2026-11-12, and the fix commit
+of 8:51 AM PST, "Q167: the briefing guard
+opens ledger segments at a spaced token of
+category L, Cc or Co — the assigned letters
+of the BMP and beyond it, the assigned
+controls outside the fold's break and erased
+sets and the assigned private-use characters
+(option 1)"). The fix lane's work was
+preserved unlanded past its own end; this
+completion lane verified it first-hand,
+finished this record and the Q167 entry's
+Answer, and landed the whole set — it did
+not re-derive the fix. The fix's diff is
+what its title claims: the spaced-token
+segment scan in `_ledger_complement_is_evidence`
+in `runner/ops/briefing.py` (48 insertions, 1
+deletion — a character of category L, Cc or
+Co standing as its own spaced token, a
+single character with a space on either side
+of it, cuts the segment at the end of that
+token; the same character fused inside a word
+cuts none; no character is added to
+`_LEDGER_SEGMENTS` this round, for the reason
+the supposition names) and the Q167 test
+family in
+`runner/tests/test_briefing_contradiction.py`
+(298 lines, the Q167PolarityGuardTest family
+of 10 tests). Settled against the
+suppositions one by one:
+
+- **Q167-S1 — holds.** Red-before, items 1,
+  2, 3 and 4, as filed and as supposed: the
+  ledger's mixed sentence under the 48,964
+  assigned BMP letters, the 87,139 assigned
+  letters beyond the BMP, the 55 assigned
+  control characters and the 137,468 assigned
+  private-use characters, each standing
+  spaced between the clauses, produces no
+  findings on the pre-fix head on both
+  layers, plain and bookended in the sampled
+  shape the supposition records, and end to
+  end each representative carries no mark and
+  writes no audit row; the controls hold
+  there, the evidence-only twins under the
+  new shapes stay silent there, and the same
+  characters standing inside a word open
+  nothing there. The fix lane's
+  committed-family red measurement under S4
+  corroborates the same red-before through
+  the committed tests themselves.
+- **Q167-S2 — holds.** The fix opens a new
+  ledger segment at these characters in
+  their standalone spaced form only, in the
+  detector itself, beside the standing
+  separators and dash forms. Items 1, 2, 3
+  and 4's shapes now fire exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain and bookended, through the
+  committed family (the range edges whole,
+  an every-97th sample, the control item
+  whole, the representatives bookended),
+  verified green first-hand by this
+  completion lane, while the evidence-only
+  twins under the new shapes stay silent.
+- **Q167-S3 — holds.** Both ways hold beside
+  the widening: the standing and filed
+  separators and boundaries still fire whole;
+  the evidence-only twins under the new
+  shapes stay silent on both layers, plain
+  and bookended, and end to end; the new
+  characters standing inside a word stay
+  silent; the fold-erased separators and the
+  plain space stay silent as the
+  no-separator shapes the filing names; the
+  unassigned shapes stay silent; a bound
+  prohibition followed by a contradicting
+  sentence fires exactly the contradicting
+  rule; and the standing unrelated-negation
+  and negated-then-contradicting pins hold —
+  all inside the committed Q167 family, run
+  whole by this lane.
+- **Q167-S4 — holds, the red count as
+  recorded.** No earlier family regresses.
+  The whole guard family in
+  `runner/tests/test_briefing_contradiction.py`
+  now stands at 295 tests. The new Q167
+  family reads 10 green first-hand in this
+  completion lane (242 seconds, 0 failures,
+  0 errors), and reads 9,447 failing entries
+  against the unpatched detector as the fix
+  lane measured and recorded — 5,285 in its
+  ledger shapes test, 4,161 in its bookended
+  ledger test and 1 in its end-to-end test,
+  every failure in the new family. The
+  neighbour batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2`,
+  `test_protocol_v2_messages`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read green beside
+  it in this lane's combined run under S6.
+  The two bookended sweeps of the Q165 family
+  are Q166's subject and were not re-sized,
+  moved or re-shaped here.
+- **Q167-S5 — holds.** End to end: items 1,
+  2, 3 and 4's representative sentences (the
+  U+0041 shape, the U+10000 shape, the U+0000
+  shape and the U+E000 shape) assembled into
+  briefings each carry their mark and write
+  exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id
+  as the detail); and a representative
+  evidence-only twin assembled into a
+  briefing carries no mark and writes no
+  audit row — all inside the committed
+  end-to-end test of the Q167 family, run
+  whole above.
+- **Q167-S6 — holds, the re-measure the
+  release train's hand at its next cut.**
+  `briefing.py` grew by the fix: net 47 lines
+  (48 insertions, 1 deletion).
+  `refresh_figures --check` passes on the
+  head carrying the fix, verified first-hand
+  by this lane. The core's parts pin names
+  the growth exactly: the runner/ops part
+  stands at 22,420 against 22,467 measured —
+  the fix's net 47 lines — and this lane's
+  combined run of the neighbour batteries
+  with `test_core`, `test_doc_figure_slots`
+  and `test_reader_docs_quiet` reads 343
+  tests with exactly that one failure
+  (`test_the_canonical_breakdown_differs_in_tools_only`,
+  runner/ops 22,420 against 22,467) and no
+  other. The re-measure over that growth is
+  the release train's hand at its next cut,
+  following the Q165 precedent, whose own
+  re-measure commit records the same shape;
+  this lane cuts no release and touches no
+  ship state.
+
+Q167 is not closed by this lane, and neither
+are Q165, Q164, Q163, Q162, Q161, Q160,
+Q158, Q157, Q156, Q155, Q154, Q153, Q152,
+Q151, Q150, Q149, Q148, Q147, Q146, Q145,
+Q144 and Q143: closure waits on the filing
+seat's rule-8 re-test of this fix, which
+this lane does not run.
+
+What cannot be recorded as a unit test,
+stated plainly: the fix lane's detector-swap
+red measurement (the committed Q167 family
+run against the pre-fix detector) is a live
+detector call over the committed family's
+sentences; its deterministic substrate is
+those sentences themselves beside the
+committed guard family, which this lane runs
+whole as recorded above. No new behaviour is
+claimed beyond what those calls and that
+family show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026

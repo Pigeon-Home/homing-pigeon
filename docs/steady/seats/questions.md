@@ -489,9 +489,88 @@ Q165's re-test stands as: the filed scope passes
 whole; the guard's residual ledger shapes are
 this question's.
 
-**Answer:** (owed)
+**Answer (2026-11-12):** option 1, as recommended.
+The guard at the same detector in
+`runner/ops/briefing.py` now opens a new ledger
+segment at a character of category L, Cc or Co
+standing as its own spaced token between the
+clauses, beside the standing separators and
+dash forms, while the same character standing
+inside a word opens none — so an evidence word
+in an earlier clause no longer swallows a later
+instruction complement under those characters
+either, while the evidence-only twins under the
+new shapes stay silent and the compliant
+corpus's words do not shatter, pinned both
+ways. No character is added to
+`_LEDGER_SEGMENTS` this round: a letter stands
+inside every word, and the set's last-occurrence
+scan would cut every clause at its own letters;
+the widening is by category and standing, in
+the detector itself. The guard stays per match,
+the mark's placement, the audit shape, the 7
+rules' subjects, and the no-refusal /
+no-warning behaviour are unchanged.
 
-**Applied in:** (owed)
+**Applied in:** the fix lane's commits — the
+suppositions recorded in the desk before the
+fix (7:49 AM PST, 2026-11-12), the fix commit
+of 8:51 AM PST ("Q167: the briefing guard
+opens ledger segments at a spaced token of
+category L, Cc or Co — the assigned letters of
+the BMP and beyond it, the assigned controls
+outside the fold's break and erased sets and
+the assigned private-use characters (option
+1)")
+—
+`runner/ops/briefing.py` (the spaced-token
+segment scan in the ledger guard) and
+`runner/tests/test_briefing_contradiction.py`
+(the Q167PolarityGuardTest family: items 1, 2,
+3 and 4's assigned BMP letter, beyond-BMP
+letter, control and private-use shapes firing
+on both layers plain and bookended in the
+sampled shape the filing's own probes used —
+the range edges whole, an every-97th sample,
+the control item whole, the representatives
+bookended — with its evidence-only twins
+silent, the same characters standing inside a
+word silent, the fold-erased separators and
+the plain space silent as the no-separator
+shapes the filing names, and the unassigned
+shapes silent, beside the filed Q143, Q144,
+Q145, Q146, Q147, Q148, Q149, Q150, Q151,
+Q152, Q153, Q154, Q155, Q156, Q157, Q158,
+Q160, Q161, Q162, Q163, Q164 and Q165 corpora,
+the standing contradiction family, and the
+unrelated-negation and negated-then-contradicting
+pins). Red-before: items 1, 2, 3 and 4's shapes
+read silent on the pre-fix head, measured
+first-hand by the filing seat and the fix lane
+(the lane's committed family reads 9,447
+failing entries against the unpatched
+detector, every one of them in the new family
+— 5,285 in its ledger shapes test, 4,161 in
+its bookended ledger test and 1 in its
+end-to-end test). Figures: `briefing.py` grew
+by the fix, net 47 lines (48 insertions, 1
+deletion); `refresh_figures --check` passes on
+the head carrying the fix, and the core's
+parts pin names the growth exactly (the
+runner/ops part 22,420 against 22,467
+measured) — the re-measure over that growth
+is the release train's hand at its next cut,
+following the Q165 precedent, whose own
+re-measure commit records the same shape.
+The desk's Q167 conclusions carry the full
+record. Q167 is not closed by this lane, and
+neither are Q165, Q164, Q163, Q162, Q161,
+Q160, Q158, Q157, Q156, Q155, Q154, Q153,
+Q152, Q151, Q150, Q149, Q148, Q147, Q146,
+Q145, Q144 and Q143: the filing seat's rule-8
+re-test of this fix is still owed, and all of
+them close only after that re-test passes
+whole.
 
 ---
 
