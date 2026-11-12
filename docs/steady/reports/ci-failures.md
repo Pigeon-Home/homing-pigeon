@@ -1356,3 +1356,19 @@ from the evening before the relief window (20:25Z to 20:40Z on the
 ("Cannot cancel a workflow run that has not been queued yet", the
 force-cancel endpoint included). They hold no runner; they are
 the hosting service's leftovers, and the listing carries them.
+
+### 3.16.21.12: six minutes from the commit; the proofs only for a runner change (12 Nov 2026)
+
+The 3.16.21.11 gate build lost its macOS leg without a line of it
+ever running: queued at 11:34:42Z behind a previous tag's
+python-range legs on the one arm64 macOS runner, it was cancelled
+by the service at 11:49:43Z, fifteen minutes to the second, with
+no step started. The proof workflows' push trigger is filtered to
+runner/**, and the dispatch from the tag build kept no such rule,
+so every release of the day -- most of them workflows and
+documentation -- started nine proof runs. The dispatch reads the
+rule now, against the previous tag; a release that changed nothing
+under runner/ leaves the proofs to the nightly. The re-cut,
+3.16.21.12, went from its release commit to the last mirror in 6.1
+minutes (gate green 2.2, tagged 2.7, release 4.7, mirrors 6.1),
+promoted, every mirror, Q165 riding.
