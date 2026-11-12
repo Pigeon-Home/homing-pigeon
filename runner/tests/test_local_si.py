@@ -66,7 +66,7 @@ class LocalSITest(unittest.TestCase):
         """
         t0 = time.time()
         ans = answer_as_oracle(_cfg(), "status?")
-        self.assertLess(time.time() - t0, 3)
+        self.assertLess(time.time() - t0, 30)
         self.assertEqual(ans.get("rejected"), "inference_error")
         self.assertNotIn("answer", ans)
 
@@ -82,7 +82,7 @@ class LocalSITest(unittest.TestCase):
         t0 = time.time()
         with mock.patch("runner.runner._default_inference_open", side_effect=hang):
             ans = answer_as_oracle(_cfg(), "status?")
-        self.assertLess(time.time() - t0, 3)
+        self.assertLess(time.time() - t0, 30)
         self.assertEqual(ans.get("rejected"), "inference_error")
 
     def test_start_si_instance_does_not_use_start_new_session_on_windows(self):

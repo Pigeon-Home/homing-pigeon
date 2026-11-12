@@ -239,7 +239,9 @@ class SlowModelTest(unittest.TestCase):
                                timeout=10)
         self.assertEqual(code, 200)
         self.assertEqual(json.loads(body)["answer"], "done")
-        self.assertLess(time.monotonic() - t0, 8)
+        # A hang guard, not a latency bound: the 1.2-second model
+        # answered in 8.3 seconds on the loaded Windows leg.
+        self.assertLess(time.monotonic() - t0, 30)
 
     def test_progress_is_active_during_ask(self):
         tmp = tempfile.mkdtemp()

@@ -222,7 +222,9 @@ class OracleSendServerTest(unittest.TestCase):
         t0 = time.time()
         with mock.patch("runner.runner.ask_model_agent", side_effect=slow):
             code, body = self._post()
-        self.assertLess(time.time() - t0, 5)
+        # A hang guard, not a latency bound: a 0.4-second model
+        # answered in 6.3 seconds on the loaded Windows leg.
+        self.assertLess(time.time() - t0, 30)
         self.assertEqual(code, 200)
         self.assertEqual(json.loads(body)["answer"], "late")
 
@@ -230,7 +232,7 @@ class OracleSendServerTest(unittest.TestCase):
         for q in ("", "   ", "\n\n"):
             t0 = time.time()
             code, body = self._post(q)
-            self.assertLess(time.time() - t0, 2)
+            self.assertLess(time.time() - t0, 30)
             self.assertEqual(code, 200)
             self.assertIn("Ask something first", body)
 
