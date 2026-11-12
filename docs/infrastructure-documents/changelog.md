@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.6 - 2026-11-12
+
+- Desk: Q168 asks the desk about a Windows job that exits before its Job Object is assigned and is refused though it already ran; the CI record carries the afternoon's four hours of red and the green 3.16.24.5 build
+
 ## 3.16.24.5 - 2026-11-12
 
 - Tests: two race_state echoes the Germany bank 65 landing filed from a rig behind the fix are retired (their probes passed from the first build and kept the Linux suite red through six builds); the loopback clients of the oracle-send and runner-edge tests wait a minute, not ten seconds, under the Windows leg's 28-way start
