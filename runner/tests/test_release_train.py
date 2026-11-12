@@ -9,7 +9,9 @@ changelog takes its entry before the newest heading, the gate's
 job names are read from cut-release.yml rather than kept in a
 second place, and a mirror's own words are read out of its publish
 job's log."""
+import contextlib
 import importlib.util
+import io
 import os
 import sys
 import tempfile
@@ -201,6 +203,37 @@ class ClockTest(unittest.TestCase):
         self.assertIn("asked for", text.splitlines()[2])
         self.assertRegex(text, r"release published \(0 assets\)\s+--$")
         self.assertRegex(text, r"gate green \(\d+ jobs\)\s+06:27:51Z\s+\+[\d.]+\s+10\.5 min")
+
+
+class WatchTest(unittest.TestCase):
+    def test_the_publish_jobs_are_the_verdict_while_an_advisory_suite_still_runs(self):
+        jobs = [{"name": n, "id": i, "status": "completed", "conclusion": "success"}
+                for i, n in enumerate(("release", "pypi-publish", "sourceforge", "gitlab"))]
+        jobs.append({"name": "test-macos", "id": 9, "status": "in_progress", "conclusion": None})
+
+        def fake_api(path, method="GET", body=None, raw=False):
+            if "/build.yml/runs?branch=" in path:
+                return {"workflow_runs": [{"id": 5, "status": "in_progress", "conclusion": None}]}
+            if "/runs/5/jobs" in path:
+                return {"jobs": jobs}
+            if "/logs" in path:
+                return b""
+            if path.startswith("/releases/tags/"):
+                return {"assets": [{"name": "homing-pigeon-windows-x86_64-3.16.21.2.zip"}]}
+            if "/docker.yml/runs" in path:
+                return {"workflow_runs": []}
+            raise AssertionError(path)
+        out = io.StringIO()
+        with mock.patch.object(rt, "api", fake_api), mock.patch.object(rt.time, "sleep"), \
+                contextlib.redirect_stdout(out):
+            rc = rt.watch_tag_build("3.16.21.2", 1)
+        self.assertEqual(rc, 0)
+        self.assertIn("tag build 5: in_progress (publish jobs done)", out.getvalue())
+        self.assertIn("release: 1 assets", out.getvalue())
+        jobs[1]["conclusion"] = "failure"
+        with mock.patch.object(rt, "api", fake_api), mock.patch.object(rt.time, "sleep"), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(rt.watch_tag_build("3.16.21.2", 1), 1)
 
 
 class WaitTest(unittest.TestCase):

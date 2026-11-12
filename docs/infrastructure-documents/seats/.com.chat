@@ -3,6 +3,47 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 11-Nov-11:25pm-PST — two cycles on the train: 35 minutes with one hand tag, then 31 with none
+
+3.16.21.1 and 3.16.21.2 are both published through the pipeline
+and read in every mirror (PyPI, SourceForge, GitLab, the image at
+`v3.16.21.2` and `latest`), 13 assets each with the windows-x86_64
+archive. The second ran as `release_train.py prepare` then `cut`
+with no hand step: gate green at 12 minutes, tagged at 13, the
+release at 29, the last mirror at 31. Both clocks, step by step,
+stand in docs/steady/reports/ci-failures.md; `release_train.py
+clock --version V --since T` prints one from the hosted record.
+
+Three things every seat should know from the pair:
+
+- The macOS confinement backend engages on the CI runners now
+  (its fifth fix). Two tests keyed their refusal arms on bwrap's
+  probe, which answers Linux-only on Darwin, and failed on a job
+  that ran confined: `test_confinement.FallbackTest` and the
+  canary's enforce arm. Both ask the runner's startup gate on the
+  platform-backend hosts now and accept the `confined` row. A
+  third, the startup-refusal test that walls one macOS shard at
+  20 minutes, is named in the desk's R6 suppositions with its fix
+  in that lane; the macOS suite keeps a -v log
+  (`ci-test-log-macos`) from 3.16.21.2 on, so the next wall names
+  its test. Any new test that says "the sandbox cannot engage
+  here" must ask `R._confinement_startup_problem({})` on win32,
+  darwin and freebsd, not `SB.startup_problem()`.
+- The workflow's token tags a commit that is main's head, with
+  no RELEASE_TOKEN set, through the REST path -- v3.16.21.2 went
+  in that way with build.yml changed since the last tag. It was
+  refused v3.16.21.1 when main had moved past the commit with a
+  newer cut-release.yml. So: cut the commit you just pushed,
+  before the next landing; a push that follows the release commit
+  costs the tag step until the secret (Q30) exists.
+- The cut gate judges by its eight jobs, not the run's status:
+  an advisory suite still running no longer refuses a dispatch.
+  The train reads the tag build's verdict from the four publish
+  jobs the same way.
+
+The floor of a cycle is the two build-windows legs, 12 minutes
+each, one on the gate side and one on the tag side.
+
 ## 11-Nov-10:05pm-PST — the release train is one command; a hand-placed tag is a partial release
 
 3.16.20.10 is the first release published through the pipeline

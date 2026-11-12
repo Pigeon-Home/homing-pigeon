@@ -428,7 +428,7 @@ def cmd_cut(args, sha=None):
     sha = sha or args.sha or _git("rev-parse", "HEAD")
     sha = _git("rev-parse", sha)
     if getattr(args, "watch", False):
-        return watch_tag_build(carriers()["pyproject.toml"], args.limit)
+        return watch_tag_build(getattr(args, "version", None) or carriers()["pyproject.toml"], args.limit)
     _say("waiting for the build on %s" % sha[:8])
 
     def probe():
@@ -459,10 +459,20 @@ def cmd_cut(args, sha=None):
         step = failed_step(cut["id"])
         remedy = ""
         if step == "tag":
-            remedy = ("; the workflow's token could not place the tag (the tree's "
-                      ".github/workflows changed since the last tag): add the "
-                      "RELEASE_TOKEN secret (Q30), or push the tag by hand: "
-                      "git tag -a v%s %s -m 'Version %s' && git push origin v%s"
+            # Two cuts on 2026-11-12 read the rule: the workflow's
+            # token placed v3.16.21.2 through the REST path while the
+            # tree's workflows differed from the last tag's, and was
+            # refused v3.16.21.1 when main's head had moved past the
+            # commit with a newer workflow file. The tag goes in while
+            # the commit is main's head; a workflow change landed
+            # after it is what the refusal names.
+            head = (api("/commits/main") or {}).get("sha", "")
+            remedy = ("; the workflow's token could not place the tag"
+                      + (" (main's head %s has moved past the commit; the token "
+                         "tags the head's tree, so cut the head or prepare again)"
+                         % head[:8] if head and head != sha else "")
+                      + ": add the RELEASE_TOKEN secret (Q30), or push the tag by "
+                      "hand: git tag -a v%s %s -m 'Version %s' && git push origin v%s"
                       % (version, sha[:12], version, version))
         raise RuntimeError("cut-release %s concluded %s at step %r: %s%s"
                            % (cut["id"], cut["conclusion"], step, cut["html_url"], remedy))
@@ -473,15 +483,25 @@ def cmd_cut(args, sha=None):
 def watch_tag_build(version, limit):
     """Wait for the tag build of v<version>; report its publish jobs
     and the mirrors' own words from their logs."""
+    publish = ("release", "pypi-publish", "sourceforge", "gitlab")
+
     def tag_probe():
+        # The verdict is the publish jobs', not the whole run's: an
+        # advisory suite that walls holds the run 20 minutes past
+        # the mirrors (the 3.16.21.2 tag build, 2026-11-12).
         runs = (api("/actions/workflows/build.yml/runs?branch=v%s&per_page=5" % version) or {}).get("workflow_runs", [])
-        if runs and runs[0]["status"] == "completed":
-            return runs[0]
+        if not runs:
+            return None
+        if runs[0]["status"] == "completed":
+            return runs[0], run_jobs(runs[0]["id"])
+        jobs = run_jobs(runs[0]["id"])
+        if all(jobs.get(n, {}).get("status") == "completed" for n in publish):
+            return runs[0], jobs
         return None
-    tag_build = _wait("the tag build", tag_probe, 60, limit)
-    jobs = run_jobs(tag_build["id"])
-    report = ["tag build %s: %s" % (tag_build["id"], tag_build["conclusion"])]
-    for name in ("release", "pypi-publish", "sourceforge", "gitlab"):
+    tag_build, jobs = _wait("the tag build", tag_probe, 60, limit)
+    state = tag_build["conclusion"] or "%s (publish jobs done)" % tag_build["status"]
+    report = ["tag build %s: %s" % (tag_build["id"], state)]
+    for name in publish:
         j = jobs.get(name)
         report.append("  %-14s %s" % (name, j["conclusion"] if j else "absent"))
         if j and j["conclusion"] == "success" and name != "release":
@@ -498,7 +518,7 @@ def watch_tag_build(version, limit):
             if tags:
                 report.append("  image: %s (%s)" % (", ".join(tags), run["conclusion"]))
     _say("\n".join(report))
-    return 0 if tag_build["conclusion"] == "success" else 1
+    return 0 if all((jobs.get(n) or {}).get("conclusion") == "success" for n in publish) else 1
 
 
 def cmd_run(args):
@@ -652,6 +672,9 @@ def main(argv=None):
     p.add_argument("--watch", action="store_true",
                    help="the tag is already placed: skip the gate and the "
                         "dispatch, wait for the tag build and read the mirrors")
+    p.add_argument("--version", default=None,
+                   help="with --watch: the version to watch (default: the carriers', "
+                        "which a prepared next release has already moved past)")
     p = sub.add_parser("clock", help="one cycle's timeline from the hosted record")
     p.add_argument("--version", default=None, help="the version (default: the carriers')")
     p.add_argument("--since", default=None, help="when the cycle was asked for (ISO time), as the first row")

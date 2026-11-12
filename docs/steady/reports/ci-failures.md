@@ -1061,3 +1061,107 @@ and an edit tool that writes a file's head and drops the
 rest, which the `shape` job can only name after the push.
 
 The docs-only scoping ran first on the support-matrix push of 2026-11-12T05:04Z: scope, shape and the docs job, the matrix skipped.
+
+## The 3.16.21.1 and 3.16.21.2 cycles: 35 minutes with one hand step, then 31 with none (11 Nov 2026)
+
+Two cycles ran back to back after the 3.16.20.10 report above,
+each read from the hosted record with
+`python3 runner/tools/release_train.py clock --version V --since T`
+(the `clock` command landed in the second one). Times are UTC;
+the minutes column is from the first row.
+
+The 3.16.21.1 cycle, asked for at 06:19:58Z with the release
+commit already on main:
+
+```
+release commit 8ef9627f                              06:17:22Z             0.0 min
+build 43167098786 started                            06:17:27Z    +0.1     0.1 min
+asked for                                            06:19:58Z    +2.5     2.6 min
+gate green (8 jobs)                                  06:29:51Z    +9.9    12.5 min
+cut-release 43168555643: failure at 'the build on this commit is green' 06:30:00Z    +0.1    12.6 min
+cut-release 43168597966: failure at 'the build on this commit is green' 06:30:20Z    +0.3    13.0 min
+cut-release 43168755640: failure at 'tag'            06:31:37Z    +1.3    14.2 min
+tag v3.16.21.1                                       06:37:07Z    +5.5    19.8 min
+tag build 43169400192 started                        06:37:13Z    +0.1    19.9 min
+build 43167098786 whole: success                     06:38:09Z    +0.9    20.8 min
+release published (13 assets)                        06:51:37Z   +13.5    34.2 min
+release: success                                     06:51:39Z    +0.0    34.3 min
+pypi-publish: success                                06:52:05Z    +0.4    34.7 min
+gitlab: success                                      06:52:47Z    +0.7    35.4 min
+sourceforge: success                                 06:52:56Z    +0.1    35.6 min
+```
+
+Where the 33 minutes from the ask went: 10 waiting for the
+gate (build-windows is the long pole, 12 minutes from the
+commit; the Linux suite in 8 shards took 10.2 minutes on main
+and 5.6 on the tag build); 2 on two dispatches the gate refused
+because it read the run's status while the advisory macOS
+suite was still running (the gate now judges by the gate jobs
+alone); 1 on a third dispatch whose tag step the workflow's
+token refused; 5.5 for the tag placed by hand; 14.5 for the
+tag build to the release (12 of them build-windows again, 2
+the release job) and 1.5 for the three mirrors.
+
+The 3.16.21.2 cycle, run as `prepare` then `cut` with the two
+fixes the first tag build exposed:
+
+```
+release commit 306a3d69                              06:52:11Z             0.0 min
+build 43171155203 started                            06:52:14Z    +0.1     0.1 min
+asked for                                            06:52:30Z    +0.3     0.3 min
+gate green (8 jobs)                                  07:04:25Z   +11.9    12.2 min
+cut-release 43172608949: success                     07:04:45Z    +0.3    12.6 min
+tag v3.16.21.2                                       07:05:01Z    +0.3    12.8 min
+tag build 43172645703 started                        07:05:03Z    +0.0    12.9 min
+build 43171155203 whole: success                     07:12:58Z    +7.9    20.8 min
+release published (13 assets)                        07:21:18Z    +8.3    29.1 min
+release: success                                     07:21:21Z    +0.1    29.2 min
+pypi-publish: success                                07:21:43Z    +0.4    29.5 min
+sourceforge: success                                 07:22:41Z    +1.0    30.5 min
+gitlab: success                                      07:22:53Z    +0.2    30.7 min
+```
+
+No hand step: the gate, the dispatch, the tag and the mirrors
+in 31 minutes, of which 24 are the two build-windows legs and
+the rest is the release job and the mirrors. Every mirror's own
+words were read out of its publish log (PyPI's "View at" line,
+SourceForge's file listing and git push, GitLab's uploads and
+release, the image tags `v3.16.21.2` and `latest`).
+
+What the first tag build found, and where each went:
+
+- The macOS confinement backend engaged on the CI runners for
+  the first time (its fifth fix landed in the 3.16.21.1 tree),
+  and two tests whose refusal arms were keyed on bwrap's probe
+  -- Linux-only by construction -- failed on a job that ran
+  confined: `test_confinement.FallbackTest` and the canary's
+  enforce arm. Both now ask the runner's own startup gate on
+  Windows, macOS and FreeBSD and accept the backend's
+  `confined` row (3.16.21.2). Both macOS legs of switch-proofs
+  went red on the tag for the first of them; the roster is
+  green again at the fix.
+- One macOS shard hit its 20-minute wall in both tag builds
+  with a row of dots and no test name. The macOS suite now
+  keeps its -v log (`ci-test-log-macos`), and the suppositions
+  in the project desk name the test (a startup-refusal test
+  that gates on bwrap's probe and, on a host whose backend
+  engages, runs on toward the poll loop); its fix is in the
+  lane that wrote them. Until it lands, `test-macos` walls at
+  20 minutes and holds the tag build run -- not the release,
+  which waits on the artifact legs alone -- so the train now
+  reads its verdict from the four publish jobs instead of the
+  whole run.
+- The workflow token's tag rule, read from two cuts: with no
+  RELEASE_TOKEN set, the REST path placed v3.16.21.2 while the
+  tree's workflows differed from the last tag's, and was
+  refused v3.16.21.1 at 06:31Z, when main's head had moved
+  past the commit with a newer cut-release.yml. The token tags
+  the commit that is main's head; a workflow change landed
+  after the release commit is what the refusal names, and the
+  train's remedy says so. The secret (Q30) remains the way to
+  tag a commit main has moved past.
+
+What this leaves as the cycle's floor: the two build-windows
+legs, 12 minutes each, on the gate side and the tag side. A
+cycle cannot be shorter than about 28 minutes until that leg
+is shorter or the tag build reuses the gate build's artifacts.
