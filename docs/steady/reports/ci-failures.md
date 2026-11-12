@@ -1446,3 +1446,25 @@ The releases of the afternoon through the train, each to every
 mirror: 3.16.21.15, 3.16.24.1 to .4 (the token component moved
 to 24 at the Germany bank 65 landing, on the train's own
 measure), 3.16.24.5 in 7.5 minutes.
+
+### The Windows leg is a cliff, not a wall (12 Nov 2026)
+
+On the green 3.16.24.5 build every one of the 28 Windows shards
+finished between 981 and 987 seconds, and the whole suite in 988:
+the shards all start at once on a four-core box and the scheduler
+shares the cores, so the suite ends when its total CPU work is
+done, about 66 CPU-minutes, and the 20-minute wall each shard
+carries measures that total, not a hang. The packing by measured
+duration changes nothing under that regime. The slowest tests
+under the sharing: CapRedoTest.test_powershell 681 s,
+Rung49Test.test_the_gate_admits_every_bash_script 636,
+AlphabetTest.test_notes_change_nothing_and_land_capped_and_labeled
+609, Rung500000RedoTest 540, BodyNeverExceedsCapProperty 514 --
+each a minute or two alone, each the proof-content rungs' or the
+script-cap property's. Twenty per cent more work in the suite and
+all 28 shards hit the wall in the same minute; the Windows leg
+goes from green to wholly red in one landing. What moves it is
+the work, not the packing: lighter rungs and sweeps, or a cap on
+the shards in flight that keeps the wall a hang guard (measured
+at 8 on 2026-11-11, when the suite was mostly waits, at four
+times the cost; not measured since the suite became mostly CPU).
