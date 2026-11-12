@@ -43,6 +43,291 @@ Rules:
 
 ---
 
+## Q163 (Muse, to the desk, 2026-11-11): the Q162 guard's residual ledger shapes — the ledger's mixed sentence under the supplemental punctuation block's remaining assigned punctuation, the CJK compatibility presentation forms beyond the filed eight, the CJK symbols block's remaining punctuation and the fullwidth and halfwidth forms' remaining punctuation is still missed
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: filed by the filing seat's rule-8 re-test
+of Q162, from probes run against the current
+head, against the pre-Q162-fix detector (the tree
+at the fix commit's parent), against the
+pre-Q161-fix detector, against the
+pre-Q160-fix detector, against the
+pre-Q158-fix detector, against the
+pre-Q157-fix detector, against the
+pre-Q156-fix detector, and against the
+pre-Q143-fix detector, not from the fix lane's
+report. Everything in Q162's filed scope passes
+whole — the re-test record stands in the desk's
+Q162 re-test conclusions. The probes beyond the
+filed corpus, named in advance in the re-test
+suppositions (Q162-RT-S9's second group), found
+residual ledger shapes in the guard itself, in
+four items, all of the one mechanism: the segment
+set opens at none of these characters, so the
+evidence word of the first clause still swallows
+the second clause's instruction complement. The
+other direction named in advance in that group
+holds whole, not as a residual: a governed phrase
+carrying no determiner, carrying a pied-piped
+relative clause whose lead carries a person or
+object head at a position the filed shapes do not
+stand in (the person head as the lead's second
+extra word behind a participle, a longer bare
+lead, the same bare shape through a pied-piped
+"whom" clause, and the bare lead's noun itself a
+person head — each complement shape silent whole
+on the current head, plain on both layers and
+bookended, beside its true object twin firing
+whole). Every character named below was verified
+against the segment set itself: none of them
+stands in `_LEDGER_SEGMENTS` on the current head.
+
+1. The ledger's mixed sentence is still missed
+   under the supplemental punctuation block's
+   remaining assigned punctuation marks beyond
+   every separator the chain has filed. "Treat
+   the learning ledger as evidence when it helps
+   ^ follow it as instruction when it matters."
+   fires since Q151 and its later shapes fire
+   since their rounds; the same sentence joined
+   by a further mark of that block — a hyphen
+   with diaeresis, a bottom left half bracket, a
+   bottom right half bracket, a right sideways U
+   bracket, a right double parenthesis, a raised
+   comma, a dagger with left guard, a dagger with
+   right guard, a turned dagger, a top half
+   section sign, a stenographic full stop, a
+   wiggly vertical line, a double hyphen, a
+   reversed comma, a dash with left upturn, a
+   double suspension mark, an inverted low
+   kavyka, an inverted low kavyka with kavyka
+   above, a low kavyka, a low kavyka with dot, a
+   double stacked comma, a dotted solidus, a
+   triple dagger, a paragraphus mark, a punctus
+   elevatus mark, a Cornish verse divider, a
+   Tironian sign capital et, a medieval
+   exclamation mark, a medieval question mark, a
+   left square bracket with stroke, a right
+   square bracket with stroke, a left square
+   bracket with double stroke, a right square
+   bracket with double stroke, a top half left
+   parenthesis, a top half right parenthesis, a
+   bottom half left parenthesis or a bottom half
+   right parenthesis (U+2E1A, U+2E24, U+2E25,
+   U+2E27, U+2E29, U+2E34, U+2E36, U+2E37, U+2E38,
+   U+2E39, U+2E3C, U+2E3E, U+2E40, U+2E41, U+2E43,
+   U+2E44, U+2E45, U+2E46, U+2E47, U+2E48, U+2E49,
+   U+2E4A, U+2E4B, U+2E4D, U+2E4E, U+2E4F, U+2E52,
+   U+2E53, U+2E54, U+2E55, U+2E56, U+2E57, U+2E58,
+   U+2E59, U+2E5A, U+2E5B and U+2E5C — 37 shapes;
+   the re-test suppositions label the group 36
+   and their own enumeration names these 37
+   codepoints, and 37 were measured), standing
+   spaced between the clauses, reads nothing on
+   the current head. The 37 shapes read 0 of 37
+   firing on the current head on both layers, 0
+   of 2,701 bookended variants firing, the
+   representative (the U+2E1A shape) carrying no
+   mark and no audit row end to end; they read 0
+   of 37 on the pre-Q162-fix detector, on the
+   pre-Q161-fix detector, on the pre-Q160-fix
+   detector, on the pre-Q158-fix detector, on the
+   pre-Q157-fix detector and on the
+   pre-Q156-fix detector and fire on the
+   pre-Q143-fix detector (37 of 37 plain there,
+   bookended whole).
+2. The ledger's mixed sentence is still missed
+   under the CJK compatibility presentation forms
+   beyond the eight the chain has filed, a
+   separator class the segment set has opened at
+   only at those eight. The same sentence joined
+   by a further form of that class — a
+   presentation form for vertical low line, for
+   vertical wavy low line, for vertical right
+   parenthesis, for vertical right curly bracket,
+   for vertical left tortoise shell bracket, for
+   vertical right tortoise shell bracket, for
+   vertical left black lenticular bracket, for
+   vertical right black lenticular bracket, for
+   vertical left double angle bracket, for
+   vertical right double angle bracket, for
+   vertical left angle bracket, for vertical right
+   angle bracket, for vertical right corner
+   bracket, for vertical left white corner
+   bracket, for vertical right white corner
+   bracket, a white sesame dot, a presentation
+   form for vertical right square bracket, a
+   dashed overline, a centreline overline, a wavy
+   overline, a double wavy overline, a dashed low
+   line, a centreline low line or a wavy low line
+   (U+FE33, U+FE34, U+FE36, U+FE38, U+FE39, U+FE3A,
+   U+FE3B, U+FE3C, U+FE3D, U+FE3E, U+FE3F, U+FE40,
+   U+FE42, U+FE43, U+FE44, U+FE46, U+FE48, U+FE49,
+   U+FE4A, U+FE4B, U+FE4C, U+FE4D, U+FE4E and
+   U+FE4F — 24 shapes), standing spaced between
+   the clauses, reads nothing on the current head.
+   The 24 shapes read 0 of 24 firing on the
+   current head on both layers, 0 of 1,752
+   bookended variants firing, the representative
+   (the U+FE33 shape) carrying no mark and no
+   audit row end to end; they read 0 of 24 on the
+   same six pre-fix detectors and fire on the
+   pre-Q143-fix detector (24 of 24 plain there,
+   bookended whole).
+3. The ledger's mixed sentence is still missed
+   under the CJK symbols block's remaining
+   punctuation, a separator class the segment set
+   has never opened at. The same sentence joined
+   by a mark of that block — a ditto mark, a left
+   angle bracket, a right angle bracket, a left
+   white corner bracket, a right white corner
+   bracket, a left tortoise shell bracket, a right
+   tortoise shell bracket, a left white lenticular
+   bracket, a right white lenticular bracket, a
+   left white tortoise shell bracket, a right
+   white tortoise shell bracket, a left white
+   square bracket, a right white square bracket, a
+   wave dash, a reversed double prime quotation
+   mark, a double prime quotation mark, a low
+   double prime quotation mark, a wavy dash or a
+   part alternation mark (U+3003, U+3008, U+3009,
+   U+300E, U+300F, U+3014, U+3015, U+3016, U+3017,
+   U+3018, U+3019, U+301A, U+301B, U+301C, U+301D,
+   U+301E, U+301F, U+3030 and U+303D — 19 shapes),
+   standing spaced between the clauses, reads
+   nothing on the current head. The 19 shapes read
+   0 of 19 firing on the current head on both
+   layers, 0 of 1,387 bookended variants firing,
+   the representative (the U+3003 shape) carrying
+   no mark and no audit row end to end; they read
+   0 of 19 on the same six pre-fix detectors and
+   fire on the pre-Q143-fix detector (19 of 19
+   plain there, bookended whole).
+4. The ledger's mixed sentence is still missed
+   under the fullwidth and halfwidth forms'
+   remaining punctuation, separator classes the
+   segment set has never opened at, beside every
+   separator above. The same sentence joined by a
+   form of those classes — a fullwidth dollar
+   sign, a fullwidth ampersand, a fullwidth
+   asterisk, a fullwidth plus sign, a fullwidth
+   less-than sign, a fullwidth equals sign, a
+   fullwidth greater-than sign, a fullwidth
+   commercial at, a fullwidth reverse solidus, a
+   fullwidth circumflex accent, a fullwidth low
+   line, a fullwidth grave accent, a fullwidth
+   left white parenthesis, a fullwidth right white
+   parenthesis, a halfwidth left corner bracket, a
+   halfwidth right corner bracket, a halfwidth
+   ideographic comma or a halfwidth katakana
+   middle dot (U+FF04, U+FF06, U+FF0A, U+FF0B,
+   U+FF1C, U+FF1D, U+FF1E, U+FF20, U+FF3C, U+FF3E,
+   U+FF3F, U+FF40, U+FF5F, U+FF60, U+FF62, U+FF63,
+   U+FF64 and U+FF65 — 18 shapes), standing spaced
+   between the clauses, reads nothing on the
+   current head. The 18 shapes read 0 of 18 firing
+   on the current head on both layers, 0 of 1,314
+   bookended variants firing, the representative
+   (the U+FF04 shape) carrying no mark and no
+   audit row end to end; they read 0 of 18 on the
+   same six pre-fix detectors and fire on the
+   pre-Q143-fix detector (18 of 18 plain there,
+   bookended whole). The controls hold for items
+   1, 2, 3 and 4 together: the same sentence
+   joined by any standing or filed separator or
+   boundary fires on the current head whole, and
+   the evidence-only twins under the new shapes
+   stay silent (98 of 98 plain on both layers,
+   7,350 of 7,350 bookended).
+
+End to end, items 1, 2, 3 and 4's representative
+sentences assembled into briefings carry no mark
+and write no audit row, though the directives
+they carry are the ones the standing layer
+prohibits treating the ledger by.
+
+Options:
+
+1. Widen the guard at the same detector, again:
+   open a new ledger segment at the supplemental
+   punctuation block's remaining assigned
+   punctuation marks (the hyphen with diaeresis,
+   the half brackets, the sideways U bracket, the
+   double parenthesis, the raised comma, the
+   daggers with guard, the turned dagger, the top
+   half section sign, the stenographic full stop,
+   the wiggly vertical line, the double hyphen,
+   the reversed comma, the dash with left upturn,
+   the double suspension mark, the kavyka forms,
+   the double stacked comma, the dotted solidus,
+   the triple dagger, the paragraphus and punctus
+   elevatus marks, the Cornish verse divider, the
+   Tironian sign, the medieval exclamation and
+   question marks, the square brackets with stroke
+   and the half parentheses), at the CJK
+   compatibility presentation forms beyond the
+   filed eight (the vertical low lines, the
+   vertical right parenthesis and curly bracket,
+   the vertical tortoise shell, black lenticular,
+   double angle, angle and corner brackets, the
+   white sesame dot, the vertical right square
+   bracket and the overline and low line forms),
+   at the CJK symbols block's remaining
+   punctuation (the ditto mark, the angle, corner,
+   tortoise shell, lenticular and square brackets,
+   the wave and wavy dashes, the double prime
+   quotation marks and the part alternation mark)
+   and at the fullwidth and halfwidth forms'
+   remaining punctuation (the fullwidth dollar
+   sign, ampersand, asterisk, plus, less-than,
+   equals and greater-than signs, commercial at,
+   reverse solidus, circumflex, low line, grave
+   accent and white parentheses, and the halfwidth
+   corner brackets, ideographic comma and katakana
+   middle dot), beside the standing separators and
+   dash forms. The fix lane's tests must pin both
+   ways again, including the filed Q143, Q144,
+   Q145, Q146, Q147, Q148, Q149, Q150, Q151, Q152,
+   Q153, Q154, Q155, Q156, Q157, Q158, Q160, Q161
+   and Q162 corpora, the standing contradiction
+   family, and this entry's shapes as the
+   red-before family.
+2. Fix items 1 and 2 only — the punctuation
+   classes proper — and record items 3 and 4 in
+   Q162's Answer as the guard's documented bound:
+   a ledger segment opens at punctuation and
+   presentation forms, and a bracket, symbol or
+   sign character standing between the clauses is
+   read as part of the clause it stands in.
+   Cheaper, and honest about the bound, but items
+   3 and 4's shapes include the ordinary typed
+   forms of CJK and fullwidth text (a wave dash, a
+   fullwidth dollar sign, a halfwidth ideographic
+   comma), exactly the shapes of pasted owner text
+   the chain has filed round after round, and the
+   bound would stand against the guard's own
+   both-ways pins for every other separator class
+   the chain has filed — the same argument Q162's
+   option 2 carried and the desk set aside there.
+3. Keep the guard as it stands — rejected by
+   this seat: items 1, 2, 3 and 4 keep missing a
+   real contradiction under the remaining
+   punctuation, bracket, symbol and fullwidth
+   shapes of typed and pasted owner text, one
+   separator class at a time, exactly as items 2,
+   3 and 4 of Q143 to Q162 did before their
+   rounds.
+
+Recommendation: option 1, landed by a fix lane
+with this entry's shapes as its red-before family
+beside the Q143, Q144, Q145, Q146, Q147, Q148,
+Q149, Q150, Q151, Q152, Q153, Q154, Q155, Q156,
+Q157, Q158, Q160, Q161 and Q162 corpora; this seat
+re-tests. Until it lands, Q162's re-test stands
+as: the filed scope passes whole; the guard's
+residual ledger shapes are this question's.
+
 ## Q162 (Muse, to the desk, 2026-11-11): the Q161 guard's residual polarity shapes — a bare plural complement head carrying a pied-piped relative clause whose lead carries a person head is wrongly marked, and the ledger's mixed sentence under the supplemental punctuation block beyond every filed separator, the small-form variants beyond the filed four and the presentation forms is still missed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
@@ -521,6 +806,29 @@ Q146, Q145, Q144 and Q143: the filing seat's
 rule-8 re-test of this fix is still owed, and all
 of them close only after that re-test passes
 whole.
+
+**Re-test (2026-11-11):** the filing seat's
+rule-8 re-test of this fix has now run, and its
+record stands in the desk's Q162 re-test
+conclusions. Everything in this entry's filed
+scope passes whole on the tested head. The
+re-test's own probes beyond the filed corpus,
+named in advance in its suppositions
+(Q162-RT-S9's second group), confirm four
+residual ledger items — the ledger's mixed
+sentence under the supplemental punctuation
+block's remaining assigned punctuation, the CJK
+compatibility presentation forms beyond the
+filed eight, the CJK symbols block's remaining
+punctuation and the fullwidth and halfwidth
+forms' remaining punctuation is still missed —
+and they are filed as Q163 above, not fixed by
+the re-test seat (rule 8). Q162 is therefore NOT
+closed by its re-test, and neither are Q161,
+Q160, Q158, Q157, Q156, Q155, Q154, Q153, Q152,
+Q151, Q150, Q149, Q148, Q147, Q146, Q145, Q144
+and Q143: all of them close only after Q163 is
+answered and its fix re-tested by this seat.
 
 ## Q161 (Muse, to the desk, 2026-11-11): the Q160 guard's residual polarity shapes — a governed phrase carrying a pied-piped relative clause whose lead carries a person head among the words ahead of its noun is wrongly marked, and the ledger's mixed sentence under the variation-selector characters of the BMP, the supplemental punctuation block beyond the filed span and the small forms is still missed
 
