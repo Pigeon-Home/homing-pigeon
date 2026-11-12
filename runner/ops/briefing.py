@@ -291,7 +291,12 @@ def _fold(text, breaks=False):
     same way -- the Kaithi number signs and the
     variation-selector characters beyond the BMP
     are clause boundaries too, read before the
-    fold."""
+    fold; Q161 reads the variation-selector
+    characters of the BMP the same way -- the
+    block the fold's ranges name none of, beside
+    the Mongolian free variation selectors and
+    the block beyond the BMP, is a clause
+    boundary too, read before the fold."""
     if breaks:
         text = re.sub(r"\r\n|[\r\n\t\x0b\x0c\x85\u2028\u2029"
                       r"\u00a0\u1680\u2000-\u200d\u202f"
@@ -305,7 +310,8 @@ def _fold(text, breaks=False):
                       r"\U0001bca0-\U0001bca3"
                       r"\U0001d173-\U0001d17a\U000e0001"
                       r"\U000e0020-\U000e007f\U000110bd"
-                      r"\U000110cd\U000e0100-\U000e01ef]",
+                      r"\U000110cd\U000e0100-\U000e01ef"
+                      r"\ufe00-\ufe0f]",
                       " \u00b6 ", text)
     return re.sub(r"\s+", " ", text).strip()
 
@@ -1477,7 +1483,13 @@ def _clause_carries_infinitive(clause_words):
         # lead is the inside clause's, however many
         # words it carries ahead of its noun, and the
         # phrase standing ahead of it is judged by
-        # its head's standing.
+        # its head's standing. Q161 reads a pied-piped
+        # lead carrying a person head among the words
+        # ahead of its noun the same way: the whole
+        # lead is the inside clause's, whatever its
+        # words' own standing is, and the phrase
+        # standing ahead of it is judged by its
+        # head's standing.
         rel_at = next((at for at, tail in enumerate(obj)
                        if tail in ("who", "whom", "which",
                                    "that", "whose")), None)
@@ -1574,6 +1586,85 @@ def _clause_carries_infinitive(clause_words):
                     # its own two words, and still fires
                     # ("compels a crew official certified
                     # members of which are on duty").
+                    # A pied-piped lead whose first
+                    # extra word is itself a judged
+                    # head (Q161: "prompts a duty
+                    # officer certified record of
+                    # which is on file to ...", "a
+                    # credential officer certified
+                    # record of which", beside the
+                    # two-word shape above): the
+                    # dropping above stops at that
+                    # word, leaving it standing as
+                    # the judged phrase's tail ("a
+                    # duty officer", "a credential
+                    # officer"), though the word is
+                    # the lead's, not the phrase's --
+                    # a person or object head word
+                    # standing inside the lead is the
+                    # lead's word, not the governed
+                    # phrase's tail. The governed
+                    # phrase ends at its first judged
+                    # head: the first word of the
+                    # span, past its determiner, that
+                    # is a noun of the complement's
+                    # closed standing or a person or
+                    # object head is the phrase's
+                    # head, and every word standing
+                    # past it is the lead's, so the
+                    # span is cut there and the phrase
+                    # standing ahead of the whole lead
+                    # is judged by its head's
+                    # standing, below. A true object
+                    # phrase carrying the same shape
+                    # ends at its own head the same
+                    # way and still fires ("compels a
+                    # crew officer certified members
+                    # of which are on duty": its first
+                    # judged head is "crew").
+                    first_head = next(
+                        (at for at in range(1, len(obj))
+                         if _noun_complement_head(obj[at])
+                         or obj[at] in _PERSON_HEADS
+                         or obj[at]
+                         in _CLAUSE_OBJECT_WORDS),
+                        None)
+                    if first_head is not None \
+                            and first_head < len(obj) - 1:
+                        obj = obj[:first_head + 1]
+                    # The same shape under a head of
+                    # the complement's generic standing
+                    # (Q161, the complement-verb twin:
+                    # "holds a credential officer
+                    # certified record of which is on
+                    # file to ..."): the governed
+                    # phrase's head ("credential") is
+                    # no noun of the closed standing,
+                    # so no first head stands ahead of
+                    # the lead's person word, and the
+                    # span is left standing whole. A
+                    # person or object head standing
+                    # as the span's tail is the lead's
+                    # word, not the phrase's tail,
+                    # where the phrase left standing
+                    # ahead of it is a noun complement
+                    # in full, so it is dropped too --
+                    # a tail that is a noun of the
+                    # closed standing is never dropped
+                    # this way, and a true object
+                    # phrase's tail is not dropped
+                    # either, because the phrase ahead
+                    # of it ("a crew") is no complement
+                    # in full.
+                    while len(obj) > 2 \
+                            and not _noun_complement_head(
+                                obj[-1]) \
+                            and (obj[-1] in _PERSON_HEADS
+                                 or obj[-1]
+                                 in _CLAUSE_OBJECT_WORDS) \
+                            and _is_noun_complement_phrase(
+                                obj[:-1]):
+                        obj = obj[:-1]
                     while len(obj) > 2 \
                             and not _noun_complement_head(
                                 obj[-1]) \
@@ -2120,7 +2211,7 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     "⁚", "⁛", "⁜", "⸀",
                     "⸆", "⸎", "⸏", "⸒",
                     "⸓", "⸗", "⸰", "⸱",
-                    "⸽")
+                    "⸽", "⸁", "⸂", "⸃", "⸄", "⸅", "⸈", "⸋", "⸛", "⸠", "⸪", "﹐", "﹔", "﹕", "﹖")
 
 
 def _ledger_complement_is_evidence(owner, match):
