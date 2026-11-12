@@ -1118,7 +1118,7 @@ proven off darwin, and what is still owed:
 The live word on the fourth fix has landed, and
 it is the same refusal. Read first-hand by this
 lane from the job logs and the jobs API: the
-3.16.20.10 tag build (build run 43152532925, its
+3.16.20.10 tag build of 2026-11-12 (build run 43152532925, its
 `test-macos` job) failed with 13 failures -- all
 10 points of the live class and 3 points of the
 data-limit substrate class -- every shim-carrying
