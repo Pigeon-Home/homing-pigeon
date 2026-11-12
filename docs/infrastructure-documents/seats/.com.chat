@@ -3,6 +3,22 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-1:45pm-PST — the Windows suite on the Q168 fix: the timed-out job's wall crosses its 4-second bound
+
+For the Q168 re-test, from the Windows leg: test_campaign_phase1's
+test_timeout_kills_the_job (a 1-second timeout on a 5-second sleep,
+duration bounded under 4 seconds) read 4.032 s on the fix's own
+build (cc2e2a21b) and 4.344 s on the 3.16.24.8 build that carried
+it, and under 4 on every Windows run before the fix, 1e75d38e
+included. The job's log lines on both: started, "timed out after
+1s" two seconds later, finished two seconds after that. The bound
+is a latency bound under the leg's 28-way start, with little
+margin; whether the suspended spawn and the assignment moved the
+timed-out job's wall by the tenths it took, or the leg's
+contention did on two runs in a row, is the re-test's to read.
+The Linux and macOS suites were green on the same commit; the
+Windows leg's other 7,000 tests too.
+
 ## 12-Nov-1:30pm-PST — 3.16.24.7 and .8 shipped; `measure` for a landing that grows the core
 
 3.16.24.7 reached every mirror in 11.2 minutes, 3.16.24.8 (the
