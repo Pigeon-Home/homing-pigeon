@@ -232,14 +232,18 @@ _RAN = re.compile(r"^Ran (\d+) tests? in ([0-9.]+)s")
 
 def _body(line):
     """The runner's own text from one log line, or None when
-    the line belongs to another step of the workflow log."""
+    the line belongs to another step of the workflow log. A job
+    log fetched through the API carries no step fields, only the
+    timestamp each line starts with; it is read as a bare shard
+    log with the timestamp dropped (the refresh of 2026-11-12
+    estimated nothing from three such logs before this)."""
     if "\t" in line:
         fields = line.split("\t", 2)
         if len(fields) == 3:
             if _STEP_MARK not in fields[1]:
                 return None
             return _TIMESTAMP.sub("", fields[2]).strip()
-    return line.strip()
+    return _TIMESTAMP.sub("", line).strip()
 
 
 def parse_log_text(text):
@@ -385,6 +389,37 @@ def seed_header():
     }
 
 
+def _split_modules(root):
+    """The modules runner/tools/split_modules.json names, or none."""
+    path = os.path.join(root, "runner", "tools", "split_modules.json")
+    try:
+        with open(path, encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return set()
+    modules = data.get("modules") if isinstance(data, dict) else None
+    return set(m for m in (modules or []) if isinstance(m, str))
+
+
+def _module_classes(root, module):
+    """The test-class names of a module under runner/tests, read
+    from its source without importing it (a class line at the left
+    margin whose name ends in Test or starts with Test)."""
+    parts = module.split(".")
+    path = os.path.join(root, *parts) + ".py"
+    classes = []
+    try:
+        with open(path, encoding="utf-8") as handle:
+            for line in handle:
+                m = re.match(r"^class (\w+)\s*\(", line)
+                if m and (m.group(1).endswith("Test") or m.group(1).startswith("Test")
+                          or m.group(1).endswith("Tests")):
+                    classes.append(m.group(1))
+    except OSError:
+        pass
+    return classes
+
+
 def check_table(root, path):
     """The guard's problems list for the checked-in table:
     canonical form, the Q136 numbers, every key a real test
@@ -419,9 +454,24 @@ def check_table(root, path):
         if not os.path.isfile(os.path.join(tests_dir,
                                            parts[2] + ".py")):
             problems.append("%s names no file in runner/tests" % name)
-    shards = pack_modules(sorted(durations), durations,
-                          table["budget_seconds"])
-    for index, load in enumerate(shard_loads(shards, durations)):
+    # A module the split list names (runner/tools/split_modules.json)
+    # rides as its classes at run time, each at its share of the
+    # module's duration, so the module's own weight may exceed the
+    # budget without any shard doing so; the check packs the list
+    # the way the leg runs it -- a split module stands for a share
+    # of itself per listed class, never for one item.
+    split = _split_modules(root)
+    items = {}
+    for name in durations:
+        if name in split:
+            classes = _module_classes(root, name)
+            share = float(durations[name]) / max(1, len(classes))
+            for cls in classes:
+                items["%s.%s" % (name, cls)] = share
+        else:
+            items[name] = durations[name]
+    shards = pack_modules(sorted(items), items, table["budget_seconds"])
+    for index, load in enumerate(shard_loads(shards, items)):
         if load > table["budget_seconds"]:
             problems.append("shard %d packs %.1fs over the %.0fs "
                             "budget" % (index, load,

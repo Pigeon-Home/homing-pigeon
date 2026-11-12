@@ -28,7 +28,7 @@
   "runner.tests.test_blackbox_findings": 33.8,
   "runner.tests.test_board": 7.5,
   "runner.tests.test_bounces": 141.4,
-  "runner.tests.test_briefing_contradiction": 45.5,
+  "runner.tests.test_briefing_contradiction": 1200.0,
   "runner.tests.test_broken_extension_import": 0.2,
   "runner.tests.test_budget_overflow_concurrent": 0.4,
   "runner.tests.test_budget_overflow_predicate": 0.2,

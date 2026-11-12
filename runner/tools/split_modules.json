@@ -1,0 +1,6 @@
+{
+  "why": "A module named here is sharded by class instead of as one item: runner/tools/run_tests_parallel.py --split. A file whose tests cost more than a shard can carry sinks whichever shard draws it (test_briefing_contradiction: 273 tests, fourteen CPU-minutes, 2026-11-12; the macOS and Windows shards that drew it hit their 20-minute walls).",
+  "modules": [
+    "runner.tests.test_briefing_contradiction"
+  ]
+}

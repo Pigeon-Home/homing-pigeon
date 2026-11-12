@@ -147,15 +147,40 @@ def _discard_tmpdir(tmp):
         pass
 
 
-def module_test_counts(start_dir, top_level_dir):
-    """Discover the suite and return {module_name: test_count}.
+def load_split_list(path):
+    """The modules a split file names, each to be sharded by class.
 
-    Import failures during discovery surface as _FailedTest entries
-    whose id is "unittest.loader._FailedTest.<module>"; the module
-    name is recovered from that id and counted under its own
-    module so a worker reproduces the failure loudly instead of
-    the parent quietly dropping the module from every shard.
+    The file is JSON: {"modules": ["runner.tests.test_x", ...]}. A
+    module whose tests cost more than a shard can carry (the Q165
+    briefing guard, 273 tests and fourteen CPU-minutes in one file,
+    2026-11-12: the macOS and Windows shards that drew it hit their
+    20-minute walls) is named here, and its classes ride as the
+    shard items instead of the module, each a name unittest takes
+    as it takes a module's. A file that cannot be read raises.
     """
+    import json
+    with open(path, encoding="utf-8") as fh:
+        data = json.load(fh)
+    modules = data.get("modules") if isinstance(data, dict) else None
+    if not isinstance(modules, list) or not all(
+            isinstance(m, str) and m for m in modules):
+        raise ValueError("%s: 'modules' must be a list of module names" % path)
+    return set(modules)
+
+
+def module_test_counts(start_dir, top_level_dir, split=()):
+    """Discover the suite and return {item_name: test_count}.
+
+    An item is a module, or -- for a module named in ``split`` --
+    one of its test classes as "module.Class", which unittest runs
+    by that name exactly as it runs a module. Import failures
+    during discovery surface as _FailedTest entries whose id is
+    "unittest.loader._FailedTest.<module>"; the module name is
+    recovered from that id and counted under its own module so a
+    worker reproduces the failure loudly instead of the parent
+    quietly dropping the module from every shard.
+    """
+    split = set(split or ())
     loader = unittest.TestLoader()
     # Discover imports every module it finds into this process.
     # A later discover of another tree that reuses a module name
@@ -179,6 +204,8 @@ def module_test_counts(start_dir, top_level_dir):
                     counts[mod] = counts.get(mod, 0) + 1
                 else:
                     mod = type(item).__module__
+                    if mod in split:
+                        mod = "%s.%s" % (mod, type(item).__qualname__)
                     counts[mod] = counts.get(mod, 0) + 1
 
         walk(suite)
@@ -246,22 +273,44 @@ def load_duration_tool():
     return module
 
 
+def class_weights(counts, durations):
+    """Weights for the class items of split modules: a class item
+    "module.Class" the table does not name takes its share of the
+    module's measured duration, by test count. Items the table
+    names, and whole modules, are left to the table (and the
+    packer's median default for the unnamed)."""
+    totals = {}
+    for name, count in counts.items():
+        mod, _, cls = name.rpartition(".")
+        if cls and mod in durations and name not in durations and cls[:1].isupper():
+            totals[mod] = totals.get(mod, 0) + count
+    weights = {}
+    for name, count in counts.items():
+        mod, _, cls = name.rpartition(".")
+        if mod in totals and name not in durations:
+            weights[name] = float(durations[mod]) * count / totals[mod]
+    return weights
+
+
 def duration_shards(counts, table_path, budget_seconds=None):
-    """Shard module names by measured duration from a table.
+    """Shard item names by measured duration from a table.
 
     Returns (shards, loads, budget). A module the table does
     not name is weighted at the table's median by the
-    packer, so a new file is packed, never dropped. A table
-    that cannot be read or trusted raises -- the caller
-    turns that into a loud exit, never a silent count split.
+    packer, so a new file is packed, never dropped; a class
+    item of a split module takes its share of the module's
+    duration (class_weights). A table that cannot be read or
+    trusted raises -- the caller turns that into a loud exit,
+    never a silent count split.
     """
     tool = load_duration_tool()
     table = tool.load_table_file(table_path)
     budget = table["budget_seconds"] if budget_seconds is None \
         else budget_seconds
-    shards = tool.pack_modules(sorted(counts), table["durations"],
-                               budget)
-    loads = tool.shard_loads(shards, table["durations"])
+    durations = dict(table["durations"])
+    durations.update(class_weights(counts, durations))
+    shards = tool.pack_modules(sorted(counts), durations, budget)
+    loads = tool.shard_loads(shards, durations)
     return shards, loads, budget
 
 
@@ -729,6 +778,9 @@ def main(argv=None):
                         help="run at most N shards at once and start "
                              "the next as one finishes (default 0: "
                              "every shard at once)")
+    parser.add_argument("--split", default=None, metavar="PATH",
+                        help="a JSON file naming modules to shard by "
+                             "class (see runner/tools/split_modules.json)")
     parser.add_argument("modules", nargs="*",
                         help="explicit modules to run instead of "
                              "discovering the whole suite")
@@ -742,10 +794,19 @@ def main(argv=None):
     if args.in_flight < 0:
         parser.error("--in-flight must be >= 0")
 
+    split = ()
+    if args.split:
+        try:
+            split = load_split_list(args.split)
+        except (OSError, ValueError) as exc:
+            print("error: cannot read the split list %s: %s"
+                  % (args.split, exc), file=sys.stderr)
+            return 2
     if args.modules:
         counts = {mod: 1 for mod in args.modules}
     else:
-        counts = module_test_counts(args.start_dir, args.top_level_dir)
+        counts = module_test_counts(args.start_dir, args.top_level_dir,
+                                    split=split)
     if not counts:
         print("error: no tests discovered under %s -- refusing to "
               "report a vacuous green" % args.start_dir, file=sys.stderr)

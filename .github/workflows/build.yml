@@ -207,7 +207,7 @@ jobs:
       # mostly waiting (4 shards measured 229, 417, 467 and 682
       # seconds on the first run), so more of them overlap better.
       - name: run the suite
-        run: python runner/tools/run_tests_parallel.py --jobs 8 --wall-clock 30 --durations 25 --full-log test-output.log
+        run: python runner/tools/run_tests_parallel.py --jobs 8 --wall-clock 30 --durations 25 --full-log test-output.log --split runner/tools/split_modules.json
       # A skipped proof is green from the outside. On this box the
       # sandbox proofs must run; any other skip is listed, not fatal.
       # --annotate is the piece worth keeping from diag/bwrap-suite:
@@ -393,7 +393,7 @@ jobs:
       # --full-log, as on the Linux leg: a shard that hits its wall
       # ends the job log with a row of dots and no test name (the
       # 3.16.21.1 build, shard 1, 20 minutes); the -v log names it.
-      - run: python runner/tools/run_tests_parallel.py --jobs 3 --durations 15 --wall-clock 20 --full-log test-output-macos.log
+      - run: python runner/tools/run_tests_parallel.py --jobs 3 --durations 15 --wall-clock 20 --full-log test-output-macos.log --split runner/tools/split_modules.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
@@ -460,7 +460,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -c .github/requirements-ci.txt hypothesis
-      - run: python runner/tools/run_tests_parallel.py --duration-table runner/tools/windows_durations.json --durations 15 --wall-clock 20 --full-log test-output-windows.log
+      - run: python runner/tools/run_tests_parallel.py --duration-table runner/tools/windows_durations.json --durations 15 --wall-clock 20 --full-log test-output-windows.log --split runner/tools/split_modules.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:

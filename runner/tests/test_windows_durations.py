@@ -199,6 +199,21 @@ class TableValidationTest(unittest.TestCase):
             self._load_text(
                 '{"budget_seconds": true, "durations": {}}')
 
+    def test_a_job_log_from_the_api_reads_as_a_bare_shard_log(self):
+        # No step fields, a timestamp on every line: the refresh of
+        # 2026-11-12 estimated nothing from three such logs.
+        text = ("2026-11-12T11:52:32.1234567Z running 10 test(s) from 2 module(s) in 2 shard(s)\n"
+                "2026-11-12T11:52:32.2000000Z shard 0: 1 module(s): pkg.test_a\n"
+                "2026-11-12T11:52:32.3000000Z shard 1: 1 module(s): pkg.test_b\n"
+                "2026-11-12T11:54:12.4000000Z shard 0: OK in 100.1s\n"
+                "2026-11-12T11:54:13.0000000Z shard 1: OK in 50.0s\n"
+                "2026-11-12T11:54:13.5000000Z sharded run finished in 101.0s (exit 0)\n")
+        runs = wd.parse_log_text(text)
+        self.assertEqual(len(runs), 1)
+        self.assertEqual(runs[0]["shards"][0]["ok"], 100.1)
+        self.assertEqual(runs[0]["shards"][1]["mods"], ["pkg.test_b"])
+        self.assertEqual(runs[0]["total"], 101.0)
+
     def test_canonical_text_round_trips(self):
         table = {"budget_seconds": 720.0, "wall_minutes": 20,
                  "durations": {"b": 2.0, "a": 1.0}}
@@ -893,17 +908,26 @@ class CheckedInTableGuardTest(unittest.TestCase):
                     "43101076872")
 
     def test_the_real_suite_packs_within_budget(self):
+        # Packed the way the leg runs it: the split list's modules
+        # ride as their classes, each at its share of the module's
+        # duration (run_tests_parallel.duration_shards).
         table = wd.load_table_file(wd.default_table_path())
+        split = rtp.load_split_list(
+            os.path.join(REPO, "runner", "tools", "split_modules.json"))
         counts = rtp.module_test_counts(
-            os.path.join(REPO, "runner", "tests"), REPO)
-        shards = wd.pack_modules(sorted(counts), table["durations"],
-                                 table["budget_seconds"])
+            os.path.join(REPO, "runner", "tests"), REPO, split=split)
+        shards, loads, budget = rtp.duration_shards(
+            counts, wd.default_table_path())
         flat = [n for shard in shards for n in shard]
         self.assertEqual(sorted(flat), sorted(counts))
-        loads = wd.shard_loads(shards, table["durations"])
         self.assertTrue(
-            all(load <= table["budget_seconds"] for load in loads),
+            all(load <= budget for load in loads),
             "packed loads over budget: %r" % (loads,))
+        # the split module's classes are spread, never one shard's
+        heavy = [sum(1 for n in shard if n.startswith("runner.tests.test_briefing_contradiction."))
+                 for shard in shards]
+        self.assertGreater(sum(heavy), 1)
+        self.assertLess(max(heavy), sum(heavy))
 
 
 if __name__ == "__main__":

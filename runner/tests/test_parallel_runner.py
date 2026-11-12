@@ -132,6 +132,77 @@ class DiscoveryCountsTest(unittest.TestCase):
         self.assertEqual(second.get("test_alpha"), 2)
 
 
+_TWO_CLASSES = """import unittest
+class HeavyATest(unittest.TestCase):
+    def test_one(self): pass
+    def test_two(self): pass
+    def test_three(self): pass
+class HeavyBTest(unittest.TestCase):
+    def test_one(self): pass
+"""
+
+
+class SplitByClassTest(unittest.TestCase):
+    """A module the split list names rides as its classes: each a
+    name unittest takes as it takes a module's, counted on its own,
+    and -- under a durations table that prices the module -- weighted
+    at its share of the module's duration by test count. A file
+    whose tests cost more than a shard can carry sank whichever
+    shard drew it (fourteen CPU-minutes in one module, 2026-11-12)."""
+
+    def test_the_split_list_is_read_and_checked(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "split.json")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('{"why": "x", "modules": ["test_heavy"]}')
+            self.assertEqual(rtp.load_split_list(path), {"test_heavy"})
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write('{"modules": "test_heavy"}')
+            with self.assertRaises(ValueError):
+                rtp.load_split_list(path)
+            with self.assertRaises(OSError):
+                rtp.load_split_list(os.path.join(d, "missing.json"))
+
+    def test_a_split_modules_classes_are_the_items(self):
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_heavy.py", _TWO_CLASSES)
+            _write(d, "test_beta.py", _PASS)
+            counts = rtp.module_test_counts(d, d, split={"test_heavy"})
+        self.assertEqual(counts, {"test_heavy.HeavyATest": 3,
+                                  "test_heavy.HeavyBTest": 1,
+                                  "test_beta": 1})
+        # not split: the module is one item, as before
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_heavy.py", _TWO_CLASSES)
+            counts = rtp.module_test_counts(d, d)
+        self.assertEqual(counts, {"test_heavy": 4})
+
+    def test_class_items_take_their_share_of_the_modules_duration(self):
+        counts = {"test_heavy.HeavyATest": 3, "test_heavy.HeavyBTest": 1,
+                  "test_beta": 1, "test_new.NewTest": 2}
+        durations = {"test_heavy": 1200.0, "test_beta": 5.0}
+        weights = rtp.class_weights(counts, durations)
+        self.assertEqual(weights, {"test_heavy.HeavyATest": 900.0,
+                                   "test_heavy.HeavyBTest": 300.0})
+        # a split module's classes run in a worker by their names
+        cmd = rtp.shard_command([], ["test_heavy.HeavyATest", "test_beta"])
+        self.assertEqual(cmd[-2:], ["test_heavy.HeavyATest", "test_beta"])
+
+    def test_the_shards_run_a_split_module_by_class(self):
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_heavy.py", _TWO_CLASSES)
+            _write(d, "test_beta.py", _PASS)
+            split = os.path.join(d, "split.json")
+            with open(split, "w", encoding="utf-8") as fh:
+                fh.write('{"modules": ["test_heavy"]}')
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = rtp.main(["--jobs", "3", "--start-dir", d, "--top-level-dir", d,
+                               "--split", split])
+            self.assertEqual(rc, 0, out.getvalue())
+            self.assertIn("running 5 test(s) from 3 module(s) in 3 shard(s)", out.getvalue())
+
+
 class _BufferStdout:
     """A stdout whose text layer is cp1252 but whose buffer works.
 

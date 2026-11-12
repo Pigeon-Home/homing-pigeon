@@ -243,7 +243,8 @@ class MutationGateTest(unittest.TestCase):
         linux = _uncommented(_job_block(workflow, "test"))
         self.assertIn("python runner/tools/run_tests_parallel.py --jobs 8 "
                       "--wall-clock 30 --durations 25 "
-                      "--full-log test-output.log", linux)
+                      "--full-log test-output.log "
+                      "--split runner/tools/split_modules.json", linux)
         self.assertNotIn("python -m unittest discover", linux)
         self.assertIn("skip_guard.py test-output.log", linux)
         # The macOS leg keeps its -v log too (a walled shard
@@ -253,7 +254,8 @@ class MutationGateTest(unittest.TestCase):
         macos = _uncommented(_job_block(workflow, "test-macos"))
         self.assertIn("python runner/tools/run_tests_parallel.py --jobs 3 "
                       "--durations 15 --wall-clock 20 "
-                      "--full-log test-output-macos.log", macos)
+                      "--full-log test-output-macos.log "
+                      "--split runner/tools/split_modules.json", macos)
         self.assertIn("name: ci-test-log-macos", macos)
         self.assertIn("path: test-output-macos.log", macos)
         # The Windows suite runs in its own job since 2026-11-12
@@ -266,7 +268,12 @@ class MutationGateTest(unittest.TestCase):
                       "--duration-table "
                       "runner/tools/windows_durations.json "
                       "--durations 15 --wall-clock 20 "
-                      "--full-log test-output-windows.log", windows)
+                      "--full-log test-output-windows.log "
+                      "--split runner/tools/split_modules.json", windows)
+        # the split list every leg reads: a module whose tests cost
+        # more than a shard can carry rides as its classes
+        self.assertTrue(os.path.exists(
+            os.path.join(_root(), "runner", "tools", "split_modules.json")))
         self.assertIn("name: ci-test-log-windows", windows)
         self.assertNotIn("run_tests_parallel.py",
                          _uncommented(_job_block(workflow, "build-windows")))
