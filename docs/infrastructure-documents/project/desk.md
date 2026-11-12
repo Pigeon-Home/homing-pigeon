@@ -23780,3 +23780,180 @@ completed CI verdict on a head carrying this
 pin (test-macos and the Linux test leg) is
 the live proof the guard family is green in
 CI; that verdict is owed by CI, under rule 8.
+
+## All-enforce parity on darwin: the missing
+confinement rows — suppositions recorded
+before the measurement (2026-11-11)
+
+The read-only CI verdict on the decision-1
+head (11:07 PM PST, 2026-11-11) and on the
+current main head (11:24 PM PST) names one
+failure in the `test-macos` job, also
+present on the 3.16.21.2 release head:
+`test_security_parity.AllEnforceParityTest.
+test_all_enforce_outcomes_match_recorded_
+expectations` fails at
+`runner/tests/test_security_parity.py:836`
+— "Items in the second set but not the
+first: 'parity-02', 'parity-03',
+'parity-04', 'parity-06', 'parity-10',
+'parity-13'". Line 836 is
+`assertEqual(set(conf), ENFORCE_EXEC_JOBS)`:
+the first set is the job ids carrying a
+`confinement` audit row in the all-enforce
+run, the second is the recorded
+`ENFORCE_EXEC_JOBS` — exactly the six
+compliant exec jobs that reach execution
+(the corpus's exec jobs 02, 03, 04, 06, 10
+and 13; 01 and 09 are pings, 05 is refused
+at staging, 11 is refused before any mode,
+14 to 17 are refused by their own mode).
+No other assertion in the test is named:
+the rejection leg (each exec job delivered
+with exit -2 and seen) passes on darwin.
+This lane is a fresh lane: not the
+decision-1 lane, not any macOS lane, not
+the Q164 re-test lane. It starts from a
+fresh scratch clone direct from the remote,
+the remote head verified by foreground
+`git ls-remote` in the same call as the
+clone's own head check. The suppositions
+below are written from the code read
+first-hand, before any measurement in this
+lane is run; the settling measurement is
+named in P-S2, and the conclusions stand
+at the end of this section when the lane
+lands.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **P-S1 — the keying never grew a darwin
+  arm (disposition (a) + (c), not (b)).**
+  The test keys its capability questions to
+  the bwrap probe alone —
+  `_sandbox.sandbox_available()` and the
+  `ENGAGES` startup trial — plus one
+  platform arm, for win32, keyed to the
+  runner's own startup gates. That arm's
+  own comment names the defect class: the
+  bwrap probe is Linux-only and reads
+  "unavailable" on a platform-backend host
+  whether or not the backend can engage, so
+  keying to it records refusals where the
+  jobs run confined. On darwin
+  `sandbox_available()` is False, so the
+  test computes `conf_refuses` and expects
+  the Linux refusal shape: a `fallback`
+  confinement row per exec job and no
+  job_user rows. Production on darwin does
+  not take that path since the macOS
+  backend landed: `_confinement_argv`'s
+  darwin branch consults
+  `macos_confinement_problem`, returns the
+  normal argv when the backend can engage
+  and writes NO audit row at the argv stage
+  (the `confined` row is written only at
+  the spawn seam, `_confinement_spawn`),
+  and denies with the `fallback` row when
+  it cannot. No live outcome is missing:
+  the exec jobs' results are delivered and
+  seen on darwin exactly as the passing
+  rejection leg records. What is missing
+  is the confinement row, and it is
+  missing because the recorded
+  expectations were never extended to the
+  darwin backend shape — the same gap the
+  post-fifth-fix lane closed test-side for
+  the canary and the default-posture test
+  (the R6 record above), which this suite
+  never received.
+
+- **P-S2 — the settling measurement.**
+  Scripted, off darwin, against the current
+  head, in three parts. (1) The argv gate
+  under a simulated darwin with a scripted
+  macOS backend whose probe answers None
+  (engageable): `_confinement_argv` returns
+  the normal argv and writes no
+  confinement row. (2) The same gate with
+  a scripted dead backend (the probe
+  answers a problem): it returns the empty
+  argv (the Q135 denial) and writes
+  exactly the `fallback` row. (3) The
+  execution order in `runner/ops/exec.py`
+  — `_confinement_argv`, then
+  `_job_user_preexec`, then
+  `_confinement_spawn` — composed on the
+  CI shape (backend engageable, the
+  job_user face not root): the preexec
+  records the job_user `fallback` row and
+  raises `JobRejected` before the spawn
+  seam is reached, so the composed audit
+  record for an exec job carries a
+  job_user row and NO confinement row —
+  `set(conf)` empty against
+  `ENFORCE_EXEC_JOBS`, the line-836 shape
+  reproduced deterministically. If any
+  part shows a confinement row IS written
+  on the engageable path before the
+  job_user refusal, this supposition falls
+  and the fix layer changes with it.
+
+- **P-S3 — per point, one shape.** Parity
+  points 02, 03, 04, 06, 10 and 13 are the
+  same shape and take the same disposition:
+  compliant exec jobs whose confinement
+  gate passes silently at the argv stage
+  on an engageable darwin host and whose
+  job is then refused by the job_user wrap
+  on the CI shape (the hosted runner is
+  not root and has no `pigeon-test` user),
+  so no confinement row is ever written
+  for them. No point is deleted and no
+  refusal is weakened: under every darwin
+  shape the jobs are still refused
+  fail-closed whenever a wrap cannot
+  engage.
+
+- **P-S4 — the fix layer is the test.**
+  Add the darwin arm beside the win32 arm,
+  keyed to the runner's own startup gates
+  for darwin (`_confinement_startup_problem`
+  and `_job_user_startup_problem` on the
+  enforce block), splitting three shapes:
+  both gates engage — the exec jobs run
+  confined, the rows are confinement
+  `confined` and job_user `run_as`, each
+  job delivered, seen and not the wrap's
+  rejection (what a confined process
+  prints is the backend's field behaviour,
+  as on win32, not a recorded byte
+  expectation); confinement engages and
+  job_user cannot — the CI shape: each
+  exec job refused with exit -2 by the
+  job_user wrap, job_user `fallback` rows
+  for all six, and NO confinement rows,
+  because the confinement record lives at
+  the spawn seam the refusal preempts;
+  confinement cannot engage — the standing
+  refusal shape: `fallback` confinement
+  rows for all six, no job_user rows,
+  exit -2. No production file changes.
+  Proof of work: a committed family on
+  scripted seams pinning the substrate on
+  every host — the engageable argv gate
+  writing no row, the dead-backend gate
+  writing the `fallback` row and denying,
+  and the composed CI shape (engageable
+  gate, non-root job_user face) writing
+  exactly the job_user `fallback` row and
+  refusing, with no confinement row.
+  `test_security_parity` runs whole and
+  green locally in the foreground; the
+  live verdict is the first completed
+  `test-macos` CI job on a head carrying
+  the fix, and is not claimed here.
+  FreeBSD carries the same backend shape
+  and the same latent keying gap; it has
+  no hosted leg in this failure and is
+  named here, not changed.
