@@ -15,11 +15,7 @@ My mailbox is your@email.com
 Shared secret is <make one up for me Grok>
 ```
 
-It works like a GitHub self-hosted runner. A small program on hardware
-you own picks up signed jobs from a source in the cloud and runs them.
-By default nothing listens on an external interface: the runner
-only polls outward, so it works behind NAT with no open ports.
-
+The Homing Pigeon runner, like a GitHub runner, polls and executes signed jobs from a source in the cloud.
 Setup walks you through connecting a dedicated mailbox. The
 recommended path is a browser sign-in, so the account password never
 lands in config; an app password is the
