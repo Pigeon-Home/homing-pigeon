@@ -265,14 +265,7 @@ jobs:
           # push-triggered run of its own (GitHub's rule against
           # workflows triggering workflows), so the `push: tags`
           # trigger the proof workflows carry never fires for a
-          # pipeline cut: v3.16.20.10 and v3.16.21.2 ran build.yml
-          # and docker.yml alone, while the hand-placed v3.16.21.1
-          # ran all nine. The proofs are dispatched here by name,
-          # the way build.yml is; runner/tests/test_build_config.py
-          # keeps this list equal to the proof workflows.
-          for wf in platform-matrix.yml python-range.yml switch-proofs.yml \
-                    minimal-userland.yml env-axes.yml job-user.yml \
-                    queues-worker.yml upgrade-proof.yml freebsd.yml; do
-            gh workflow run "$wf" --ref "$TAG" || echo "::warning title=$wf::could not dispatch $wf on $TAG"
-          done
-          echo "::notice::$TAG cut; build.yml, docker.yml and the nine proof workflows dispatched on it"
+          # pipeline cut. The tag build dispatches the nine by name
+          # from its last job, after the mirrors, so they never
+          # hold a runner the release is waiting for.
+          echo "::notice::$TAG cut; build.yml and docker.yml dispatched on it (the tag build starts the proofs after the mirrors)"

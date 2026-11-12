@@ -32,8 +32,15 @@ permissions: {}
 # the campaign pushing a test a minute, 20 of these sat queued on
 # 2026-10-25 and held the runner slots cut-release needed.
 concurrency:
-  group: minimal-userland-${{ github.ref }}
-  cancel-in-progress: false
+  # One group for every release tag, the newest tag's run cancelling
+  # the one before: a release burst cuts a tag every ten minutes, and
+  # nine proof runs per tag queued up behind each other and held the
+  # runners the next cycle's gate needed (2026-11-12: a gate build's
+  # macOS leg waited eight minutes behind three tags' proofs). A
+  # superseded tag's proof is the newer tag's to give; the nightly
+  # and a dispatch on a branch keep a group of their own.
+  group: minimal-userland-${{ startsWith(github.ref, 'refs/tags/v') && 'tags' || github.ref }}
+  cancel-in-progress: ${{ startsWith(github.ref, 'refs/tags/v') }}
 
 jobs:
   repair-on-busybox:

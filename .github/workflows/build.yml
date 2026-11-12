@@ -1293,3 +1293,39 @@ jobs:
                    body)
               print(f"gitlab release {tag} updated")
           PY
+
+  proofs:
+    # The nine proof workflows on the tag, started here by name once
+    # the mirrors are done. A tag cut-release places with
+    # GITHUB_TOKEN fires no push-triggered run (GitHub's rule
+    # against workflows triggering workflows), so their `push: tags`
+    # trigger never fires for a pipeline cut: v3.16.20.10 and
+    # v3.16.21.2 ran build.yml and docker.yml alone. The cut
+    # dispatched them at tag time from 2026-11-12 08:00Z, and they
+    # took the runners the release and the next cycle's gate were
+    # waiting for (a gate build's macOS leg waited eight minutes
+    # behind three tags' proofs); from the end of the tag build
+    # they are off the critical path. A tag pushed by hand fires
+    # them itself, so only a dispatch starts them here;
+    # runner/tests/test_build_config.py keeps this list equal to
+    # the proof workflows.
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') && github.event_name == 'workflow_dispatch'
+      && !cancelled() && needs.release.result == 'success'
+    needs: [release, pypi-publish, sourceforge, gitlab]
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          for wf in platform-matrix.yml python-range.yml switch-proofs.yml \
+                    minimal-userland.yml env-axes.yml job-user.yml \
+                    queues-worker.yml upgrade-proof.yml freebsd.yml; do
+            gh workflow run "$wf" --repo "$REPO" --ref "$TAG" || echo "::warning title=$wf::could not dispatch $wf on $TAG"
+          done
+          echo "::notice::the nine proof workflows dispatched on $TAG"

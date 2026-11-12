@@ -1121,24 +1121,41 @@ class ReliefModeTest(unittest.TestCase):
             self.assertIn("workflow_dispatch:", wf,
                           "%s lost manual dispatch" % name)
 
-    def test_cut_release_dispatches_every_proof_workflow_on_the_tag(self):
+    def test_the_tag_build_dispatches_every_proof_workflow_after_the_mirrors(self):
         # A tag cut-release places with GITHUB_TOKEN fires no
         # push-triggered run (GitHub's rule against workflows
         # triggering workflows): v3.16.20.10 and v3.16.21.2 ran
         # build.yml and docker.yml alone, both dispatched by name,
         # while the hand-placed v3.16.21.1 ran all nine proofs.
         # With the proofs off pushes to main for the window, the
-        # release tag is where they run, so the cut dispatches
-        # each one by name -- this list and PROOF_WORKFLOWS are
-        # the same set.
-        text = _workflow_text("cut-release.yml")
-        live = "\n".join(line for line in text.splitlines()
-                         if not line.lstrip().startswith("#"))
-        step = live.split("start the release pipeline on the tag", 1)[1]
-        self.assertIn('gh workflow run build.yml --ref "$TAG"', step)
-        named = set(re.findall(r"\b([a-z-]+\.yml)\b", step)) - {"build.yml", "docker.yml"}
+        # release tag is where they run, so the tag build's last
+        # job dispatches each one by name once the mirrors are done
+        # (dispatched at tag time, they held the runners the
+        # release and the next gate were waiting for) -- this list
+        # and PROOF_WORKFLOWS are the same set, and the cut itself
+        # names none of them.
+        block = _uncommented(_job_block(_workflow(), "proofs"))
+        named = set(re.findall(r"\b([a-z-]+\.yml)\b", block))
         self.assertEqual(named, set(self.PROOF_WORKFLOWS))
-        self.assertIn('gh workflow run "$wf" --ref "$TAG"', step)
+        self.assertIn('gh workflow run "$wf" --repo "$REPO" --ref "$TAG"', block)
+        self.assertIn("needs: [release, pypi-publish, sourceforge, gitlab]", block)
+        self.assertIn("github.event_name == 'workflow_dispatch'", block)
+        self.assertIn("needs.release.result == 'success'", block)
+        self.assertEqual({("actions", "write")}, _perm_entries(block))
+        cut = _uncommented(_workflow_text("cut-release.yml"))
+        step = cut.split("start the release pipeline on the tag", 1)[1]
+        self.assertIn('gh workflow run build.yml --ref "$TAG"', step)
+        self.assertEqual(set(re.findall(r"\b([a-z-]+\.yml)\b", step)) - {"build.yml", "docker.yml"}, set())
+
+    def test_the_proofs_cancel_a_superseded_tags_run(self):
+        # One concurrency group per proof workflow for every release
+        # tag, the newest tag's run cancelling the one before, so a
+        # release burst never queues nine runs per tag behind each
+        # other; the nightly and a branch dispatch keep their own.
+        for name in self.PROOF_WORKFLOWS:
+            wf = _workflow_text(name)
+            self.assertIn("startsWith(github.ref, 'refs/tags/v') && 'tags' ||", wf, name)
+            self.assertRegex(wf, r"cancel-in-progress: \$\{\{ startsWith\(github\.ref, 'refs/tags/v'\)", name)
 
     def test_the_suites_are_advisory_for_the_window(self):
         workflow = _workflow()
