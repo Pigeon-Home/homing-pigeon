@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.6 - 2026-11-12
+
+- CI: the cut reads the tag's tree at the commit, not the tag, before it sends the promotion input -- a tag the REST path placed is not in the cut's checkout, and the 3.16.21.5 dispatch went without the run id and built everything again
+
 ## 3.16.21.5 - 2026-11-12
 
 - CI: the tag build promotes the gate build's artifacts instead of building them again -- cut-release hands the tag dispatch the gate build's run id, the tag build reads that run back (a build of exactly the tag's commit on main, every artifact leg green, every artifact present) and publishes its archives, wheel and sdist; what ships is what the gate judged
