@@ -47,6 +47,16 @@ class VersionTest(unittest.TestCase):
             with open(os.path.join(d, "runner", "ops", "install.py")) as fh:
                 self.assertIn('SERVICE = "hp"', fh.read())
 
+    def test_next_version_asks_version4_and_falls_back_to_the_counter(self):
+        with mock.patch.object(rt.subprocess, "run",
+                               lambda *a, **k: mock.Mock(returncode=0, stdout="measuring...\n3.16.22.1\n", stderr="")):
+            self.assertEqual(rt.next_version("3.16.21.10"), "3.16.22.1")
+        with mock.patch.object(rt.subprocess, "run",
+                               lambda *a, **k: mock.Mock(returncode=1, stdout="", stderr="boom")), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(rt.next_version("3.16.21.10"), "3.16.21.11")
+        self.assertIn("moving the counter alone", out.getvalue())
+
     def test_the_live_carriers_agree(self):
         self.assertEqual(len(set(rt.carriers(REPO).values())), 1)
 

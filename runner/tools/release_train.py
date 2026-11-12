@@ -203,6 +203,24 @@ def bump(version):
     return ".".join(parts)
 
 
+def next_version(version, root=ROOT):
+    """The next version by the house rule: runner/ops/version4.py
+    measures the tree afresh at every cut, so the token component
+    (the third) moves when the tree crosses a million tokens and
+    the counter restarts at 1 -- 3.16.21.1 followed 3.16.20.10 that
+    way. A measure that cannot be taken falls back to the counter
+    alone, and says so."""
+    proc = subprocess.run([sys.executable, os.path.join(root, "runner", "ops", "version4.py"),
+                           "next", version, "--root", root, "--fresh"],
+                          capture_output=True, text=True, cwd=root)
+    out = (proc.stdout or "").strip().splitlines()
+    if proc.returncode == 0 and out and re.fullmatch(r"\d+\.\d+\.\d+\.\d+", out[-1]):
+        return out[-1]
+    _say("version4 could not measure the tree (%s); moving the counter alone"
+         % (proc.stderr or proc.stdout or "no output").strip()[:200])
+    return bump(version)
+
+
 def write_carriers(version, root=ROOT):
     for rel, rx in CARRIERS:
         path = os.path.join(root, rel)
@@ -412,7 +430,7 @@ def cmd_prepare(args):
     cs = carriers()
     if len(set(cs.values())) != 1:
         raise RuntimeError("the carriers disagree: %s" % cs)
-    version = bump(cs["pyproject.toml"])
+    version = next_version(cs["pyproject.toml"])
     tag = api("/git/ref/tags/v%s" % version)
     while tag and tag.get("object"):
         version = bump(version)
