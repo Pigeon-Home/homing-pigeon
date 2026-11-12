@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.2 - 2026-11-11
+
+- Fix: the default-posture confinement tests ask the runner's startup gate on macOS and FreeBSD as they do on Windows; the macOS backend engaged on the CI runners for the first time at the v3.16.21.1 tag build and the refusal arms of test_confinement and test_campaign_canary failed on a job that ran confined
+- CI: the macOS suite keeps its -v log (--full-log, uploaded as ci-test-log-macos), so a shard that hits its wall names its test instead of ending in a row of dots
+- Tools: release_train.py clock reads one cycle's timeline out of the hosted record -- the commit, the build, the gate, each cut-release dispatch and its failed step, the tag, the tag build's publish jobs, the release -- with the minutes between steps
+
 ## 3.16.21.1 - 2026-11-11
 
 - The first release past the 21-million-token measure: a fresh uncached recount of the tree at this cut reads 21,062,171 tokens, so the token component moves from 20 to 21 and the counter restarts at 1.
