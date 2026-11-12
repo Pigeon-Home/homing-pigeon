@@ -338,6 +338,39 @@ class WatchTest(unittest.TestCase):
             self.assertEqual(rt.watch_tag_build("3.16.21.2", 1), 1)
 
 
+class PreparePushRetryTest(unittest.TestCase):
+    def test_a_rejected_push_rebases_and_pushes_again(self):
+        calls = []
+        pushes = iter([RuntimeError("git push origin HEAD:main: ! [rejected] HEAD -> main (fetch first)"), None])
+
+        def fake_git(*args, check=True):
+            calls.append(args)
+            if args[:2] == ("push", "origin"):
+                exc = next(pushes)
+                if exc:
+                    raise exc
+                return ""
+            if args[0] == "rev-parse":
+                return "abc123def456"
+            return ""
+        args = mock.Mock(note=["x"], subject=None, trailer=[])
+        with mock.patch.object(rt, "_git", fake_git), \
+                mock.patch.object(rt, "carriers", lambda root=None: {"pyproject.toml": "3.16.24.5", "runner/_version.py": "3.16.24.5", "runner/ops/install.py": "3.16.24.5"}), \
+                mock.patch.object(rt, "next_version", lambda v, root=None: "3.16.24.6"), \
+                mock.patch.object(rt, "api", lambda path, **kw: {}), \
+                mock.patch.object(rt, "write_carriers", lambda *a, **k: None), \
+                mock.patch.object(rt, "write_changelog", lambda *a, **k: None), \
+                mock.patch.object(rt, "record_core_measure", lambda *a, **k: None), \
+                mock.patch.object(rt, "local_guards", lambda *a, **k: None), \
+                mock.patch.object(rt.subprocess, "run", lambda *a, **k: mock.Mock(returncode=0, stdout="", stderr="")), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            sha = rt.cmd_prepare(args)
+        self.assertEqual(sha, "abc123def456")
+        tail = [c for c in calls if c[0] in ("push", "fetch", "rebase")]
+        self.assertEqual([c[0] for c in tail][-4:], ["push", "fetch", "rebase", "push"])
+        self.assertIn("rebasing the release commit onto main", out.getvalue())
+
+
 class RunRetryTest(unittest.TestCase):
     def test_run_prepares_again_when_main_moved_past_the_commit(self):
         calls = []

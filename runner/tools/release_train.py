@@ -453,7 +453,28 @@ def cmd_prepare(args):
         message += "\n" + "\n".join(args.trailer) + "\n"
     _git("add", "-u")
     _git("commit", "-q", "-m", message)
-    _git("push", "origin", "HEAD:main")
+    # Another seat may land between the fetch above and this push
+    # (the 3.16.24.6 prepare lost that race to a desk note and
+    # stopped with the release commit unpushed): rebase the release
+    # commit onto the head and push again, up to three times. The
+    # carriers and the changelog rebase cleanly over anything but
+    # another release commit, which fails the rebase and is reported.
+    for attempt in range(3):
+        try:
+            _git("push", "origin", "HEAD:main")
+            break
+        except RuntimeError as exc:
+            if "fetch first" not in str(exc) and "rejected" not in str(exc):
+                raise
+            if attempt == 2:
+                raise
+            _say("the push was rejected (another seat landed first); rebasing the release commit onto main and pushing again")
+            _git("fetch", "origin", "main")
+            try:
+                _git("rebase", "origin/main")
+            except RuntimeError:
+                _git("rebase", "--abort")
+                raise
     sha = _git("rev-parse", "HEAD")
     _say("pushed release commit %s for %s" % (sha[:8], version))
     return sha
