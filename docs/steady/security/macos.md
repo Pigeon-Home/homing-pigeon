@@ -1112,3 +1112,217 @@ proven off darwin, and what is still owed:
   above this fix's ladder cap, the refusal shape
   will be unchanged and the cap is the next round's
   subject, as R4-S1 pre-named.
+
+## The fifth live verdict (2026-11-11)
+
+The live word on the fourth fix has landed, and
+it is the same refusal. Read first-hand by this
+lane from the job logs and the jobs API: the
+3.16.20.10 tag build (build run 43152532925, its
+`test-macos` job) failed with 13 failures -- all
+10 points of the live class and 3 points of the
+data-limit substrate class -- every shim-carrying
+failure on the one line `hp-shim: could not set
+the data-size limit: current limit exceeds
+maximum limit`; the main build for the same
+release head (43150652145) failed the same way;
+and the next main head carrying the fix whose
+build completed (43156699717) shows its
+`test-macos` job failed again (the run's overall
+success is the 48-hour relief posture reading
+the suites as advisory, not a pass). The fourth
+fix's P4 is therefore answered: it does not
+pass. Three first-hand facts in the substrate
+failures name where the refusal lives:
+
+- The substrate driver that stages the R4-S2
+  shape by lowering its own hard data limit to
+  256 MiB dies at its own staging call, before
+  the shim ever runs: `ValueError: current limit
+  exceeds maximum limit` at the driver's line 3.
+  A started interpreter on this host cannot set
+  a 256 MiB data-size limit even as an equal
+  pair, in its own process, with no profile and
+  no shim anywhere.
+- The scripted-floor driver whose floor stands
+  above a finite hard limit dies the same way at
+  its own staging call (its line 5).
+- The scripted-floor climb, whose fake seam
+  refuses only below a 768 MiB floor and
+  delegates every higher attempt to the real
+  `setrlimit`, exhausted the whole ladder: the
+  real kernel refused (1 GiB, unlimited),
+  (2 GiB, unlimited), and every doubling up to
+  the ladder's 32 GiB cap, and the shim refused
+  by name at the cap.
+
+What that settles: the pair shape is exonerated.
+An equal pair (256 MiB, 256 MiB), the pre-fix
+pair (limit, limit), the fourth fix's
+hard-preserving pair (soft, inherited hard) and
+its clamped pair have now all been refused with
+the identical `EINVAL` text on this host. What
+varied across the fourth fix's ladder was only
+the soft value, 512 MiB through 32 GiB, and
+every value was refused.
+
+## Suppositions for the fifth fix, recorded before the fix
+
+Recorded 2026-11-11, after the fifth verdict
+above and before any fifth fix was written, from
+a first-hand read of the failing job logs named
+above, of `runner/guard/macos_confine.py` and
+`runner/tests/test_macos_confine.py` as the
+fourth fix left them, and of the fourth round's
+own record, which pre-named this round's
+subject: "if a head carrying that fix still
+shows the named refusal on the shim legs, the
+floor stands above the ladder's cap on that
+host" (R4-S1), and "the cap is the next round's
+subject" (the fourth fix's conclusions).
+
+- R5-S1, the floor stands above the cap (the
+  primary supposition). The Darwin kernel's
+  data-size check measures the process's current
+  usage over its whole VM map -- the loader, the
+  dyld shared cache and the large regions a
+  started process on this platform maps and
+  reserves before its first line runs -- and
+  that map, for a started framework interpreter
+  on the CI host, stands above 32 GiB: above the
+  fourth fix's ladder cap. Every fact on record
+  fits: the refusal is deterministic and
+  identical at 256 MiB, at 512 MiB and at every
+  doubling to 32 GiB; it is identical for an
+  equal pair, a hard-preserving pair and a
+  clamped pair; it strikes a bare driver process
+  staging its own limit with no shim and no
+  profile; and it is `EINVAL`, the
+  current-usage error, never the `EPERM` a
+  hard-limit raise would draw. The supposed
+  consequence for the fix: the ladder's bound,
+  not its shape, is the defect. For an unlimited
+  inherited hard limit the ladder must climb by
+  doubling past 32 GiB to a bound set by the
+  platform's own arithmetic -- the largest
+  power-of-two finite value below the platform's
+  unlimited sentinel -- and the applied limit
+  remains the first value the kernel accepts,
+  the strongest the host allows at or above the
+  request. If a head carrying that fix still
+  shows the named refusal, no finite data-size
+  value this ladder can name is accepted on
+  that host, the mechanism itself (a data-size
+  limit set by a started process) stands
+  convicted rather than its bound, and the
+  ceiling's mechanism is the next round's
+  subject; this record says so in advance.
+- R5-S2, the substrate's staging is part of the
+  defect's blast radius. Two of the fourth
+  round's executed substrate tests stage their
+  shape by really lowering a hard data limit in
+  a driver process, and on this host that
+  staging call itself is refused (R5-S1's floor
+  is below 256 MiB nowhere on it), so those
+  tests can never reach the shim they judge on
+  a darwin host, whatever the shim does. The
+  fix this supposition calls for: the executed
+  substrate stages its shapes through the
+  scripted resource seam -- a fake `getrlimit`
+  reporting the staged inherited pair and a fake
+  `setrlimit` enforcing the floor and the
+  soft-at-or-below-hard rule -- deterministically
+  on every host, and the real-module staging
+  shape is kept only where the host allows the
+  staging, with a darwin staging refusal named
+  as what it is (the floor refusing the staging,
+  not the shim failing) rather than counted as
+  a shim failure. The pure ladder rule and the
+  shim's execution of it stay pinned per field
+  and by the fuzz family either way.
+- R5-S3, what the re-pinned live expectations
+  must say. The limits read-back point stands
+  as R4-S3 left it (the applied soft value is
+  exactly one of the ladder's values for the
+  inherited hard limit, the hard limit reads
+  back unchanged, the address space stays
+  unlimited) -- it re-derives its expectation
+  from the ladder function, so the fifth fix's
+  wider ladder carries it without a text change.
+  The memory-ceiling point cannot stand as
+  R4-S3 left it: it allocates its own read-back
+  limit plus a fixed margin, and when the
+  applied ladder value stands far above the
+  request (R5-S1's host), that allocation is
+  stopped by whichever reaches it first -- the
+  applied limit (a `MemoryError`) or the host's
+  own memory pressure killing the process
+  mid-touch. The invariant the point exists to
+  hold is the non-completion: the job does not
+  finish an allocation past its applied limit
+  and does not exit 0. The fix therefore
+  re-pins the point in the open: the job must
+  not print its completion marker, must not
+  exit 0, and its refusal must be the ceiling's
+  shape -- `MemoryError` on its stderr, or a
+  death by signal (a negative return code)
+  under the host's memory pressure. The
+  ceiling's meaning does not move: the applied
+  value is the strongest the host's kernel
+  accepts at or above the requested ceiling,
+  never below it, and a spawn for which no
+  ladder value is accepted still refuses the
+  job by name, never runs it weaker.
+
+What is not supposed: that the profile refuses
+anything in this round (its legs pass), that
+the hard limit should move (R4-S2 stands: it
+never moves), or that Seatbelt has allowed any
+escape (no escape point has ever been exercised
+on a live host -- the process still dies in the
+shim before them).
+
+The predictions this fix is measured against,
+stated before it was written:
+
+- P1. The pure attempt-ladder computation, for
+  an unlimited inherited hard limit, yields the
+  requested value and its doublings up to the
+  named maximum (the largest power-of-two
+  finite value below the platform's unlimited
+  sentinel, 2**62), strictly increasing, never
+  above it, at most 34 values for a 512 MiB
+  request; for a finite inherited hard limit it
+  yields exactly the fourth fix's ladder (the
+  request clamped to the hard limit, doublings
+  to the hard limit itself).
+- P2. Executed off darwin, the fixed shim under
+  the scripted seam climbs past a 768 MiB floor
+  to 1 GiB and the job runs carrying exactly
+  it; refuses by name when the floor stands
+  above the named maximum, and when the floor
+  stands above a finite inherited hard limit of
+  256 MiB reported by the seam; and clamps to a
+  seam-reported 256 MiB hard limit exactly as
+  R4-S2 requires -- all deterministically, on
+  any host. The real-module lowered-hard shape
+  still runs the job and reads back
+  (256 MiB, 256 MiB) on a host that allows the
+  staging.
+- P3. The contract suite runs green off darwin
+  with the live class skipped under its
+  registered reason, beside the neighbouring
+  confinement suites, the skip registry and the
+  core figure guards after their re-measure.
+- P4. On the CI macOS legs, a head carrying
+  this fix passes every shim-carrying live
+  point if any finite value at or below the
+  named maximum is accepted on that host
+  (R5-S1's floor stands below 2**62); the 2
+  profile-alone points keep passing, because
+  the profile does not change in this round.
+- P5. The memory-ceiling live point passes
+  with its re-pinned shape (R5-S3) if the
+  over-limit allocation is stopped by the
+  applied limit or by the host's memory
+  pressure before completion.

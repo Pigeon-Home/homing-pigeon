@@ -21710,3 +21710,73 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   tree, named in its commit, following the
   Q161/Q162 pattern; a docs-only landing
   rides no re-measure.
+
+## macOS confinement: the fifth fix — suppositions recorded before the fix (2026-11-11)
+
+The live verdict on the fourth fix has arrived
+and it has failed, read first-hand by this lane
+from the job logs and the jobs API: the
+3.16.20.10 tag build's `test-macos` job failed
+with 13 failures (all 10 live points and 3
+data-limit substrate points), every
+shim-carrying failure on the one line
+`hp-shim: could not set the data-size limit:
+current limit exceeds maximum limit`; the main
+build for the same release head failed the same
+way; and the next main head carrying the fix
+whose build completed shows its `test-macos`
+job failed again (its run's overall success is
+the 48-hour relief posture reading the suites
+as advisory, not a pass). This lane is a fresh
+fix lane, working in a fresh scratch clone from
+remote main; it cuts no release, touches no
+ship state and does not touch work/next. The
+full record — the fifth verdict, the
+suppositions R5-S1 to R5-S3 and the predictions
+P1 to P5 this fix is measured against — stands
+in `docs/steady/security/macos.md`, in the
+macOS confinement record's established shape,
+beside the four rounds before it. In brief:
+
+- **R5-S1 (primary).** The floor stands above
+  the fourth fix's ladder cap: the kernel's
+  data-size check measures the process's whole
+  VM map, which for a started framework
+  interpreter on the CI host stands above the
+  ladder's 32 GiB cap. Every finite value tried
+  across four rounds — 256 MiB as an equal pair
+  in a bare driver, 512 MiB in both pair shapes,
+  and every doubling to 32 GiB with the hard
+  limit preserved — was refused with the
+  identical `EINVAL` text. The fix the
+  supposition calls for: for an unlimited
+  inherited hard limit the ladder climbs by
+  doubling to a bound set by the platform's own
+  arithmetic (the largest power-of-two finite
+  value below the unlimited sentinel, 2**62);
+  if that still refuses, the mechanism itself
+  stands convicted, as the record states in
+  advance.
+- **R5-S2.** The substrate's staging is part of
+  the blast radius: two executed substrate
+  tests stage by really lowering a hard limit
+  in a driver, and that staging call is itself
+  refused on the CI host, so they never reach
+  the shim they judge there. The executed
+  substrate stages through the scripted
+  resource seam deterministically on every
+  host; the real-module shape is kept where
+  the host allows the staging, with a darwin
+  staging refusal named as the floor refusing
+  the staging, not the shim failing.
+- **R5-S3.** The live re-pins: the limits
+  read-back point stands as R4-S3 left it (it
+  re-derives from the ladder function); the
+  memory-ceiling point is re-pinned to its
+  invariant — the over-limit allocation does
+  not complete and the job does not exit 0,
+  refused by a `MemoryError` from the applied
+  limit or by a death by signal under the
+  host's memory pressure.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
