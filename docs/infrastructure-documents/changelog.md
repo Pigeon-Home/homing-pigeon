@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.14 - 2026-11-12
+
+- Tests: the briefing guard's sweeps (fourteen CPU-minutes in one module; one test eleven minutes alone) run in a leg of their own, test-heavy, sharded by class under a 60-minute wall; the three suites leave the module out. Q166 asks the desk where the sweeps belong and at what size
+
 ## 3.16.21.13 - 2026-11-12
 
 - Tests: a module whose tests cost more than a shard can carry is sharded by class on every leg (runner/tools/split_modules.json): the Q165 briefing guard's 273 tests and fourteen CPU-minutes spread over the shards instead of sinking the one that drew them
