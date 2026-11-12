@@ -595,3 +595,165 @@ exactly:
   the escape, network and limits points unproven —
   and no field proof on project hardware is claimed:
   there is no Mac in the project's own fleet.
+
+## The third live verdict (2026-11-11)
+
+The live word on the second fix has landed, and it is
+failure in a new shape. Two `test-macos` jobs on heads
+carrying the second fix have completed with failure
+verdicts (build run 43118076619 on the figures head
+that followed the fix, and build run 43121516173 on
+the 3.16.20.5 release head; the newer job's log was
+read first-hand before anything below was supposed,
+on the macos-15 arm64 image, the hosted framework
+Python 3.12). All 10 tests in the live class failed —
+the original 7 and the bisect's 3. The shape changed:
+no confined spawn aborts at -6 any more. A confined
+interpreter now starts far enough to print its own
+diagnostic and exit 1: `python: realpath:
+/Library/Frameworks/Python.framework/Versions/3.12/bin/:
+Operation not permitted`. The probe's failure carries
+that line verbatim, the memory-ceiling point's stderr
+is exactly that line instead of a `MemoryError`, the
+full-chain spawns (the interpreter spawn and the
+native binary alike) return 1, the escape and network
+points again produce no output (`b''` — the process
+dies before them), and the limits read-back is empty.
+
+What that verdict settles about the second fix, stated
+exactly. The -6 abort is gone, so R2-S1 and R2-S2 as a
+pair were carrying it: the grants they added (the root
+listing, the `/private` startup trees) let the loader
+finish and the interpreter's own code run — the
+process now lives long enough to report what refuses
+it. They are incomplete, not wrong: a further startup
+need is refused, and it is now visible by name. The
+bisect did part of its job and exposed a gap in
+itself: the profile alone fails (so the profile still
+refuses a startup need), the native binary through
+the full chain fails (but that leg launches through
+the Python shim, so it shares the interpreter's death
+and does not isolate a native start), and the shim
+alone — no profile in force at all — also fails at
+exit 1, so a second, independent defect sits in the
+shim leg; its cause is not in the log, because the
+round-2 bisect assertions checked only the return
+code and captured no stderr. One correction to how
+this verdict is described: the bisect legs are new in
+round 2 and have no earlier CI verdict at all — the
+failure count rose 7 to 10 because three new points
+exist and fail, not because three passing points
+regressed; the original 7 fail in a new shape.
+
+## Suppositions for the third fix, recorded before the fix
+
+Recorded 2026-11-11, after the third verdict above
+and before any third fix was written, from a
+first-hand read of the failing job log and of
+`runner/guard/macos_confine.py` and the live suite as
+the second fix left them.
+
+- R3-S1, the realpath refusal (the primary
+  supposition). At startup the interpreter resolves
+  its own install location with `realpath()` — the
+  framework interpreter on the CI host resolves
+  `/Library/Frameworks/Python.framework/Versions/3.12/bin/`
+  — and `realpath()` stats every component of the
+  path in turn (the `lstat`/`readlink` family, which
+  Seatbelt governs as `file-read-metadata`). The
+  profile grants `file-read*` — metadata included —
+  on its named subpath trees, so every component
+  under `/Library` is covered; but the root itself
+  carries only R2-S1's `file-read-data` line, which
+  grants the listing and not the stat, so the stat
+  of `/` is refused by the deny-by-default base,
+  `realpath()` fails with `Operation not permitted`,
+  and the interpreter's startup path resolution is
+  fatal: it prints exactly the line the log carries
+  and exits 1. The general form of the same defect
+  reaches further than the root: component-wise stat
+  touches every ancestor of an allowed path, and the
+  ancestors above a granted prefix are nowhere
+  granted — a venv interpreter's `/Users/<name>`
+  ancestors, a work directory's `/private`,
+  `/private/var` and temp-hash ancestors — so any
+  startup (or job) `realpath()` of an allowed path
+  can be refused at an ungranted ancestor. The fix
+  this supposition calls for: the profile carries
+  one `(allow file-read-metadata)` line — metadata
+  (existence, type, size, times, symlink targets) on
+  any path, and never contents: `file-read-data`
+  stays confined to the named trees, so the escape
+  points' contents assertions are untouched, and
+  the root listing line stands as it is. If a head
+  carrying that line still prints the realpath line,
+  R3-S1 is wrong and this record says so in advance.
+- R3-S2, why the three bisect legs fail. Each leg's
+  failure is one of the two defects above wearing
+  that leg's shape. The native-binary leg is not a
+  native start: the full chain launches every command
+  through the shim's interpreter, so the leg dies at
+  the shim interpreter's own realpath refusal
+  (R3-S1) before `/usr/bin/true` is ever exec'd. The
+  profile-alone leg is R3-S1 in its pure form — the
+  interpreter driven directly under the generated
+  profile, no shim, no limit — and its failure is
+  what convicts the profile rather than the chain.
+  The shim-alone leg runs with no profile in force,
+  so R3-S1 cannot explain it at all: it is the
+  evidence for R3-S3. What the profile must allow
+  for the interpreter to start while the escape,
+  network and spawn-limit assertions still hold is
+  therefore exactly: metadata everywhere (R3-S1),
+  contents only in the named trees (unchanged), no
+  network allow rule (unchanged), and the shim's
+  pre-exec limit left standing (R3-S3).
+- R3-S3, the shim alone. Two named alternatives, and
+  this round's work is built to separate them rather
+  than to guess. (a) The shim's own `setrlimit` call
+  fails on this host — setting the data-size limit
+  to (512 MiB, 512 MiB) asks to raise the hard limit
+  above the inherited one, which an unprivileged
+  process may not do, and macOS hosts commonly carry
+  a small inherited hard data limit — so the shim
+  dies by exception at exit 1 before its `exec`. (b)
+  The limit, once set, is in force across the second
+  `exec` and the framework interpreter's startup
+  breaks under it (the loader's or allocator's
+  accounting against the data ceiling). The
+  production change this round is the same under
+  both and weakens nothing: a shim that cannot set
+  its limit already refuses the job — that is the
+  fail-closed shape — but it must refuse by name, so
+  the shim writes a named line to stderr
+  (`hp-shim: could not set the data-size limit: ...`)
+  and exits 1, instead of dying by a bare exception
+  whose text no assertion captured. The live bisect
+  then gains the separation: every bisect assertion
+  carries the captured stderr in its message, and two
+  legs join it — the profile driving a native binary
+  directly, with no shim at all (a native start the
+  round-2 bisect never isolated), and the shim
+  driving a native binary, with no profile. Under
+  (a) the shim-to-native leg fails carrying the
+  shim's named line; under (b) it passes while the
+  shim-to-interpreter leg fails without that line.
+  The limit's value and kind do not change this
+  round: if (a) is convicted, the ceiling's
+  application — not its size — is the next round's
+  subject, and the limits point's 512 MiB read-back
+  expectation would have to be re-judged against the
+  host's inherited hard limit in the open.
+
+A standing risk is recorded, not acted on: the
+memory-ceiling live point supposes the data-size
+limit governs a 700 MiB `bytearray` allocation on
+this platform. If the next verdict shows that point
+failing with the allocation completing instead, the
+ceiling mechanism — not the profile — is the next
+round's subject. What is not supposed: that metadata
+is contents (it is not — no byte of any file's data
+becomes readable by the metadata line), or that
+Seatbelt has allowed any escape (no escape point has
+ever been exercised — the process still dies before
+them).

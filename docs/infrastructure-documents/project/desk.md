@@ -338,6 +338,38 @@ level stays Supported, reduced confinement, and the
 conclusions stand in `docs/steady/security/macos.md`
 against R2-S1 to R2-S3.
 
+The third live verdict has since landed, and it is
+failure in a new shape: two completed `test-macos`
+jobs on heads carrying the second fix (the figures
+head's build and the 3.16.20.5 release head's build)
+fail all 10 live tests at exit 1, not -6 — the
+confined interpreter now prints `python: realpath:
+/Library/Frameworks/Python.framework/Versions/3.12/bin/:
+Operation not permitted` and exits, so the second
+fix's grants carried the loader (the -6 abort is
+gone) and a further startup need stands refused by
+name. A third fix lane is active. Its suppositions
+are recorded in `docs/steady/security/macos.md`
+before any third fix was written — R3-S1, the
+interpreter's startup `realpath()` stats every path
+component and the root carries data but not
+metadata, so the profile gains metadata on any path
+and never more contents; R3-S2, the bisect legs'
+failure pattern read leg by leg (the native leg
+launches through the shim's interpreter and shares
+its death, the profile-alone leg is the pure
+profile case, the shim-alone leg runs unconfined
+and so evidences a second defect); R3-S3, the
+shim-alone defect's two named alternatives (the
+`setrlimit` call itself refused, or the limit in
+force across the second exec), which this round
+separates by a named shim refusal and a widened
+live bisect rather than by a guess. The live proof
+is still owed: no `test-macos` job on a head
+carrying the third fix has completed as this note
+stands, so the support level stays Supported,
+reduced confinement.
+
 And a third round of the same reconciliation, for the one
 surface the first two could not see: fixtures that only fail
 where no confinement backend exists at all. On Linux the
