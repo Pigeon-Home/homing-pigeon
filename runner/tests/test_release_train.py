@@ -139,6 +139,70 @@ class MirrorEvidenceTest(unittest.TestCase):
                          ["ghcr.io/pigeon-home/homing-pigeon:latest", "ghcr.io/pigeon-home/homing-pigeon:v3.16.20.10"])
 
 
+class ClockTest(unittest.TestCase):
+    """One cycle's timeline, read from a scripted record: the main
+    build (not the tag build on the same sha) gives the gate time,
+    the cut-release dispatches between the commit and the tag are
+    the cycle's, and rows the record lacks read as owed."""
+    SHA = "8ef9627fe5a1e9fb5f5ec2513db95f9a39a6a12e"
+
+    def _record(self, path, **kw):
+        if path.startswith("/git/ref/tags/"):
+            return {"object": {"type": "tag", "sha": "t" * 40}}
+        if path.startswith("/git/tags/"):
+            return {"tagger": {"date": "2026-11-12T06:37:07Z"}, "object": {"sha": self.SHA}}
+        if path.startswith("/commits/"):
+            return {"commit": {"committer": {"date": "2026-11-12T06:17:22Z"}}}
+        if "/build.yml/runs?head_sha" in path:
+            return {"workflow_runs": [
+                {"id": 2, "head_branch": "v3.16.21.1", "conclusion": None, "status": "in_progress",
+                 "run_started_at": "2026-11-12T06:37:13Z", "created_at": "2026-11-12T06:37:13Z"},
+                {"id": 1, "head_branch": "main", "conclusion": "success", "status": "completed",
+                 "run_started_at": "2026-11-12T06:17:27Z", "updated_at": "2026-11-12T06:38:09Z"}]}
+        if "/build.yml/runs?branch=v3.16.21.1" in path:
+            return {"workflow_runs": [{"id": 2, "status": "in_progress",
+                                       "run_started_at": "2026-11-12T06:37:13Z"}]}
+        if path.startswith("/actions/runs/1/jobs"):
+            return {"jobs": [{"name": n, "status": "completed", "conclusion": "success",
+                              "completed_at": "2026-11-12T06:2%d:51Z" % (i % 10)}
+                             for i, n in enumerate(sorted(rt.gate_jobs()))]}
+        if path.startswith("/actions/runs/2/jobs"):
+            return {"jobs": [{"name": "release", "status": "in_progress", "conclusion": None,
+                              "completed_at": None}]}
+        if path.startswith("/actions/runs/7/jobs"):
+            return {"jobs": [{"name": "cut", "steps": [{"name": "the build on this commit is green",
+                                                        "conclusion": "failure"}]}]}
+        if "/cut-release.yml/runs" in path:
+            return {"workflow_runs": [
+                {"id": 9, "created_at": "2026-11-12T09:00:00Z", "conclusion": "success"},   # a later cycle
+                {"id": 7, "created_at": "2026-11-12T06:30:00Z", "conclusion": "failure"},
+                {"id": 5, "created_at": "2026-11-12T05:00:00Z", "conclusion": "success"}]}  # the cycle before
+        if path.startswith("/releases/tags/"):
+            return {}
+        raise AssertionError(path)
+
+    def test_the_timeline_reads_the_record(self):
+        with mock.patch.object(rt, "api", self._record):
+            rows = rt.cycle_clock("3.16.21.1", since="2026-11-12T06:19:58Z")
+        labels = [r[0] for r in rows]
+        self.assertEqual(labels[0], "asked for")
+        self.assertIn("release commit 8ef9627f", labels)
+        self.assertIn("build 1 started", labels)
+        self.assertIn("gate green (%d jobs)" % len(rt.gate_jobs()), labels)
+        self.assertIn("cut-release 7: failure at 'the build on this commit is green'", labels)
+        self.assertFalse(any(l.startswith("cut-release 9") or l.startswith("cut-release 5") for l in labels))
+        self.assertIn("tag v3.16.21.1", labels)
+        self.assertIn("tag build 2 started", labels)
+        self.assertIn("release: in_progress", labels)
+        self.assertIn("pypi-publish: pending", labels)
+        self.assertEqual(dict(rows)["release published (0 assets)"], None)
+        text = rt.clock_report(rows)
+        # chronological: the commit and its build came before the ask
+        self.assertIn("asked for", text.splitlines()[2])
+        self.assertRegex(text, r"release published \(0 assets\)\s+--$")
+        self.assertRegex(text, r"gate green \(\d+ jobs\)\s+06:27:51Z\s+\+[\d.]+\s+10\.5 min")
+
+
 class WaitTest(unittest.TestCase):
     def test_wait_returns_the_first_value_and_gives_up_on_time(self):
         hits = iter([None, None, "done"])

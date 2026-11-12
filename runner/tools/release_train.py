@@ -5,6 +5,7 @@
     python3 runner/tools/release_train.py prepare --note "Fix: ..." [--note ...]
     python3 runner/tools/release_train.py cut [--sha SHA]
     python3 runner/tools/release_train.py run --note "..." [--note ...]
+    python3 runner/tools/release_train.py clock [--version V] [--since ISO-TIME]
 
 `status` reads the tree and the hosted record: the three version
 carriers and whether they agree, whether the tag for that version
@@ -27,6 +28,14 @@ own responses out of those jobs' logs (PyPI's "View at", the
 SourceForge file listing and git push, the GitLab uploads and
 release, the image tags) and prints the verdict. `run` is prepare
 then cut.
+
+`clock` reads one cycle's timeline out of the hosted record -- the
+release commit, the build's start, the gate going green, every
+cut-release dispatch with its verdict and failed step, the tag, the
+tag build and its publish jobs, the release's publish time -- each
+with the minutes since the step before and since the start, so
+"how long did that take, and where" is one command after a cycle
+instead of a hand count over the Actions pages.
 
 Why this exists: the 3.16.20.10 cycle of 2026-11-11 took three hours
 of a person's attention for seven build cycles, each step a poll
@@ -497,6 +506,136 @@ def cmd_run(args):
     return cmd_cut(args, sha=sha)
 
 
+# ----------------------------------------------------------------
+# the clock
+# ----------------------------------------------------------------
+
+def _ts(text):
+    """A GitHub timestamp as an aware datetime, or None."""
+    if not text:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def cycle_clock(version, since=None):
+    """The timeline of one release cycle, read from the hosted record.
+
+    A list of (label, datetime-or-None) in the order the steps
+    happen: the release commit, its build's start, the gate green
+    (the last gate job done), each cut-release dispatch on the
+    commit with its verdict, the tag, the tag build's start, the
+    release job, each publish job, and the release's publish time.
+    `since` (an ISO time) is the moment the cycle was asked for and
+    heads the list when given. Rows the record does not have carry
+    None, so a cycle still in flight reads as far as it has gone.
+    """
+    rows = []
+    if since:
+        rows.append(("asked for", _ts(since)))
+    ref = api("/git/ref/tags/v%s" % version) or {}
+    obj = ref.get("object") or {}
+    tag_time = None
+    sha = obj.get("sha")
+    if obj.get("type") == "tag" and sha:
+        tag = api("/git/tags/%s" % sha) or {}
+        tag_time = _ts((tag.get("tagger") or {}).get("date"))
+        sha = (tag.get("object") or {}).get("sha")
+    if not sha:
+        # No tag yet: the newest build whose head commit carries the
+        # release prefix for this version.
+        d = api("/actions/workflows/build.yml/runs?branch=main&per_page=50") or {}
+        for r in d.get("workflow_runs", []):
+            if (r.get("display_title") or "").startswith("release: %s" % version):
+                sha = r["head_sha"]
+                break
+    if not sha:
+        return rows + [("release commit", None)]
+    commit = api("/commits/%s" % sha) or {}
+    commit_time = _ts(((commit.get("commit") or {}).get("committer") or {}).get("date"))
+    rows.append(("release commit %s" % sha[:8], commit_time))
+    # The tag build shares the sha; the gate's build is main's.
+    runs = [r for r in build_runs(sha) if r.get("head_branch") == "main"] or build_runs(sha)
+    if runs:
+        run = runs[0]
+        rows.append(("build %s started" % run["id"], _ts(run.get("run_started_at") or run.get("created_at"))))
+        jobs = run_jobs(run["id"])
+        need = gate_jobs()
+        done = [_ts(jobs[n].get("completed_at")) for n in need if n in jobs and jobs[n].get("completed_at")]
+        if len(done) == len(need) and need:
+            rows.append(("gate green (%d jobs)" % len(need), max(done)))
+        else:
+            rows.append(("gate green", None))
+        if run.get("status") == "completed":
+            rows.append(("build %s whole: %s" % (run["id"], run.get("conclusion")), _ts(run.get("updated_at"))))
+    else:
+        rows.append(("build started", None))
+    # A dispatch names the sha in its inputs, which the runs API does
+    # not show; the cycle's dispatches are the ones between the
+    # release commit and the tag (or now, while the tag is owed).
+    d = api("/actions/workflows/cut-release.yml/runs?per_page=30") or {}
+    cuts = []
+    for r in d.get("workflow_runs", []):
+        when = _ts(r.get("created_at"))
+        if when is None or (commit_time and when < commit_time):
+            continue
+        if tag_time and when > tag_time + datetime.timedelta(minutes=1):
+            continue
+        cuts.append(r)
+    for r in sorted(cuts, key=lambda r: r["id"]):
+        verdict = r.get("conclusion") or r.get("status")
+        step = failed_step(r["id"]) if verdict == "failure" else ""
+        rows.append(("cut-release %s: %s%s" % (r["id"], verdict, " at '%s'" % step if step else ""),
+                     _ts(r.get("created_at"))))
+    rows.append(("tag v%s%s" % (version, "" if tag_time or not obj else " (lightweight)"), tag_time))
+    d = api("/actions/workflows/build.yml/runs?branch=v%s&per_page=5" % version) or {}
+    tag_runs = d.get("workflow_runs", [])
+    if tag_runs:
+        tr = tag_runs[0]
+        rows.append(("tag build %s started" % tr["id"], _ts(tr.get("run_started_at") or tr.get("created_at"))))
+        jobs = run_jobs(tr["id"])
+        for name in ("release", "pypi-publish", "sourceforge", "gitlab"):
+            j = jobs.get(name) or {}
+            state = j.get("conclusion") or j.get("status") or (
+                "pending" if tr.get("status") != "completed" else "absent")
+            rows.append(("%s: %s" % (name, state), _ts(j.get("completed_at"))))
+    else:
+        rows.append(("tag build started", None))
+    rel = api("/releases/tags/v%s" % version) or {}
+    rows.append(("release published (%d assets)" % len(rel.get("assets", [])), _ts(rel.get("published_at"))))
+    return rows
+
+
+def clock_report(rows):
+    """The timeline as text: each row's time, the minutes since the
+    row before it, and the minutes since the first row."""
+    out = []
+    timed = sorted((r for r in rows if r[1] is not None), key=lambda r: r[1])
+    first = None
+    prev = None
+    for label, when in timed:
+        if first is None:
+            first = when
+        since_first = (when - first).total_seconds() / 60
+        step = "" if prev is None else "%+.1f" % ((when - prev).total_seconds() / 60)
+        out.append("%-52s %s  %6s  %6.1f min" % (label, when.strftime("%H:%M:%SZ"), step, since_first))
+        prev = when
+    for label, when in rows:
+        if when is None:
+            out.append("%-52s --" % label)
+    return "\n".join(out)
+
+
+def cmd_clock(args):
+    version = args.version or carriers()["pyproject.toml"]
+    rows = cycle_clock(version, args.since)
+    _say("the %s cycle, from the hosted record:" % version)
+    _say(clock_report(rows))
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -513,10 +652,15 @@ def main(argv=None):
     p.add_argument("--watch", action="store_true",
                    help="the tag is already placed: skip the gate and the "
                         "dispatch, wait for the tag build and read the mirrors")
+    p = sub.add_parser("clock", help="one cycle's timeline from the hosted record")
+    p.add_argument("--version", default=None, help="the version (default: the carriers')")
+    p.add_argument("--since", default=None, help="when the cycle was asked for (ISO time), as the first row")
     args = ap.parse_args(argv)
     try:
         if args.cmd == "status":
             return cmd_status(args)
+        if args.cmd == "clock":
+            return cmd_clock(args)
         if args.cmd == "prepare":
             if not args.note:
                 ap.error("prepare needs at least one --note")
