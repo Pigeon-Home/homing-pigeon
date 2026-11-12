@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.15 - 2026-11-12
+
+- Tests: two more latency bounds become hang guards on the Windows leg — the oracle A/B fixture's five-second wait and the last-slot race's five-second barrier for thirty-two threads now wait up to a minute and return the moment the condition holds
+- Desk: Q165 is answered under option 1 with the fix lane's conclusions on the record; Q166's suppositions Q166-S1 to Q166-S4 are recorded before the measurement
+- Docs: the heavy leg and the hour's cycles are on the record
+
 ## 3.16.21.14 - 2026-11-12
 
 - Tests: the briefing guard's sweeps (fourteen CPU-minutes in one module; one test eleven minutes alone) run in a leg of their own, test-heavy, sharded by class under a 60-minute wall; the three suites leave the module out. Q166 asks the desk where the sweeps belong and at what size
