@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.13 - 2026-11-12
+
+- Tests: a module whose tests cost more than a shard can carry is sharded by class on every leg (runner/tools/split_modules.json): the Q165 briefing guard's 273 tests and fourteen CPU-minutes spread over the shards instead of sinking the one that drew them
+- Tools: the Windows durations packer reads a job log fetched through the API as a bare shard log
+
 ## 3.16.21.12 - 2026-11-12
 
 - Tools: the release train takes the next version from version4's fresh measure at every cut, so the token component moves on its own when the tree crosses a million tokens
