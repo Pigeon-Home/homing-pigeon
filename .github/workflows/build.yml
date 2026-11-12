@@ -53,14 +53,16 @@ permissions: {}
 # campaign pushes a test every minute (2026-10-25). The expression
 # is false on tag dispatches, where head_commit is absent.
 # (Agent-Stamp 10000c2a-1d4e-4f7b-8a2c-9e5d6f7a8b9c)
-# RELIEF-48H expires 2026-11-14T03:45Z: for the window a superseded ROLLING
-# build is cancelled by the next push, so the newest head's
-# verdict is the one that completes (the four-day review's root
-# cause 5 in docs/steady/reports/ci-failures.md). Release commits
+# Since the relief window of 2026-11-12, kept at its close: a
+# superseded ROLLING build is cancelled by the next push, so the
+# newest head's verdict is the one that completes (the four-day
+# review's root cause 5 in docs/steady/reports/ci-failures.md: at
+# a commit every few minutes the no-cancel queue starved every
+# verdict, and the window measured 77 per cent of finished builds
+# green against none in the 48 hours before). Release commits
 # (their own group, via the expression below) and tag builds are
-# never cancelled: the expression is false for both. At expiry
-# restore `cancel-in-progress: false` -- test_build_config.py
-# fails after the date until the window is reverted whole.
+# never cancelled: the expression is false for both, so a cut's own
+# build always finishes.
 concurrency:
   # A push whose message starts with "desk:" or "docs:" (the desk's
   # notes, several an hour) takes the docs group, so it supersedes
@@ -132,12 +134,15 @@ jobs:
       - run: python3 -m unittest -q runner.tests.test_core
 
   test:
-    # RELIEF-48H expires 2026-11-14T03:45Z: the suite is advisory for the
-    # window -- it runs in full and shows red on the run page,
-    # but a red does not hold the release; reds are triaged
-    # after publish. The gates that stay are scope, shape,
-    # typecheck, the artifact legs and the rig battery.
-    continue-on-error: true
+    # The suite gates a release that carries core code: the cut gate
+    # (runner/tools/cut_gate.py, read by cut-release, by the tag
+    # build's promotion check and by the train) names this job and
+    # the Windows suite's two parts beside the artifact legs when a
+    # file of the core changed since the previous published
+    # release, and the legs alone otherwise -- a release of docs,
+    # tests or a corpus keeps the seven-minute path. Advisory for
+    # the relief window of 2026-11-12 (reds triaged after publish);
+    # a gate again at the window's close.
     # A documentation-only push runs the `docs` job instead; a
     # promoted tag build ran this suite on the gate build already.
     needs: scope
@@ -378,9 +383,6 @@ jobs:
     # shards for ten (the 3.16.21.8 gate build, 2026-11-12).
     needs: [scope, build-macos]
     if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.promote != 'true'
-    # RELIEF-48H expires 2026-11-14T03:45Z: advisory for the window, like the
-    # Linux suite -- it runs and shows red, and blocks nothing.
-    continue-on-error: true
     runs-on: macos-15
     permissions:
       contents: read
@@ -448,18 +450,16 @@ jobs:
     # the same runner-minutes and half the CPU work a box carries;
     # the two logs ride as ci-test-log-windows-1 and -2 and the
     # release moves both out of its file list.
-    # RELIEF-48H expires 2026-11-14T03:45Z: advisory for the window, like
-    # the Linux and macOS suites -- it runs in full and shows red,
-    # and blocks nothing. At expiry remove the advisory line and
-    # add this job to the release's needs list and to the cut
-    # gate's set beside `test`, which is where the Windows suite's
-    # verdict gated the release before the split.
+    # Both parts gate a release that carries core code, with the
+    # Linux suite (the cut gate's rule, runner/tools/cut_gate.py),
+    # which is where the Windows suite's verdict gated the release
+    # before the split; advisory for the relief window of
+    # 2026-11-12, a gate again at its close.
     # It waits for the Windows artifact leg for the same reason the
     # macOS suite waits for its own: the leg the release gates on
     # takes the runner first.
     needs: [scope, build-windows]
     if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.promote != 'true'
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -922,13 +922,12 @@ jobs:
       && needs.scope.result == 'success'
       && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
       && (needs.scope.outputs.promote == 'true' || !contains(needs.*.result, 'skipped'))
-    # RELIEF-48H expires 2026-11-14T03:45Z: for the window the release does
-    # not wait on the `test` job at all -- the suite is advisory
-    # (flagged so above) and the release gates on the
-    # artifact legs alone. Restore `test` to this needs list at
-    # expiry; ReliefModeTest in test_build_config.py pins both
-    # shapes and fails after the date until the window is reverted.
-    needs: [scope, build-python, build-windows, build-windows-arm64, build-linux, build-linux-arm64, build-macos, build-macos-x86_64, build-pi-light]
+    # On a promoted tag build the suites are skipped here and the
+    # promotion check reads them on the gate build by the cut
+    # gate's rule; on a full build (a tag placed by hand) the
+    # release waits for the Linux suite and both Windows parts and
+    # runs only if none failed, as before the relief window.
+    needs: [scope, build-python, build-windows, build-windows-arm64, build-linux, build-linux-arm64, build-macos, build-macos-x86_64, build-pi-light, test, test-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write

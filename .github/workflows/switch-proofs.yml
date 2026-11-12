@@ -27,13 +27,14 @@ name: switch-proofs
 # renamed, removed, or skipping where it must run -- is a failure,
 # because a promise does not lose its proof by accident.
 on:
-  # RELIEF-48H expires 2026-11-14T03:45Z: for the relief window this workflow
-  # does not fire on pushes to main -- it runs on release tags, on
-  # its schedule and on dispatch, so a push pays for build.yml
-  # alone. At expiry restore `branches: [main]` under push (and
-  # drop the schedule if the window added it);
-  # runner/tests/test_build_config.py fails after the date
-  # until the window is reverted whole.
+  # This workflow does not fire on pushes to main (the posture since
+  # the relief window of 2026-11-12, kept at the window's close):
+  # it runs on release tags whose tree changed under runner/ (the
+  # tag build dispatches it after the mirrors), on its schedule and
+  # on dispatch, so a push to main pays for build.yml alone. Nine
+  # proof workflows on every push held the account's runners and
+  # starved the release train of verdicts; the window measured the
+  # cycle at 7 minutes without them and the posture stands.
   push:
     tags: ["v*"]
     paths:

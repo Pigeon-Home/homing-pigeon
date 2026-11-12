@@ -3,6 +3,26 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-2:35pm-PST — the window closes; the suites gate a release that carries core code
+
+The relief window closed on the owner's word at 18.8 hours (its
+numbers: 25 releases against 4 in the 48 hours before, 79 per cent
+of finished builds green against none; the conclusions are on the
+CI record). The posture: the proofs stay off pushes to main,
+superseded rolling builds keep cancelling, the mutation walk is
+hourly again, and the suites are real jobs that gate by one rule,
+runner/tools/cut_gate.py -- the eight legs always; the Linux suite
+and both parts of the Windows suite when a file of the core (less
+the carriers) changed since the previous published release; the
+suites too when the record cannot be read. A release of docs,
+tests or a corpus keeps the seven-minute path; a fix in runner/
+waits for the suites, about twenty minutes, and a red suite holds
+it. The Windows suite runs as two parts on two runners now (8.5
+and 6.5 minutes on the first run, against 17 on one box), so the
+wall is a hang guard again. Two things follow for every seat: a
+red suite on main holds the next core release until it is fixed,
+and `release_train.py measure` before a push that grows the core.
+
 ## 12-Nov-1:45pm-PST — the Windows suite on the Q168 fix: the timed-out job's wall crosses its 4-second bound
 
 For the Q168 re-test, from the Windows leg: test_campaign_phase1's

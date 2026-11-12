@@ -48,8 +48,15 @@ LEGS = frozenset({"build-python", "build-linux", "build-linux-arm64",
                   "build-windows", "build-windows-arm64", "build-macos",
                   "build-macos-x86_64", "build-pi-light"})
 SUITES = ("test", "test-windows")
-# Never runner code for the gate's purpose, core list or not.
-NOT_CODE = ("runner/tests/*", "runner/_version.py", "runner/__init__.py")
+# Never runner code for the gate's purpose, core list or not: the
+# tests, the version carrier, and runner/ops/core.py, whose
+# as-assembled constants every release commit re-records (a file
+# joining the list arrives as a code change of its own).
+NOT_CODE = ("runner/tests/*", "runner/_version.py", "runner/__init__.py",
+            "runner/ops/core.py")
+# A carrier that is also code: its version line moves every release
+# and counts for nothing; any other changed line counts.
+CARRIER_LINE = {"runner/ops/install.py": re.compile(r"^[-+]\s*__version__\s*=")}
 _MARKER = re.compile(r"RELIEF-48H expires (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z)")
 _MATRIX = re.compile(r"^(.*?) \([^()]*\)$")
 
@@ -111,45 +118,61 @@ def core_files(root=ROOT):
     return frozenset(re.findall(r'"([^"]+)"', m.group(1)))
 
 
-def is_code(path, core=None):
+def is_code(path, core=None, patch=None):
     """True for a file of the core other than the carriers; with no
-    core list, for any file under runner/ outside the tests."""
+    core list, for any file under runner/ outside the tests. For a
+    carrier that is also code (install.py), true only when a line
+    other than its version line changed; with no patch to read,
+    true."""
     if any(fnmatch.fnmatch(path, pat) for pat in NOT_CODE):
         return False
     if core is None:
-        return path.startswith("runner/")
-    return path in core
+        if not path.startswith("runner/"):
+            return False
+    elif path not in core:
+        return False
+    carrier = CARRIER_LINE.get(path)
+    if carrier is not None and patch is not None:
+        changed = [ln for ln in patch.splitlines()
+                   if (ln.startswith("+") or ln.startswith("-"))
+                   and not ln.startswith("+++") and not ln.startswith("---")]
+        return any(not carrier.match(ln) for ln in changed)
+    return True
 
 
-def carries_runner_code(paths, core=None):
-    return any(is_code(p, core) for p in paths)
+def carries_runner_code(paths, core=None, patches=None):
+    patches = patches or {}
+    return any(is_code(p, core, patches.get(p)) for p in paths)
 
 
 def previous_release(version, api=api):
     """The tag of the newest published release other than v<version>,
-    or None."""
-    rels = api("/releases?per_page=10")
+    or None. The listing's own order is by tag name as text (drafts
+    first, then v3.16.24.9 before v3.16.24.11), so the newest is the
+    latest published_at among the page, not the first row."""
+    rels = api("/releases?per_page=30")
     if not isinstance(rels, list):
         return None
-    for r in rels:
-        if r.get("draft") or not r.get("published_at"):
-            continue
-        if r.get("tag_name") == "v" + version:
-            continue
-        return r.get("tag_name")
-    return None
+    published = [r for r in rels
+                 if not r.get("draft") and r.get("published_at")
+                 and r.get("tag_name") != "v" + version]
+    if not published:
+        return None
+    newest = max(published, key=lambda r: str(r.get("published_at")))
+    return newest.get("tag_name")
 
 
 def changed_since(prev_tag, sha, api=api):
-    """The paths changed from prev_tag to sha, or None when the API
-    will not give them whole (a compare lists at most 300 files)."""
+    """{path: patch-or-None} for the files changed from prev_tag to
+    sha, or None when the API will not give them whole (a compare
+    lists at most 300 files)."""
     d = api("/compare/%s...%s" % (prev_tag, sha))
     if not isinstance(d, dict) or "files" not in d:
         return None
     files = d.get("files") or []
     if len(files) >= 300:
         return None
-    return [f.get("filename", "") for f in files]
+    return {f.get("filename", ""): f.get("patch") for f in files}
 
 
 def need(sha, version, api=api, relief=None, root=ROOT):
@@ -165,7 +188,7 @@ def need(sha, version, api=api, relief=None, root=ROOT):
     if paths is None:
         return set(LEGS) | set(SUITES), "the change set since %s cannot be read whole: the suites too" % prev
     core = core_files(root)
-    code = sorted(p for p in paths if is_code(p, core))
+    code = sorted(p for p in paths if is_code(p, core, paths.get(p)))
     if code:
         return set(LEGS) | set(SUITES), "runner code since %s (%s%s): the suites too" % (
             prev, ", ".join(code[:4]), "" if len(code) <= 4 else " and %d more" % (len(code) - 4))

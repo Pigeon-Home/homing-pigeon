@@ -31,7 +31,7 @@ def _api(releases=None, files=None, truncated=False):
         if path.startswith("/compare/"):
             if files is None:
                 return None
-            fs = [{"filename": f} for f in files]
+            fs = [{"filename": f, "patch": None} for f in files]
             if truncated:
                 fs = fs * (300 // max(1, len(fs)) + 1)
             return {"files": fs}
@@ -40,7 +40,10 @@ def _api(releases=None, files=None, truncated=False):
 
 
 def _releases(*tags):
-    return [{"tag_name": t, "draft": False, "published_at": "2026-11-12T00:00:00Z"} for t in tags]
+    # the listing's order is by tag name as text; published_at
+    # descends with the position here so the first is the newest
+    return [{"tag_name": t, "draft": False, "published_at": "2026-11-12T%02d:00:00Z" % (23 - i)}
+            for i, t in enumerate(tags)]
 
 
 class RuleTest(unittest.TestCase):
@@ -52,6 +55,18 @@ class RuleTest(unittest.TestCase):
         self.assertFalse(rg.is_code("runner/tests/test_exec.py", core))
         self.assertFalse(rg.is_code("runner/_version.py", core), "the carrier every release moves")
         self.assertFalse(rg.is_code("runner/__init__.py", core))
+        self.assertFalse(rg.is_code("runner/ops/core.py", core | {"runner/ops/core.py"}),
+                         "the measure every release re-records")
+        # install.py is a carrier and code: its version line counts
+        # for nothing, any other line counts, no patch counts
+        inst = core | {"runner/ops/install.py"}
+        self.assertFalse(rg.is_code("runner/ops/install.py", inst,
+                                    '@@ -1 +1 @@\n-__version__ = "3.16.24.10"\n+__version__ = "3.16.24.11"\n'))
+        self.assertTrue(rg.is_code("runner/ops/install.py", inst,
+                                   '@@ -1 +1 @@\n-__version__ = "3.16.24.10"\n+__version__ = "3.16.24.11"\n+    return path\n'))
+        self.assertTrue(rg.is_code("runner/ops/install.py", inst, None))
+        self.assertFalse(rg.carries_runner_code(["runner/ops/install.py"], inst,
+                                                {"runner/ops/install.py": '-__version__ = "1"\n+__version__ = "2"\n'}))
         self.assertFalse(rg.is_code("docs/steady/overview.md", core))
         self.assertFalse(rg.is_code("pyproject.toml", core))
         # no core list to read: everything under runner/ but the tests
@@ -125,6 +140,12 @@ class NeedTest(unittest.TestCase):
         need, why = self._need(_api(rels, ["docs/a.md"]))
         self.assertEqual(need, LEGS)
         self.assertIn("v3.16.24.10", why)
+        # the newest by published_at, not the first row: the listing
+        # sorts tag names as text, v3.16.24.9 before v3.16.24.11
+        rels = _releases("v3.16.24.9", "v3.16.24.8") + [
+            {"tag_name": "v3.16.24.10", "draft": False, "published_at": "2026-11-12T23:30:00Z"}]
+        need, why = self._need(_api(rels, ["docs/a.md"]))
+        self.assertIn("since v3.16.24.10", why)
 
 
 class VerdictTest(unittest.TestCase):

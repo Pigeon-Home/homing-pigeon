@@ -994,9 +994,47 @@ are restored.
   defect still gets its fix lane, it just does not hold the
   train.
 
-### Conclusions
+### Conclusions (12 Nov 2026, the window closed at 18.8 hours)
 
-(Recorded below once the change and its tests land.)
+The window closed early, on the owner's word, with the posture
+below; the numbers are the hosted record's, the 48 hours before
+the window against the window itself.
+
+- Before: 304 builds on main (6.3 an hour), none green -- 101 red,
+  200 cancelled; one cut, red; four releases, each hours of
+  attention. The window: 149 builds (7.9 an hour), 79 per cent of
+  the finished ones green; 31 cuts, 22 green (the nine reds are
+  the misses the sections below name: the token refused a tag
+  main had moved past, a second cut-release on a tag already
+  placed, a 502 on a dispatch); 25 releases, every one on every
+  mirror.
+- S1 (the proof fan-out) held: with the nine proof workflows off
+  pushes to main the gate legs start within a minute at p90 on
+  every runner label but macOS arm64, and the cycle's floor is 6
+  minutes. The fan-out still holds the next cycle's gate for a
+  few minutes when a tag carries a runner change (3.16.24.7,
+  .9); platform-matrix starts three container legs at a time now.
+- S2 (the suites advisory) was the accepted risk, and it was
+  exercised once: 3.16.24.8 shipped with the Windows suite red on
+  the platform its fix targeted -- a 4.3-second result against a
+  4-second bound, likely the bound, named for the re-test. No
+  release of the window carried a defect a suite had caught.
+- S3 (superseded rolling builds cancel) held: 53 cancelled builds
+  were superseded heads, and the newest head's verdict completed
+  every time; no release or tag build was cancelled by a push.
+- S4 (the mutation walk paused): the hourly walk's absence cost
+  nothing the window needed; it is restored at the close.
+
+The posture at the close: the proofs stay off pushes to main (a
+tag whose tree changed under runner/, the nightly, a dispatch);
+superseded rolling builds keep cancelling, release and tag builds
+never; the suites are real jobs again and the Linux suite and both
+parts of the Windows suite gate a release that carries core code,
+by the cut gate's rule (runner/tools/cut_gate.py: a file of the
+core other than the carriers changed since the previous published
+release -- the legs alone otherwise, so a release of docs, tests or
+a corpus keeps the seven-minute path); the mutation walk is hourly
+again; no workflow carries the window's marker.
 
 ## The 3.16.20.10 cycle: three hours from a red head to a published release, and what each hour was (11 Nov 2026)
 
@@ -1528,3 +1566,34 @@ landing that grows a core file can now do it alone with
 `release_train.py measure`, which re-records the core measure and
 the figures and runs the local guards, and leaves the changes in
 the working tree for the landing's commit.
+
+### 3.16.24.9 to .11; the Windows leg on two runners; the window closes (12 Nov 2026)
+
+3.16.24.9 took 13.4 minutes, 8.2 of them the gate waiting behind
+the 3.16.24.8 tag's proofs; 3.16.24.10 went out by the desk's own
+hand on the train; 3.16.24.11 (the Windows split) took 12.0, with
+the one hand in it a dispatch: the cut placed the tag and GitHub
+answered the build dispatch with HTTP 502 -- the dispatch had been
+made and the tag build ran, and the three dispatches sent by hand
+made a second tag build, cancelled while the first was publishing.
+The cut counts the runs on the tag before it retries a dispatch
+now, and the train's watch and clock read past a cancelled run.
+
+The Windows suite runs as two parts on two runners from that
+build: every second shard of the one packing each, under the
+packing's shard numbers. On the first run the parts took 8.5 and
+6.5 minutes against the 17 one box took, and the wall stands at
+2.3 times the longest part instead of 1.2 -- the cliff is gone for
+the same runner-minutes.
+
+The relief window closed at 18.8 hours with the conclusions
+recorded under its own heading above. The cut gate is one rule in
+runner/tools/cut_gate.py for the cut, the promotion check and the
+train: the legs always; the Linux suite and both Windows parts
+when the release carries core code since the previous published
+release (runner/ops/core.py's list, less the carriers: the measure
+constants every release re-records and install.py's version line
+count for nothing); the suites too when the record cannot be read.
+Read against the day's releases: 3.16.24.8 (the Q168 fix) carries
+four core files and would wait for the suites; 3.16.24.11 carries
+none and keeps the short path.

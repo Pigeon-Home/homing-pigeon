@@ -676,7 +676,7 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("needs.scope.result == 'success'", block("pypi-publish"))
         self.assertIn("mv artifacts/test-output*.log ci/", rel)
         self.assertIn('pattern: "{homing-pigeon-*,ci-test-log*}"', rel)
-        self.assertIn('dispatch build.yml --ref "$TAG" -f promote_from="$GATE_RUN"', cut)
+        self.assertIn('dispatch 1 build.yml --ref "$TAG" -f promote_from="$GATE_RUN"', cut)
         # the input rides only to a tree whose build.yml takes it
         self.assertIn('git show "$SHA:.github/workflows/build.yml" | grep -q "promote_from:"', cut)
         self.assertIn('fh.write(f"run_id={run[\'id\']}\\n")', cut)

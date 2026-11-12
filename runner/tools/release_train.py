@@ -644,6 +644,10 @@ def watch_tag_build(version, limit):
         # advisory suite that walls holds the run 20 minutes past
         # the mirrors (the 3.16.21.2 tag build, 2026-11-12).
         runs = (api("/actions/workflows/build.yml/runs?branch=v%s&per_page=5" % version) or {}).get("workflow_runs", [])
+        # A cancelled run on the tag is not the tag build (a second
+        # dispatch of the 3.16.24.11 tag was cancelled while the
+        # first was publishing, and the watch read the cancelled one).
+        runs = [r for r in runs if r.get("conclusion") != "cancelled"] or runs
         if not runs:
             return None
         if runs[0]["status"] == "completed":
@@ -833,13 +837,21 @@ def cycle_clock(version, since=None):
         run = runs[0]
         rows.append(("build %s started" % run["id"], _ts(run.get("run_started_at") or run.get("created_at"))))
         jobs = run_jobs(run["id"])
-        need = gate_jobs(sha, version)
-        legs = [j for n in need for j in cut_gate.match(n, jobs)]
-        done = [_ts(j.get("completed_at")) for j in legs if j.get("completed_at")]
-        if legs and len(done) == len(legs) and not cut_gate.verdict(need, jobs)[0]:
-            rows.append(("gate green (%d jobs)" % len(need), max(done)))
+        # The legs' row is the gate every cut reads; the suites' row
+        # follows when the cut gate's rule names them for this
+        # release (a core change since the previous release).
+        legs = sorted(cut_gate.LEGS)
+        done = [_ts(jobs[n].get("completed_at")) for n in legs if n in jobs and jobs[n].get("completed_at")]
+        if len(done) == len(legs):
+            rows.append(("gate green (%d legs)" % len(legs), max(done)))
         else:
             rows.append(("gate green", None))
+        need = gate_jobs(sha, version)
+        suites = [j for n in sorted(need - set(legs)) for j in cut_gate.match(n, jobs)]
+        if suites:
+            done = [_ts(j.get("completed_at")) for j in suites if j.get("completed_at")]
+            label = "suites %s" % ", ".join("%s=%s" % (j.get("name"), j.get("conclusion") or j.get("status")) for j in suites)
+            rows.append((label, max(done) if len(done) == len(suites) else None))
         if run.get("status") == "completed":
             rows.append(("build %s whole: %s" % (run["id"], run.get("conclusion")), _ts(run.get("updated_at"))))
     else:
@@ -864,6 +876,7 @@ def cycle_clock(version, since=None):
     rows.append(("tag v%s%s" % (version, "" if tag_time or not obj else " (lightweight)"), tag_time))
     d = api("/actions/workflows/build.yml/runs?branch=v%s&per_page=5" % version) or {}
     tag_runs = d.get("workflow_runs", [])
+    tag_runs = [r for r in tag_runs if r.get("conclusion") != "cancelled"] or tag_runs
     if tag_runs:
         tr = tag_runs[0]
         rows.append(("tag build %s started" % tr["id"], _ts(tr.get("run_started_at") or tr.get("created_at"))))

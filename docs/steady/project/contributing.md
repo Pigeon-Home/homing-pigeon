@@ -111,7 +111,11 @@ same mechanics: bump the version in the three carriers (`pyproject.toml`,
 `runner/_version.py`, `runner/ops/install.py`; the test pin reads the
 package's), add the CHANGELOG entry, commit as a `release:` commit,
 push, wait for the build on that commit to go green on the jobs
-`cut-release.yml` gates on, dispatch `cut-release.yml` with the
+the cut gate names (`runner/tools/cut_gate.py`, one rule for the
+cut, the tag build's promotion check and the train: the eight
+artifact legs always, the Linux suite and both parts of the
+Windows suite too when a file of the core changed since the
+previous published release), dispatch `cut-release.yml` with the
 commit's full sha (it places the tag; a tag is never pushed by
 hand), then verify the tag build's publish jobs and the mirrors'
 own responses in their logs. The tag build does not build the

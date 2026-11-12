@@ -56,31 +56,20 @@ def _dispatch_block():
 
 
 class SeededWorkflowShapeTests(unittest.TestCase):
-    def test_triggers_are_dispatch_only_during_relief(self):
-        # RELIEF-48H (owner-approved 2026-11-11, expires
-        # 2026-11-14T03:45Z): the schedule trigger is paused for
-        # the window, so the walk fires on dispatch alone. The
-        # pre-relief pin was ["schedule", "workflow_dispatch"];
-        # restoring it is part of reverting the window, and
-        # ReliefModeTest in test_build_config.py fails after the
-        # expiry date until that happens.
+    def test_triggers_are_the_schedule_and_dispatch(self):
+        # The hourly walk and a dispatch. The schedule was paused
+        # for the relief window of 2026-11-12 (the walk fired on
+        # dispatch alone) and restored at the window's close.
         on = _on_block()
         keys = [line.strip().rstrip(":") for line in on
                 if re.match(r"^  [a-z_]+:$", line)]
-        self.assertEqual(sorted(keys), ["workflow_dispatch"])
+        self.assertEqual(sorted(keys), ["schedule", "workflow_dispatch"])
 
-    def test_schedule_is_paused_not_deleted(self):
-        # No live cron line anywhere in the trigger block, and the
-        # paused hourly entry survives as a comment, so the restore
-        # is an uncomment, not a reconstruction.
+    def test_the_schedule_is_hourly_off_the_hour(self):
         on = _on_block()
-        live = [line for line in on
+        live = [line.strip() for line in on
                 if "- cron:" in line and not line.lstrip().startswith("#")]
-        self.assertEqual(live, [])
-        self.assertTrue(any(
-            line.lstrip().startswith("#")
-            and '- cron: "17 * * * *"' in line
-            for line in _workflow_text().splitlines()))
+        self.assertEqual(live, ['- cron: "17 * * * *"'])
 
     def test_dispatch_takes_an_optional_seed_for_reproduction(self):
         block = _dispatch_block()

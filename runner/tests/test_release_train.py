@@ -184,6 +184,11 @@ class ClockTest(unittest.TestCase):
         if "/build.yml/runs?branch=v3.16.21.1" in path:
             return {"workflow_runs": [{"id": 2, "status": "in_progress",
                                        "run_started_at": "2026-11-12T06:37:13Z"}]}
+        # the cut gate's rule: a docs-only release, the legs alone
+        if path.startswith("/releases?"):
+            return [{"tag_name": "v3.16.20.10", "draft": False, "published_at": "2026-11-12T04:29:30Z"}]
+        if path.startswith("/compare/"):
+            return {"files": [{"filename": "docs/infrastructure-documents/changelog.md"}]}
         if path.startswith("/actions/runs/1/jobs"):
             return {"jobs": [{"name": n, "status": "completed", "conclusion": "success",
                               "completed_at": "2026-11-12T06:2%d:51Z" % (i % 10)}
@@ -210,7 +215,7 @@ class ClockTest(unittest.TestCase):
         self.assertEqual(labels[0], "asked for")
         self.assertIn("release commit 8ef9627f", labels)
         self.assertIn("build 1 started", labels)
-        self.assertIn("gate green (%d jobs)" % len(rt.gate_jobs()), labels)
+        self.assertIn("gate green (%d legs)" % len(rt.gate_jobs()), labels)
         self.assertIn("cut-release 7: failure at 'the build on this commit is green'", labels)
         self.assertFalse(any(l.startswith("cut-release 9") or l.startswith("cut-release 5") for l in labels))
         self.assertIn("tag v3.16.21.1", labels)
@@ -222,7 +227,7 @@ class ClockTest(unittest.TestCase):
         # chronological: the commit and its build came before the ask
         self.assertIn("asked for", text.splitlines()[2])
         self.assertRegex(text, r"release published \(0 assets\)\s+--$")
-        self.assertRegex(text, r"gate green \(\d+ jobs\)\s+06:27:51Z\s+\+[\d.]+\s+10\.5 min")
+        self.assertRegex(text, r"gate green \(\d+ legs\)\s+06:27:51Z\s+\+[\d.]+\s+10\.5 min")
 
 
 class PromoteCheckTest(unittest.TestCase):
@@ -297,6 +302,10 @@ class PromoteCheckTest(unittest.TestCase):
                 return {"jobs": list(self._jobs().values())}
             if path.startswith("/actions/runs/43179987340/artifacts"):
                 return {"artifacts": self._artifacts()}
+            if path.startswith("/releases?"):
+                return [{"tag_name": "v3.16.21.2", "draft": False, "published_at": "2026-11-12T07:21:18Z"}]
+            if path.startswith("/compare/"):
+                return {"files": [{"filename": "docs/steady/overview.md"}]}
             raise AssertionError(path)
         with mock.patch.object(rt, "api", fake_api), contextlib.redirect_stdout(io.StringIO()) as out:
             rc = rt.main(["promote-check", "--run", "43179987340", "--sha", self.SHA])
