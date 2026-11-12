@@ -696,25 +696,36 @@ class AllEnforceParityTest(unittest.TestCase):
         wraps_run = conf_runs and ju_ok
         exec_refused = conf_refuses or (conf_runs and not ju_ok)
 
-        # Windows since the confinement backend landed: the
-        # capability probes are the runner's own startup gates --
-        # the bwrap probe above is Linux-only and reads
-        # "unavailable" on win32 whether or not the Job Object
-        # backend can engage, so keying the expectations to it
-        # recorded refusals on a host where the exec jobs run
-        # confined. Where both gates engage, the win32 arm below
-        # carries the expectations; where either cannot, the
-        # refusal shapes above are what production does there
-        # too (the argv gate refuses before job_user is reached).
-        win_engages = False
-        if sys.platform == "win32":
+        # Windows, macOS and FreeBSD since their confinement
+        # backends landed: the capability probes are the runner's
+        # own startup gates -- the bwrap probe above is Linux-only
+        # and reads "unavailable" on those hosts whether or not
+        # the platform backend can engage, so keying the
+        # expectations to it recorded refusals on a host where
+        # the exec jobs run confined (win32 first; then darwin,
+        # when the macOS backend engaged on the CI runners on
+        # 2026-11-12). Where both gates engage, the backend arm
+        # below carries the expectations; where confinement
+        # engages and job_user cannot (a runner that is not
+        # root), job_user refuses the exec jobs before the spawn
+        # seam, which is where a platform backend writes its
+        # confinement row, so those jobs carry a job_user
+        # fallback row and no confinement row; where confinement
+        # cannot engage, the refusal shapes above are what
+        # production does there too (the argv gate refuses
+        # before job_user is reached).
+        backend_host = (sys.platform == "win32"
+                        or sys.platform == "darwin"
+                        or sys.platform.startswith("freebsd"))
+        backend_conf = backend_ju = False
+        if backend_host:
             from runner import runner as _runner_mod
             enf_cfg = {"security": self._enforce_block()}
-            win_engages = (
-                _runner_mod._confinement_startup_problem(
-                    enf_cfg) is None
-                and _runner_mod._job_user_startup_problem(
-                    enf_cfg) is None)
+            backend_conf = _runner_mod._confinement_startup_problem(
+                enf_cfg) is None
+            backend_ju = _runner_mod._job_user_startup_problem(
+                enf_cfg) is None
+        win_engages = backend_conf and backend_ju
 
         # Compliant jobs: the same result as with the features off,
         # byte for byte after normalization (the denied jobs sit
@@ -833,17 +844,30 @@ class AllEnforceParityTest(unittest.TestCase):
         # job_user is reached, so job_user leaves no entries.
         conf = {e["job_id"]: e["decision"] for e in enf_entries
                 if e.get("feature") == "confinement"}
-        self.assertEqual(set(conf), self.ENFORCE_EXEC_JOBS)
         ju = {e["job_id"]: e["decision"] for e in enf_entries
               if e.get("feature") == "job_user"}
         if win_engages:
+            self.assertEqual(set(conf), self.ENFORCE_EXEC_JOBS)
             self.assertEqual(set(conf.values()), {"confined"})
             self.assertEqual(set(ju), self.ENFORCE_EXEC_JOBS)
-            self.assertEqual(set(ju.values()), {"contained"})
+            # job_user's own record: the Job Object's "contained"
+            # on win32; the POSIX demote's "run_as" under a
+            # Seatbelt or jail backend.
+            want_ju = "contained" if sys.platform == "win32" else "run_as"
+            self.assertEqual(set(ju.values()), {want_ju})
+        elif backend_conf:
+            # The backend engages and job_user cannot: refused at
+            # job_user's gate, before the spawn seam where the
+            # backend would write its confinement row.
+            self.assertEqual(conf, {})
+            self.assertEqual(set(ju), self.ENFORCE_EXEC_JOBS)
+            self.assertEqual(set(ju.values()), {"fallback"})
         elif conf_refuses:
+            self.assertEqual(set(conf), self.ENFORCE_EXEC_JOBS)
             self.assertEqual(set(conf.values()), {"fallback"})
             self.assertEqual(ju, {})
         else:
+            self.assertEqual(set(conf), self.ENFORCE_EXEC_JOBS)
             self.assertEqual(set(conf.values()), {"sandboxed"})
             self.assertEqual(set(ju), self.ENFORCE_EXEC_JOBS)
             want_ju = "run_as" if ju_ok else "fallback"
