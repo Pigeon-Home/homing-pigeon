@@ -2260,7 +2260,7 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     "⁚", "⁛", "⁜", "⸀",
                     "⸆", "⸎", "⸏", "⸒",
                     "⸓", "⸗", "⸰", "⸱",
-                    "⸽", "⸁", "⸂", "⸃", "⸄", "⸅", "⸈", "⸋", "⸛", "⸠", "⸪", "﹐", "﹔", "﹕", "﹖", "⸇", "⸉", "⸊", "⸌", "⸍", "⸐", "⸑", "⸔", "⸕", "⸖", "⸙", "⸜", "⸝", "⸞", "⸟", "⸡", "⸢", "⸣", "⸦", "⸨", "⸫", "⸬", "⸭", "⸲", "⸳", "⸵", "⸿", "⹂", "⹌", "⹝", "﹑", "﹒", "﹗", "﹘", "﹙", "﹚", "﹛", "﹜", "﹝", "﹞", "﹟", "﹠", "﹡", "﹢", "﹣", "﹤", "﹥", "﹦", "﹨", "﹩", "﹪", "﹫", "︐", "︑", "︒", "︓", "︔", "︕", "︖", "︗", "︘", "︙", "︰", "︱", "︲", "︵", "︷", "﹁", "﹅", "﹇")
+                    "⸽", "⸁", "⸂", "⸃", "⸄", "⸅", "⸈", "⸋", "⸛", "⸠", "⸪", "﹐", "﹔", "﹕", "﹖", "⸇", "⸉", "⸊", "⸌", "⸍", "⸐", "⸑", "⸔", "⸕", "⸖", "⸙", "⸜", "⸝", "⸞", "⸟", "⸡", "⸢", "⸣", "⸦", "⸨", "⸫", "⸬", "⸭", "⸲", "⸳", "⸵", "⸿", "⹂", "⹌", "⹝", "﹑", "﹒", "﹗", "﹘", "﹙", "﹚", "﹛", "﹜", "﹝", "﹞", "﹟", "﹠", "﹡", "﹢", "﹣", "﹤", "﹥", "﹦", "﹨", "﹩", "﹪", "﹫", "︐", "︑", "︒", "︓", "︔", "︕", "︖", "︗", "︘", "︙", "︰", "︱", "︲", "︵", "︷", "﹁", "﹅", "﹇", "⸚", "⸤", "⸥", "⸧", "⸩", "⸴", "⸶", "⸷", "⸸", "⸹", "⸼", "⸾", "⹀", "⹁", "⹃", "⹄", "⹅", "⹆", "⹇", "⹈", "⹉", "⹊", "⹋", "⹍", "⹎", "⹏", "⹒", "⹓", "⹔", "⹕", "⹖", "⹗", "⹘", "⹙", "⹚", "⹛", "⹜", "︳", "︴", "︶", "︸", "︹", "︺", "︻", "︼", "︽", "︾", "︿", "﹀", "﹂", "﹃", "﹄", "﹆", "﹈", "﹉", "﹊", "﹋", "﹌", "﹍", "﹎", "﹏", "〃", "〈", "〉", "『", "』", "〔", "〕", "〖", "〗", "〘", "〙", "〚", "〛", "〜", "〝", "〞", "〟", "〰", "〽", "＄", "＆", "＊", "＋", "＜", "＝", "＞", "＠", "＼", "＾", "＿", "｀", "｟", "｠", "｢", "｣", "､", "･")
 
 
 def _ledger_complement_is_evidence(owner, match):
@@ -2413,7 +2413,15 @@ def _ledger_complement_is_evidence(owner, match):
     paragraphos, the hypodiastole, the dotted
     obelos, the double oblique hyphen, the ring
     point, the word separator middle dot and the
-    vertical six dots)): an evidence word in
+    vertical six dots) -- and by Q163, where
+    the remaining punctuation separators open a
+    segment too (the supplemental punctuation
+    block's remaining assigned punctuation marks,
+    the CJK compatibility presentation forms
+    beyond the filed eight, the CJK symbols
+    block's remaining punctuation and the
+    fullwidth and halfwidth forms' remaining
+    punctuation)): an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
     is that clause's complement, not this one's, and does

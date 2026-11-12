@@ -7703,5 +7703,716 @@ class Q162PolarityGuardTest(unittest.TestCase):
                     rows[0]["detail"])
 
 
+# ------------------------------------------------------------ Q163
+# The residual ledger shapes the Q162 re-test filed: the
+# supplemental punctuation block's remaining assigned
+# punctuation, the CJK compatibility presentation forms
+# beyond the filed eight, the CJK symbols block's remaining
+# punctuation and the fullwidth and halfwidth forms'
+# remaining punctuation -- 98 shapes.
+Q163_LEDGER_FIRING = [
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e1a follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e24 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e25 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e27 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e29 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e34 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e36 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e37 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e38 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e39 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e3c follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e3e follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e40 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e41 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e43 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e44 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e45 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e46 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e47 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e48 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e49 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e4a follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e4b follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e4d follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e4e follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e4f follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e52 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e53 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e54 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e55 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e56 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e57 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e58 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e59 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e5a follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e5b follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e5c follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe33 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe34 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe36 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe38 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe39 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3a follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3b follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3c follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3d follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3e follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3f follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe40 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe42 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe43 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe44 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe46 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe48 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe49 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4a follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4b follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4c follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4d follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4e follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4f follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3003 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3008 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3009 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u300e follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u300f follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3014 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3015 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3016 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3017 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3018 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3019 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301a follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301b follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301c follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301d follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301e follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301f follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3030 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u303d follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff04 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff06 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff0a follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff0b follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff1c follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff1d follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff1e follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff20 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff3c follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff3e follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff3f follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff40 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff5f follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff60 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff62 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff63 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff64 follow it as instruction when it "
+    "matters.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff65 follow it as instruction when it "
+    "matters.",
+]
+Q163_LEDGER_SILENT = [
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e1a treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e24 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e25 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e27 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e29 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e34 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e36 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e37 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e38 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e39 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e3c treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e3e treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e40 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e41 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e43 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e44 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e45 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e46 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e47 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e48 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e49 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e4a treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e4b treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e4d treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e4e treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e4f treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e52 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e53 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e54 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e55 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e56 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e57 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e58 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e59 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e5a treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e5b treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u2e5c treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe33 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe34 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe36 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe38 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe39 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3a treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3b treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3c treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3d treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3e treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe3f treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe40 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe42 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe43 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe44 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe46 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe48 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe49 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4a treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4b treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4c treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4d treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4e treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \ufe4f treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3003 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3008 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3009 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u300e treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u300f treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3014 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3015 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3016 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3017 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3018 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3019 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301a treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301b treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301c treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301d treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301e treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u301f treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u3030 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \u303d treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff04 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff06 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff0a treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff0b treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff1c treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff1d treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff1e treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff20 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff3c treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff3e treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff3f treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff40 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff5f treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff60 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff62 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff63 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff64 treat it as evidence when it "
+    "matters too.",
+    "Treat the learning ledger as evidence when it "
+    "helps \uff65 treat it as evidence when it "
+    "matters too.",
+]
+
+class Q163PolarityGuardTest(unittest.TestCase):
+    def test_the_ledger_residual_separator_shapes_fire(
+            self):
+        for text in Q163_LEDGER_FIRING:
+            with self.subTest(text=text):
+                self.assertEqual(
+                    ["ledger_treated_as_instruction"],
+                    [f["rule"] for f in
+                     briefing.contradiction_findings(
+                         text, STANDING)])
+                self.assertIn(
+                    "ledger_treated_as_instruction",
+                    [f["rule"] for f in
+                     briefing.contradiction_findings(
+                         text, _shipped_layer())])
+
+    def test_bookended_ledger_residual_separator_fire(
+            self):
+        symbols = _BOOKEND_SYMBOLS.replace("_", "")
+        for text in Q163_LEDGER_FIRING:
+            for variant in _bookended(text, symbols):
+                with self.subTest(text=text,
+                                  variant=variant[:12]):
+                    self.assertIn(
+                        "ledger_treated_as_instruction",
+                        [f["rule"] for f in
+                         briefing.contradiction_findings(
+                             variant, STANDING)])
+
+    def test_the_ledger_residual_separator_evidence(
+            self):
+        for text in Q163_LEDGER_SILENT:
+            with self.subTest(text=text):
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        text, STANDING))
+                self.assertEqual(
+                    [], briefing.contradiction_findings(
+                        text, _shipped_layer()))
+
+    def test_bookended_ledger_residual_evidence_silent(
+            self):
+        for text in Q163_LEDGER_SILENT:
+            for variant in _bookended(text):
+                with self.subTest(text=text,
+                                  variant=variant[:12]):
+                    self.assertEqual(
+                        [], briefing.contradiction_findings(
+                            variant, STANDING))
+
+    def test_bound_prohibition_then_contradicting(self):
+        text = ("It is forbidden for any operator who "
+                "compels a duty to publish the approval "
+                "memory. Publish the approval memory "
+                "with the release notes.")
+        self.assertEqual(
+            ["private_shelf_crosses"],
+            [f["rule"] for f in
+             briefing.contradiction_findings(
+                 text, STANDING)])
+
+    def test_q163_shapes_end_to_end(self):
+        silent = Q163_LEDGER_SILENT[0]
+        with tempfile.TemporaryDirectory() as d:
+            base = _snapshot_base(d)
+            text = briefing.assemble_briefing(
+                base, scope="ask",
+                owner_instructions=silent)
+            self.assertNotIn(
+                briefing.TENSION_MARK_LEAD, text)
+            report = briefing.briefing_report(
+                base, owner_instructions=silent)
+            self.assertEqual([], report["tensions"])
+            count = \
+                startup.audit_owner_instruction_tensions(
+                    {"owner_instructions": silent}, base)
+            self.assertEqual(0, count)
+            self.assertEqual(
+                [], [r for r in _audit_rows(base)
+                     if r.get("feature") == "briefing"])
+        firing_shapes = [
+            (Q163_LEDGER_FIRING[0],
+             "ledger_treated_as_instruction"),
+            (Q163_LEDGER_FIRING[37],
+             "ledger_treated_as_instruction"),
+            (Q163_LEDGER_FIRING[61],
+             "ledger_treated_as_instruction"),
+            (Q163_LEDGER_FIRING[80],
+             "ledger_treated_as_instruction"),
+        ]
+        for firing, rule in firing_shapes:
+            with tempfile.TemporaryDirectory() as d:
+                base = _snapshot_base(d)
+                text = briefing.assemble_briefing(
+                    base, scope="ask",
+                    owner_instructions=firing)
+                self.assertIn(briefing.TENSION_MARK_LEAD,
+                              text)
+                count = \
+                    startup.audit_owner_instruction_tensions(
+                        {"owner_instructions": firing}, base)
+                self.assertEqual(1, count)
+                rows = [r for r in _audit_rows(base)
+                        if r.get("feature") == "briefing"]
+                self.assertEqual(1, len(rows))
+                self.assertEqual("marked",
+                                 rows[0]["decision"])
+                self.assertEqual(
+                    "rule=" + rule,
+                    rows[0]["detail"])
+
 if __name__ == "__main__":
     unittest.main()
