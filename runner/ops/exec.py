@@ -834,7 +834,23 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
     except subprocess.TimeoutExpired:
         R.log(f"job {job['job_id']} timed out after {timeout}s; killing tree", "WARN")
         _runner().kill_tree(proc)
-        outs, errs = proc.communicate()
+        try:
+            outs, errs = proc.communicate(timeout=15)
+        except subprocess.TimeoutExpired:
+            # The tree kill did not reap the pipes (a Windows
+            # taskkill that misses the grandchild, then a
+            # communicate with no timeout, is how a shard sits
+            # at the wall). One more kill, then a short wait.
+            # A process that still will not die must not hold
+            # the shard.
+            try:
+                proc.kill()
+            except Exception:
+                pass
+            try:
+                outs, errs = proc.communicate(timeout=5)
+            except subprocess.TimeoutExpired:
+                outs, errs = b"", b""
         timed_out = True
     finally:
         _runner()._panic.unregister(proc)
