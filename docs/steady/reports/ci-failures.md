@@ -227,7 +227,161 @@ Suppositions, recorded before any rig measurement:
   on the rig with the same shape; it is platform behaviour, not
   a CI-runner artifact, so the rig loop can iterate on it.
 
-Conclusions land in this section after the measurement.
+### Conclusions from the measurement (2026-11-11, rig-local)
+
+Two runs were made. Run 1 is not a measurement: it ran the CI
+command with no `--in-flight` cap against the preproof Python,
+whose `preproof-tree.pth` put another lane's stale tree on
+`sys.path` for every subprocess, and its tally (5 shards OK, 23
+failed, 7 of them wall-killed) is root-cause evidence only —
+the stale pointer, not the suite. Run 2 is the measurement:
+a private copy of that Python with the poisoned `.pth` removed
+(its `python312._pth` then had to be pointed at the Run 2 tree
+explicitly; the first Run 2 launch failed imports until it
+was — the same pointer family, second instance), the
+3.16.20.8 tree expanded from a zip (no `.git` in the tree),
+and the CI command with `--in-flight 8` added. The rig was
+not idle during Run 2: the preview battery and campaign work
+ran on it in parallel, and the launch context gave the
+shards a terminal on stdin. Absolute rig seconds therefore
+do not transfer to CI; the shape and the named tests do.
+
+Run 2 tally, first-hand from the rig's own suite log: 3,710.0
+seconds wall for the whole run, exit 1; 12,535 tests from 455
+modules in 28 shards packed at 720s (shard 0) and 707s (every
+other shard). 9 shards passed (0, 1, 3, 4, 6, 12, 15, 17, 18).
+19 failed: 4 wall-killed at 1,200 seconds (5, 13, 14, 20) and
+15 out at exit 1 carrying 55 named failing tests. 11,109
+tests are counted in the 24 shards that printed a `Ran` line;
+the 4 killed shards printed none.
+
+- **W1 — refuted.** The packed loads say every shard should
+  take about 707 seconds; the shards' own unittest times say
+  otherwise. Shard 1 ran 1,149.2s, shard 2 1,025.4s, shard 6
+  1,177.2s, shard 11 1,073.7s, shard 26 1,100.2s, shard 27
+  922.8s, shard 25 857.9s, shard 21 838.8s, shard 18 777.4s,
+  and 4 more shards never finished inside 1,200s at all. The
+  excess traces to named files, as the supposition's own
+  escape clause demanded: `test_workspace_isolation`'s two
+  property tests alone took 630.9s and 469.0s (the module is
+  priced 684.5s in the table), and `test_oracle_alphabet`'s
+  notes test took 636.4s with two more at 189.8s and 79.8s
+  (module priced 674.0s). The wall is shape at the top of the
+  distribution, not platform throughput in general: 15 shards
+  ran their whole shard in 700 seconds or less.
+- **W2 — refuted in its causal form.** On the measured tree
+  the rig battery's wrong-audience-refused step passes —
+  twice on 3.16.20.8 in the rig battery record, with the
+  detail `noResult=True`, the same detail the failing entries
+  on other heads carry. A direct read of the preview runner's
+  state after a passing run finds no "audience" in either
+  `security-audit.jsonl` or `runner.log`: no such record is
+  written on passing runs either. The step's pass and fail do
+  not track the presence of an audience record, so the
+  silent-refusal mechanism is not what makes the step fail.
+- **W3 — refuted.** The gates_strict dead-backend failure
+  does not reproduce on the rig. All three Decision 1 gates
+  families ran without a named failure: gates_strict (shard
+  27 — its one named failure is the git-tree artifact below),
+  gates_refuse (shard 16) and gates_phase2 (shard 24).
+  `test_macos_confine`, in shard 24, is likewise green on
+  the rig. This matches the Q159 fix and its CI clearance;
+  the failure was head behaviour, not platform behaviour.
+
+The 4 wall-kills name their tests in the wall clock's own
+dump. Shards 5 and 13 died in the same stack: a `poll_once`
+registry snapshot waiting on `reg query
+HKLM\SYSTEM\CurrentControlSet\Services` through
+`runner/ops/windows.py`'s `_reg_query` — shard 5 inside
+`test_result_stash`'s never-twice property test, shard 13
+inside `test_oracle_no_widening`'s repair test. On this rig
+`reg query` is slow, a registry snapshot rides every poll,
+and a property test polls many times: death by accumulation,
+not by one hang. Shards 14 and 20 died blocked in `input()`:
+`test_install_edges`' fresh-config seed test and
+`test_install_platforms`' fresh-install test reached
+`prompt_yes_no` because stdin was a terminal in the rig
+launch — a rig-context shape CI does not present (its stdin
+is not a terminal), recorded here so a rig kill in an
+install test is read as launch context before it is read
+as a product hang. Their remaining tests never ran.
+
+The exit-1 failures sort into four piles:
+
+- **The loopback oracle family — the same family the
+  3.16.20.9 tag build failed on shards 8 and 19.** Shard 8:
+  `test_oracle_send_contract`'s slow-model test (an error —
+  the loopback server did not answer inside the client's
+  timeout) and `test_oracle_ab`'s briefs-agree test. Shard
+  25: nine failures — eight in `test_oracle_send` (the five
+  ask-reachability tests, the slow-model bound, the
+  Windows-path ask and the eight-concurrent-asks test) and
+  `test_platinum_oracle`'s failed-chat-log ask.
+  Shard 19 adds two `test_runner_face` inference tests and
+  shard 23 two `test_local_signals` model-pipeline tests.
+  These tests pass when the loopback server gets its cycles
+  and time out when 8 shards share 8 logical processors with
+  other rig work: genuinely load-sensitive, not rig-broken,
+  and the local loop reproduces the CI failure family on
+  demand — which is what the loop is for.
+- **Rig-environment artifacts, not CI-comparable.** The rig
+  tree has no `.git` (verified directly), so the tracked-tree
+  tests cannot run there: shard 11's two
+  `test_gitignore_state_files` tests (git exits 128) and
+  shard 27's `test_agent_state_tree_wide` test. Shard 26's
+  fourteen `test_oracle_page_script` errors are
+  `FileNotFoundError` — the JS checker executable is not on
+  the rig's PATH. Shard 19's three `test_confinement`
+  BuildCommand errors are `cannot resolve interpreter
+  'python3'` in the rig's private-Python PATH shape.
+- **The nested-runner family.** Shard 16's eight
+  `test_parallel_runner` failures and shard 22's
+  `test_windows_durations` table-mode failure share one
+  shape: a nested suite run returns 1 where the test expects
+  0. The shard output names the return code, not the inner
+  cause; isolating it is follow-on work, not claimed here.
+- **Singles.** Shard 2 `test_regression_pass`'s
+  break-is-named (in a genuinely slow shard, above);
+  shard 7 `test_runner_last_edges`' do-post answer and
+  `test_temp_reap`'s foreign-name; shard 9 `test_runner`'s
+  timeout-kills-tree; shard 10 `test_sense_delivery`'s
+  outside-a-clone; shard 11 `test_cancel`'s
+  running-job-killed; shard 21 `test_core`'s
+  plain-script run; shard 24 `test_platinum_runner`'s
+  name-boundary; shard 26 `test_local_rig_tools`' child-lines
+  and `test_install_wipe`'s two wipe tests (also the shard's
+  two slowest, at 101.4s and 97.3s).
+
+No duration-table change is landed from these numbers, and
+the reason is measured, not cautious. The table's own tool
+was run against the Run 2 log in a scratch tree: it rewrites
+453 of 454 entries from this one log, prices
+`test_workspace_isolation` at 1,116.1s and
+`test_oracle_alphabet` at 1,017.2s — each a single module
+the packer cannot split, so both land as singleton shards
+over the 720s budget and the table's `--check` fails — and
+it drops `test_de_dust_corpus`'s 720s floor to 327.5s,
+erasing a CI measurement with a rig one. Rig seconds are
+slower-machine seconds (the full suite took 3,710s at
+8-in-flight here; the CI step runs all 28 at once), and the
+estimator keeps the largest value it has seen, so a rig
+refresh would poison the CI packing in both directions.
+The table refresh stays what the tool's drift rule says it
+is: an operation on CI build logs. What the rig run does
+support is naming the two modules whose honest price
+exceeds the whole shard budget — `test_workspace_isolation`
+and `test_oracle_alphabet`. No re-price fixes a module that
+does not fit in a shard; splitting one of those files is
+the shape a fix would take, and that is a desk decision,
+not a measurement.
+
+What the local loop proves, plainly: the Germany rig runs
+the build-windows suite end to end in about an hour with
+every failure named, a single shard re-runs in minutes, and
+the loop reproduces — locally, on demand — the slow-model /
+inference failure family and the registry-poll accumulation
+that the tag builds meet at the wall. CI remains the
+verdict on durations; the rig is now the verdict on causes.
 
 **W1 conclusion (measured 2026-11-11, two full local suite
 runs on the rig, exact CI command and duration table, head
