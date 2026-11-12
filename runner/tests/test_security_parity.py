@@ -23,8 +23,11 @@ import json
 import os
 import string
 import sys
+import tempfile
+import types
 import unittest
 from collections import OrderedDict
+from unittest import mock
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, REPO)
@@ -42,6 +45,7 @@ from runner.tests.security_parity import (  # noqa: E402
     all_enforce_block,
     all_off_block,
     build_corpus,
+    read_audit_lines,
     run_variant,
 )
 from runner.guard import sandbox as _sandbox  # noqa: E402
@@ -913,6 +917,170 @@ class AllEnforceParityTest(unittest.TestCase):
                    and e.get("job_id") == "parity-conf"]
         self.assertEqual([e["decision"] for e in entries],
                          ["sandboxed"])
+
+
+class _ScriptedMacBackend:
+    """A macOS confinement backend whose probe answers as scripted."""
+
+    IS_MACOS_BACKEND = True
+
+    def __init__(self, problem):
+        self._problem = problem
+
+    def macos_confinement_problem(self, cfg=None):
+        return self._problem
+
+    def macos_startup_problem(self, cfg=None):
+        return self._problem
+
+
+class _NonRootFace:
+    """The job_user face of a runner that is not root."""
+
+    def euid(self):
+        return 1000
+
+
+class _RootFace:
+    """The job_user face of a root runner whose test user exists."""
+
+    def euid(self):
+        return 0
+
+    def getpwnam(self, user):
+        return types.SimpleNamespace(
+            pw_name=user, pw_uid=4242, pw_gid=4242)
+
+    def walk(self, path):
+        return iter(())
+
+    def realpath(self, path):
+        return os.path.realpath(path)
+
+    def dirname(self, path):
+        return os.path.dirname(path)
+
+    def stat(self, path):
+        return types.SimpleNamespace(st_mode=0o777)
+
+    def chmod(self, path, mode):
+        raise AssertionError("a world-traversable chain needs no chmod")
+
+
+class DarwinParitySubstrateTest(unittest.TestCase):
+    """The substrate the darwin arm of AllEnforceParityTest keys
+    on, pinned on scripted seams so it runs on every host.
+
+    The test-macos failure at the confinement-row assertion was
+    this shape: on a darwin host whose Seatbelt backend can
+    engage, the argv gate returns the normal argv and writes NO
+    confinement row (that row is the spawn seam's, written when
+    a confined process is actually created); where the runner
+    is not root, the job_user preexec then refuses the job
+    before the spawn seam is reached, so the job carries a
+    job_user fallback row and no confinement row at all. The
+    bwrap-keyed expectations read that as six missing parity
+    points. These tests pin the three darwin shapes at the
+    seams themselves: the engageable gate's silence, the dead
+    gate's fallback row and denial, and the composed refusal
+    the hosted shape produces, per exec job.
+    """
+
+    def _enforce_cfg(self):
+        block = all_enforce_block()
+        block["job_user"] = {"user": "pigeon-test"}
+        return {"security": block}
+
+    def _rows(self, base):
+        return [json.loads(line)
+                for line in read_audit_lines(base) or []]
+
+    def _argv_gate(self, cfg, base, job_id, problem):
+        from runner import runner as _runner_mod
+        work = os.path.join(base, "work")
+        os.makedirs(work, exist_ok=True)
+        with mock.patch.object(sys, "platform", "darwin"):
+            return _runner_mod._confinement_argv(
+                cfg, base, job_id, ["/usr/bin/python3"],
+                "/work/script.py", work, [], {},
+                backend=_ScriptedMacBackend(problem))
+
+    def test_engageable_darwin_gate_writes_no_confinement_row(self):
+        with tempfile.TemporaryDirectory() as base:
+            argv, _host_env, _boxed = self._argv_gate(
+                self._enforce_cfg(), base, "parity-02", None)
+            self.assertEqual(argv, ["/usr/bin/python3",
+                                    "/work/script.py"])
+            self.assertEqual(
+                [e for e in self._rows(base)
+                 if e.get("feature") == "confinement"], [])
+
+    def test_dead_darwin_gate_denies_and_writes_the_fallback_row(self):
+        with tempfile.TemporaryDirectory() as base:
+            argv, _host_env, _boxed = self._argv_gate(
+                self._enforce_cfg(), base, "parity-02",
+                "scripted problem")
+            self.assertEqual(argv, [])
+            conf = [e for e in self._rows(base)
+                    if e.get("feature") == "confinement"]
+            self.assertEqual(len(conf), 1)
+            self.assertEqual(conf[0]["decision"], "fallback")
+            self.assertEqual(conf[0]["reason"],
+                             "confinement_unavailable")
+            self.assertEqual(conf[0]["job_id"], "parity-02")
+
+    def test_ci_shape_refuses_at_job_user_with_no_confinement_row(self):
+        # The hosted shape, per exec job: the backend engages,
+        # the runner is not root, and the job is refused at the
+        # job_user gate (exec.py's order: argv gate, preexec,
+        # spawn) before any confinement row can be written.
+        from runner import runner as _runner_mod
+        cfg = self._enforce_cfg()
+        for job_id in sorted(
+                AllEnforceParityTest.ENFORCE_EXEC_JOBS):
+            with self.subTest(job_id=job_id):
+                with tempfile.TemporaryDirectory() as base:
+                    argv, _h, _b = self._argv_gate(
+                        cfg, base, job_id, None)
+                    self.assertNotEqual(argv, [])
+                    work = os.path.join(base, "work")
+                    with mock.patch.object(sys, "platform",
+                                           "darwin"):
+                        with self.assertRaises(
+                                _runner_mod.JobRejected):
+                            _runner_mod._job_user_preexec(
+                                cfg, base, job_id, work,
+                                face=_NonRootFace())
+                    entries = self._rows(base)
+                    ju = [e for e in entries
+                          if e.get("feature") == "job_user"]
+                    self.assertEqual(len(ju), 1)
+                    self.assertEqual(ju[0]["decision"], "fallback")
+                    self.assertEqual(ju[0]["reason"],
+                                     "job_user_needs_root")
+                    self.assertEqual(
+                        [e for e in entries
+                         if e.get("feature") == "confinement"], [])
+
+    def test_root_shape_passes_the_preexec_gate_with_a_run_as_row(self):
+        # The both-engage shape's job_user half: root, the user
+        # resolvable -- the preexec records run_as and returns
+        # the demote, so under the backend arm the exec jobs
+        # carry run_as rows beside the spawn seam's confined
+        # rows.
+        from runner import runner as _runner_mod
+        cfg = self._enforce_cfg()
+        with tempfile.TemporaryDirectory() as base:
+            work = os.path.join(base, "work")
+            os.makedirs(work)
+            with mock.patch.object(sys, "platform", "darwin"):
+                demote = _runner_mod._job_user_preexec(
+                    cfg, base, "parity-02", work, face=_RootFace())
+            self.assertTrue(callable(demote))
+            ju = [e for e in self._rows(base)
+                  if e.get("feature") == "job_user"]
+            self.assertEqual([e["decision"] for e in ju],
+                             ["run_as"])
 
 
 if __name__ == "__main__":
