@@ -150,9 +150,9 @@ jobs:
               print("::error::no build run on this commit")
               sys.exit(1)
           run = max(runs, key=lambda r: r["id"])
-          if run["status"] != "completed":
-              print(f"::error::the build run on this commit is still {run['status']}")
-              sys.exit(1)
+          # The run as a whole may still be going: the suites are
+          # long and advisory, and the gate is the jobs below, each
+          # of which must have completed green on its own.
           out = subprocess.run(
               ["gh", "api", f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{run['id']}/jobs?per_page=100",
                "--jq", "[.jobs[] | {name, status, conclusion}]"],
