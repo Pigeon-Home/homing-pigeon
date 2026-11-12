@@ -23622,3 +23622,84 @@ is those sentences themselves beside the
 committed guard family, which this lane runs
 whole. No new behaviour is claimed beyond
 what those calls and that family show.
+
+## Windows durations: the decision-1 count pin -- suppositions recorded before the fix (2026-11-11)
+
+A fresh fix lane (not the decision-1 lane, not
+the Q164 re-test lane). The read-only CI
+verdicts on the decision-1 head (11:07 PM PST)
+and on the current main head (11:24 PM PST)
+agree: test-macos and the Linux test leg both
+fail on exactly one test,
+test_windows_durations.CheckedInTableGuardTest.
+test_the_decision1_split_family_still_carries_
+99_tests, with AssertionError: 7 != 5 on
+runner.tests.test_decision1_startup_gates_
+refuse (runner/tests/test_windows_durations.py,
+the count guard). Read first-hand in this lane
+before any measurement ran: the decision-1
+landing (the every-seam commit, 11:05 PM PST)
+took the gates_refuse file from 5 test methods
+to 7 -- it re-seamed the cannot-engage test and
+added test_confinement_enforce_refused_on_each_
+platform_shape and test_confinement_enforce_
+live_backend_starts_on_darwin -- and the
+checked-in count pin the guard carries was not
+updated with it. The Q159 follow-on
+reconciliation in this desk is the standing
+shape for exactly this drift: the pin moves to
+the family's true count, the guard is renamed
+to match, and windows_durations.py --check is
+the table's own verdict.
+
+- **WD-D1-S1 (the counts).** On the pristine
+  head the unittest loader counts gates_refuse
+  at 7, every sibling piece at its pinned count
+  (refuse_main 22, refuse_policies 21,
+  gates_strict 8, gates_phase2 7, readers 16,
+  defaults 20), and the split family at 101 in
+  all. The named guard test fails on exactly
+  the gates_refuse assertion (7 != 5) and on
+  no other count in the family.
+- **WD-D1-S2 (the fix is the pin only).** The
+  reconciliation updates the guard itself: the
+  expected count for gates_refuse moves 5 to
+  7, the family total moves 99 to 101, the
+  guard test is renamed to
+  test_the_decision1_split_family_still_
+  carries_101_tests, and its comment names the
+  two tests the decision-1 landing added. No
+  decision-1 test changes to fit the old
+  count, no weakening of the guard, and no
+  production behaviour changes.
+- **WD-D1-S3 (no durations re-balance).** The
+  checked-in durations table needs no entry
+  change: the gates pieces' price guard states
+  floors (gates_refuse at least 100, at most
+  400, the three gates pieces at least 430 in
+  all) and the table carries gates_refuse at
+  exactly 100.0, and windows_durations.py
+  --check -- which verifies the table's
+  canonical form, that every key names a real
+  test file, and that the packing stays within
+  budget -- stays clean with the table
+  untouched. The standing repack rule refreshes
+  the table from build logs on shard-wall
+  evidence; no such evidence is at hand for
+  this piece, and the two added tests are a
+  scripted in-process family and a darwin-only
+  control.
+- **WD-D1-S4 (the proof).** After the pin
+  moves, the full test_windows_durations
+  family and all seven decision-1 split pieces
+  run green together in the foreground on this
+  machine.
+- **WD-D1-S5 (figures).** No figures slot is
+  affected: the change touches only the guard
+  test's pin and this desk record, no measured
+  core file grows, so no figures re-measure is
+  owed; the conclusions state the figures
+  position plainly either way.
+
+Conclusions are recorded in this same section
+once the measurement has run.
