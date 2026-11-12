@@ -260,6 +260,13 @@ REGISTERED = {
         "macOS host (the CI macos-15 and macos-15-intel legs), "
         "where a real Seatbelt profile can engage; everywhere "
         "else the stub and the injection seams are the subject",
+    "the profile names POSIX real paths; Windows realpath "
+    "yields a drive path and symlinks need a privilege":
+        "test_macos_confine's sandbox-argv field tests name "
+        "POSIX real paths (a Windows realpath yields a drive "
+        "path, and creating symlinks there needs a privilege); "
+        "they run on ubuntu and macOS, and the profile writer's "
+        "other field tests run in the Windows job",
     "peak RSS is read from /proc":
         "test_de_dust2's synthetic-grow memory peak reads "
         "/proc/self/status; runs on Linux, skipped where /proc is absent",
