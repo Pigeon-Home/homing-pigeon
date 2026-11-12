@@ -364,6 +364,36 @@ jobs:
     # infra errors (broken baseline, collection failure). Survivors are
     # reported in the log for triage -- this job is a signal, not a block.
 
+  test-heavy:
+    # The modules the split list's own_job names, in a leg of their
+    # own: single tests of runner/tests/test_briefing_contradiction
+    # (bookended sweeps over thousands of code points, Q165) outran a
+    # 30-minute wall on Linux and 20-minute walls on macOS and
+    # Windows on 2026-11-12, each in its own shard, and sank the leg
+    # that drew them. They run here alone, once, on Linux, sharded by
+    # class under a 60-minute wall; the three suites leave them out.
+    # RELIEF-48H expires 2026-11-14T03:45Z: advisory for the window like the
+    # other suites; at expiry it stays advisory until its wall has
+    # held -- it is a signal about one family of tests, not a gate.
+    continue-on-error: true
+    needs: scope
+    if: needs.scope.outputs.corpus_only != 'true' && needs.scope.outputs.docs_only != 'true' && needs.scope.outputs.promote != 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+      - run: pip install -c .github/requirements-ci.txt hypothesis
+      - run: python runner/tools/run_tests_parallel.py --jobs 4 --wall-clock 60 --durations 15 --full-log test-output-heavy.log --split runner/tools/split_modules.json --heavy-only
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: ci-test-log-heavy
+          path: test-output-heavy.log
+
   test-macos:
     # The suite on Darwin (owner's order, 2026-10-25). The release
     # has shipped macOS binaries since the start, smoked but never

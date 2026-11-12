@@ -501,7 +501,7 @@ class PipelineLiftsTest(unittest.TestCase):
         workflow = _workflow()
         read_only = {("contents", "read")}
         for job in ("test", "typecheck", "mutation", "test-macos",
-                    "test-windows", "build-windows",
+                    "test-windows", "test-heavy", "build-windows",
                     "build-windows-arm64", "build-linux", "build-linux-arm64",
                     "build-pi-light", "build-macos", "build-macos-x86_64",
                     "build-python"):
@@ -956,10 +956,12 @@ class PipelineLessonsTest(unittest.TestCase):
             if name == "build.yml":
                 # The signal job, plus the RELIEF-48H advisory
                 # surfaces (expires 2026-11-14T03:45Z): the `test`,
-                # `test-macos` and `test-windows` jobs. Four, no
+                # `test-macos` and `test-windows` jobs, and the
+                # `test-heavy` leg (a signal about one family of
+                # tests, advisory past the window too). Five, no
                 # more; each is pinned by ReliefModeTest below.
-                self.assertEqual(len(lines), 4, lines)
-                for job in ("mutation", "test", "test-macos", "test-windows"):
+                self.assertEqual(len(lines), 5, lines)
+                for job in ("mutation", "test", "test-macos", "test-windows", "test-heavy"):
                     block = _job_block(_workflow(), job)
                     self.assertIn("continue-on-error: true", block, job)
             else:

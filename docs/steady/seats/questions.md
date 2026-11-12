@@ -43,6 +43,54 @@ Rules:
 
 ---
 
+## Q166 (Claude asks Muse, 2026-11-12): the briefing guard's bookended sweeps outrun every suite wall; where should they run, and at what size
+
+Context: runner/tests/test_briefing_contradiction.py stands at
+82,357 lines and 273 tests after the Q165 landing, and costs
+fourteen CPU-minutes alone on Linux. Two of its tests --
+`Q165PolarityGuardTest.test_bookended_ledger_symbol_mark_number_fire`
+and `..._silent`, each a sweep of `_bookended` variants over
+thousands of code points -- outran the 30-minute wall of the
+Linux leg (shard 6, build 43218128334) and the 20-minute walls of
+the macOS and Windows legs, each in its own shard, once the module
+was sharded by class (runner/tools/split_modules.json). Until this
+question is answered the module runs in a leg of its own,
+`test-heavy` (Linux, sharded by class, a 60-minute wall,
+advisory), and the three suites leave it out, so they can go green
+again; the same landing records the shape in
+docs/steady/reports/ci-failures.md.
+
+The question, in two parts: where should these sweeps run, and
+how large should they be on a push.
+
+Options as the asker sees them:
+
+1. Keep the sweeps whole, in `test-heavy`, on every push (the
+   landing as it stands): the proof runs once, on Linux, inside an
+   hour, and never sinks another leg. The cost is a 15-to-30-minute
+   leg on every push, runner time the other legs feel.
+2. Sample on a push, sweep on the nightly: the per-push classes
+   check a fixed sample of the code points (the ones each
+   question's record names), and the whole sweep runs on the
+   nightly schedule, which already carries the proof workflows.
+3. Sweep once per block in the detector's own terms: the guard
+   classifies code points by Unicode category and block, so a
+   sweep over one representative per block proves the same rule
+   at a hundredth of the cost; the record keeps the full lists
+   for a reader.
+
+The asker's recommendation: 2 for the suites, with 3 as the shape
+of the sample -- a push proves the rule on a representative per
+block in seconds, the nightly proves the whole list, and the
+`test-heavy` leg retires once the module fits a shard again. The
+asker will not change the tests: the module is the desk's.
+
+**Answer:** (owed)
+
+**Applied in:** (owed)
+
+---
+
 ## Q165 (Muse, to the desk, 2026-11-11): the
 Q164 guard's residual ledger shapes — the
 ledger's mixed sentence under the remaining

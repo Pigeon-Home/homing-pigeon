@@ -1,6 +1,9 @@
 {
-  "why": "A module named here is sharded by class instead of as one item: runner/tools/run_tests_parallel.py --split. A file whose tests cost more than a shard can carry sinks whichever shard draws it (test_briefing_contradiction: 273 tests, fourteen CPU-minutes, 2026-11-12; the macOS and Windows shards that drew it hit their 20-minute walls).",
+  "why": "runner/tools/run_tests_parallel.py --split reads this file. 'modules': a module whose tests cost more than a shard can carry is sharded by class instead of as one item. 'own_job': a module the per-push legs leave out and the test-heavy leg runs alone under a longer wall (--heavy-only) -- single tests of test_briefing_contradiction (bookended sweeps over thousands of code points, Q165) outran a 30-minute wall on Linux and 20-minute walls on macOS and Windows on 2026-11-12, each in its own shard.",
   "modules": [
+    "runner.tests.test_briefing_contradiction"
+  ],
+  "own_job": [
     "runner.tests.test_briefing_contradiction"
   ]
 }

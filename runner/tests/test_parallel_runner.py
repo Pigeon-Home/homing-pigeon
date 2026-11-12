@@ -188,6 +188,27 @@ class SplitByClassTest(unittest.TestCase):
         cmd = rtp.shard_command([], ["test_heavy.HeavyATest", "test_beta"])
         self.assertEqual(cmd[-2:], ["test_heavy.HeavyATest", "test_beta"])
 
+    def test_an_own_job_module_is_left_out_and_runs_alone_under_heavy_only(self):
+        with tempfile.TemporaryDirectory() as d:
+            _write(d, "test_heavy.py", _TWO_CLASSES)
+            _write(d, "test_beta.py", _PASS)
+            split = os.path.join(d, "split.json")
+            with open(split, "w", encoding="utf-8") as fh:
+                fh.write('{"modules": [], "own_job": ["test_heavy"]}')
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = rtp.main(["--jobs", "2", "--start-dir", d, "--top-level-dir", d, "--split", split])
+            self.assertEqual(rc, 0, out.getvalue())
+            self.assertIn("running 1 test(s) from 1 module(s)", out.getvalue())
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = rtp.main(["--jobs", "2", "--start-dir", d, "--top-level-dir", d, "--split", split,
+                               "--heavy-only"])
+            self.assertEqual(rc, 0, out.getvalue())
+            # the own_job module rides by class in its own leg
+            self.assertIn("running 4 test(s) from 2 module(s) in 2 shard(s)", out.getvalue())
+            self.assertEqual(rtp.load_split_list(split, key="own_job"), {"test_heavy"})
+
     def test_the_shards_run_a_split_module_by_class(self):
         with tempfile.TemporaryDirectory() as d:
             _write(d, "test_heavy.py", _TWO_CLASSES)

@@ -147,24 +147,28 @@ def _discard_tmpdir(tmp):
         pass
 
 
-def load_split_list(path):
-    """The modules a split file names, each to be sharded by class.
+def load_split_list(path, key="modules"):
+    """The modules a split file names under ``key``.
 
-    The file is JSON: {"modules": ["runner.tests.test_x", ...]}. A
-    module whose tests cost more than a shard can carry (the Q165
-    briefing guard, 273 tests and fourteen CPU-minutes in one file,
-    2026-11-12: the macOS and Windows shards that drew it hit their
-    20-minute walls) is named here, and its classes ride as the
-    shard items instead of the module, each a name unittest takes
-    as it takes a module's. A file that cannot be read raises.
+    The file is JSON with two lists. "modules": modules sharded by
+    class -- a module whose tests cost more than a shard can carry
+    (the Q165 briefing guard, 273 tests and fourteen CPU-minutes in
+    one file, 2026-11-12: the macOS and Windows shards that drew it
+    hit their 20-minute walls) rides as its classes, each a name
+    unittest takes as it takes a module's. "own_job": modules the
+    per-push legs leave out and a leg of their own runs under a
+    longer wall (--heavy-only) -- a single test of the same module
+    outran a 30-minute wall on Linux and a 20-minute one on Windows
+    and macOS, each in its own shard, once the classes were spread.
+    A file that cannot be read raises.
     """
     import json
     with open(path, encoding="utf-8") as fh:
         data = json.load(fh)
-    modules = data.get("modules") if isinstance(data, dict) else None
+    modules = data.get(key, []) if isinstance(data, dict) else None
     if not isinstance(modules, list) or not all(
             isinstance(m, str) and m for m in modules):
-        raise ValueError("%s: 'modules' must be a list of module names" % path)
+        raise ValueError("%s: %r must be a list of module names" % (path, key))
     return set(modules)
 
 
@@ -780,7 +784,11 @@ def main(argv=None):
                              "every shard at once)")
     parser.add_argument("--split", default=None, metavar="PATH",
                         help="a JSON file naming modules to shard by "
-                             "class (see runner/tools/split_modules.json)")
+                             "class, and modules a leg of their own runs "
+                             "(see runner/tools/split_modules.json)")
+    parser.add_argument("--heavy-only", action="store_true",
+                        help="run only the split file's own_job modules "
+                             "(the per-push legs leave them out)")
     parser.add_argument("modules", nargs="*",
                         help="explicit modules to run instead of "
                              "discovering the whole suite")
@@ -794,19 +802,28 @@ def main(argv=None):
     if args.in_flight < 0:
         parser.error("--in-flight must be >= 0")
 
-    split = ()
+    split, own_job = set(), set()
     if args.split:
         try:
             split = load_split_list(args.split)
+            own_job = load_split_list(args.split, key="own_job")
         except (OSError, ValueError) as exc:
             print("error: cannot read the split list %s: %s"
                   % (args.split, exc), file=sys.stderr)
             return 2
+    if args.heavy_only and not own_job:
+        parser.error("--heavy-only needs a --split file with an own_job list")
     if args.modules:
         counts = {mod: 1 for mod in args.modules}
     else:
         counts = module_test_counts(args.start_dir, args.top_level_dir,
-                                    split=split)
+                                    split=split | own_job)
+        # The own_job modules ride in their own leg: left out here,
+        # the only items under --heavy-only. A class item belongs to
+        # the module its name starts with.
+        def _owned(item):
+            return any(item == m or item.startswith(m + ".") for m in own_job)
+        counts = {k: v for k, v in counts.items() if _owned(k) == bool(args.heavy_only)}
     if not counts:
         print("error: no tests discovered under %s -- refusing to "
               "report a vacuous green" % args.start_dir, file=sys.stderr)
