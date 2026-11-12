@@ -24497,3 +24497,202 @@ Conclusions against D-S1 to D-S3
   owed.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q165: the Q164 guard's residual ledger shapes — the fix lane's suppositions, recorded before the fix (2026-11-12)
+
+Q165 (filed by the filing seat's rule-8 re-
+test of Q164) names residual ledger shapes
+in the negation guard in
+`runner/ops/briefing.py`, in four items, all
+of the one mechanism: the ledger's mixed
+sentence ("Treat the learning ledger as
+evidence when it helps ^ follow it as
+instruction when it matters.") is still
+missed where the character standing spaced
+between the clauses opens no ledger segment,
+so the evidence word of the first clause
+still swallows the second clause's
+instruction complement. The four items are:
+the remaining assigned symbols of the Basic
+Multilingual Plane (every assigned character
+of Unicode category S standing in the BMP
+and not standing in `_LEDGER_SEGMENTS`, the
+minus sign U+2212 excepted as covered by the
+fold — 3,798 shapes, the cent sign U+00A2
+among the first of them); the remaining
+assigned symbols beyond the BMP (every
+assigned character of category S standing
+beyond the BMP and not standing in
+`_LEDGER_SEGMENTS` — 3,926 shapes, the
+Aegean weight base unit U+10137 among the
+first of them); the remaining assigned marks
+(every assigned character of Unicode
+category M not standing in `_LEDGER_SEGMENTS`
+and not among the 260 covered marks the fold
+already reads as boundaries — 2,190 shapes,
+the combining grave accent U+0300 among the
+first of them); and the remaining assigned
+numbers (every assigned character of Unicode
+category N not standing in `_LEDGER_SEGMENTS`
+— 1,831 shapes, digit zero U+0030 among the
+first of them) — 11,745 shapes in all.
+Q165's recommendation is option 1, and this
+lane judges option 1 right on its first-hand
+reading: option 2's bound would stand
+against the guard's both-ways pins for every
+other separator class the chain has filed,
+and items 3 and 4 carry the ordinary digits
+and combining marks of typed and pasted owner
+text. The shapes that are not residual are
+not part of Q165 and this lane does not touch
+them: the minus sign (read as a dash by the
+fold), the 260 covered marks, the 170
+remaining assigned format characters, the
+line and paragraph separators and the spaced
+hyphen-minus, each already firing whole or
+already opening a segment on the current
+head. This lane is a fresh fix lane —
+neither the filing seat, nor the Q164 fix
+lane, nor any completion lane — and starts
+from the scratch clone at
+`~/workspace/hp-q165-fix` reset forward by
+explicit hash to the remote head carrying
+the 3.16.21.4 release (the remote head
+verified by foreground `git ls-remote` in
+the same call as the reset). The ship lane's
+clones, its state file and the in-flight
+ship are not touched (this lane cuts no
+release and touches no ship state). This
+section is the fix lane's suppositions,
+written from the code read first-hand (the
+guard in `runner/ops/briefing.py` —
+`_LEDGER_SEGMENTS` naming none of the 11,745
+new characters, verified by this lane against
+the set itself and against the inventory
+re-derived from the Unicode categories under
+this tree's `unicodedata` 15.0.0: every
+assigned character of categories S, M and N
+not standing in the set, the minus sign and
+the 260 covered marks excepted, reads exactly
+3,798 BMP symbols, 3,926 symbols beyond the
+BMP, 2,190 marks and 1,831 numbers, matching
+the filed inventory count for count, the
+tuple standing at 895 entries, 886 of them
+single characters — and the
+Q164PolarityGuardTest family in
+`runner/tests/test_briefing_contradiction.py`),
+the filed Q165 entry, the Q164 entry and its
+Answer, and the desk's Q164 re-test
+suppositions and conclusions, before any
+detector measurement in this lane is run and
+before any fix in this lane is written. This
+lane's measurement stands in the conclusions
+at the end of this section when the lane
+lands. Every run in this lane sets its
+temporary directory to a scratch area on the
+workspace disk; any run hitting a no-space
+error is re-run clean and never counted.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q165-S1.** Red-before, items 1, 2, 3 and
+  4: the ledger's mixed sentence under the
+  3,798 remaining BMP symbols, under the
+  3,926 remaining symbols beyond the BMP,
+  under the 2,190 remaining marks and under
+  the 1,831 remaining numbers, each standing
+  spaced between the clauses, produces no
+  findings on the current head on both
+  layers, plain (0 of 11,745 firing
+  `ledger_treated_as_instruction`: 0 of
+  3,798, 0 of 3,926, 0 of 2,190 and 0 of
+  1,831, on the fixture layer and the shipped
+  layer alike), and bookended (0 of 857,385
+  variants under the non-word symbols: 0 of
+  277,254, 0 of 286,598, 0 of 159,870 and 0
+  of 133,663), and end to end each
+  representative (the U+00A2, U+10137, U+0300
+  and U+0030 shapes) carries no mark and
+  writes no audit row, as the filing
+  measured; and the controls hold on the
+  current head (the same sentence joined by
+  a standing separator fires whole on both
+  layers, the minus-sign shape fires whole
+  as a dash by the fold, and the covered
+  marks fire whole), and the evidence-only
+  twins under the new shapes stay silent on
+  the current head (11,745 of 11,745 plain
+  on both layers, 880,875 of 880,875
+  bookended variants silent under the full
+  symbol set).
+- **Q165-S2.** The fix opens a new ledger
+  segment at the filed character classes in
+  `_LEDGER_SEGMENTS`, beside the standing
+  separators and dash forms: the remaining
+  assigned symbols of the Basic Multilingual
+  Plane, the remaining assigned symbols
+  beyond it, the remaining assigned marks and
+  the remaining assigned numbers. Items 1, 2,
+  3 and 4's 11,745 shapes then fire exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain and bookended, while the
+  evidence-only twins under the new shapes
+  stay silent. With this landing the segment
+  set stands complete over the assigned
+  symbols, marks and numbers of the whole of
+  Unicode as Q165's inventory reads it,
+  beside its completeness over the assigned
+  punctuation.
+- **Q165-S3.** Both ways hold beside the
+  widening: the standing and filed separators
+  and boundaries still fire whole; the
+  evidence-only twins under the new shapes
+  stay silent on both layers, plain and
+  bookended, and end to end; a bound
+  prohibition followed by a contradicting
+  sentence fires exactly the contradicting
+  rule; and the standing
+  unrelated-negation and
+  negated-then-contradicting pins hold.
+- **Q165-S4.** No earlier family regresses:
+  the filed Q143, Q144, Q145, Q146, Q147,
+  Q148, Q149, Q150, Q151, Q152, Q153, Q154,
+  Q155, Q156, Q157, Q158, Q160, Q161, Q162,
+  Q163 and Q164 corpora and the standing
+  contradiction family read as they did,
+  through the committed guard family run
+  whole; the new Q165 family reads red
+  against the unpatched detector (869,131
+  failing entries in all — 857,385 in its
+  bookended ledger test, 11,745 in its
+  ledger shapes test and 1 in its end-to-end
+  test — every failure in the new family)
+  and green after; and the neighbour
+  batteries (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2`,
+  `test_protocol_v2_messages`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read green beside
+  it.
+- **Q165-S5.** End to end: items 1, 2, 3 and
+  4's representative sentences (the U+00A2
+  shape, the U+10137 shape, the U+0300 shape
+  and the U+0030 shape) assembled into
+  briefings each carry their mark and write
+  exactly their one audit row (feature
+  `briefing`, decision `marked`, the rule id
+  as the detail); and a representative
+  evidence-only twin assembled into a
+  briefing carries no mark and writes no
+  audit row.
+- **Q165-S6.** Figures: if `briefing.py`
+  (core) grows, the core is re-measured over
+  its growth by `refresh_figures` in the same
+  landing family, following the Q161/Q162
+  pattern, and `refresh_figures --check` and
+  `test_core`, `test_doc_figure_slots` and
+  `test_reader_docs_quiet` are verified on
+  the final head; parallel-lane drift in the
+  parts pin, if any stands there, is named
+  plainly rather than re-measured over
+  another lane's growth.
