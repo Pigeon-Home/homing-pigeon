@@ -1425,3 +1425,24 @@ order of 110 CPU-seconds all-in against the whole class's
 800 unloaded, and the whole fire test alone had not
 finished in 30 minutes of wall there before the landing;
 the desk carries the conclusions and the timings.
+
+### Four hours of red on two echoes; the suites green on 3.16.24.5 (12 Nov 2026)
+
+Between 16:22Z and 20:14Z the Linux suite was red on every build
+and four releases went out beside it: the Germany bank 65 landing
+(82f5c5af4) had filed two race_state crashes -- a retained record
+saved under a case-variant id, absent after the join -- from a
+rig whose head predated the fix, and on main their probes passed
+from the first build, two unexpected successes the suite reports
+as a failure, which is the signal to run `promote`. Nobody ran
+it for four hours. `promote` replayed them at ed28a983, found
+them fixed and reaching nothing new, and retired them. The
+Windows leg meanwhile timed out five loopback tests (four in
+test_oracle_send, one in test_runner_last_edges) whose clients
+waited ten seconds for a server thread of their own process; a
+minute now, as hang guards. On the 3.16.24.5 build the three
+suites read green: Linux 11.1 minutes, macOS 13.6, Windows 17.0.
+The releases of the afternoon through the train, each to every
+mirror: 3.16.21.15, 3.16.24.1 to .4 (the token component moved
+to 24 at the Germany bank 65 landing, on the train's own
+measure), 3.16.24.5 in 7.5 minutes.
