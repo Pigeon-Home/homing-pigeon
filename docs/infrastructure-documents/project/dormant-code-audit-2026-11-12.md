@@ -110,8 +110,79 @@ figures carry. The non-latent figure is 100 minus the
 near-duplicate share, the standing derivation, with the
 exact share stated beside it.
 
-## Measurement
+## Measurement (2026-11-12)
 
-Owed: the measure runs after this supposition stands on
-main, and its figures and the conclusions against the
-supposition are recorded here in the same place.
+Measured by `runner/tools/duplication_audit.py` on the tree
+at the head this audit's supposition stands on.
+
+- The whole tree is 1,492,915 lines in 1,417 tracked files.
+  Python is 465,493 of those lines, in 682 files.
+- Near-duplicate Python: 46,329 lines. That is 3.1% of the
+  whole tree, and 9.95% of the Python. Tests carry 40,870
+  of those lines (2.74% of the tree); production carries
+  5,459 (0.37% of the tree).
+- Non-latent code: 96.9% — 100 minus the near-duplicate
+  share, the standing derivation, with the exact share
+  stated beside it.
+- Exact copies: 340 lines beyond the first copy, 0.02% of
+  the tree — the same groups the standing audits found:
+  the 339-line license text vendored in 2 extension
+  upstream folders (aide-feed's COPYING, suricata-feed's
+  LICENSE), and a 1-line marker file standing in 2 copies
+  in a reports folder. Identical empty `__init__.py` files
+  add a group that contributes 0 lines. **No code file is
+  an exact copy of another code file, anywhere.**
+- Unreferenced Python files: 0.
+- Generated files: the scan names 1 file,
+  docs/steady/reports/ci-health.md — the same snapshot the
+  2026-11-09 audit named, a record that declares itself
+  generated on its face. No generated code is checked in.
+- The largest contributors, in order: the airgap OVERVIEW
+  fixture (11,036 repeated lines), the divergence exhibits
+  (5,528), and the Q165 briefing-contradiction module
+  (2,829).
+
+## Conclusions: the supposition against the numbers
+
+1. **The near-duplicate share — inside the band, above the
+   point.** Predicted: a fall to between 2.6% and 3.2%,
+   point 2.9%. Measured: 3.1%, a fall from 3.17% as
+   supposed in direction, smaller than priced. The error is
+   visible in the counts: repeated windows grew faster than
+   the supposition allowed — near-duplicate lines rose from
+   42,254 to 46,329 (about a tenth) while the tree grew by
+   about a sixth — because the Q165 module's scaffolding
+   repetition is real mass (2,829 repeated lines in that one
+   module, the third-largest contributor in the tree), not
+   the negligible residue the shape-list reasoning priced
+   it at. The data-list reasoning itself held: the module
+   is 83,208 lines and only 2,829 of them repeat, so its
+   lists diluted far more than its scaffolding added. The
+   non-latent figure improves to 96.9%, and the change the
+   numbers support is the correction of the statistics
+   record, not any cleanup.
+2. **Exact copies — held.** 340 lines, 0.02% of the tree:
+   the same line count as both standing audits, diluted by
+   the bigger tree, as supposed.
+3. **Total latent — held.** Near plus exact is 3.12% of
+   the tree, under the supposed 3.3% and well inside the
+   standing 5% limit. The limit the conductor asked about
+   holds after the jump to 24,933,926 tokens, with 1.88
+   points of room on the total.
+4. **Unreferenced files — held.** 0, as supposed.
+5. **Composition — held in kind.** Tests carry 40,870 of
+   the 46,329 near-duplicate lines (88%); the airgap
+   fixture remains the largest single contributor; the
+   Q165 module stands third, a new name in the top ranks
+   but not the largest, exactly the shape supposed.
+
+What this audit changes: statistics.md's facts are
+corrected from this record — non-latent 96.9%,
+near-duplicate 3.1%, exact 0.02%, audit date 2026-11-12 —
+and the figure mentions in AGENTS.md and PROTOCOL.md are
+corrected to the same numbers with the same date, wording
+untouched. The 2026-11-09 audit (dormant-code-audit.md)
+stands as the previous measure; this record supersedes its
+figures, not its analysis, and the 2026-11-03 audit
+(duplication-audit.md) remains the family-by-family
+account.

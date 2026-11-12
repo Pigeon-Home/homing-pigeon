@@ -6,7 +6,7 @@ refresh was measured on.
 
 The recorded line, in the display form settled for publication:
 
-24 mil security tokens, 6,000 commits, 1,500,000 lines at 96.83% non-latent code
+24 mil security tokens, 6,000 commits, 1,500,000 lines at 96.9% non-latent code
 
 ## What stands behind each figure
 
@@ -29,13 +29,15 @@ The recorded line, in the display form settled for publication:
   the whole history on their own — the recount above rests on
   the complete clone, and any future count should be taken
   the same way.
-- Non-latent: 96.83%, from the fresh dormant-code audit
-  ([dormant-code-audit.md](dormant-code-audit.md), 2026-11-09,
-  measured at 4111ac4659145c8a6f4d2829ade2b1a35b9bdc24):
-  duplicate and latent code held at 3.17% of the
-  tree in near copies and 0.03% in exact copies. The audit
-  supersedes the 2026-11-03 audit's figures (96.35%, from
-  3.65% near copies), whose family-by-family analysis stands
+- Non-latent: 96.9%, from the fresh dormant-code audit
+  ([dormant-code-audit-2026-11-12.md](dormant-code-audit-2026-11-12.md), 2026-11-12,
+  measured at bcd0b8ad255280c5fa6718887f7b99a27ce9e0e1):
+  duplicate and latent code held at 3.1% of the
+  tree in near copies and 0.02% in exact copies. The audit
+  supersedes the 2026-11-09 audit's figures (96.83%, from
+  3.17% near copies), whose record stands in
+  [dormant-code-audit.md](dormant-code-audit.md); the
+  family-by-family analysis stands
   in [duplication-audit.md](duplication-audit.md).
 
 ## The facts, machine-readable
@@ -59,10 +61,10 @@ stays their source of truth.
   "commits": 5662,
   "display_commits": 6000,
   "display_lines": 1500000,
-  "non_latent_percent": 96.83,
-  "latent_near_percent": 3.17,
-  "latent_exact_percent": 0.03,
-  "audit_date": "2026-11-09",
+  "non_latent_percent": 96.9,
+  "latent_near_percent": 3.1,
+  "latent_exact_percent": 0.02,
+  "audit_date": "2026-11-12",
   "core_files": 136,
   "core_lines": 64871,
   "core_lines_nonblank": 58819,
