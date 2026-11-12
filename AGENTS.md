@@ -228,7 +228,12 @@ Those values live on the runner host. They do not travel through the SI chat.
    live — Muse and Grok. A question Muse files is answered by a live
    seat, and no seat lands a code fix for its own question without a
    second seat's re-test. Both pull before every change and every
-   push, so two agents never land the same fix.
+   push, so two agents never land the same fix. A commit that cuts a
+   tracked file to a fraction of itself (100 or more lines and a
+   quarter of what it had, deleting it included) fails the build's
+   `shape` job unless its message says `Shrink-OK: <path>`;
+   `python3 runner/tools/shrink_guard.py --working-tree` says before
+   the push what that job will say after.
    The split for the campaigns (2026-10-26; revised 2026-10-31):
    Muse grows and files crashes as questions; the live seats fix the
    reader and turn survivors into seeds; one writer on a file;

@@ -70,6 +70,23 @@ jobs:
           AFTER: ${{ github.sha }}
         run: python3 runner/tools/ci_scope.py >> "$GITHUB_OUTPUT"
 
+  shape:
+    # Names any tracked file this commit cut to a fraction of itself
+    # (runner/tools/shrink_guard.py): two modules were rewritten to a
+    # fraction of their lines on 2026-11-11 by edits that wrote a
+    # file's head and dropped the rest, and the suite found each one
+    # leg at a time. A cut that is meant carries a Shrink-OK: trailer
+    # in the commit message. Not a release gate; a red here names the
+    # file on the run page in the build's first minute.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+      - run: python3 runner/tools/shrink_guard.py --commit HEAD
+
   test:
     runs-on: ubuntu-latest
     permissions:
