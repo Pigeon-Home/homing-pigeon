@@ -181,6 +181,8 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("fetch-depth: 2", block)
         self.assertIn("python3 runner/tools/shrink_guard.py --commit HEAD",
                       block)
+        # the core measure's pin runs beside it, in the first minute
+        self.assertIn("python3 -m unittest -q runner.tests.test_core", block)
 
 
 if __name__ == "__main__":

@@ -125,6 +125,11 @@ jobs:
         with:
           fetch-depth: 2
       - run: python3 runner/tools/shrink_guard.py --commit HEAD
+      # The core measure beside it: a commit that grows a file on the
+      # core list without re-recording the as-assembled figures turns
+      # the Linux suite red nine minutes later (284cea6d, 2026-11-12);
+      # the same two-second check here names it in the first minute.
+      - run: python3 -m unittest -q runner.tests.test_core
 
   test:
     # RELIEF-48H expires 2026-11-14T03:45Z: the suite is advisory for the
