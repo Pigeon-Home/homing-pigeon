@@ -20197,3 +20197,266 @@ and that family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
 
+
+## Q162: the Q161 guard's residual polarity shapes — the fix lane's suppositions, recorded before the fix (2026-11-11)
+
+Q162 (filed by the filing seat's rule-8 re-test
+of Q161) names residual polarity shapes in the
+negation guard in `runner/ops/briefing.py`, in
+four items: a governed phrase is wrongly marked
+where the phrase's head is a bare plural
+complement head with no determiner of its own,
+carrying a pied-piped relative clause whose
+lead carries a person head among the words
+ahead of its noun ("holds credentials officer
+certified records of which are on file" —
+firing `private_shelf_crosses` on the current
+head on both layers, though it is a complement
+under a complement verb of exactly the kind the
+standing layer carries, and its singular twin
+is crossed whole), because the Q161
+first-judged-head cut searches the span from
+its second word (the first word standing past
+its determiner), so a span carrying no
+determiner is never judged at its own first
+word, and the tail-drop that crosses the
+singular twin runs only while more than two
+words stand, so the two-word plural span
+("credentials officer") is judged by the lead's
+person word; the ledger's mixed sentence is
+still missed under the punctuation separators
+of the supplemental punctuation block beyond
+every separator the chain has filed (U+2E07,
+U+2E09, U+2E0A, U+2E0C, U+2E0D, U+2E10, U+2E11,
+U+2E14, U+2E15, U+2E16, U+2E19, U+2E1C, U+2E1D,
+U+2E1E, U+2E1F, U+2E21, U+2E22, U+2E23, U+2E26,
+U+2E28, U+2E2B, U+2E2C, U+2E2D, U+2E32, U+2E33,
+U+2E35, U+2E3F, U+2E42, U+2E4C and U+2E5D — 30
+shapes); the same sentence is still missed
+under the small-form variants beyond the four
+small forms Q161 filed (U+FE51, U+FE52, U+FE57,
+U+FE58, U+FE59, U+FE5A, U+FE5B, U+FE5C, U+FE5D,
+U+FE5E, U+FE5F, U+FE60, U+FE61, U+FE62, U+FE63,
+U+FE64, U+FE65, U+FE66, U+FE68, U+FE69, U+FE6A
+and U+FE6B — 22 shapes); and the same sentence
+is still missed under the presentation forms,
+classes the segment set has never opened at
+(the presentation forms for vertical
+punctuation, U+FE10 to U+FE19 — 10 shapes; and
+the CJK compatibility presentation forms,
+U+FE30, U+FE31, U+FE32, U+FE35, U+FE37, U+FE41,
+U+FE45 and U+FE47 — 8 shapes). Q162's
+recommendation is option 1. This lane is a
+fresh fix lane — neither the Q161 fix lane nor
+the filing/re-test seat — and starts from a
+fresh scratch clone from remote main at the
+head carrying the Q162 filing (the release
+commit of 6:31 PM PST, 2026-11-11, a descendant
+of the filing commit of 6:24 PM PST whose
+intervening landings touch neither the
+detector, nor its test family, nor this record,
+nor the questions file; the remote head
+verified by foreground `git ls-remote` in the
+same call as the clone). The ship lane's
+clones, its state file and the in-flight ship
+are not touched (this lane cuts no release and
+touches no ship state), and neither are the
+earlier lanes' clones. This section is the fix
+lane's suppositions, written from the code read
+first-hand (the widened guard in
+`runner/ops/briefing.py` —
+`_clause_carries_infinitive`'s pied-piped
+set-aside, past the Q158 three-word set-aside
+and the Q160 dropping, ending the governed
+phrase at its first judged head searched from
+the span's second word and dropping a person or
+object head standing as the span's tail only
+while more than two words stand; and
+`_LEDGER_SEGMENTS` naming no character of the
+supplemental block beyond the filed separators,
+no small form beyond the filed four and no
+presentation form — verified by this lane
+against the set itself: 0 of the 70 new shapes
+stand in it — and the Q161PolarityGuardTest
+family in
+`runner/tests/test_briefing_contradiction.py`),
+the filed Q162 entry, the Q161 entry and its
+Answer, and the desk's Q161 re-test
+suppositions and conclusions, before any fix in
+this lane is written; this lane's red-before
+measurement, run first-hand before these
+suppositions were committed, stands in the
+suppositions themselves, as the chain's lanes
+record it. The lane's conclusions stand at the
+end of this section when the lane lands.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q162-S1.** Red-before, item 1: the bare
+  plural complement head carrying a pied-piped
+  relative clause whose lead carries a person
+  head ("holds credentials officer certified
+  records of which are on file", inside its
+  prohibition sentence) produces findings on
+  the current head on the fixture layer and
+  the shipped layer, plain (0 of 1 silent,
+  firing `private_shelf_crosses`), and
+  bookended (silent only in the 2
+  underscore-fused variants of 75 under the
+  full symbol set), and end to end it carries
+  the mark and writes exactly its one audit
+  row, though it should stay silent; and the
+  controls hold on the current head (the bare
+  plural object phrase carrying the same lead
+  shape fires whole — 1 of 1 plain on both
+  layers, 73 of 73 bookended under the
+  non-word symbols — the singular twin stays
+  silent whole — 1 of 1 plain on both layers,
+  75 of 75 bookended — the re-test's other
+  composed complements stay silent, 4 of 4
+  plain and 300 of 300 bookended, and its
+  composed objects fire, 3 of 3 plain and 219
+  of 219 bookended).
+- **Q162-S2.** Red-before, items 2, 3 and 4:
+  the ledger's mixed sentence under the 30
+  supplemental-punctuation separators beyond
+  every filed separator, under the 22
+  small-form variants beyond the filed four
+  and under the 18 presentation forms (the 10
+  vertical forms and the 8 CJK compatibility
+  forms), each standing spaced between the
+  clauses, produces no findings on the current
+  head on both layers, plain (0 of 70 firing
+  `ledger_treated_as_instruction`: 0 of 30, 0
+  of 22, 0 of 10 and 0 of 8), and bookended (0
+  of 5,110 variants under the non-word
+  symbols: 0 of 2,190, 0 of 1,606, 0 of 730 and
+  0 of 584), and end to end each representative
+  (the U+2E07, U+FE51, U+FE10 and U+FE30
+  shapes) carries no mark and writes no audit
+  row, as the filing measured; and the
+  evidence-only twins under the new shapes
+  stay silent on the current head (70 of 70
+  plain on both layers, 5,250 of 5,250
+  bookended variants silent under the full
+  symbol set).
+- **Q162-S3.** The fix, at the same detector
+  under option 1, judges a governed phrase by
+  its head's standing through a pied-piped
+  relative clause the phrase itself carries,
+  whatever its lead's shape and whatever the
+  phrase's own shape: a governed phrase
+  carrying no determiner is judged at its own
+  first word the way a determiner-led phrase
+  is judged past its determiner (the
+  first-judged-head cut searches from the
+  span's first word where no determiner
+  stands, and from past its determiner where
+  one does), and the person-or-object-head
+  tail-drop that crosses a complement in full
+  applies at the two-word span the cut leaves
+  standing the way it applies above two words
+  (the drop runs while at least two words
+  stand, so the two-word plural span
+  "credentials officer" drops its lead word
+  where the word ahead of it, "credentials",
+  is a noun complement in full, leaving the
+  phrase judged by its own head) — while a
+  true object phrase carrying the same shape
+  still fires ("compels crews officer
+  certified members of which are on duty": the
+  phrase ahead of its lead's person word,
+  "crews", is a person head and no complement
+  in full, so no drop runs and its head still
+  judges it), a complement under a complement
+  verb is crossed ("holds credentials officer
+  certified records of which are on file"
+  stays silent), and the Q153 Answer's bound
+  edge and the filed Q161 shapes stay as
+  pinned in this form too. Item 1's sentence
+  then stays silent on both layers, plain and
+  bookended, beside its controls.
+- **Q162-S4.** The fix opens a new ledger
+  segment at the supplemental punctuation
+  block's remaining separators (the raised
+  dotted interpolation marker, the
+  transposition brackets, the raised omission
+  brackets, the paragraphos forms, the
+  ancorae, the dotted right-pointing angle,
+  the palm branch, the low paraphrase
+  brackets, the tildes with dot, the right
+  vertical bar with quill, the half brackets,
+  the sideways U bracket, the double
+  parenthesis, the dot punctuations, the five
+  dot mark, the turned comma, the raised dot,
+  the turned semicolon, the capitulum, the
+  double low-reversed-9 quotation mark, the
+  medieval comma and the oblique hyphen), at
+  the small-form variants beyond the filed
+  four (the small ideographic comma, full
+  stop, exclamation mark, em dash, parentheses,
+  curly and tortoise shell brackets, number
+  sign, ampersand, asterisk, plus sign,
+  hyphen-minus, less-than and greater-than
+  signs, equals sign, reverse solidus, dollar
+  sign, percent sign and commercial at) and at
+  the presentation forms (the presentation
+  forms for vertical punctuation and the CJK
+  compatibility presentation forms named in
+  item 4), beside the standing separators and
+  dash forms. Items 2, 3 and 4's 70 shapes then
+  fire exactly `ledger_treated_as_instruction`
+  on both layers, plain and bookended, while
+  the evidence-only twins under the new shapes
+  stay silent.
+- **Q162-S5.** Both ways hold beside the
+  widening: the bound shapes stay silent on
+  both layers, plain and bookended, and end to
+  end ("compels a duty", "sends a clearance");
+  the filed silent controls stay silent
+  (Q161's family: the bound edges, the
+  complements under complement verbs, the
+  relative-clause, "whose"-clause and
+  pied-piped complements, the passive shape
+  and the same-standing control), with item
+  1's shape crossed beside them (the committed
+  silent family counting item 1's filed shape
+  in the silent controls and its bare plural
+  object twin in the firing controls); the
+  plain subject clause stays crossed ("is on
+  duty"); a bound prohibition followed by a
+  contradicting sentence fires exactly the
+  contradicting rule; and the standing
+  unrelated-negation and
+  negated-then-contradicting pins hold.
+- **Q162-S6.** No earlier family regresses:
+  the filed Q143, Q144, Q145, Q146, Q147,
+  Q148, Q149, Q150, Q151, Q152, Q153, Q154,
+  Q155, Q156, Q157, Q158, Q160 and Q161 corpora
+  and the standing contradiction family read
+  as they did, through the committed guard
+  family run whole; the new Q162 family reads
+  red against the unpatched detector (the
+  count stated in the conclusions, every
+  failure in the new family) and green after;
+  and the neighbour batteries
+  (`test_oracle_briefing`, `test_posture_stamp`,
+  `test_protocol_v2*`, `test_v2_consult`,
+  `test_v2_replay`, `test_security_config`)
+  read green beside it.
+- **Q162-S7.** End to end: item 1's sentence
+  ("holds credentials officer certified
+  records of which are on file", in its filed
+  prohibition sentence) assembled into a
+  briefing carries no mark and writes no audit
+  row; items 2, 3 and 4's representative
+  sentences (the U+2E07 shape, the U+FE51
+  shape, the U+FE10 shape and the U+FE30
+  shape) assembled into briefings each carry
+  their mark and write exactly their one audit
+  row (feature `briefing`, decision `marked`,
+  the rule id as the detail); and the bare
+  plural object shape ("compels crews officer
+  certified members of which are on duty", in
+  its prohibition sentence) carries its mark
+  as pinned.
