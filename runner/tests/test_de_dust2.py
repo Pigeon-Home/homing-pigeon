@@ -695,15 +695,22 @@ class CiScopeTest(unittest.TestCase):
         self.assertFalse(C.docs_only([".github/workflows/build.yml"]))
         self.assertFalse(C.docs_only(["pyproject.toml"]))
         self.assertFalse(C.docs_only(["runner/README.md"]))
-        self.assertFalse(C.docs_only([]))
+        # an empty change set (a file saved unchanged in the web
+        # editor) has nothing to build; a range git cannot read is
+        # None, not empty, and builds
+        self.assertTrue(C.docs_only([]))
+        self.assertTrue(C.docs_only([""]))
+        self.assertFalse(C.corpus_only([]))
 
-        def diff(paths):
+        def diff(paths, rc=0):
             def run(cmd, **kw):
-                return mock.Mock(returncode=0, stdout="\n".join(paths) + "\n")
+                return mock.Mock(returncode=rc, stdout="\n".join(paths) + "\n")
             return run
         self.assertEqual("true", C.decide("push", "abc", "def", run=diff(["docs/x.md"]),
                                           rule=C.docs_only))
         self.assertEqual("false", C.decide("push", "abc", "def", run=diff(["docs/x.md"])))
+        self.assertEqual("true", C.decide("push", "abc", "def", run=diff([]), rule=C.docs_only))
+        self.assertEqual("false", C.decide("push", "abc", "def", run=diff([], rc=128), rule=C.docs_only))
 
     def test_a_docs_only_push_runs_the_docs_job_and_skips_the_rest(self):
         import re

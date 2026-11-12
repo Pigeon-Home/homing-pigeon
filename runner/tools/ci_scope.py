@@ -58,12 +58,17 @@ DOCS_ONLY = CORPUS_ONLY + (
 
 
 def docs_only(paths):
-    """True when every changed path is documentation or a ledger and
-    at least one path changed. A root *.md and anything under docs/
-    count; a path with a directory part outside docs/ does not."""
+    """True when every changed path is documentation or a ledger. A
+    root *.md and anything under docs/ count; a path with a directory
+    part outside docs/ does not. An empty change set counts too: the
+    web editor commits a file saved unchanged (an "Update FUTURE.md"
+    of 2026-11-12 changed nothing and ran the whole matrix), and a
+    push that changed nothing has nothing to build, only the doc
+    guards to re-read. A range git cannot read is not an empty one:
+    changed_paths answers None for that, and decide() builds."""
     paths = [p for p in paths if p]
     if not paths:
-        return False
+        return True
     for p in paths:
         if any(fnmatch.fnmatch(p, pat) for pat in CORPUS_ONLY):
             continue
