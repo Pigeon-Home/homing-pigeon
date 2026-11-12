@@ -37,6 +37,7 @@ import hashlib
 import json
 import os
 import socket
+import sys
 import tempfile
 import time
 import unittest
@@ -200,9 +201,25 @@ def run_one(cfg, base_dir, spec, job_id):
     return result
 
 
-def _confined(mode):
+def _confines(cfg):
+    """True when enforce on this host really sandboxes.
+
+    bwrap is the Linux backend. darwin, FreeBSD and Windows
+    have their own, and the startup probe is the question the
+    job gate asks. A macOS host whose Seatbelt backend
+    engages is not backend-less: the job runs inside it.
+    """
+    plat = sys.platform
+    if plat in ("darwin", "win32") or plat.startswith("freebsd"):
+        from runner.ops.remediation_ops import (
+            confinement_startup_problem)
+        return confinement_startup_problem(cfg) is None
+    return SB.sandbox_available()
+
+
+def _confined(mode, cfg):
     """True when this mode really sandboxes on this box."""
-    return mode == "enforce" and SB.sandbox_available()
+    return mode == "enforce" and _confines(cfg)
 
 
 @unittest.skipUnless(os.name == "posix", "field scenarios use sh")
@@ -235,7 +252,7 @@ class Flag321ScenarioTest(unittest.TestCase):
                 spec = dict(spec)
                 spec["script"] = spec["script"].format(flag=flag, home=home)
                 job_id = f"scen-{mode}-{i}"
-                if mode == "enforce" and not SB.sandbox_available():
+                if mode == "enforce" and not _confines(cfg):
                     # A host with no confinement backend:
                     # enforce refuses every job at the gate
                     # (the phase-2 posture), so the refusal
@@ -265,7 +282,8 @@ class Flag321ScenarioTest(unittest.TestCase):
                 self._assert_mode(mode, base_dir, results)
 
     def _assert_mode(self, mode, base_dir, results):
-        if mode == "enforce" and not SB.sandbox_available():
+        cfg = _cfg(base_dir, mode)
+        if mode == "enforce" and not _confines(cfg):
             # The backend-less arm: every job was refused at
             # the confinement gate, and nothing else about
             # the pipeline is reachable on this host.
@@ -275,7 +293,7 @@ class Flag321ScenarioTest(unittest.TestCase):
         # Nothing in the pipeline blocks these jobs. The catch is
         # the Oracle's record, not a refusal, and a failed read is
         # still a notable job (T4/T7/T8).
-        confined = _confined(mode)
+        confined = _confined(mode, cfg)
         for job_id, (spec, result) in results.items():
             if confined and spec.get("host_path"):
                 # The wall held: the host path is not there to read.
