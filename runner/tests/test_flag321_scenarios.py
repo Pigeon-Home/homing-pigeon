@@ -68,11 +68,17 @@ SCENARIOS = [
      "expect_notable": False},
     {"label": "outside workspace, not a credential",
      "script": "ls /tmp >/dev/null",
-     "expect_notable": True},
+     "expect_notable": True,
+     # bwrap mounts its own /tmp, so the listing succeeds.
+     # Seatbelt does not grant /tmp, so the listing is denied.
+     "darwin_exit": 1},
     {"label": "credential store that is only listed",
      "script": "ls /etc/passwd >/dev/null",
      "host_path": True,
-     "expect_notable": True},
+     "expect_notable": True,
+     # bwrap does not mount /etc. Seatbelt grants /etc as a
+     # system read path, so the listing succeeds.
+     "darwin_exit": 0},
     {"label": "missing file outside the workspace",
      "script": "cat /tmp/no-such-flag321-file",
      "expect_notable": True,
@@ -295,7 +301,14 @@ class Flag321ScenarioTest(unittest.TestCase):
         # still a notable job (T4/T7/T8).
         confined = _confined(mode, cfg)
         for job_id, (spec, result) in results.items():
-            if confined and spec.get("host_path"):
+            if (sys.platform == "darwin" and mode == "enforce"
+                    and "darwin_exit" in spec):
+                # These two listings land on opposite sides of
+                # the two walls. The field expectation is
+                # bwrap's; Seatbelt's is named on the scenario.
+                self.assertEqual(
+                    result["exit_code"], spec["darwin_exit"], job_id)
+            elif confined and spec.get("host_path"):
                 # The wall held: the host path is not there to read.
                 self.assertNotEqual(result["exit_code"], 0, job_id)
             else:
@@ -347,8 +360,10 @@ class Flag321ScenarioTest(unittest.TestCase):
         with open(os.path.join(retained, flag_id + ".json"),
                   encoding="utf-8") as fh:
             record = json.load(fh)
-        if confined:
+        if confined or (sys.platform == "darwin" and mode == "enforce"):
             # Enforce closes the T14 surface: the value never left.
+            # Seatbelt denies the planted flag the same way bwrap
+            # does, so a macOS enforce run must not carry it either.
             self.assertNotIn("321", record["stdout"])
         else:
             self.assertEqual(record["stdout"].strip(), "321")
