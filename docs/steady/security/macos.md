@@ -1428,3 +1428,130 @@ darwin, and what is still owed:
   stands convicted rather than its bound, and
   the ceiling's mechanism is the next round's
   subject.
+
+## The spawn-limits verdict (2026-11-11)
+
+With the data-size defect closed by the five rounds
+above, the `test-macos` legs on the decision-1 head
+(verdict read at 11:07 PM Pacific on 2026-11-11) and
+on the main head that followed it (read at 11:24 PM
+Pacific) fail on exactly one point of the live class:
+`test_the_spawn_limits_are_carried_by_the_job`, at
+`runner/tests/test_macos_confine.py:1392`, with
+`AssertionError: 9223372036854775807 != -1` on
+`limits[2]`, the job's address-space soft limit read
+back through `resource.getrlimit(resource.RLIMIT_AS)`.
+The same failure stands on the 3.16.21.2 release head,
+so it predates the decision-1 landing; the five
+data-size rounds neither caused it nor touched the
+assertion that carries it. Every other point of the
+point's own triple passes: the applied data-size soft
+value stands on the ladder (`limits[0]`) and the hard
+limit reads back unchanged (`limits[1]`).
+
+## Suppositions for the spawn-limits fix, recorded before the measurement
+
+- R6-S1, which side is wrong (the primary
+  supposition). The test's expectation is wrong and
+  the backend is right. The backend never sets an
+  address-space limit at all: the shim sets only
+  `RLIMIT_DATA` (pinned off darwin by
+  `test_the_shim_never_sets_an_address_space_limit`,
+  and S1 stands -- an address-space ceiling at the
+  spawn ceiling aborts the exec'd interpreter before
+  job code). The value at `limits[2]` is therefore
+  the address-space soft limit the job inherits,
+  reported by Python's `resource` module, and
+  "unlimited" has two reports, one per platform
+  family: -1 where the platform's unlimited sentinel
+  reaches Python as -1 (Linux, where
+  `resource.RLIM_INFINITY` reads -1), and
+  9223372036854775807 -- 2**63 - 1, `INT64_MAX` --
+  where the platform's sentinel is that value
+  (Darwin: the backend's own ladder comment records
+  2**62 as "the largest power-of-two finite value
+  below the platform's unlimited sentinel (2**63 - 1
+  on Darwin)"). The verdict's failing value is
+  exactly the Darwin sentinel: on the CI host the
+  job's address space WAS unlimited, the confinement
+  fact the point exists to hold stood, and the
+  assertion -- which hardcodes the Linux report,
+  `limits[2] == -1` -- can never pass on a darwin
+  host. The backend carrying `INT64_MAX` is not a
+  defect: nothing in the chain asks for that value,
+  sets it, or could distinguish it from unlimited
+  on that platform.
+- R6-S2, the defect is local to the one assertion's
+  form. Its two sibling assertions are already
+  representation-safe: `limits[1]` is compared
+  against the inherited hard limit the test process
+  reads through the same API, and `limits[0]`
+  re-derives its expectation from the ladder
+  function. Only `limits[2]` names one platform's
+  representation of a platform fact. No production
+  limit-carrying code moves under this supposition:
+  no limit is set, raised, lowered, or normalized,
+  and the fail-closed shape stands untouched.
+
+What is not supposed: that the backend should set
+or normalize the address-space limit to make the
+report read -1 (any address-space `setrlimit` in
+the shim reopens S1's abort), that the sentinel
+value is a finite limit the job somehow acquired
+(nothing in the profile, the shim, or the spawn
+path names it), or that Seatbelt is involved in
+this point at all (the value is set by inheritance
+before the profile applies, and the profile does
+not carry limits).
+
+The measurement that settles it, stated before it
+is run:
+
+- P1, the substrate classification, off darwin and
+  deterministic. A pure classification of a
+  reported limit value -- unlimited exactly for
+  the two named reports (-1 and 2**63 - 1), not
+  unlimited for any finite value below the
+  sentinel, and a refusal for a field that is not
+  an integer -- is pinned per value, per field,
+  and by a randomized family over the value range
+  including both bookends of the sentinel. Beside
+  it, the platform constant on the measuring host
+  is read in the open (`resource.RLIM_INFINITY`),
+  so the Linux report and the recorded Darwin
+  sentinel are both named, neither assumed.
+- P2, the verdict's own numbers, executed. The
+  exact triple shape the verdict carried -- the
+  applied soft on the ladder, the hard limit equal
+  to the inherited hard, and the address-space
+  soft at 9223372036854775807 -- satisfies the
+  re-pinned expectation's shape (each value
+  classified and compared as the fixed point will
+  compare it), and the same shape with a finite
+  address-space value does not. The old
+  expectation fails the verdict's triple, which
+  is the failure being fixed, restated as a pin.
+- P3, the live verdict, owed and not claimed here.
+  The first completed `test-macos` CI job on a
+  head carrying this fix judges the live claim:
+  if R6-S1 holds, the point passes with the job
+  still carrying the Darwin sentinel for its
+  address space. If the point instead fails on
+  `limits[2]` with a value that is neither named
+  report, or the failure moves to `limits[0]` or
+  `limits[1]`, R6-S1 is wrong in the direction
+  stated and the backend stands convicted instead.
+
+The fix R6-S1 calls for, if the measurement
+supports it: the live point's address-space
+assertion compares the read-back value against
+the platform's own unlimited report as the test
+process itself reads it -- `resource.RLIM_INFINITY`
+and the inherited address-space soft limit read
+through the same API, the `limits[1]` shape --
+never a hardcoded -1; and a pure substrate helper
+in the backend module classifies a reported value
+as unlimited exactly for the two named reports,
+so both representations' meaning is pinned where
+it cannot silently drift. The helper classifies
+only; it sets nothing.
