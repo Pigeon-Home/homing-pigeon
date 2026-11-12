@@ -124,9 +124,11 @@ without that run id (by hand, or a dispatch without the input)
 builds everything again, as before. `runner/tools/release_train.py` does
 all of that as one command — `status` to read the state, `prepare
 --note "..."` to land the release commit, `cut` to wait, cut and
-verify, `run` for the whole cycle — so a release is one invocation
-and the time the build takes, not a sitting. A pushed tag never
-moves; a defect is fixed forward under the next patch version.
+verify, `run` for the whole cycle, `measure` to re-record the core
+measure alone when a landing grows a core file — so a release is
+one invocation and the time the build takes, not a sitting. A
+pushed tag never moves; a defect is fixed forward under the next
+patch version.
 
 ### The looking is the gate
 

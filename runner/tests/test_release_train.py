@@ -338,6 +338,30 @@ class WatchTest(unittest.TestCase):
             self.assertEqual(rt.watch_tag_build("3.16.21.2", 1), 1)
 
 
+class MeasureTest(unittest.TestCase):
+    def test_measure_re_records_and_reads_the_guards(self):
+        calls = []
+        with mock.patch.object(rt, "record_core_measure", lambda *a, **k: calls.append("measure") or {"runner/ops": 22585, "runner/runner.py": 7153}), \
+                mock.patch.object(rt.subprocess, "run", lambda *a, **k: calls.append("figures") or mock.Mock(returncode=0, stdout="", stderr="")), \
+                mock.patch.object(rt, "local_guards", lambda *a, **k: calls.append("guards") or ""), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            rc = rt.main(["measure"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(calls, ["measure", "figures", "guards"])
+        self.assertIn("runner/ops 22585", out.getvalue())
+        self.assertIn("commit them with the landing", out.getvalue())
+
+    def test_red_guards_name_themselves(self):
+        with mock.patch.object(rt, "record_core_measure", lambda *a, **k: {}), \
+                mock.patch.object(rt.subprocess, "run", lambda *a, **k: mock.Mock(returncode=0, stdout="", stderr="")), \
+                mock.patch.object(rt, "local_guards", lambda *a, **k: "FAIL: test_x (runner.tests.test_core.CorePartsTest)"), \
+                contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as err:
+            rc = rt.main(["measure"])
+        self.assertEqual(rc, 1)
+        self.assertIn("the local guards are red over the re-measure", err.getvalue())
+        self.assertIn("test_core.CorePartsTest", err.getvalue())
+
+
 class PreparePushRetryTest(unittest.TestCase):
     def test_a_rejected_push_rebases_and_pushes_again(self):
         calls = []

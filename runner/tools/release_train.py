@@ -7,6 +7,7 @@
     python3 runner/tools/release_train.py run --note "..." [--note ...]
     python3 runner/tools/release_train.py clock [--version V] [--since ISO-TIME]
     python3 runner/tools/release_train.py promote-check --run RUN_ID --sha SHA
+    python3 runner/tools/release_train.py measure
 
 `status` reads the tree and the hosted record: the three version
 carriers and whether they agree, whether the tag for that version
@@ -36,6 +37,14 @@ input), the tag build packages nothing, and before its release job
 downloads that run's artifacts it reads the run back -- a build.yml
 run on exactly the tag's commit, not cancelled, every gate job green
 -- and refuses the release by name otherwise.
+
+`measure` is prepare's re-measure on its own, for a landing that
+grows a core file: it re-records the core measure and the figures
+over the tree and runs the local guards, and leaves the changes in
+the working tree for the landing's own commit. A core file that
+grows without it is named by the shape job on the next build (the
+Q168 fix of 2026-11-12 grew runner/ops by 118 lines and the head
+read red on shape until the next cut re-recorded it).
 
 `clock` reads one cycle's timeline out of the hosted record -- the
 release commit, the build's start, the gate going green, every
@@ -801,6 +810,20 @@ def clock_report(rows):
     return "\n".join(out)
 
 
+def cmd_measure(args):
+    parts = record_core_measure()
+    proc = subprocess.run([sys.executable, os.path.join(ROOT, "runner/tools/refresh_figures.py"), "--write"],
+                          cwd=ROOT, capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError("refresh_figures --write failed:\n" + proc.stdout + proc.stderr)
+    _say("re-measured: " + ", ".join("%s %d" % (k, v) for k, v in sorted(parts.items())))
+    out = local_guards()
+    if out:
+        raise RuntimeError("the local guards are red over the re-measure:\n" + out[-3000:])
+    _say("the core measure and the figures are re-recorded in the working tree; commit them with the landing")
+    return 0
+
+
 def cmd_clock(args):
     version = (args.version or carriers()["pyproject.toml"]).lstrip("v")
     rows = cycle_clock(version, args.since)
@@ -835,6 +858,7 @@ def main(argv=None):
                        help="the tag build's reading of the gate build it promotes")
     p.add_argument("--run", required=True, help="the build run id to promote")
     p.add_argument("--sha", required=True, help="the tag's commit (full sha)")
+    sub.add_parser("measure", help="re-record the core measure and the figures over the tree (prepare's re-measure, alone)")
     p = sub.add_parser("clock", help="one cycle's timeline from the hosted record")
     p.add_argument("--version", default=None, help="the version (default: the carriers')")
     p.add_argument("--since", default=None, help="when the cycle was asked for (ISO time), as the first row")
@@ -844,6 +868,8 @@ def main(argv=None):
             return cmd_status(args)
         if args.cmd == "clock":
             return cmd_clock(args)
+        if args.cmd == "measure":
+            return cmd_measure(args)
         if args.cmd == "promote-check":
             return cmd_promote_check(args)
         if args.cmd == "prepare":
