@@ -497,6 +497,54 @@ LIMIT_SHIM_SOURCE = (
 DATA_LIMIT_LADDER_MAX = 2 ** 62
 
 
+# The reports of an unlimited limit. Python's resource
+# module does not mask platform differences: it reports
+# a limit exactly as the platform's getrlimit reports
+# it, so the one fact "unlimited" reaches Python under
+# two values, one per platform family this backend
+# ships for -- -1 on Linux, where the platform's
+# unlimited sentinel reaches Python as -1, and
+# 2 ** 63 - 1 (INT64_MAX) on Darwin, whose unlimited
+# sentinel is that value (the ladder comment above
+# records the same sentinel from the other side).
+# A read-back assertion that names only one report
+# fails on the other platform while the fact it pins
+# stands: the spawn-limits live point hardcoded -1
+# and failed on darwin with the sentinel in hand
+# (supposition R6-S1 in docs/steady/security/macos.md).
+UNLIMITED_LIMIT_REPORTS = (-1, 2 ** 63 - 1)
+
+
+def reported_limit_is_unlimited(value):
+    """Whether a reported limit value means unlimited.
+
+    The deterministic substrate of the read-back
+    classification: a limit value as Python's
+    `resource` module reports it (from `getrlimit`,
+    in this process or read back from a spawned job)
+    means unlimited exactly when it is one of the
+    named reports in UNLIMITED_LIMIT_REPORTS, and
+    means a finite limit otherwise. The field, one
+    by one:
+
+    - value: the reported limit (an integer; a
+      boolean is not a limit, and no report stands
+      below -1).
+
+    The classifier only classifies: it sets nothing,
+    normalizes nothing, and no spawn path consults
+    it, so confinement's fail-closed shape cannot
+    move through it. Raises RuntimeError on a field
+    that is not what it is named.
+    """
+    if isinstance(value, bool) \
+            or not isinstance(value, int) or value < -1:
+        raise RuntimeError(
+            "a reported limit must be -1 or a "
+            "non-negative integer")
+    return value in UNLIMITED_LIMIT_REPORTS
+
+
 def data_limit_attempts(requested, inherited_hard):
     """The soft data-size limits the shim asks for, in order.
 

@@ -164,10 +164,12 @@ class CoreListTest(unittest.TestCase):
         # which that landing left unrecorded, and again
         # the same day after the macOS confinement fourth
         # fix grew runner/guard/macos_confine.py by 102
-        # lines, the whole set re-measured over the
-        # current tree.
-        self.assertEqual(64538, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(58401, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # lines, and again on 2026-11-12 after the macOS
+        # confinement spawn-limits fix grew
+        # runner/guard/macos_confine.py by 48 lines, the
+        # whole set re-measured over the current tree.
+        self.assertEqual(64586, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(58442, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

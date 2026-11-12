@@ -779,6 +779,166 @@ class DataLimitAttemptsTest(unittest.TestCase):
         self.assertIn(b"JOB-RAN (268435456, 268435456)", done.stdout)
 
 
+class ReportedLimitTest(unittest.TestCase):
+    """reported_limit_is_unlimited: the read-back classification.
+
+    The deterministic substrate of the spawn-limits fix
+    (supposition R6-S1 in docs/steady/security/macos.md).
+    The shim sets no address-space limit, so the value a
+    job reads back for one is the inherited limit as
+    Python's resource module reports it, and "unlimited"
+    has two reports -- -1 on Linux, 9223372036854775807
+    (2**63 - 1, the Darwin sentinel) on darwin. The live
+    point hardcoded the first and failed on the second
+    while the address space stood unlimited. This family
+    pins both reports' meaning, per value and per field,
+    with the verdict's own numbers and a staged read-back
+    executed through a scripted resource seam, so the
+    shape cannot silently drift back to one platform's
+    representation.
+    """
+
+    SENTINEL = 2 ** 63 - 1
+
+    def test_the_named_reports_are_exactly_the_two(self):
+        self.assertEqual(MC.UNLIMITED_LIMIT_REPORTS,
+                         (-1, 9223372036854775807))
+        self.assertEqual(self.SENTINEL, 9223372036854775807)
+
+    def test_minus_one_is_unlimited(self):
+        # The Linux report: this host's own constant.
+        self.assertTrue(MC.reported_limit_is_unlimited(-1))
+
+    def test_the_darwin_sentinel_is_unlimited(self):
+        # The verdict's own failing value, classified as
+        # what it is: the address space stood unlimited.
+        self.assertTrue(
+            MC.reported_limit_is_unlimited(9223372036854775807))
+
+    def test_the_host_constant_is_a_named_report(self):
+        import resource
+        self.assertIn(resource.RLIM_INFINITY,
+                      MC.UNLIMITED_LIMIT_REPORTS)
+        self.assertTrue(MC.reported_limit_is_unlimited(
+            resource.RLIM_INFINITY))
+        soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+        if soft == resource.RLIM_INFINITY:
+            self.assertTrue(MC.reported_limit_is_unlimited(soft))
+        if hard == resource.RLIM_INFINITY:
+            self.assertTrue(MC.reported_limit_is_unlimited(hard))
+
+    def test_zero_is_not_unlimited(self):
+        self.assertFalse(MC.reported_limit_is_unlimited(0))
+
+    def test_finite_values_are_not_unlimited(self):
+        for value in (1, 2, 512 * 1024 * 1024, 2 ** 32,
+                      2 ** 62, self.SENTINEL - 1):
+            self.assertFalse(
+                MC.reported_limit_is_unlimited(value), value)
+
+    def test_the_sentinel_bookends(self):
+        # The values standing immediately around each
+        # named report classify on their own side of it.
+        self.assertFalse(
+            MC.reported_limit_is_unlimited(self.SENTINEL - 1))
+        self.assertTrue(
+            MC.reported_limit_is_unlimited(self.SENTINEL))
+        self.assertFalse(
+            MC.reported_limit_is_unlimited(self.SENTINEL + 1))
+        self.assertFalse(MC.reported_limit_is_unlimited(0))
+
+    def test_values_below_minus_one_are_refused(self):
+        for bad in (-2, -100, -(2 ** 62), -(2 ** 63)):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.reported_limit_is_unlimited(bad)
+
+    def test_the_field_must_be_an_integer(self):
+        for bad in (True, False, "inf", "-1", 1.5, None):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.reported_limit_is_unlimited(bad)
+
+    def test_random_values_classify_by_membership(self):
+        rng = random.Random(20261112)
+        pool = [-1, 0, 1, self.SENTINEL - 1, self.SENTINEL,
+                self.SENTINEL + 1, 2 ** 62, 512 * 1024 * 1024]
+        ran = 0
+        saw_unlimited = set()
+        for _ in range(400):
+            value = rng.choice(
+                pool + [rng.randrange(0, 2 ** 64),
+                        rng.randrange(0, 10 ** 12)])
+            expected = value in MC.UNLIMITED_LIMIT_REPORTS
+            self.assertEqual(
+                MC.reported_limit_is_unlimited(value), expected,
+                value)
+            if expected:
+                saw_unlimited.add(value)
+            ran += 1
+        self.assertEqual(ran, 400)
+        self.assertEqual(saw_unlimited,
+                         set(MC.UNLIMITED_LIMIT_REPORTS))
+
+    def test_the_verdicts_own_shape(self):
+        # P2 of the supposition, executed as a pin: the
+        # triple shape the verdict carried, staged the
+        # darwin way -- the inherited hard data limit at
+        # the sentinel, the shim's ladder cap standing on
+        # the ladder the parent derives from it, and the
+        # address-space soft at the sentinel. The fixed
+        # shape holds on it; the old shape (== -1) does
+        # not, which is the failure being fixed restated.
+        attempts = MC.data_limit_attempts(
+            MC.DEFAULT_PROCESS_MEMORY_BYTES, self.SENTINEL)
+        self.assertIn(2 ** 62, attempts)
+        limits = [2 ** 62, self.SENTINEL, self.SENTINEL]
+        self.assertIn(limits[0], attempts)
+        self.assertEqual(limits[1], self.SENTINEL)
+        self.assertNotEqual(limits[2], -1)
+        self.assertTrue(MC.reported_limit_is_unlimited(limits[2]))
+
+    # The executed half: a child process whose resource
+    # seam is scripted the darwin way reports its
+    # address-space soft limit exactly as the live
+    # point's job does, so the read-back shape the fix
+    # pins is exercised deterministically on every host.
+    _READBACK_DRIVER = (
+        "import resource, sys\n"
+        "staged = int(sys.argv[1])\n"
+        "def fake_get(r):\n"
+        "    return (staged, staged)\n"
+        "resource.getrlimit = fake_get\n"
+        "print(resource.getrlimit(resource.RLIMIT_AS)[0])\n"
+    )
+
+    def _run_readback_driver(self, staged):
+        return subprocess.run(
+            [sys.executable, "-c", self._READBACK_DRIVER,
+             str(staged)],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_a_darwin_staged_readback_satisfies_the_fixed_shape(self):
+        done = self._run_readback_driver(self.SENTINEL)
+        self.assertEqual(done.returncode, 0,
+                         done.stderr.decode("utf-8", "replace"))
+        value = int(done.stdout.decode().split()[0])
+        self.assertEqual(value, self.SENTINEL)
+        # The old expectation fails on this very value --
+        # the live failure, reproduced off darwin.
+        self.assertNotEqual(value, -1)
+        self.assertTrue(MC.reported_limit_is_unlimited(value))
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_a_finite_staged_readback_does_not_satisfy_it(self):
+        done = self._run_readback_driver(512 * 1024 * 1024)
+        self.assertEqual(done.returncode, 0,
+                         done.stderr.decode("utf-8", "replace"))
+        value = int(done.stdout.decode().split()[0])
+        self.assertEqual(value, 512 * 1024 * 1024)
+        self.assertFalse(MC.reported_limit_is_unlimited(value))
+
+
 class SandboxArgvFieldTest(unittest.TestCase):
     """build_sandbox_argv: the composed spawn argv."""
 
@@ -1369,9 +1529,20 @@ class LiveBackendTest(unittest.TestCase):
         # back, in this order. The fifth fix (supposition
         # R5-S3) leaves this point's text standing: it
         # re-derives its expectation from the ladder
-        # function, so the wider ladder carries it.
+        # function, so the wider ladder carries it. The
+        # spawn-limits fix (supposition R6-S1) re-pins the
+        # address-space assertion below: the old text
+        # hardcoded -1, the Linux report of unlimited,
+        # and failed on darwin with the platform's own
+        # sentinel (9223372036854775807) in hand while the
+        # address space stood unlimited. The assertion now
+        # takes the limits[1] shape -- the read-back value
+        # against the inherited value and the platform
+        # constant this same process reads -- and the
+        # classification is pinned in ReportedLimitTest.
         import resource
         inherited_hard = resource.getrlimit(resource.RLIMIT_DATA)[1]
+        inherited_as = resource.getrlimit(resource.RLIMIT_AS)[0]
         with tempfile.TemporaryDirectory() as work:
             proc = MC.spawn_confined_process(
                 [sys.executable, "-c",
@@ -1389,7 +1560,10 @@ class LiveBackendTest(unittest.TestCase):
                 MC.data_limit_attempts(
                     MC.DEFAULT_PROCESS_MEMORY_BYTES, inherited_hard))
             self.assertEqual(limits[1], inherited_hard)
-            self.assertEqual(limits[2], -1)
+            self.assertEqual(limits[2], inherited_as)
+            self.assertEqual(limits[2], resource.RLIM_INFINITY)
+            self.assertTrue(
+                MC.reported_limit_is_unlimited(limits[2]))
 
     def test_a_native_binary_runs_inside_the_profile(self):
         # The full confined chain (profile, shim, limits)
