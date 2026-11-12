@@ -1227,3 +1227,93 @@ minutes), the release job (about 2) and the three mirrors
 (about 3, in sequence after the release). A cycle cannot be
 shorter than about 8 minutes until the mirrors run from the
 gate build's artifacts instead of a second build.
+
+## The tag build publishes the gate build's artifacts: five cycles, two misses, and the floor (12 Nov 2026)
+
+The 11-minute cycle above still built every artifact twice: once
+on the release commit, for the gate, and again on the tag, for the
+release. The tag build now promotes the gate build's artifacts.
+cut-release hands the tag dispatch the gate build's run id
+(build.yml's `promote_from` input); the scope job turns it into
+`promote` and `promote_run`; the eight artifact legs and the three
+suites skip; the release job reads the named run back before it
+downloads a byte -- a build.yml run of main on exactly the tag's
+commit, by a push or a dispatch and never a pull_request run (its
+head_sha is the PR's head but its tree is the head merged into the
+base), every gate job completed success, the eight artifacts
+present and none expired (`release_train.py promote-check`) -- and
+publishes them. What ships is what the gate judged. A review by a
+second reader before the landing found the pull_request hole, the
+run-level cancellation check that would have refused a run whose
+legs were green, the input sent to a tree that could not take it,
+the unfiltered download, and the provenance wording; all five are
+in the landing.
+
+Five cycles ran through the change, with the clock on each:
+
+- **3.16.21.4** (another seat's; the push of the promotion landing
+  moved main past its release commit, the token refused its tag,
+  and the tag was placed by hand): 13 assets, every mirror.
+- **3.16.21.5**, 14.7 minutes to the last mirror: the cut checked
+  the tag's tree with `git show v3.16.21.5:...`, and a tag the
+  REST path places is not in the cut's checkout, so the dispatch
+  went without the run id and the tag build built everything
+  again. Fixed: the check reads the commit. The 14.7 is also the
+  first number taken under runner contention: two tag builds and
+  eighteen proof runs at once.
+- **3.16.21.6**, the first promoted release, 8.2 minutes from the
+  ask to the GitHub release: `promote-check` passed the gate run,
+  8 artifacts downloaded from it, 13 assets published. The three
+  mirror jobs were skipped: a job's default condition is
+  `success()` over its whole upstream chain, and the legs the tag
+  build skipped skipped the mirrors too, their own need green.
+  That release stands on GitHub and the image only. Fixed: each
+  publish job reads the release job's result itself.
+- **3.16.21.7**, every mirror, 16.4 minutes -- of which 9.9 were
+  the gate build's macOS leg waiting behind three tags' proof
+  runs. The cut had dispatched the nine proof workflows at tag
+  time (the previous section), and with a tag every ten minutes
+  they queued up behind each other and held the runners the gate
+  needed. Fixed: the tag build's last job dispatches the proofs
+  after the mirrors, and every proof workflow keeps one
+  concurrency group for release tags, the newest tag's run
+  cancelling the one before.
+
+```
+3.16.21.6 (promoted; the mirrors skipped)
+asked for                                            09:53:00Z             0.0 min
+release commit d21c0247                              09:53:39Z    +0.7     0.7 min
+gate green (8 jobs)                                  09:56:41Z    +3.0     3.7 min
+tag v3.16.21.6                                       09:57:06Z    +0.3     4.1 min
+release published (13 assets)                        10:01:11Z    +4.0     8.2 min
+
+3.16.21.7 (promoted; the gate behind the proofs)
+asked for                                            10:02:40Z             0.0 min
+release commit 7158053f                              10:03:26Z    +0.8     0.8 min
+gate green (8 jobs)                                  10:13:22Z    +9.9    10.7 min
+tag v3.16.21.7                                       10:13:50Z    +0.3    11.2 min
+release published (13 assets)                        10:16:35Z    +2.7    13.9 min
+pypi-publish: success                                10:17:30Z    +0.9    14.8 min
+sourceforge: success                                 10:18:14Z    +0.7    15.6 min
+gitlab: success                                      10:19:04Z    +0.8    16.4 min
+```
+
+The tag build's own work is 2.7 minutes now (the release job:
+checkout with history, the promoted download, the snapshot, the
+SBOM, the sums, the attestation, the release) and the mirrors
+about 1.5 in parallel when a runner is free. The floor of a
+cycle, uncontended, is about 8 minutes: 3 for the gate, half a
+minute for the cut, 2.7 for the release, 1.5 for the mirrors.
+
+What a promoted release does not carry: the suites' logs. The
+release job runs the moment the artifact legs are green, which is
+minutes before the advisory suites finish, so `test-output.log` is
+absent from the snapshot -- as it was on every tag build since the
+suites went advisory. When the release waits on `test` again, the
+log rides again.
+
+The record over the day, from the Actions listing at 10:20Z: the
+24 hours before the last 12 had 188 builds on main, none green, 2
+releases, both partial; the last 12 hours had 153 builds, 24 green
+of 61 completed, and 8 releases, 7 whole; the last 4 hours had 48
+builds, 20 green of 26 completed, and 6 releases, all whole.

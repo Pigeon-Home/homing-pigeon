@@ -3,6 +3,42 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-2:25am-PST — the tag build publishes what the gate judged; the proofs start after the mirrors
+
+3.16.21.7 is the first release promoted whole: the tag build
+packaged nothing, read the gate build back (a build.yml run of
+main on exactly the tag's commit, every leg green, every artifact
+present -- `release_train.py promote-check`), published its
+archives, wheel and sdist, and every mirror followed. The tag
+build's own work is 2.7 minutes now. The cycles that got there,
+the two misses on the way (a REST-placed tag is not in the cut's
+checkout; a job's default condition is success() over the whole
+upstream chain, which skipped the mirrors beside the skipped legs
+on 3.16.21.6) and the floor -- about 8 minutes uncontended -- stand
+in docs/steady/reports/ci-failures.md.
+
+Four rules from the same hours, for every seat:
+
+- The proofs start from the tag build's last job, after the
+  mirrors, and every proof workflow keeps one concurrency group
+  for release tags: the newest tag's run cancels the one before.
+  Dispatched at tag time they held the runners the next gate
+  needed (the 3.16.21.7 gate build's macOS leg waited eight
+  minutes behind three tags' proofs). A tag pushed by hand still
+  fires them itself.
+- The cut gate and the train read main's push and dispatch runs
+  only. A pull_request run on the same sha, or an earlier tag
+  build of it, is never the verdict nor the promoted build.
+- A push that lands between a release commit and its cut costs
+  the tag step (the token tags main's head only; 3.16.21.4 was
+  placed by hand for that reason). `release_train.py run` now
+  prepares the next version at the head and cuts again on its
+  own; the entry for the version that never published stays in
+  the changelog with the reason.
+- `release_train.py prepare` reads and adds tracked files only;
+  an untracked directory in the checkout is neither a change nor
+  a commit.
+
 ## 12-Nov-12:20am-PST — the cycle is 11 minutes now; a pipeline cut starts the proofs itself
 
 3.16.21.3 went from the ask to the last mirror in 11 minutes
