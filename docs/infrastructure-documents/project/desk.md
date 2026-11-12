@@ -22326,3 +22326,260 @@ whole. No new behaviour is claimed beyond
 what those calls and that family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Conclusions of the filing seat (2026-11-11):
+
+The re-test ran in a fresh scratch clone from
+remote main (the remote head verified by
+foreground `git ls-remote` in the same call as
+the clone's own head check, at the head
+carrying the Q163 completion commit of
+9:23 PM PST, which carries the Q163 landing --
+the fix of 8:43 PM PST and the figures
+re-measure of 9:13 PM PST -- and this lane's
+own suppositions commit of 9:44 PM PST above
+it; `runner/ops/briefing.py` and
+`runner/tests/test_briefing_contradiction.py`
+are unchanged on that head since the fix,
+verified from the fix commit's diff),
+re-derived first-hand, not taken from the fix
+or completion lanes' reports. Every count
+below was measured by this seat in its own
+clone and its own temporary area on the
+workspace disk (118 GB available at this
+lane's start; no run of this lane hit a space
+error, and no run was counted twice). The
+trees: the current head; the pre-Q163-fix
+detector (the tree at the fix commit's
+parent); and the pre-Q143-fix detector (the
+tree at the Q143 fix commit's parent).
+Main moved under this lane's probes after the
+suppositions landed -- three parallel
+landings (a figures re-measure of 9:52 PM
+PST, a release-train tool of 9:56 PM PST and
+a forum note of 9:57 PM PST, the first of them
+based on this lane's suppositions head) --
+and none of the three touches
+`runner/ops/briefing.py`,
+`runner/tests/test_briefing_contradiction.py`,
+the desk or the questions file (verified by
+diff at the remote ref); the filed scope was
+re-checked on that final head (the Q163
+family green there, below), so the verdicts
+stand on the final head. Settled against the
+suppositions one by one:
+
+- **Q163-RT-S1 -- holds.** Items 1, 2, 3 and
+  4 fire again, whole: the 98 shapes (37
+  supplemental-punctuation remainder marks,
+  24 CJK compatibility presentation forms, 19
+  CJK symbols marks and 18 fullwidth and
+  halfwidth forms) produce exactly
+  `ledger_treated_as_instruction` on both
+  layers, plain (98 of 98: 37 of 37, 24 of
+  24, 19 of 19 and 18 of 18 on each layer)
+  and bookended (7,154 of 7,154 variants
+  under the non-word symbols).
+- **Q163-RT-S2 -- holds.** The evidence-only
+  twins under the new shapes stay silent,
+  whole: 98 of 98 plain on both layers, 7,350
+  of 7,350 bookended under the full symbol
+  set.
+- **Q163-RT-S3 -- holds.** The both-ways
+  controls hold beside the widening: this
+  seat's own standing-separator controls (the
+  comma, the semicolon, the spaced "but" and
+  the spaced em dash) fire whole (4 of 4
+  plain on both layers, 292 of 292
+  bookended); the bound prohibition followed
+  by a contradicting sentence fires exactly
+  `private_shelf_crosses` on both layers; and
+  the standing unrelated-negation and
+  negated-then-contradicting pins hold
+  through the committed guard family run
+  whole (261 green, below).
+- **Q163-RT-S4 -- holds.** All nineteen
+  earlier families hold whole beside the
+  widening, and the standing 7-rule
+  contradiction family fires whole, through
+  the committed guard family run whole (261
+  green, below) beside the controls above.
+- **Q163-RT-S5 -- holds.** End to end: items
+  1, 2, 3 and 4's representatives (the
+  U+2E1A, U+FE33, U+3003 and U+FF04 shapes)
+  assembled into briefings each carry their
+  mark, `briefing_report` names exactly
+  `ledger_treated_as_instruction`, and the
+  startup pass writes exactly their one audit
+  row (feature `briefing`, decision `marked`,
+  the rule id as the detail); and the
+  representative evidence-only twin carries
+  no mark, names no tensions, and writes no
+  audit row.
+- **Q163-RT-S6 -- holds.** The guard family
+  reads 261 green (the 255 of the Q162
+  re-test beside the 6 of the new Q163
+  family) and the neighbour batteries
+  (`test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2`,
+  `test_protocol_v2_messages`,
+  `test_v2_consult`, `test_v2_replay`,
+  `test_security_config`) read 305 green,
+  re-measured in the foreground by this seat
+  with its temporary directory on the
+  workspace disk.
+- **Q163-RT-S7 -- holds.** Red-before,
+  re-derived by this seat against the
+  pre-Q163-fix detector: items 1, 2, 3 and
+  4's shapes are silent there (0 of 98 firing
+  plain on both layers, 0 of 7,154 bookended
+  variants), the evidence-only twins stay
+  silent there whole, and the guard family as
+  it now stands reads 7,253 failing entries
+  against that detector with 0 errors, every
+  one of them in the new Q163PolarityGuardTest
+  family (7,154 in its bookended ledger test,
+  98 in its ledger shapes test and 1 in its
+  end-to-end test; its evidence-only,
+  bookended-evidence and bound-prohibition
+  tests pass there) -- the completion lane's
+  count, re-derived exactly. Against the
+  pre-Q143-fix detector the filed shapes fire
+  whole plain (98 of 98 on both layers), as
+  the Q163 entry filed them.
+- **Q163-RT-S8 -- first three directions
+  hold whole; the fourth does not hold as
+  supposed, and its reading is not a
+  residual.** The filed ledger shapes in
+  their other spacings fire (4 of 4 unspaced
+  shapes plain on both layers, 292 of 292
+  bookended); the clauses in their other
+  order fire exactly
+  `ledger_treated_as_instruction` (4 of 4
+  plain on both layers, 292 of 292
+  bookended); and a filed separator standing
+  in the first clause ahead of its evidence
+  word does not swallow the second clause's
+  instruction complement (4 of 4 firing
+  whole, the same counts). The fourth
+  direction -- an evidence-only sentence
+  whose second clause carries the word
+  "instruction" as a plain noun ("follow its
+  instruction") -- fires exactly
+  `ledger_treated_as_instruction` on both
+  layers (4 of 4 plain, 300 of 300
+  bookended), not silent as supposed. On
+  inspection that firing is the correct
+  judgement, not a polarity error and not a
+  residual: the second clause directs
+  following the ledger's own instruction, so
+  the sentence is not evidence-only, and the
+  supposition's framing of it was this seat's
+  error, stated plainly here. Nothing is
+  filed from this direction.
+- **Q163-RT-S9 -- directions (1), (2) and
+  (4) confirm residuals whole; direction (3)
+  confirms residuals with one covered shape
+  excepted.** (1) The bracket-ornament and
+  mathematical-bracket separators are missed
+  whole on the current head: 0 of 64 firing
+  on both layers plain, 0 of 4,672 bookended,
+  the representative (the U+207D shape) with
+  no mark and no audit row end to end. (2)
+  The remainders of the filed blocks and
+  their nearest neighbours are missed whole
+  the same way: 0 of 20 firing plain, 0 of
+  1,460 bookended, the representative (the
+  U+2E2F shape) with no mark and no audit
+  row. (3) The remaining assigned punctuation
+  of the Basic Multilingual Plane is missed
+  with one exception: of its 239 shapes, 238
+  read silent (0 of 238 firing plain on both
+  layers beside the one below, 0 of their
+  bookended variants firing), and the one
+  exception -- the Arabic end of text mark,
+  U+061D -- fires whole on the current head
+  (1 of 1 plain on both layers, 73 of 73
+  bookended), read as a boundary before the
+  fold since Q155, so it is covered and not
+  a residual. The kana pair of direction (2)
+  (U+30A0 and U+30FB) also stands in this
+  direction's category inventory; counted
+  once, in item 2 of the filing, this
+  item's residual count is 236. (4) The
+  remaining assigned punctuation beyond the
+  BMP is missed whole: 0 of 217 firing plain
+  on both layers, 0 of 15,841 bookended, the
+  representative (the U+10100 shape) with no
+  mark and no audit row. The evidence-only
+  twins under the second group's residual
+  shapes stay silent on the current head
+  (537 of 537 plain on both layers, 40,275
+  of 40,275 bookended). The residual shapes
+  read the same on the pre-Q163-fix detector
+  plain (0 of 64, 0 of 20, 0 of 236 and 0 of
+  217, with the U+061D shape firing there
+  too, the fold predating the fix) and fire
+  whole plain on the pre-Q143-fix detector
+  (64 of 64, 20 of 20, 236 of 236 and 217 of
+  217). Every one of the 537 residual shapes
+  was verified against the segment set
+  itself: none of their characters stands in
+  `_LEDGER_SEGMENTS` on the current head.
+  The four residual items are filed as Q164
+  in the questions file (64, 20, 236 and 217
+  shapes, 537 in all), not fixed by this
+  seat (rule 8).
+- **Q163-RT-S10 -- holds, with the
+  post-measure growth stated plainly.** The
+  figures stand as re-measured: on the head
+  carrying this lane's suppositions,
+  `refresh_figures --check` passes and
+  `test_core`, `test_doc_figure_slots` and
+  `test_reader_docs_quiet` read 37 of 38 --
+  the single failure the `test_core` parts
+  pin the completion lane already named (the
+  CI lane's `runner/tools/ci_scope.py` growth
+  of net 1 line, landed after that measure).
+  While this lane probed, a parallel lane's
+  figures re-measure of 9:52 PM PST
+  re-measured the core over that growth; on
+  the final head `refresh_figures --check`
+  passes and the same three batteries beside
+  the Q163 family read 44 green. The growth
+  stated here is other lanes' landings, not
+  a Q163 residual, and no figure in the Q163
+  record is moved by it. This landing is
+  docs-only (the desk and the questions
+  file), so no figures re-measure rides it,
+  following the prior re-test landings.
+
+Verdict: everything in Q163's filed scope
+passes whole. The S9 second group's four
+directions confirm residuals (537 shapes,
+with the one covered shape of direction (3)
+excepted), so they are filed as Q164 in the
+questions file, this seat does not fix them
+(rule 8), and Q163 is NOT closed by this
+re-test -- and neither are Q162, Q161, Q160,
+Q158, Q157, Q156, Q155, Q154, Q153, Q152,
+Q151, Q150, Q149, Q148, Q147, Q146, Q145,
+Q144 and Q143. Q163 therefore stands
+re-tested and passing on its filed scope;
+the chain closes only after Q164 is answered
+and its fix re-tested by this seat.
+
+What cannot be recorded as a unit test,
+stated plainly: the re-test's ad-hoc probes
+are live detector calls over the sentences
+named in the suppositions and in these
+conclusions; their deterministic substrate is
+those sentences themselves beside the
+committed guard family, which this lane ran
+whole (261 green on the head; 7,253 failing
+entries for the new family against the
+pre-Q163-fix detector). No new behaviour is
+claimed beyond what those calls and that
+family show.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026

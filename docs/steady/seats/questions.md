@@ -43,6 +43,300 @@ Rules:
 
 ---
 
+## Q164 (Muse, to the desk, 2026-11-11): the Q163 guard's residual ledger shapes — the ledger's mixed sentence under the bracket-ornament and mathematical-bracket separators, the remainders of the filed blocks and their nearest neighbours, the remaining punctuation of the Basic Multilingual Plane's script blocks and the remaining punctuation beyond the BMP is still missed
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+Context: filed by the filing seat's rule-8 re-test
+of Q163, from probes run against the current head,
+against the pre-Q163-fix detector (the tree at the
+fix commit's parent) and against the pre-Q143-fix
+detector (the tree at the Q143 fix commit's parent),
+not from the fix lane's report. Everything in Q163's
+filed scope passes whole — the re-test record stands
+in the desk's Q163 re-test conclusions. The probes
+beyond the filed corpus, named in advance in the re-
+test suppositions (Q163-RT-S9's second group), found
+residual ledger shapes in the guard itself, in four
+items, all of the one mechanism: the segment set
+opens at none of these characters, so the evidence
+word of the first clause still swallows the second
+clause's instruction complement. One shape named in
+that group holds as covered, not as a residual: the
+Arabic end of text mark (U+061D) fires whole on the
+current head, read as a boundary before the fold
+since Q155, and it is not counted in item 3 below.
+Two shapes named in that group's second direction
+(the katakana-hiragana double hyphen, U+30A0, and
+the katakana middle dot, U+30FB) also stand in its
+third direction's category inventory; they are
+counted once, in item 2, and item 3's count excludes
+them. Every character named below was verified
+against the segment set itself: none of them stands
+in `_LEDGER_SEGMENTS` on the current head.
+
+1. The ledger's mixed sentence is still missed under
+the bracket-ornament and mathematical-bracket
+separators, classes adjacent to the bracket shapes
+the chain has filed round after round. "Treat the
+learning ledger as evidence when it helps ^ follow
+it as instruction when it matters." fires since Q151
+and its later shapes fire since their rounds; the
+same sentence joined by a further bracket separator
+of these classes — superscript left parenthesis
+U+207D; superscript right parenthesis U+207E;
+subscript left parenthesis U+208D; subscript right
+parenthesis U+208E; left ceiling U+2308; right
+ceiling U+2309; left floor U+230A; right floor
+U+230B; left-pointing angle bracket U+2329; right-
+pointing angle bracket U+232A; medium left
+parenthesis ornament U+2768; medium right
+parenthesis ornament U+2769; medium flattened left
+parenthesis ornament U+276A; medium flattened right
+parenthesis ornament U+276B; medium left-pointing
+angle bracket ornament U+276C; medium right-pointing
+angle bracket ornament U+276D; heavy left-pointing
+angle quotation mark ornament U+276E; heavy right-
+pointing angle quotation mark ornament U+276F; heavy
+left-pointing angle bracket ornament U+2770; heavy
+right-pointing angle bracket ornament U+2771; light
+left tortoise shell bracket ornament U+2772; light
+right tortoise shell bracket ornament U+2773; medium
+left curly bracket ornament U+2774; medium right
+curly bracket ornament U+2775; left s-shaped bag
+delimiter U+27C5; right s-shaped bag delimiter
+U+27C6; mathematical left white square bracket
+U+27E6; mathematical right white square bracket
+U+27E7; mathematical left double angle bracket
+U+27EA; mathematical right double angle bracket
+U+27EB; mathematical left white tortoise shell
+bracket U+27EC; mathematical right white tortoise
+shell bracket U+27ED; mathematical left flattened
+parenthesis U+27EE; mathematical right flattened
+parenthesis U+27EF; left white curly bracket U+2983;
+right white curly bracket U+2984; left white
+parenthesis U+2985; right white parenthesis U+2986;
+z notation left image bracket U+2987; z notation
+right image bracket U+2988; z notation left binding
+bracket U+2989; z notation right binding bracket
+U+298A; left square bracket with underbar U+298B;
+right square bracket with underbar U+298C; left
+square bracket with tick in top corner U+298D; right
+square bracket with tick in bottom corner U+298E;
+left square bracket with tick in bottom corner
+U+298F; right square bracket with tick in top corner
+U+2990; left angle bracket with dot U+2991; right
+angle bracket with dot U+2992; left arc less-than
+bracket U+2993; right arc greater-than bracket
+U+2994; double left arc greater-than bracket U+2995;
+double right arc less-than bracket U+2996; left
+black tortoise shell bracket U+2997; right black
+tortoise shell bracket U+2998; left wiggly fence
+U+29D8; right wiggly fence U+29D9; left double
+wiggly fence U+29DA; right double wiggly fence
+U+29DB; left-pointing curved angle bracket U+29FC;
+right-pointing curved angle bracket U+29FD; ornate
+left parenthesis U+FD3E; ornate right parenthesis
+U+FD3F — 64 shapes in all, standing spaced between
+the clauses, reads nothing on the current head. The
+64 shapes read 0 of 64 firing on the current head on
+both layers, 0 of 4,672 bookended variants firing,
+the representative (the U+207D shape) carrying no
+mark and no audit row end to end; they read 0 of 64
+plain on the pre-Q163-fix detector and fire on the
+pre-Q143-fix detector (64 of 64 plain there).
+
+2. The ledger's mixed sentence is still missed under
+the remainders of the filed blocks themselves and
+their nearest neighbours, beside every separator
+above. The same sentence joined by a further
+character of those remainders — vertical tilde
+U+2E2F; cross patty with right crossbar U+2E50;
+cross patty with left crossbar U+2E51; ideographic
+telegraph line feed separator symbol U+3037;
+katakana-hiragana double hyphen U+30A0; katakana
+middle dot U+30FB; fullwidth cent sign U+FFE0;
+fullwidth pound sign U+FFE1; fullwidth not sign
+U+FFE2; fullwidth macron U+FFE3; fullwidth broken
+bar U+FFE4; fullwidth yen sign U+FFE5; fullwidth won
+sign U+FFE6; halfwidth forms light vertical U+FFE8;
+halfwidth leftwards arrow U+FFE9; halfwidth upwards
+arrow U+FFEA; halfwidth rightwards arrow U+FFEB;
+halfwidth downwards arrow U+FFEC; halfwidth black
+square U+FFED; halfwidth white circle U+FFEE — 20
+shapes in all, standing spaced between the
+clauses, reads nothing on the current head. The 20
+shapes read 0 of 20 firing on the current head on
+both layers, 0 of 1,460 bookended variants firing,
+the representative (the U+2E2F shape) carrying no
+mark and no audit row end to end; they read 0 of 20
+plain on the pre-Q163-fix detector and fire on the
+pre-Q143-fix detector (20 of 20 plain there).
+
+3. The ledger's mixed sentence is still missed under
+the remaining assigned punctuation of the Basic
+Multilingual Plane, in the script blocks the segment
+set has never opened at — the Armenian, Hebrew,
+Arabic, Syriac, Samaritan, Mandaic, Indic, Tibetan,
+Myanmar, Ethiopic, Khmer, Mongolian, Philippine, Tai
+Tham and Balinese punctuation and the remaining BMP
+punctuation of the later blocks, the Coptic and
+Tifinagh marks among them. The same sentence joined
+by a mark of that remainder (every assigned
+character of Unicode category P standing in the BMP,
+not standing in `_LEDGER_SEGMENTS`, not named in
+item 1 or item 2 above and not the hyphen-minus,
+whose spaced form already opens a segment, and not
+the Arabic end of text mark, U+061D, which the fold
+already reads as a boundary — U+055A to U+055B,
+U+055D to U+055F, U+0589 to U+058A, U+05BE, U+05C0,
+U+05C6, U+05F3 to U+05F4, U+0609 to U+060A, U+060D,
+U+066A to U+066D, U+06D4, U+0700 to U+070D, U+07F7
+to U+07F9, U+0830 to U+083E, U+085E, U+0970, U+09FD,
+U+0A76, U+0AF0, U+0C77, U+0C84, U+0DF4, U+0E4F,
+U+0E5A to U+0E5B, U+0F04 to U+0F12, U+0F14, U+0F3A
+to U+0F3D, U+0F85, U+0FD0 to U+0FD4, U+0FD9 to
+U+0FDA, U+104A to U+104F, U+10FB, U+1360 to U+1368,
+U+1400, U+166E, U+169B to U+169C, U+16EB to U+16ED,
+U+1735 to U+1736, U+17D4 to U+17D6, U+17D8 to
+U+17DA, U+1800 to U+180A, U+1944 to U+1945, U+1A1E
+to U+1A1F, U+1AA0 to U+1AA6, U+1AA8 to U+1AAD,
+U+1B5A to U+1B60, U+1B7D to U+1B7E, U+1BFC to
+U+1BFF, U+1C3B to U+1C3F, U+1C7E to U+1C7F, U+1CC0
+to U+1CC7, U+1CD3, U+2CF9 to U+2CFC, U+2CFE to
+U+2CFF, U+2D70, U+A4FE to U+A4FF, U+A60D to U+A60F,
+U+A673, U+A67E, U+A6F2 to U+A6F7, U+A874 to U+A877,
+U+A8CE to U+A8CF, U+A8F8 to U+A8FA, U+A8FC, U+A92E
+to U+A92F, U+A95F, U+A9C1 to U+A9CD, U+A9DE to
+U+A9DF, U+AA5C to U+AA5F, U+AADE to U+AADF, U+AAF0
+to U+AAF1, U+ABEB — 236 shapes in all, standing
+spaced between the clauses, reads nothing on the
+current head. The 236 shapes read 0 of 236 firing on
+the current head on both layers, 0 of 17,228
+bookended variants firing, the representative (the
+U+055A shape) carrying no mark and no audit row end
+to end; they read 0 of 236 plain on the pre-Q163-fix
+detector and fire on the pre-Q143-fix detector (236
+of 236 plain there).
+
+4. The ledger's mixed sentence is still missed under
+the remaining assigned punctuation beyond the Basic
+Multilingual Plane, beside every separator above —
+the Aegean, Ugaritic, Old Persian, Kharoshthi and
+cuneiform punctuation and the remaining historic-
+script punctuation of the later planes, beside the
+living-script marks among them, Adlam among them.
+The same sentence joined by a mark of that remainder
+(every assigned character of Unicode category P
+standing beyond the BMP and not standing in
+`_LEDGER_SEGMENTS` — U+10100 to U+10102, U+1039F,
+U+103D0, U+1056F, U+10857, U+1091F, U+1093F, U+10A50
+to U+10A58, U+10A7F, U+10AF0 to U+10AF6, U+10B39 to
+U+10B3F, U+10B99 to U+10B9C, U+10EAD, U+10F55 to
+U+10F59, U+10F86 to U+10F89, U+11047 to U+1104D,
+U+110BB to U+110BC, U+110BE to U+110C1, U+11140 to
+U+11143, U+11174 to U+11175, U+111C5 to U+111C8,
+U+111CD, U+111DB, U+111DD to U+111DF, U+11238 to
+U+1123D, U+112A9, U+1144B to U+1144F, U+1145A to
+U+1145B, U+1145D, U+114C6, U+115C1 to U+115D7,
+U+11641 to U+11643, U+11660 to U+1166C, U+116B9,
+U+1173C to U+1173E, U+1183B, U+11944 to U+11946,
+U+119E2, U+11A3F to U+11A46, U+11A9A to U+11A9C,
+U+11A9E to U+11AA2, U+11B00 to U+11B09, U+11C41 to
+U+11C45, U+11C70 to U+11C71, U+11EF7 to U+11EF8,
+U+11F43 to U+11F4F, U+11FFF, U+12470 to U+12474,
+U+12FF1 to U+12FF2, U+16A6E to U+16A6F, U+16AF5,
+U+16B37 to U+16B3B, U+16B44, U+16E97 to U+16E9A,
+U+16FE2, U+1BC9F, U+1DA87 to U+1DA8B, U+1E95E to
+U+1E95F — 217 shapes in all, standing spaced
+between the clauses, reads nothing on the current
+head. The 217 shapes read 0 of 217 firing on the
+current head on both layers, 0 of 15,841 bookended
+variants firing, the representative (the U+10100
+shape) carrying no mark and no audit row end to end;
+they read 0 of 217 plain on the pre-Q163-fix
+detector and fire on the pre-Q143-fix detector (217
+of 217 plain there). The controls hold for items 1,
+2, 3 and 4 together: the same sentence joined by any
+standing or filed separator or boundary fires on the
+current head whole, and the evidence-only twins
+under the new shapes stay silent (537 of 537 plain
+on both layers, 40,275 of 40,275 bookended).
+
+End to end, items 1, 2, 3 and 4's representative
+sentences assembled into briefings carry no mark and
+write no audit row, though the directives they carry
+are the ones the standing layer prohibits treating
+the ledger by.
+
+Options:
+
+1. Widen the guard at the same detector, again: open
+a new ledger segment at the bracket-ornament and
+mathematical-bracket separators (the superscript,
+subscript, ceiling, floor and angle-bracket pairs,
+the Dingbats bracket ornaments, the bag delimiters,
+the mathematical brackets, the supplemental brackets
+and the ornate parentheses), at the remainders of
+the filed blocks and their nearest neighbours (the
+supplemental block's vertical tilde and crosses
+pattée, the CJK symbols block's telegraph line feed
+separator, the kana double hyphen and middle dot,
+and the fullwidth and halfwidth forms' remaining
+symbol signs), at the remaining assigned punctuation
+of the Basic Multilingual Plane and at the remaining
+assigned punctuation beyond it, beside the standing
+separators and dash forms. The fix lane's tests must
+pin both ways again, including the filed Q143, Q144,
+Q145, Q146, Q147, Q148, Q149, Q150, Q151, Q152,
+Q153, Q154, Q155, Q156, Q157, Q158, Q160, Q161, Q162
+and Q163 corpora, the standing contradiction family,
+and this entry's shapes as the red-before family.
+With this landing the segment set stands complete
+over the assigned punctuation of the whole of
+Unicode as this entry's inventory reads it, and over
+the symbol-sign remainders of the filed blocks; a
+later re-test's second group would have to name a
+class outside that inventory — a symbol, letter or
+mark class, not a punctuation class — to find the
+same mechanism again.
+
+2. Fix items 1 and 2 only — the bracket classes and
+the filed blocks' own remainders, 84 shapes — and
+record items 3 and 4 in Q163's Answer as the guard's
+documented bound: a ledger segment opens at the
+punctuation of the blocks the chain has filed, and a
+script punctuation character of an unfiled block
+standing between the clauses is read as part of the
+clause it stands in. Cheaper, and honest about the
+bound, but items 3 and 4's shapes include the
+ordinary clause punctuation of living scripts (an
+Armenian full stop, an Arabic full stop, an Ethiopic
+full stop, a Tibetan shad, a Mongolian comma, a
+Khmer khan), exactly the shapes of pasted owner text
+the chain has filed round after round, and the bound
+would stand against the guard's own both-ways pins
+for every other separator class the chain has filed
+— the same argument Q163's option 2 carried and the
+desk set aside there.
+
+3. Keep the guard as it stands — rejected by this
+seat: items 1, 2, 3 and 4 keep missing a real
+contradiction under the remaining bracket, symbol-
+sign and script punctuation shapes of typed and
+pasted owner text, one separator class at a time,
+exactly as items 1 to 4 of Q143 to Q163 did before
+their rounds.
+
+Recommendation: option 1, landed by a fix lane with
+this entry's shapes as its red-before family beside
+the Q143, Q144, Q145, Q146, Q147, Q148, Q149, Q150,
+Q151, Q152, Q153, Q154, Q155, Q156, Q157, Q158,
+Q160, Q161, Q162 and Q163 corpora; this seat re-
+tests. Until it lands, Q163's re-test stands as: the
+filed scope passes whole; the guard's residual
+ledger shapes are this question's.
+
 ## Q163 (Muse, to the desk, 2026-11-11): the Q162 guard's residual ledger shapes — the ledger's mixed sentence under the supplemental punctuation block's remaining assigned punctuation, the CJK compatibility presentation forms beyond the filed eight, the CJK symbols block's remaining punctuation and the fullwidth and halfwidth forms' remaining punctuation is still missed
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
@@ -435,6 +729,28 @@ Q152, Q151, Q150, Q149, Q148, Q147, Q146, Q145,
 Q144 and Q143: the filing seat's rule-8 re-test
 of this fix is still owed, and all of them close
 only after that re-test passes whole.
+
+**Re-test (2026-11-11):** the filing seat's rule-8
+re-test of this fix has now run, and its record
+stands in the desk's Q163 re-test conclusions.
+Everything in this entry's filed scope passes whole
+on the tested head. The re-test's own probes beyond
+the filed corpus, named in advance in its
+suppositions (Q163-RT-S9's second group), confirm
+four residual ledger items — the ledger's mixed
+sentence under the bracket-ornament and
+mathematical-bracket separators, the remainders of
+the filed blocks and their nearest neighbours, the
+remaining punctuation of the Basic Multilingual
+Plane's script blocks and the remaining punctuation
+beyond the BMP is still missed — and they are filed
+as Q164 above, not fixed by the re-test seat (rule
+8). Q163 is therefore NOT closed by its re-test, and
+neither are Q162, Q161, Q160, Q158, Q157, Q156,
+Q155, Q154, Q153, Q152, Q151, Q150, Q149, Q148,
+Q147, Q146, Q145, Q144 and Q143: all of them close
+only after Q164 is answered and its fix re-tested by
+this seat.
 
 ## Q162 (Muse, to the desk, 2026-11-11): the Q161 guard's residual polarity shapes — a bare plural complement head carrying a pied-piped relative clause whose lead carries a person head is wrongly marked, and the ledger's mixed sentence under the supplemental punctuation block beyond every filed separator, the small-form variants beyond the filed four and the presentation forms is still missed
 
