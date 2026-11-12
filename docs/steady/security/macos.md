@@ -847,3 +847,207 @@ What each supposition now stands on, stated exactly:
   before them — and no field proof on project
   hardware is claimed: there is no Mac in the
   project's own fleet.
+
+## The fourth live verdict (2026-11-11)
+
+The live word on the third fix has landed, in the
+3.16.20.9 tag build (build run 43140290479, its
+`test-macos` job completing at 6:39 PM PST on
+2026-11-11), and it is failure in a new shape again.
+10 of the 12 tests in the live class failed — the
+original 7 and the shim-carrying bisect legs. Every
+failure carries one line, the third fix's own named
+refusal: `hp-shim: could not set the data-size
+limit: current limit exceeds maximum limit`. The
+probe's trial fails with that line as its reason,
+the memory-ceiling point's stderr is exactly that
+line instead of a `MemoryError`, the limits
+read-back is empty, and the escape and network
+points again produce no evidence either way. The 2
+live points that pass are the 2 that bypass the
+shim entirely — the generated profile driving the
+interpreter directly, and the profile driving a
+native binary directly. The verdict was read
+first-hand from the job log before anything below
+was supposed.
+
+What that verdict settles, stated exactly. The
+profile is cleared: every leg that runs under the
+profile alone passes, and every leg that runs
+through the launcher shim fails at the shim's own
+`setrlimit` call, before the job's command is
+exec'd. R3-S1's metadata grant therefore stands
+(the realpath line is gone), and R3-S3 is answered:
+the shim-alone leg fails carrying the shim's named
+line, which is the shape R3-S3 named for its
+alternative (a) — the shim's `setrlimit` call itself
+is refused on this host. What (a) left open is the
+refusal's mechanism: the named line's text is
+Python's rendering of the kernel's `EINVAL` (the
+`resource` module maps `EINVAL` from `setrlimit(2)`
+to exactly the string `current limit exceeds
+maximum limit`, and `EPERM` — the hard-limit-raise
+error — to a different string, `not allowed to
+raise maximum limit`). The suppositions below are
+built from that text and from the kernel's own
+record of when it returns `EINVAL` for this
+resource.
+
+## Suppositions for the fourth fix, recorded before the fix
+
+Recorded 2026-11-11, after the fourth verdict
+above and before any fourth fix was written, from
+a first-hand read of the failing job log, of
+`runner/guard/macos_confine.py` as the third fix
+left it, of the `resource` module's error mapping,
+and of the Darwin kernel's `setrlimit` handling
+for `RLIMIT_DATA` in the published XNU sources
+(corroboration by the kernel's own code, named for
+exactly what it is: the mechanism the CI host's
+kernel applies, read in the open sources, not a
+measurement on that host).
+
+- R4-S1, the current-usage floor (the primary
+  supposition). For `RLIMIT_DATA` the Darwin kernel
+  hands the new soft limit to the Mach VM layer,
+  which refuses it with `EINVAL` when the new limit
+  is lower than the process's current VM map size
+  — in the kernel's own words, "the limit specified
+  cannot be lowered because current usage is
+  already higher than the limit", the usage being
+  the whole VM map, because Darwin enforces this
+  limit over the map's total size, not over the
+  heap alone. The shim is a started framework
+  interpreter: by the time its first line runs, its
+  map — the loader, the dyld shared cache, the
+  framework and the system libraries — already
+  exceeds 512 MiB on this host, so the shim's
+  request for a 512 MiB data-size limit is refused
+  before any question of the job's own usage
+  arises. That fits every fact on record: the
+  refusal is deterministic, identical for a native
+  binary and for the interpreter (both are reached
+  only through the shim's own interpreter, whose
+  map is what is measured), independent of the
+  Seatbelt profile (the shim-alone legs fail with
+  no profile in force), and it is `EINVAL`, not
+  the `EPERM` a hard-limit raise would draw. The
+  supposed consequence for the fix: on this
+  platform a data-size limit at the requested
+  512 MiB cannot be applied by a started process
+  at all; the strongest limit the kernel accepts
+  is the smallest value at or above its
+  current-usage floor, and the shim must ask for
+  that — the requested value first, then a
+  bounded ladder of doublings up to a named cap —
+  rather than for the requested value alone. If a
+  head carrying that fix still shows the named
+  refusal on the shim legs, the floor stands above
+  the ladder's cap on that host and R4-S1's
+  consequence is wrong in its bound, which this
+  record says in advance.
+- R4-S2, the hard limit must not move (a second,
+  independent defect in the same call). The shim
+  asks for the pair (limit, limit): it sets the
+  hard limit as well as the soft. On any host whose
+  inherited hard data limit is below the requested
+  value, that pair asks to raise the hard limit,
+  which an unprivileged process may not do — the
+  refusal is then the hard-raise error, reproduced
+  first-hand on a Linux host before this fix was
+  written (a driver that lowers its own hard data
+  limit to 256 MiB and runs the current shim text
+  at 512 MiB: the shim refuses by name and the job
+  never runs). Whether or not the CI host carries
+  such an inherited hard limit, a pair that moves
+  the hard limit is asking for more than the
+  ceiling it means to apply. The fix this
+  supposition calls for, and it stands whichever
+  of R4-S1 and R4-S2 the CI host exercises: the
+  shim reads the inherited pair first, keeps the
+  inherited hard limit exactly as it stands, and
+  clamps the soft request to it — the requested
+  pair never exceeds the allowable maximum, and
+  the hard limit is never raised or lowered.
+- R4-S3, what the re-pinned live expectations
+  must say. The limits point's standing
+  expectation — the job reads its data-size soft
+  limit back as exactly 512 MiB — was written for
+  a platform where the requested value is always
+  applicable. Under R4-S1 it cannot stand on this
+  platform: the applied soft limit is the first
+  value on the shim's ladder the kernel accepts,
+  which is the requested value exactly when the
+  floor and the inherited hard both allow it, the
+  inherited hard when that is smaller, and a
+  ladder value above the request when the floor
+  requires it. The fix therefore re-pins the
+  point in the open, as R3-S3's record provided
+  in advance: the job's read-back soft limit must
+  be exactly one of the values on the computed
+  attempt ladder for its inherited hard limit,
+  its hard limit must read back unchanged, and
+  the address space must stay unlimited. The
+  memory-ceiling point is re-pinned the same
+  way: a job that tries to allocate past its own
+  read-back limit — by a fixed margin — is
+  refused by it, whatever ladder value it carries.
+  The ceiling's meaning does not move: on Darwin
+  this limit has always been enforced over the
+  process's whole VM map, and the applied value
+  is the strongest the host's kernel accepts at
+  or above the requested ceiling — never below
+  it, and a spawn for which no ladder value is
+  accepted still refuses the job by name, never
+  runs it weaker.
+
+What is not supposed: that the profile refuses
+anything in this round (its legs pass), that the
+requested pair's soft-over-hard shape is the
+defect (the pair is equal; no system refuses an
+equal pair on that ground), or that Seatbelt has
+allowed any escape (no escape point has ever been
+exercised — the process still dies before them).
+
+The predictions this fix is measured against,
+stated before it was written:
+
+- P1. The pure attempt-ladder computation, given
+  a requested ceiling and an inherited hard
+  limit, yields: the requested value clamped to
+  the hard limit when the hard limit is finite
+  and smaller; the requested value when the hard
+  limit is unlimited or larger; then doublings
+  up to the cap — the hard limit when finite,
+  64 times the request when not — strictly
+  increasing, never above the cap, at most
+  7 values for an unlimited hard limit.
+- P2. Executed off darwin, the fixed shim under
+  a 256 MiB inherited hard limit (lowered by a
+  driver, the R4-S2 reproduction's own shape)
+  runs the job, and the job reads its limits
+  back as (256 MiB, 256 MiB); under a scripted
+  resource seam that refuses any soft limit
+  below a 768 MiB current-usage floor with the
+  verdict's own `EINVAL` text, the fixed shim
+  climbs the ladder and the job reads back
+  1 GiB; under a scripted floor above the cap,
+  and under a floor above a finite inherited
+  hard limit, the fixed shim refuses by name
+  and the job never runs.
+- P3. The contract suite runs green off darwin
+  with the live class skipped under its
+  registered reason, beside the neighbouring
+  confinement suites, the skip registry and the
+  core figure guards after their re-measure.
+- P4. On the CI macOS legs, a head carrying this
+  fix passes every shim-carrying live point if
+  R4-S1's floor stands at or below the ladder's
+  cap on that host; the 2 profile-alone points
+  keep passing, because the profile does not
+  change in this round.
+- P5. The memory-ceiling live point passes with
+  its re-pinned shape if the applied data limit
+  governs a `bytearray` allocation past it on
+  this platform — the standing risk recorded in
+  the third round, still not supposed either way.
