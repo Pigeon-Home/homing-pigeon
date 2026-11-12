@@ -537,6 +537,7 @@ class _JobUserFace:
 _remediation_ops = _required_load_mod("runner.ops.remediation_ops", "ops.remediation_ops")
 _job_user_preexec = _remediation_ops._job_user_preexec
 _job_user_postspawn = _remediation_ops._job_user_postspawn
+_job_user_spawn = _remediation_ops._job_user_spawn
 _job_user_startup_problem = _remediation_ops.job_user_startup_problem
 _confinement_startup_problem = _remediation_ops.confinement_startup_problem
 _confinement_spawn = _remediation_ops._confinement_spawn

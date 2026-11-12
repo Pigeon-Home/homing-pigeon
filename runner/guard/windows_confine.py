@@ -4,8 +4,22 @@
 No external dependencies. Two seams use this module:
 
 - job_user (Phase 1): a Job Object with a per-process memory
-  ceiling, assigned to the job's process after it starts. The
-  status string for that control alone is STATUS_JOB_OBJECT.
+  ceiling. The status string for that control alone is
+  STATUS_JOB_OBJECT. The assignment is made at creation,
+  not after the start: spawn_job_object_process creates the
+  process suspended through CreateProcessW (the plain
+  creation call -- no restricted token, no integrity
+  label; those are confinement's controls and no record of
+  this spawn names them), assigns the Job Object, and only
+  then resumes the thread. A post-start assignment races
+  the child: a job that finishes in milliseconds can have
+  exited before the assignment reaches it, and
+  AssignProcessToJobObject then fails with error 5 for a
+  job whose output is already complete (Q168). A suspended
+  creation cannot lose that race, because the process has
+  not run a line when the assignment is made. The
+  post-start assignment (apply_windows_containment) stands
+  for a process that did not come through a spawn seam.
 
 - confinement (Phase 2): the controls named by STATUS_CONFINEMENT
   -- "windows: job_object + restricted_token + low_integrity".
@@ -173,6 +187,9 @@ if sys.platform != "win32" or not hasattr(ctypes, "WinDLL"):
     def spawn_confined_process(*args, **kwargs):
         raise RuntimeError("windows_confine is Windows-only")
 
+    def spawn_job_object_process(*args, **kwargs):
+        raise RuntimeError("windows_confine is Windows-only")
+
     def close_job_handle(handle):
         return None
 else:
@@ -246,6 +263,12 @@ else:
     advapi32.CreateProcessAsUserW.restype = wintypes.BOOL
     advapi32.CreateProcessAsUserW.argtypes = [
         wintypes.HANDLE, wintypes.LPCWSTR, wintypes.LPWSTR,
+        wintypes.LPVOID, wintypes.LPVOID, wintypes.BOOL,
+        wintypes.DWORD, wintypes.LPVOID, wintypes.LPCWSTR,
+        wintypes.LPVOID, wintypes.LPVOID]
+    kernel32.CreateProcessW.restype = wintypes.BOOL
+    kernel32.CreateProcessW.argtypes = [
+        wintypes.LPCWSTR, wintypes.LPWSTR,
         wintypes.LPVOID, wintypes.LPVOID, wintypes.BOOL,
         wintypes.DWORD, wintypes.LPVOID, wintypes.LPCWSTR,
         wintypes.LPVOID, wintypes.LPVOID]
@@ -742,6 +765,108 @@ else:
                         pass
             self._out_read = self._err_read = None
 
+    def _spawn_suspended(argv, cwd, env, job, token):
+        """Create the process suspended, assign it, resume it.
+
+        The one creation sequence both Windows spawns use, so
+        they cannot drift apart on the order that matters:
+        create suspended, assign the Job Object, and only then
+        resume the main thread -- a process that has not run
+        cannot have exited before the assignment (Q168).
+        `token` is a handle the helper takes ownership of and
+        closes after the creation call, or None: a handle
+        creates through CreateProcessAsUserW under that
+        token (the confined spawn), None creates through
+        CreateProcessW under the caller's own token (the
+        job_user spawn). `job` is the Job Object handle the
+        helper takes ownership of: it rides out in the
+        returned process, or is closed on any failure.
+        Returns a WindowsConfinedProcess; raises RuntimeError
+        naming the call that failed, with every handle the
+        attempt made closed and a created-but-unassigned
+        process terminated first.
+        """
+        sa = SECURITY_ATTRIBUTES()
+        sa.nLength = ctypes.sizeof(sa)
+        sa.bInheritHandle = True
+        out_read = wintypes.HANDLE()
+        out_write = wintypes.HANDLE()
+        err_read = wintypes.HANDLE()
+        err_write = wintypes.HANDLE()
+        stdin_handle = kernel32.CreateFileW(
+            "NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+            ctypes.byref(sa), OPEN_EXISTING, 0, None)
+        made = kernel32.CreatePipe(ctypes.byref(out_read),
+                                   ctypes.byref(out_write),
+                                   ctypes.byref(sa), 0) and \
+            kernel32.CreatePipe(ctypes.byref(err_read),
+                                ctypes.byref(err_write),
+                                ctypes.byref(sa), 0)
+        if not made or not stdin_handle \
+                or stdin_handle == INVALID_HANDLE_VALUE:
+            err = ctypes.get_last_error()
+            for h in (out_read.value, out_write.value, err_read.value,
+                      err_write.value, job, token):
+                if h:
+                    kernel32.CloseHandle(h)
+            raise RuntimeError("suspended spawn pipe setup failed: %d"
+                               % err)
+        kernel32.SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0)
+        kernel32.SetHandleInformation(err_read, HANDLE_FLAG_INHERIT, 0)
+        si = STARTUPINFOW()
+        si.cb = ctypes.sizeof(si)
+        si.dwFlags = STARTF_USESTDHANDLES
+        si.hStdInput = stdin_handle
+        si.hStdOutput = out_write
+        si.hStdError = err_write
+        if env is None:
+            env_block = None
+            flags = CREATE_SUSPENDED
+        else:
+            env_text = "".join("%s=%s\0" % (k, v)
+                               for k, v in env.items()) + "\0"
+            env_block = ctypes.create_unicode_buffer(env_text)
+            flags = CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT
+        cmdline = ctypes.create_unicode_buffer(
+            subprocess.list2cmdline(list(argv)))
+        pi = PROCESS_INFORMATION()
+        if token is not None:
+            create_name = "CreateProcessAsUserW"
+            ok = advapi32.CreateProcessAsUserW(
+                token, None, cmdline, None, None, True, flags,
+                env_block, cwd, ctypes.byref(si), ctypes.byref(pi))
+        else:
+            create_name = "CreateProcessW"
+            ok = kernel32.CreateProcessW(
+                None, cmdline, None, None, True, flags,
+                env_block, cwd, ctypes.byref(si), ctypes.byref(pi))
+        err = ctypes.get_last_error()
+        if token is not None:
+            kernel32.CloseHandle(token)
+        kernel32.CloseHandle(out_write)
+        kernel32.CloseHandle(err_write)
+        kernel32.CloseHandle(stdin_handle)
+        if not ok:
+            for h in (out_read.value, err_read.value, job):
+                if h:
+                    kernel32.CloseHandle(h)
+            raise RuntimeError(
+                "%s failed: %d" % (create_name, err))
+        if not kernel32.AssignProcessToJobObject(job, pi.hProcess):
+            err = ctypes.get_last_error()
+            kernel32.TerminateProcess(pi.hProcess, 1)
+            for h in (pi.hProcess, pi.hThread, out_read.value,
+                      err_read.value, job):
+                if h:
+                    kernel32.CloseHandle(h)
+            raise RuntimeError(
+                "AssignProcessToJobObject failed: %d" % err)
+        kernel32.ResumeThread(pi.hThread)
+        kernel32.CloseHandle(pi.hThread)
+        return WindowsConfinedProcess(
+            list(argv), pi.hProcess, pi.dwProcessId, job,
+            out_read, err_read)
+
     def spawn_confined_process(argv, cwd=None, env=None):
         """Create a job process under every confinement control.
 
@@ -767,79 +892,38 @@ else:
             raise RuntimeError(problem)
         if cwd:
             _set_low_integrity_label(cwd)
-        sa = SECURITY_ATTRIBUTES()
-        sa.nLength = ctypes.sizeof(sa)
-        sa.bInheritHandle = True
-        out_read = wintypes.HANDLE()
-        out_write = wintypes.HANDLE()
-        err_read = wintypes.HANDLE()
-        err_write = wintypes.HANDLE()
-        stdin_handle = kernel32.CreateFileW(
-            "NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
-            ctypes.byref(sa), OPEN_EXISTING, 0, None)
-        made = kernel32.CreatePipe(ctypes.byref(out_read),
-                                   ctypes.byref(out_write),
-                                   ctypes.byref(sa), 0) and \
-            kernel32.CreatePipe(ctypes.byref(err_read),
-                                ctypes.byref(err_write),
-                                ctypes.byref(sa), 0)
-        if not made or not stdin_handle \
-                or stdin_handle == INVALID_HANDLE_VALUE:
-            err = ctypes.get_last_error()
-            for h in (out_read.value, out_write.value, err_read.value,
-                      err_write.value, job, token):
-                if h:
-                    kernel32.CloseHandle(h)
-            raise RuntimeError("confined spawn pipe setup failed: %d"
-                               % err)
-        kernel32.SetHandleInformation(out_read, HANDLE_FLAG_INHERIT, 0)
-        kernel32.SetHandleInformation(err_read, HANDLE_FLAG_INHERIT, 0)
-        si = STARTUPINFOW()
-        si.cb = ctypes.sizeof(si)
-        si.dwFlags = STARTF_USESTDHANDLES
-        si.hStdInput = stdin_handle
-        si.hStdOutput = out_write
-        si.hStdError = err_write
-        if env is None:
-            env_block = None
-            flags = CREATE_SUSPENDED
-        else:
-            env_text = "".join("%s=%s\0" % (k, v)
-                               for k, v in env.items()) + "\0"
-            env_block = ctypes.create_unicode_buffer(env_text)
-            flags = CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT
-        cmdline = ctypes.create_unicode_buffer(
-            subprocess.list2cmdline(list(argv)))
-        pi = PROCESS_INFORMATION()
-        ok = advapi32.CreateProcessAsUserW(
-            token, None, cmdline, None, None, True, flags,
-            env_block, cwd, ctypes.byref(si), ctypes.byref(pi))
-        err = ctypes.get_last_error()
-        kernel32.CloseHandle(token)
-        kernel32.CloseHandle(out_write)
-        kernel32.CloseHandle(err_write)
-        kernel32.CloseHandle(stdin_handle)
-        if not ok:
-            for h in (out_read.value, err_read.value, job):
-                if h:
-                    kernel32.CloseHandle(h)
-            raise RuntimeError(
-                "CreateProcessAsUserW failed: %d" % err)
-        if not kernel32.AssignProcessToJobObject(job, pi.hProcess):
-            err = ctypes.get_last_error()
-            kernel32.TerminateProcess(pi.hProcess, 1)
-            for h in (pi.hProcess, pi.hThread, out_read.value,
-                      err_read.value, job):
-                if h:
-                    kernel32.CloseHandle(h)
-            raise RuntimeError(
-                "AssignProcessToJobObject failed: %d" % err)
-        kernel32.ResumeThread(pi.hThread)
-        kernel32.CloseHandle(pi.hThread)
-        proc = WindowsConfinedProcess(
-            list(argv), pi.hProcess, pi.dwProcessId, job,
-            out_read, err_read)
+        proc = _spawn_suspended(argv, cwd, env, job, token)
         proc.confinement_status = STATUS_CONFINEMENT
+        return proc
+
+    def spawn_job_object_process(argv, cwd=None, env=None):
+        """Create a job process under the job_user control alone.
+
+        argv is the full command (interpreter, script, args). The
+        process is created suspended through CreateProcessW under
+        the caller's own token -- no restricted token and no
+        integrity label are applied, and no record of this spawn
+        may name them -- assigned to the Job Object carrying the
+        memory ceiling, and only then resumed (Q168: the
+        post-start assignment this spawn replaces raced a child
+        that could exit before it was assigned). Returns a
+        WindowsConfinedProcess whose .job_object_status is
+        STATUS_JOB_OBJECT; its close() is the release, closing
+        the Job Object once the process has exited. Raises
+        RuntimeError when the control could not be applied --
+        there is no running-then-assigned fallback to fall
+        through to.
+        """
+        if not isinstance(argv, (list, tuple)) or not argv \
+                or not all(isinstance(a, str) for a in argv):
+            raise RuntimeError(
+                "job-object spawn needs a non-empty list of strings")
+        job, problem = _create_job_with_limits(
+            DEFAULT_PROCESS_MEMORY_BYTES)
+        if problem is not None:
+            raise RuntimeError(problem)
+        proc = _spawn_suspended(argv, cwd, env, job, None)
+        proc.job_object_status = STATUS_JOB_OBJECT
         return proc
 
 

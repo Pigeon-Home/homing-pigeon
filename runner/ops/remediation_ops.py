@@ -405,6 +405,13 @@ def _job_user_postspawn(cfg, base_dir, job_id, proc, backend=None):
     when nothing was applied -- every mode but enforce, and every
     platform but win32, returns None and changes nothing.
 
+    A job that came through a spawn seam (the confinement
+    spawn, or the job_user spawn in _job_user_spawn) already
+    carries the control, marked JOB_OBJECT_APPLIED, and is
+    recorded below without a second assignment. This
+    function's own assignment is for a process that came
+    through neither seam.
+
     Under enforce a failure is a refusal, in the shape the POSIX
     path uses: the fallback is recorded, the just-started process
     is killed, and the job is rejected rather than run
@@ -468,6 +475,84 @@ def _job_user_postspawn(cfg, base_dir, job_id, proc, backend=None):
             pass
 
     return _release
+
+
+def _job_user_spawn(cfg, base_dir, job_id, argv, cwd, env,
+                    backend=None):
+    """Spawn a job process under the Windows job_user control.
+
+    Returns None when the seam does not apply -- every
+    platform but win32 (read from sys.platform alone, the
+    signal _confinement_spawn uses), and every job_user mode
+    but enforce -- so the caller uses its ordinary spawn. On
+    win32 at enforce it returns (proc, release): proc is the
+    backend's suspended-spawn process (created suspended
+    through the backend's own CreateProcessW, assigned to
+    its Job Object, and only then resumed), marked
+    JOB_OBJECT_APPLIED so _job_user_postspawn records the
+    control instead of assigning a second time, and release
+    closes its handles once the process has exited.
+
+    This seam is what closes the Q168 race: the plain path
+    used to spawn the child running through Popen and assign
+    the Job Object afterwards, so a job that finished in
+    milliseconds could have exited before the assignment
+    reached it, and the postspawn refused a job whose output
+    was already complete (AssignProcessToJobObject failed:
+    5). A backend that cannot spawn refuses the job here,
+    after the fallback record: under enforce a job never
+    falls through to the running-then-assigned spawn this
+    seam replaces. The success record is the postspawn's,
+    naming only what was applied ("windows_job_object").
+    """
+    if sys.platform != "win32":
+        return None
+    sec = _runner()._security
+    if sec is None or sec.sec_mode(cfg, "job_user") != "enforce":
+        return None
+    backend = _windows_confine(backend)
+
+    def _audit(decision, reason, detail=""):
+        try:
+            sec.write_audit_entry(
+                base_dir, "job_user", decision, reason,
+                job_id=str(job_id), detail=str(detail), cfg=cfg,
+                mode="enforce")
+        except Exception:
+            pass
+
+    try:
+        if backend is None:
+            raise RuntimeError(
+                "windows confinement backend is unavailable")
+        spawn = getattr(backend, "spawn_job_object_process", None)
+        if spawn is None:
+            raise RuntimeError(
+                "windows confinement backend has no suspended "
+                "job-object spawn")
+        proc = spawn(argv, cwd=cwd, env=env)
+    except Exception as e:
+        _audit("fallback", "windows_containment_failed", e)
+        raise _runner().JobRejected(
+            "job_user containment could not be applied on win32 "
+            "(%s); job refused under "
+            "security.modes.job_user=enforce" % (e,))
+    try:
+        # The spawn assigned the process to its Job Object at
+        # creation; mark it so the job_user postspawn records
+        # that control instead of assigning a second one (see
+        # JOB_OBJECT_APPLIED above).
+        proc.job_object_applied = JOB_OBJECT_APPLIED
+    except Exception:
+        pass
+
+    def _release():
+        try:
+            proc.close()
+        except Exception:
+            pass
+
+    return proc, _release
 
 
 def confinement_startup_problem(cfg, platform=None, backend=None):

@@ -768,6 +768,28 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
                                env if use_host_env else None)
         if _spawned is not None:
             proc, conf_release = _spawned
+    # job_user on Windows: the Job Object assignment must be
+    # made before the child can exit, so where confinement did
+    # not already spawn the job, the job_user spawn replaces
+    # Popen there too -- the backend creates the process
+    # suspended, assigns the Job Object, and only then resumes
+    # it (Q168: a running-then-assigned child that finished in
+    # milliseconds was already gone when the postspawn reached
+    # it, and the completed job was refused). It returns None
+    # everywhere else (and in every mode but enforce), and
+    # refuses the job itself when the backend cannot engage,
+    # so no path falls through to a running, uncontained
+    # process under enforce. Its release runs in the finally
+    # below, beside the confinement release.
+    job_user_release = None
+    if proc is None:
+        _ju_spawn = getattr(_runner(), "_job_user_spawn", None)
+        if _ju_spawn is not None:
+            _spawned = _ju_spawn(cfg, base_dir, job_id, c_argv,
+                                 run_dir,
+                                 env if use_host_env else None)
+            if _spawned is not None:
+                proc, job_user_release = _spawned
     try:
         if proc is None:
             proc = subprocess.Popen(
@@ -804,6 +826,12 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
                 except Exception:
                     pass
                 conf_release = None
+            if job_user_release is not None:
+                try:
+                    job_user_release()
+                except Exception:
+                    pass
+                job_user_release = None
             raise
     # The panic word (Q100) stops every live job; a box that fired
     # while this one was being staged kills it at once.
@@ -863,6 +891,11 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
         if conf_release is not None:
             try:
                 conf_release()
+            except Exception:
+                pass
+        if job_user_release is not None:
+            try:
+                job_user_release()
             except Exception:
                 pass
         if monitor is not None:

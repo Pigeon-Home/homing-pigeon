@@ -15,6 +15,7 @@ Phase 1), and every failure lands in the refuse direction.
 import ctypes
 import importlib
 import os
+import string
 import subprocess
 import sys
 import tempfile
@@ -89,6 +90,28 @@ def _backend(problem=None, status="windows_job_object",
         return proc
 
     backend.spawn_confined_process = _spawn
+    backend.job_object_spawned = []
+
+    def _ju_spawn(argv, cwd=None, env=None):
+        if apply_error is not None:
+            raise apply_error
+        # The Q168 shape, scripted deterministically: the
+        # child has ALREADY EXITED by the time anything
+        # postspawn would run -- poll() returns its exit
+        # code at once. A suspended spawn assigned this
+        # process before it resumed, so the exit is the
+        # job's own finished work, not a containment gap.
+        proc = types.SimpleNamespace(
+            pid=22222, _handle=999, returncode=0,
+            job_object_status="windows_job_object",
+            closed=False)
+        proc.poll = lambda: 0
+        proc.kill = mock.Mock()
+        proc.close = lambda: setattr(proc, "closed", True)
+        backend.job_object_spawned.append((argv, cwd, env, proc))
+        return proc
+
+    backend.spawn_job_object_process = _ju_spawn
     return backend
 
 
@@ -113,6 +136,10 @@ class BackendStubTest(unittest.TestCase):
             WC.apply_windows_containment(1234)
         self.assertIsNone(WC.close_job_handle(1234))
         self.assertIsNone(WC.close_job_handle(None))
+
+    def test_the_job_object_spawn_raises_off_windows(self):
+        with self.assertRaises(RuntimeError):
+            WC.spawn_job_object_process(["python", "script.py"])
 
     def test_the_status_names_only_the_job_object(self):
         self.assertEqual(WC.STATUS_JOB_OBJECT, "windows_job_object")
@@ -358,6 +385,35 @@ class PostspawnTest(unittest.TestCase):
         self.assertEqual(sink[0]["reason"],
                          "windows_containment_failed")
 
+    def test_enforce_failure_on_an_already_exited_child_refuses(self):
+        # Q168's red-before shape, kept as this legacy
+        # path's contract (Q168-S1/S6): a process that did
+        # not come through a spawn seam, already exited
+        # when the assignment is attempted (poll() returns
+        # its exit code), whose assignment answers error 5
+        # is killed and refused, with the fallback row and
+        # no contained row. The fix moves the job_user
+        # spawn to creation time (JobUserSpawnSeamTest);
+        # it does not teach this path to accept an
+        # uncontained completion after the fact.
+        backend = _backend(None, apply_error=RuntimeError(
+            "AssignProcessToJobObject failed: 5"))
+        proc = types.SimpleNamespace(
+            _handle=777, returncode=0, kill=mock.Mock())
+        proc.poll = lambda: 0
+        sink = []
+        with mock.patch.object(REM.os, "name", "nt"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            with self.assertRaises(rr.JobRejected):
+                REM._job_user_postspawn(
+                    _cfg("enforce"), self.base, "canary-list",
+                    proc, backend=backend)
+        proc.kill.assert_called_once()
+        self.assertEqual(
+            [(s["decision"], s["reason"]) for s in sink],
+            [("fallback", "windows_containment_failed")])
+
     def test_enforce_without_a_process_handle_refuses(self):
         proc = types.SimpleNamespace(_handle=None, kill=mock.Mock())
         sink = []
@@ -522,6 +578,321 @@ class PostspawnAlreadyContainedTest(unittest.TestCase):
         self.assertIsNone(out)
         release()
         self.assertTrue(proc.closed)
+
+
+class JobUserSpawnSeamTest(unittest.TestCase):
+    """_job_user_spawn: the creation-time application (Q168).
+
+    The plain path used to spawn the child running through
+    Popen and assign the Job Object in _job_user_postspawn
+    afterwards, so a job that finished in milliseconds could
+    have exited before the assignment reached it, and the
+    postspawn refused a job whose output was already
+    complete (AssignProcessToJobObject failed: 5, on the
+    hosted Windows leg's canary-list job). The seam spawns
+    through the backend's suspended spawn instead -- the
+    process is assigned before it resumes, so it cannot
+    have exited before the assignment -- and marks the
+    process so the postspawn records the control instead of
+    assigning a second time, the composition the
+    confinement spawn already used. Everything here is
+    scripted through the injection seam, deterministically,
+    on any host: the scripted spawn returns a process that
+    has already exited (poll() returns its exit code at
+    once), which is exactly the shape that was refused
+    before the fix.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.base = self.tmp.name
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _run(self, mode, backend="unset", platform="win32",
+             job_id="j1"):
+        sink = []
+        kw = {} if backend == "unset" else {"backend": backend}
+        with mock.patch.object(sys, "platform", platform), \
+                mock.patch.object(rr, "_security", _sec(mode, sink)):
+            out = REM._job_user_spawn(
+                _cfg(mode), self.base, job_id,
+                ["python", "s.py"], self.base, {"K": "V"}, **kw)
+        return out, sink
+
+    def _postspawn(self, proc, backend, job_id="j1"):
+        sink = []
+        with mock.patch.object(REM.os, "name", "nt"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            out = REM._job_user_postspawn(
+                _cfg("enforce"), self.base, job_id, proc,
+                backend=backend)
+        return out, sink
+
+    def test_off_win32_is_a_noop(self):
+        backend = _backend(None)
+        out, sink = self._run("enforce", backend=backend,
+                              platform="linux")
+        self.assertIsNone(out)
+        self.assertEqual(sink, [])
+        self.assertEqual(backend.job_object_spawned, [])
+
+    def test_audit_and_off_spawn_nothing(self):
+        for mode in ("audit", "off"):
+            backend = _backend(None)
+            out, sink = self._run(mode, backend=backend)
+            self.assertIsNone(out, mode)
+            self.assertEqual(sink, [], mode)
+            self.assertEqual(backend.job_object_spawned, [], mode)
+
+    def test_enforce_spawns_and_marks_and_release_closes(self):
+        backend = _backend(None)
+        (proc, release), sink = self._run("enforce", backend=backend)
+        self.assertEqual(proc.pid, 22222)
+        self.assertEqual(len(backend.job_object_spawned), 1)
+        argv, cwd, env, spawned = backend.job_object_spawned[0]
+        self.assertEqual(argv, ["python", "s.py"])
+        self.assertEqual(cwd, self.base)
+        self.assertEqual(env, {"K": "V"})
+        self.assertIs(spawned, proc)
+        self.assertIs(proc.job_object_applied,
+                      REM.JOB_OBJECT_APPLIED)
+        # The seam itself writes no audit row: the success
+        # record is the postspawn's, as with the confinement
+        # composition, and it names no confinement control.
+        self.assertEqual(sink, [])
+        self.assertIsNone(getattr(proc, "confinement_status", None))
+        release()
+        self.assertTrue(proc.closed)
+
+    def test_an_already_exited_child_is_not_refused(self):
+        # End to end through both seams, scripted: the spawn
+        # returns a process that has already exited, the
+        # postspawn meets that same process with a backend
+        # whose post-start assignment would answer error 5,
+        # and the job is not refused, not killed, and is
+        # recorded contained -- the assignment already
+        # happened, suspended, before the child ran.
+        backend = _backend(None)
+        (proc, release), _sink = self._run("enforce", backend=backend)
+        self.assertEqual(proc.poll(), 0)
+        out, sink = self._postspawn(
+            proc, _backend(None, apply_error=RuntimeError(
+                "AssignProcessToJobObject failed: 5")))
+        self.assertIsNone(out)
+        proc.kill.assert_not_called()
+        self.assertEqual(
+            [(s["feature"], s["decision"], s["reason"]) for s in sink],
+            [("job_user", "contained", "windows_job_object")])
+        release()
+        self.assertTrue(proc.closed)
+
+    def test_already_exited_shapes_are_not_refused(self):
+        # The family around the filed shape: every exit
+        # code a fast job can leave, at the moment the
+        # postspawn would have run, is finished work under
+        # a control already applied -- none is refused and
+        # none is killed.
+        for code in (0, 1, 2, 42, 255):
+            backend = _backend(None)
+
+            def _spawn(argv, cwd=None, env=None, _code=code):
+                proc = types.SimpleNamespace(
+                    pid=22222, _handle=999, returncode=_code,
+                    closed=False)
+                proc.poll = lambda: _code
+                proc.kill = mock.Mock()
+                proc.close = lambda: setattr(proc, "closed", True)
+                return proc
+
+            backend.spawn_job_object_process = _spawn
+            (proc, release), _sink = self._run(
+                "enforce", backend=backend)
+            out, sink = self._postspawn(proc, _backend(None))
+            self.assertIsNone(out, code)
+            proc.kill.assert_not_called()
+            self.assertEqual(sink[0]["decision"], "contained", code)
+            release()
+            self.assertTrue(proc.closed, code)
+
+    def test_bookended_job_ids_ride_the_record_verbatim(self):
+        # The standing bookend spirit, where this surface
+        # takes text: the job id rides the contained record
+        # verbatim, wrapped in every ASCII symbol, in runs,
+        # and as symbol-only strings.
+        symbols = string.punctuation
+        rotated = symbols[1:] + symbols[:1]
+        variants = ([s + "canary-list" + s for s in symbols]
+                    + [f + "canary-list" + b
+                       for f, b in zip(symbols, rotated)]
+                    + list(symbols)
+                    + [";" * 10 + "canary-list",
+                       "canary-list" + ";" * 10,
+                       "can" + ";" * 10 + "ary-list"])
+        for job_id in variants:
+            backend = _backend(None)
+            (proc, release), _sink = self._run(
+                "enforce", backend=backend, job_id=job_id)
+            _out, sink = self._postspawn(proc, _backend(None),
+                                          job_id=job_id)
+            self.assertEqual(len(sink), 1, repr(job_id))
+            self.assertEqual(sink[0]["kw"]["job_id"], job_id,
+                             repr(job_id))
+            self.assertEqual(sink[0]["decision"], "contained",
+                             repr(job_id))
+            release()
+
+    def test_spawn_failure_refuses_and_records_fallback(self):
+        backend = _backend(None, apply_error=RuntimeError(
+            "CreateProcessW failed: 5"))
+        sink = []
+        with mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            with self.assertRaises(rr.JobRejected) as cm:
+                REM._job_user_spawn(
+                    _cfg("enforce"), self.base, "j1",
+                    ["python", "s.py"], self.base, {},
+                    backend=backend)
+        self.assertIn("CreateProcessW failed: 5",
+                      str(cm.exception))
+        self.assertEqual(
+            [(s["decision"], s["reason"]) for s in sink],
+            [("fallback", "windows_containment_failed")])
+
+    def test_a_backend_with_no_suspended_spawn_refuses(self):
+        backend = types.SimpleNamespace(IS_WINDOWS_BACKEND=True)
+        sink = []
+        with mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            with self.assertRaises(rr.JobRejected) as cm:
+                REM._job_user_spawn(
+                    _cfg("enforce"), self.base, "j1",
+                    ["python", "s.py"], self.base, {},
+                    backend=backend)
+        self.assertIn("no suspended", str(cm.exception))
+        self.assertEqual(sink[0]["decision"], "fallback")
+
+    def test_no_backend_refuses_deterministically_off_windows(self):
+        if sys.platform == "win32":
+            self.skipTest("the real backend engages or not live")
+        sink = []
+        with mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            with self.assertRaises(rr.JobRejected):
+                REM._job_user_spawn(
+                    _cfg("enforce"), self.base, "j1",
+                    ["python", "s.py"], self.base, {})
+        self.assertEqual(sink[0]["decision"], "fallback")
+        self.assertEqual(sink[0]["reason"],
+                         "windows_containment_failed")
+
+    def test_the_confinement_spawn_is_not_doubled(self):
+        # The composition exec drives, scripted: confinement
+        # spawns the job, and the job_user seam is never
+        # consulted for a second spawn -- execute_job only
+        # calls it when the confinement spawn returned no
+        # process (pinned at the source in
+        # JobUserSpawnSourceTest), and the postspawn records
+        # the already-applied control for the confined
+        # process exactly as before.
+        spawn_backend = _backend(None)
+        sink = []
+        with mock.patch.object(REM.os, "name", "nt"), \
+                mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            proc, release = REM._confinement_spawn(
+                {"security": {"modes": {"confinement": "enforce",
+                                        "job_user": "enforce"}}},
+                self.base, "j1", ["python", "s.py"], self.base, {},
+                backend=spawn_backend)
+            out = REM._job_user_postspawn(
+                _cfg("enforce"), self.base, "j1", proc,
+                backend=_backend(None))
+        self.assertIsNone(out)
+        self.assertEqual(len(spawn_backend.spawned), 1)
+        self.assertEqual(spawn_backend.job_object_spawned, [])
+        release()
+        self.assertTrue(proc.closed)
+
+
+class JobUserSpawnSourceTest(unittest.TestCase):
+    """The backend's suspended spawn, pinned at the source.
+
+    The Win32 calls cannot execute on this host, so the
+    order that closes the Q168 race is pinned where any
+    host can read it: one shared helper creates suspended,
+    assigns, and only then resumes; the confined spawn
+    drives it with its restricted token, the job_user
+    spawn drives it with no token through CreateProcessW.
+    """
+
+    @staticmethod
+    def _src():
+        with open(WC.__file__, encoding="utf-8") as fh:
+            return fh.read()
+
+    @staticmethod
+    def _body(src, marker, end):
+        i = src.index(marker)
+        j = src.index(end, i)
+        return src[i:j]
+
+    def test_the_helper_creates_suspended_assigns_then_resumes(self):
+        body = self._body(self._src(), "def _spawn_suspended",
+                          "def spawn_confined_process(argv")
+        self.assertIn("CREATE_SUSPENDED", body)
+        self.assertIn("CreateProcessAsUserW", body)
+        self.assertIn("CreateProcessW", body)
+        self.assertLess(body.index("AssignProcessToJobObject"),
+                        body.index("ResumeThread"))
+        self.assertLess(body.index("CREATE_SUSPENDED"),
+                        body.index("AssignProcessToJobObject"))
+
+    def test_the_job_object_spawn_uses_no_confinement_controls(self):
+        body = self._body(self._src(),
+                          "def spawn_job_object_process(argv",
+                          "# The confinement trial")
+        self.assertIn("_spawn_suspended(argv, cwd, env, job, None)",
+                      body)
+        self.assertIn("STATUS_JOB_OBJECT", body)
+        self.assertNotIn("_create_restricted_low_token", body)
+        self.assertNotIn("_set_low_integrity_label", body)
+        self.assertNotIn("STATUS_CONFINEMENT", body)
+
+    def test_the_confined_spawn_still_uses_its_token(self):
+        body = self._body(self._src(),
+                          "def spawn_confined_process(argv",
+                          "def spawn_job_object_process(argv")
+        self.assertIn("_create_restricted_low_token", body)
+        self.assertIn("_set_low_integrity_label", body)
+        self.assertIn("_spawn_suspended(argv, cwd, env, job, token)",
+                      body)
+        self.assertIn("STATUS_CONFINEMENT", body)
+
+    def test_the_create_process_binding_is_declared(self):
+        self.assertIn("kernel32.CreateProcessW", self._src())
+
+    def test_exec_consults_the_seam_only_without_a_confined_proc(self):
+        with open(os.path.join(_REPO, "runner", "ops", "exec.py"),
+                  encoding="utf-8") as fh:
+            src = fh.read()
+        i = src.index("_confinement_spawn")
+        j = src.index("subprocess.Popen", i)
+        body = src[i:j]
+        self.assertIn("_job_user_spawn", body)
+        self.assertIn("if proc is None:", body)
+        self.assertIn("job_user_release", src)
+        with open(os.path.join(_REPO, "runner", "runner.py"),
+                  encoding="utf-8") as fh:
+            runner_src = fh.read()
+        self.assertIn("_job_user_spawn = _remediation_ops."
+                      "_job_user_spawn", runner_src)
 
 
 class ConfinementStubTest(unittest.TestCase):
