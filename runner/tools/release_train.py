@@ -401,7 +401,9 @@ def cmd_status(args):
 
 
 def cmd_prepare(args):
-    if _git("status", "--porcelain"):
+    # Tracked changes only: an untracked file (a scratch worktree, a
+    # local note) is not a change and is never added below.
+    if _git("status", "--porcelain", "--untracked-files=no"):
         raise RuntimeError("the tree has uncommitted changes; commit or stash them first")
     _git("fetch", "origin", "main")
     behind = _git("rev-list", "--count", "HEAD..origin/main")
@@ -431,7 +433,7 @@ def cmd_prepare(args):
     message = "release: %s — %s\n\n%s\n" % (version, subject, "\n".join("- " + n for n in args.note))
     if args.trailer:
         message += "\n" + "\n".join(args.trailer) + "\n"
-    _git("add", "-A")
+    _git("add", "-u")
     _git("commit", "-q", "-m", message)
     _git("push", "origin", "HEAD:main")
     sha = _git("rev-parse", "HEAD")
