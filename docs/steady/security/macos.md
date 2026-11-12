@@ -1067,7 +1067,7 @@ stated before it was written:
 
 The fix landed on `main` the same evening, in the
 commit of 7:31 PM Pacific on 2026-11-11 (rebased over
-the 3.16.20.10 release cut as it landed, and
+the release cut as it landed, and
 re-measured over the merged tree). What stands
 proven off darwin, and what is still owed:
 
