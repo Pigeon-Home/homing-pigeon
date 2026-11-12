@@ -672,7 +672,7 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn('pattern: "{homing-pigeon-*,ci-test-log*}"', rel)
         self.assertIn('gh workflow run build.yml --ref "$TAG" -f promote_from="$GATE_RUN"', cut)
         # the input rides only to a tree whose build.yml takes it
-        self.assertIn('git show "$TAG:.github/workflows/build.yml" | grep -q "promote_from:"', cut)
+        self.assertIn('git show "$SHA:.github/workflows/build.yml" | grep -q "promote_from:"', cut)
         self.assertIn('fh.write(f"run_id={run[\'id\']}\\n")', cut)
         # the gate reads main's push and dispatch runs, never a PR's
         self.assertIn('{id, status, conclusion, run_attempt, event, head_branch}', cut)

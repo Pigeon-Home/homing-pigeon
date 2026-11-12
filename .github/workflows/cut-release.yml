@@ -236,6 +236,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.ver.outputs.tag }}
+          SHA: ${{ steps.ver.outputs.sha }}
           GATE_RUN: ${{ steps.gate.outputs.run_id }}
         run: |
           set -euo pipefail
@@ -249,8 +250,11 @@ jobs:
           # most of the 11 minutes after.
           # The input is sent only to a tree whose build.yml takes it:
           # a dispatch is validated against the workflow at the tag,
-          # and an older tree would refuse the dispatch outright.
-          if git show "$TAG:.github/workflows/build.yml" | grep -q "promote_from:"; then
+          # and an older tree would refuse the dispatch outright. The
+          # tree is read at the commit, not the tag: a tag the REST
+          # path placed is not in this checkout (the 3.16.21.5 cut
+          # read the tag, found nothing, and dispatched a full build).
+          if git show "$SHA:.github/workflows/build.yml" | grep -q "promote_from:"; then
             gh workflow run build.yml --ref "$TAG" -f promote_from="$GATE_RUN"
           else
             gh workflow run build.yml --ref "$TAG"
