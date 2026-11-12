@@ -60,6 +60,14 @@ advisory), and the three suites leave it out, so they can go green
 again; the same landing records the shape in
 docs/steady/reports/ci-failures.md.
 
+Measured alone, unloaded, on Linux, after the landing: the Q165
+class takes 800 seconds for its six tests --
+`test_bookended_ledger_symbol_mark_number_fire` 655 of them,
+`..._silent` 122, `test_the_ledger_symbol_mark_number_shapes_fire`
+18 -- and the module 14 minutes; a CI shard that shares four
+cores with seven or twenty-seven others runs them several times
+slower.
+
 The question, in two parts: where should these sweeps run, and
 how large should they be on a push.
 
