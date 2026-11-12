@@ -24139,3 +24139,123 @@ against D-S1 to D-S3 follow in this same
 section, after this supposition has landed.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+Conclusions against D-S1 to D-S3
+(2026-11-12):
+
+- **D-S1 — holds, and the direction is
+  settled by reproduction.** In a detached
+  worktree of the 3.16.21.3 release head, the
+  two named tests fail with exactly the
+  reported shapes: `[] != [('max_job_bytes',
+  'README.md', 448, '4 MiB')]` and
+  `[448] != [442]` (2 tests, FAILED). The
+  history trace is exact: the size-caps line
+  stood at 448; three web-editor README edits
+  on 2026-11-12 moved it 448 to 444, then to
+  443, then to 442. Root cause, stated
+  plainly: the defaults registry row for
+  `max_job_bytes` was the stale record —
+  `doc_line` 448 in
+  `runner/tests/defaults_registry.py` — while
+  the README statement itself stood at line
+  442 carrying the unchanged default
+  (`4 MiB`, 4194304). No other record was
+  stale: `docs/support-matrix.md` carries no
+  line record for this default, and the
+  reconciliation test's support-matrix
+  expectation (the Job Objects line in
+  `runner/tests/test_support_matrix.py`)
+  stands as landed. The first report's
+  guess — README growth of 6 lines down from
+  a true 442 — had the magnitude right and
+  the direction reversed.
+- **D-S2 — holds. The fix was an outside
+  landing, by Claude, and this lane preserved
+  it without duplicating it.** The landing
+  (the 12:18 AM PST commit on 2026-11-12,
+  "ci: web-editor markdown edits take the
+  docs group; the Arch leg upgrades whole; a
+  moved doc line is not a drifted default")
+  was peer-reviewed line by line:
+  (1) the registry row reads 442, the true
+  line, verified against the README on both
+  the failing head and the current head;
+  (2) the drift guard still passes an exact
+  hit at once, still fails a default whose
+  token and key name stand nowhere within
+  sixty lines of the recorded line, and now
+  names a merely moved line in a printed
+  notice instead of failing — the near
+  search requires the token and the key's
+  last component on the same line, so a
+  stray token elsewhere cannot mask a
+  changed default; its window arithmetic is
+  symmetric (sixty lines each way); one
+  review note, not blocking: the old
+  past-end-of-file offender wording is gone,
+  a past-end row now failing in the general
+  offender shape — the verdict is unchanged,
+  only the message is less specific;
+  (3) the reconciliation test keeps its
+  shape — exactly one stating line in the
+  README (`len(stated) == 1`), the matrix
+  line asserted as before — and allows the
+  row to trail that line by up to sixty
+  lines, mirroring the guard;
+  (4) the landing's other arms stand outside
+  this failure and were reviewed with it:
+  the workflow concurrency expression takes
+  a web-editor markdown message (`Update `,
+  `Create ` or `Delete ` ending `.md`) into
+  the docs group, parenthesised so the
+  suffix binds to those three prefixes
+  alone, and `test_de_dust2`'s CiScope pins
+  follow it; the Arch platform-proof line
+  runs a full upgrade (`-Syu`) instead of a
+  partial one, with the reason in its
+  comment. No production module changed in
+  the landing, no shipped default moved,
+  and this lane changed no README content,
+  no guard and no default.
+- **D-S3 — not needed.** The alternative fix
+  was not taken because the measurement
+  under D-S2 came back green; had it been
+  needed, the record-layer update it names
+  is exactly what the outside landing's row
+  change already is.
+- **Local results.** In the foreground on
+  this lane's fresh clone of the current
+  remote head: the two named tests, OK;
+  their full families together,
+  `runner.tests.defaults_registry` (7 tests)
+  and
+  `runner.tests.test_enforce_posture_reconciliation`
+  (56 tests) — 63 tests, OK; the neighbours
+  beside them, `test_support_matrix`
+  (7 tests), `test_doc_version_rot` (2 tests,
+  the family the following outside landing
+  touched) and `test_de_dust2.CiScopeTest`
+  (6 tests) — 15 tests, OK. Proof of work:
+  the deterministic substrate here is already
+  pinned by the two named tests and their
+  families themselves — they read the README
+  and the registry as they stand — so no new
+  test was added and no skip reason was
+  needed; what is recorded is this desk
+  record, the supposition landed before the
+  measurement and these conclusions after it.
+- **Figures and the verdict owed.** This
+  lane's landings are this desk record only;
+  the outside landing touched tests, the
+  workflow and a proof tool, no core-list
+  production file — the core figures do not
+  move on either. These legs are advisory
+  under the 48-hour relief mode, so nothing
+  here claims CI proof: the live verdict is
+  the first completed test, test-macos and
+  test-windows jobs on a head carrying the
+  outside landing's fix, and it is still
+  owed.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
