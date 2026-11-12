@@ -1441,7 +1441,8 @@ Pacific) fail on exactly one point of the live class:
 `AssertionError: 9223372036854775807 != -1` on
 `limits[2]`, the job's address-space soft limit read
 back through `resource.getrlimit(resource.RLIMIT_AS)`.
-The same failure stands on the 3.16.21.2 release head,
+The same failure stands on the 3.16.21.2 release head
+(tag build of 2026-11-12),
 so it predates the decision-1 landing; the five
 data-size rounds neither caused it nor touched the
 assertion that carries it. Every other point of the
