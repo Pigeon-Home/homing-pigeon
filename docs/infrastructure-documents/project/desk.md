@@ -22324,6 +22324,90 @@ is those sentences themselves beside the
 committed guard family, which this lane runs
 whole. No new behaviour is claimed beyond
 what those calls and that family show.
+## macOS confinement: the fifth fix — conclusions, the live verdict still owed (2026-11-11)
+
+The fifth fix has landed on `main`, in the
+commit of 9:51 PM Pacific on 2026-11-11, with
+the core figures re-measured over it in the
+commit of 10:01 PM Pacific that followed. This
+lane is the continuation lane: the interrupted
+fifth-fix lane's suppositions commit (the
+commit of 9:11 PM Pacific, recorded in the
+entry above) stands untouched, and this
+lane carried the fix through from it in a
+fresh scratch clone — no release cut, no ship
+state touched, work/next not touched. The
+full conclusions, settled against R5-S1 to
+R5-S3 and P1 to P5 one by one, stand in
+`docs/steady/security/macos.md` under
+"Conclusions for the fifth fix". In brief:
+
+- **R5-S1 / P1 / P2 (off-darwin half).** The
+  shim's data-size ladder now climbs, for an
+  unlimited inherited hard limit, by doubling
+  to 2**62 — the largest power-of-two finite
+  value below the platform's unlimited
+  sentinel — in the pure rule and in the shim
+  text alike; a finite hard limit's ladder is
+  unchanged. Executed through the scripted
+  resource seam, the shim climbs past a
+  768 MiB floor to 1 GiB and past a 48 GiB
+  floor (above the fourth fix's whole ladder)
+  to 64 GiB, and refuses by name above the
+  named maximum and above a finite hard limit.
+- **R5-S2.** The executed substrate stages
+  through the scripted resource seam
+  deterministically on every host; the
+  real-module lowered-hard shape is kept
+  where the host allows the staging (it runs
+  and reads back (256 MiB, 256 MiB) on this
+  Linux machine), with a staging refusal
+  named STAGING-REFUSED — the floor refusing
+  the staging, not the shim failing.
+- **R5-S3.** The limits read-back point
+  stands, re-deriving from the ladder
+  function; the memory-ceiling point is
+  re-pinned to its invariant (no completion,
+  no exit 0; a `MemoryError` or a death by
+  signal under the host's memory pressure).
+- **P3.** Proven: the macOS suite stands at
+  101 tests locally (the 12 live points skip
+  off darwin, as registered); the combined
+  run with the version-rot guard, the
+  neighbouring confinement suites, the skip
+  registry and the core figure guards is 279
+  tests, all green but the registered skips.
+  The standing version-rot red the
+  suppositions commit introduced is resolved:
+  the fifth verdict's record in macos.md now
+  carries its date on the version's line —
+  landed in that same shape by a parallel
+  lane's figures commit while this lane was
+  in flight, and carried unchanged through
+  this lane's rebase — the dated-record
+  shape the guard itself exempts, the record
+  otherwise unchanged.
+  The core's as-assembled lines stand at
+  64,527, the `runner/guard` part at 5,448.
+- **P4 / P5 — still owed.** The live CI
+  verdict on this fifth fix belongs to the
+  next main/tag builds' `test-macos` legs on
+  a head carrying the fix. No live point is
+  claimed to pass until that leg shows it;
+  if the leg still shows the named refusal,
+  the record states in advance what that
+  convicts: the data-size mechanism itself,
+  not its bound.
+
+What cannot be recorded as a unit test,
+stated plainly: the live-darwin behaviour
+(P4, P5) is non-deterministic external
+behaviour no local test can stand in for;
+its deterministic substrate — the ladder
+rule, the shim text's execution of it under
+the scripted seam, and the re-pinned live
+assertions' shapes — is what is committed
+and green above.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
 

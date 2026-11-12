@@ -1326,3 +1326,105 @@ stated before it was written:
   over-limit allocation is stopped by the
   applied limit or by the host's memory
   pressure before completion.
+
+## Conclusions for the fifth fix, against R5-S1 to R5-S3
+
+The fix landed on `main` the same evening, in the
+commit of 9:51 PM Pacific on 2026-11-11, with the
+core figures re-measured over it in the commit
+of 10:01 PM Pacific. What stands proven off
+darwin, and what is still owed:
+
+- R5-S1 is answered as a bound, and the fix
+  moves the bound. The pure rule
+  `data_limit_attempts` now climbs, for an
+  unlimited inherited hard limit, by doubling to
+  DATA_LIMIT_LADDER_MAX -- 2**62, the largest
+  power-of-two finite value below the platform's
+  unlimited sentinel -- and the shim text carries
+  the same rule inline (its cap is 2**62 and its
+  first attempt is clamped to the cap). For a
+  finite inherited hard limit the ladder is
+  exactly the fourth fix's. P1 is proven: a
+  512 MiB request yields 34 attempts (2**29
+  through 2**62), strictly increasing, the last
+  exactly the named maximum; a request above the
+  maximum is clamped to it; the fuzz family over
+  400 random pairs keeps every ladder invariant
+  against the new cap.
+- R5-S2 is answered in the substrate. The
+  executed tests now stage through the scripted
+  resource seam -- a fake `getrlimit` reporting
+  the staged inherited pair, a fake `setrlimit`
+  enforcing the floor and the soft-at-or-below-
+  hard rule, and a scripted exec reporting the
+  applied pair -- deterministically on every
+  host. P2 is proven executed on this Linux
+  machine against the shim's real text: the shim
+  climbs past a 768 MiB floor to 1 GiB; climbs
+  past a 48 GiB floor (above the fourth fix's
+  whole ladder) to 64 GiB, the verdict's own
+  shape; refuses by name when the floor stands
+  above the named maximum and when it stands
+  above a seam-reported finite hard limit of
+  256 MiB; and clamps to a seam-reported 256 MiB
+  hard limit, the job running under exactly
+  (256 MiB, 256 MiB). The real-module
+  lowered-hard shape is kept where the host
+  allows the staging -- it runs the job and
+  reads back (256 MiB, 256 MiB) here -- and a
+  host that refuses the staging names it
+  STAGING-REFUSED in the driver, recorded as the
+  floor refusing the staging, not the shim
+  failing. The shim's named refusal is likewise
+  pinned deterministically through an
+  always-refusing seam, the 2**100-overflow
+  shape it used before being one the wider
+  ladder's clamp honestly removes.
+- R5-S3 is answered in the live points' text.
+  The limits read-back point stands as it was:
+  it re-derives its expectation from the ladder
+  function, so the wider ladder carries it with
+  no change to what it asserts. The
+  memory-ceiling point is re-pinned to its
+  invariant in the open: the job must not print
+  its completion marker, must not exit 0, and
+  its refusal must be the ceiling's shape -- a
+  `MemoryError` on its stderr, or a death by
+  signal (a negative return code) under the
+  host's memory pressure.
+- P3 is proven: the macOS suite stands at 101
+  tests locally (the 12 live points skip off
+  darwin, as registered), and it runs green
+  beside the version-rot guard, the neighbouring
+  confinement suites, the skip registry and the
+  core figure guards after their re-measure --
+  279 tests in the combined run, all green but
+  the registered skips. The core's as-assembled
+  lines now stand at 64,527, the `runner/guard`
+  part at 5,448. The standing red the
+  suppositions commit introduced is resolved:
+  the fifth verdict's own record above now
+  carries its date on the version's line --
+  landed in that same shape by a parallel
+  lane's figures commit while this lane was in
+  flight, and carried unchanged through this
+  lane's rebase -- the dated-record shape the
+  version-rot guard itself exempts, and the
+  verdict record is otherwise word for word as
+  it stood.
+- P4 and P5 are NOT yet judged: they are
+  live-darwin claims, and the verdict that
+  judges them is the `test-macos` leg of the
+  next builds on a head carrying this fix -- the
+  one outstanding proof, by the standing rule
+  that a macOS claim is proven by the leg that
+  runs it and by nothing else. If that leg still
+  shows the named refusal, then, as this round's
+  suppositions stated in advance, no finite
+  data-size value this ladder can name is
+  accepted on that host, the mechanism itself
+  (a data-size limit set by a started process)
+  stands convicted rather than its bound, and
+  the ceiling's mechanism is the next round's
+  subject.
