@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.21.1 - 2026-11-11
+
+- The first release past the 21-million-token measure: a fresh uncached recount of the tree at this cut reads 21,062,171 tokens, so the token component moves from 20 to 21 and the counter restarts at 1.
+- macOS confinement, the fifth fix for the live data-size failure: the shim's data-size ladder climbs to 2**62 for an unlimited inherited hard limit, the substrate stages through the scripted resource seam, and the memory-ceiling live point is re-pinned to its invariant. The substrate is proven off darwin; the live verdict is this cut's tag build.
+- Tools: the release cycle as one command (runner/tools/release_train.py) -- prepare, cut, publish and verify in one place; a hand-placed tag is a partial release, and the forum note records why.
+- CI: the 48-hour relief mode stands in this batch (suites advisory, proofs off pushes, rolling builds cancel superseded runs); the Linux suite runs 8 shards, documentation pushes run the doc guards alone, and desk pushes keep their own concurrency group.
+- Fix: a job that will not die after the tree kill cannot hold the shard; the scenario gate asks the real confinement probe on macOS, Windows and FreeBSD, and the scenario exits follow the wall that is actually up.
+- The Oracle briefing's contradiction guard completes two more desk rounds (Q162, Q163): each filed by the previous round's re-test, answered under option 1, and recorded at the desk with suppositions before the work and conclusions after; the Q163 re-test files four residual ledger items as Q164.
+- Tests: the on-box local submission path is pinned through the file transport.
+
 ## 3.16.20.10 - 2026-11-11
 
 - The cut of the first head whose build ran green on all nine release-gate jobs since 3.15.20.19: the Linux suite, the Windows suite inside its wall, and the eight binaries. 3.16.20.9 was tagged on an earlier head and published by hand around a tag build whose Windows leg failed on the two slow-model bounds (widened in this batch), so its publish path and the mirrors never ran and its asset list carries no windows-x86_64 archive; this cut goes through the pipeline, and the mirrors are checked against it.
