@@ -17,7 +17,13 @@ own tool (/usr/bin/sandbox-exec). One seam uses this module:
   of the disk and nothing below them; a process reads that
   listing as it starts and is aborted when it is refused,
   which is the second live verdict's primary supposition,
-  R2-S1 in docs/steady/security/macos.md), allows reading
+  R2-S1 in docs/steady/security/macos.md), allows file
+  metadata (stat, readlink -- never contents) on any path,
+  because a process resolves allowed paths with realpath(),
+  which stats every component including ancestors no
+  content rule names (the third live verdict's primary
+  supposition, R3-S1 in docs/steady/security/macos.md),
+  allows reading
   and writing only inside the job's work directory, and
   names no network allow rule at all -- with an
   explicit (deny network*) line beside the deny-by-default
@@ -327,7 +333,17 @@ def build_profile(workdir, interpreter=None, read_paths=()):
     "/", never a subpath grant -- a process reads that
     listing as it starts and is aborted when it is refused;
     supposition R2-S1 in docs/steady/security/macos.md);
-    read + write inside the work directory; the /dev nodes a
+    read + write inside the work directory; file metadata
+    (file-read-metadata: existence, type, size, times and
+    symlink targets, never contents) on any path -- a
+    process resolves the paths it is allowed with
+    realpath(), which stats every component in turn,
+    including ancestors no content rule names (the root
+    itself, a work directory's /private ancestors, an
+    interpreter prefix's parents), and the framework
+    interpreter on the CI host died at exactly that stat
+    with its contents rules fully granted (supposition
+    R3-S1 in docs/steady/security/macos.md); the /dev nodes a
     job's standard streams and entropy need; and the network
     denial stated. Paths under /var and /tmp are named with
     their /private canonical twins (see _with_canonical_twins),
@@ -362,6 +378,7 @@ def build_profile(workdir, interpreter=None, read_paths=()):
         "(allow pseudo-tty)",
         "(allow file-read* file-map-executable %s)" % read_args,
         '(allow file-read-data (literal "/"))',
+        "(allow file-read-metadata)",
         "(allow file-write* %s)" % write_args,
         '(allow file-read* file-write* (literal "/dev/null")'
         ' (literal "/dev/zero") (literal "/dev/random")'
@@ -396,7 +413,12 @@ LIMIT_SHIM_SOURCE = (
     "for _name in ('RLIMIT_DATA',):\n"
     "    _r = getattr(resource, _name, None)\n"
     "    if _r is not None:\n"
-    "        resource.setrlimit(_r, (limit, limit))\n"
+    "        try:\n"
+    "            resource.setrlimit(_r, (limit, limit))\n"
+    "        except Exception as _e:\n"
+    "            sys.stderr.write('hp-shim: could not set the "
+    "data-size limit: %s\\n' % (_e,))\n"
+    "            sys.exit(1)\n"
     "if user != '-':\n"
     "    import pwd\n"
     "    _pw = pwd.getpwnam(user)\n"

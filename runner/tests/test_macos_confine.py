@@ -201,6 +201,31 @@ class ProfileWriterFieldTest(unittest.TestCase):
             profile.count('(allow file-read-data (literal "/"))'), 1)
         self.assertNotIn('(subpath "/")', profile)
 
+    def test_the_profile_allows_metadata_but_never_more_contents(self):
+        # Supposition R3-S1 (docs/steady/security/macos.md):
+        # the interpreter's startup realpath() stats every
+        # component of its own install path, and Seatbelt
+        # governs that stat as file-read-metadata. The root
+        # carried only file-read-data (R2-S1's line), so the
+        # stat of "/" was refused and the framework
+        # interpreter on the CI host exited 1 printing
+        # "python: realpath: .../bin/: Operation not
+        # permitted" -- with every contents rule granted.
+        # The grant is metadata on any path, exactly once:
+        # existence, type, size, times, symlink targets --
+        # and never a byte of contents, so file-read-data
+        # still stands only on the root's literal line and
+        # the named subpath trees.
+        profile = MC.build_profile("/work/job1")
+        self.assertEqual(
+            profile.count("(allow file-read-metadata)"), 1)
+        self.assertEqual(
+            profile.count("(allow file-read-data"), 1)
+        self.assertIn('(allow file-read-data (literal "/"))',
+                      profile)
+        self.assertNotIn("(allow file-read-metadata (subpath",
+                         profile)
+
     def test_the_private_startup_trees_are_system_read_paths(self):
         # Supposition R2-S2: the startup trees under /private
         # that working deny-by-default allowlists carry --
@@ -349,6 +374,47 @@ class ShimFieldTest(unittest.TestCase):
         self.assertIn("os.execvp(argv[0], argv)", src)
         # The limits are set before the exec, in source order.
         self.assertLess(src.index("setrlimit"), src.index("os.execvp"))
+
+    def test_the_shim_names_a_limit_it_cannot_set(self):
+        # Supposition R3-S3 (docs/steady/security/macos.md):
+        # a shim that cannot set its limit refuses the job
+        # -- that fail-closed shape stands -- but it refuses
+        # by name, on stderr, so the refusal's text is what
+        # a verdict carries, not a bare exception no
+        # assertion captured (the round-2 shim-alone leg
+        # failed at exit 1 with its cause nowhere in the
+        # log). The setrlimit call is wrapped, the marker
+        # names the failure, and the shim exits before the
+        # exec it guards.
+        src = MC.LIMIT_SHIM_SOURCE
+        self.assertIn(
+            "hp-shim: could not set the data-size limit", src)
+        self.assertIn("sys.exit(1)", src)
+        self.assertLess(src.index("hp-shim: could not set"),
+                        src.index("os.execvp"))
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_the_shim_refuses_by_name_when_run(self):
+        # The named refusal, executed: a ceiling too large
+        # for the platform's limit type (2**100) makes the
+        # shim's setrlimit fail on any POSIX host -- a
+        # merely large or negative value does not, on a
+        # host whose inherited hard limit is already
+        # unlimited -- and the shim must exit 1 carrying
+        # its marker on stderr, having never exec'd the
+        # command it guards (the driven command would print
+        # a line of its own if it ever ran).
+        done = subprocess.run(
+            [sys.executable, "-c", MC.LIMIT_SHIM_SOURCE,
+             str(2 ** 100), "-", sys.executable, "-c",
+             "print('SHIM-RAN-THE-JOB')"],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30)
+        self.assertEqual(done.returncode, 1)
+        self.assertIn(
+            b"hp-shim: could not set the data-size limit",
+            done.stderr)
+        self.assertNotIn(b"SHIM-RAN-THE-JOB", done.stdout)
 
     def test_the_shim_never_sets_an_address_space_limit(self):
         # Supposition S1 (docs/steady/security/macos.md): a
@@ -853,10 +919,11 @@ class LiveBackendTest(unittest.TestCase):
                  "open('note.txt', 'w').write('x'); "
                  "print('WROTE-WORK')"],
                 cwd=work, env=dict(os.environ))
-            out, _err = proc.communicate(timeout=30)
+            out, err = proc.communicate(timeout=30)
             rc = proc.returncode
             proc.close()
-            self.assertEqual(rc, 0)
+            self.assertEqual(
+                rc, 0, err.decode("utf-8", "replace"))
             self.assertIn(b"IN-PROFILE", out)
             self.assertIn(b"WROTE-WORK", out)
             self.assertTrue(os.path.exists(
@@ -947,10 +1014,11 @@ class LiveBackendTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as work:
             proc = MC.spawn_confined_process(
                 ["/usr/bin/true"], cwd=work, env=dict(os.environ))
-            _out, _err = proc.communicate(timeout=30)
+            _out, err = proc.communicate(timeout=30)
             rc = proc.returncode
             proc.close()
-            self.assertEqual(rc, 0)
+            self.assertEqual(
+                rc, 0, err.decode("utf-8", "replace"))
 
     def test_the_profile_alone_lets_the_interpreter_start(self):
         # The generated profile with no shim and no limit:
@@ -968,7 +1036,9 @@ class LiveBackendTest(unittest.TestCase):
                  sys.executable, "-c", "print('PROFILE-ONLY-OK')"],
                 cwd=work, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, timeout=30)
-            self.assertEqual(done.returncode, 0)
+            self.assertEqual(
+                done.returncode, 0,
+                done.stderr.decode("utf-8", "replace"))
             self.assertIn(b"PROFILE-ONLY-OK", done.stdout)
 
     def test_the_shim_alone_lets_the_interpreter_start(self):
@@ -987,8 +1057,57 @@ class LiveBackendTest(unittest.TestCase):
                  sys.executable, "-c", "print('SHIM-ONLY-OK')"],
                 cwd=work, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, timeout=30)
-            self.assertEqual(done.returncode, 0)
+            self.assertEqual(
+                done.returncode, 0,
+                done.stderr.decode("utf-8", "replace"))
             self.assertIn(b"SHIM-ONLY-OK", done.stdout)
+
+    def test_the_profile_alone_lets_a_native_binary_start(self):
+        # The generated profile driving a native binary
+        # directly, with no shim anywhere: the native start
+        # the round-2 bisect never isolated (its native leg
+        # launched through the shim's interpreter and shared
+        # that interpreter's death). One leg of the third
+        # verdict's separation (supposition R3-S3): if this
+        # passes while the profile-alone interpreter leg
+        # fails, the profile's remaining refusal is
+        # interpreter-startup-specific; if it fails, the
+        # profile refuses even a native start. The captured
+        # stderr rides in the assertion's message, so a
+        # failure names its cause in the verdict.
+        with tempfile.TemporaryDirectory() as work:
+            profile = MC.build_profile(os.path.realpath(work))
+            done = subprocess.run(
+                [MC.SANDBOX_EXEC_BIN, "-p", profile,
+                 "/usr/bin/true"],
+                cwd=work, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, timeout=30)
+            self.assertEqual(
+                done.returncode, 0,
+                done.stderr.decode("utf-8", "replace"))
+
+    def test_the_shim_alone_lets_a_native_binary_start(self):
+        # The launcher shim with no profile, driving a
+        # native binary instead of the interpreter: the
+        # other leg of the separation (supposition R3-S3).
+        # Under alternative (a) -- the shim's setrlimit
+        # call itself is refused on this host -- this leg
+        # fails carrying the shim's named line ("hp-shim:
+        # could not set the data-size limit"); under
+        # alternative (b) -- the limit in force across the
+        # second exec breaks the interpreter's startup --
+        # this leg passes while the shim-alone interpreter
+        # leg fails without that line.
+        with tempfile.TemporaryDirectory() as work:
+            done = subprocess.run(
+                [sys.executable, "-c", MC.LIMIT_SHIM_SOURCE,
+                 str(MC.DEFAULT_PROCESS_MEMORY_BYTES), "-",
+                 "/usr/bin/true"],
+                cwd=work, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, timeout=30)
+            self.assertEqual(
+                done.returncode, 0,
+                done.stderr.decode("utf-8", "replace"))
 
     def test_the_memory_ceiling_refuses_a_700mb_job(self):
         # The data-size ceiling is a real ceiling, not a
