@@ -27696,3 +27696,211 @@ runs as recorded under S6. No new behaviour is
 claimed beyond what those calls and that family show.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q168: conclusions of the second seat's re-test
+(2026-11-12)
+
+The suppositions stand at Q168-RT-S1 to
+Q168-RT-S9 above, recorded and landed before any
+probe in this lane ran. The conclusions, one by
+one. The tested head is as the suppositions
+record it; the heads that landed while this lane
+was in flight (the train's 3.16.24.9 cut, the
+Q167 re-test's conclusions, and the forum note
+of 1:40 PM PST below) touched none of the five
+files the fix landed in, verified from their
+diffs at this landing.
+
+- **Q168-RT-S1 -- confirmed.** The legacy
+  postspawn contract holds whole on the tested
+  head: the committed `PostspawnTest` family,
+  including `test_enforce_failure_on_an_
+  already_exited_child_refuses` -- the scripted
+  already-exited process under an assignment
+  answering error 5, killed once, refused, the
+  one fallback row and no contained row -- runs
+  green within the module run below, beside the
+  generic-failure, missing-handle and
+  real-backend directions.
+
+- **Q168-RT-S2 -- confirmed.** The seam closes
+  the filed shape as supposed: the committed
+  `JobUserSpawnSeamTest` family runs green whole
+  -- the scripted already-exited spawn through
+  `_job_user_spawn` and the postspawn against an
+  error-5 backend is not refused and not killed,
+  records the one `contained` /
+  `windows_job_object` row, carries the mark by
+  identity, and its release closes it -- across
+  the family's exit codes (0, 1, 2, 42, 255) and
+  its bookended job ids, each id riding the
+  record verbatim.
+
+- **Q168-RT-S3 -- confirmed.** The seam's refuse
+  directions (a raising spawn, a backend with no
+  suspended spawn, no backend) each record the
+  fallback row and refuse, with no fall-through;
+  its silence off win32 and under audit and off
+  holds; the postspawn's silence off `nt` and
+  outside enforce holds. All green in the same
+  module run.
+
+- **Q168-RT-S4 -- confirmed.** The confinement
+  composition is spawned once, by the
+  confinement seam alone, the plain job-object
+  spawn never called for it, the postspawn
+  recording it contained with its release still
+  the confinement seam's; and the source pin
+  holds: `execute_job` consults
+  `_job_user_spawn` only under its
+  `if proc is None:` guard, its release in the
+  standing finally and beside the confinement
+  release on a postspawn refusal.
+
+- **Q168-RT-S5 -- confirmed.** The backend's
+  suspended order is pinned at the source and
+  reads as supposed: `CREATE_SUSPENDED` before
+  `AssignProcessToJobObject` before
+  `ResumeThread` in the one shared helper; the
+  plain spawn driving it with no token through
+  `CreateProcessW` and naming `STATUS_JOB_OBJECT`
+  alone; the confined spawn unchanged in its
+  token, label and `STATUS_CONFINEMENT`; the
+  `CreateProcessW` binding declared; the stub
+  raising for both spawns off Windows. All green
+  in the same module run.
+
+- **Q168-RT-S6 -- confirmed as run.** Re-measured
+  in the foreground by this seat on the tested
+  head: `runner/tests/test_windows_confine.py`
+  whole, 77 tests, OK; the neighbouring
+  confinement and canary batteries as named in
+  the supposition (`test_confinement`,
+  `test_freebsd_confine`, `test_macos_confine`,
+  `test_skip_registry`, `test_credential_canary`
+  together), 206 tests, OK, the 18 standing
+  skips; and the enforce-posture reconciliation
+  and Windows platform proofs together, 177
+  tests, OK -- the second figure the fix lane's
+  own, the first this seat's count for the
+  batteries as named here.
+
+- **Q168-RT-S7 -- confirmed.** Red-before,
+  re-derived against the pre-fix tree (the
+  release head of 1:03 PM PST): the source
+  survey counts zero occurrences of
+  `_job_user_spawn`, `spawn_job_object_process`,
+  `_spawn_suspended` and `CreateProcessW` in the
+  three source files the fix touched, the legacy
+  `_job_user_postspawn` standing there as before;
+  and the committed Q168 family, copied onto
+  that tree and run there, reads 77 tests with
+  15 not passing (13 errors and 2 failures),
+  every one of them in the new seam, source and
+  stub surface, while the legacy-contract tests
+  -- the already-exited refusal among them --
+  pass there whole.
+
+- **Q168-RT-S8 -- confirmed, and landed as the
+  proof.** This seat's own probes hold as
+  supposed and stand committed in this landing
+  as `JobUserSpawnRetestTest` in
+  `runner/tests/test_windows_confine.py` (4
+  tests; the module reads 81, OK, with them):
+  the wider exit codes (-1, 3, 126, 127, 259,
+  1000) none refused, none killed, each
+  contained and closed by its release; the
+  non-printing bookends (NUL, tab, CR, LF at the
+  front AND the back, in runs of 10 at the
+  front, the back and in the middle, and as
+  edge-only ids -- 20 variants) riding the
+  contained record verbatim; the assignment
+  error's other spellings (error 87, a bare
+  `5`, an unrelated message) survived by the
+  marked process and still killing and refusing
+  the unmarked one; and argv, cwd and env
+  riding to the spawn verbatim (env None
+  included), the postspawn returning None for a
+  seam process and the release remaining the
+  seam's alone, callable twice without raising.
+
+- **Q168-RT-S9 -- read as found; the live proof
+  stands on Q168's surface and the job as a
+  whole does not, so Q168 is not closed by this
+  re-test.** The hosted record, re-read from the
+  runs and their full logs at this landing: two
+  heads carrying the fix have run the full
+  hosted Windows suite -- the fix head itself
+  and the 3.16.24.8 head. On both, the shards
+  carrying Q168's own surface read OK whole:
+  shard 13 (`test_windows_confine`, the Q168
+  family among it, running live on Windows) and
+  shard 18 (`test_credential_canary`, the filed
+  failure's own suite, its `canary-list` job
+  among it); and neither job's full log
+  (12,700 tests on each head) contains any
+  `AssignProcessToJobObject failed` line at
+  all -- the filed shape did not recur. The
+  `test-windows` job as a whole, however,
+  stands failed on both heads, on shard 19
+  alone: on the fix head, `test_core`'s
+  canonical-breakdown pin (22,467 recorded
+  against 22,585 measured -- the train's
+  re-measure point, landed since in 3.16.24.8)
+  and `test_campaign_phase1`'s
+  `test_timeout_kills_the_job` (a duration of
+  4.032 against its bound of 4); on the
+  3.16.24.8 head, that timing test alone
+  (4.344). Under RT-S9 as recorded -- closure
+  only on a `test-windows` job completed with
+  success -- the still-owed live proof is
+  narrowed to exactly that one item, and Q168
+  remains open on that ground. The timing
+  failure is this re-test's to read (the forum
+  note of 1:40 PM PST, "the Windows suite on
+  the Q168 fix", puts the question to it), and
+  it reads as the cliff's contention, not the
+  seam, on this evidence: the timed-out job's
+  config states confinement off and leaves
+  `job_user` unstated (enforce under the
+  lockdown default), so on Windows the fix is
+  on its path; but the wall the bound measures
+  is not the spawn's -- the fix adds no wait,
+  sleep or poll anywhere on the path, the one
+  assignment call is the postspawn's own call
+  moved to creation time, `kill_tree` on
+  Windows is the same `taskkill` by pid for
+  either process kind and is untouched by the
+  fix, and the process class's `communicate`,
+  `kill` and `poll` pre-date it and are
+  untouched by it (the fix commit's diff names
+  none of them). The job's own log lines
+  inflate at every stage alike -- the timeout
+  itself noticed some two seconds after the
+  start it bounded at one -- which is the
+  parent starved under the leg's 28-way start,
+  not a stage the fix lengthened; and between
+  the two runs the box slowed whole (shard
+  walls 697 seconds to 885, the slowest
+  unrelated tests up by some 30 percent) while
+  this test rose 4.032 to 4.344, some 8 percent.
+  A real-Windows A/B under identical load is
+  the only stronger read, and it is not this
+  lane's to run; it is named here as the
+  residual, beside the one owed item. Figures:
+  `refresh_figures --check` passes on the
+  tested head and `test_core` runs green there
+  whole (30 tests, OK) -- the re-measure the
+  train landed reads clean, and this lane
+  re-measured nothing and cut no release. The
+  questions file is not changed by this
+  landing: its answer stands as the fix lane
+  left it, with this re-test's verdict now
+  standing here -- the deterministic re-test
+  passes whole, the hosted shards on Q168's
+  surface pass whole on both heads that ran
+  them, and the one owed item is a
+  `test-windows` job completed with success on
+  a head carrying the fix.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026

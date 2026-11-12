@@ -895,6 +895,159 @@ class JobUserSpawnSourceTest(unittest.TestCase):
                       "_job_user_spawn", runner_src)
 
 
+class JobUserSpawnRetestTest(unittest.TestCase):
+    """_job_user_spawn re-tested by a second seat (Q168, rule 8).
+
+    The fix lane's family (JobUserSpawnSeamTest) pins the
+    seam whole; this family is the re-test seat's own
+    probes beyond it, in the shapes the fix composes:
+    wider exit codes, non-printing bookends on the job
+    id, the assignment error in its other spellings,
+    and the seam's argument passthrough and release
+    ownership. Scripted through the same injection
+    seam, deterministically, on any host.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.base = self.tmp.name
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def _spawn_with_code(self, backend, code):
+        def _spawn(argv, cwd=None, env=None, _code=code):
+            proc = types.SimpleNamespace(
+                pid=22222, _handle=999, returncode=_code,
+                closed=False)
+            proc.poll = lambda: _code
+            proc.kill = mock.Mock()
+            proc.close = lambda: setattr(proc, "closed", True)
+            return proc
+        backend.spawn_job_object_process = _spawn
+
+    def _run(self, backend, job_id="j1", argv=None, env="unset"):
+        sink = []
+        with mock.patch.object(sys, "platform", "win32"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            out = REM._job_user_spawn(
+                _cfg("enforce"), self.base, job_id,
+                ["python", "s.py"] if argv is None else argv,
+                self.base, {"K": "V"} if env == "unset" else env,
+                backend=backend)
+        return out, sink
+
+    def _postspawn(self, proc, backend, job_id="j1"):
+        sink = []
+        with mock.patch.object(REM.os, "name", "nt"), \
+                mock.patch.object(rr, "_security",
+                                  _sec("enforce", sink)):
+            out = REM._job_user_postspawn(
+                _cfg("enforce"), self.base, job_id, proc,
+                backend=backend)
+        return out, sink
+
+    def test_wider_exit_codes_are_not_refused(self):
+        for code in (-1, 3, 126, 127, 259, 1000):
+            backend = _backend(None)
+            self._spawn_with_code(backend, code)
+            (proc, release), _sink = self._run(backend)
+            self.assertEqual(proc.poll(), code)
+            out, sink = self._postspawn(proc, _backend(None))
+            self.assertIsNone(out, code)
+            proc.kill.assert_not_called()
+            self.assertEqual(sink[0]["decision"], "contained", code)
+            release()
+            self.assertTrue(proc.closed, code)
+
+    def test_nonprinting_bookended_job_ids_ride_verbatim(self):
+        variants = []
+        for ch in ("\x00", "\t", "\r", "\n"):
+            variants += [ch + "canary-list" + ch,
+                         ch * 10 + "canary-list",
+                         "canary-list" + ch * 10,
+                         "can" + ch * 10 + "ary-list",
+                         ch * 10]
+        for job_id in variants:
+            backend = _backend(None)
+            (proc, release), _sink = self._run(backend,
+                                               job_id=job_id)
+            _out, sink = self._postspawn(proc, _backend(None),
+                                          job_id=job_id)
+            self.assertEqual(len(sink), 1, repr(job_id))
+            self.assertEqual(sink[0]["kw"]["job_id"], job_id,
+                             repr(job_id))
+            self.assertEqual(sink[0]["decision"], "contained",
+                             repr(job_id))
+            release()
+
+    def test_the_assignment_errors_other_spellings(self):
+        for msg in ("AssignProcessToJobObject failed: 87",
+                    "5", "an unrelated backend complaint"):
+            backend = _backend(None)
+            (proc, release), _sink = self._run(backend)
+            out, sink = self._postspawn(
+                proc, _backend(None,
+                               apply_error=RuntimeError(msg)))
+            self.assertIsNone(out, msg)
+            proc.kill.assert_not_called()
+            self.assertEqual(sink[0]["decision"], "contained", msg)
+            release()
+            bare = types.SimpleNamespace(
+                _handle=777, returncode=0, kill=mock.Mock())
+            bare.poll = lambda: 0
+            sink2 = []
+            with mock.patch.object(REM.os, "name", "nt"), \
+                    mock.patch.object(rr, "_security",
+                                      _sec("enforce", sink2)):
+                with self.assertRaises(rr.JobRejected):
+                    REM._job_user_postspawn(
+                        _cfg("enforce"), self.base, "canary-list",
+                        bare, backend=_backend(
+                            None, apply_error=RuntimeError(msg)))
+            bare.kill.assert_called_once()
+            self.assertEqual(sink2[0]["decision"], "fallback", msg)
+
+    def test_argv_cwd_env_ride_verbatim_and_release_is_the_seams(self):
+        backend = _backend(None)
+        seen = []
+        base_spawn = backend.spawn_job_object_process
+
+        def _spawn(argv, cwd=None, env=None):
+            seen.append((argv, cwd, env))
+            return base_spawn(argv, cwd=cwd, env=env)
+
+        backend.spawn_job_object_process = _spawn
+        argv = [";python;", "s.py"]
+        env = {"K": "V", ";": ";"}
+        (proc, release), _sink = self._run(backend, argv=argv,
+                                           env=env)
+        self.assertEqual(len(seen), 1)
+        self.assertIs(seen[0][0], argv)
+        self.assertEqual(seen[0][1], self.base)
+        self.assertIs(seen[0][2], env)
+        out, _sink2 = self._postspawn(proc, _backend(None))
+        self.assertIsNone(out)
+        release()
+        release()
+        self.assertTrue(proc.closed)
+        backend2 = _backend(None)
+        seen2 = []
+        base_spawn2 = backend2.spawn_job_object_process
+
+        def _spawn2(argv, cwd=None, env=None):
+            seen2.append((argv, cwd, env))
+            return base_spawn2(argv, cwd=cwd, env=env)
+
+        backend2.spawn_job_object_process = _spawn2
+        (proc2, release2), _sink3 = self._run(backend2, env=None)
+        self.assertIsNone(seen2[0][2])
+        release2()
+        self.assertTrue(proc2.closed)
+
+
+
 class ConfinementStubTest(unittest.TestCase):
     """The confinement half of the stub, on a non-Windows host."""
 
