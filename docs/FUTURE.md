@@ -1,5 +1,4 @@
-# Future work and local v3 transport notes
-- Helper bots stumble into repair-mode machine
+- Remote repair bot swarm
 - oracle as key dist
 - Firewall?
 - **Board delegation over ping** Ping reply carries the box's open task
