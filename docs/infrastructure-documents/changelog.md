@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.4 - 2026-11-12
+
+- Q167: the briefing guard opens ledger segments at a spaced token of category L, Cc or Co — the assigned letters of the BMP and beyond it, the assigned controls outside the fold's break and erased sets and the assigned private-use characters (option 1)
+- Desk: Q167 conclusions of the fix lane are on the record; the Q167 re-test suppositions Q167-RT-S1 to Q167-RT-S10 are recorded before the re-test
+- Core: the core is re-measured over the Q167 growth — runner/ops/briefing.py grew by net 47 lines and the runner/ops part stands at 22,467
+- Measure: a fresh uncached recount at the cut head reads 24,919,629 tokens (24 whole millions), so the token component stays at 24 and the counter increments to 4
+
 ## 3.16.24.3 - 2026-11-12
 
 - Tests: Q166 answered under option 2 with 3 as the sample's shape — the briefing guard's bookended sweeps sample one representative per category-and-block group on a push and run whole on the nightly; the module returns to the ordinary suites and the test-heavy leg is retired
