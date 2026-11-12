@@ -107,12 +107,19 @@ without stepping on a release, and the release fires once the edits
 have stopped for 5 minutes.
 
 An agent asked to make a release outside this flow still uses the
-same mechanics: bump the version in the 4 files named under Tagging
-above, add the CHANGELOG entry, commit as a `release:` commit, tag,
-push, wait for the CI jobs in `.github/workflows/build.yml` (17 jobs at this writing) to go green on the release commit, then
-verify the GitHub release and its assets and run the stamp. A pushed
-tag never moves; a defect is fixed forward under the next patch
-version.
+same mechanics: bump the version in the three carriers (`pyproject.toml`,
+`runner/_version.py`, `runner/ops/install.py`; the test pin reads the
+package's), add the CHANGELOG entry, commit as a `release:` commit,
+push, wait for the build on that commit to go green on the jobs
+`cut-release.yml` gates on, dispatch `cut-release.yml` with the
+commit's full sha (it places the tag; a tag is never pushed by
+hand), then verify the tag build's publish jobs and the mirrors'
+own responses in their logs. `runner/tools/release_train.py` does
+all of that as one command — `status` to read the state, `prepare
+--note "..."` to land the release commit, `cut` to wait, cut and
+verify, `run` for the whole cycle — so a release is one invocation
+and the time the build takes, not a sitting. A pushed tag never
+moves; a defect is fixed forward under the next patch version.
 
 ### The looking is the gate
 

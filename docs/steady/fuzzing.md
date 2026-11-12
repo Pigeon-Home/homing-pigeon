@@ -109,7 +109,7 @@ The runner proper is 7,178 lines; the core around it is
 
 The canonical list's breakdown is the same except
 runner/tools, where the 3 excluded suite runners account
-for 984 of the lines, leaving 8,814 in the canonical list.
+for 984 of the lines, leaving 8,848 in the canonical list.
 The tool prints the
 canonical breakdown live, beside the totals.
 
