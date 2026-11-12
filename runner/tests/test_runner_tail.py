@@ -773,7 +773,7 @@ class StartupTailTest(unittest.TestCase):
                     req = urllib.request.Request(
                         f"http://127.0.0.1:{port}/status",
                         headers={"X-Oracle-Token": httpd.oracle_token})
-                    with urllib.request.urlopen(req, timeout=2) as resp:
+                    with urllib.request.urlopen(req, timeout=30) as resp:
                         body = json.loads(resp.read().decode("utf-8"))
                     worker.join(3)
                 self.assertIn("elapsed_sec", body)

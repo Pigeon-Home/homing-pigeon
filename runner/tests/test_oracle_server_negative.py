@@ -32,10 +32,12 @@ class OracleServerNegativeTest(unittest.TestCase):
             time.sleep(0.05)
             base = f"http://127.0.0.1:{port}"
 
-            # Missing token
+            # Missing token (a 30-second hang guard: a timeout is a
+            # URLError, not the 403 this expects, and the loaded
+            # Windows leg has answered past a second)
             req = urllib.request.Request(base + "/ask", data=b'{"question":"hi"}', method="POST")
             try:
-                urllib.request.urlopen(req, timeout=1)
+                urllib.request.urlopen(req, timeout=30)
                 self.fail("expected 403")
             except urllib.error.HTTPError as e:
                 self.assertEqual(e.code, 403)

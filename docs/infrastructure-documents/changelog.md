@@ -7,6 +7,7 @@ facts a reader may need to cite. Git history carries the rest.
 ## 3.16.20.10 - 2026-11-11
 
 - The cut of the first head whose build ran green on all nine release-gate jobs since 3.15.20.19: the Linux suite, the Windows suite inside its wall, and the eight binaries. 3.16.20.9 was tagged on an earlier head and published by hand around a tag build whose Windows leg failed on the two slow-model bounds (widened in this batch), so its publish path and the mirrors never ran and its asset list carries no windows-x86_64 archive; this cut goes through the pipeline, and the mirrors are checked against it.
+- Fix: the raw-socket reads in test_runner_face, the status read in test_runner_tail and the missing-token request in test_oracle_server_negative are 30-second hang guards; the 3.16.20.10 head's first Windows run failed one of them at 2 seconds, with every other test green and no probe lingering.
 - Fix: the build's `shape` job and `runner/tools/shrink_guard.py` (recorded under 3.16.20.8) ran green on every head since they landed.
 
 ## 3.16.20.9 - 2026-11-11

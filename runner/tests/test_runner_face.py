@@ -330,9 +330,13 @@ class OraclePageBranchesTest(unittest.TestCase):
         return httpd, d
 
     def _raw(self, port, text):
-        sock = socket.create_connection(("127.0.0.1", port), 2)
+        # 30-second hang guards, not latency bounds: every request
+        # here says Connection: close, so a live server ends the
+        # read at EOF in milliseconds, and the loaded Windows leg
+        # has answered past 2 seconds.
+        sock = socket.create_connection(("127.0.0.1", port), 30)
         sock.sendall(text.encode("ascii"))
-        sock.settimeout(2)
+        sock.settimeout(30)
         data = b""
         try:
             while True:
