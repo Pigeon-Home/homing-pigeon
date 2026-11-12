@@ -1062,3 +1062,53 @@ stated before it was written:
   governs a `bytearray` allocation past it on
   this platform — the standing risk recorded in
   the third round, still not supposed either way.
+
+## Conclusions for the fourth fix, against R4-S1 to R4-S3
+
+The fix landed on `main` the same evening, in the
+commit of 7:31 PM Pacific on 2026-11-11 (rebased over
+the 3.16.20.10 release cut as it landed, and
+re-measured over the merged tree). What stands
+proven off darwin, and what is still owed:
+
+- R4-S1 and R4-S2 are convicted as mechanisms, and
+  the fix answers both. The substrate the fix stands
+  on is pinned by a new suite,
+  `runner.tests.test_macos_confine.DataLimitAttemptsTest`:
+  the pure rule `data_limit_attempts` (the clamp,
+  the ladder, its cap, per-field rejection) and a
+  fuzz family over random pairs asserting the
+  ladder's invariants — as P1 required, 400 pairs,
+  all green.
+- P2 is proven in full, executed on this Linux
+  machine against the shim's real text. Under a
+  driver-lowered inherited hard limit of 256 MiB the
+  shim runs the job and the job reads back
+  (256 MiB, 256 MiB); before the fix the same driver
+  made the shim refuse by name and the job never
+  ran. Under a scripted resource seam carrying a
+  768 MiB current-usage floor, the shim climbs to
+  1 GiB and the job runs carrying exactly it; with
+  the floor above the cap, and with the floor above
+  a finite inherited hard limit, the shim refuses by
+  name and nothing runs — the fail-closed posture
+  is unchanged everywhere it was tested.
+- P3 is proven: the macOS suite stands at 98 tests
+  locally (the 12 live points skip off darwin, as
+  registered), the neighbouring confinement suites
+  and the skip registry at 91, the core figures suite
+  at 30 after the re-measure the fix's core growth
+  required (the core's as-assembled lines now stand
+  at 64,346, the `runner/guard` part at 5,427), and
+  the reader-doc, figure-slot and shrink guards are
+  green.
+- P4 and P5 are NOT yet judged: they are live-darwin
+  claims, and the verdict that judges them is the
+  `test-macos` leg of the next tag build on a head
+  carrying this fix — the one outstanding proof, by
+  the standing rule that a macOS claim is proven by
+  the leg that runs it and by nothing else. If that
+  leg shows the host's current-usage floor standing
+  above this fix's ladder cap, the refusal shape
+  will be unchanged and the cap is the next round's
+  subject, as R4-S1 pre-named.
