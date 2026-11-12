@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.11 - 2026-11-12
+
+- CI: the Windows suite runs as two parts on two runners (run_tests_parallel.py --part K/N: every second shard of the one packing each, under the packing's shard numbers), halving the CPU work a box carries for the same runner-minutes; one box ran all 28 shards at once and ended them together 20 per cent under the wall
+- CI: the platform proofs start three container legs and two native legs at a time, so a release tag's proof fan-out no longer queues the next cycle's gate legs
+
 ## 3.16.24.10 - 2026-11-12
 
 - Desk: Q168 re-test conclusions of the second seat — the deterministic re-test passes whole; Q168 stays open for a green test-windows job
