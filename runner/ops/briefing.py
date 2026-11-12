@@ -1489,7 +1489,16 @@ def _clause_carries_infinitive(clause_words):
         # lead is the inside clause's, whatever its
         # words' own standing is, and the phrase
         # standing ahead of it is judged by its
-        # head's standing.
+        # head's standing. Q162 reads a governed
+        # phrase carrying no determiner the same
+        # way: the phrase is judged at its own
+        # first word, and the tail-drop that
+        # crosses a complement in full applies at
+        # the two-word span the cut leaves
+        # standing, so a bare plural complement
+        # head carrying the same lead is crossed
+        # while its bare plural object twin still
+        # fires.
         rel_at = next((at for at, tail in enumerate(obj)
                        if tail in ("who", "whom", "which",
                                    "that", "whose")), None)
@@ -1622,8 +1631,25 @@ def _clause_carries_infinitive(clause_words):
                     # crew officer certified members
                     # of which are on duty": its first
                     # judged head is "crew").
+                    # A governed phrase carrying no
+                    # determiner is judged at its own
+                    # first word (Q162: "holds
+                    # credentials officer certified
+                    # records of which are on file to
+                    # ..."): the cut above searches
+                    # from the span's second word, the
+                    # first word standing past its
+                    # determiner, so a determiner-less
+                    # span is never judged at its own
+                    # first word -- the search starts
+                    # at the first word where no
+                    # determiner stands, and past the
+                    # determiner where one does.
                     first_head = next(
-                        (at for at in range(1, len(obj))
+                        (at for at in range(
+                            1 if obj[0]
+                            in _CLAUSE_DETERMINERS
+                            else 0, len(obj))
                          if _noun_complement_head(obj[at])
                          or obj[at] in _PERSON_HEADS
                          or obj[at]
@@ -1656,7 +1682,30 @@ def _clause_carries_infinitive(clause_words):
                     # either, because the phrase ahead
                     # of it ("a crew") is no complement
                     # in full.
-                    while len(obj) > 2 \
+                    # The same drop at the two-word
+                    # span (Q162): the bare plural
+                    # complement above is left standing
+                    # at exactly two words by the
+                    # set-aside ("credentials officer"),
+                    # and the drop that crosses its
+                    # singular twin ("a credential
+                    # officer" -- the person head
+                    # dropped where the phrase ahead of
+                    # it is a noun complement in full)
+                    # runs only while more than two
+                    # words stand, so the two-word
+                    # plural span is judged by the
+                    # lead's person word and marked.
+                    # The drop applies at the two-word
+                    # span the way it applies above two
+                    # words: a true object phrase's
+                    # two-word span is not dropped
+                    # either, because the phrase ahead
+                    # of its lead's person word ("crews"
+                    # in "compels crews officer
+                    # certified members of which are on
+                    # duty") is no complement in full.
+                    while len(obj) > 1 \
                             and not _noun_complement_head(
                                 obj[-1]) \
                             and (obj[-1] in _PERSON_HEADS
@@ -2211,7 +2260,7 @@ _LEDGER_SEGMENTS = (",", ";", ":", " but ", " yet ",
                     "⁚", "⁛", "⁜", "⸀",
                     "⸆", "⸎", "⸏", "⸒",
                     "⸓", "⸗", "⸰", "⸱",
-                    "⸽", "⸁", "⸂", "⸃", "⸄", "⸅", "⸈", "⸋", "⸛", "⸠", "⸪", "﹐", "﹔", "﹕", "﹖")
+                    "⸽", "⸁", "⸂", "⸃", "⸄", "⸅", "⸈", "⸋", "⸛", "⸠", "⸪", "﹐", "﹔", "﹕", "﹖", "⸇", "⸉", "⸊", "⸌", "⸍", "⸐", "⸑", "⸔", "⸕", "⸖", "⸙", "⸜", "⸝", "⸞", "⸟", "⸡", "⸢", "⸣", "⸦", "⸨", "⸫", "⸬", "⸭", "⸲", "⸳", "⸵", "⸿", "⹂", "⹌", "⹝", "﹑", "﹒", "﹗", "﹘", "﹙", "﹚", "﹛", "﹜", "﹝", "﹞", "﹟", "﹠", "﹡", "﹢", "﹣", "﹤", "﹥", "﹦", "﹨", "﹩", "﹪", "﹫", "︐", "︑", "︒", "︓", "︔", "︕", "︖", "︗", "︘", "︙", "︰", "︱", "︲", "︵", "︷", "﹁", "﹅", "﹇")
 
 
 def _ledger_complement_is_evidence(owner, match):
