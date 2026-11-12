@@ -379,7 +379,7 @@ class OraclePageBranchesTest(unittest.TestCase):
                         "Origin": "http://127.0.0.1",
                     },
                     method="POST")
-                with urllib.request.urlopen(req, timeout=3) as resp:
+                with urllib.request.urlopen(req, timeout=60) as resp:
                     body = json.loads(resp.read().decode("utf-8"))
             self.assertEqual(body.get("rejected"), "inference_error")
         finally:

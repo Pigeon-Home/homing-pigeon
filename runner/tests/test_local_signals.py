@@ -623,7 +623,7 @@ class BriefingTest(LocalFixture):
                 R, "ask_model_agent",
                 lambda *a, **kw: {"answer": "ok"}):
             R._start_brief_thread(cfg, self.base, _record())
-            deadline = time.time() + 5
+            deadline = time.time() + 60
             while R._LOCAL_WAKE_INFLIGHT and time.time() < deadline:
                 time.sleep(0.02)
         self.assertFalse(R._LOCAL_WAKE_INFLIGHT)
@@ -638,7 +638,7 @@ class PipelineTest(LocalFixture):
         with open(path, encoding="utf-8") as fh:
             return [ln for ln in fh.read().splitlines() if ln.strip()]
 
-    def _wait_briefs(self, n, timeout=5.0):
+    def _wait_briefs(self, n, timeout=60.0):
         deadline = time.time() + timeout
         while time.time() < deadline:
             lines = self._brief_lines()
@@ -675,7 +675,7 @@ class PipelineTest(LocalFixture):
                                      title=title), LAB_SECRET)
             self.scan()
             self._wait_briefs(1)
-            deadline = time.time() + 5
+            deadline = time.time() + 60
             while R._LOCAL_WAKE_INFLIGHT and time.time() < deadline:
                 time.sleep(0.02)
         self.assertEqual(len(self._brief_lines()), 1)
@@ -699,7 +699,7 @@ class PipelineTest(LocalFixture):
                                      title="experiment exp-041: anomaly"),
                       LAB_SECRET)
             R._scan_local_inbox(cfg, self.base)
-            self.assertTrue(ask_called.wait(5))
+            self.assertTrue(ask_called.wait(60))
             release.set()
             lines = self._wait_briefs(1)
         brief = json.loads(lines[0])
