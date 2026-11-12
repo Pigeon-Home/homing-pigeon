@@ -51,8 +51,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 64,506 lines,
-58,369 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 64,527 lines,
+58,390 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -434,6 +434,12 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # runner/ops other lanes landed after the macOS
 # confinement fourth-fix measure, which the
 # earlier records had not carried.
+# Re-measured again on 2026-11-12 after the macOS
+# confinement fifth fix (the launcher shim's
+# data-size ladder climbing to 2**62 for an
+# unlimited inherited hard limit) grew
+# runner/guard/macos_confine.py by 21 lines, the
+# whole set re-measured over the current tree.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 136 since
@@ -446,9 +452,9 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 139
-AS_ASSEMBLED_ZIP_BYTES = 815296
-AS_ASSEMBLED_LINES = 64506
-AS_ASSEMBLED_NONBLANK_LINES = 58369
+AS_ASSEMBLED_ZIP_BYTES = 814261
+AS_ASSEMBLED_LINES = 64527
+AS_ASSEMBLED_NONBLANK_LINES = 58390
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
@@ -459,7 +465,7 @@ AS_ASSEMBLED_PART_LINES = {
     "runner/runner.py": 7178,
     "runner/oracle": 5055,
     "runner/transport_extensions": 2775,
-    "runner/guard": 5427,
+    "runner/guard": 5448,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,
