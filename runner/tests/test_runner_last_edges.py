@@ -215,8 +215,6 @@ class IoEdgeTest(_Binary, unittest.TestCase):
         with mock.patch.object(rr.sys, "platform", "win32"), \
                 mock.patch.object(rr.subprocess, "CREATE_NO_WINDOW",
                                   1, create=True), \
-                mock.patch.object(rr.subprocess, "run",
-                                  return_value=proc) as run, \
                 mock.patch.object(rr.subprocess, "Popen",
                                   return_value=proc) as popen:
             self.assertEqual(rr._wevtutil_query("System", "*", 1), "")
@@ -224,11 +222,14 @@ class IoEdgeTest(_Binary, unittest.TestCase):
             self.assertEqual(values, {})
             self.assertEqual(subkeys, [])
             self.assertEqual(rr._run_text(["netsh"]), "")
-        # _wevtutil_query and _reg_query still drive
-        # subprocess.run; _run_text drives Popen by hand
-        # since the Q136 shard-5 fix (2026-11-11). The
-        # flags assertion covers both seams.
-        for call in run.call_args_list + popen.call_args_list:
+        # _wevtutil_query and _reg_query read through
+        # _run_text since the Q136 shard-7 follow-on
+        # (2026-11-11), and _run_text drives Popen by
+        # hand since the Q136 shard-5 fix: every probe
+        # now reaches the one Popen seam, and the flags
+        # assertion covers all three calls there.
+        self.assertEqual(len(popen.call_args_list), 3)
+        for call in popen.call_args_list:
             self.assertEqual(call.kwargs.get("creationflags"), 1)
 
     def test_registry_and_posture_writes_that_fail_are_kept(self):
@@ -267,8 +268,10 @@ class IoEdgeTest(_Binary, unittest.TestCase):
             "STATE              : 4  START_PENDING"))
 
     def test_a_blank_reg_line_is_skipped(self):
-        proc = mock.Mock(returncode=0, stdout="\n\nHKLM\\Run\n")
-        with mock.patch.object(rr.subprocess, "run", return_value=proc):
+        # Re-seamed (Q136 shard-7 follow-on, 2026-11-11):
+        # _reg_query reads through _run_text.
+        with mock.patch.object(rr, "_run_text",
+                               return_value="\n\nHKLM\\Run\n"):
             values, subkeys = rr._reg_query(r"HKLM\Run")
         self.assertEqual(values, {})
         self.assertEqual(subkeys, [])
@@ -996,19 +999,42 @@ class RunnerFailSoftLegs6Test(unittest.TestCase):
                       out.getvalue())
 
     def test_oracle_cli_ctrl_c(self):
+        # The interrupt is scripted on the record seam, and
+        # it must land on the main thread to end the CLI --
+        # the shape build run 43121516173's shard 7 died of
+        # (Q136 shard-7 follow-on, 2026-11-11): a background
+        # oracle-server request thread called the same mocked
+        # record function, took the counted interrupt in that
+        # thread (where KeyboardInterrupt is only printed),
+        # and the main thread's loop -- fed by an input
+        # function that answers forever -- had no exit left
+        # and re-computed the deterministic answer until the
+        # 20-minute wall. So: calls from any other thread are
+        # recorded by that thread's own business and never
+        # counted here, and the scripted input itself carries
+        # a finite backstop (/quit after two questions), so
+        # no interleaving can leave the loop exitless again.
         calls = []
+        main_thread = threading.current_thread()
 
         def interrupt_on_second(*a, **k):
+            if threading.current_thread() is not main_thread:
+                return
             calls.append(1)
             if len(calls) == 2:
                 raise KeyboardInterrupt
 
         printed = []
+        questions = iter(["status?", "status?", "/quit"])
+
+        def ask(prompt=""):
+            return next(questions, "/quit")
+
         with mock.patch.object(rr, "record_oracle_turn",
                                interrupt_on_second):
             rc = rr.oracle_cli(
                 {"oracle_mode": "deterministic"},
-                input_fn=lambda prompt="": "status?",
+                input_fn=ask,
                 print_fn=printed.append)
         self.assertEqual(rc, 0)
         self.assertGreaterEqual(len(calls), 2)

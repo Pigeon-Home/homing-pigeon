@@ -2,8 +2,19 @@
 
 Extracted from runner.py. Only loaded on Windows, or when
 Windows-specific functions are called.
+
+Both probes below read through the bounded _run_text seam
+(runner/ops/av.py), never subprocess.run: on Windows,
+run() answers a timeout by killing the child and then
+calling communicate() with no timeout to collect output,
+and that collect joins the pipe reader threads without a
+bound, so a pipe held open past the kill hangs the caller
+for as long as it stays open (Q136 shard-7 follow-on,
+2026-11-11; the kill dump of build run 43121516173 sits
+inside _reg_query's run() exactly this way). _run_text
+waits on the process handle and abandons a held pipe
+inside its grace, on every path.
 """
-import subprocess
 
 
 try:
@@ -21,20 +32,12 @@ def _wevtutil_query(logname, xpath, count, timeout=15):
     the runner.
     """
     try:
-        flags = {}
-        if _runner().sys.platform == "win32":
-            cnw = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-            if cnw:
-                flags["creationflags"] = cnw
-        proc = subprocess.run(
+        out = _runner()._run_text(
             ["wevtutil", "qe", logname, "/q:" + xpath,
              "/c:%d" % count, "/rd:true", "/f:xml"],
-            capture_output=True, text=True, timeout=timeout, **flags)
+            timeout=timeout)
     except Exception:
         return None
-    if proc.returncode != 0:
-        return None
-    out = proc.stdout
     return out if isinstance(out, str) else None
 
 
@@ -55,21 +58,14 @@ def _reg_query(key):
     with Windows. Never raises.
     """
     try:
-        flags = {}
-        if _runner().sys.platform == "win32":
-            cnw = getattr(subprocess, "CREATE_NO_WINDOW", 0)
-            if cnw:
-                flags["creationflags"] = cnw
-        proc = subprocess.run(
-            ["reg", "query", key], capture_output=True, text=True,
-            timeout=15, **flags)
+        out = _runner()._run_text(["reg", "query", key], timeout=15)
     except Exception:
         return None
-    if proc.returncode != 0 or not isinstance(proc.stdout, str):
+    if not isinstance(out, str):
         return None
     values = {}
     subkeys = []
-    for raw in proc.stdout.splitlines():
+    for raw in out.splitlines():
         line = raw.rstrip()
         if not line.strip():
             continue
@@ -86,5 +82,3 @@ def _reg_query(key):
     if subkeys and subkeys[0].lower() == key.lower():
         subkeys = subkeys[1:]
     return values, subkeys
-
-

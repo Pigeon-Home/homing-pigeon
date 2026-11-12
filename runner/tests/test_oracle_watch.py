@@ -52,14 +52,17 @@ class EventLogTailTest(unittest.TestCase):
             self.assertIsNone(R._eventlog_tail())
 
     def test_wevtutil_failure_is_none_not_clean(self):
+        # Re-seamed (Q136 shard-7 follow-on, 2026-11-11):
+        # the probe reads through _run_text, whose failure
+        # is None; subprocess.run is no longer its seam.
         with _win(), mock.patch.object(
-                R.subprocess, "run", side_effect=OSError("nope")):
+                R, "_run_text", side_effect=OSError("nope")):
             self.assertIsNone(R._wevtutil_query("System", "*", 5))
 
     def test_wevtutil_nonzero_exit_is_none(self):
-        proc = mock.Mock(returncode=1, stdout="")
-        with _win(), mock.patch.object(R.subprocess, "run",
-                                       return_value=proc):
+        # A nonzero exit is _run_text's None (see av.py).
+        with _win(), mock.patch.object(R, "_run_text",
+                                       return_value=None):
             self.assertIsNone(R._wevtutil_query("System", "*", 5))
 
     def test_parses_wevtutil_xml(self):
@@ -89,14 +92,10 @@ class EventLogTailTest(unittest.TestCase):
 
 
 class RegQueryTest(unittest.TestCase):
-    def _proc(self, stdout, returncode=0):
-        return mock.Mock(returncode=returncode, stdout=stdout)
-
     def test_parses_values(self):
         key = "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run"
         with _win(), mock.patch.object(
-                R.subprocess, "run",
-                return_value=self._proc(REG_RUN_SAMPLE)):
+                R, "_run_text", return_value=REG_RUN_SAMPLE):
             values, subkeys = R._reg_query(key)
         self.assertEqual(subkeys, [])
         self.assertIn("OneDrive", values)
@@ -106,8 +105,7 @@ class RegQueryTest(unittest.TestCase):
     def test_parses_subkeys(self):
         key = "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\Services"
         with _win(), mock.patch.object(
-                R.subprocess, "run",
-                return_value=self._proc(REG_SERVICES_SAMPLE)):
+                R, "_run_text", return_value=REG_SERVICES_SAMPLE):
             values, subkeys = R._reg_query(key)
         self.assertEqual(values, {})
         self.assertIn("HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet"
@@ -116,12 +114,13 @@ class RegQueryTest(unittest.TestCase):
 
     def test_failure_returns_none(self):
         with _win(), mock.patch.object(
-                R.subprocess, "run", side_effect=OSError("nope")):
+                R, "_run_text", side_effect=OSError("nope")):
             self.assertIsNone(R._reg_query("HKLM\\whatever"))
 
     def test_nonzero_exit_returns_none(self):
-        with _win(), mock.patch.object(
-                R.subprocess, "run", return_value=self._proc("", 1)):
+        # A nonzero exit is _run_text's None (see av.py).
+        with _win(), mock.patch.object(R, "_run_text",
+                                       return_value=None):
             self.assertIsNone(R._reg_query("HKLM\\whatever"))
 
 

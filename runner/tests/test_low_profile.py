@@ -251,6 +251,142 @@ class RunTextBoundTest(unittest.TestCase):
         self.assertIsNone(out)
         self.assertLess(time.time() - start, 15)
 
+    def test_a_timeout_abandon_closes_the_streams(self):
+        # Before any communicate() call no reader thread
+        # exists, so the timeout path's abandon may (and
+        # does) close the pipes: nothing can be waiting
+        # behind a read on them.
+        proc = self._timed_out_proc()
+        with mock.patch.object(R.subprocess, "Popen",
+                               return_value=proc):
+            self.assertIsNone(R._run_text(["netsh"], timeout=1))
+        proc.stdout.close.assert_called_once_with()
+        proc.stderr.close.assert_called_once_with()
+
+    def test_a_held_pipe_past_the_collect_grace_is_abandoned_unclosed(self):
+        # The collect path's trap (Q136 shard-7 follow-on):
+        # the process exits inside the timeout, but the
+        # collect's communicate() times out because a
+        # grandchild holds the pipe. Reader threads are
+        # inside reads on the streams by then, so the
+        # abandon must NOT close them -- on Windows a close
+        # waits behind the reader's read until the pipe
+        # reaches EOF, which is the grandchild's exit.
+        proc = mock.Mock()
+        proc.wait.return_value = 0
+        proc.communicate.side_effect = R.subprocess.TimeoutExpired(
+            cmd="probe", timeout=2)
+        with mock.patch.object(R.subprocess, "Popen",
+                               return_value=proc):
+            self.assertIsNone(R._run_text(["netsh"], timeout=5))
+        proc.kill.assert_called_once_with()
+        proc.stdout.close.assert_not_called()
+        proc.stderr.close.assert_not_called()
+        waits = [call.kwargs.get("timeout")
+                 for call in proc.communicate.call_args_list]
+        self.assertTrue(all(
+            isinstance(wait, (int, float)) and wait > 0
+            for wait in waits), waits)
+
+    def test_a_collect_that_raises_still_returns_none_unclosed(self):
+        proc = mock.Mock()
+        proc.wait.return_value = 0
+        proc.communicate.side_effect = OSError("pipe gone")
+        with mock.patch.object(R.subprocess, "Popen",
+                               return_value=proc):
+            self.assertIsNone(R._run_text(["netsh"], timeout=5))
+        proc.stdout.close.assert_not_called()
+        proc.stderr.close.assert_not_called()
+
+    def test_an_exited_childs_held_stdout_cannot_hold_the_caller(self):
+        # End to end, the collect shape: the child prints,
+        # spawns a grandchild that inherits stdout and
+        # outlives it, and exits at once. The collect grace
+        # expires and the caller walks away inside it; the
+        # output behind a pipe that never reached EOF is
+        # not an answer, so the result is None.
+        child = (
+            "import subprocess, sys\n"
+            "subprocess.Popen([sys.executable, '-c',"
+            " 'import time; time.sleep(30)'])\n"
+            "print('posture-line')\n")
+        start = time.time()
+        out = R._run_text([sys.executable, "-c", child], timeout=10)
+        self.assertIsNone(out)
+        self.assertLess(time.time() - start, 10)
+
+    def test_an_exited_childs_held_stderr_cannot_hold_the_caller(self):
+        # The same collect shape on the stderr pipe: the
+        # grandchild inherits stderr (its own stdout is
+        # devnull, so only stderr stays open).
+        child = (
+            "import subprocess, sys\n"
+            "subprocess.Popen([sys.executable, '-c',"
+            " 'import time; time.sleep(30)'],"
+            " stdout=subprocess.DEVNULL)\n"
+            "print('posture-line')\n")
+        start = time.time()
+        out = R._run_text([sys.executable, "-c", child], timeout=10)
+        self.assertIsNone(out)
+        self.assertLess(time.time() - start, 10)
+
+
+class WindowsProbesBoundTest(unittest.TestCase):
+    """The Windows posture probes (_reg_query and
+    _wevtutil_query, runner/ops/windows.py) read through
+    the bounded _run_text seam, never subprocess.run --
+    run()'s Windows timeout path collects output with a
+    communicate() carrying no timeout, the unbounded
+    shape of Q136's shard-7 kill dump (2026-11-11).
+    Pinned at the seam on any platform.
+    """
+
+    REG_OUT = (
+        "HKEY_LOCAL_MACHINE\\SOFTWARE\\Watch\r\n"
+        "    Enabled    REG_DWORD    0x1\r\n"
+        "    Note    REG_SZ\r\n"
+        "\r\n"
+        "HKEY_LOCAL_MACHINE\\SOFTWARE\\Watch\\Sub\r\n")
+
+    def test_reg_query_reads_through_run_text_and_parses(self):
+        with mock.patch.object(R, "_run_text",
+                               return_value=self.REG_OUT) as run:
+            values, subkeys = R._reg_query(
+                r"HKEY_LOCAL_MACHINE\SOFTWARE\Watch")
+        run.assert_called_once_with(
+            ["reg", "query", r"HKEY_LOCAL_MACHINE\SOFTWARE\Watch"],
+            timeout=15)
+        self.assertEqual(values, {"Enabled": "0x1", "Note": ""})
+        self.assertEqual(
+            subkeys, [r"HKEY_LOCAL_MACHINE\SOFTWARE\Watch\Sub"])
+
+    def test_reg_query_failure_is_none(self):
+        with mock.patch.object(R, "_run_text", return_value=None):
+            self.assertIsNone(R._reg_query(r"HKLM\SOFTWARE\Watch"))
+
+    def test_wevtutil_query_reads_through_run_text(self):
+        with mock.patch.object(R, "_run_text",
+                               return_value="<Events/>") as run:
+            out = R._wevtutil_query("Security", "*[System]", 5)
+        run.assert_called_once_with(
+            ["wevtutil", "qe", "Security", "/q:*[System]",
+             "/c:5", "/rd:true", "/f:xml"], timeout=15)
+        self.assertEqual(out, "<Events/>")
+
+    def test_wevtutil_query_empty_is_empty_and_failure_is_none(self):
+        with mock.patch.object(R, "_run_text", return_value=""):
+            self.assertEqual(
+                R._wevtutil_query("Security", "*[System]", 5), "")
+        with mock.patch.object(R, "_run_text", return_value=None):
+            self.assertIsNone(
+                R._wevtutil_query("Security", "*[System]", 5))
+
+    def test_wevtutil_query_carries_the_callers_timeout(self):
+        with mock.patch.object(R, "_run_text",
+                               return_value="") as run:
+            R._wevtutil_query("Security", "*[System]", 5, timeout=7)
+        self.assertEqual(run.call_args.kwargs.get("timeout"), 7)
+
 
 class HostLogTest(unittest.TestCase):
     def test_windows_is_none(self):

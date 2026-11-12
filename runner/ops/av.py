@@ -26,12 +26,27 @@ except ImportError:  # running from inside runner/ as __main__
 _KILL_GRACE_SECONDS = 2.0
 
 
-def _abandon(proc):
-    """Kill a probe and close its pipes. Never raises."""
+def _abandon(proc, close_streams=True):
+    """Kill a probe and walk away from it. Never raises.
+
+    Closing the pipes is safe only while no reader thread
+    exists -- that is, before any communicate() call. Once
+    communicate() has started its readers, a reader sits
+    inside a read on the very stream object a close would
+    touch, and on Windows the close waits behind that read
+    until the pipe reaches EOF: a grandchild holding the
+    pipe would hold the caller after all (the collect path
+    below, Q136 shard-7 follow-on, 2026-11-11). Past a
+    communicate() the streams are therefore abandoned
+    unclosed; they belong to the daemon reader threads and
+    to the garbage collector.
+    """
     try:
         proc.kill()
     except Exception:
         pass
+    if not close_streams:
+        return
     for stream in (getattr(proc, "stdout", None),
                    getattr(proc, "stderr", None),
                    getattr(proc, "stdin", None)):
@@ -77,7 +92,14 @@ def _run_text(argv, timeout=5):
     try:
         out, _err = proc.communicate(timeout=_KILL_GRACE_SECONDS)
     except Exception:
-        _abandon(proc)
+        # The process is gone but a pipe it left open did
+        # not reach EOF inside the grace -- a grandchild
+        # holds it. communicate()'s reader threads are
+        # inside reads on these streams now, so the pipes
+        # are abandoned unclosed (see _abandon): closing
+        # them here would wait for the grandchild's exit,
+        # the very hold this function exists to never take.
+        _abandon(proc, close_streams=False)
         return None
     if proc.returncode != 0 or not isinstance(out, str):
         return None

@@ -390,6 +390,18 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # 3.16.20.6 release's pipeline repair in
 # runner/ops, which the earlier records had not
 # carried.
+# Re-measured again the same day after the Q136
+# shard-7 follow-on (the _run_text collect path
+# abandons a held pipe unclosed, and the Windows
+# registry and event-log probes read through
+# _run_text instead of subprocess.run) grew
+# runner/ops/av.py and runner/ops/windows.py,
+# the whole set re-measured over the current
+# tree; this measure also takes up the
+# install.py split and the macOS confinement
+# growth of runner/guard that landed in
+# parallel, which the earlier records had not
+# carried.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 136 since
@@ -402,20 +414,20 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 139
-AS_ASSEMBLED_ZIP_BYTES = 806947
-AS_ASSEMBLED_LINES = 63977
-AS_ASSEMBLED_NONBLANK_LINES = 57863
+AS_ASSEMBLED_ZIP_BYTES = 768924
+AS_ASSEMBLED_LINES = 60500
+AS_ASSEMBLED_NONBLANK_LINES = 54724
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 21206,
+    "runner/ops": 17707,
     "runner/tools": 9661,
     "runner/wire": 9033,
     "runner/runner.py": 7178,
     "runner/oracle": 5055,
     "runner/transport_extensions": 2775,
-    "runner/guard": 5283,
+    "runner/guard": 5305,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,

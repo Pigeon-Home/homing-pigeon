@@ -61,8 +61,10 @@ class RegistryParseTest(unittest.TestCase):
                         ("Sub",))
         # A two-field line is a value with no data.
         text += "    Flag    REG_DWORD\n"
-        proc = mock.Mock(returncode=0, stdout=text)
-        with mock.patch.object(rr.subprocess, "run", return_value=proc):
+        # Re-seamed (Q136 shard-7 follow-on, 2026-11-11):
+        # _reg_query reads through _run_text, not
+        # subprocess.run.
+        with mock.patch.object(rr, "_run_text", return_value=text):
             values, subkeys = rr._reg_query(key)
         self.assertEqual(values["OneDrive"], "onedrive.exe")
         self.assertEqual(values["Empty"], "")
@@ -70,10 +72,11 @@ class RegistryParseTest(unittest.TestCase):
         self.assertEqual(subkeys, [key + r"\Sub"])
 
     def test_a_failed_reg_query_is_none(self):
-        proc = mock.Mock(returncode=1, stdout="")
-        with mock.patch.object(rr.subprocess, "run", return_value=proc):
+        # A failed probe is _run_text's None; a seam that
+        # raises is still the probe's None (never raises).
+        with mock.patch.object(rr, "_run_text", return_value=None):
             self.assertIsNone(rr._reg_query(r"HKLM\Nope"))
-        with mock.patch.object(rr.subprocess, "run",
+        with mock.patch.object(rr, "_run_text",
                                side_effect=OSError("no reg")):
             self.assertIsNone(rr._reg_query(r"HKLM\Nope"))
 
@@ -86,14 +89,12 @@ class RegistryParseTest(unittest.TestCase):
         def fake_run(cmd, **_kw):
             key = cmd[2]
             if key.endswith("Services"):
-                return mock.Mock(returncode=0, stdout=_reg_out(
-                    key, [], ("Spooler", "W32Time")))
+                return _reg_out(key, [], ("Spooler", "W32Time"))
             if "Winlogon" in key:
-                return mock.Mock(returncode=0, stdout=_reg_out(
-                    key, [("Shell", "explorer.exe"), ("Noise", "x")]))
-            return mock.Mock(returncode=0, stdout=_reg_out(
-                key, [("OneDrive", "od.exe")]))
-        with mock.patch.object(rr.subprocess, "run", side_effect=fake_run):
+                return _reg_out(
+                    key, [("Shell", "explorer.exe"), ("Noise", "x")])
+            return _reg_out(key, [("OneDrive", "od.exe")])
+        with mock.patch.object(rr, "_run_text", side_effect=fake_run):
             snap = rr._registry_snapshot()
         self.assertIsNotNone(snap)
         self.assertEqual(snap["services"]["count"], 2)
@@ -114,15 +115,13 @@ class RegistryParseTest(unittest.TestCase):
         def fake_run(cmd, **_kw):
             key = cmd[2]
             if key.endswith("Services"):
-                return mock.Mock(returncode=0, stdout=_reg_out(
-                    key, [], ("Spooler",)))
+                return _reg_out(key, [], ("Spooler",))
             if key == run_key:
-                return mock.Mock(returncode=0, stdout=_reg_out(
-                    key, [("OneDrive", "od.exe")]))
-            return mock.Mock(returncode=0, stdout=_reg_out(key, []))
+                return _reg_out(key, [("OneDrive", "od.exe")])
+            return _reg_out(key, [])
 
         with mock.patch.object(rr, "sys") as plat, \
-                mock.patch.object(rr.subprocess, "run", side_effect=fake_run):
+                mock.patch.object(rr, "_run_text", side_effect=fake_run):
             plat.platform = "win32"
             first = rr._registry_watch(base)
         self.assertIn("baseline recorded", first)
@@ -132,15 +131,14 @@ class RegistryParseTest(unittest.TestCase):
         def fake_run2(cmd, **_kw):
             key = cmd[2]
             if key.endswith("Services"):
-                return mock.Mock(returncode=0, stdout=_reg_out(
-                    key, [], ("Spooler", "Extra")))
+                return _reg_out(key, [], ("Spooler", "Extra"))
             if key == run_key:
-                return mock.Mock(returncode=0, stdout=_reg_out(
-                    key, [("OneDrive", "CHANGED"), ("New", "n.exe")]))
-            return mock.Mock(returncode=0, stdout=_reg_out(key, []))
+                return _reg_out(
+                    key, [("OneDrive", "CHANGED"), ("New", "n.exe")])
+            return _reg_out(key, [])
 
         with mock.patch.object(rr, "sys") as plat, \
-                mock.patch.object(rr.subprocess, "run",
+                mock.patch.object(rr, "_run_text",
                                   side_effect=fake_run2), \
                 mock.patch.object(rr, "_file_registry_lines"):
             plat.platform = "win32"
@@ -164,14 +162,15 @@ class EventLogTest(unittest.TestCase):
         self.assertIsNone(rr._eventlog_tail())
 
     def test_a_wevtutil_failure_is_none_and_empty_stdout_is_empty(self):
-        with mock.patch.object(rr.subprocess, "run",
+        # Re-seamed (Q136 shard-7 follow-on, 2026-11-11):
+        # the probe reads through _run_text -- a raise and
+        # a failure are both None there, "" stays "".
+        with mock.patch.object(rr, "_run_text",
                                side_effect=OSError("gone")):
             self.assertIsNone(rr._wevtutil_query("System", "*", 1))
-        proc = mock.Mock(returncode=1, stdout="nope")
-        with mock.patch.object(rr.subprocess, "run", return_value=proc):
+        with mock.patch.object(rr, "_run_text", return_value=None):
             self.assertIsNone(rr._wevtutil_query("System", "*", 1))
-        proc = mock.Mock(returncode=0, stdout="")
-        with mock.patch.object(rr.subprocess, "run", return_value=proc):
+        with mock.patch.object(rr, "_run_text", return_value=""):
             self.assertEqual(rr._wevtutil_query("System", "*", 1), "")
 
     def test_the_tail_tags_a_failed_logon_and_skips_junk_xml(self):
