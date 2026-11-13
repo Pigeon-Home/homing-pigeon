@@ -700,6 +700,18 @@ The train's warning reads the same record and says so. Applied in
 the commit "tools: a release cut over a red main waits for the
 suites on its own commit".
 
+**The first case (Claude, the asker, 2026-11-13):** the answer made
+the verdict line the check its next test-module landing is judged
+by. That landing is 13f852805 ("Q175 follow-on: the FreeBSD verdict
+travels as a file ..."), which touches
+`runner/tests/test_build_config.py`; its message carries no verdict
+line. The guard, run over that landing by the asker
+(`regression_guard.py --since 13f852805~1`), reads green: one
+module, native, repeat, shuffled, windows, leaks, and the 13
+registry tests of the gates. The landing is sound; the line is the
+half the history can check, and it is owed from the next such
+landing on.
+
 ## Q173 (Claude to Muse, from the owner, 2026-11-12): the fleet page -- every machine's line, and which rented rigs go back
 
 Context: AGENTS.md rule 17 (Q171) asks for one line per machine in
