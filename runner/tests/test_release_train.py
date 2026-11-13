@@ -531,5 +531,161 @@ class WaitTest(unittest.TestCase):
                 rt._wait("x", lambda: None, 1, 1)
 
 
+
+class CutWatchShaTest(unittest.TestCase):
+    """The cut's --watch/--sha ordering, pinned (the fix of the
+    5:29 PM PST landing, 2026-11-12).
+
+    Suppositions, recorded before the tests ran:
+    S1: watch with a sha, given as cmd_cut's parameter or as
+        args.sha, does NOT take the watch-only early return: the
+        gate is read for that sha, cut-release is dispatched with
+        that sha, and only then is the tag build watched, once,
+        for the carriers' version; the watch's result is returned.
+    S2: watch with no sha anywhere takes the watch-only path: it
+        returns watch_tag_build's result for the version it is
+        handed (args.version with a leading "v" stripped, else the
+        carriers'), and it cuts nothing -- no gate read, no
+        dispatch, and (the early return now stands before the sha
+        is resolved) no git call at all.
+    S3: no watch with a sha takes the plain cut path, unchanged.
+    S4: an empty-string sha is no sha, from either seat; a real
+        sha on the other seat still cuts.
+    Against the pre-fix shape (the watch checked after the sha was
+    resolved, whatever sha there was) S1 and the cutting half of
+    S4 fail: the watch returned at once and nothing was cut. S2's
+    no-git-call half fails there too -- the sha was resolved
+    first. The heavy seams (the gate rule, the API, git, the
+    watch itself) are stubbed in the file's established style, so
+    the pin is the ordering, not the hosted record."""
+
+    VERSION = "3.16.21.4"
+    SHA = "0123456789abcdef0123456789abcdef01234567"
+    WATCH_RC = 7
+
+    def _drive(self, watch, sha_param, args_sha, args_version=None):
+        """Run cmd_cut over stubbed seams; return (rc, calls).
+
+        sha_param is cmd_cut's own argument (None calls it the way
+        main does, with no parameter); args_sha is args.sha."""
+        calls = {"git": [], "need": [], "gate": [], "dispatch": [],
+                 "watch": [], "order": []}
+        state = {"dispatched": False}
+
+        def fake_git(*a, **k):
+            calls["git"].append(a)
+            if a and a[0] == "rev-parse" and len(a) > 1:
+                return self.SHA if a[1] == "HEAD" else a[1]
+            return ""
+
+        def fake_api(path, method="GET", body=None, raw=False):
+            if path.startswith("/git/ref/tags/"):
+                return None
+            if "cut-release.yml/dispatches" in path:
+                state["dispatched"] = True
+                calls["dispatch"].append(body)
+                calls["order"].append("dispatch")
+                return {}
+            if "cut-release.yml/runs" in path:
+                if state["dispatched"]:
+                    return {"workflow_runs": [
+                        {"id": 999, "status": "completed",
+                         "conclusion": "success",
+                         "html_url": "https://example.invalid/cut/999"}]}
+                return {"workflow_runs": []}
+            raise AssertionError(path)
+
+        def fake_watch(version, limit):
+            calls["watch"].append((version, limit))
+            calls["order"].append("watch")
+            return self.WATCH_RC
+
+        def fake_need(sha, version, api=None):
+            calls["need"].append((sha, version))
+            calls["order"].append("need")
+            return set(), "the legs"
+
+        def fake_gate(sha, version=None):
+            calls["gate"].append((sha, version))
+            return "green", "run 1: green"
+
+        args = mock.Mock(watch=watch, sha=args_sha,
+                         version=args_version, limit=5)
+        with mock.patch.object(rt, "latent_warning", lambda *a, **k: ""), \
+                mock.patch.object(rt, "carriers",
+                                  lambda root=None: {"pyproject.toml": self.VERSION}), \
+                mock.patch.object(rt, "_git", fake_git), \
+                mock.patch.object(rt, "api", fake_api), \
+                mock.patch.object(rt, "watch_tag_build", fake_watch), \
+                mock.patch.object(rt, "gate_verdict", fake_gate), \
+                mock.patch.object(rt.cut_gate, "need", fake_need), \
+                mock.patch.object(rt, "_wait",
+                                  lambda label, probe, interval, limit: probe()), \
+                contextlib.redirect_stdout(io.StringIO()):
+            if sha_param is None:
+                rc = rt.cmd_cut(args)
+            else:
+                rc = rt.cmd_cut(args, sha=sha_param)
+        return rc, calls
+
+    def _assert_cut_then_watch(self, rc, calls):
+        self.assertEqual(rc, self.WATCH_RC)
+        self.assertEqual(calls["need"], [(self.SHA, self.VERSION)])
+        self.assertEqual(len(calls["gate"]), 1)
+        self.assertEqual(len(calls["dispatch"]), 1)
+        self.assertEqual(calls["dispatch"][0]["inputs"]["sha"], self.SHA)
+        self.assertEqual(calls["watch"], [(self.VERSION, 5)])
+        self.assertEqual(calls["order"], ["need", "dispatch", "watch"])
+
+    def _assert_watch_only(self, rc, calls, version=None):
+        self.assertEqual(rc, self.WATCH_RC)
+        self.assertEqual(calls["watch"], [(version or self.VERSION, 5)])
+        self.assertEqual(calls["need"], [])
+        self.assertEqual(calls["gate"], [])
+        self.assertEqual(calls["dispatch"], [])
+
+    def test_watch_with_a_sha_parameter_cuts_first_then_watches(self):
+        self._assert_cut_then_watch(*self._drive(True, self.SHA, None))
+
+    def test_watch_with_a_sha_on_the_args_cuts_first_then_watches(self):
+        self._assert_cut_then_watch(*self._drive(True, None, self.SHA))
+
+    def test_watch_without_a_sha_only_watches(self):
+        rc, calls = self._drive(True, None, None)
+        self._assert_watch_only(rc, calls)
+        # The early return stands before the sha is resolved: a
+        # watch alone never reaches for git.
+        self.assertEqual(calls["git"], [])
+
+    def test_no_watch_with_a_sha_takes_the_cut_path(self):
+        # The cut's own last step watches the tag build it placed;
+        # what pins "no early watch" here is that the gate was read
+        # and the dispatch sent before that one watch.
+        self._assert_cut_then_watch(*self._drive(False, self.SHA, None))
+
+    def test_an_empty_sha_is_no_sha(self):
+        for sha_param, args_sha, cuts in (
+                ("", None, False),
+                (None, "", False),
+                ("", self.SHA, True),
+                (self.SHA, "", True)):
+            with self.subTest(sha_param=sha_param, args_sha=args_sha):
+                rc, calls = self._drive(True, sha_param, args_sha)
+                if cuts:
+                    self._assert_cut_then_watch(rc, calls)
+                else:
+                    self._assert_watch_only(rc, calls)
+
+    def test_watch_only_strips_a_leading_v_from_the_version(self):
+        rc, calls = self._drive(True, None, None, args_version="v3.16.21.9")
+        self._assert_watch_only(rc, calls, version="3.16.21.9")
+
+    def test_a_cut_with_a_sha_watches_the_carriers_version(self):
+        # args.version names what a watch ALONE watches; a cut
+        # watches the version it cut, the carriers'.
+        rc, calls = self._drive(True, self.SHA, None, args_version="v9.9.9.9")
+        self._assert_cut_then_watch(rc, calls)
+
+
 if __name__ == "__main__":
     unittest.main()
