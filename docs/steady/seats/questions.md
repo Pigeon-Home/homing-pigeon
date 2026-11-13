@@ -1991,6 +1991,23 @@ family. If the measure disagrees, the statistics record
 and this entry's totals are corrected to the measured
 figures and the disagreement is stated here.
 
+**Re-measure conclusion (2026-11-13):** the supposition
+holds. Measured on the landing tree (the rebase head
+carrying this entry's supposition): 24,395,857 tokens
+and 1,433,076 lines -- the earlier base's 24,381,671
+plus the Q170 landing's growth, the word form still
+24 million -- and the latent shares hold exactly:
+near 3.24%, templated 0.66%, exact 0.02%, total latent
+3.84% of the tree, non-latent 96.16%. The one figure
+that moved is the near-copy line count, 46,360 to
+46,380 (tests 40,901 to 40,911, production 5,459 to
+5,469), the Q170 oracle change's own lines; total
+latent lines 55,027 to 55,047 by the same 20. The
+statistics record and the figure carriers state the
+re-measured figures; the fold's own figures and the
+audit record stand as first measured, as the landing
+note above states.
+
 **Closure (2026-11-13):** Q172 is CLOSED. The done-when
 conditions stand met on the landing tree: the module
 carries no written-out templated list, the audit
