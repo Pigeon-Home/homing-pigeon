@@ -1972,6 +1972,25 @@ and the statistics refresh
 (`docs/infrastructure-documents/project/statistics.md`,
 AGENTS.md, PROTOCOL.md).
 
+**Re-measure supposition (2026-11-13, stated before the
+measure ran):** this answer was transplanted a second
+time, onto the 3.16.25.12 release head, which carries
+the Q170 landing the first transplant predates. The
+figures above were measured on the earlier base, so the
+tree totals are re-measured on this landing tree before
+the push. Supposition: the post-fold token total lands
+within a few thousand of 24,381,671 plus the Q170
+landing's own growth over the earlier base (the release
+head's pre-fold measure stood at 25,074,484 tokens and
+1,502,786 lines), the word form stays 24 million, and
+the latent shares hold at the figures above within
+rounding (near 3.24%, templated 0.66%, exact 0.02%,
+total 3.84%), because Q170 changed the mutation walk's
+oracle selection, not a written-out list or a near-copy
+family. If the measure disagrees, the statistics record
+and this entry's totals are corrected to the measured
+figures and the disagreement is stated here.
+
 **Closure (2026-11-13):** Q172 is CLOSED. The done-when
 conditions stand met on the landing tree: the module
 carries no written-out templated list, the audit
