@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.2 - 2026-11-13
+
+- README: DRU's own edits land in a run of updates
+- Q175: the FreeBSD proof's evidence reaches the run page -- the annotation regex, the VM copy-back, the upgrade proof's FreeBSD service check, and bash (option 1)
+- Desk: Q173 answered; Q174 and Q175 suppositions recorded before measurement; 3.16.25.1 on the CI record
+- CI/tools: only the rolling group cancels a running build; a release is dated by the UTC day; status says when a head built no legs
+
 ## 3.16.25.1 - 2026-11-13
 
 - Fix: the skip registry carries the reason for the TOML comparison's skip (the comparison with tomllib runs on 3.11 and later); the suites on main read green again

@@ -71,12 +71,12 @@ backend (runner/guard/macos_confine.py) joined the
 canonical list and its wiring grew runner/ops,
 runner/guard and the runner proper,
 the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->65,992<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->59,822<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->855,207<!--/hp-fig-->-byte zip, and the project's own estimator
-counts it at <!--hp-fig:core_assembled_tokens-->731,154<!--/hp-fig--> tokens; the Gemini figure above still
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->66,049<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->59,875<!--/hp-fig--> non-blank)
+and a <!--hp-fig:core_assembled_zip_bytes-->856,010<!--/hp-fig-->-byte zip, and the project's own estimator
+counts it at <!--hp-fig:core_assembled_tokens-->731,802<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical <!--hp-fig:core_files-->136<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->719,575<!--/hp-fig-->
-tokens across <!--hp-fig:core_lines-->64,873<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->58,821<!--/hp-fig--> non-blank); the 2 token
+estimator counts the canonical <!--hp-fig:core_files-->136<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->720,223<!--/hp-fig-->
+tokens across <!--hp-fig:core_lines-->64,930<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->58,874<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -92,11 +92,11 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 7,179 lines; the core around it is
-58,813. The set as assembled, part by part (re-measured
-2026-11-12):
+58,870. The set as assembled, part by part (re-measured
+2026-11-13):
 
 - runner/ops: 22,585 lines
-- runner/tools: 9,999
+- runner/tools: 10,056
 - runner/wire: 9,033
 - runner/runner.py: 7,179
 - runner/oracle: 5,055
@@ -109,7 +109,7 @@ The runner proper is 7,179 lines; the core around it is
 
 The canonical list's breakdown is the same except
 runner/tools, where the 3 excluded suite runners account
-for 1,119 of the lines, leaving 8,880 in the canonical list.
+for 1,119 of the lines, leaving 8,937 in the canonical list.
 The tool prints the
 canonical breakdown live, beside the totals.
 
