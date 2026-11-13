@@ -28801,3 +28801,91 @@ that fix and landing these conclusions in
 the same place the suppositions stand.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q174: where the desk reads main's suite --
+suppositions recorded before the tests
+(2026-11-12)
+
+This lane is the desk's answer to Q174: where
+in its own loop the desk reads main's suite,
+after a landing and before a cut. The question
+was filed in the commit of 8:46 PM PST on
+2026-11-12 ("desk: Q174 -- where the desk reads
+main's suite; 3.16.24.22 on the CI record").
+The suppositions below are written before any
+test in this lane is run; the conclusions
+follow in this same section, and the answer
+itself stands under Q174 in the questions file.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q174-S1 -- the answer landing is docs
+  only, so the guard's trigger does not fire
+  for it.** The answer touches only the
+  questions file, this desk record and the
+  campaign standing orders -- no file under
+  `runner/tests/` and no other test module --
+  checked by the landing's own diff. Option
+  1's guard therefore binds, for this desk,
+  the next landing that does touch a test
+  module, and this landing's proof is the
+  targeted doc tests of Q174-S2, stated as
+  such in the answer, not a guard verdict.
+- **Q174-S2 -- the targeted doc tests pass
+  on the answered tree.** `test_reader_docs_quiet`,
+  `test_doc_version_rot`, `test_doc_figure_slots`
+  and `test_layout` pass whole, and
+  `refresh_figures --check` is clean, because
+  the answer names no figure, moves no file
+  and writes no process talk into a reader's
+  page.
+- **Q174-S3 -- at the head, the two readings
+  stand in the standing orders but the three
+  desk commitments of option 1 do not.**
+  Read first-hand at the head: the loop's
+  step 1 already reads `release_train.py
+  status`, and section P already has the
+  pre-push guard before a push that touches
+  a test module. No text at the head in the
+  standing orders or in this desk record
+  commits the desk to (i) the guard's verdict
+  line in the touching commit's message,
+  (ii) a `status` read after its own landing
+  lands and before that landing is reported
+  or built on, or (iii) a `status` read
+  before the desk prepares or supports a
+  cut, beside the loop's first step. The
+  answer must add those three, in the loop's
+  own drawer, or it adds nothing.
+- **Q174-S4 -- the train's side already
+  does what the filing says.** In
+  `runner/tools/release_train.py` at the
+  head, `status` prints `red_main_warning()`
+  or the green line, and `prepare` and `cut`
+  print the same warning; `test_release_train`
+  passes whole on the head. The hosted
+  verdict itself is not this lane's to
+  re-run: the suite named there is the
+  deterministic substrate, stated plainly.
+- **Q174-S5 -- the guard's gates include
+  the skip registry that read the Q169
+  shape.** `regression_guard.py`'s `GATES`
+  names `test_skip_registry` beside the
+  version-rot and layout scans, and on the
+  current head -- where the registry now
+  carries the tomllib reason -- both
+  `test_skip_registry` and
+  `test_regression_guard` pass whole. That
+  proves the gate is green on this head and
+  reads this shape by construction; the
+  counterfactual about the Q169 landing
+  itself rests on that code reading, not on
+  a re-run of that tree, and the answer
+  says so.
+- **Q174-S6 -- the standing guards hold
+  over the answer.** No file is added, so
+  no new file stands in the repository
+  root; the string the repository never
+  carries stands in no diff of this lane;
+  and the shrink guard is clean over each
+  of the lane's commits.
