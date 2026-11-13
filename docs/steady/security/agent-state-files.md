@@ -521,9 +521,13 @@ under its other names (`autoApprove`, `allowedTools`,
 allowlist entries scanned as the command strings they can be;
 the same content shapes in TOML and YAML, where two vendors'
 configuration lives (TOML read with the standard library's
-`tomllib` where the interpreter carries it, YAML by a bounded
-subset reader with a line-scan fallback, so a document outside
-the subset is read by the other reader, not skipped); and
+`tomllib` where the interpreter carries it and, where it does
+not, by a bounded subset reader that reads table headers --
+a `[mcpServers.db.env]` table is a tool-server env map on
+every supported Python -- with a line-scan fallback, YAML by
+a bounded subset reader with a line-scan fallback, so a
+document outside a subset is read by the other reader, not
+skipped); and
 staged areas beyond git's, as **the same guard's second front
 door, not a second tool**: a Subversion working copy's
 scheduled additions, fed to the same scan as the same

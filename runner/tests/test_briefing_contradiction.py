@@ -82814,15 +82814,26 @@ class Q166SampleTest(unittest.TestCase):
                 + _Q165_FIRING_SUFFIX, _Q165_FIRING_SUFFIX)
 
     def test_the_sample_counts_one_per_category_block_group(self):
+        # Q169: the expected count is derived from the running
+        # interpreter's tables, not pinned to one Python's: the
+        # sample is computed from those tables (above), so its
+        # size is the number of distinct (category, block)
+        # groups the running tables give the separators. On
+        # the tables this sample was filed under (Python 3.12,
+        # Unicode 15.0) that number was 431; on Python 3.9's
+        # tables the same derivation gives 443, and both are
+        # the sample doing what it says.
         groups = {}
         for text in Q165_LEDGER_FIRING:
             separator = _q165_separator(text, _Q165_FIRING_SUFFIX)
             groups.setdefault(
                 (unicodedata.category(separator),
                  _unicode_block(separator)), separator)
-        self.assertEqual(431, len(groups))
-        self.assertEqual(431, len(Q165_LEDGER_FIRING_SAMPLE))
-        self.assertEqual(431, len(Q165_LEDGER_SILENT_SAMPLE))
+        self.assertEqual(len(groups),
+                         len(Q165_LEDGER_FIRING_SAMPLE))
+        self.assertEqual(len(groups),
+                         len(Q165_LEDGER_SILENT_SAMPLE))
+        self.assertGreater(len(groups), 0)
 
     def test_the_representative_is_the_first_shape_of_its_group(
             self):
@@ -82915,8 +82926,11 @@ class Q166SampleTest(unittest.TestCase):
 # under this tree's unicodedata, the way the filing derived
 # it, not carried as a literal list: the detector's rule is
 # itself by category, so the family's substrate is the
-# category inventory, and the count pin below holds the
-# derivation to the filed counts. The family is sized in
+# category inventory, and the shape test below holds the
+# derivation to an independent re-derivation from the
+# running interpreter's tables (Q169: the counts themselves
+# are a fact of those tables and are not pinned to one
+# Python's). The family is sized in
 # the sampled shape the filing seat's own probes used --
 # the range edges whole and an every-97th sample on the
 # fixture layer, the range edges whole on the shipped
@@ -83012,6 +83026,15 @@ Q167_LEDGER_SILENT_EDGES = [_q167_twin(chr(cp))
 Q167_UNASSIGNED = [0x0378, 0x0380, 0x038B, 0x038D, 0x03A2,
                    0x0530, 0x0557, 0x0558, 0x0897, 0x1C89,
                    0xFFFF, 0x102FF]
+# Q169: which of the filed points are still unassigned is a
+# fact of the running interpreter's tables, not a pin: a
+# newer Unicode assigns some of them (a letter assignment
+# moves the point into the letter inventory above, where the
+# firing shapes cover it), so the silent shapes are the
+# filed points the running tables still call Cn.
+Q167_UNASSIGNED_STILL = [
+    cp for cp in Q167_UNASSIGNED
+    if unicodedata.category(chr(cp)) == "Cn"]
 # The fold-erased separators and the plain space are named
 # in Q167 as no-separator shapes, not as separators.
 Q167_NO_SEPARATORS = ["\x1c", "\x1d", "\x1e", "\x1f", " "]
@@ -83019,13 +83042,39 @@ Q167_NO_SEPARATORS = ["\x1c", "\x1d", "\x1e", "\x1f", " "]
 
 class Q167PolarityGuardTest(unittest.TestCase):
     def test_the_q167_inventory_is_the_filed_shape(self):
-        self.assertEqual(48964, len(Q167_ITEMS["bmp_letters"]))
-        self.assertEqual(87139,
-                         len(Q167_ITEMS["beyond_bmp_letters"]))
-        self.assertEqual(55, len(Q167_ITEMS["controls"]))
-        self.assertEqual(137468, len(Q167_ITEMS["private_use"]))
+        # Q169: the inventory's shape is filed, its counts are
+        # not pinned to one Python's tables: the expected
+        # inventory is derived here again, independently, from
+        # the running interpreter's `unicodedata.category`
+        # read -- the same read the guard makes -- so the test
+        # holds on any interpreter whose tables differ. On
+        # the tables this inventory was filed under (Python
+        # 3.12, Unicode 15.0) the derived counts were 48964
+        # BMP letters, 87139 beyond-BMP letters, 55 controls
+        # and 137468 private-use characters; Python 3.9's
+        # tables give 48908 BMP letters and Python 3.14's
+        # 48972, and each is the filed shape under its own
+        # tables.
         seg = {mark for mark in briefing._LEDGER_SEGMENTS
                if len(mark) == 1}
+        breaks = {"\t", "\n", "\x0b", "\x0c", "\r", "\x85"}
+        erased = {"\x1c", "\x1d", "\x1e", "\x1f"}
+        expected = {"bmp_letters": [], "beyond_bmp_letters": [],
+                    "controls": [], "private_use": []}
+        for cp in range(0x110000):
+            ch = chr(cp)
+            category = unicodedata.category(ch)
+            if category.startswith("L") and ch not in seg:
+                expected["bmp_letters" if cp < 0x10000
+                         else "beyond_bmp_letters"].append(cp)
+            elif category == "Cc" and ch not in breaks \
+                    and ch not in erased:
+                expected["controls"].append(cp)
+            elif category == "Co" and ch not in seg:
+                expected["private_use"].append(cp)
+        for name, inventory in expected.items():
+            self.assertEqual(inventory, Q167_ITEMS[name], name)
+            self.assertGreater(len(inventory), 0, name)
         for inventory in Q167_ITEMS.values():
             for cp in inventory:
                 self.assertNotIn(chr(cp), seg)
@@ -83033,9 +83082,23 @@ class Q167PolarityGuardTest(unittest.TestCase):
         # the set -- the vertical tilde, the filing's named
         # control -- is no part of the inventory.
         self.assertNotIn(0x2E2F, Q167_ITEMS["bmp_letters"])
-        for cp in Q167_UNASSIGNED:
+        self.assertTrue(Q167_UNASSIGNED_STILL)
+        for cp in Q167_UNASSIGNED_STILL:
             self.assertEqual("Cn", unicodedata.category(
                 chr(cp)))
+        # A filed unassigned point the running tables have
+        # since assigned is no longer an unassigned shape:
+        # where its new category is one the guard opens a
+        # segment on, it stands in that category's inventory.
+        for cp in Q167_UNASSIGNED:
+            if cp in Q167_UNASSIGNED_STILL:
+                continue
+            category = unicodedata.category(chr(cp))
+            self.assertNotEqual("Cn", category)
+            if category.startswith("L"):
+                name = ("bmp_letters" if cp < 0x10000
+                        else "beyond_bmp_letters")
+                self.assertIn(cp, Q167_ITEMS[name])
 
     def test_the_ledger_spaced_token_shapes_fire(self):
         for text in Q167_LEDGER_FIRING:
@@ -83141,7 +83204,12 @@ class Q167PolarityGuardTest(unittest.TestCase):
                         text, _shipped_layer()))
 
     def test_the_ledger_unassigned_shapes_stay_silent(self):
-        for cp in Q167_UNASSIGNED:
+        # Q169: only the filed points the running tables
+        # still leave unassigned are unassigned shapes; a
+        # point a newer table assigns is covered by its new
+        # category's shapes, not by this silent list.
+        self.assertTrue(Q167_UNASSIGNED_STILL)
+        for cp in Q167_UNASSIGNED_STILL:
             text = _q167_mixed(chr(cp))
             with self.subTest(text=text):
                 self.assertEqual(

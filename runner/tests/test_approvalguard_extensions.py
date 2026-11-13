@@ -237,6 +237,164 @@ class TomlYamlTest(unittest.TestCase):
         self.assertIn(AG.RULE_SECRET_IN_COMMAND, rules)
 
 
+def _rules_without_tomllib(path, content):
+    """The scan's rules with `tomllib` made unimportable, the
+    pre-3.11 shape: the bounded TOML fallback reader is the
+    reader there, so its behaviour is pinned on every
+    interpreter, not only on the ones that need it."""
+    with mock.patch.dict(sys.modules, {"tomllib": None}):
+        return _rules(path, content)
+
+
+class TomlFallbackTest(unittest.TestCase):
+    """The TOML fallback reader (no `tomllib`, before 3.11):
+    it learns table headers, so a document the standard
+    reader would hold is held here too -- in particular a
+    `[mcpServers.db.env]` table, which the line fallback
+    could not read as a tool-server map at all."""
+
+    def test_fallback_reads_the_tool_server_env_table(self):
+        text = ("[mcpServers.db.env]\nDB_PASSWORD = \"%s\"\n"
+                % FAKE_PASSWORD)
+        self.assertEqual(
+            {"mcpServers": {"db": {"env": {
+                "DB_PASSWORD": FAKE_PASSWORD}}}},
+            AG._parse_toml_fallback(text))
+
+    def test_no_tomllib_tool_server_env_fires(self):
+        content = ("[mcpServers.db.env]\nDB_PASSWORD = \"%s\"\n"
+                   % FAKE_PASSWORD).encode()
+        self.assertIn(AG.RULE_TOOL_SERVER_SECRET,
+                      _rules_without_tomllib("servers.toml",
+                                             content))
+
+    def test_no_tomllib_tool_server_headers_fire(self):
+        content = ("[mcpServers.db.headers]\n"
+                   "Authorization = \"Bearer token=fake-t-1234\"\n"
+                   ).encode()
+        self.assertIn(AG.RULE_TOOL_SERVER_SECRET,
+                      _rules_without_tomllib("servers.toml",
+                                             content))
+
+    def test_no_tomllib_grant_and_named_secret_fire(self):
+        grant = b'[tool]\nallowedTools = ["Bash(npm test)"]\n'
+        self.assertIn(AG.RULE_GRANT_STATE,
+                      _rules_without_tomllib("config.toml", grant))
+        named = b'[tool]\napiKey = "fake-provider-key-1234"\n'
+        self.assertIn(AG.RULE_SECRET_IN_COMMAND,
+                      _rules_without_tomllib("config.toml", named))
+
+    def test_fallback_reads_the_bounded_shapes(self):
+        text = (
+            "# a comment\n"
+            "title = \"demo\"  # a trailing comment\n"
+            "count = 42\nratio = 1.5\nflag = true\n"
+            "bare_date = 1979-05-27\n"
+            "dotted.key.value = 'literal'\n"
+            "list = [\n  \"one\",\n  \"two\",\n]\n"
+            "inline = {x = 1, y = \"z\"}\n"
+            "[owner]\nname = \"Tom\"\n"
+            "[mcpServers.\"my server\".env]\n"
+            "DB_PASSWORD = \"fake-db-password-7f3a\"\n"
+            "[[servers]]\nname = \"a\"\n"
+            "[[servers]]\nname = \"b\"\n")
+        data = AG._parse_toml_fallback(text)
+        self.assertEqual("demo", data["title"])
+        self.assertEqual(42, data["count"])
+        self.assertEqual(1.5, data["ratio"])
+        self.assertEqual(True, data["flag"])
+        self.assertEqual("1979-05-27", data["bare_date"])
+        self.assertEqual("literal", data["dotted"]["key"]["value"])
+        self.assertEqual(["one", "two"], data["list"])
+        self.assertEqual({"x": 1, "y": "z"}, data["inline"])
+        self.assertEqual("Tom", data["owner"]["name"])
+        self.assertEqual(
+            "fake-db-password-7f3a",
+            data["mcpServers"]["my server"]["env"]["DB_PASSWORD"])
+        self.assertEqual([{"name": "a"}, {"name": "b"}],
+                         data["servers"])
+
+    def test_fallback_agrees_with_tomllib_where_present(self):
+        try:
+            import tomllib
+        except ImportError:
+            self.skipTest("no tomllib on this interpreter")
+        samples = [
+            "[mcpServers.db.env]\nDB_PASSWORD = \"%s\"\n"
+            % FAKE_PASSWORD,
+            "allowedTools = [\"Bash(npm test)\"]\n",
+            "[a.b]\nc = 1\nd = [true, false]\ne = {f = \"g\"}\n",
+            "x = 'lit'\ny = \"esc\\tape\"\n",
+        ]
+        for text in samples:
+            self.assertEqual(tomllib.loads(text),
+                             AG._parse_toml_fallback(text), text)
+
+    def test_fallback_outside_the_subset_returns_none(self):
+        for text in ("[bad\n", "key = \"unterminated\n",
+                     "key = \n", "no key here\n",
+                     "key = bareword\n", "[a]\nx = 1\nx = 2\n"):
+            self.assertIsNone(AG._parse_toml_fallback(text),
+                              text)
+
+    def test_no_tomllib_placeholder_and_plain_stay_silent(self):
+        content = ("[mcpServers.db.env]\n"
+                   "DB_PASSWORD = \"${DB_PASSWORD}\"\n"
+                   "MODE = \"production\"\n").encode()
+        self.assertEqual([], _rules_without_tomllib(
+            "servers.toml", content))
+
+    def test_no_tomllib_env_outside_tool_server_stays_silent(
+            self):
+        content = ("[other.env]\nDB_PASSWORD = \"%s\"\n"
+                   % FAKE_PASSWORD).encode()
+        self.assertNotIn(AG.RULE_TOOL_SERVER_SECRET,
+                         _rules_without_tomllib("servers.toml",
+                                                content))
+
+    def test_bookended_shapes_under_a_table_header(self):
+        # Bookends at the front and the back of the surface
+        # the fallback reads: punctuation around the header's
+        # spacing, a comment in the bookend characters, CRLF
+        # endings, and a secret value carrying the bookends
+        # inside its string.
+        bookend_punct = "".join(
+            c for c in BOOKENDS if c not in "\x00\r\n#\"'[]=\\")
+        content = (
+            "\r\n".join([
+                "[ mcpServers . db . env ] # ;-- comment",
+                "DB_PASSWORD = \"%s%s%s\"" % (
+                    bookend_punct, FAKE_PASSWORD, bookend_punct),
+                ""]) + "\r\n").encode()
+        self.assertIn(AG.RULE_TOOL_SERVER_SECRET,
+                      _rules_without_tomllib("servers.toml",
+                                             content))
+
+    def test_header_variants_reach_the_same_map(self):
+        variants = [
+            "[mcpServers.db.env]",
+            "[ mcpServers.db.env ]",
+            "['mcpServers'.db.env]",
+            "[mcpServers . db . env]",
+            "[mcpServers.db]\n[ mcpServers.db.env ]",
+        ]
+        for header in variants:
+            content = ("%s\nDB_PASSWORD = \"%s\"\n"
+                       % (header, FAKE_PASSWORD)).encode()
+            self.assertIn(
+                AG.RULE_TOOL_SERVER_SECRET,
+                _rules_without_tomllib("servers.toml", content),
+                header)
+
+    def test_a_second_table_ends_the_env_table(self):
+        content = ("[mcpServers.db.env]\nMODE = \"production\"\n"
+                   "[other]\nDB_PASSWORD = \"%s\"\n"
+                   % FAKE_PASSWORD).encode()
+        self.assertNotIn(AG.RULE_TOOL_SERVER_SECRET,
+                         _rules_without_tomllib("servers.toml",
+                                                content))
+
+
 class VcsCredentialTest(unittest.TestCase):
     def _text(self, *lines):
         return ("\n".join(lines) + "\n").encode()

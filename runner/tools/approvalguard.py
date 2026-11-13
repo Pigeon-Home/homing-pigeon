@@ -639,15 +639,332 @@ def _named_secret_findings(path, data):
 
 def _parse_toml(text):
     """A TOML document as data, or None: `tomllib` where the
-    interpreter carries it (3.11+), else the caller's line
-    fallback -- the fallback narrows the read, never the rules."""
+    interpreter carries it (3.11+), else the bounded subset
+    reader below -- the fallback narrows the read, never the
+    rules."""
     try:
         import tomllib
     except ImportError:
-        return None
+        return _parse_toml_fallback(text)
     try:
         return tomllib.loads(text)
     except ValueError:
+        return None
+
+
+class _TomlFallbackError(ValueError):
+    pass
+
+
+_TOML_BARE_KEY = re.compile(r"[A-Za-z0-9_-]+")
+_TOML_BARE_VALUE = re.compile(r"[^\s,\]\}#]+")
+_TOML_ESCAPES = {"b": "\b", "t": "\t", "n": "\n", "f": "\f",
+                 "r": "\r", '"': '"', "\\": "\\"}
+
+
+def _toml_string(text, at):
+    """One TOML string at `at`, as (value, next index)."""
+    if text.startswith('"""', at) or text.startswith("'''", at):
+        quote = text[at:at + 3]
+        end = text.find(quote, at + 3)
+        if end < 0:
+            raise _TomlFallbackError("unterminated string")
+        raw = text[at + 3:end]
+        if quote == '"""':
+            return _toml_basic_body(raw), end + 3
+        return raw, end + 3
+    quote = text[at]
+    if quote == "'":
+        end = text.find("'", at + 1)
+        if end < 0:
+            raise _TomlFallbackError("unterminated string")
+        return text[at + 1:end], end + 1
+    if quote == '"':
+        out = []
+        at += 1
+        while at < len(text):
+            char = text[at]
+            if char == '"':
+                return "".join(out), at + 1
+            if char == "\\":
+                out.append(_toml_escape(text, at))
+                at += _toml_escape_len(text, at)
+                continue
+            if char in "\r\n":
+                raise _TomlFallbackError("newline in string")
+            out.append(char)
+            at += 1
+        raise _TomlFallbackError("unterminated string")
+    raise _TomlFallbackError("not a string")
+
+
+def _toml_escape(text, at):
+    kind = text[at + 1:at + 2]
+    if kind in _TOML_ESCAPES:
+        return _TOML_ESCAPES[kind]
+    if kind == "u":
+        return chr(int(text[at + 2:at + 6], 16))
+    if kind == "U":
+        return chr(int(text[at + 2:at + 10], 16))
+    raise _TomlFallbackError("bad escape")
+
+
+def _toml_escape_len(text, at):
+    kind = text[at + 1:at + 2]
+    if kind == "u":
+        return 6
+    if kind == "U":
+        return 10
+    return 2
+
+
+def _toml_basic_body(raw):
+    out = []
+    at = 0
+    while at < len(raw):
+        if raw[at] == "\\" and at + 1 < len(raw) \
+                and (raw[at + 1] in _TOML_ESCAPES
+                     or raw[at + 1] in ("u", "U")):
+            out.append(_toml_escape(raw, at))
+            at += _toml_escape_len(raw, at)
+            continue
+        out.append(raw[at])
+        at += 1
+    return "".join(out)
+
+
+def _toml_skip_ws(text, at):
+    while at < len(text) and text[at] in " \t\r\n":
+        at += 1
+    return at
+
+
+def _toml_key_parts(text):
+    """A dotted TOML key (a header body or a key before the
+    `=`) as its parts: bare, basic-quoted and literal-quoted
+    segments."""
+    parts = []
+    at = _toml_skip_ws(text, 0)
+    while True:
+        if at >= len(text):
+            raise _TomlFallbackError("empty key")
+        if text[at] in "\"'":
+            part, at = _toml_string(text, at)
+            parts.append(part)
+        else:
+            match = _TOML_BARE_KEY.match(text, at)
+            if not match:
+                raise _TomlFallbackError("bad key")
+            parts.append(match.group(0))
+            at = match.end()
+        at = _toml_skip_ws(text, at)
+        if at >= len(text):
+            return parts
+        if text[at] != ".":
+            raise _TomlFallbackError("bad key separator")
+        at = _toml_skip_ws(text, at + 1)
+
+
+def _toml_value(text, at):
+    """One TOML value at `at`, as (value, next index)."""
+    at = _toml_skip_ws(text, at)
+    if at >= len(text):
+        raise _TomlFallbackError("missing value")
+    if text[at] in "\"'":
+        return _toml_string(text, at)
+    if text[at] == "[":
+        out = []
+        at = _toml_skip_ws(text, at + 1)
+        if at < len(text) and text[at] == "]":
+            return out, at + 1
+        while True:
+            value, at = _toml_value(text, at)
+            out.append(value)
+            at = _toml_skip_ws(text, at)
+            if at < len(text) and text[at] == ",":
+                at = _toml_skip_ws(text, at + 1)
+                if at < len(text) and text[at] == "]":
+                    return out, at + 1
+                continue
+            if at < len(text) and text[at] == "]":
+                return out, at + 1
+            raise _TomlFallbackError("bad array")
+    if text[at] == "{":
+        out = {}
+        at = _toml_skip_ws(text, at + 1)
+        if at < len(text) and text[at] == "}":
+            return out, at + 1
+        while True:
+            at = _toml_skip_ws(text, at)
+            start = at
+            # A dotted key inside an inline table runs to
+            # its `=`; bare and quoted segments only.
+            eq = text.find("=", at)
+            if eq < 0:
+                raise _TomlFallbackError("bad inline table")
+            parts = _toml_key_parts(text[start:eq])
+            value, at = _toml_value(text, eq + 1)
+            _toml_assign(out, parts, value)
+            at = _toml_skip_ws(text, at)
+            if at < len(text) and text[at] == ",":
+                at += 1
+                continue
+            if at < len(text) and text[at] == "}":
+                return out, at + 1
+            raise _TomlFallbackError("bad inline table")
+    match = _TOML_BARE_VALUE.match(text, at)
+    if not match:
+        raise _TomlFallbackError("bad value")
+    raw = match.group(0)
+    at = match.end()
+    if raw == "true":
+        return True, at
+    if raw == "false":
+        return False, at
+    cleaned = raw.replace("_", "")
+    try:
+        if cleaned.lower().startswith(("0x", "0o", "0b")):
+            return int(cleaned, 0), at
+        return int(cleaned), at
+    except ValueError:
+        pass
+    try:
+        return float(cleaned), at
+    except ValueError:
+        pass
+    if re.match(r"^\d{4}-\d{2}-\d{2}([Tt ]\d{2}:\d{2})?",
+                raw) or re.match(r"^\d{2}:\d{2}", raw):
+        # A date or time: the guard reads it as the text it
+        # is; no rule turns on a date's type.
+        return raw, at
+    raise _TomlFallbackError("unreadable bare value")
+
+
+def _toml_descend(root, parts, create_list=False):
+    """The table at a dotted path below `root`, made where
+    missing; an array-of-tables path descends into its newest
+    entry."""
+    node = root
+    for part in parts:
+        if isinstance(node, list):
+            if not node:
+                raise _TomlFallbackError("empty table array")
+            node = node[-1]
+        if not isinstance(node, dict):
+            raise _TomlFallbackError("table over a scalar")
+        if part not in node:
+            node[part] = [] if create_list else {}
+        node = node[part]
+    if isinstance(node, list):
+        if not node:
+            raise _TomlFallbackError("empty table array")
+        node = node[-1]
+    if not isinstance(node, dict):
+        raise _TomlFallbackError("table over a scalar")
+    return node
+
+
+def _toml_assign(table, parts, value):
+    parent = _toml_descend(table, parts[:-1]) \
+        if len(parts) > 1 else table
+    if parts[-1] in parent:
+        raise _TomlFallbackError("duplicate key")
+    parent[parts[-1]] = value
+
+
+def _toml_strip_comment(line):
+    """A line with its `#` comment removed: a `#` inside a
+    string is the string's, not a comment's."""
+    at = 0
+    while at < len(line):
+        if line[at] in "\"'":
+            try:
+                _value, at = _toml_string(line, at)
+            except (ValueError, IndexError):
+                return line
+            continue
+        if line[at] == "#":
+            return line[:at]
+        at += 1
+    return line
+
+
+def _toml_bracket_depth(text):
+    """The net `[`/`{` depth of a value fragment, strings
+    aside: above zero, the value continues on the next line."""
+    depth = 0
+    at = 0
+    while at < len(text):
+        if text[at] in "\"'":
+            try:
+                _value, at = _toml_string(text, at)
+            except (ValueError, IndexError):
+                return depth
+            continue
+        if text[at] in "[{":
+            depth += 1
+        elif text[at] in "]}":
+            depth -= 1
+        at += 1
+    return depth
+
+
+def _parse_toml_fallback(text):
+    """A TOML document as data, or None outside the bounded
+    subset -- the reader for interpreters with no `tomllib`
+    (before 3.11).
+
+    Table headers (including dotted paths such as
+    `[mcpServers.db.env]`), array-of-tables headers, dotted
+    keys, strings, integers, floats, booleans, dates read as
+    text, arrays and inline tables: the shapes vendor
+    configuration files are written in. A document outside
+    the subset returns None, so the caller falls back to the
+    line scan for it, the way the YAML subset reader's
+    documents do: a shape this reader cannot hold is read by
+    the other reader, not skipped.
+    """
+    try:
+        root = {}
+        current = root
+        lines = text.splitlines()
+        index = 0
+        while index < len(lines):
+            line = _toml_strip_comment(lines[index]).strip()
+            index += 1
+            if not line:
+                continue
+            if line.startswith("[[") and line.endswith("]]"):
+                parts = _toml_key_parts(line[2:-2])
+                parent = _toml_descend(root, parts[:-1]) \
+                    if len(parts) > 1 else root
+                entries = parent.setdefault(parts[-1], [])
+                if not isinstance(entries, list):
+                    raise _TomlFallbackError(
+                        "array table over a table")
+                entries.append({})
+                current = entries[-1]
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                parts = _toml_key_parts(line[1:-1])
+                current = _toml_descend(root, parts)
+                continue
+            eq = line.find("=")
+            if eq < 0:
+                raise _TomlFallbackError("line without a key")
+            parts = _toml_key_parts(line[:eq])
+            value_text = line[eq + 1:].strip()
+            while _toml_bracket_depth(value_text) > 0 \
+                    and index < len(lines):
+                value_text += "\n" + _toml_strip_comment(
+                    lines[index]).strip()
+                index += 1
+            value, end = _toml_value(value_text, 0)
+            if value_text[end:].strip():
+                raise _TomlFallbackError("trailing value text")
+            _toml_assign(current, parts, value)
+        return root
+    except (ValueError, IndexError, OverflowError):
         return None
 
 

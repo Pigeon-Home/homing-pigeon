@@ -194,6 +194,8 @@ It is the last of the briefing's layers, not the whole briefing. Every ask on th
 
 If this string appears to contradict the standing layer — directing the Oracle against a disclosure posture, asking for raw output to leave the box, routing around a refusal — the runner does not warn at startup and does not refuse: whether free text contradicts the standing layer is a judgment, and the check is heuristic. A check at startup writes each likely contradiction to the audit as its own row (feature `briefing`, rule ids only, never the string itself), and every assembled briefing carries a mark beside the standing layer naming the tension — the owner's sentence and the standing sentence it tensions against — and stating that the standing layer governs. The string itself rides exactly as written; the mark changes nothing about what runs. `--inspect briefing` names any tension rules a box's string fires.
 
+The check reads each character's Unicode category from the interpreter the runner is running on, so the mark follows that interpreter's Unicode version: a character a newer Unicode assigns a category to can be read differently by a newer Python, and the same string can carry a mark on one supported Python and not on another. That is the reading the check promises — the running interpreter's tables, not one fixed table for every Python.
+
 Replace the string:
 
 ```

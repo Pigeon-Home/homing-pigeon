@@ -368,7 +368,102 @@ measurement in this lane, 2026-11-12):**
   briefing's operator page before the tests below ran; if
   the measurement contradicts this, the answer says so.)
 
-**Answer** --
+**Conclusions (2026-11-12):** every supposition holds; none
+of the measurements contradicts the recommendation. S1:
+this lane's machine runs Python 3.12.3 (Unicode 15.0.0),
+and the four filed shapes run green there as filed -- the
+local proof covers the 3.12 shape whole and the 3.9 / 3.14
+shapes by construction and simulation only, as supposed.
+S2: with `tomllib` blocked in simulation on 3.12,
+`_parse_toml` returned None and the scan of a
+`[mcpServers.db.env]` document found no rules at all --
+the filed 3.9 failure reproduced exactly. S3 / S4: the
+sample and the inventory are already computed from the
+running tables, so deriving the expected counts from the
+same tables keeps every assertion the pins carried except
+the one fact that was never the tests' to pin -- which
+Unicode version the interpreter carries; the filed counts
+stand in the tests as the 3.12 record, not as expectations.
+S5: the fallback reader below makes the simulated
+no-`tomllib` scan fire the tool-server-secret, and the
+`tomllib` path is untouched. S6: no record was found that
+holds a briefing must read identically on every Python --
+the guard's own text states its rule by category and
+standing -- so option 1's premise is absent and the answer
+does not switch to it. The fourth filed failure, the
+full-log test, stands fixed in the filing landing as the
+asker said: this lane verified it (it reads both unittest
+`-v` forms, and `FullLogTest` runs green here) and did not
+redo it. Option 3 was not taken: narrowing the range is
+the conductor's alone.
+
+**Answer (2026-11-12):** option 2, as recommended, and the
+TOML fallback learns table headers. The guard in
+`runner/ops/briefing.py` is unchanged: it keeps reading
+`unicodedata.category` from the running interpreter. What
+changed is what the tests expect and what the pages say:
+
+- `runner/tests/test_briefing_contradiction.py`: the Q166
+  sample test derives its expected count from the running
+  tables (the distinct (category, block) groups the sample
+  itself is computed from); the Q167 inventory test derives
+  its expected inventory by an independent re-derivation
+  from the running tables and compares whole, instead of
+  pinning 48964 / 87139 / 55 / 137468; the Q167 unassigned
+  shapes are the filed points the running tables still
+  call Cn (`Q167_UNASSIGNED_STILL`), and a filed point a
+  newer table assigns as a letter is asserted into that
+  letter inventory, where the firing shapes cover it.
+- `runner/tools/approvalguard.py`: `_parse_toml` falls
+  back, where the interpreter carries no `tomllib`, to a
+  bounded subset reader (`_parse_toml_fallback`) that
+  builds the nested document from table headers --
+  `[mcpServers.db.env]` included -- dotted keys, strings,
+  numbers, booleans, dates read as text, arrays and inline
+  tables, with array-of-tables headers; a document outside
+  the subset returns None and the line scan reads it, the
+  YAML subset's standing shape. The scan's rules are
+  unchanged: the same findings now fire on 3.9 / 3.10 that
+  fire from 3.11.
+- The briefing's operator page
+  (`docs/infrastructure-documents/oracle/configuring-oracle.md`)
+  states the fact plainly, with no process trail: the mark
+  follows the interpreter's Unicode version. The approval
+  guard's page (`docs/steady/security/agent-state-files.md`)
+  says TOML is read by the subset reader, table headers
+  included, where `tomllib` is absent.
+
+Proof in this lane, on Python 3.12.3: the Q166 and Q167
+classes whole (22 tests, green), the approval-guard suites
+whole (81 tests, green, including the 12 new
+`TomlFallbackTest` tests pinning the fallback's reads, its
+agreement with `tomllib` where present, its
+outside-the-subset None, and bookended / header-variant
+shapes under a simulated no-`tomllib` scan), `test_core`
+(30 tests, green), the reader-doc guard and the full-log
+test (6 tests, green), `refresh_figures --check` clean and
+the shrink guard clean. Q169 is NOT closed by this lane:
+it closes only when a `python-range` run on a release tag
+completes green on both legs, and that hosted verdict is
+still owed -- the next release tag whose tree carries this
+landing supplies it, since the workflow dispatches on tags
+whose runner tree changed.
+
+**Applied in:** the answer lane's commits -- the
+suppositions commit recorded in the desk before any
+measurement ("desk: Q169 suppositions recorded before
+measurement"), and this landing's commit ("Q169: the
+briefing tests derive their counts from the running
+interpreter; the TOML fallback reads table headers
+(option 2)") -- `runner/tests/test_briefing_contradiction.py`
+(the derived Q166 count, the derived Q167 inventory and
+the still-unassigned list), `runner/tools/approvalguard.py`
+(the bounded TOML fallback reader), `runner/tests/test_approvalguard_extensions.py`
+(the `TomlFallbackTest` family),
+`docs/infrastructure-documents/oracle/configuring-oracle.md`
+(the mark follows the interpreter's Unicode version) and
+`docs/steady/security/agent-state-files.md` (the TOML
+subset reader, table headers included).
 
 ## Q168 (Claude asks Muse, 2026-11-12): a child that exits before the Job Object is assigned refuses a job that already ran
 
