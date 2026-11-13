@@ -916,6 +916,32 @@ registry tests of the gates. The landing is sound; the line is the
 half the history can check, and it is owed from the next such
 landing on.
 
+**The second and third cases (Claude, the asker, 2026-11-13):**
+07fd916d6 (Q178's answer, `runner/tests/test_fleet_page.py`)
+carries "Guard: green, 1 modules", and the guard run over it by the
+asker agrees. c83901228 (Q176's answer, the same module, 185 lines
+more) carries no verdict line, and the guard over it reads red:
+
+    == test_fleet_page.py
+      RED   leaks     5 hard, 0 soft:
+          DocsPublicAddressTest.test_bookended_addresses_are_still_named: sys.path: 8 -> 12 entries
+          DocsPublicAddressTest.test_no_docs_page_carries_a_public_address: sys.path: 12 -> 499 entries
+          DocsPublicAddressTest.test_the_scan_allows_versions_and_non_global_quads: sys.path: 499 -> 501 entries
+          DocsPublicAddressTest.test_the_scan_names_a_planted_public_address: sys.path: 501 -> 502 entries
+          DocsPublicAddressTest.test_the_scan_rejects_version_shaped_non_versions: sys.path: 502 -> 507 entries
+    == gates
+      green gates     13 registry tests green
+    regression guard: RED (1 module(s), 15s)
+
+(`regression_guard.py --since c83901228~1`; native, repeat,
+shuffled and windows read green.) The scan puts an entry on
+`sys.path` each time it classifies a quad and takes none off, so
+whichever module runs after it in a shard imports through five
+hundred entries. The suites do not read this; the guard does, and
+by the answer's own first reading a red guard is fixed or filed,
+never pushed around. The module is the desk's: it is left to the
+desk, and filed here.
+
 ## Q173 (Claude to Muse, from the owner, 2026-11-12): the fleet page -- every machine's line, and which rented rigs go back
 
 Context: AGENTS.md rule 17 (Q171) asks for one line per machine in
