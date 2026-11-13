@@ -18,6 +18,22 @@ The method, as the standing audit states it:
   The figure is an upper bound: it counts both sides of every
   repetition and misses clones shorter than the window or
   heavily renamed.
+- Templated lines (AGENTS.md rule 16, Q172): the lines of
+  a written-out list -- a list, tuple or set literal of at
+  least the window's 8 elements -- count when they are
+  equal to other such lines once the one varying token is
+  masked: for each token position, the line with that
+  token replaced by a mask forms a group, and a group
+  standing at the same repetition scale (8 or more lines)
+  marks every line in it. A literal line repeated exactly
+  8 or more times counts the same way. Single-token lines
+  carry no varying token and count only by exact
+  repetition. Lines outside a written-out list are not the
+  measure's to name: ordinary code that merely resembles
+  other code is the window measure's ground, not this
+  one's. The total latent figure is the union of the
+  near-duplicate and templated marks, counted once per
+  line, plus the exact-copy lines.
 - Exact copies: tracked files grouped by content hash; the
   lines of every copy past the first count.
 - Unreferenced Python files: a file counts as referenced when
@@ -36,6 +52,7 @@ The method, as the standing audit states it:
         and the statistics facts are written from.
 """
 import argparse
+import ast
 import hashlib
 import json
 import os
@@ -98,10 +115,12 @@ def normalized_lines(text):
     return out
 
 
-def near_duplicate_lines(root, python_files):
-    """Per-file near-duplicate line counts, by the window method.
+def _near_duplicate_marked(root, python_files):
+    """Per-file near-duplicate marks, by the window method.
 
-    Returns {relpath: (raw_lines, normalized_count, dup_count)}.
+    Returns {relpath: (raw_lines, normalized_count, marked)}
+    where marked is a bytearray over the file's normalized
+    lines, 1 at each line sitting in a repeated window.
     """
     per_file = {}
     window_positions = {}
@@ -110,7 +129,7 @@ def near_duplicate_lines(root, python_files):
         text = _read_text(root, rel)
         seq = normalized_lines(text)
         sequences[rel] = seq
-        per_file[rel] = [count_lines(text), len(seq), 0]
+        per_file[rel] = [count_lines(text), len(seq), None]
         for start in range(len(seq) - WINDOW + 1):
             window = tuple(seq[start:start + WINDOW])
             window_positions[window] = \
@@ -122,8 +141,110 @@ def near_duplicate_lines(root, python_files):
             if tuple(seq[start:start + WINDOW]) in repeated:
                 for pos in range(start, start + WINDOW):
                     marked[pos] = 1
-        per_file[rel][2] = sum(marked)
+        per_file[rel][2] = marked
     return {rel: tuple(vals) for rel, vals in per_file.items()}
+
+
+def near_duplicate_lines(root, python_files):
+    """Per-file near-duplicate line counts, by the window method.
+
+    Returns {relpath: (raw_lines, normalized_count, dup_count)}.
+    """
+    return {rel: (vals[0], vals[1], sum(vals[2]))
+            for rel, vals in _near_duplicate_marked(
+                root, python_files).items()}
+
+
+MASK_TOKEN = "\x00masked\x00"
+
+
+def _list_literal_lines(text):
+    """The raw line numbers a written-out list stands on:
+    every line of a list, tuple or set literal carrying at
+    least WINDOW elements. A file that does not parse
+    carries none the measure can name."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return set()
+    lines = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.List, ast.Tuple, ast.Set)) \
+                and len(node.elts) >= WINDOW:
+            end = node.end_lineno or node.lineno
+            lines.update(range(node.lineno, end + 1))
+    return lines
+
+
+def _templated_marked(root, python_files):
+    """Per-file templated marks, by the masked-token method
+    over written-out lists (AGENTS.md rule 16).
+
+    A normalized line inside a list, tuple or set literal
+    of at least WINDOW elements is marked when a group it
+    belongs to -- counted over the tree's literal lines --
+    stands at the repetition scale (WINDOW lines or more):
+    either the exact line's own group, or, for a line of
+    two or more tokens, the group of lines equal to it once
+    one token position is masked. Returns {relpath:
+    (raw_lines, normalized_count, marked)} with marked a
+    bytearray over the file's normalized lines.
+    """
+    per_file = {}
+    sequences = {}
+    exact_counts = {}
+    masked_counts = {}
+    for rel in python_files:
+        text = _read_text(root, rel)
+        literal_lines = _list_literal_lines(text)
+        seq = []
+        for lineno, raw in enumerate(text.splitlines(), 1):
+            line = raw.strip()
+            if not line or line.startswith("#"):
+                continue
+            seq.append((lineno in literal_lines, line))
+        sequences[rel] = seq
+        per_file[rel] = [count_lines(text), len(seq), None]
+        for in_literal, line in seq:
+            if not in_literal:
+                continue
+            exact_counts[line] = exact_counts.get(line, 0) + 1
+            tokens = line.split()
+            if len(tokens) < 2:
+                continue
+            for at in range(len(tokens)):
+                key = tuple(tokens[:at]) + (MASK_TOKEN,) + \
+                    tuple(tokens[at + 1:])
+                masked_counts[key] = masked_counts.get(key, 0) + 1
+    for rel, seq in sequences.items():
+        marked = bytearray(len(seq))
+        for pos, (in_literal, line) in enumerate(seq):
+            if not in_literal:
+                continue
+            if exact_counts[line] >= WINDOW:
+                marked[pos] = 1
+                continue
+            tokens = line.split()
+            for at in range(len(tokens)):
+                key = tuple(tokens[:at]) + (MASK_TOKEN,) + \
+                    tuple(tokens[at + 1:])
+                if masked_counts.get(key, 0) >= WINDOW:
+                    marked[pos] = 1
+                    break
+        per_file[rel][2] = marked
+    return {rel: tuple(vals) for rel, vals in per_file.items()}
+
+
+def templated_lines(root, python_files):
+    """Per-file templated line counts, by the masked-token
+    method over written-out lists (AGENTS.md rule 16).
+
+    Returns {relpath: (raw_lines, normalized_count,
+    templated_count)}.
+    """
+    return {rel: (vals[0], vals[1], sum(vals[2]))
+            for rel, vals in _templated_marked(
+                root, python_files).items()}
 
 
 def exact_copies(root, files):
@@ -212,16 +333,58 @@ def audit(root):
     tree_lines = 0
     for rel in files:
         tree_lines += count_lines(_read_text(root, rel))
-    per_file = near_duplicate_lines(root, python_files)
+    near_marked = _near_duplicate_marked(root, python_files)
+    per_file = {rel: (vals[0], vals[1], sum(vals[2]))
+                for rel, vals in near_marked.items()}
+    templated_marked = _templated_marked(root, python_files)
+    templated_per_file = {rel: (vals[0], vals[1], sum(vals[2]))
+                          for rel, vals in
+                          templated_marked.items()}
     python_lines = sum(v[0] for v in per_file.values())
     near_lines = sum(v[2] for v in per_file.values())
     test_lines = sum(v[2] for rel, v in per_file.items()
                      if rel.replace(os.sep, "/").startswith(
                          "runner/tests/"))
     prod_lines = near_lines - test_lines
+    templated_total = sum(v[2] for v in
+                          templated_per_file.values())
+    templated_test = sum(
+        v[2] for rel, v in templated_per_file.items()
+        if rel.replace(os.sep, "/").startswith("runner/tests/"))
+    templated_prod = templated_total - templated_test
     exact_lines, exact_groups = exact_copies(root, files)
+    # Total latent: the near and templated marks unioned per
+    # line, plus the exact-copy lines. A Python file that is
+    # itself a copy past the first is charged its whole raw
+    # length once, through the exact figure, and its marked
+    # lines are not charged again.
+    exact_copy_files = {copy for _kept, copies, _lines
+                        in exact_groups for copy in copies}
+    exact_python_lines = sum(
+        lines * sum(1 for copy in copies
+                    if copy.endswith(".py"))
+        for _kept, copies, lines in exact_groups)
+    latent_python = 0
+    for rel, vals in near_marked.items():
+        if rel in exact_copy_files:
+            continue
+        near_marks = vals[2]
+        templated_marks = templated_marked[rel][2]
+        latent_python += sum(
+            1 for a, b in zip(near_marks, templated_marks)
+            if a or b)
+    total_latent_lines = (latent_python
+                          + (exact_lines - exact_python_lines)
+                          + sum(per_file[rel][0]
+                                for rel in exact_copy_files
+                                if rel in per_file))
+    total_latent_percent = _percent(total_latent_lines,
+                                    tree_lines)
     near_percent = _percent(near_lines, tree_lines)
     top = sorted(per_file.items(), key=lambda kv: -kv[1][2])[:20]
+    top_templated = sorted(
+        templated_per_file.items(),
+        key=lambda kv: -kv[1][2])[:20]
     commit = None
     if os.path.isdir(os.path.join(root, ".git")):
         commit = subprocess.run(
@@ -240,6 +403,15 @@ def audit(root):
         "near_duplicate_test_lines": test_lines,
         "near_duplicate_production_lines": prod_lines,
         "non_latent_percent": round(100.0 - near_percent, 2),
+        "templated_lines": templated_total,
+        "templated_percent_tree": _percent(
+            templated_total, tree_lines),
+        "templated_percent_python": _percent(
+            templated_total, python_lines),
+        "templated_test_lines": templated_test,
+        "templated_production_lines": templated_prod,
+        "total_latent_lines": total_latent_lines,
+        "total_latent_percent_tree": total_latent_percent,
         "exact_copy_lines": exact_lines,
         "exact_copy_percent_tree": _percent(exact_lines, tree_lines),
         "exact_copy_groups": [
@@ -253,6 +425,11 @@ def audit(root):
              "normalized_lines": vals[1],
              "near_duplicate_lines": vals[2]}
             for rel, vals in top if vals[2] > 0],
+        "top_templated_files": [
+            {"path": rel, "lines": vals[0],
+             "normalized_lines": vals[1],
+             "templated_lines": vals[2]}
+            for rel, vals in top_templated if vals[2] > 0],
     }
 
 
@@ -270,6 +447,18 @@ def _summary(result):
         "  in tests: %d — in production: %d" % (
             result["near_duplicate_test_lines"],
             result["near_duplicate_production_lines"]),
+        "templated: %d lines \u2014 %s%% of the tree, %s%% of "
+        "the Python" % (
+            result["templated_lines"],
+            result["templated_percent_tree"],
+            result["templated_percent_python"]),
+        "  in tests: %d \u2014 in production: %d" % (
+            result["templated_test_lines"],
+            result["templated_production_lines"]),
+        "total latent (near, templated and exact, overlaps "
+        "counted once): %d lines \u2014 %s%% of the tree" % (
+            result["total_latent_lines"],
+            result["total_latent_percent_tree"]),
         "non-latent: %s%%" % result["non_latent_percent"],
         "exact copies: %d lines beyond the first copy — %s%% "
         "of the tree" % (
