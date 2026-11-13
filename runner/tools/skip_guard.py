@@ -36,7 +36,12 @@ def skips_in(lines):
     return reasons
 
 
-_FAIL_RE = re.compile(r"^(FAIL|ERROR): \S+ \(tests\.")
+# A failure id's module path depends on how discovery was rooted:
+# `-s runner/tests` prints (tests.<module>...), `-t .` from the tree
+# root prints (runner.tests.<module>...) -- freebsd.yml discovers
+# the second way, and a regex pinned to the first left its red
+# tests unnamed in the annotations (Q175).
+_FAIL_RE = re.compile(r"^(FAIL|ERROR): \S+ \((?:runner\.)?tests\.")
 _EXC_RE = re.compile(r"^([A-Za-z_][A-Za-z0-9_.]*Error|[A-Za-z_]*Exception|"
                      r"AssertionError|bwrap|ImportError|ModuleNotFoundError)"
                      r"(: |$)")

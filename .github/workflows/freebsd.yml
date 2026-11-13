@@ -59,6 +59,20 @@ jobs:
           release: "15.0"
           usesh: true
           mem: 4096
+          # The evidence path out of the VM, stated in the open
+          # (Q175): for 15.0 on x86_64 the action's first sync
+          # method is rsync, a copy-based method -- the workspace
+          # inside the VM is a copy on the VM's own disk, and the
+          # report files the run writes into it reach the host
+          # only through the action's copy-back phase. That phase
+          # is requested explicitly here rather than left to a
+          # default, and the run also prints the suite's failing
+          # ids into this step's own log (below), which streams
+          # live to the run page and cannot be lost with the
+          # copy-back. Until this stood here the artifacts total
+          # for this workflow was 0 on every run.
+          sync: rsync
+          copyback: true
           # The VM's output is the step's, so ::error lines written
           # inside it reach the run page; each phase names itself
           # when it fails, since the log is not readable from every
@@ -75,7 +89,7 @@ jobs:
             # on 15.0, 3.11 before); take whichever flavor has
             # hypothesis, and remember the interpreter for the run.
             PY=""
-            pkg install -y git node >> pkg.log 2>&1 || echo "::warning title=freebsd prepare::git/node did not install: $(tail -n 3 pkg.log | tr '\n' ' ' | cut -c1-300)"
+            pkg install -y git node bash >> pkg.log 2>&1 || echo "::warning title=freebsd prepare::git/node/bash did not install: $(tail -n 3 pkg.log | tr '\n' ' ' | cut -c1-300)"
             for v in 312 311; do
               if pkg install -y "python$v" "py$v-hypothesis" >> pkg.log 2>&1; then
                 PY="python3.${v#3}"; break
@@ -122,6 +136,17 @@ jobs:
             su -l runner -c "export TMPDIR=/home/runner/tmp; cd '$GITHUB_WORKSPACE' && $PY runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" > /tmp/suite-freebsd.log 2>&1 || rc=$?
             tail -n 40 /tmp/suite-freebsd.log
             "$PY" runner/tools/skip_guard.py /tmp/suite-freebsd.log --annotate || true
+            # The failing tests named in this step's own log (Q175):
+            # the annotations above are capped at ten, and the
+            # artifact below depends on the VM's copy-back phase,
+            # while this step's stdout is the run page's log and
+            # streams as it is written. Every FAIL:/ERROR: id the
+            # suite printed, then its verdict lines, so a red run
+            # names all of its red tests here even when the
+            # artifact does not arrive.
+            echo "== the suite's failing tests, named in this log"
+            grep -E "^(FAIL|ERROR): " /tmp/suite-freebsd.log || true
+            grep -E "^(Ran [0-9]+ tests|OK|FAILED)" /tmp/suite-freebsd.log || true
             # The reports join the tree only now, for the artifact: a
             # root .md present while the suite runs reads as a live
             # doc to the doc guards.
@@ -136,4 +161,7 @@ jobs:
             suite-freebsd.log
             switch-proofs-freebsd-root.md
             freebsd-sh.log
-          if-no-files-found: ignore
+          # warn, not ignore (Q175): an empty artifact was the
+          # standing state for this workflow's whole history and
+          # `ignore` is what kept that invisible on the run page.
+          if-no-files-found: warn

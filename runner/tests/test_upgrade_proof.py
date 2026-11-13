@@ -142,5 +142,180 @@ class PreviousReleaseCrossSchemeTest(unittest.TestCase):
                          "v3.15.17.159")
 
 
+class ServiceDefinitionPlatformTest(unittest.TestCase):
+    """Q175: the service check branches the way install.py installs.
+
+    install.py writes a systemd user unit on Linux, a launchd
+    plist on macOS, and a cron @reboot entry -- no service file
+    at all -- on FreeBSD. upgrade_proof's check used to read the
+    systemd path on every non-macOS platform, so it failed on
+    FreeBSD by construction. The helper takes the platform as an
+    argument, so every branch is pinned here on any host.
+    """
+
+    def setUp(self):
+        self.work = tempfile.mkdtemp(prefix="hp-upgrade-svc-")
+        self.addCleanup(shutil.rmtree, self.work, True)
+        self.home = os.path.join(self.work, "home")
+        os.makedirs(self.home)
+        self.runner = os.path.join(self.home, ".homing-pigeon",
+                                   "runner.py")
+        self.cfg = os.path.join(self.home, ".homing-pigeon",
+                                "config.json")
+        self.crontab = os.path.join(self.work, "crontab.txt")
+
+    def _failures(self, platform):
+        return UP._service_definition_failures(
+            platform, self.home, self.runner, self.cfg, self.crontab)
+
+    def _entry(self, when="@reboot", runner=None, cfg=None, extra=""):
+        return "%s %s --config %s%s" % (
+            when, runner or self.runner, cfg or self.cfg, extra)
+
+    def _write_crontab(self, text):
+        with open(self.crontab, "w", encoding="utf-8") as fh:
+            fh.write(text)
+
+    # The FreeBSD branch.
+
+    def test_freebsd_the_installers_reboot_entry_passes(self):
+        self._write_crontab(self._entry() + "\n")
+        for spelling in ("freebsd", "freebsd13", "freebsd14",
+                         "freebsd15"):
+            self.assertEqual(self._failures(spelling), [], spelling)
+
+    def test_freebsd_a_missing_crontab_is_a_missing_definition(self):
+        failures = self._failures("freebsd14")
+        self.assertEqual(len(failures), 1)
+        self.assertTrue(failures[0].startswith(
+            "service definition missing"), failures)
+
+    def test_freebsd_no_crontab_path_is_a_missing_definition(self):
+        failures = UP._service_definition_failures(
+            "freebsd14", self.home, self.runner, self.cfg, None)
+        self.assertTrue(failures[0].startswith(
+            "service definition missing"), failures)
+
+    def test_freebsd_an_entry_for_another_config_fails(self):
+        self._write_crontab(self._entry(
+            cfg=os.path.join(self.home, "other.json")) + "\n")
+        failures = self._failures("freebsd14")
+        self.assertEqual(len(failures), 1)
+        self.assertIn("does not start the installed runner",
+                      failures[0])
+        self.assertIn(self.crontab, failures[0])
+
+    def test_freebsd_an_entry_for_another_runner_fails(self):
+        self._write_crontab(self._entry(
+            runner=os.path.join(self.home, "other.py")) + "\n")
+        self.assertEqual(len(self._failures("freebsd14")), 1)
+
+    def test_freebsd_a_scheduled_line_is_not_the_entry(self):
+        # install.py writes @reboot and nothing else starts the
+        # runner at boot; a plain schedule line naming the same
+        # command is not the installer's definition.
+        self._write_crontab(self._entry(when="0 3 * * *") + "\n")
+        self.assertEqual(len(self._failures("freebsd14")), 1)
+
+    def test_freebsd_the_entry_among_other_lines_passes(self):
+        # Bookends in the table itself: comments, a neighbour's
+        # job and a trailing line around the entry change nothing.
+        self._write_crontab(
+            "# the owner's crontab\n"
+            "0 3 * * * /usr/bin/true\n"
+            + self._entry(extra=" --flag") + "\n"
+            "# end\n")
+        self.assertEqual(self._failures("freebsd14"), [])
+
+    def test_freebsd_an_indented_or_ornamented_entry_fails(self):
+        for line in (" " + self._entry(), "-" + self._entry(),
+                     "# " + self._entry()):
+            self._write_crontab(line + "\n")
+            self.assertEqual(len(self._failures("freebsd14")), 1,
+                             line)
+
+    def test_freebsd_an_empty_crontab_fails_as_no_entry(self):
+        self._write_crontab("")
+        failures = self._failures("freebsd14")
+        self.assertEqual(len(failures), 1)
+        self.assertIn("does not start", failures[0])
+
+    # The branches that stood before: read as they read today.
+
+    def _write_unit(self, rel, text):
+        path = os.path.join(self.home, *rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        return path
+
+    def test_the_systemd_branch_is_unchanged(self):
+        rel = (".config", "systemd", "user", "homing-pigeon.service")
+        missing = self._failures("linux")
+        self.assertTrue(missing[0].startswith(
+            "service definition missing"), missing)
+        self._write_unit(rel, "ExecStart=%s --config %s\n"
+                         % (self.runner, self.cfg))
+        self.assertEqual(self._failures("linux"), [])
+        self._write_unit(rel, "ExecStart=/bin/true\n")
+        failures = self._failures("linux")
+        self.assertEqual(len(failures), 1)
+        self.assertIn("does not start the installed runner",
+                      failures[0])
+
+    def test_the_launchd_branch_is_unchanged(self):
+        rel = ("Library", "LaunchAgents",
+               "com.homing-pigeon.runner.plist")
+        missing = self._failures("darwin")
+        self.assertTrue(missing[0].startswith(
+            "service definition missing"), missing)
+        self._write_unit(rel, "<string>%s</string><string>%s</string>"
+                         % (self.runner, self.cfg))
+        self.assertEqual(self._failures("darwin"), [])
+        self._write_unit(rel, "<string>/bin/true</string>")
+        self.assertEqual(len(self._failures("darwin")), 1)
+
+
+@unittest.skipIf(os.name == "nt", "the crontab stand-in is a sh script")
+class CrontabStandinTest(unittest.TestCase):
+    """The proof's crontab shim keeps the table it is handed.
+
+    install_freebsd reads `crontab -l`, decides the entry is
+    absent, and installs the new table with `crontab -`; the
+    stand-in has to round-trip that or the FreeBSD branch of
+    prove() would check a table the installer never wrote.
+    """
+
+    def test_install_then_list_round_trips(self):
+        import subprocess
+        work = tempfile.mkdtemp(prefix="hp-crontab-shim-")
+        self.addCleanup(shutil.rmtree, work, True)
+        shim = os.path.join(work, "crontab")
+        with open(shim, "w", encoding="utf-8") as fh:
+            fh.write(UP._FAKE_CRONTAB_TOOL)
+        os.chmod(shim, 0o755)
+        env = dict(os.environ,
+                   HP_CRONTAB_FILE=os.path.join(work, "table"))
+        # -l before any install: no table yet, a failing read --
+        # the shape install.py reads as "no existing crontab".
+        first = subprocess.run([shim, "-l"], env=env,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT,
+                               universal_newlines=True)
+        self.assertNotEqual(first.returncode, 0)
+        line = "@reboot /home/x/runner.py --config /home/x/cfg.json\n"
+        fed = subprocess.run([shim, "-"], env=env, input=line,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT,
+                             universal_newlines=True)
+        self.assertEqual(fed.returncode, 0, fed.stdout)
+        listed = subprocess.run([shim, "-l"], env=env,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.STDOUT,
+                                universal_newlines=True)
+        self.assertEqual(listed.returncode, 0)
+        self.assertEqual(listed.stdout, line)
+
+
 if __name__ == "__main__":
     unittest.main()

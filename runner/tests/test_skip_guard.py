@@ -229,5 +229,117 @@ class RuleTests(unittest.TestCase):
         self.assertIn("none", out)
 
 
+class RunnerTestsPrefixTests(unittest.TestCase):
+    """Q175: ids rooted at the tree root name their tests too.
+
+    Discovery rooted differently prints different ids: `-s
+    runner/tests` gives (tests.<module>...), while freebsd.yml's
+    `discover -s runner/tests -t .` gives (runner.tests.<module>...).
+    _FAIL_RE used to accept only the first shape, so on the
+    FreeBSD leg the annotations collapsed to deduplicated
+    exception lines and most red tests were never named.
+    """
+
+    def _log(self, *ids):
+        lines = ["%s: %s (%s)" % (kind, name, mod)
+                 for kind, name, mod in ids]
+        lines.append("Ran %d tests in 0.1s" % len(ids))
+        lines.append("FAILED (failures=%d)" % len(ids))
+        return lines
+
+    def test_the_runner_tests_form_is_named(self):
+        lines = self._log(
+            ("FAIL", "test_a", "runner.tests.test_alpha.T.test_a"),
+            ("ERROR", "test_b", "runner.tests.test_beta.T.test_b"))
+        self.assertEqual(SG.failures_in(lines), [
+            "FAIL: test_a (runner.tests.test_alpha.T.test_a)",
+            "ERROR: test_b (runner.tests.test_beta.T.test_b)"])
+
+    def test_the_old_tests_form_still_names(self):
+        lines = self._log(
+            ("FAIL", "test_a", "tests.test_alpha.T.test_a"),
+            ("ERROR", "test_b", "tests.test_beta.T.test_b"))
+        self.assertEqual(len(SG.failures_in(lines)), 2)
+
+    def test_both_forms_in_one_log_are_all_named(self):
+        lines = self._log(
+            ("FAIL", "test_a", "tests.test_alpha.T.test_a"),
+            ("ERROR", "test_b", "runner.tests.test_beta.T.test_b"),
+            ("FAIL", "test_c", "runner.tests.test_alpha.T.test_c"),
+            ("ERROR", "test_d", "tests.test_beta.T.test_d"))
+        self.assertEqual(len(SG.failures_in(lines)), 4)
+
+    def test_the_filed_shape_names_ten_and_spends_no_slot_on_noise(self):
+        # The filed FreeBSD shape (v3.16.24.14/.17/.18): failures=2,
+        # errors=11, every id under runner.tests. Actions takes ten
+        # annotations, so ten ids are named, in log order, and the
+        # exception lines that used to take the slots get none.
+        ids = [("FAIL", "test_f%d" % i, "runner.tests.test_a.T.test_f%d" % i)
+               for i in range(2)]
+        ids += [("ERROR", "test_e%d" % i,
+                 "runner.tests.test_b.T.test_e%d" % i) for i in range(11)]
+        lines = ["AssertionError: fixture noise"] + self._log(*ids)
+        lines.insert(-1, "AssertionError: the real one")
+        got = SG.failures_in(lines)
+        self.assertEqual(len(got), 10)
+        self.assertTrue(all(g.startswith(("FAIL:", "ERROR:"))
+                            for g in got), got)
+        self.assertEqual(got[0],
+                         "FAIL: test_f0 (runner.tests.test_a.T.test_f0)")
+        self.assertEqual(got[-1],
+                         "ERROR: test_e7 (runner.tests.test_b.T.test_e7)")
+
+    def test_other_prefixes_stay_unnamed(self):
+        # The widening is exactly the runner. prefix: a fixture's
+        # fake id and deeper or shallower roots still do not match.
+        for mod in ("test_gamma.T.test_x", "runner.test_a.T.test_x",
+                    "x.runner.tests.test_a.T.test_x",
+                    "runner.testsx.test_a.T.test_x",
+                    "runner.runner.tests.test_a.T.test_x"):
+            lines = self._log(("FAIL", "test_x", mod))
+            self.assertEqual(SG.failures_in(lines), [], mod)
+
+    def test_bookended_lines_stay_unnamed(self):
+        # Bookends: a symbol run at the front of the line breaks
+        # the anchor, and an ornament before the parenthesis
+        # breaks the id shape -- under both module roots.
+        import string
+        for mod in ("tests.test_a.T.test_x",
+                    "runner.tests.test_a.T.test_x"):
+            line = "FAIL: test_x (%s)" % mod
+            for ch in string.punctuation:
+                self.assertEqual(SG.failures_in(
+                    self._log_dummy(ch + line)), [], ch + line)
+            self.assertEqual(SG.failures_in(self._log_dummy(
+                "FAIL: test_x -(%s)" % mod)), [])
+            self.assertEqual(SG.failures_in(self._log_dummy(
+                " FAIL: test_x (%s)" % mod)), [])
+            # A symbol at the back changes nothing: the id has
+            # already matched by the opening of its module path.
+            self.assertEqual(SG.failures_in(self._log_dummy(
+                line + " -")), [line + " -"])
+
+    def _log_dummy(self, line):
+        return [line, "Ran 1 test in 0.0s", "FAILED (failures=1)"]
+
+    def test_annotate_prints_the_runner_tests_ids(self):
+        import tempfile
+        log = "\n".join(self._log(
+            ("FAIL", "test_a", "runner.tests.test_alpha.T.test_a"))) + "\n"
+        with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False,
+                                         encoding="utf-8") as fh:
+            fh.write(log)
+            path = fh.name
+        try:
+            out = io.StringIO()
+            with redirect_stdout(out):
+                SG.main([path, "--annotate"])
+            self.assertIn(
+                "::error::FAIL: test_a (runner.tests.test_alpha.T.test_a)",
+                out.getvalue())
+        finally:
+            os.unlink(path)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -6,7 +6,7 @@
 
 OLD_TREE and NEW_TREE are repository checkouts (the folder holding
 runner/). The proof runs in a throwaway HOME with stand-in
-systemctl and launchctl on PATH, so it needs no root, no systemd and no mailbox:
+systemctl, launchctl and crontab on PATH, so it needs no root, no systemd and no mailbox:
 
 1. OLD_TREE's installer installs into HOME/.homing-pigeon with a
    fresh shared secret, as a first install does.
@@ -17,7 +17,9 @@ systemctl and launchctl on PATH, so it needs no root, no systemd and no mailbox:
 4. Every key the owner had keeps its value, every state file keeps
    its bytes, the installed runner reports NEW_TREE's version, its
    posture report loads the upgraded config to the end, and the
-   service unit starts the installed runner with that config.
+   service definition starts the installed runner with that
+   config: the systemd unit on Linux, the launchd plist on macOS,
+   the cron @reboot entry install.py writes on FreeBSD (Q175).
 
 Exit 0 when every check holds; 1 with each failed check named.
 
@@ -45,6 +47,18 @@ echo "$(basename "$0") $*" >> "$HP_SYSTEMCTL_LOG"
 exit 0
 """
 _SERVICE_TOOLS = ("systemctl", "launchctl")
+
+# A file-backed crontab stand-in: install.py's FreeBSD branch
+# shells out to crontab (-l reads the current table, - installs
+# one from stdin), so the exit-0 stub the service managers get
+# would lose the very entry the FreeBSD service check reads.
+_FAKE_CRONTAB_TOOL = """#!/bin/sh
+case "$1" in
+  -l) cat "$HP_CRONTAB_FILE" ;;
+  -) cat > "$HP_CRONTAB_FILE" ;;
+  *) echo "crontab stand-in: unexpected arguments: $*" >&2; exit 2 ;;
+esac
+"""
 
 # What an owner sets by hand after the first install, and must
 # still find after an upgrade. The security edit is the one the
@@ -85,6 +99,51 @@ def _load(path):
         return json.load(fh)
 
 
+def _service_definition_failures(platform, home, runner_path, cfg_path,
+                                 crontab_file=None):
+    """The service check, branched the way install.py installs.
+
+    macOS gets a launchd plist, FreeBSD gets a cron @reboot entry
+    (install_freebsd writes no service file at all), and every
+    other platform gets the systemd user unit. Before Q175 the
+    non-macOS branch read the systemd path unconditionally, so
+    the check failed on FreeBSD by construction. A platform is
+    the caller's sys.platform; the tests pass each spelling in
+    by hand, so every branch is pinned on any host.
+    """
+    if platform == "darwin":
+        source = os.path.join(home, "Library", "LaunchAgents",
+                              "com.homing-pigeon.runner.plist")
+    elif platform.startswith("freebsd"):
+        source = crontab_file
+        if not source:
+            return ["service definition missing: no crontab file"]
+        try:
+            with open(source, encoding="utf-8") as fh:
+                text = fh.read()
+        except OSError as e:
+            return ["service definition missing: %s" % e]
+        entries = [ln for ln in text.splitlines()
+                   if ln.startswith("@reboot ")]
+        if not any(runner_path in ln and cfg_path in ln
+                   for ln in entries):
+            return ["service definition %s does not start the "
+                    "installed runner with its config" % source]
+        return []
+    else:
+        source = os.path.join(home, ".config", "systemd", "user",
+                              "homing-pigeon.service")
+    try:
+        with open(source, encoding="utf-8") as fh:
+            text = fh.read()
+    except OSError as e:
+        return ["service definition missing: %s" % e]
+    if runner_path not in text or cfg_path not in text:
+        return ["service definition %s does not start the "
+                "installed runner with its config" % source]
+    return []
+
+
 def prove(old_tree, new_tree, keep=None):
     """Run the proof; return a list of failed checks (empty: proven)."""
     failures = []
@@ -98,8 +157,14 @@ def prove(old_tree, new_tree, keep=None):
         with open(shim, "w", encoding="utf-8") as fh:
             fh.write(_FAKE_SERVICE_TOOL)
         os.chmod(shim, 0o755)
+    crontab_file = os.path.join(work, "crontab.txt")
+    shim = os.path.join(shims, "crontab")
+    with open(shim, "w", encoding="utf-8") as fh:
+        fh.write(_FAKE_CRONTAB_TOOL)
+    os.chmod(shim, 0o755)
     log = os.path.join(work, "systemctl.log")
     env = dict(os.environ, HOME=home, HP_SYSTEMCTL_LOG=log,
+               HP_CRONTAB_FILE=crontab_file,
                PATH=shims + os.pathsep + os.environ.get("PATH", ""))
     env.pop("PYTHONPATH", None)
     dst = os.path.join(home, ".homing-pigeon")
@@ -167,21 +232,8 @@ def prove(old_tree, new_tree, keep=None):
             failures.append("posture on the upgraded install broke:\n%s"
                             % posture.stdout[-2000:])
 
-        if sys.platform == "darwin":
-            unit = os.path.join(home, "Library", "LaunchAgents",
-                                "com.homing-pigeon.runner.plist")
-        else:
-            unit = os.path.join(home, ".config", "systemd", "user",
-                                "homing-pigeon.service")
-        try:
-            with open(unit, encoding="utf-8") as fh:
-                text = fh.read()
-        except OSError as e:
-            failures.append("service definition missing: %s" % e)
-        else:
-            if runner not in text or cfg_path not in text:
-                failures.append("service definition %s does not start the "
-                                "installed runner with its config" % unit)
+        failures.extend(_service_definition_failures(
+            sys.platform, home, runner, cfg_path, crontab_file))
         return failures
     finally:
         if keep is None:

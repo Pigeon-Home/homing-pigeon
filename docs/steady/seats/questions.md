@@ -182,6 +182,103 @@ measurement in this lane, 2026-11-12):**
   lane does not report the FreeBSD proof as green under
   any outcome it can produce locally.
 
+**Conclusions (2026-11-12):** S2, S3, S4 and S6 hold as
+supposed. Two suppositions were contradicted in part by the
+measurement, and the record corrects them here rather than
+letting the landing read cleaner than it was:
+
+- S1 holds on the match and fails on the count. The widened
+  regex names both discovery shapes and admits nothing else
+  (the other-prefix and bookended families pin it), but
+  `failures_in` spends at most ten annotation slots by
+  design, so on the filed 13-red shape the annotations name
+  the first ten ids in log order, not all thirteen. The
+  remaining names are carried by S2's second half: the
+  workflow now prints every `FAIL:` / `ERROR:` line into
+  its step log, where no ten-slot cap applies. Between the
+  two, a diagnostic run names every red test.
+- S5 fails on its first clause: this lane did introduce
+  one new skip reason -- the crontab stand-in test's
+  `skipIf(os.name == "nt", ...)` -- and the skip registry
+  read it as unregistered on the first combined run, the
+  Q174 failure shape exactly. The reason now stands in
+  `test_skip_registry.py`'s REGISTERED with its line, added
+  before this landing was pushed, and the registry runs
+  green. The rest of S5 holds: the named suites run green
+  locally (below).
+
+Local proof in this lane, on Python 3.12.3:
+`test_skip_guard` and `test_upgrade_proof` whole (42 tests,
+green, including the full install-and-upgrade proof over
+this tree with the crontab stand-in on PATH),
+`test_build_config` whole (63 tests, green, including the
+four new FreeBSDWorkflowEvidenceTest pins),
+`test_workflow_paths` and `test_skip_registry` (green), and
+the shrink guard clean. The defect was reproduced before
+the fix: on the filed shape the old regex named 0 of 13 red
+tests and returned only the deduplicated exception line.
+
+**Answer (2026-11-12):** option 1, as recommended.
+
+- `runner/tools/skip_guard.py`: `_FAIL_RE` accepts an
+  optional `runner.` prefix before `tests.`, so both
+  discovery rootings name their failures; nothing else is
+  admitted.
+- `.github/workflows/freebsd.yml`: `sync: rsync` and
+  `copyback: true` stand explicitly on the vmactions step,
+  the upload's `if-no-files-found` is `warn`, and after the
+  annotate call the run prints the suite log's `FAIL:` /
+  `ERROR:` ids and its verdict lines into the step log
+  itself. `prepare:` installs bash beside git and node.
+- `runner/tools/upgrade_proof.py`: the service check is
+  `_service_definition_failures`, branched by platform --
+  the launchd plist on macOS, the systemd user unit
+  elsewhere, and on FreeBSD the `@reboot` entry in the
+  crontab, read through a file-backed `crontab` stand-in
+  the proof now puts on PATH beside its `systemctl` and
+  `launchctl` shims. The failure shapes are the ones the
+  systemd branch already used.
+- Tests: `RunnerTestsPrefixTests` in
+  `runner/tests/test_skip_guard.py` (both roots, the filed
+  13-red shape, other prefixes, the bookended family over
+  every ASCII punctuation mark, the annotate output);
+  `ServiceDefinitionPlatformTest` and `CrontabStandinTest`
+  in `runner/tests/test_upgrade_proof.py` (the FreeBSD
+  branch's pass and failure shapes, the indented and
+  ornamented entries, the unchanged systemd and launchd
+  branches, the shim's install-then-list round trip);
+  `FreeBSDWorkflowEvidenceTest` in
+  `runner/tests/test_build_config.py` (bash on the pkg
+  line, the explicit copy-back, the three named reports
+  with `warn`, the in-log naming and its place in the
+  step); and the one new skip reason registered in
+  `runner/tests/test_skip_registry.py`.
+
+Q175 is NOT closed by this lane: it closes only when a
+hosted FreeBSD run on a tag carrying this landing completes
+with the artifact present and every red test named. That
+verdict is still owed -- the next dispatched or weekly run
+on such a tag is the diagnostic run -- and the FreeBSD
+proof is not green: the deterministic suite reds, the
+exit 124 timeout mode, the ps sampler and the suite cap
+stand exactly where the filing left them, now with names
+in reach.
+
+**Applied in:** the answer lane's commits -- the
+suppositions commit recorded in the desk before any
+measurement ("desk: Q175 suppositions recorded before
+measurement"), and this landing's commit ("Q175: the
+FreeBSD proof's evidence reaches the run page -- the
+annotation regex, the VM copy-back, the upgrade proof's
+FreeBSD service check, and bash (option 1)") --
+`.github/workflows/freebsd.yml`,
+`runner/tools/skip_guard.py`,
+`runner/tools/upgrade_proof.py`,
+`runner/tests/test_skip_guard.py`,
+`runner/tests/test_upgrade_proof.py`,
+`runner/tests/test_build_config.py` and
+`runner/tests/test_skip_registry.py`.
+
 ## Q174 (Claude asks Muse, 2026-11-12): 3.16.24.22 was prepared over a red suite -- where does the desk read main's suite after a landing and before a cut?
 
 Context: the landing for Q169 (2c66cee40, pushed 03:54Z on 13 Nov)

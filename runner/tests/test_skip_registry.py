@@ -316,6 +316,10 @@ REGISTERED = {
         "a case stdlib_coverage drives in a child run, never expected "
         "to run as a test on its own",
     "the Linux and macOS source install; Windows installs from the release binaries": "the Windows install is the binary one, proven by build.yml's windows smoke; run on every POSIX leg",
+    "the crontab stand-in is a sh script":
+        "test_upgrade_proof's CrontabStandinTest (Q175) drives the "
+        "proof's file-backed crontab shim through a POSIX shell; "
+        "runs on every POSIX leg",
     "exec jobs run sh; the soak's own leg is Linux": "the soak drives sh exec jobs; soak.yml and every POSIX leg run it",
     "make_sbom runs on the build Python (tomllib, 3.11+)": "a release tool, never on a runner box; run on the 3.12 CI interpreter",
     "no tomllib on this interpreter":

@@ -1308,3 +1308,64 @@ class PipelinePostureTest(unittest.TestCase):
                     "build-macos-x86_64", "build-pi-light"):
             self.assertIn(leg, needs,
                           "the release no longer waits on %s" % leg)
+
+
+class FreeBSDWorkflowEvidenceTest(unittest.TestCase):
+    """Q175: the FreeBSD proof's evidence reaches the run page.
+
+    For the workflow's whole history its artifact total was 0:
+    the report files were copied inside the VM to a workspace
+    path the host-side upload never saw, and the upload's
+    if-no-files-found: ignore kept the loss invisible. The vmactions
+    step's structure decides what can carry the evidence -- a
+    copy-based sync (rsync, the first method for 15.0 on x86_64)
+    reaches the host only through the action's copy-back phase,
+    while the step's stdout is the run page's own log -- so the
+    workflow asks for both, in the open, and these pins keep the
+    asking from quietly un-landing.
+    """
+
+    def _wf(self):
+        return _workflow_text("freebsd.yml")
+
+    def _live(self):
+        return _uncommented(self._wf())
+
+    def test_bash_is_installed_in_prepare(self):
+        # Suite tests exec bash; FreeBSD's base carries sh only.
+        live = self._live()
+        pkg_lines = [ln for ln in live.splitlines()
+                     if "pkg install -y" in ln and "python" not in ln]
+        self.assertTrue(pkg_lines, "no base pkg install line found")
+        for token in ("git", "node", "bash"):
+            self.assertIn(token, pkg_lines[0])
+        self.assertIn("git/node/bash did not install", live)
+
+    def test_the_copy_back_is_requested_explicitly(self):
+        live = self._live()
+        self.assertIn("sync: rsync", live)
+        self.assertIn("copyback: true", live)
+        self.assertNotIn("copyback: false", live)
+
+    def test_the_upload_names_the_three_reports_and_warns(self):
+        live = self._live()
+        for name in ("suite-freebsd.log",
+                     "switch-proofs-freebsd-root.md",
+                     "freebsd-sh.log"):
+            self.assertIn(name, live)
+        self.assertIn("if-no-files-found: warn", live)
+        self.assertNotIn("if-no-files-found: ignore", live)
+
+    def test_the_failing_ids_are_printed_into_the_step_log(self):
+        live = self._live()
+        self.assertIn('grep -E "^(FAIL|ERROR): " /tmp/suite-freebsd.log',
+                      live)
+        self.assertIn('grep -E "^(Ran [0-9]+ tests|OK|FAILED)" '
+                      '/tmp/suite-freebsd.log', live)
+        # The naming stands after the suite runs and before the
+        # step's verdict is returned, so a red suite is named on
+        # the run page of the very run that produced it.
+        self.assertLess(live.index("suite_wall_clock.py"),
+                        live.index('grep -E "^(FAIL|ERROR): "'))
+        self.assertLess(live.index('grep -E "^(FAIL|ERROR): "'),
+                        live.index('cp /tmp/suite-freebsd.log'))
