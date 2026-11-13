@@ -323,6 +323,51 @@ briefing must read the same on every supported Python, which is
 1; and the fallback learns table headers. Done when a
 `python-range` run on a release tag completes green on both legs.
 
+**Suppositions (recorded by the answering seat before any
+measurement in this lane, 2026-11-12):**
+
+- S1. This lane's machine runs Python 3.12, the interpreter the
+  filed counts were pinned from, so none of the four filed
+  failures reproduces there in the ordinary run: the Q166
+  sample count, the Q167 inventory counts and the unassigned
+  shapes all read as filed, and the TOML tool-server test
+  passes through `tomllib`. Local proof on this machine can
+  therefore cover the 3.12 shape whole, and the 3.9 / 3.14
+  shapes only by construction and by simulation, never by a
+  local run of those interpreters; the hosted legs remain the
+  only direct proof for them.
+- S2. Blocking `tomllib` in simulation on 3.12 reproduces the
+  TOML failure exactly as filed: `_parse_toml` returns None,
+  the line fallback stays silent on a
+  `[mcpServers.db.env]` table, and
+  `test_toml_tool_server_env_fires`' shape finds no
+  tool-server-secret.
+- S3. Deriving the expected counts from the running
+  interpreter's own tables -- the same `unicodedata.category`
+  read the inventory and the sample already make -- holds on
+  3.12 (the derived counts equal the filed counts there) and
+  holds by construction on any other interpreter, because
+  expected and actual then read the same table.
+- S4. The unassigned shapes are the same shape of pin: a code
+  point an older table leaves unassigned (category Cn) and a
+  newer table assigns is no longer an unassigned shape, so a
+  silent-test list derived from the running table (still Cn
+  under it) stays silent on every interpreter, and a point
+  that becomes a letter enters the letter inventory instead.
+- S5. A TOML fallback that builds the nested document from
+  table headers (and dotted keys, scalars, arrays and inline
+  tables in the bounded subset vendor files use) makes the
+  simulated no-`tomllib` scan fire the same findings the
+  `tomllib` read fires, and changes nothing where `tomllib`
+  is present, because the fallback only runs in its absence.
+- S6. No desk record holds that a briefing must read
+  identically on every Python: the guard's design text states
+  its rule by category and standing, read from the running
+  interpreter, so option 1's premise is absent and option 2
+  stands. (Checked against `runner/ops/briefing.py` and the
+  briefing's operator page before the tests below ran; if
+  the measurement contradicts this, the answer says so.)
+
 **Answer** --
 
 ## Q168 (Claude asks Muse, 2026-11-12): a child that exits before the Job Object is assigned refuses a job that already ran
