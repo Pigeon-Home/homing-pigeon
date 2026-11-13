@@ -27972,3 +27972,155 @@ deterministic re-test passing whole and the
 hosted `test-windows` success above.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Peer review of the outside landings after
+3.16.24.15: suppositions recorded before the
+tests (2026-11-12)
+
+This lane is the standing outside-landing
+review: the landings after the 3.16.24.15
+release commit that no completed peer review
+covers, all by Claude -- the 5:03 PM PST
+commit ("ci: the three proof workflows with
+path lists keep them as pull-request
+triggers"), the 5:29 PM PST commit ("tools:
+cut --sha --watch cuts and then watches;
+3.16.24.15 on the record"), the 5:51 PM PST
+commit ("release: 3.16.24.16 -- the train's
+cut-and-watch"), and the two 6:10 PM PST
+commits ("ci: a pushed tag's gate build need
+not be completed, only not cancelled" and
+"release: 3.16.24.17 -- the pushed tag finds
+its gate build"). One landing inside the
+range is this seat's own and stands outside
+the review: the 5:49 PM PST pin-test commit
+("tests: pin the cut --sha --watch
+ordering"), named here so the range reads
+whole. The remote head was verified by
+foreground `git ls-remote` with a content
+grep at the remote ref in the same call
+before this record was written; the head has
+since moved once, by the 6:20 PM PST docs
+commit that records the .16 and .17 cycles
+in the CI record, and the verdict in the
+conclusions names the head it rests on.
+The suppositions below are written from the
+diffs read first-hand, before any test in
+this lane is run; the conclusions follow in
+this same section.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **R24-S1 -- the 5:03 PM proof-workflow
+  landing is a faithful restoration.** The
+  three `pull_request` path lists it adds
+  (env-axes, job-user, switch-proofs) are
+  identical to the lists that stood under
+  `push: tags` before the relief window's
+  close removed them; every named path is
+  real on the head; a `pull_request` trigger
+  never fires on a push to main, so the
+  proofs stay off pushes exactly as the
+  window's close settled; and
+  `test_workflow_paths` passes on the head
+  and fails on the 3.16.24.15 release head
+  the landing repaired.
+- **R24-S2 -- the 5:29 PM cut-and-watch
+  fix is the branch move it claims, and no
+  more.** In `cmd_cut` the watch-only early
+  return now stands before the sha is
+  resolved and fires only when no sha
+  stands from either seat (the parameter or
+  `args.sha`); with a sha the cut proceeds
+  and the watch follows it. The standing
+  `test_release_train` family, with this
+  seat's 5:49 PM pin family inside it,
+  passes whole on the head.
+  `runner/tools/release_train.py` stands
+  outside the core list, so the landing
+  moves no core figure. Its other arm, the
+  CI record's 3.16.24.15 entry, is a record
+  under `docs/steady/reports` and is not
+  re-audited (the standing audit ignore
+  list); its timing figures are the
+  author's own run record and this lane
+  does not re-measure them.
+- **R24-S3 -- the 3.16.24.16 carriers
+  agree, and its figures match its tree.**
+  At the .16 release commit the three
+  version carriers and the test pin read
+  3.16.24.16; the statistics refresh names
+  the pin-test commit (its immediate
+  parent) as the measured-on head, with
+  24,964,934 tokens, 1,494,310 lines and
+  5,687 commits; the as-assembled zip
+  figure steps 856,590 to 856,584 in
+  `runner/ops/core.py`, the statistics
+  record, the fuzzing page and
+  `test_core` together; and
+  `refresh_figures --check` and
+  `test_core` pass on the .16 tree itself.
+- **R24-S4 -- the 6:10 PM gate-lookup
+  widening does not weaken the cut gate.**
+  The lookup in build.yml's gate step now
+  takes main's newest push or dispatch run
+  on the tag's commit whose conclusion is
+  not `cancelled`, where it asked for a
+  completed one. The gate itself is
+  predicted untouched: `runner/tools/
+  cut_gate.py` does not change in the
+  range, and the promotion check
+  (`promote_problem` in release_train.py)
+  still refuses any run whose gate-named
+  jobs have not completed success, any run
+  missing a gate job, and any run missing
+  a promoted artifact -- so a still-running
+  gate build can be *found* by the lookup
+  and still cannot be *promoted* until its
+  gate jobs are green, and a run cancelled
+  after its legs completed is no longer
+  found by a pushed tag at all (it builds
+  everything, the fail-safe shape). Two
+  wording residuals are predicted, neither
+  a gate change: build.yml's own scope
+  outputs comment still says "the newest
+  completed build of main", and the Q30
+  answer in the questions file keeps the
+  completed wording it was written with.
+  `test_de_dust2`'s CiScope family, which
+  pins the lookup's selector, passes on
+  the head.
+- **R24-S5 -- the 3.16.24.17 carriers
+  agree, on the same pattern as R24-S3.**
+  At the .17 release commit the carriers
+  read 3.16.24.17; the statistics refresh
+  names the 6:10 PM gate commit (its
+  immediate parent) as the measured-on
+  head, with 24,965,174 tokens (240 past
+  .16), 1,494,324 lines and 5,689 commits
+  (2 past .16: the .16 release commit and
+  the gate commit itself, the arithmetic
+  the range shows); the zip figure steps
+  856,584 to 856,591 in the same four
+  places together; and the figures guards
+  pass on the .17 tree.
+- **R24-S6 -- the standing guards hold
+  over the whole range.** No file is added
+  anywhere in the range, so no new file
+  stands in the repository root; the
+  string the repository never carries
+  stands in no landed diff of the range;
+  the shrink guard is clean over each
+  commit of the range; and on the head
+  `test_reader_docs_quiet`,
+  `test_doc_figure_slots` and
+  `refresh_figures --check` pass. What
+  cannot be recorded as a unit test,
+  stated plainly in advance: the hosted
+  behaviour of the widened lookup (a real
+  pushed tag finding a still-running gate
+  build) is a GitHub-host fact; the CI
+  record's .17 entry (gate 2.7, tag 3.5,
+  release 6.0 minutes through the widened
+  lookup) is its author's evidence, read
+  here, not re-run by this lane.
