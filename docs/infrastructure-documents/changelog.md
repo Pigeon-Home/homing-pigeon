@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.18 - 2026-11-13
+
+- 3.16.24.17 published and verified on the record; stamp MATCH x3
+- desk peer review of the outside landings after 3.16.24.15 closes with every supposition holding, no fix owed
+
 ## 3.16.24.17 - 2026-11-12
 
 - CI: the tag build's lookup of the gate build for a pushed tag takes main's newest uncancelled build on the commit rather than a completed one, so a release cut on green legs while the suites still run promotes instead of building everything again (3.16.24.16 built everything: 13 minutes to the release)
