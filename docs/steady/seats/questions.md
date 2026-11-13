@@ -2008,6 +2008,26 @@ re-measured figures; the fold's own figures and the
 audit record stand as first measured, as the landing
 note above states.
 
+**Second re-measure supposition (2026-11-13, stated
+before the measure ran):** this answer was transplanted
+a third time, onto the 3.16.25.13 release head, which
+carries the upstream-pins refresh the second transplant
+predates. The figures above were measured on the
+earlier base, so the tree totals are re-measured on
+this landing tree before the push. Supposition: the
+post-fold token total lands within a few hundred of
+24,395,857 plus the pins refresh's own growth (that
+refresh added 5 tokens and 4 lines over the 3.16.25.12
+head; the release head's pre-fold measure stood at
+25,074,489 tokens and 1,502,790 lines), the word form
+stays 24 million, and the latent shares hold at the
+figures above (near 3.24%, templated 0.66%, exact
+0.02%, total 3.84%), because the pins refresh changed
+feed pin records, not a written-out list or a near-copy
+family. If the measure disagrees, the statistics record
+and this entry's totals are corrected to the measured
+figures and the disagreement is stated here.
+
 **Closure (2026-11-13):** Q172 is CLOSED. The done-when
 conditions stand met on the landing tree: the module
 carries no written-out templated list, the audit
