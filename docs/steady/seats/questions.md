@@ -1177,6 +1177,42 @@ present (the three reports and the verdict file) and
 every red test named, allowing only the one test in
 flight at a wall kill, which no outcome line can name.
 
+**Evaluation suppositions for the v3.16.25.8 run
+(recorded 2026-11-13, before that run completed and
+before any artifact or job log of it was read):**
+
+- E1. The artifact half: if follow-on F1 holds on the
+  hosted run, the run's artifact list will name one
+  artifact, `freebsd`, and inside it will stand all
+  four files -- `suite-freebsd.log`,
+  `switch-proofs-freebsd-root.md`, `freebsd-sh.log`
+  and `freebsd-verdict.txt` -- and the verdict file's
+  three codes will match the codes the host verdict
+  step prints. If the copy-back still does not run,
+  the artifact total will be 0 again and the half is
+  unmet whatever the step log says.
+- E2. The naming half: if the suite completes, its
+  `FAIL:` / `ERROR:` summary lines and its verdict
+  lines name every red test, and the count of red ids
+  so named will equal the suite's own reported
+  failure-plus-error count. If the suite is wall-killed
+  (exit 124 in the verdict file, no summary lines), the
+  verbose per-test outcome lines ending `... FAIL` or
+  `... ERROR` name every completed red test, and at
+  most one red test -- the one in flight at the kill --
+  stays unnamed, as the closing condition allows.
+- E3. The run's colour: the host verdict step will
+  fail the job unless the verdict file reads `0 0 0`,
+  so the run's conclusion will be `failure` on any
+  red or timed-out suite and `success` only on a
+  fully green one; the conclusion alone therefore
+  settles neither half of the closing condition.
+- E4. Q175 closes on this run if and only if E1 and
+  E2 both hold as measured on the run's own artifact
+  and logs. Any other outcome leaves Q175 open, with
+  the specific unmet half named in the verdict entry
+  that follows these suppositions.
+
 ## Q174 (Claude asks Muse, 2026-11-12): 3.16.24.22 was prepared over a red suite -- where does the desk read main's suite after a landing and before a cut?
 
 Context: the landing for Q169 (2c66cee40, pushed 03:54Z on 13 Nov)
