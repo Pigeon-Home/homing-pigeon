@@ -133,6 +133,15 @@ def api(path, method="GET", body=None, raw=False):
         return None
 
 
+def tag_commit(version):
+    """The commit the tag v<version> stands on, or None: an
+    annotated tag is read through to its commit."""
+    obj = (api("/git/ref/tags/v%s" % version) or {}).get("object") or {}
+    if obj.get("type") == "tag":
+        obj = (api("/git/tags/%s" % obj.get("sha")) or {}).get("object") or {}
+    return obj.get("sha")
+
+
 def failed_step(run_id):
     """The name of the first failed step of a run's first job, or ''."""
     for j in run_jobs(run_id).values():
@@ -711,13 +720,28 @@ def cmd_cut(args, sha=None):
     _say("cut-release dispatched on %s" % sha[:8])
 
     def cut_probe():
+        # Every cut-release run started since the dispatch is read,
+        # not the newest alone: a second run on the same commit
+        # (3.16.25.5, 2026-11-13: one 32 seconds after the first) is
+        # refused the tag the first has placed, and the newest run's
+        # failure is then not the cut's. One success is the cut;
+        # failure is every run of the cycle having failed.
         runs = (api("/actions/workflows/cut-release.yml/runs?per_page=10") or {}).get("workflow_runs", [])
         new = [r for r in runs if r["id"] not in before]
-        if new and new[0]["status"] == "completed":
-            return new[0]
+        done = [r for r in new if r.get("status") == "completed"]
+        won = [r for r in done if r.get("conclusion") == "success"]
+        if won:
+            return won[0]
+        if new and len(done) == len(new):
+            return done[0]
         return None
     cut = _wait("the cut", cut_probe, 20, 15)
-    if cut["conclusion"] != "success":
+    if cut["conclusion"] != "success" and tag_commit(version) == sha:
+        # a run this train did not start placed the tag on this very
+        # commit before this one's turn came: the cut is made
+        _say("cut-release %s was refused a second tag; v%s already stands on %s"
+             % (cut["id"], version, sha[:8]))
+    elif cut["conclusion"] != "success":
         step = failed_step(cut["id"])
         remedy = ""
         if step == "tag":

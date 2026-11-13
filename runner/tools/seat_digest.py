@@ -116,6 +116,9 @@ def addressed(who):
         return asker, "owner"
     if asker == "Muse" and "to the desk" in low:
         return asker, "self"
+    # "Muse asks Muse": a seat filing for the desk it carries
+    if re.match(r"^(\w+) asks \1\b", who.strip()):
+        return asker, "self"
     return asker, "seat"
 
 

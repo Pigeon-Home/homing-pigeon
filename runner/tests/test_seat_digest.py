@@ -80,6 +80,9 @@ class ReadersTest(unittest.TestCase):
         self.assertEqual(sd.addressed("Claude asks the owner"), ("Claude", "owner"))
         self.assertEqual(sd.addressed("Claude, the desk, to the conductor"), ("Claude", "owner"))
         self.assertEqual(sd.addressed("Muse to Claude, the desk"), ("Muse", "seat"))
+        # a seat that files for the desk it carries asks itself
+        self.assertEqual(sd.addressed("Muse asks Muse"), ("Muse", "self"))
+        self.assertEqual(sd.addressed("Muse asks Claude"), ("Muse", "seat"))
         # relayed from the owner is a seat's question, not one to him
         self.assertEqual(sd.addressed("Claude to Muse, from the owner"), ("Claude", "seat"))
 

@@ -352,6 +352,122 @@ class WatchTest(unittest.TestCase):
             self.assertEqual(rt.watch_tag_build("3.16.21.2", 1), 1)
 
 
+class SecondCutRunTest(unittest.TestCase):
+    """A second cut-release run on the same commit is refused the
+    tag the first has placed (3.16.25.5, 2026-11-13: two runs 32
+    seconds apart). The train reads every run of the cycle: one
+    success is the cut, and a refusal beside it is not a failure."""
+
+    VERSION = "3.16.25.5"
+    SHA = "e0c08446" + "0" * 32
+
+    def _cut(self, cut_runs, tag_on=None, steps=None):
+        """cmd_cut over stubbed seams. `cut_runs` is the cut-release
+        runs the record lists after the dispatch, newest first;
+        `tag_on` the commit the tag stands on once asked a second
+        time (the first asking, before the dispatch, finds none)."""
+        asked = {"tag": 0, "dispatched": False}
+
+        def fake_api(path, method="GET", body=None, raw=False):
+            if path.startswith("/git/ref/tags/"):
+                asked["tag"] += 1
+                if not asked["dispatched"] or tag_on is None:
+                    return None
+                return {"object": {"type": "tag", "sha": "a" * 40}}
+            if path.startswith("/git/tags/"):
+                return {"object": {"type": "commit", "sha": tag_on}}
+            if "cut-release.yml/dispatches" in path:
+                asked["dispatched"] = True
+                return {}
+            if "cut-release.yml/runs" in path:
+                return {"workflow_runs": list(cut_runs) if asked["dispatched"] else []}
+            if path.startswith("/actions/runs/") and "/jobs" in path:
+                return {"jobs": [{"name": "cut", "steps": [{"name": (steps or {}).get(int(path.split("/")[3]), "tag"),
+                                                            "conclusion": "failure"}]}]}
+            if path == "/commits/main":
+                return {"sha": self.SHA}
+            raise AssertionError(path)
+
+        args = mock.Mock(watch=False, sha=self.SHA, version=None, limit=5)
+        out = io.StringIO()
+        with mock.patch.object(rt, "latent_warning", lambda *a, **k: ""), \
+                mock.patch.object(rt, "red_main_warning", lambda *a, **k: ""), \
+                mock.patch.object(rt, "carriers", lambda root=None: {"pyproject.toml": self.VERSION}), \
+                mock.patch.object(rt, "_git", lambda *a, **k: self.SHA), \
+                mock.patch.object(rt, "api", fake_api), \
+                mock.patch.object(rt, "watch_tag_build", lambda version, limit: 0), \
+                mock.patch.object(rt, "gate_verdict", lambda sha, version=None: ("green", "run 1: green")), \
+                mock.patch.object(rt.cut_gate, "need", lambda sha, version, api=None: (set(), "the legs")), \
+                mock.patch.object(rt, "_wait", self._one_asking), \
+                contextlib.redirect_stdout(out):
+            rc = rt.cmd_cut(args)
+        return rc, out.getvalue()
+
+    class StillWaiting(Exception):
+        """The probe had no verdict; the real wait would ask again."""
+
+    @classmethod
+    def _one_asking(cls, label, probe, interval, limit):
+        out = probe()
+        if out is None:
+            raise cls.StillWaiting(label)
+        return out
+
+    def _run(self, rid, conclusion, status="completed"):
+        return {"id": rid, "status": status, "conclusion": conclusion,
+                "html_url": "https://example.invalid/cut/%d" % rid}
+
+    def test_a_refused_second_run_beside_a_success_is_the_cut_made(self):
+        rc, out = self._cut([self._run(43387602684, "failure"), self._run(43387542058, "success")])
+        self.assertEqual(rc, 0)
+        self.assertIn("tagged v3.16.25.5", out)
+        # and while the second run is still going, the first's success is already the cut
+        rc, out = self._cut([self._run(43387602684, None, "in_progress"), self._run(43387542058, "success")])
+        self.assertEqual(rc, 0)
+
+    def test_a_refusal_alone_is_the_cut_made_when_the_tag_stands_on_the_commit(self):
+        # a run started outside this train placed the tag first
+        rc, out = self._cut([self._run(8, "failure")], tag_on=self.SHA,
+                            steps={8: "the tag does not exist yet"})
+        self.assertEqual(rc, 0)
+        self.assertIn("cut-release 8 was refused a second tag; v3.16.25.5 already stands on e0c08446", out)
+
+    def test_a_failure_with_no_tag_on_the_commit_is_still_a_failure(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self._cut([self._run(8, "failure")], steps={8: "the build on this commit is green"})
+        self.assertIn("cut-release 8 concluded failure at step 'the build on this commit is green'", str(cm.exception))
+        # a tag of that name on another commit is no cut of this one
+        with self.assertRaises(RuntimeError):
+            self._cut([self._run(8, "failure")], tag_on="f" * 40, steps={8: "the tag does not exist yet"})
+        # every run of the cycle failed: the newest is named
+        with self.assertRaises(RuntimeError) as cm:
+            self._cut([self._run(9, "failure"), self._run(8, "failure")])
+        self.assertIn("cut-release 9 concluded failure", str(cm.exception))
+
+    def test_the_cut_waits_while_a_run_of_the_cycle_is_still_going(self):
+        # nothing has succeeded and one run has not finished: no
+        # verdict yet, whatever the finished one concluded
+        with self.assertRaises(self.StillWaiting) as cm:
+            self._cut([self._run(9, None, "in_progress"), self._run(8, "failure")])
+        self.assertEqual(str(cm.exception), "the cut")
+        with self.assertRaises(self.StillWaiting):
+            self._cut([])
+
+    def test_the_tag_is_read_through_to_its_commit(self):
+        def api(path, *a, **k):
+            if path == "/git/ref/tags/v1.2.3.4":
+                return {"object": {"type": "tag", "sha": "a" * 40}}
+            if path == "/git/tags/" + "a" * 40:
+                return {"object": {"type": "commit", "sha": "c" * 40}}
+            if path == "/git/ref/tags/v1.2.3.5":
+                return {"object": {"type": "commit", "sha": "d" * 40}}
+            return None
+        with mock.patch.object(rt, "api", api):
+            self.assertEqual(rt.tag_commit("1.2.3.4"), "c" * 40)
+            self.assertEqual(rt.tag_commit("1.2.3.5"), "d" * 40)
+            self.assertIsNone(rt.tag_commit("9.9.9.9"))
+
+
 class RedMainWarningTest(unittest.TestCase):
     """A release of tests, tools or docs does not wait for the
     suites, so it can be prepared on a main whose suite is red; the
