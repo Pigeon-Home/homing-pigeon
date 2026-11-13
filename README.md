@@ -20,11 +20,11 @@ other choice.
 
 
 ## Homing Pigeon IETF Internet-Drafts:
-- v1 Symmetric Signed Exchanged:
+- Version 1 Symmetric Signed Exchanged:
   - https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
-- v2 Runner-to-SI Exchange:
+- Version 2 Runner-to-SI Exchange:
   - https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
-- v3 Post-Quantum Cryptography with PFS:
+- Version 3 Post-Quantum Cryptography with PFS:
   - https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
   
 
