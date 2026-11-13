@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.8 - 2026-11-13
+
+- Fleet: the fleet page states the month's known cost against the owner's ceiling, carries each machine's SSH reading, and reads a retired rig as retired
+- Tests: a scan keeps public machine addresses out of the docs pages, and leaves the import path as it found it
+- Record: the stamp record accepts one release commit by its hash; 3.16.25.7 was prepared and not released
+
 ## 3.16.25.7 - 2026-11-13
 
 - Desk: Q174's second and third cases — one verdict line, and a red guard pushed without one
