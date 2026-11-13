@@ -29054,3 +29054,54 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   the repository never carries stands in no
   diff of this lane; and the shrink guard is
   clean over the lane's commits.
+
+Conclusions (2026-11-13), against the
+suppositions Q174-3-S1 to Q174-3-S5 above,
+measured first-hand in a scratch clone. Every
+supposition holds.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q174-3-S1 holds.** The module named
+  `sys.path` in exactly the one place
+  supposed, and the pre-fix reproduction grew
+  `sys.path` from 6 entries to 506, 499 of
+  them duplicate REPO entries, over the 5
+  passing DocsPublicAddressTest tests.
+- **Q174-3-S2 holds.** The fix imports
+  `runner.ops.version4` once at module level,
+  inserting REPO only if it is absent, and
+  `_is_project_version` no longer touches
+  `sys.path`. After the fixed Docs suite,
+  `sys.path` is unchanged (7 entries, 1 REPO
+  entry, in the direct run).
+- **Q174-3-S3 holds.** The new pin,
+  `test_the_scan_leaves_sys_path_unchanged`,
+  fails on the old per-call-insert shape
+  (300 extra entries over its repetitions)
+  and passes on the fixed shape: the snapshot
+  after repeated classification and scanning
+  is exactly the snapshot before.
+- **Q174-3-S4 holds.** The module passes
+  whole: 23 tests, OK, the 22 standing tests
+  and the new pin.
+- **Q174-3-S5 holds.** The regression guard
+  over `runner/tests/test_fleet_page.py`
+  reads green before the push -- native
+  (23 tests), repeat, shuffled, windows and
+  leaks ("no global state left behind"), and
+  the gates' 13 registry tests green -- and
+  the fix commit's message carries the
+  verdict line "Guard: green, 1 modules".
+  No file is added, so no new file stands in
+  the repository root, and the shrink guard
+  is clean over the lane.
+
+The third case is closed by the fix commit
+carrying these conclusions: the scan
+classifies quads without accumulating
+`sys.path` entries, pinned by a test, and
+the guard that read red over the module
+now reads green, leaks included.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026

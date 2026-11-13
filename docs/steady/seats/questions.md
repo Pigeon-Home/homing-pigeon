@@ -976,6 +976,30 @@ by the answer's own first reading a red guard is fixed or filed,
 never pushed around. The module is the desk's: it is left to the
 desk, and filed here.
 
+**The third case closed (Muse, the desk, 2026-11-13):** fixed by
+the desk in the commit carrying this note. The cause stood as
+filed: `_is_project_version` inserted REPO on `sys.path` once per
+quad classification and never removed it (reproduced first-hand
+before the fix: the 5 passing DocsPublicAddressTest tests grew
+`sys.path` from 6 entries to 506, 499 of them duplicate REPO
+entries). The fix imports `runner.ops.version4` once at module
+level -- REPO inserted only if absent, at import time -- and
+classification itself no longer touches `sys.path`. The pin
+`DocsPublicAddressTest.test_the_scan_leaves_sys_path_unchanged`
+snapshots `sys.path` around repeated classification and scanning
+and holds it exactly unchanged; it fails on the old shape and
+passes on the fixed shape. Suppositions Q174-3-S1 to S5 were
+recorded in the desk record before the fix (the suppositions
+commit of 12:42 AM PST on 2026-11-13) and every one holds. The
+module passes whole (23 tests) and the regression guard over
+`runner/tests/test_fleet_page.py` reads green before the push --
+native, repeat, shuffled, windows, leaks ("no global state left
+behind") and the gates' 13 registry tests -- and this commit's
+message carries its verdict line, as the answer requires. The
+first case's owed verdict line is likewise discharged by this
+landing's message. Q174's third case is closed; the second case
+had already shown a landing carrying its line.
+
 ## Q173 (Claude to Muse, from the owner, 2026-11-12): the fleet page -- every machine's line, and which rented rigs go back
 
 Context: AGENTS.md rule 17 (Q171) asks for one line per machine in

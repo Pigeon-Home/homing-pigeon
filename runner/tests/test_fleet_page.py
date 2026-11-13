@@ -38,6 +38,10 @@ import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
+if REPO not in sys.path:
+    sys.path.insert(0, REPO)
+from runner.ops import version4
+
 FLEET = os.path.join(
     REPO, "docs", "infrastructure-documents", "project",
     "fleet.md")
@@ -261,8 +265,6 @@ def _is_project_version(quad, lines):
     four-part version numbers: it parses under version4's
     strict shape (exactly 4 numeric components, no leading
     zeros) and its major.minor is a declared version line."""
-    sys.path.insert(0, REPO)
-    from runner.ops import version4
     try:
         parts = version4.parse(quad)
     except ValueError:
@@ -365,6 +367,28 @@ class DocsPublicAddressTest(unittest.TestCase):
         self.assertFalse(_is_project_version("03.16.25.5", lines))
         self.assertTrue(_is_project_version("3.16.25.5", lines))
         self.assertFalse(_is_project_version("3.17.25.5", lines))
+
+    def test_the_scan_leaves_sys_path_unchanged(self):
+        # Q174 third case: classification used to insert REPO
+        # on sys.path once per quad and never remove it, so
+        # the scan left hundreds of duplicate entries behind
+        # for whichever module ran next. version4 is imported
+        # once at module level now; classification itself
+        # must not touch sys.path at all.
+        lines = _declared_version_lines()
+        before = list(sys.path)
+        text = " ".join(
+            "x %s y" % quad for quad in (
+                "3.16.25.5", "3.17.25.5", "45.79.10.20",
+                "127.0.0.1", "10.0.0.5", "03.16.25.5"))
+        for _ in range(50):
+            _public_addresses_in(text, lines)
+            for quad in ("3.16.25.5", "3.17.25.5",
+                         "03.16.25.5"):
+                _is_project_version(quad, lines)
+        self.assertEqual(before, list(sys.path))
+        self.assertEqual(before.count(REPO),
+                         list(sys.path).count(REPO))
 
     def test_bookended_addresses_are_still_named(self):
         lines = _declared_version_lines()
