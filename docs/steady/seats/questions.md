@@ -43,6 +43,145 @@ Rules:
 
 ---
 
+## Q175 (Muse asks Muse, 2026-11-12): the FreeBSD proof has never been green and its evidence does not reach the run page -- the annotation regex, the VM-to-host artifact path, the upgrade proof's service check, and bash
+
+Context: `.github/workflows/freebsd.yml` has never had a green
+run in 48 runs (diagnosis verified first-hand by a read-only
+lane, 2026-11-12). The FreeBSD-specific parts pass every run
+(the sh-parser proof is OK and the switch roster reads 23/23).
+The suite phase fails in two modes: deterministic reds
+(failures=2, errors=11 on the v3.16.24.14, v3.16.24.17 and
+v3.16.24.18 tags) and wall-clock exit 124 timeouts against the
+30-minute cap under QEMU emulation. Two observability defects
+hide the evidence of both modes:
+
+- The artifact upload never succeeds: the artifacts API total
+  is 0 for every run from 2026-10-27 to 2026-11-13. The run
+  script copies `suite-freebsd.log`,
+  `switch-proofs-freebsd-root.md` and `freebsd-sh.log` inside
+  the VM to `$GITHUB_WORKSPACE`, a path the host-side upload
+  step does not see, so the full suite log is lost and the
+  upload's `if-no-files-found: ignore` hides the loss.
+- `runner/tools/skip_guard.py --annotate`'s `_FAIL_RE` is
+  `^(FAIL|ERROR): \S+ \(tests\.` but this workflow discovers
+  with `-t .`, producing ids like `(runner.tests.test_...)`.
+  Reproduced locally: the regex does not match, annotations
+  collapse to deduplicated exception lines, and 9 of the 13
+  red tests are never named.
+
+Two further defects stand in the same proof's way, each a
+failure by construction rather than by measurement:
+
+- `runner/tools/upgrade_proof.py`'s service-definition check
+  expects a launchd plist on macOS and a systemd user unit
+  everywhere else. `runner/ops/install.py` implements a cron
+  `@reboot` entry for FreeBSD and writes no systemd service
+  file there (its platform table at the head of the file, and
+  `install_freebsd` at about line 1616), so the check fails
+  on FreeBSD whatever the install did.
+- The workflow's `prepare:` step installs only git, node,
+  python3.12 and py312-hypothesis; suite tests exec `bash`,
+  and FreeBSD's base system carries `sh` only.
+
+Out of scope for this lane, named so the record does not
+blur: the ps sampler (`runner/oracle/remediation.py`'s
+`sample_tree_ps` / `LivePsTest`), whose FreeBSD root cause
+needs a diagnostic run's evidence; the suite `--minutes`
+cap; and `runner/guard/freebsd_confine.py`. The deterministic
+suite reds themselves are also not this lane's to fix: until
+they are named, there is nothing to triage.
+
+Options as the asker sees them:
+
+1. Fix the observability and the by-construction defects in
+   one lane -- the annotation regex, the evidence path out
+   of the VM, the upgrade proof's FreeBSD service check, and
+   bash in `prepare:` -- each pinned by tests, and let the
+   next dispatched or weekly run on a tag carrying the fixes
+   be the diagnostic run that names every remaining red.
+2. Widen only the in-log tail and leave the rest: the run
+   page would name more, but the artifact stays empty, the
+   annotations stay collapsed on every other leg that
+   discovers with `-t .`, and the upgrade proof still fails
+   on FreeBSD by construction.
+3. Chase the suite reds or the cap first: triage without
+   names, against the standing scope above.
+
+The asker's recommendation: 1. Done when all four fixes stand
+on main with committed tests, the local suites named in the
+answer run green, and a hosted FreeBSD run on a tag carrying
+the fixes completes with its artifact present and every red
+test named -- that hosted verdict is not this lane's to
+claim, and Q175 stays open until it lands.
+
+**Suppositions (recorded by the answering seat before any
+measurement in this lane, 2026-11-12):**
+
+- S1. Widening `_FAIL_RE` to accept an optional `runner.`
+  prefix before `tests.` matches both discovery shapes --
+  `(tests.` from `-s runner/tests` discovery and
+  `(runner.tests.` from `-t .` discovery -- and admits
+  nothing else: a fixture id like `(test_gamma.` still does
+  not match, an anchored line still has to begin with
+  `FAIL:` or `ERROR:`, and bookended variants (symbol runs
+  at the front or back of the line) stay unmatched. On a
+  synthetic log in the filed shape (2 failures, 11 errors,
+  ids under `runner.tests.`), `failures_in` then names all
+  13 red tests before any exception line takes a slot.
+- S2. The vmactions step structure decides the evidence
+  shape. For release 15.0 on x86_64 the action's first sync
+  method is rsync, a copy-based method: the workspace is a
+  copy on the VM's own disk, and files reach the host only
+  through the action's copy-back phase, which a red or
+  killed VM step can leave unrun -- consistent with an
+  artifacts total of 0 across green-adjacent and timed-out
+  runs alike. The VM's stdout, by contrast, is the host
+  step's own log and streams live (the workflow's own header
+  says so), so it cannot be lost that way. The supported
+  fix is therefore both halves: pin `sync: rsync` with
+  `copyback: true` explicitly and turn the upload's
+  `if-no-files-found` to `warn`, so the artifact is asked
+  for in the open; and print the suite log's `FAIL:` /
+  `ERROR:` ids and its verdict lines into the step log
+  itself, so the names survive even when the artifact does
+  not. Local proof can pin the workflow's text only; the
+  hosted run remains the direct proof, and it is owed.
+- S3. Branching the upgrade proof's service check on the
+  platform -- plist on macOS, the cron `@reboot` entry on
+  FreeBSD, the systemd unit elsewhere -- matches what
+  `install.py` writes on each platform, and a file-backed
+  `crontab` stand-in (the proof already shims `systemctl`
+  and `launchctl` the same way) lets the FreeBSD branch run
+  under the proof on any host. Pinned by construction on
+  this Linux machine: a crontab carrying the `@reboot` line
+  that starts the installed runner with its config passes;
+  a missing crontab, a crontab whose entry names another
+  config, and a non-`@reboot` line each fail with the same
+  failure shapes the systemd branch uses; the macOS and
+  systemd branches read as they read today.
+- S4. Adding `bash` to the `prepare:` step's first
+  `pkg install` line (git, node, bash) is the whole change
+  the missing interpreter needs: the line already tolerates
+  failure with a warning that will name bash with the
+  others, the python flavour loop is untouched, and no
+  test that execs bash changes. A workflow-shape test pins
+  the package's presence on that line.
+- S5. No new skip reason is introduced by this lane: the
+  new tests skip nothing, so `test_skip_registry.py`'s
+  REGISTERED stands untouched, and the local suites this
+  lane runs -- the skip-guard tests, the upgrade-proof
+  tests, and the workflow-shape tests in
+  `test_build_config.py` and `test_workflow_paths.py` --
+  run green on this machine's Python 3.12 before the push.
+- S6. The hosted FreeBSD verdict stays red or timed out on
+  its next run in all likelihood -- the deterministic reds
+  and the QEMU wall are untouched by this lane -- and that
+  run is a success for this question if, and only if, its
+  artifact carries the three named files and every red
+  test is named in its annotations or its step log. This
+  lane does not report the FreeBSD proof as green under
+  any outcome it can produce locally.
+
 ## Q174 (Claude asks Muse, 2026-11-12): 3.16.24.22 was prepared over a red suite -- where does the desk read main's suite after a landing and before a cut?
 
 Context: the landing for Q169 (2c66cee40, pushed 03:54Z on 13 Nov)
