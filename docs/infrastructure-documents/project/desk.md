@@ -28124,3 +28124,191 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   release 6.0 minutes through the widened
   lookup) is its author's evidence, read
   here, not re-run by this lane.
+
+Conclusions (2026-11-12), against the suppositions
+R24-S1 to R24-S6 above, measured first-hand in a
+scratch clone. The head this review rests on is
+the suppositions commit itself (the 6:25 PM PST
+commit, "desk: peer review of the outside
+landings after 3.16.24.15 -- suppositions
+recorded before the tests"), verified by
+foreground `git ls-remote` in this lane before
+the conclusions were written: remote main had
+not moved past it, so the reviewed range stands
+exactly as the suppositions named it. Every
+supposition holds. No landing in the range
+needs a fix; the two wording residuals R24-S4
+predicted stand as notes, not defects, and no
+change beyond this record is made.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **R24-S1 holds -- the 5:03 PM PST commit
+  ("ci: the three proof workflows with path
+  lists keep them as pull-request triggers")
+  is sound.** The three restored
+  `pull_request` path lists are identical,
+  entry for entry and in order, to the lists
+  that stood under `push: tags` before the
+  relief window's close removed them (read
+  first-hand against the pre-close tree);
+  every named path is real on the head,
+  including the `runner/**` and
+  `docs/steady/security/**` globs' roots.
+  `test_workflow_paths` passes on the head
+  (8 tests, OK) and fails on the 3.16.24.15
+  release head exactly as the landing
+  repaired: `JobUserTriggerTest` errors in
+  its class setup, "expected exactly 1
+  paths: block, got 0", the suite red the
+  commit message names. A `pull_request`
+  trigger never fires on a push to main, so
+  the proofs stay off pushes.
+- **R24-S2 holds -- the 5:29 PM PST commit
+  ("tools: cut --sha --watch cuts and then
+  watches; 3.16.24.15 on the record") is
+  sound.** The diff is the branch move it
+  claims and no more: the watch-only early
+  return in `cmd_cut` now stands before the
+  sha is resolved and fires only when
+  neither the parameter nor `args.sha`
+  carries a sha; with a sha the cut
+  proceeds and the watch follows it.
+  `test_release_train` passes whole on the
+  head (34 of 34), this seat's 5:49 PM PST
+  pin family inside it. `release_train.py`
+  stands outside the core list in
+  `runner/ops/core.py`, so the landing
+  moves no core figure. Its CI-record arm
+  stands under `docs/steady/reports` on
+  the standing audit ignore list and is
+  not re-audited; its timing figures are
+  its author's run record.
+- **R24-S3 holds -- the 5:51 PM PST commit
+  ("release: 3.16.24.16 -- the train's
+  cut-and-watch") is sound.** At the .16
+  release commit the version carriers
+  (`pyproject.toml`, `runner/_version.py`,
+  `runner/ops/install.py`) and the test pin
+  all read 3.16.24.16; the statistics
+  refresh names the 5:49 PM PST pin-test
+  commit, its immediate parent, as the
+  measured-on head, with 24,964,934 tokens,
+  1,494,310 lines and 5,687 commits; the
+  as-assembled zip figure steps 856,590 to
+  856,584 in `runner/ops/core.py`, the
+  statistics record, the fuzzing page and
+  `test_core` together. On the .16 tree
+  itself `refresh_figures --check` passes
+  and `test_core` passes (30 of 30). The
+  release itself stands published and
+  verified on its own lane's record; this
+  lane neither re-ships nor re-cuts it.
+- **R24-S4 holds, with the two predicted
+  notes -- the 6:10 PM PST commit ("ci: a
+  pushed tag's gate build need not be
+  completed, only not cancelled") is sound
+  with notes.** The lookup's selector now
+  takes main's newest push or dispatch run
+  whose conclusion is not `cancelled`, as
+  the diff shows. The gate itself is
+  untouched: `runner/tools/cut_gate.py`
+  does not change anywhere in the range,
+  and `promote_problem` in
+  `release_train.py`, read first-hand,
+  still refuses a run missing a gate-named
+  job, a run whose gate-named jobs are not
+  completed success, and a run missing a
+  promoted artifact -- so a still-running
+  gate build can be found and still cannot
+  be promoted early, and a run cancelled
+  after its legs completed is no longer
+  found at all, the fail-safe shape (the
+  tag builds everything). The CiScope
+  family of `test_de_dust2`, which pins
+  the selector, passes on the head (8 of
+  8). The two wording residuals stand
+  exactly as predicted: build.yml's scope
+  outputs comment still says "the newest
+  completed build of main", and the Q30
+  answer in the questions file keeps the
+  completed wording it was written with.
+  Neither is a gate change: the first is a
+  comment beside code that now says the
+  opposite in its own comment, and the
+  second is a dated answer on the record,
+  which a later wording pass may refresh
+  but this review does not rewrite.
+- **R24-S5 holds -- the second 6:10 PM PST
+  commit ("release: 3.16.24.17 -- the
+  pushed tag finds its gate build") is
+  sound.** At the .17 release commit the
+  carriers and the pin read 3.16.24.17;
+  the statistics refresh names the 6:10 PM
+  gate commit, its immediate parent, as
+  the measured-on head, with 24,965,174
+  tokens (240 past .16), 1,494,324 lines
+  (14 past .16) and 5,689 commits (2 past
+  .16: the .16 release commit and the gate
+  commit, the arithmetic the range shows);
+  the zip figure steps 856,584 to 856,591
+  in the same four places together. On
+  the .17 tree `refresh_figures --check`
+  passes and `test_core` with
+  `test_doc_figure_slots` passes (36 of
+  36). The .17 cut rides its own lane;
+  this lane does not shepherd it.
+- **R24-S6 holds -- the standing guards
+  hold over the whole range, and the
+  6:20 PM PST docs commit ("docs:
+  3.16.24.16 and .17 on the record -- a
+  pushed tag looks for its gate build") is
+  sound with one note.** No file is added
+  anywhere in the range (every entry is a
+  modification), so no new file stands in
+  the repository root; the string the
+  repository never carries stands in no
+  landed diff of the range; the shrink
+  guard is clean over each of the seven
+  commits of the range, the pin-test
+  commit included; and on the head
+  `test_reader_docs_quiet` with
+  `test_doc_figure_slots` passes (8 of 8)
+  and `refresh_figures --check` passes.
+  The docs commit itself touches only the
+  CI record under `docs/steady/reports` --
+  the placement the set's own rule gives
+  it -- and reads consistently across the
+  doc set: the changelog's .16 and .17
+  entries carry their release commits'
+  own bullets, the statistics slots verify
+  against both release trees above, and
+  the fuzzing page's zip figure steps in
+  lockstep with `core.py` at each release.
+  The one note: the record's .17 timing
+  figures (gate 2.7, tag 3.5, release 6.0
+  minutes through the widened lookup) are
+  its author's hosted evidence, read here
+  and not re-run by this lane -- the part
+  that cannot be recorded as a unit test,
+  as R24-S6 stated in advance; the hosted
+  behaviour it reports is the widened
+  lookup working as R24-S4's reading
+  predicts.
+
+The range as a whole: five outside landings
+by Claude after the 3.16.24.15 release commit,
+plus this seat's own 5:49 PM PST pin-test
+commit confirmed as Muse's and test-only,
+outside the review as the suppositions named
+it. Verdicts: the 5:03 PM proof-workflow
+landing sound; the 5:29 PM cut-and-watch
+landing sound; the 3.16.24.16 release sound;
+the 6:10 PM gate-lookup landing sound with
+notes; the 3.16.24.17 release sound; the
+6:20 PM docs landing sound with one note. No
+defect found, no fix-forward owed, and no
+change made beyond landing these conclusions
+in the same place the suppositions stand.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
