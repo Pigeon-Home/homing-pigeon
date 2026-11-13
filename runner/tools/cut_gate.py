@@ -4,6 +4,7 @@ before the commit is cut, and whether they are.
 
     python3 runner/tools/cut_gate.py need --sha SHA --version V
     python3 runner/tools/cut_gate.py check --sha SHA --version V --run RUN_ID
+    python3 runner/tools/cut_gate.py proofs-due --prev TAG --tag TAG
 
 One rule, read by the three places that gate a release: the cut
 (cut-release.yml's gate step, before it tags), the tag build's
@@ -30,6 +31,18 @@ marker from build.yml and the clock.
 A record that cannot be read is a refusal, never a pass: no
 previous release, a compare the API will not give whole, a job
 missing from the run.
+
+`proofs-due` answers the tag build's other question from the local
+history: did anything under runner/ change between two tags other
+than the release's own carrier lines? Every release commit moves
+the version string in two files under runner/, the as-assembled
+measure in runner/ops/core.py and the test line that pins it, so
+"anything under runner/" was true of every tag, and the nine proof
+workflows started on every release and were cancelled by the next
+one (26 of the Python range proof's last 39 runs). A tag whose
+only changes under runner/ are those lines starts no proofs; the
+nightly covers them. Its last line is `true` or `false`, and the
+workflow reads anything else as true.
 """
 import argparse
 import datetime
@@ -100,6 +113,45 @@ def relief_active(root=ROOT, now=None):
         tzinfo=datetime.timezone.utc)
     now = now or datetime.datetime.now(datetime.timezone.utc)
     return now < expiry
+
+
+# The lines every release commit moves under runner/: the version
+# string, the as-assembled measure, and the test line pinning it.
+RELEASE_CARRIER_LINES = (
+    re.compile(r'^[-+]\s*__version__\s*=\s*"[0-9.]+"\s*$'),
+    re.compile(r"^[-+]\s*AS_ASSEMBLED_[A-Z_]+\s*=\s*\d+\s*$"),
+    re.compile(r"^[-+]\s*self\.assertEqual\(\d+,\s*core\.AS_ASSEMBLED_[A-Z_]+\)\s*$"),
+)
+
+
+def runner_changes(diff_text):
+    """The paths under runner/ that a `git diff -U0` text changes by
+    a line other than a release carrier's. A file added, deleted,
+    renamed or binary counts whole."""
+    changed, path, counted = [], None, False
+    for line in diff_text.splitlines():
+        if line.startswith("diff --git "):
+            path, counted = line.split(" b/", 1)[-1], False
+            continue
+        if path is None or counted or not path.startswith("runner/"):
+            continue
+        whole = line.startswith(("new file mode", "deleted file mode", "rename from", "Binary files"))
+        body = line[:1] in "+-" and not line.startswith(("+++", "---"))
+        if whole or (body and not any(rx.match(line) for rx in RELEASE_CARRIER_LINES)):
+            changed.append(path)
+            counted = True
+    return changed
+
+
+def proofs_due(prev, tag, root=ROOT):
+    """(due, the changed paths): whether the proofs start on `tag`.
+    A diff that cannot be read is due."""
+    proc = subprocess.run(["git", "-C", root, "diff", "-U0", prev, tag, "--", "runner/"],
+                          capture_output=True, text=True)
+    if proc.returncode != 0:
+        return True, ["(the diff %s..%s could not be read)" % (prev, tag)]
+    paths = runner_changes(proc.stdout)
+    return bool(paths), paths
 
 
 def core_files(root=ROOT):
@@ -235,7 +287,16 @@ def main(argv=None):
         p.add_argument("--version", required=True, help="the version being cut, without the v")
         if name == "check":
             p.add_argument("--run", required=True, help="the build run whose jobs are read")
+    p = sub.add_parser("proofs-due")
+    p.add_argument("--prev", required=True, help="the previous release tag")
+    p.add_argument("--tag", required=True, help="the tag the proofs would start on")
     args = ap.parse_args(argv)
+    if args.cmd == "proofs-due":
+        due, paths = proofs_due(args.prev, args.tag)
+        print("%s..%s under runner/, release carriers aside: %s" % (
+            args.prev, args.tag, ", ".join(paths[:6]) + (" and %d more" % (len(paths) - 6) if len(paths) > 6 else "") if paths else "nothing"))
+        print("true" if due else "false")
+        return 0
     need_set, why = need(args.sha, args.version.lstrip("v"))
     if args.cmd == "need":
         print("%s (%s)" % (" ".join(sorted(need_set)), why))

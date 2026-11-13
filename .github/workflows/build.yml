@@ -1387,8 +1387,19 @@ jobs:
         run: |
           set -euo pipefail
           prev=$(git tag --list 'v*' --sort=-v:refname | grep -v -x "$TAG" | head -n 1 || true)
-          if [ -n "$prev" ] && [ -z "$(git diff --name-only "$prev" "$TAG" -- runner/ | head -n 1)" ]; then
-            echo "::notice::$TAG changes nothing under runner/ since $prev; the proofs are not dispatched (the nightly covers them)"
+          # The release's own carrier lines under runner/ (the version
+          # string in two files, the as-assembled measure and its
+          # pin) do not count: with them every tag "changed runner/",
+          # the nine proofs started on every release and the next
+          # release cancelled them (26 of python-range's last 39
+          # runs), so the newest tag's proofs were seldom there to
+          # read. Anything but a plain "false" starts the proofs.
+          due=true
+          if [ -n "$prev" ]; then
+            due=$(python3 runner/tools/cut_gate.py proofs-due --prev "$prev" --tag "$TAG" | tee /dev/stderr | tail -n 1) || due=true
+          fi
+          if [ "$due" = "false" ]; then
+            echo "::notice::$TAG changes nothing under runner/ since $prev but the release's own carrier lines; the proofs are not dispatched (the nightly covers them)"
             exit 0
           fi
           for wf in platform-matrix.yml python-range.yml switch-proofs.yml \

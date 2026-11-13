@@ -1175,8 +1175,12 @@ class PipelinePostureTest(unittest.TestCase):
         self.assertIn("startsWith(github.ref, 'refs/tags/v')", block)
         self.assertIn("needs.release.result == 'success'", block)
         self.assertEqual({("actions", "write"), ("contents", "read")}, _perm_entries(block))
-        # the push trigger's runner/** filter, read against the previous tag
-        self.assertIn('git diff --name-only "$prev" "$TAG" -- runner/', block)
+        # the runner/ filter, read against the previous tag by the
+        # cut gate's proofs-due: the release's own carrier lines do
+        # not count, and anything but a plain "false" starts them
+        self.assertIn('python3 runner/tools/cut_gate.py proofs-due --prev "$prev" --tag "$TAG"', block)
+        self.assertIn('|| due=true', block)
+        self.assertIn('if [ "$due" = "false" ]; then', block)
         self.assertIn("fetch-depth: 0", block)
         cut = _uncommented(_workflow_text("cut-release.yml"))
         step = cut.split("start the release pipeline on the tag", 1)[1]

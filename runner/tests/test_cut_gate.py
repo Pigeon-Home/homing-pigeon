@@ -179,6 +179,103 @@ class VerdictTest(unittest.TestCase):
         self.assertEqual(bad, [])
 
 
+RELEASE_DIFF = """diff --git a/runner/_version.py b/runner/_version.py
+index 1..2 100644
+--- a/runner/_version.py
++++ b/runner/_version.py
+@@ -3 +3 @@
+-__version__ = "3.16.24.18"
++__version__ = "3.16.24.19"
+diff --git a/runner/ops/core.py b/runner/ops/core.py
+--- a/runner/ops/core.py
++++ b/runner/ops/core.py
+@@ -40 +40 @@
+-AS_ASSEMBLED_ZIP_BYTES = 855207
++AS_ASSEMBLED_ZIP_BYTES = 856590
+diff --git a/runner/ops/install.py b/runner/ops/install.py
+--- a/runner/ops/install.py
++++ b/runner/ops/install.py
+@@ -9 +9 @@
+-__version__ = "3.16.24.18"
++__version__ = "3.16.24.19"
+diff --git a/runner/tests/test_core.py b/runner/tests/test_core.py
+--- a/runner/tests/test_core.py
++++ b/runner/tests/test_core.py
+@@ -80 +80 @@
+-        self.assertEqual(855207, core.AS_ASSEMBLED_ZIP_BYTES)
++        self.assertEqual(856590, core.AS_ASSEMBLED_ZIP_BYTES)
+"""
+
+
+class ProofsDueTest(unittest.TestCase):
+    """The tag build starts the nine proofs only when something
+    under runner/ changed beyond the release's own carrier lines:
+    with them, every tag started the proofs and the next tag
+    cancelled them."""
+
+    def test_a_release_commits_own_lines_start_nothing(self):
+        self.assertEqual(rg.runner_changes(RELEASE_DIFF), [])
+
+    def test_any_other_line_under_runner_starts_them(self):
+        more = RELEASE_DIFF + """diff --git a/runner/tests/test_parallel_runner.py b/runner/tests/test_parallel_runner.py
+--- a/runner/tests/test_parallel_runner.py
++++ b/runner/tests/test_parallel_runner.py
+@@ -796 +796 @@
+-        self.assertIn("x", text)
++        self.assertRegex(text, r"x")
+"""
+        self.assertEqual(rg.runner_changes(more), ["runner/tests/test_parallel_runner.py"])
+        # a second line in a carrier file counts the file
+        extra = RELEASE_DIFF.replace('+__version__ = "3.16.24.19"\ndiff --git a/runner/ops/core.py',
+                                     '+__version__ = "3.16.24.19"\n+BUILD = 7\ndiff --git a/runner/ops/core.py')
+        self.assertEqual(rg.runner_changes(extra), ["runner/_version.py"])
+        # a measure of the core's parts moving is a core change
+        parts = RELEASE_DIFF + """diff --git a/runner/ops/core.py b/runner/ops/core.py
+--- a/runner/ops/core.py
++++ b/runner/ops/core.py
+@@ -60 +60 @@
+-    "runner/ops": 22585,
++    "runner/ops": 22703,
+"""
+        self.assertEqual(rg.runner_changes(parts), ["runner/ops/core.py"])
+
+    def test_files_added_deleted_or_outside_runner(self):
+        added = """diff --git a/runner/tools/seat_digest.py b/runner/tools/seat_digest.py
+new file mode 100644
+--- /dev/null
++++ b/runner/tools/seat_digest.py
+@@ -0,0 +1 @@
++__version__ = "1"
+diff --git a/docs/a.md b/docs/a.md
+--- a/docs/a.md
++++ b/docs/a.md
+@@ -1 +1 @@
+-old
++new
+diff --git a/runner/tests/old.py b/runner/tests/old.py
+deleted file mode 100644
+"""
+        self.assertEqual(rg.runner_changes(added),
+                         ["runner/tools/seat_digest.py", "runner/tests/old.py"])
+        self.assertEqual(rg.runner_changes(""), [])
+
+    def test_an_unreadable_diff_is_due_and_the_command_ends_on_one_word(self):
+        with tempfile.TemporaryDirectory() as d:
+            due, paths = rg.proofs_due("v1", "v2", root=d)
+        self.assertTrue(due)
+        self.assertIn("could not be read", paths[0])
+        with mock.patch.object(rg, "proofs_due", lambda prev, tag: (False, [])), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(rg.main(["proofs-due", "--prev", "v1", "--tag", "v2"]), 0)
+        self.assertEqual(out.getvalue().splitlines()[-1], "false")
+        self.assertIn("nothing", out.getvalue())
+        with mock.patch.object(rg, "proofs_due", lambda prev, tag: (True, ["runner/ops/exec.py"])), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            rg.main(["proofs-due", "--prev", "v1", "--tag", "v2"])
+        self.assertEqual(out.getvalue().splitlines()[-1], "true")
+        self.assertIn("runner/ops/exec.py", out.getvalue())
+
+
 class CommandTest(unittest.TestCase):
     def test_need_prints_the_set_and_check_reads_the_run(self):
         jobs = {"jobs": [{"name": n, "status": "completed", "conclusion": "success"} for n in LEGS]}
