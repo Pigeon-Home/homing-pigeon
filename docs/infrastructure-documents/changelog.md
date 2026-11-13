@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.16 - 2026-11-13
+
+- Q170 closes -- the hosted mutation verdict on the 3.16.25.15 head: 857 mutants tested, 831 killed, the floor passed
+
 ## 3.16.25.15 - 2026-11-13
 
 - Q169: the 3.16.25.13 follow-on conclusion -- a wall-clock flake on the 3.14 leg, Q169 stays closed
