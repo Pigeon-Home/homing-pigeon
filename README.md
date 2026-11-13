@@ -21,7 +21,7 @@ other choice.
 
 ## Homing Pigeon IETF Internet-Drafts:
 -  Version 1 Symmetric Signed Exchanged:
--    -  https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
+    -  https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 -  Version 2 Runner-to-SI Exchange:
   - https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 -  Version 3 Post-Quantum Cryptography with PFS:
