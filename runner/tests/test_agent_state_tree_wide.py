@@ -43,6 +43,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__)))))
 
+from runner.tests.mutant_copy import skip_in_mutant_copy  # noqa: E402
 from runner.tools import approvalguard as AG  # noqa: E402
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -187,6 +188,7 @@ class FixtureTreeTest(unittest.TestCase):
                       _rules("notes.json", doc))
 
 
+@skip_in_mutant_copy
 @unittest.skipUnless(shutil.which("git"), "git is not on PATH")
 class WholeTreeTest(unittest.TestCase):
     def test_the_tracked_tree_carries_no_unlisted_agent_state(self):

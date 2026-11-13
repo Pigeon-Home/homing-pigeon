@@ -356,6 +356,13 @@ REGISTERED = {
     "unconnected UDP sends are blocked in this environment; a DTLS server "
     "cannot run here (the pipe-level tests cover the same code over a "
     "connected socket)": "the pipe-level DTLS tests run everywhere",
+    # ---- inside a mutant copy (Q170) --------------------------------
+    "inside a mutant copy: this test measures the "
+    "tracked tree, and mutmut's copy is not it":
+        "runner/tests/mutant_copy.py's shared helper: tree-measuring "
+        "tests stand aside in mutmut's copy, which has no git index "
+        "and carries the mutated file ballooned with its mutants; "
+        "they run in every ordinary suite run",
 }
 
 _SKIP_CALLS = {"skipUnless": 1, "skipIf": 1, "skipTest": 0,

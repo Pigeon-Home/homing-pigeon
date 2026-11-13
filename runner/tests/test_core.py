@@ -26,6 +26,8 @@ sys.path.insert(0, os.path.join(
 
 from ops import core  # noqa: E402
 
+from runner.tests.mutant_copy import skip_in_mutant_copy  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))))
 
@@ -240,6 +242,10 @@ class CoreLinesTest(unittest.TestCase):
                 (4, 2), core.measure_core_lines(tmp, files=("one.py",)))
 
     def test_the_canonical_set_is_smaller_than_the_record(self):
+        # Inside a mutant copy the mutated file carries one copy
+        # per mutant, so the live count is the copy's, not the
+        # tree's (Q170).
+        skip_in_mutant_copy(self)
         total, nonblank = core.measure_core_lines(ROOT)
         self.assertGreater(total, 0)
         self.assertGreater(nonblank, 0)
@@ -278,6 +284,9 @@ class CorePartsTest(unittest.TestCase):
         self.assertEqual(own, parts["runner/runner.py"])
 
     def test_the_canonical_breakdown_differs_in_tools_only(self):
+        # The guard part's live count is the mutant copy's own
+        # inside mutmut's tree (Q170); see the lines test above.
+        skip_in_mutant_copy(self)
         parts = core.measure_core_lines_by_part(ROOT)
         self.assertEqual(set(core.AS_ASSEMBLED_PART_LINES), set(parts))
         for part, recorded in core.AS_ASSEMBLED_PART_LINES.items():

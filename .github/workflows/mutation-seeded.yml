@@ -64,6 +64,13 @@ jobs:
             echo "Reproduce: dispatch this workflow with seed \`$SEED\` on that commit,"
             echo "or locally with \`PYTHONHASHSEED=$SEED HP_MUTATION_SEED=$SEED mutmut run\`."
           } >> "$GITHUB_STEP_SUMMARY"
+      # Q170: the walk's oracle is the derived selection in
+      # pyproject's [tool.mutmut] table; a selection that has
+      # rotted against the tree fails here, in the walk itself,
+      # before the baseline runs -- the suite-side pin
+      # (test_mutation_oracle.py) is the other half of the hold.
+      - name: the selection is the derivation (Q170)
+        run: python runner/tools/mutation_oracle.py --check
       - name: mutmut (seeded)
         env:
           PYTHONHASHSEED: ${{ steps.seed.outputs.seed }}
