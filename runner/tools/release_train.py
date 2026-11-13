@@ -268,6 +268,20 @@ def write_changelog(version, notes, today, root=ROOT):
         fh.write(text)
 
 
+def deflate_name():
+    import zlib
+    return str(getattr(zlib, "ZLIB_RUNTIME_VERSION", "") or getattr(zlib, "ZLIB_VERSION", "") or "unknown")
+
+
+def reference_deflate(name=None):
+    """True where the interpreter's deflate is the reference zlib --
+    a runtime version of digits and dots alone ("1.3.1"). zlib-ng
+    and the other variants name themselves in that string
+    ("1.3.1.zlib-ng") and pack to other sizes."""
+    name = deflate_name() if name is None else name
+    return bool(re.fullmatch(r"\d+(\.\d+)+", name))
+
+
 def record_core_measure(root=ROOT):
     """Re-record runner/ops/core.py's as-assembled constants, the
     test pins, and the fuzzing page's part list from a fresh
@@ -287,7 +301,22 @@ def record_core_measure(root=ROOT):
         top = name.split("/")
         part = "/".join(top[:2]) if len(top) > 2 else name
         parts[part] = parts.get(part, 0) + len(lines)
-    zip_bytes = len(core.core_zip_bytes(root, files=files))
+    # The zip figure is re-recorded only where the deflate is the
+    # reference one. core.py's zip is byte-identical between two
+    # builds on one machine, and the same size across machines only
+    # while they share a deflate: this train's container links
+    # zlib-ng, which packs the same tree into 856,590 bytes where
+    # the reference zlib gives 855,207, and five releases cut from
+    # it (3.16.24.16 to .21) carried that machine's figure until
+    # the outside-landing review re-recorded the standing one. On
+    # any other deflate the figure is left as it stands, for a
+    # machine with the reference one to re-measure.
+    if reference_deflate():
+        zip_bytes = len(core.core_zip_bytes(root, files=files))
+    else:
+        zip_bytes = core.AS_ASSEMBLED_ZIP_BYTES
+        _say("the as-assembled zip figure is left at %s: this machine's deflate is %s, not the reference zlib"
+             % (format(zip_bytes, ","), deflate_name()))
     runners = 0
     for name in SUITE_RUNNERS:
         with open(os.path.join(root, name), "rb") as fh:

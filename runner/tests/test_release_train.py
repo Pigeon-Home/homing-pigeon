@@ -348,6 +348,28 @@ class WatchTest(unittest.TestCase):
             self.assertEqual(rt.watch_tag_build("3.16.21.2", 1), 1)
 
 
+class ReferenceDeflateTest(unittest.TestCase):
+    """The as-assembled zip figure is re-recorded only under the
+    reference zlib: zlib-ng packs the same tree to another size
+    (856,590 where the reference gives 855,207), and releases cut
+    from a machine linking it carried that machine's figure."""
+
+    def test_the_reference_names_itself_by_digits_alone(self):
+        self.assertTrue(rt.reference_deflate("1.3.1"))
+        self.assertTrue(rt.reference_deflate("1.2.13"))
+        self.assertFalse(rt.reference_deflate("1.3.1.zlib-ng"))
+        self.assertFalse(rt.reference_deflate("1.2.11.1-motley"))
+        self.assertFalse(rt.reference_deflate("unknown"))
+        self.assertFalse(rt.reference_deflate(""))
+
+    def test_another_deflate_leaves_the_zip_figure_standing(self):
+        import inspect
+        src = inspect.getsource(rt.record_core_measure)
+        self.assertIn("if reference_deflate():", src)
+        self.assertIn("zip_bytes = core.AS_ASSEMBLED_ZIP_BYTES", src)
+        self.assertIn("left at", src)
+
+
 class MeasureTest(unittest.TestCase):
     def test_measure_re_records_and_reads_the_guards(self):
         calls = []
