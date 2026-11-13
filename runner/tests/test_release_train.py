@@ -383,7 +383,7 @@ class RedMainWarningTest(unittest.TestCase):
             {"id": 1, "event": "push", "conclusion": "success", "head_sha": "a" * 40},
         ]
         jobs = {
-            6: [self._job("test", None, "in_progress"), self._job("test-windows (1)", "failure")],
+            6: [self._job("test", None, "in_progress"), self._job("test-windows (1)", None, "in_progress")],
             5: [self._job("docs", "success"), self._job("test", "skipped")],
             4: [self._job("test", "cancelled"), self._job("test-windows", "cancelled")],
             2: [self._job("test", "failure"), self._job("test-windows (1)", "failure"),
@@ -403,6 +403,37 @@ class RedMainWarningTest(unittest.TestCase):
             self.assertIn("(build run 2, the newest build of main with a suite verdict).", rt.red_main_warning())
         with mock.patch.object(rt, "api", self._api(runs[2:], jobs)):
             self.assertIn("; 1 newer build of main carries none)", rt.red_main_warning())
+
+    def test_a_part_that_failed_is_red_while_the_linux_suite_still_runs(self):
+        # 13 Nov 2026, the build of 1ff0cd49: the shape check read
+        # red at 05:24:10Z, 36 seconds after the push, Windows part
+        # 2 at 05:31 and the Linux suite at 05:37. A reading that
+        # waits for the Linux suite finds the last green build for
+        # those thirteen minutes.
+        runs = [{"id": 9, "event": "push", "conclusion": None, "head_sha": "9" * 40},
+                {"id": 8, "event": "push", "conclusion": "cancelled", "head_sha": "8" * 40}]
+        jobs = {9: [self._job("shape", "failure"), self._job("test", None, "in_progress"),
+                    self._job("test-windows (1)", None, "in_progress"), self._job("test-windows (2)", None, "in_progress")],
+                8: [self._job("shape", "success"), self._job("test", "success")]}
+        with mock.patch.object(rt, "api", self._api(runs, jobs)):
+            text = rt.red_main_warning()
+        self.assertIn("main's suite is red: shape failed on 99999999 (build run 9, the newest "
+                      "build of main with a suite verdict).", text)
+        jobs[9] = [self._job("shape", "success"), self._job("test", None, "in_progress"),
+                   self._job("test-windows (1)", None, "in_progress"), self._job("test-windows (2)", "failure")]
+        with mock.patch.object(rt, "api", self._api(runs, jobs)):
+            self.assertIn("main's suite is red: test-windows (2) failed on 99999999 (build run 9,", rt.red_main_warning())
+        # a green shape check alone is no verdict: the build before it is read
+        jobs[9] = [self._job("shape", "success"), self._job("test", None, "in_progress")]
+        jobs[8] = [self._job("shape", "success"), self._job("test", "failure")]
+        with mock.patch.object(rt, "api", self._api(runs, jobs)):
+            self.assertIn("main's suite is red: test failed on 88888888 (build run 8, the newest "
+                          "build of main with a suite verdict; 1 newer build of main carries none)", rt.red_main_warning())
+        jobs[8] = [self._job("shape", "success"), self._job("test", "success")]
+        # a part still running beside a green Linux suite is green so far
+        jobs[9] = [self._job("test", "success"), self._job("test-windows (1)", None, "in_progress")]
+        with mock.patch.object(rt, "api", self._api(runs, jobs)):
+            self.assertEqual(rt.red_main_warning(), "")
 
     def test_a_green_newest_verdict_says_nothing_whatever_came_before(self):
         runs = [{"id": 2, "event": "push", "conclusion": None, "head_sha": "b" * 40},

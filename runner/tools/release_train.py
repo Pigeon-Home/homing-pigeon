@@ -430,30 +430,37 @@ def _statistics_facts(root):
         return None
 
 
-SUITE_JOBS = ("test", "test-windows")
+# The jobs the red-main warning reads: the suites the gate names, and
+# the build's first-minute check beside them (the shrink guard and the
+# core measure), which is no gate and reads red first.
+SUITE_JOBS = ("shape", "test", "test-windows")
 
 
 def red_main_warning():
     """What main's newest suite verdict says when it is red, or ''.
 
     The builds of main are read newest first (a push or a
-    dispatch), down to the first whose Linux suite came to a
-    verdict of its own, and a failed Linux suite or Windows part
-    is named with its commit and run. The verdict is the job's,
-    not the run's: a run a later head cancelled still carries the
-    verdict of a suite that had finished, and a run whose suite
-    was skipped (a change of docs alone) or cancelled says nothing
-    about the tree (the line counts the newer builds it read past,
-    so a red that a later landing may have mended reads as such).
-    The cut gate waits for the suites only for a
-    release that carries core code, so a release of tests, tools
-    or docs can be prepared on a main whose suite is red:
-    3.16.24.22 was, ten minutes after the Linux suite first read
-    red on a landing that left a new skip without its registered
-    reason. The order of work puts a red
-    signal first; this names it where a seat preparing a release
-    reads it. It warns and never refuses, and a record it cannot
-    read says nothing.
+    dispatch), down to the first that carries a suite verdict: a
+    Linux suite, a Windows part or the first-minute shape check
+    that failed, or a Linux suite that read green. A failed job is
+    named with its commit and run as soon as it has failed, while
+    the rest still run: on 2026-11-13 the shape check read red 36
+    seconds after a push, a Windows part seven minutes after it,
+    and the Linux suite thirteen. The
+    verdict is the job's, not the run's: a run a later head
+    cancelled still carries the verdict of a suite job that had
+    finished, and a run whose suite was skipped (a change of docs
+    alone) or cancelled says nothing about the tree (the line
+    counts the newer builds it read past, so a red that a later
+    landing may have mended reads as such). The cut gate waits for
+    the suites only for a release that carries core code, so a
+    release of tests, tools or docs can be prepared on a main whose
+    suite is red: 3.16.24.22 was, ten minutes after the Linux suite
+    first read red on a landing that left a new skip without its
+    registered reason. The order of work puts a red signal first;
+    this names it where a seat preparing a release reads it. It
+    warns and never refuses, and a record it cannot read says
+    nothing.
     """
     try:
         runs = (api("/actions/workflows/build.yml/runs?branch=main&per_page=15") or {}).get("workflow_runs", [])
@@ -462,14 +469,14 @@ def red_main_warning():
             if run.get("event") not in ("push", "workflow_dispatch"):
                 continue
             jobs = run_jobs(run["id"])
-            linux = jobs.get("test") or {}
-            if linux.get("status") != "completed" or linux.get("conclusion") not in ("success", "failure"):
-                newer += 1
-                continue
             red = sorted(j.get("name", n) for n in SUITE_JOBS for j in cut_gate.match(n, jobs)
                          if j.get("status") == "completed" and j.get("conclusion") == "failure")
+            linux = jobs.get("test") or {}
             if not red:
-                return ""
+                if linux.get("status") == "completed" and linux.get("conclusion") == "success":
+                    return ""
+                newer += 1
+                continue
             later = ("; %d newer build%s of main carr%s none" % (newer, "" if newer == 1 else "s", "ies" if newer == 1 else "y")
                      if newer else "")
             return ("WARNING — main's suite is red: %s failed on %s (build run %s, the newest "
