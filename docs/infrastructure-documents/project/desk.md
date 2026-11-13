@@ -28536,3 +28536,268 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   record of the carrier, the ship itself
   standing on its own lane's record, not
   this one's.
+
+Conclusions (2026-11-12), against the suppositions
+R25-S1 to R25-S6 above, measured first-hand in a
+scratch clone. The head this review rests on is
+the 3.16.24.19 release commit (the last of the
+three 7:25 PM PST commits), checked out and
+tested whole; the figures of the release are
+measured at its named measured head, the filing
+commit, in a complete clone. Remote main has
+moved since the suppositions were written --
+the Q170 lane's suppositions, the owner's
+order-of-work record (Q171), the 3.16.24.20 and
+3.16.24.21 release carriers, the Q169 answer
+and two CI landings stand on it as these
+conclusions are written -- and none of that
+movement is in this review's range; the
+verdicts below rest on the range alone. One
+supposition fails in part and one holds as a
+defect: the seat digest's second reading does
+not reproduce whole from a later tree (R25-S1's
+note), and the release's as-assembled zip
+figure does not match its tree (R25-S4). The
+zip figure is fixed forward by this lane, in
+the commit of 8:05 PM PST ("fix: the
+as-assembled zip figure re-recorded at its
+live measure, 855,207"); everything else in
+the range needs no fix.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **R25-S1 holds with one note -- the first
+  7:25 PM PST commit ("tools: a seat digest --
+  where a window of each seat's work went,
+  read from the history") is sound with
+  notes.** `test_seat_digest` passes whole on
+  the head (8 of 8): the kind, the numstat
+  reader, the wrapped-heading questions
+  reader, the addressee reader, the residual
+  chain, the shares and the wait all behave
+  as pinned. Run in the complete clone at the
+  head, the tool reproduces the first printed
+  reading (the 72 hours to
+  2026-11-10T03:00:00Z) byte for byte, and the
+  second reading (to 2026-11-13T03:00:00Z)
+  byte for byte except one line: the page
+  reads "questions filed in the window: 35
+  (Claude -> seat 2, Muse -> self 33)" and
+  the re-run reads 37 (Claude -> seat 4). The
+  difference is the tool's own shape, not a
+  misprint: it reads the questions file as it
+  stands when it runs, and Q169 and Q170 --
+  dated 2026-11-12, inside the window's days,
+  but filed in the next landing, 25 minutes
+  after the window closed -- stand in the
+  file now and did not when the reading was
+  taken. The chain (23, Q143 .. Q167) and the
+  two waits (Q166 at 0.3 hours, Q168 at 0.2)
+  reproduce exactly, as does every seat's
+  commits, lines, shares and kinds in both
+  windows. The readings are therefore
+  run-time snapshots: a later re-run's
+  questions line can move when a question is
+  filed after a window closes under a date
+  inside it, and the page's two readings
+  stand as the record of the runs that made
+  them. The tool stands outside the core
+  list, and the report's placement under
+  `docs/steady/reports` is the drawers' own.
+- **R25-S2 holds -- the second 7:25 PM PST
+  commit ("desk: Q169 and Q170 -- two proofs
+  with no green run; the full-log test reads
+  both unittest forms") is sound.** The
+  full-log fix is the widening it claims and
+  no more: the two assertions are regexes
+  that each read both unittest `-v` forms,
+  checked here directly -- the old literal
+  matches the 3.11+ form and fails the
+  pre-3.11 form, the new regex matches both
+  -- and `test_parallel_runner` passes whole
+  on the head (54 of 54). The filings' code
+  claims check against the tree as the
+  suppositions read them: the briefing guard
+  reads `unicodedata.category` from the
+  running interpreter, `_parse_toml` in
+  `runner/tools/approvalguard.py` returns
+  None without `tomllib`, `python-range.yml`
+  runs 3.9 and 3.14 against
+  `requires-python = ">=3.9"`, and the
+  `[tool.mutmut]` table and
+  `mutation-seeded.yml` name
+  `runner/guard/security.py` under the whole
+  `runner/tests/` selection, the two
+  tree-measuring tests the filing names
+  standing in it. On this lane's Python 3.12
+  the three tests Q169 names as failing off
+  3.12, and `test_version` with them, pass
+  (10 tests, OK) -- the pins are the 3.12
+  tables and the TOML read has `tomllib`
+  here, the filing's mechanism from the
+  green side. The filings' hosted claims
+  (run ids, the 39 runs, the mutation walk's
+  last green run of 2026-10-26) are the
+  author's hosted evidence, not re-run here,
+  as R25-S2 stated in advance. The commit's
+  `build.yml` arm is comment-only and takes
+  the last review's R24-S4 note: the scope
+  comment now names the newest build that
+  was not cancelled. Its `.com.chat` note
+  matches the filings and the digest report.
+  Q169 and Q170 are answered by their own
+  lanes; this review does not answer them.
+- **R25-S3 holds with the prepare-order note
+  -- the third 7:25 PM PST commit ("release:
+  3.16.24.19 -- a seat digest; two red proofs
+  filed") is sound in its carriers and its
+  headline figures.** The three carriers and
+  the version tests read 3.16.24.19 at the
+  release commit. A fresh `measure_facts`
+  over the named measured head in the
+  complete clone reads 5,696 commits exactly
+  (3 past the .18 record's 5,693 at its
+  measured head, the arithmetic the range
+  shows) and every core figure exactly (136
+  files; 64,873 core lines, 58,821
+  non-blank; 719,575 core tokens; the
+  as-assembled 65,992 lines, 59,822
+  non-blank and 731,154 tokens). The token
+  and line counts read 154 tokens and 5
+  lines below the record at the bare head
+  (24,977,265 against 24,977,419; 1,495,270
+  against 1,495,275), and the delta is
+  accounted to the token: the release
+  procedure writes the carriers and the
+  changelog entry before it measures, and
+  the .19 changelog entry is exactly 5 lines
+  and 154 tokens by the project's own
+  estimator, the version digits token-neutral
+  -- the record measures the prepared tree
+  standing on the named head, the same shape
+  the 3.16.24.18 record shows (its delta at
+  its bare head is the same 5 lines). A note
+  on the procedure's wording, not a defect
+  of this landing: the record says "measured
+  on" the head, and the prepared-tree part
+  of the measure is the changelog entry and
+  the carriers of the release itself. The
+  facts' `as_of` steps back to 2026-11-12
+  against the .18 record's 2026-11-13, the
+  two seats' clocks the suppositions named,
+  internally consistent at every slot the
+  refresh fills. The changelog's .19 entry
+  carries the release commit's own two
+  bullets. The one figure of this landing
+  that does not hold is R25-S4's.
+- **R25-S4 holds as the range's one defect --
+  the release's as-assembled zip figure does
+  not match its tree, and this lane fixes it
+  forward.** The deterministic build over
+  the as-assembled set (the canonical list
+  plus the 3 suite runners), measured
+  first-hand three times, reads 855,207: at
+  the release's measured head, where it
+  equals the constant that head records; at
+  the 3.16.24.19 release tree; and at the
+  head these conclusions land on, no
+  assembled-set file having changed since
+  except the version carriers' digit. The
+  release records 856,590 in
+  `runner/ops/core.py`, and the figure rides
+  the statistics facts, the `test_core` pin
+  and the fuzzing page's slot -- the value
+  the 3.16.24.15 record carried, three
+  releases stale at the .19 cut, and carried
+  forward since through the .20 and .21
+  records, whose heads read the same wrong
+  figure against the same live 855,207. No
+  standing guard reached it, as predicted:
+  on the .19 head `refresh_figures --check`
+  passes and `test_core` passes whole (30 of
+  30) with the wrong figure standing, the
+  check comparing slots to facts copied from
+  the constant and the pin comparing the
+  constant to itself. The defect is
+  figures-only -- no code, test logic or
+  artifact reads the recorded size -- and
+  the fix is the four surfaces re-recorded
+  together in this lane's fix commit of
+  8:05 PM PST: the constant in
+  `runner/ops/core.py`, its pin in
+  `runner/tests/test_core.py`, the facts in
+  `statistics.md` and the slot in
+  `docs/steady/fuzzing.md`, 856,590 to
+  855,207 in each; `test_core` passes whole
+  on the fixed tree (30 of 30) and
+  `refresh_figures --check` passes. The next
+  release cut's own re-measure will record
+  whatever its tree then reads; what this
+  fix settles is that the figure standing on
+  main now matches the tree standing on
+  main. Verdict for the landing: needs a
+  fix, and the fix stands landed by this
+  lane -- the release train's .19 ship,
+  which this lane does not touch, carries a
+  figures page that differs from the
+  corrected record in this one number.
+- **R25-S5 holds -- the standing guards hold
+  over the whole range.** The range adds
+  exactly the 3 files R25-S1 and R25-S2 name,
+  none in the repository root (the root
+  files the release touches are
+  modifications of files that stand there);
+  the string the repository never carries
+  stands in no landed diff of the range (0
+  matches over the full range diff); the
+  shrink guard is clean over each of the
+  range's 3 commits; the range's authors are
+  Claude throughout, the outside landing the
+  rule names; and on the head
+  `test_reader_docs_quiet` with
+  `test_doc_figure_slots` passes (8 of 8)
+  beside the suites named above and
+  `refresh_figures --check`. The questions
+  file keeps its rules: Q170 and Q169 stand
+  newest-first above Q168, each filed with
+  its answer open, in the order the range
+  landed them.
+- **R25-S6 holds with R25-S4's exception --
+  the doc set reads consistently across
+  itself.** Every figure slot in AGENTS.md,
+  PROTOCOL.md and docs/steady/fuzzing.md
+  matches the statistics facts, the refresh
+  check being the mechanical form of that
+  reading, and the facts match their tree in
+  every figure but the zip (R25-S3, R25-S4).
+  The seat-digest report's summary prose
+  matches the two readings it prints -- the
+  51.7 per cent test module, the desk at
+  17.4, the questions file at 7.3, the chain
+  of 23 from Q143 to Q167 told as Q143 and
+  the 22 after it, the waits of 0.3 and 0.2
+  hours -- the questions-filed count in that
+  prose being the run-time snapshot R25-S1
+  notes. The questions file, the `.com.chat`
+  note and the changelog's .19 entry say the
+  same things about the digest, Q169 and
+  Q170 in their own shapes, and no doc in
+  the range promises a 3.16.24.19 tag or
+  publication: the carrier stands on main,
+  its ship on its own lane's record.
+
+The range as a whole: three outside landings
+by Claude after the 3.16.24.18 release commit.
+Verdicts: the seat-digest tool landing sound
+with notes (its questions line is a run-time
+snapshot, and one of its two printed readings
+is not reproducible whole from a later tree
+for that named reason); the Q169/Q170 filing
+landing sound; the 3.16.24.19 release landing
+needs a fix in its figures only, and the fix
+stands landed by this lane in the commit of
+8:05 PM PST. No other change is made beyond
+that fix and landing these conclusions in
+the same place the suppositions stand.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
