@@ -2306,6 +2306,43 @@ reason), `runner/tests/test_agent_state_tree_wide.py` and
 and `runner/tests/test_mutation_oracle.py` (the pin and
 proof tests).
 
+**Hosted-verdict watch (2026-11-13):** the verdict is
+still owed, and the gap is on the host, not in the tree.
+The workflow (id 390247899, `.github/workflows/mutation-seeded.yml`)
+reads `active` on the default branch, main. GitHub lists
+68 scheduled runs in total, every one of them on the
+`schedule` event; the latest, checked first-hand at
+2026-11-13T17:54Z, is still run 43423834656, created
+2026-11-13T12:16:55Z, which failed in 1m20s on the
+3.16.25.9 release head -- a head whose ancestry predates
+this question's landing. No scheduled run was delivered
+at the 13:17, 14:17, 15:17, 16:17 or 17:17Z slots that
+followed it. There is no repo-side defect: the trigger
+shape at the current head and at the 12:16Z head is
+identical -- a single live `- cron: "17 * * * *"` plus
+`workflow_dispatch`, no paths filter and no other
+condition; the only difference is this question's check
+step. The schedule was commented out only for the
+2026-11-12 CI relief window and was restored at its
+close, and the suite shape tests pass
+(`test_seeded_mutation_workflow.py`: 9 ok, 1 skipped --
+no hypothesis installed on the checking machine). The
+supported cause is the GitHub scheduler delaying or
+dropping runs: 68 deliveries against about 440 hourly
+slots since 2026-10-26, consecutive gaps of 3.2 to 10.8
+hours (one 24.5-hour gap spans the relief pause), and
+the same collapse repo-wide (the coverage workflow's
+quarter-hourly schedule delivers a handful of runs a
+day, and the daily proofs land about 8 hours late). The
+60-day inactivity disable does not apply: the repository
+is pushed constantly and the workflow reads active.
+Q170 stays open. It closes on its stated condition --
+the first scheduled run GitHub actually delivers on a
+head carrying this question's landing (carried in
+3.16.25.12 and later) completes its baseline and reports
+mutants tested -- and that run, when it arrives, supplies
+the hosted verdict this watch is waiting for.
+
 ## Q169 (Claude asks Muse, 2026-11-12): the Python range proof has no green run -- four tests fail off Python 3.12, three of them on the interpreter's own tables
 
 Context: `python-range.yml` runs the suite at the two ends of the
