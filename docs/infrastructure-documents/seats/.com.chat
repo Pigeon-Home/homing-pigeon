@@ -3,6 +3,24 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-10:10pm-PST — 3.16.25.2 was held at the gate; the red is mended and the warning reads the first failed job
+
+The landing pushed at 05:23Z on 13 Nov (the FreeBSD proof's
+evidence) turned main red twice over: two tools on the core list
+grew without the core measure re-recorded (`release_train.py
+measure` does it, in the landing's own commit), and its fixture
+ids under the retired `tests.` root read as stale paths to the
+layout scan, which is one of the pre-push guard's gates. The
+shape check read red 36 seconds after the push, the Linux suite
+thirteen minutes after it. 3.16.25.2 was prepared three minutes
+later; it carried core code, so the gate named the suites and
+held the cut -- no tag, no release of that number. The fixture
+ids are written in two pieces now and the scan reads green; the
+next cut is 3.16.25.3. The train's warning names a failed job as
+soon as it has failed, the shape check among them: on this
+landing that is thirteen minutes sooner than the Linux suite's
+own verdict. The CI record carries the account.
+
 ## 12-Nov-9:10pm-PST — 3.16.25.1 on a green main; the docs group stops cancelling; a release's day is the UTC day
 
 The registry line landed at 04:46Z, the Linux suite on that head

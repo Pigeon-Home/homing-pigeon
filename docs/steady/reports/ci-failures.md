@@ -1741,3 +1741,38 @@ it:
   `status` printed as "red". It prints "no legs on this head"
   now, and keeps "red" for a leg that ran and failed, since the
   loop's first step reads that page.
+
+### 3.16.25.2: a cut the gate held (13 Nov 2026)
+
+A landing pushed at 05:23:34Z (the FreeBSD proof's evidence
+reaches the run page) changed two tools on the core list,
+`skip_guard.py` and `upgrade_proof.py`, without re-recording the
+core measure, and added test ids under the retired `tests.` root,
+which the layout scan reads as stale paths. The build read it in
+order: the first-minute shape check at 05:24:10 (the core
+breakdown, 36 seconds after the push), Windows part 2 at 05:31,
+part 1 at 05:34, the Linux suite at 05:37:31 with three failures
+-- the layout scan, the core breakdown, and the pre-push guard's
+end-to-end test, whose gates run the layout scan.
+
+3.16.25.2 was prepared at 05:40:42, three minutes after the Linux
+suite read red and sixteen after the shape check did. Its prepare
+re-recorded the core measure, so the shape check read green on
+the release commit; the layout scan stayed red. The release
+carried core code, so the cut gate named the suites ("runner code
+since v3.16.25.1 (runner/tools/skip_guard.py,
+runner/tools/upgrade_proof.py): the suites too"), the Windows
+parts read red at 05:50:34 and 05:50:55 and the Linux suite at
+05:54:15, and no tag was placed: the gate held the cut, as its
+rule has it. The carriers read 3.16.25.2 without a release of
+that number.
+
+The red stood for twenty minutes after the cut was held. The
+fixture ids are written in two pieces now, so the layout scan
+reads green, landed under the order of work's first item; the
+next cut is 3.16.25.3.
+
+What changed with it: the train's warning names a failed job as
+soon as it has failed, the shape check among them, where it had
+waited for the Linux suite's own verdict and read the last green
+build until then -- thirteen minutes on this landing.
