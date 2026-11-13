@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.16 - 2026-11-12
+
+- Tools: cut --sha --watch cuts the commit and then watches its tag build; the CI record carries the first cycle through the token path and the first core-code release the suite gate held and passed
+
 ## 3.16.24.15 - 2026-11-12
 
 - CI: with the owner's RELEASE_TOKEN the cut pushes the tag through git and the push starts the tag build and the image builds by their own triggers (Q30 answered); the tag build finds the gate build for a pushed tag itself and promotes its artifacts; the nine proof workflows fire from the tag build's proofs job alone, only when the tag's tree changed under runner/
