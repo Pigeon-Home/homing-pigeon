@@ -1990,7 +1990,122 @@ this lane ran -- the conductor's supposition-first rule):**
   every selected module passes with the variable unset, and
   the two adopting tree tests skip with it set.
 
-**Answer** --
+**Conclusions (2026-11-13):** S1 holds as measured. The
+import-walk derivation names 368 of the suite's 480 test
+modules: 44 load the mutated file directly, 61 reach it in
+2 steps, 229 in 3, 26 in 4 and 8 in 5. `test_core` is not
+among them (it names security.py as data, never as an
+import), and `test_agent_state_tree_wide` is, at depth 2
+through `runner/tools/approvalguard.py`'s lazy
+`_load_security` import -- exactly as supposed. S2 holds:
+both filed failures reproduce in a local copy shaped like
+mutmut's (no git index; security.py carrying its own body
+appended 80 times as comment lines, about 69,000 lines
+standing where the trampolined file stands). The
+canonical-set test fails on its live-total arm (the
+ballooned file counts more lines than the recorded
+as-assembled total), and the tracked-tree test fails
+because the copy carries no tracked tree to measure --
+locally its git read fails outright; the hosted arm was
+the allowlist reading stale. S3 holds: with
+`MUTANT_UNDER_TEST` set (to `stats` or to a mutant id) the
+adopting tests skip with the one registered reason, and
+unset they run exactly as before -- in the targeted set,
+52 passed and the 4 adopting tests skipped with it set;
+126 passed without it. S4 holds: the pin test recomputes
+the derivation from the tree and compares it whole
+against the selection recorded in pyproject, the seeded
+workflow runs the derivation tool's `--check` immediately
+before the mutmut step, and the recorded selection still
+recomputes equal on the current head after the landings
+that followed it. S5 holds with its limit stated. The
+narrowed baseline ran whole in the simulated copy on this
+machine, part by part over all 368 modules, and no
+failure in it is attributable to the copy's conditions:
+the two filed failures do not recur (inside the copy the
+adopting tests skip), and every failure that did appear
+belongs to a family that is red on the ordinary tree on
+this machine too, each checked against the ordinary tree
+-- the query-answer family under parallel load (green
+single-process here; mutmut runs single-process), one
+DTLS subprocess test that fails identically on the
+ordinary tree, and the first-ping bench pair under load.
+An earlier lane's report of 44 failed / 972 passed for a
+post-fix-candidate run does not reproduce as a statement
+about the selection: a pre-fix run of the whole derived
+selection on this machine counted 195 failed / 10,179
+passed, most of them tracing to this machine's
+temporary-directory and privilege limits rather than to
+the copy's shape, and 972 passed is the count of one
+57-module slice of the post-fix run, not of the selection.
+
+**Answer (2026-11-13):** option 1, with option 2's helper,
+as recommended.
+
+- `runner/tools/mutation_oracle.py` (new): the derivation
+  itself -- it walks every import statement (top-level and
+  function-level, `runner.`-prefixed, bare-package and
+  relative styles) over the whole `runner/` tree, builds
+  the import graph, and names every test module that
+  transitively loads `runner/guard/security.py`. Its
+  `--check` form compares that derivation against the
+  selection recorded in pyproject and fails naming both
+  directions of rot.
+- `pyproject.toml`: the `[tool.mutmut]` selection is the
+  derived 368 modules, with a comment naming the tool and
+  this question beside it.
+- `runner/tests/mutant_copy.py` (new): the one shared
+  helper. On `MUTANT_UNDER_TEST` (any value) an adopting
+  test skips with the reason "inside a mutant copy: this
+  test measures the tracked tree, and mutmut's copy is
+  not it", registered in `runner/tests/test_skip_registry.py`;
+  outside a copy the helper does nothing.
+- The adoptions: `test_agent_state_tree_wide`'s
+  `WholeTreeTest` stands aside as a class, and
+  `test_core`'s two live-versus-recorded comparisons (the
+  canonical set's size and the tools-only breakdown)
+  stand aside at the method, the only two assertions in
+  that module the ballooned file breaks.
+- `.github/workflows/mutation-seeded.yml`: a step ("the
+  selection is the derivation (Q170)") runs the tool's
+  `--check` immediately before the mutmut step, so a
+  rotted selection fails as itself, under its own name,
+  before the baseline runs -- and a walk that stays red is
+  now named in this desk and in the step, not only on the
+  run page, which is the filing's last clause.
+- `runner/tests/test_mutation_oracle.py` (new): the
+  proof -- fixture-tree derivation shapes (direct, bare,
+  deep, lazy-through-a-tool and helper-module chains,
+  data-only and string-only mentions that must not become
+  edges, bookended imports, an unparseable module), the
+  recorded-selection parsing, the real-tree pin (recorded
+  equals recomputed, a proper subset, the two filed
+  examples on their supposed sides, every selected path
+  standing on disk), the helper's behavior under both
+  variable values and as a decorator, and the workflow
+  step's presence and place.
+
+Q170 is NOT closed by this landing: it closes when a
+scheduled walk completes its baseline and reports mutants
+tested, and that hosted verdict is still owed -- the next
+scheduled `mutation-seeded` run on a head carrying this
+landing supplies it.
+
+**Applied in:** the suppositions commit recorded in the
+desk before any test in this lane ran ("desk: Q170
+suppositions recorded before the lane's tests run",
+2026-11-12) and this answer's landing, committed at
+6:17 AM on 2026-11-13 ("Q170: the mutation walk's oracle
+narrows to the modules that load the mutated file") --
+`runner/tools/mutation_oracle.py` (the derivation tool),
+`pyproject.toml` (the narrowed selection),
+`runner/tests/mutant_copy.py` (the shared helper),
+`runner/tests/test_skip_registry.py` (the registered
+reason), `runner/tests/test_agent_state_tree_wide.py` and
+`runner/tests/test_core.py` (the adoptions),
+`.github/workflows/mutation-seeded.yml` (the check step)
+and `runner/tests/test_mutation_oracle.py` (the pin and
+proof tests).
 
 ## Q169 (Claude asks Muse, 2026-11-12): the Python range proof has no green run -- four tests fail off Python 3.12, three of them on the interpreter's own tables
 
