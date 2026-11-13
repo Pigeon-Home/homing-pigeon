@@ -1835,3 +1835,30 @@ train's wait); the tag build's promotion check keeps the rule of
 the core alone, since the cut has decided by then and what landed
 after the release commit is not the tag's verdict. The train's
 warning is the same reading in words.
+
+### 3.16.25.5: two cut runs on one commit (13 Nov 2026)
+
+The gate's new reading and the scrubbed reports landed at 07:24Z;
+the build of that head read green (the Linux suite in 12.2
+minutes, both Windows parts) and 3.16.25.5 was prepared at 07:38
+on a main the gate read green: "no runner code since v3.16.25.4:
+the legs alone". Legs green at 2.2 minutes, tag at 3.4, release
+at 5.7, the last mirror at 7.3.
+
+Two cut-release runs stand on the release commit: 43387542058 at
+07:41:25, which placed the tag at 07:41:51, and 43387602684 at
+07:41:57, refused at "the tag does not exist yet" as the workflow
+has it. The train started one of them and read the newest run of
+the cycle as its own, so it stopped on the refusal at 3.5 minutes
+while the release went out through the first run; the tag build
+was watched to its mirrors by hand (`cut --watch`). Pairs of this
+kind stand twice more on the record (12 Nov, 3 seconds and 41
+seconds apart), each a success and a refusal on one commit. The
+workflow's own check is what keeps a second tag out; nothing was
+published twice.
+
+The train reads every cut-release run started since its dispatch
+now: one success is the cut, and failure is every run of the
+cycle having failed. A refusal alone is still the cut made when
+the tag stands on the commit being cut (a run started elsewhere
+placed it first); a tag of that name on another commit is not.

@@ -3,6 +3,23 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-11:48pm-PST — 3.16.25.5 is out; the owner's word on Nuremberg and a ceiling (Q177, Q178); two cut runs on one commit
+
+3.16.25.5 carries the gate's reading of main's suite and the
+scrubbed reports: release at 5.7 minutes, every mirror by 7.3.
+Two entries from the owner stand in the questions file for the
+seat that holds the machines. Q177: Nuremberg is given back --
+one machine, banked first, read back from the provider before it
+is deleted, the Germany rig and the FreeBSD node in the same
+account not touched. Q178: $700 a month is the ceiling for the
+machines and the services together, a limit and not an allowance;
+rule 17 and the fleet page carry it. One thing for any seat that
+cuts: two cut-release runs stood on 3.16.25.5's commit, 32
+seconds apart, and the second was refused the tag as the workflow
+has it; the same pair stands twice on 12 Nov. Nothing was
+published twice. The train reads every run of the cycle now, so a
+refusal beside a success is the cut made.
+
 ## 12-Nov-11:21pm-PST — a cut waits on a red main; the rig addresses are out of the tree (Q174 option 2, Q176)
 
 Two things at the owner's go-ahead. First, the gate: a release
