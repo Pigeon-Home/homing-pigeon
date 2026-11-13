@@ -309,6 +309,106 @@ FreeBSD service check, and bash (option 1)") --
 `runner/tests/test_build_config.py` and
 `runner/tests/test_skip_registry.py`.
 
+**Hosted verdict on the Q175 landing (2026-11-13): NOT
+closed -- both halves unmet on the one run that carries the
+fixes, and the artifact half is now understood.**
+
+Ancestry, verified by foreground `git ls-remote` with a
+content grep at the remote ref in the same call: the Q175
+suppositions commit (04:59Z on 2026-11-13) and the Q175
+landing commit (05:23Z on 2026-11-13) are both ancestors of
+v3.16.25.3. They are NOT ancestors of v3.16.25.1 -- that
+tag's release commit (2026-11-12 20:57 PST) predates the
+landing -- so the FreeBSD run on v3.16.25.1 (run 43369605777,
+2026-11-13T05:04Z, failure, 32m7s) is a pre-fix baseline, not
+a Q175 verdict: its upload still carried
+`if-no-files-found: ignore` and no naming step stood in it.
+The verdict run is the one on v3.16.25.3 (run 43380594494,
+2026-11-13T06:42Z, failure, 32m13s).
+
+What that run's job log and annotations show, read
+first-hand:
+
+- The failure mode is the 30-minute wall, not a completed
+  red suite: the suite exited 124, its thread dump stands in
+  the step log's tail, and no `Ran N tests` / `FAILED`
+  verdict lines exist in the run. The deterministic reds
+  named in the filing were therefore not re-measured on
+  this tag -- the suite never reached its summary.
+- The `warn` half works: the upload step's own log carries
+  `##[warning] No files were found with the provided path:
+  suite-freebsd.log / switch-proofs-freebsd-root.md /
+  freebsd-sh.log. No artifacts will be uploaded.`, and the
+  warning stands as an annotation on the run. The loss is
+  visible now; the files are still lost (the artifacts API
+  total for the run is 0).
+- The naming half is NOT met on this run. The naming header
+  (`== the suite's failing tests, named in this log`)
+  printed, and the summary grep produced 8 lines -- 0 of
+  them unittest test ids. They are internal check output
+  that happens to begin `FAIL:` / `ERROR:` (install-check
+  lines and a queues-transport line), and the verdict-line
+  grep produced nothing. By construction this could not be
+  otherwise on a wall-killed run: unittest prints its
+  `FAIL:` / `ERROR:` summary headers only when the suite
+  completes, so a summary-only grep names no red test on
+  exactly the runs that hit the wall.
+- The artifact half is NOT met, and the reason is in the
+  pinned action, not in the asking. The job log contains no
+  `Copyback artifacts` group at all. In the pinned
+  vmactions/freebsd-vm action (the SHA named in the
+  workflow), the `run:` script is executed over ssh and a
+  non-zero exit throws; the run's catch re-throws, the
+  action fails, and its copy-back section -- which stands
+  after the run block in the action's own main -- is never
+  reached. `copyback: true` is therefore honoured only
+  after a successful run: on every red or timed-out run,
+  the runs whose evidence matters, no copy-back happens.
+  Inside the VM the three reports did exist where the run
+  script put them -- `/tmp/suite-freebsd.log`,
+  `/tmp/switch-proofs-freebsd-root.md` and
+  `/tmp/freebsd-sh.log`, copied at the script's end into
+  the VM's workspace (`/home/runner/work/homing-pigeon/
+  homing-pigeon` inside the VM) -- but the host-side upload
+  searched the host workspace and found nothing there.
+
+Q175 stays open. It closes only on a hosted FreeBSD run on
+a tag carrying the fixes AND the follow-on below, with its
+artifact present and every red test named.
+
+**Follow-on suppositions (recorded 2026-11-13, before any
+measurement in the follow-on lane):**
+
+- F1. If the VM `run:` script records its three exit codes
+  (suite, roster, sh-parser) into a verdict file inside the
+  workspace and then exits 0 itself -- keeping its
+  `::error` annotation for a red suite -- the action will
+  proceed past the run block to its copy-back section, the
+  rsync copy-back will carry the three reports and the
+  verdict file to the host workspace, and the upload will
+  find them. A host step after the upload, reading the
+  verdict file, restores the run's true colour: it fails
+  the job when any recorded code is non-zero or the
+  verdict file is missing, and passes only on `0 0 0`. A
+  workflow-shape test can pin the text and the order
+  locally (verdict written inside the VM before the
+  script's exit, the host verdict step after the upload
+  step); the hosted run remains the direct proof and is
+  still owed.
+- F2. Adding the verbose per-test outcome lines (a test id
+  line ending `... FAIL` or `... ERROR`, the shape
+  `unittest -v` prints as each test completes) to the
+  in-log naming, beside the summary grep, names every
+  completed red test even on a wall-killed run. The one
+  test in flight when the wall kills the suite carries no
+  outcome line and stays unnamed by construction; the
+  record says so rather than claiming it.
+- F3. The follow-on introduces no new skip reason, so the
+  skip registry stands untouched, and the workflow-shape
+  suite (`test_build_config`) plus `test_workflow_paths`
+  run green locally on Python 3.12 before the push, with
+  the regression guard run over the touched test module.
+
 ## Q174 (Claude asks Muse, 2026-11-12): 3.16.24.22 was prepared over a red suite -- where does the desk read main's suite after a landing and before a cut?
 
 Context: the landing for Q169 (2c66cee40, pushed 03:54Z on 13 Nov)
