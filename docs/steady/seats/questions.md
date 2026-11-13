@@ -315,6 +315,78 @@ reading in this lane, 2026-11-13):**
   any page carrying any other global quad will therefore
   stand green at the head and red on a planted address.
 
+**Answer (Muse, 2026-11-13).** The readings were taken
+first-hand on 2026-11-13, read-only: the methods each SSH
+service offers an unauthenticated caller, and, over a key
+login, the service's effective configuration. Nothing on
+any machine was changed.
+
+Conclusions, against the suppositions above: **Q176-S1 does
+not stand -- it was not settled.** San Francisco answered
+no reading: on repeated tries, direct and through the
+seat's egress proxy, the connection opened and its SSH
+banner never arrived (banner-exchange timeouts, up to a
+60-second wait). Its fleet line records the reading as not
+taken, its posture is not guessed, and the reading is
+still owed when the machine answers; Q176 stays open on
+that one line alone. **Q176-S2 holds.** Germany's Windows
+SSH service offers publickey, password and
+keyboard-interactive to an unauthenticated caller, and its
+`sshd_config` carries no uncommented authentication line
+at all (the directives stand there as commented defaults),
+while key login for its administrator account is proven --
+this seat read the configuration by key in this lane. It
+is not key-only, and its line says so. **Q176-S3 holds.**
+Nuremberg answered nothing on repeated tries, direct and
+through the proxy, as a machine stopped into reserve
+since 2026-10-31 would; its line records not read, and
+the give-back itself remains Q177's lane. **Q176-S4
+holds.** The FreeBSD node's effective configuration
+(`sshd -T`) states `passwordauthentication no`,
+`permitrootlogin without-password` (its file says
+prohibit-password) and `pubkeyauthentication yes`, and
+its service offers an unauthenticated caller publickey
+and keyboard-interactive only -- no password method; for
+root, prohibit-password bars the word-based methods in
+any case, so root is by key only. **Q176-S5 holds.**
+Menlo Park has no SSH server to read: no sshd binary is
+installed on this VM, no ssh service unit stands, and
+nothing listens on its SSH port; its line says so.
+**Q176-S6 holds, with the desk's allowance stated in the
+test.** The scan stands in `test_fleet_page.py`'s
+`DocsPublicAddressTest`: every markdown page under
+`docs/` is scanned, a quad that is not a global address
+(loopback, private, documentation and the rest) is
+allowed, and a global quad is allowed only when it is a
+project version -- it parses under `version4.parse`'s
+strict shape and its major.minor is a version line the
+tree itself declares, derived at run time from the
+changelog's release headings and `runner/_version.py`
+(the 3.15 and 3.16 lines at this head). The classifier is
+pinned on planted, bookended, non-global and
+version-shaped cases; its stated limit stands in the
+test: a real address shaped exactly like a version on a
+declared line would pass, and no fleet machine is on
+such a line. At this head the scan names no page.
+
+**Asked to the conductor, under ask 2 (Germany).** The
+change that would make Germany key-only: add
+`PasswordAuthentication no` as an uncommented line in
+the rig's `C:\ProgramData\ssh\sshd_config` and restart
+its SSH service, key login having been proven first in
+this lane, so the seat does not lock itself out. It is
+not made here; it waits for the conductor's word, here
+or in chat, and on his word the line is re-read and
+re-dated.
+
+**Applied in:** the commit carrying this answer (fleet
+lines carrying each reading, the readings' account on
+the fleet page, and the `DocsPublicAddressTest` and
+`FleetSshReadingTest` families in
+`runner/tests/test_fleet_page.py`), on top of the
+suppositions commit above. Q176 closes except for San
+Francisco's reading, which stands owed on its line.
+
 ## Q175 (Muse asks Muse, 2026-11-12): the FreeBSD proof has never been green and its evidence does not reach the run page -- the annotation regex, the VM-to-host artifact path, the upgrade proof's service check, and bash
 
 Context: `.github/workflows/freebsd.yml` has never had a green

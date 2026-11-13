@@ -33,6 +33,7 @@ day it was read.
 """
 import os
 import re
+import sys
 import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -188,6 +189,190 @@ class FleetMonthTotalTest(unittest.TestCase):
                 continue
             self.assertNotIn("cannot read",
                              " ".join(rows[name]), name)
+
+
+class FleetSshReadingTest(unittest.TestCase):
+    """Q176: every machine line carries its SSH reading.
+
+    The reading is dated 2026-11-13 and worded so it reaches
+    no machine (the shape test above keeps the word for the
+    other kind of login off the page). A machine that could
+    not be read carries that plainly instead of a guess.
+    """
+
+    def test_every_machine_line_carries_an_ssh_reading(self):
+        rows = _rows(_read(), MACHINES)
+        for name in MACHINES:
+            line = " ".join(rows[name])
+            self.assertIn("SSH:", line, name)
+            self.assertIn("2026-11-13", line, name)
+
+    def test_the_key_only_reading_stands_where_it_was_read(self):
+        rows = _rows(_read(), MACHINES)
+        self.assertIn("by key only", " ".join(rows["The FreeBSD node"]))
+
+    def test_the_not_key_only_reading_says_so_and_waits(self):
+        rows = _rows(_read(), MACHINES)
+        germany = " ".join(rows["Germany"])
+        self.assertIn("not by key only", germany)
+        self.assertIn("conductor", germany.lower())
+
+    def test_unread_machines_say_not_read_not_a_posture(self):
+        rows = _rows(_read(), MACHINES)
+        for name in ("San Francisco", "Nuremberg"):
+            line = " ".join(rows[name])
+            self.assertIn("not read", line, name)
+            self.assertIn("not guessed", line, name)
+
+    def test_the_machine_with_no_ssh_server_says_so(self):
+        rows = _rows(_read(), MACHINES)
+        self.assertIn("no SSH server", " ".join(rows["Menlo Park"]))
+
+
+DOCS = os.path.join(REPO, "docs")
+CHANGELOG = os.path.join(
+    REPO, "docs", "infrastructure-documents", "changelog.md")
+VERSION_PY = os.path.join(REPO, "runner", "_version.py")
+_QUAD_RE = re.compile(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")
+
+
+def _declared_version_lines():
+    """The (major, minor) lines the tree itself declares.
+
+    Derived, never written out (AGENTS.md rule 16): the
+    changelog's release headings and the runtime version
+    constant are the tree's own record of its version lines.
+    """
+    lines = set()
+    with open(CHANGELOG, encoding="utf-8") as fh:
+        for match in re.finditer(
+                r"^## (\d+)\.(\d+)\.\d+\.\d+", fh.read(), re.M):
+            lines.add((int(match.group(1)), int(match.group(2))))
+    with open(VERSION_PY, encoding="utf-8") as fh:
+        match = re.search(r'__version__ = "(\d+)\.(\d+)\.\d+\.\d+"',
+                          fh.read())
+    if match:
+        lines.add((int(match.group(1)), int(match.group(2))))
+    return lines
+
+
+def _is_project_version(quad, lines):
+    """True when a dotted quad is one of the project's own
+    four-part version numbers: it parses under version4's
+    strict shape (exactly 4 numeric components, no leading
+    zeros) and its major.minor is a declared version line."""
+    sys.path.insert(0, REPO)
+    from runner.ops import version4
+    try:
+        parts = version4.parse(quad)
+    except ValueError:
+        return False
+    return (parts[0], parts[1]) in lines
+
+
+def _public_addresses_in(text, lines):
+    """The public (global) addresses a page's text carries.
+
+    A quad that is not a global address (loopback, private,
+    documentation, reserved) reaches no machine and is
+    allowed. A global quad is allowed only as a project
+    version; anything else is a public address standing on
+    a page, and is returned so the test can name the page.
+    Known limit, stated: a real address shaped exactly like
+    a version on a declared line would pass; the fleet's
+    machines are on no such line, and rule 17's wording --
+    named by place, never by address -- is the first guard.
+    """
+    import ipaddress
+    found = []
+    for match in _QUAD_RE.finditer(text):
+        quad = match.group(0)
+        try:
+            address = ipaddress.ip_address(quad)
+        except ValueError:
+            continue
+        if not address.is_global:
+            continue
+        if _is_project_version(quad, lines):
+            continue
+        found.append(quad)
+    return found
+
+
+class DocsPublicAddressTest(unittest.TestCase):
+    """Q176 ask 3: the fleet page's test family reaches the
+    reports -- a page under `docs/` that carries a public
+    address is named by a test.
+
+    Pages are the markdown pages under `docs/` (the reports,
+    the rig dossiers, the forum's markdown and the archive
+    included). What the scan allows is stated in
+    `_public_addresses_in`: non-global quads, and the
+    project's own four-part version numbers, which are
+    dotted quads too.
+    """
+
+    def test_no_docs_page_carries_a_public_address(self):
+        lines = _declared_version_lines()
+        offenders = []
+        for root, _dirs, files in os.walk(DOCS):
+            for name in sorted(files):
+                if not name.endswith(".md"):
+                    continue
+                path = os.path.join(root, name)
+                with open(path, encoding="utf-8",
+                          errors="replace") as fh:
+                    found = _public_addresses_in(fh.read(), lines)
+                if found:
+                    offenders.append(
+                        "%s (%s)" % (
+                            os.path.relpath(path, REPO),
+                            ", ".join(sorted(set(found)))))
+        self.assertEqual([], offenders)
+
+    def test_the_scan_names_a_planted_public_address(self):
+        lines = _declared_version_lines()
+        text = "the rig stands at 203.0.113.9 in the report\n"
+        # 203.0.113.0/24 is the documentation range: not
+        # global, so the stand-in for a planted address is a
+        # plainly global quad shaped like none of the fleet's.
+        text = text.replace("203.0.113.9", "198.51.100.23")
+        self.assertEqual([], _public_addresses_in(text, lines),
+                         "documentation range must be allowed")
+        text = text.replace("198.51.100.23", "45.79.10.20")
+        self.assertEqual(["45.79.10.20"],
+                         _public_addresses_in(text, lines))
+
+    def test_the_scan_allows_versions_and_non_global_quads(self):
+        lines = _declared_version_lines()
+        for quad in ("3.16.25.5", "3.15.18.7", "127.0.0.1",
+                     "10.0.0.5", "192.0.2.1", "0.0.0.0"):
+            self.assertEqual(
+                [], _public_addresses_in("x %s y" % quad, lines),
+                quad)
+
+    def test_the_scan_rejects_version_shaped_non_versions(self):
+        lines = _declared_version_lines()
+        # A quad on no declared version line is an address,
+        # however version-shaped it looks.
+        for quad in ("3.17.25.5", "2.28.30.118"):
+            self.assertEqual(
+                [quad], _public_addresses_in("x %s y" % quad, lines),
+                quad)
+        # A leading-zero quad is not a version under
+        # version4's strict shape (and not a valid address
+        # spelling either): the version check itself refuses it.
+        self.assertFalse(_is_project_version("03.16.25.5", lines))
+        self.assertTrue(_is_project_version("3.16.25.5", lines))
+        self.assertFalse(_is_project_version("3.17.25.5", lines))
+
+    def test_bookended_addresses_are_still_named(self):
+        lines = _declared_version_lines()
+        for text in ("--45.79.10.20--", ";45.79.10.20;",
+                     "\"45.79.10.20\"", "(45.79.10.20)"):
+            self.assertEqual(["45.79.10.20"],
+                             _public_addresses_in(text, lines),
+                             text)
 
 
 if __name__ == "__main__":
