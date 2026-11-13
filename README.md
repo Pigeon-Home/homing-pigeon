@@ -1,7 +1,8 @@
 # HOMING PIGEON
 
-Homing Pigeon gives cloud AI (SI) a secure and signed channel to your machine. It works with
-Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a message.
+Homing Pigeon gives cloud AI a secure and signed channel to your machine.
+
+It works with Muse, Grok, ChatGPT, Claude, Gemini, Copilot, or any assistant that can send a message.
 
 Try this careful prompt with Grok for example:
 ```
