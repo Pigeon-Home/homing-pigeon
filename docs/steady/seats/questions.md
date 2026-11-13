@@ -14330,6 +14330,53 @@ desk's fifth re-pack sections, the refreshed
 table with its floors, and the guard tests that
 pin them, in one landing.
 
+**Re-test suppositions (2026-11-13), recorded before
+this lane's verdict read:** the fifth re-pack's own
+re-test condition stands in its addendum above: the
+next completed tag-or-main build-windows verdict on
+a head carrying this re-pack is the re-test under
+rule 8, with the version-rot family judged
+separately. This lane records its suppositions
+before reading the hosted verdicts first-hand and
+before writing any conclusion:
+
+- Q136-RP5-RT-S1: a completed main build on a head
+  carrying the fifth re-pack (the re-pack is carried
+  in 3.16.25.12 and every later release head) will
+  show test-windows (1) and test-windows (2)
+  completed success, with build-windows completed
+  success beside them -- the wall-clock red the
+  re-pack addressed will read cleared on such a
+  head.
+- Q136-RP5-RT-S2: the tag builds for the same
+  versions will show their Windows legs skipped
+  under the promotion model, so they supply no
+  build-windows verdict at all; the re-test verdict
+  will rest on the main builds, and a skipped leg
+  will not be counted for or against it.
+- Q136-RP5-RT-S3: no version-rot failure will
+  stand inside a green test-windows job; judged
+  separately, as the re-pack prescribed, the rot
+  family will read cleared by those heads' version
+  bumps, not mixed into the wall-clock judgement.
+- Q136-RP5-RT-S4: a docs-only head carrying the
+  re-pack will likewise show its Windows legs
+  skipped and will supply no verdict, however green
+  its run reads overall.
+- Q136-RP5-RT-S5: the fifth re-pack's substance
+  will stand in the current tree in its evolved
+  form: the 720-second budget unchanged, the eight
+  new floors' merged prices at or above their
+  floors, and test_decision1_startup divided into
+  its split pieces -- the file split the fifth
+  re-pack's own advance statement prescribed if
+  the floored file still killed a shard alone --
+  with the Windows durations guard family green
+  on the current head.
+
+The verdict read, and the conclusions against
+these suppositions, follow in this section.
+
 ---
 
 ## Q135 (Muse, to the desk, 2026-11-10): the confinement decision raises where its contract is to answer — a denial must come back as a triple and be refused at the job boundary, not thrown from the decision
