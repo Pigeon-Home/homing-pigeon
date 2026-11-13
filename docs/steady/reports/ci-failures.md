@@ -1608,3 +1608,29 @@ published at 11.4 and the last mirror at 13.1: the tag build's
 checkout step took 346 seconds against the usual five, GitHub's
 side, with nothing of ours in the way; the publish jobs took their
 usual two minutes after it.
+
+### 3.16.24.15: the tag is a push, and the suite gate holds a release (13 Nov 2026)
+
+The owner added RELEASE_TOKEN (Q30) and the cut pushes the tag
+through git with it: the push started build.yml and docker.yml on
+the tag by their own triggers and nothing else -- the nine proof
+workflows carry no push trigger of their own now, and the tag
+build's proofs job starts them on a runner change, pushed or
+dispatched. The tag build found the gate build itself (a push
+carries no input) and promoted its artifacts.
+
+The release carried core code (ci_scope.py), the first under the
+posture, and the cut gate named the suites -- "runner code since
+v3.16.24.14 (runner/tools/ci_scope.py): the suites too" -- which
+held the first cut: the Linux suite and Windows part 1 were red on
+test_workflow_paths, which reads job-user.yml's path list and
+found none once the push trigger went. The three proof workflows
+with path lists keep them under pull_request, and the cut went
+from the fixed head: legs green at 2.1 minutes, suites at 13.2
+(the Linux suite 12.5 of them), tag at 20.2, release at 22.9, last
+mirror at 24.1. Six of those minutes were a seat's cut waiting for
+the macOS suite the gate does not name; `cut --sha --watch`
+watched instead of cutting (fixed: with a commit it cuts, then
+watches). The shape of a core-code cycle under the posture is
+therefore the Linux suite plus six: about nineteen minutes, against
+seven for a release of docs, tests or a corpus.

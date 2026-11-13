@@ -578,10 +578,14 @@ def cmd_cut(args, sha=None):
     warn = latent_warning()
     if warn:
         _say(warn)
+    # --watch alone watches the tag build of the carriers' version;
+    # with --sha it cuts that commit and then watches (a cut with
+    # both on 2026-11-13 watched a tag build another seat's cut had
+    # started, and placed no tag of its own).
+    if getattr(args, "watch", False) and not (sha or getattr(args, "sha", None)):
+        return watch_tag_build((getattr(args, "version", None) or carriers()["pyproject.toml"]).lstrip("v"), args.limit)
     sha = sha or args.sha or _git("rev-parse", "HEAD")
     sha = _git("rev-parse", sha)
-    if getattr(args, "watch", False):
-        return watch_tag_build((getattr(args, "version", None) or carriers()["pyproject.toml"]).lstrip("v"), args.limit)
     version = carriers()["pyproject.toml"]
     need, why = cut_gate.need(sha, version, api=api)
     _say("waiting for the build on %s: %s" % (sha[:8], why))
