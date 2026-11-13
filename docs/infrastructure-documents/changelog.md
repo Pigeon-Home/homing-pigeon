@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.11 - 2026-11-13
+
+- Desk: Q181 closed -- the support matrix's macOS live-proof word corrected; the data-size refusal closed, live proof on the green test-macos build
+
 ## 3.16.25.10 - 2026-11-13
 
 - Docs: the README's diagrams draw every arrow where it points; a tap opens the image itself — both how-it-fits-together SVGs redrawn with plain shafts and triangles, no renderer-dependent markers
