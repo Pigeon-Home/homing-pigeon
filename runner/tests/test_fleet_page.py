@@ -20,6 +20,16 @@ states a stood-up day or states plainly that it is not on
 the record; the two directions the Q173 completion settled
 stand on the lines they belong to; the services are lined;
 and the gap list the conductor must supply is present.
+
+Q178 (2026-11-13) adds the month against the owner's $700
+ceiling: the lines whose cost is on the record, summed on the
+page, the lines whose cost is not named beside the sum, and
+each unknown line stating whether the seat can read its month
+itself. The pins below hold that statement: the section
+stands, its sum recomputes from the figures on the lines
+themselves, the three unknown lines are named beside it, and
+each unknown line carries its cannot-read statement with the
+day it was read.
 """
 import os
 import re
@@ -111,6 +121,73 @@ class FleetPageShapeTest(unittest.TestCase):
         self.assertIn("What the conductor must still supply",
                       text)
         self.assertIn("No give-back is executed", text)
+
+
+KNOWN_LINES = MACHINES + SERVICES
+UNKNOWN_LINES = ["Menlo Park", "Outside-model API access",
+                 "GitHub"]
+
+
+def _month_total_section(text):
+    start = text.index("## The month against the ceiling")
+    end = text.index("## The lines", start)
+    return text[start:end]
+
+
+def _first_dollars(cell):
+    match = re.search(r"\$(\d+(?:\.\d+)?)", cell)
+    return float(match.group(1)) if match else 0.0
+
+
+class FleetMonthTotalTest(unittest.TestCase):
+    def test_the_month_is_stated_against_the_ceiling(self):
+        section = _month_total_section(_read())
+        self.assertIn("$700", section)
+        self.assertIn("about $52.97 a month", section)
+        self.assertIn("ceiling", section.lower())
+        self.assertIn("restated when a line changes", section)
+
+    def test_the_stated_sum_recomputes_from_the_lines(self):
+        text = _read()
+        rows = _rows(text, KNOWN_LINES)
+        known = [name for name in KNOWN_LINES
+                 if name not in UNKNOWN_LINES]
+        total = 0.0
+        for name in known:
+            cells = rows[name]
+            month_cell = cells[3]
+            total += _first_dollars(month_cell)
+        self.assertAlmostEqual(total, 52.97, places=2)
+        section = _month_total_section(text)
+        stated = re.search(r"about \$(\d+\.\d+) a month", section)
+        self.assertIsNotNone(stated)
+        self.assertAlmostEqual(float(stated.group(1)), total,
+                               places=2)
+
+    def test_the_unknown_lines_are_named_beside_the_sum(self):
+        section = _month_total_section(_read())
+        for name in UNKNOWN_LINES:
+            self.assertIn(name, section)
+        self.assertIn("not a complete month", section)
+        self.assertIn("does not pass the ceiling", section)
+
+    def test_each_unknown_line_states_the_seat_cannot_read_it(
+            self):
+        rows = _rows(_read(), UNKNOWN_LINES)
+        for name in UNKNOWN_LINES:
+            line = " ".join(rows[name])
+            self.assertIn("cannot read", line, name)
+            self.assertIn("2026-11-13", line, name)
+            self.assertIn("conductor", line.lower(), name)
+            self.assertIn("to supply", line, name)
+
+    def test_no_known_line_claims_it_cannot_be_read(self):
+        rows = _rows(_read(), KNOWN_LINES)
+        for name in KNOWN_LINES:
+            if name in UNKNOWN_LINES:
+                continue
+            self.assertNotIn("cannot read",
+                             " ".join(rows[name]), name)
 
 
 if __name__ == "__main__":

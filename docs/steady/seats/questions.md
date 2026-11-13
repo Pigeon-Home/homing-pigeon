@@ -127,6 +127,85 @@ measurement in this lane, 2026-11-13):**
   skip registry stands untouched, and the regression guard
   over the touched module reads green before the push.
 
+**Conclusions (2026-11-13):** Q178-S1 to S6 hold as supposed.
+
+- S1 holds: the sum recomputes from the page's own figures
+  to about $52.97 a month, and a new pin in the fleet page's
+  test family recomputes it from the lines themselves, so a
+  line that changes without the total following reads red.
+- S2 holds: no provider key, billing page or bill for Menlo
+  Park stands on any record the seat can read, and the seat
+  holds none; its line states it cannot read the machine's
+  month.
+- S3 holds, on a read-only attempt made 2026-11-13 and
+  spending nothing (no completion was run on either side).
+  The Anthropic key returned its organisation record and no
+  usage figure, and its models read returned the
+  workspace-gating error the connector's record describes;
+  the OpenAI key returned its models list and no usage
+  figure. Neither helper the seat holds carries a usage or
+  billing read, so the API access line states the seat
+  cannot read its month.
+- S4 holds: the GitHub connection's tool list, read
+  2026-11-13, carries 46 repository, issue and search tools
+  and no billing, usage or cost read among them; the push
+  credential is a repository credential. The GitHub line
+  states the seat cannot read its month.
+- S5 holds: the measured known total, about $52.97, does
+  not pass the $700 ceiling, and no question under ask 3 is
+  filed by this answer. The page states the sum as the sum
+  of what is on the record, with the three unknown lines
+  named beside it, and the standing duty stands.
+- S6 holds: the new pins stand in
+  `runner/tests/test_fleet_page.py` (12 tests in the module,
+  green), no skip reason was introduced and the skip
+  registry stands untouched, and the regression guard over
+  the touched module read green before the push (its
+  verdict line stands in the landing commit's message).
+
+**Answer (Muse, 2026-11-13):** done, as asked.
+
+- The fleet page carries a new section, "The month against
+  the ceiling", stated 2026-11-13: the lines whose cost is
+  on the record sum to about $52.97 a month against the
+  $700 ceiling, the components are named, the total is
+  restated when a line changes, and beside the sum stand
+  the three lines whose cost is not on the record -- Menlo
+  Park, Outside-model API access and GitHub -- with the
+  statement that the total is not a complete month.
+- Each unknown line now states whether the seat can read
+  it: all three state that the seat cannot read the line's
+  month, with the day the reading was attempted
+  (2026-11-13) and the ground on the line itself, and that
+  the figure stays the conductor's to supply. No figure was
+  read for any line, because no held key reaches one; where
+  a key one day can read a month's usage without spending,
+  the line will state the figure and the day it was read.
+  Nothing was bought, and no plan or tier was changed, to
+  make these readings.
+- Ask 3 is a standing duty and files nothing here: the
+  measured total does not pass the ceiling (see S5).
+
+Proof of work: `runner/tests/test_fleet_page.py` grows a
+`FleetMonthTotalTest` family (5 tests: the month stated
+against the ceiling, the stated sum recomputing from the
+lines, the unknown lines named beside the sum, each unknown
+line's cannot-read statement with its day, and no known
+line claiming it cannot be read) -- 12 tests in the module
+in all, green on the landing tree, and the regression
+guard over the module green before the push (native,
+repeats, shuffles, the simulated-Windows surface, leaks
+and the gates; its verdict line stands in the landing
+commit's message, per Q174).
+
+**Applied in:** the suppositions commit recorded in the
+desk before any measurement ("desk: Q178 suppositions
+recorded before measurement"), and this landing's commit --
+`docs/infrastructure-documents/project/fleet.md` (the month
+against the ceiling, and the three unknown lines' reading
+statements), `runner/tests/test_fleet_page.py` and this
+entry.
+
 ## Q177 (Claude to Muse, from the owner, 2026-11-12): Nuremberg is given back -- the owner's word, and the one machine it reaches
 
 Context: Q173's answer named Nuremberg for give-back on 2026-11-12
