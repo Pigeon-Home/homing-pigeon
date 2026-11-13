@@ -6,8 +6,10 @@
 
 One window of history, per author: the commits, the lines, the
 files the lines went to and their share, the commits by kind (the
-subject's prefix), the questions filed in the window and who they
-were addressed to, the longest chain of questions that each answer
+subject's prefix), the questions filed in the window (a question
+is filed when its heading lands, so a window reads the same on any
+later day) and who they were addressed to, the longest chain of
+questions that each answer
 the one before ("the Q<n> guard's residual ..."), and, for a
 question one seat asked another, the hours until the other seat's
 first commit that names it.
@@ -87,6 +89,24 @@ def questions(text):
     return out
 
 
+def filed_in(patch_text):
+    """The questions whose heading a commit added, from `git log -p
+    --unified=0 --format=@@@%ct -- <questions file>` over a window:
+    {Q: commit time}. A question is filed when its heading lands,
+    whatever day the heading names, so a window's count reads the
+    same on any later day."""
+    out, at = {}, 0
+    for line in patch_text.splitlines():
+        m = re.match(r"^@@@(\d+)$", line)
+        if m:
+            at = int(m.group(1))
+        elif line.startswith("+## Q"):
+            m = re.match(r"^\+## (Q\d+\w*) \(", line)
+            if m:
+                out[m.group(1)] = min(at, out.get(m.group(1), at))
+    return out
+
+
 def addressed(who):
     """(asker, kind of addressee): 'self' for a seat writing to the
     desk it carries, 'owner', or 'seat'."""
@@ -118,7 +138,7 @@ def longest_chain(qs):
     return best
 
 
-def digest(commits, qs, since_day, until_day, top=8):
+def digest(commits, qs, since_day, until_day, top=8, filed=None):
     seats = collections.OrderedDict()
     for c in commits:
         s = seats.setdefault(c["author"], {"commits": 0, "added": 0, "deleted": 0,
@@ -133,7 +153,12 @@ def digest(commits, qs, since_day, until_day, top=8):
         total = max(1, s["added"])
         s["top"] = [(path, n, round(100.0 * n / total, 1)) for path, n in s["paths"].most_common(top)]
         del s["paths"]
-    filed = [q for q in qs if since_day <= q["date"] <= until_day]
+    # by the landing of the heading where the history gives it, by
+    # the heading's own day where it does not
+    if filed is None:
+        filed = [q for q in qs if since_day <= q["date"] <= until_day]
+    else:
+        filed = [q for q in qs if q["q"] in filed]
     to = collections.Counter()
     for q in filed:
         asker, kind_ = addressed(q["who"])
@@ -143,7 +168,7 @@ def digest(commits, qs, since_day, until_day, top=8):
             "chain": longest_chain(filed)}
 
 
-def answer_hours(commits, qs, since_day, until_day):
+def answer_hours(commits, qs, since_day, until_day, filed=None):
     """For a question one seat asked another in the window: hours
     from the first commit that names it to the first commit by a
     different author that names it. None while unanswered."""
@@ -151,7 +176,8 @@ def answer_hours(commits, qs, since_day, until_day):
     ordered = sorted(commits, key=lambda c: c["at"])
     for q in qs:
         asker, kind_ = addressed(q["who"])
-        if kind_ != "seat" or not (since_day <= q["date"] <= until_day):
+        inside = (q["q"] in filed) if filed is not None else (since_day <= q["date"] <= until_day)
+        if kind_ != "seat" or not inside:
             continue
         named = [c for c in ordered if re.search(r"\b%s\b" % re.escape(q["q"]), c["subject"])]
         if not named:
@@ -203,8 +229,10 @@ def main(argv=None):
     with open(os.path.join(ROOT, QUESTIONS), encoding="utf-8") as fh:
         qs = questions(fh.read())
     days = (iso(start)[:10], iso(end)[:10])
-    d = digest(commits_shown, qs, days[0], days[1], args.top)
-    rows = answer_hours(commits, qs, days[0], days[1])
+    filed = filed_in(_git("log", "--since=" + iso(start), "--until=" + iso(end), "-p", "--unified=0",
+                          "--format=@@@%ct", "--", QUESTIONS))
+    d = digest(commits_shown, qs, days[0], days[1], args.top, filed=filed)
+    rows = answer_hours(commits, qs, days[0], days[1], filed=filed)
     if args.json:
         print(json.dumps({"since": iso(start), "until": iso(end), "digest": d, "answers": rows}, indent=1))
     else:

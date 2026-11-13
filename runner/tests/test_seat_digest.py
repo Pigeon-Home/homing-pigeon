@@ -113,6 +113,24 @@ class DigestTest(unittest.TestCase):
         self.assertEqual(sd.answer_hours(alone, self.qs, "2026-11-10", "2026-11-12"),
                          [("Q7", "Claude", None, None)])
 
+    def test_a_question_is_filed_when_its_heading_lands(self):
+        # Q9 and Q8 landed inside the window; Q7's heading names a
+        # day inside it but landed after the window closed, and Q5's
+        # landed inside it under an older day. The count follows the
+        # landings, so a re-run on a later day reads the same.
+        patch = ("@@@5000\n@@ -45,0 +46,3 @@ Rules:\n+## Q9 (Muse, to the desk, 2026-11-12): the\n+body\n"
+                 "@@@4000\n@@ -45,0 +46 @@\n+## Q8 (Muse, to the desk, 2026-11-11): the Q7 guard's residual\n"
+                 "-## Q4 (old heading reworded)\n+## Q5 (Muse, to the desk, 2026-11-01): an older matter\n"
+                 "@@@4500\n+## Q8 (Muse, to the desk, 2026-11-11): the Q7 guard's residual\n")
+        filed = sd.filed_in(patch)
+        self.assertEqual(filed, {"Q9": 5000, "Q8": 4000, "Q5": 4000})
+        d = sd.digest(self.commits, self.qs, "2026-11-10", "2026-11-12", top=2, filed=filed)
+        self.assertEqual(d["filed"], 3)
+        self.assertEqual(d["addressed"], [("Muse -> self", 3)])
+        # Q7 is outside the landings, so its wait is not this window's
+        self.assertEqual(sd.answer_hours(self.commits, self.qs, "2026-11-10", "2026-11-12", filed=filed), [])
+        self.assertEqual(sd.filed_in(""), {})
+
     def test_the_report_reads_in_lines(self):
         d = sd.digest(self.commits, self.qs, "2026-11-10", "2026-11-12", top=2)
         rows = sd.answer_hours(self.commits, self.qs, "2026-11-10", "2026-11-12")

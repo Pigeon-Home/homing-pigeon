@@ -45,8 +45,7 @@ Claude: 2 commits, 1,842 lines added, 207 deleted
       3.0%         55  runner/wire/dtls_mailbox.py
       2.2%         40  docs/infrastructure-documents/design/v3-dtls-over-email-plan.md
     by kind: tests 1, dtls 1
-questions filed in the window: 13 (Muse -> self 13)
-longest chain of residual questions: 2, Q143 .. Q144
+questions filed in the window: 2 (Muse -> self 2)
 ```
 
 The 72 hours to 13 Nov 03:00Z:
@@ -83,7 +82,7 @@ What the two windows hold, side by side, with no verdict drawn:
 
 - In the first window the largest shares of Muse's lines are the
   fuzz corpus's arcs and run records and a documentation pass
-  (65 commits of docs); 13 questions were filed, all by Muse to
+  (65 commits of docs); 2 questions were filed, both by Muse to
   the desk it carries.
 - In the second window one test module holds 51.7 per cent of
   Muse's lines, the desk record 17.4 and the questions file 7.3;
@@ -95,5 +94,15 @@ What the two windows hold, side by side, with no verdict drawn:
 - The two questions another seat filed in the second window (Q166
   and Q168) were named in a Muse commit 0.3 and 0.2 hours after
   they were filed.
+
+A question is counted in the window its heading landed in, read
+from the questions file's own history, so a reading reproduces on
+any later day (the outside-landing review of 13 Nov found the
+count moving with the day: a question filed after a window closed,
+under a date inside it, joined that window on a re-run). Under the
+day rule the first reading above counted 13 questions and a chain
+of 2: the eleven dated 10 Nov landed after 03:00Z and are the
+second window's, where they were counted as well; the second
+reading stands as first printed.
 
 The next reading is taken over the 48 hours after this page lands.
