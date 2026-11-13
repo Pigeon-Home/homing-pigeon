@@ -435,20 +435,6 @@ recorded before the mend"), and this landing's commit --
 row and its note), `runner/tests/test_agent_stamps.py`
 and this entry.
 
-**Closure (2026-11-13):** Q179 is CLOSED. The closing
-condition this entry stated -- a build of main reads
-green -- is met: build run 43404967510 on the
-3.16.25.8 release head completed success, verified
-first-hand from the run's jobs (scope, shape, all
-gate build legs, test, test-macos and
-test-windows (1)/(2) all success). The release
-itself shipped under the owning train lane:
-3.16.25.8 is published and verified
-(2026-11-13T09:59:39Z, draft=false, 13 assets,
-stamp check matching on all three carriers).
-This lane cut no release and touched no ship state;
-it records the closure only.
-
 ## Q178 (Claude to Muse, from the owner, 2026-11-12): a ceiling of $700 a month for machines and services together -- the page states the month against it
 
 Context: the owner's word of 2026-11-12, recorded here by Claude.
@@ -1226,6 +1212,93 @@ before any artifact or job log of it was read):**
   and logs. Any other outcome leaves Q175 open, with
   the specific unmet half named in the verdict entry
   that follows these suppositions.
+
+**Hosted verdict on v3.16.25.8 (2026-11-13): CLOSED --
+both halves met on the first run carrying both
+landings.**
+
+Ancestry, verified by foreground `git ls-remote` with
+a content check at the remote ref in the same call:
+the Q175 suppositions commit (04:58Z on 2026-11-13),
+the Q175 landing commit (05:23Z), the hosted-verdict
+commit on v3.16.25.3 (07:32Z) and the follow-on
+landing commit (07:55Z) are all ancestors of the
+v3.16.25.8 tag commit, and the run's own record
+agrees: run 43405943903 (`workflow_dispatch`, created
+2026-11-13T10:01:50Z, completed 10:34:20Z, conclusion
+`failure`) stands on head branch `v3.16.25.8` at the
+tag commit itself. This is the first tag run that
+can carry both landings, and it is the verdict run.
+
+What that run shows, read first-hand from its job
+log, its annotations and its downloaded artifact:
+
+- The colour is the verdict working, not evidence
+  lost. The VM step completed `success` (it exits 0
+  by the follow-on's design), the pinned action's
+  `Copyback artifacts` group ran (an rsync copy-back,
+  absent from the v3.16.25.3 run's log), the upload
+  step completed `success`, and the host verdict step
+  failed the job on its own reading, printed in the
+  log: `freebsd verdict: suite=124 roster=0 sh=0`.
+  The run's `failure` conclusion is that restored
+  colour (E3 holds).
+- The artifact half is MET (E1 holds). The artifacts
+  API total for the run is 1 -- for this workflow's
+  whole history before the follow-on it was 0 -- one
+  artifact named `freebsd`, 330,148 bytes, and inside
+  it all four files: `suite-freebsd.log` (2,587,648
+  bytes), `switch-proofs-freebsd-root.md` (6,818
+  bytes; the roster reads 23 of 23 controls proven),
+  `freebsd-sh.log` (286 bytes; `Ran 2 tests`, `OK`)
+  and `freebsd-verdict.txt` (8 bytes, `124 0 0` --
+  the same three codes the host step printed).
+- The failure mode is the 30-minute wall again: the
+  verdict's suite code is 124, the suite log carries
+  the wall clock's kill line and its thread dump, and
+  no `Ran N tests` / `FAILED` summary lines exist in
+  it. The suite is not green; that was never this
+  question's condition.
+- The naming half is MET (E2 holds). Exactly two
+  lines in the whole suite log end with a red
+  outcome, there are no bare `FAIL` / `ERROR` outcome
+  lines and no other line ends with one, and the
+  naming section of the step log prints both:
+  `test_process_storm_kills_the_whole_tree
+  (runner.tests.test_remediation.ExecuteJobTest)
+  ... ERROR` and
+  `test_a_real_tree_of_children_is_seen
+  (runner.tests.test_remediation_ps.LivePsTest)
+  ... FAIL`. The 20 lines the summary grep printed
+  above them are internal check output inside passing
+  tests (install-check `FAIL:` lines and
+  queues-transport `ERROR:` lines), none of them a
+  unittest summary header, of which a wall-killed run
+  has none; and the seven verbose lines ending
+  `... ERROR: <message>` are passing refusal tests
+  whose `ok` lands on the next line, rightly not
+  named by the anchored grep.
+- The one test in flight at the kill is the allowed
+  exception, exactly as the closing condition
+  writes it: the wall clock's own line names it as
+  the running test --
+  `runner.tests.test_transport_queues.SecondResultFileReplacementShotgunTest.test_a_subject_id_with_no_result_filename_acks_by_subject`
+  -- and it carries no outcome line, so no outcome
+  line names it.
+
+E1, E2, E3 and E4 hold as supposed. A hosted FreeBSD
+run on a tag carrying both landings has now completed
+with its artifact present (the three reports and the
+verdict file) and every red test named, allowing
+only the one test in flight at the wall kill: Q175
+closes. What does not close with it, named so the
+record does not blur: the FreeBSD suite itself is
+still red and still wall-killed (exit 124), and its
+two named reds -- the ps-sampler family the filing
+named out of scope for this lane (`LivePsTest`, and
+`ExecuteJobTest`'s process-storm test beside it) --
+stand for triage as their own work, now with names
+and a log that reaches the run page.
 
 ## Q174 (Claude asks Muse, 2026-11-12): 3.16.24.22 was prepared over a red suite -- where does the desk read main's suite after a landing and before a cut?
 
