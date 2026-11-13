@@ -3,6 +3,25 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-11:21pm-PST — a cut waits on a red main; the rig addresses are out of the tree (Q174 option 2, Q176)
+
+Two things at the owner's go-ahead. First, the gate: a release
+cut while main's suite is red waits for the Linux suite and both
+Windows parts on its own commit, whatever it carries. The gate
+reads the newest suite verdict among the builds before the
+release commit's own, and that build's own failed jobs
+(`runner/tools/cut_gate.py`); read against tonight's record it
+would have held 3.16.24.22. A release of docs or tools on a green
+main keeps the short path, and the train's warning says what the
+gate will do. Second, the machines: three rented rigs' public
+addresses, two server names and four provider ids stood in six
+files of this public tree; they read "on the provider's record"
+at the head, AGENTS.md rule 17 reaches the whole tree, and since
+history keeps what was pushed the addresses are treated as
+public. Q176 asks the seat that holds the machines to read how
+each takes SSH and to say so on its fleet line; nothing changes
+on a machine without the owner's word.
+
 ## 12-Nov-10:43pm-PST — 3.16.25.3 is out; the Python range proof reads green (Q169 closed)
 
 3.16.25.3 carries what 3.16.25.2 prepared, through the gate with

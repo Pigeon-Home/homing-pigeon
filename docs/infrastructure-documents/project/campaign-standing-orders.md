@@ -54,6 +54,11 @@ top: an item lower down is taken when nothing above it is open.
    (`runner/tools/cut_gate.py`). The Linux suite took 12.5
    minutes on 2026-11-13 and is the floor of such a release;
    keeping those jobs short is the second call on a seat's hour.
+   A release cut while main's suite is red waits for them too,
+   whatever it carries (the owner, 2026-11-12): the newest suite
+   verdict before the release commit, or a failed job on its own
+   build, and the cut waits for the suites on that commit, which
+   read green only once the red is mended.
 3. **The official release's open lines.** What still stands open
    in `release-readiness.md` and in the phase-2 plan of
    `docs/steady/security/default-posture.md` is worked to done,
@@ -228,6 +233,16 @@ anything else, whoever's landing it came from:
    newest suite verdict is red is the conductor's decision
    (Q174, option 2), put to him in the questions file and not
    taken by the desk.
+
+**The owner's go-ahead on option 2 (2026-11-12, recorded by
+Claude).** A cut waits. The cut gate reads main's suite beside the
+change set: when the newest suite verdict before the release
+commit's own build is red, or a watched job has failed on that
+build, the release waits for the Linux suite and both Windows
+parts on its own commit, whatever it carries
+(`runner/tools/cut_gate.py`, `suite_verdict` and `need`). The
+three readings above stand as written; the third is no longer the
+only thing between a red main and a tag.
 
 A finding that needs production code is filed as a question for
 Claude, in the four-part format, with a failing-by-design test. The

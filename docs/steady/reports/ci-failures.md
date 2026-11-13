@@ -1804,3 +1804,34 @@ eight were cancelled before one, by a later code push in the
 rolling group or, until 05:13Z, by a desk note in the docs
 group. The seven release commits in the same hours all reached
 one: a release commit's build is never cancelled.
+
+### The gate reads main's suite (13 Nov 2026)
+
+The cut gate named the suites for a release that carries core
+code and the legs alone for everything else, and twice in one
+evening a release was prepared over a red suite: 3.16.24.22
+carried no core code and shipped; 3.16.25.2 carried some and was
+held. At the owner's go-ahead the gate reads main's suite as well.
+`cut_gate.suite_verdict` reads main's builds newest first, down to
+the first that carries a verdict -- a failed job among the shape
+check, the Linux suite and the Windows parts, or a Linux suite that
+read green -- and `cut_gate.need` names the suites when that
+verdict is red among the builds before the release commit's own,
+or when a watched job has failed on the release commit's own
+build. Such a release waits for the suites on its own commit. A
+list of builds the API will not give names them too.
+
+Read against the record: before the release commit of 3.16.24.22
+(build 43364726391) the newest verdict is red on 0c437123, run
+43364054010 (the Linux suite and both Windows parts), two newer
+builds carrying none; before that of 3.16.25.2 (build
+43373591819) it is red on 1ff0cd49, run 43371724567 (the shape
+check, the Linux suite, both Windows parts). On the head as this
+lands it is green on 52962eb8, run 43380846605, and a release of
+docs or tools keeps the short path.
+
+The cut reads the new case (cut-release's gate step and the
+train's wait); the tag build's promotion check keeps the rule of
+the core alone, since the cut has decided by then and what landed
+after the release commit is not the tag's verdict. The train's
+warning is the same reading in words.

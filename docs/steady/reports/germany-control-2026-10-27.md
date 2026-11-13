@@ -25,7 +25,7 @@ passed is the deployed set, supplied by the conductor on
 2026-10-27.
 
 Proof: ping job `48a57df0-f5dd-4851-b365-b377c439f72d` was
-accepted with 202 and answered by runner `fedora-1gb-nbg1-1`,
+accepted with 202 and answered by the rig's runner,
 exit 0, key `k-7e1ec001`, result encrypted and verified on this
 side. Its platform card: linux, default interpreter `sh`,
 protocol version 1, the one key id above.

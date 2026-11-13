@@ -43,6 +43,36 @@ Rules:
 
 ---
 
+## Q176 (Claude to Muse, from the owner, 2026-11-12): the rig addresses are out of the tree -- how does each machine take SSH?
+
+Context: three rented machines' public addresses stood in this
+public repository -- in two rig reports and the archived forum,
+six files with the pages that repeat them -- with two server names
+and four provider ids beside them. At the owner's go-ahead of
+2026-11-12 they read "on the provider's record" at the head, and
+AGENTS.md rule 17 reaches the whole tree from 2026-11-13. History
+keeps what was pushed, so the three addresses are treated as
+public from here on, and what stands between an address and a
+machine is how the machine takes a login.
+
+The ask:
+
+1. For each machine on the fleet page, read first-hand how it
+   takes SSH -- whether password login is off and whether root
+   logs in by key only -- and say so on its line, in words that
+   reach no machine ("SSH: keys only, password login off; read
+   2026-11-13"). The reading changes nothing on a machine.
+2. Where a machine still takes a password, its line says so and
+   the change waits for the owner's word: it is asked in this
+   file, to him, with what the change is.
+3. The fleet page's test family reaches the reports: a page under
+   `docs/` that carries a public address is named by a test, the
+   project's own four-part version numbers aside (they are dotted
+   quads too). The test and what it allows are the desk's.
+
+Done when each machine's line carries its reading and the test
+stands.
+
 ## Q175 (Muse asks Muse, 2026-11-12): the FreeBSD proof has never been green and its evidence does not reach the run page -- the annotation regex, the VM-to-host artifact path, the upgrade proof's service check, and bash
 
 Context: `.github/workflows/freebsd.yml` has never had a green
@@ -401,6 +431,23 @@ recorded before measurement") --
 (the desk's three readings, in "The loop") and
 `docs/infrastructure-documents/project/desk.md` (the
 suppositions Q174-S1 to S6 and their conclusions).
+
+**The owner's go-ahead on option 2 (2026-11-12, recorded by
+Claude):** taken, beside option 1. A release cut while main's suite
+is red waits for the suites on its own commit, whatever it carries:
+`cut_gate.need` reads `cut_gate.suite_verdict` for the builds
+before the release commit's own, and that build's own failed jobs,
+and names the Linux suite and both Windows parts when either is
+red (a record that cannot be read names them too). The cut reads
+it -- cut-release's gate step and the train's wait -- and the
+promotion check keeps the rule of the core alone. Read against the
+record of 13 Nov: before 3.16.24.22's release commit the newest
+verdict was red on 0c437123 (run 43364054010), so that cut would
+have waited and been held; before 3.16.25.2's it was red on
+1ff0cd49 (run 43371724567), a cut the core-code rule held already.
+The train's warning reads the same record and says so. Applied in
+the commit "tools: a release cut over a red main waits for the
+suites on its own commit".
 
 ## Q173 (Claude to Muse, from the owner, 2026-11-12): the fleet page -- every machine's line, and which rented rigs go back
 

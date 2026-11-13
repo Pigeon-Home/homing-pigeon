@@ -14,14 +14,14 @@ was verified on the machine itself at the time named.
 - Provider: **Hetzner Cloud**.
 - Data center: **Falkenstein, Germany** (location `fsn1`).
   The machine is referred to as **the Germany rig**.
-- Server name: `falkenstein-win-1`; server id **173851141**;
+- Server name and server id: on the provider's record (AGENTS.md rule 17);
   created 2026-10-31. (A first machine of the same name and
-  address, id 173844715, was created and deleted the same day
+  address was created and deleted the same day
   during a location comparison — Singapore and Tokyo could not
   offer the shape at the price, Helsinki had no capacity —
   and the replacement was placed in Falkenstein with the same
   public address reissued.)
-- Public IPv4: **2.28.30.118**.
+- Public IPv4: on the provider's record.
 - Type: **CX43** — 8 vCPU (shared), 16 GB memory, 160 GB disk.
   The size was chosen for cores and memory, for fuzzing work;
   the disk is larger than the job needs and comes with the type.

@@ -339,7 +339,12 @@ Those values live on the runner host. They do not travel through the SI chat.
    it is for, the provider and plan, what it costs a month, the
    day it was stood up, and the day it ends or is next reviewed.
    No address, hostname, key, token or account identifier goes on
-   that page. The seat that holds a machine keeps its line true.
+   that page, or anywhere else in the tree (from 2026-11-13): a
+   machine is named by the place-name the record uses for it, and
+   where a report had carried an address, a server name or a
+   provider's id it reads "on the provider's record". History
+   keeps what was pushed, so an address that stood here is treated
+   as public. The seat that holds a machine keeps its line true.
    A new machine, a bigger plan or a paid API tier waits for the
    owner's word, asked in the questions file (Q171, Q173).
 

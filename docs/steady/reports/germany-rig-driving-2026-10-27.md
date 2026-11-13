@@ -6,7 +6,7 @@ Administration of the Germany rig passed from Grok to Muse on
 2026-10-27. Two queue credential sets were refused (401) before
 any signature was judged; the third, the set actually deployed
 on the rig, passed, and control was proven by a signed ping
-answered by runner fedora-1gb-nbg1-1, key k-7e1ec001. The root
+answered by the rig's runner, key k-7e1ec001. The root
 password was reset by the conductor at the provider's panel and
 replaced. The file also records a diagnosis of Muse's that
 was wrong — an idle-looking runner read as stopped — and the

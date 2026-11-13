@@ -14,9 +14,9 @@ secret: no credential value appears here.
 - Provider: **Hetzner Cloud**.
 - Data center: **Nuremberg, Germany** (location `nbg1`,
   Nuremberg DC Park).
-- Server name: `fedora-1gb-nbg1-1`; server id **172889828**;
+- Server name and server id: on the provider's record (AGENTS.md rule 17);
   created 2026-10-27T20:43:10Z.
-- Public IPv4: **178.104.116.44**. Nothing on the box listens
+- Public IPv4: on the provider's record. Nothing on the box listens
   except SSH; the runner and the fuzzer both dial out.
 - Type: **CPX02** — 1 vCPU (AMD EPYC-Genoa), 1 GB memory,
   20 GB disk.
