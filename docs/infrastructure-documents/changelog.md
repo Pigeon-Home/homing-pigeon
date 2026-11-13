@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.19 - 2026-11-12
+
+- Tools: runner/tools/seat_digest.py reads a window of the history per author -- the commits, the lines and the files they went to, the questions filed and to whom, the longest chain of residual questions, and how long a question waited for the other seat; the first two readings stand in docs/steady/reports/seat-digest.md
+- Tests: the parallel runner's full-log test reads both forms of unittest's -v line, so it holds on Python 3.9; Q169 (the Python range proof has no green run) and Q170 (the seeded mutation walk's baseline dies in the mutant copy) are filed
+
 ## 3.16.24.18 - 2026-11-13
 
 - 3.16.24.17 published and verified on the record; stamp MATCH x3

@@ -72,7 +72,7 @@ canonical list and its wiring grew runner/ops,
 runner/guard and the runner proper,
 the
 as-assembled set stands at <!--hp-fig:core_assembled_lines-->65,992<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->59,822<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->855,207<!--/hp-fig-->-byte zip, and the project's own estimator
+and a <!--hp-fig:core_assembled_zip_bytes-->856,590<!--/hp-fig-->-byte zip, and the project's own estimator
 counts it at <!--hp-fig:core_assembled_tokens-->731,154<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
 estimator counts the canonical <!--hp-fig:core_files-->136<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->719,575<!--/hp-fig-->
@@ -93,7 +93,7 @@ them.
 
 The runner proper is 7,179 lines; the core around it is
 58,813. The set as assembled, part by part (re-measured
-2026-11-13):
+2026-11-12):
 
 - runner/ops: 22,585 lines
 - runner/tools: 9,999
