@@ -624,12 +624,19 @@ def cmd_cut(args, sha=None):
             # commit with a newer workflow file. The tag goes in while
             # the commit is main's head; a workflow change landed
             # after it is what the refusal names.
+            # With RELEASE_TOKEN the tag is a push, and the rule is
+            # the same one in the token's own words (the 3.16.24.20
+            # cut, 2026-11-13): a ref whose workflow files differ
+            # from main's head asks the token for its Workflows
+            # permission, beside Contents.
             head = (api("/commits/main") or {}).get("sha", "")
-            remedy = ("; the workflow's token could not place the tag"
-                      + (" (main's head %s has moved past the commit; the token "
-                         "tags the head's tree, so cut the head or prepare again)"
+            remedy = ("; the token could not place the tag"
+                      + (" (main's head %s has moved past the commit; a tag "
+                         "there is refused when a workflow file changed "
+                         "since, so cut the head or prepare again)"
                          % head[:8] if head and head != sha else "")
-                      + ": add the RELEASE_TOKEN secret (Q30), or push the tag by "
+                      + ": give RELEASE_TOKEN Workflows: read and write beside "
+                      "Contents (Q30), or push the tag by "
                       "hand: git tag -a v%s %s -m 'Version %s' && git push origin v%s"
                       % (version, sha[:12], version, version))
         raise RuntimeError("cut-release %s concluded %s at step %r: %s%s"

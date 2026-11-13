@@ -218,7 +218,18 @@ jobs:
             fi
             if ! out=$(git push origin "refs/tags/$TAG" 2>&1); then
               echo "::error title=tag push::git push with RELEASE_TOKEN failed: $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
-              echo "::error title=remedy::the secret may have expired or lost contents: write on this repository; see docs/steady/seats/questions.md Q30"
+              # GitHub asks a token for its Workflows permission when
+              # the pushed ref carries a workflow file that differs
+              # from the default branch's head: a tag on a commit
+              # main has moved past with a workflow change (the
+              # 3.16.24.20 cut, 2026-11-13). The token then needs
+              # Workflows: read and write beside Contents; until it
+              # has it, cutting main's head is the way through.
+              if echo "$out" | grep -q "without \`workflow\` scope"; then
+                echo "::error title=remedy::the token lacks the Workflows permission, which GitHub asks for when the tag's commit carries a workflow file that differs from main's head: add Workflows: read and write to RELEASE_TOKEN, or cut main's head (the train prepares the next version there by itself); see docs/steady/seats/questions.md Q30"
+              else
+                echo "::error title=remedy::the secret may have expired or lost contents: write on this repository; see docs/steady/seats/questions.md Q30"
+              fi
               exit 1
             fi
             echo "pushed $TAG -> $SHA (git, RELEASE_TOKEN); the push starts the tag build and the image builds"

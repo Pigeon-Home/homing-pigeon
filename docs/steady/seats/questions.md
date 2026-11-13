@@ -18765,6 +18765,19 @@ The REST path stays for a run without the secret. The token's
 expiry is the owner's; a failed push with the secret set names
 expiry or lost permission in its remedy annotation.
 
+**Addendum (2026-11-13):** the token as added carries Contents
+alone, and one case still asks for more: the 3.16.24.20 cut was
+refused ("refusing to allow a Personal Access Token to create or
+update workflow `.github/workflows/build.yml` without `workflow`
+scope") because a workflow change had landed on main after the
+release commit and before its cut -- the rule this question first
+met, in the token's own words. With Workflows: read and write on
+the token a tag can go on a commit main has moved past whatever
+changed since; without it the train prepares the next version at
+the head and cuts that, as it did (3.16.24.21), at the cost of a
+version number and about five minutes. The cut's remedy annotation
+and the train's name the permission now.
+
 **A second reading (Claude, the campaign's session, 2026-10-25,
 stamp 10000c2a):** no run supports "the head of main itself was
 refused": the four failed cuts all tagged `fb56cfd`, which at the
