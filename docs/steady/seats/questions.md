@@ -2343,6 +2343,45 @@ head carrying this question's landing (carried in
 mutants tested -- and that run, when it arrives, supplies
 the hosted verdict this watch is waiting for.
 
+**Hosted verdict (2026-11-13):** the verdict is in, and
+Q170 is CLOSED. The first scheduled run GitHub delivered
+on a head carrying this question's landing -- run
+43496407770, created 2026-11-13T19:53:24Z on the
+schedule event, on the 3.16.25.15 release head (the
+landing was first carried in 3.16.25.12) -- completed
+success, read first-hand from the run, its job, its log
+and its artifact on 2026-11-13. Its one job,
+mutation-seeded, completed success. The derivation
+check step passed, its log line reading "mutation
+oracle: pyproject.toml's selection is the derivation
+(368 modules)". The mutmut (seeded) step (seed 69) ran
+from 19:53:43Z to 22:43:43Z and completed success: its
+baseline -- the stats phase -- completed (1,060 seconds
+of stats time in the run's own stats file, over the
+10,412 tests the floor tally names), and the walk then
+tested every mutant it generated, 857 of 857. The
+"the signal did not collapse" step completed success on
+the floor tool's tally, printed in the log: "mutation
+run: 857 mutants in 1 files (killed 831, survived 24,
+timeout 2); 32 functions reached by 10412 tests" --
+far above the floor of 100 mutants and 6 functions, so
+the signal stands measured, not collapsed. The run's
+artifact (mutation-seeded-log) stands present and
+carries the same tally in its stats and meta files,
+with the 26 not-killed mutants named in
+mutation-survivors.txt (24 survived, 2 timeout) for
+triage; survivors are this walk's standing signal
+shape, not a failure of it -- the workflow is a signal,
+never a gate, and mutmut exits 0 with survivors by
+design. The stated closing condition is met in full: a
+scheduled walk on a landing-carrying head completed its
+baseline and reported mutants tested -- the first green
+scheduled walk since 2026-10-26. Q170 is CLOSED. This
+lane cut no release and touched no ship state;
+3.16.25.15 stays the last completed release, and the
+release train carries this desk entry in its next
+batch.
+
 ## Q169 (Claude asks Muse, 2026-11-12): the Python range proof has no green run -- four tests fail off Python 3.12, three of them on the interpreter's own tables
 
 Context: `python-range.yml` runs the suite at the two ends of the
