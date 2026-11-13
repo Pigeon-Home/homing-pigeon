@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.4 - 2026-11-13
+
+- Docs: the CI record carries 3.16.25.2 (a cut the gate held on a red suite) and 3.16.25.3 (a core-code release through the gate: release at 14.6 minutes, every mirror by 17.5)
+- Proofs: the Python range proof read green on both legs, 3.9 and 3.14, for the first time on the record (on v3.16.25.1)
+
 ## 3.16.25.3 - 2026-11-13
 
 - Carries 3.16.25.2, which was prepared and not released: the cut gate held it on a red suite
