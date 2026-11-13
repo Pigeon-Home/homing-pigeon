@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.6 - 2026-11-13
+
+- Tools: the release train reads every cut run of a cycle, so a second run that is refused the tag beside a first that placed it is the cut made
+- Proofs: the FreeBSD proof records its verdict as a file inside the VM and uploads its evidence before the run turns red, and a run killed at the wall names the reds it had completed
+- Docs: the CI record carries 3.16.25.5; the fleet page carries the owner's ceiling
+
 ## 3.16.25.5 - 2026-11-13
 
 - Gate: a release cut while main's suite is red waits for the suites on its own commit, whatever it carries; the release train's warning reads the same record and says so
