@@ -24,7 +24,7 @@ other choice.
     -  https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 -  Version 2 Runner-to-SI Exchange
     -  https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
--  Version 3 Post-Quantum Cryptography with PFS
+-  Version 3 Post-Quantum Security with PFS
     -  https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
   
 
