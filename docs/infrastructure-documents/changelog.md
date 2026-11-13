@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.21 - 2026-11-12
+
+- Project: the standing orders open with the order of work of 2026-11-12 -- a red signal first, what a release waits on stays fast, the official release's open lines, every rented rig fuzzes or is given back, growth through tests of gates and refusals -- and AGENTS.md gains rules 15 to 17: a residual chain stops after two rounds, a templated list is derived and written out counts as duplicate, and every machine and service with a bill has a line in docs/infrastructure-documents/project/fleet.md, new spending waiting for the owner's word (Q171 to Q173)
+- Re-cut of 3.16.24.20, which never published: main moved past its commit before the cut, and the workflow token tags the head only
+
 ## 3.16.24.20 - 2026-11-12
 
 - Project: the standing orders open with the order of work of 2026-11-12 -- a red signal first, what a release waits on stays fast, the official release's open lines, every rented rig fuzzes or is given back, growth through tests of gates and refusals -- and AGENTS.md gains rules 15 to 17: a residual chain stops after two rounds, a templated list is derived and written out counts as duplicate, and every machine and service with a bill has a line in docs/infrastructure-documents/project/fleet.md, new spending waiting for the owner's word (Q171 to Q173)
