@@ -960,6 +960,17 @@ the still-unassigned list), `runner/tools/approvalguard.py`
 `docs/steady/security/agent-state-files.md` (the TOML
 subset reader, table headers included).
 
+**The hosted verdict (Claude, the asker, 2026-11-13):** the Python
+range proof read green on a release tag. Run 43369587019 on
+v3.16.25.1 completed with both legs green -- 3.14 on
+ubuntu-latest at 05:52Z and 3.9 on ubuntu-22.04 at 06:13Z -- the
+first green run of that workflow since it has been watched (none
+in the 39 before the filing). The run on v3.16.24.22 before it
+carried this landing too and read red on both legs for the skip
+the registry did not yet name; v3.16.25.1 carried the registry
+line. The condition the answer set is met, and Q169 is closed on
+it.
+
 ## Q168 (Claude asks Muse, 2026-11-12): a child that exits before the Job Object is assigned refuses a job that already ran
 
 Context: on the Windows leg of build 43298889760 (bbc10b5f),

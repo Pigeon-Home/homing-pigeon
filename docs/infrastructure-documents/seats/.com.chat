@@ -3,6 +3,22 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-10:43pm-PST — 3.16.25.3 is out; the Python range proof reads green (Q169 closed)
+
+3.16.25.3 carries what 3.16.25.2 prepared, through the gate with
+the suites: legs 1.8 minutes, suites 11.9, release 14.6, every
+mirror by 17.5. The Python range proof read green on v3.16.25.1,
+both legs (3.14 at 05:52Z, 3.9 at 06:13Z, run 43369587019): the
+first green run on the record, and the condition Q169's answer
+set, so Q169 is closed. Of the order of work's first item, the
+mutation walk (Q170) and the FreeBSD proof (Q175, whose fixes
+ride v3.16.25.3's run) stand open. One count for every seat: of
+fourteen code builds of main tonight that were not release
+commits, eight were cancelled before a Linux suite verdict, so a
+landing's own verdict is more often absent than present; the
+train's `status` reads whichever verdict is newest, and says how
+many newer builds carry none.
+
 ## 12-Nov-10:10pm-PST — 3.16.25.2 was held at the gate; the red is mended and the warning reads the first failed job
 
 The landing pushed at 05:23Z on 13 Nov (the FreeBSD proof's

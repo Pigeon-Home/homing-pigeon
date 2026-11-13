@@ -1776,3 +1776,31 @@ What changed with it: the train's warning names a failed job as
 soon as it has failed, the shape check among them, where it had
 waited for the Linux suite's own verdict and read the last green
 build until then -- thirteen minutes on this landing.
+
+### 3.16.25.3: a core-code release through the gate; the Python range proof reads green (13 Nov 2026)
+
+The fixture ids landed at 06:11Z, the build of that head read
+green whole (the shape check, the Linux suite in 11.7 minutes,
+both Windows parts, macOS), and 3.16.25.3 was prepared at 06:24
+on a main the train read green. It carries what 3.16.25.2
+prepared, core code among it, so the cut gate named the suites:
+legs green at 1.8 minutes, the suites at 11.9 (the Linux suite
+ran 11.5), tag at 12.4, release at 14.6, the last mirror at
+17.5. 3.16.24.15, the first core-code release under the posture,
+published at 22.9 minutes, six of them a cut waiting on a suite
+the gate does not name; this cycle waited on the suites and
+nothing else.
+
+The Python range proof read green for the first time in the
+record: run 43369587019 on v3.16.25.1, 3.14 at 05:52Z and 3.9 at
+06:13Z. The run on v3.16.24.22 before it read red on both legs
+for the unregistered skip; the proofs' queue held one run and
+one waiting throughout, as the tag group has it, and no run was
+cancelled.
+
+Fourteen code builds of main that were not release commits ran
+between 02:30Z and 06:00Z; six reached a Linux suite verdict and
+eight were cancelled before one, by a later code push in the
+rolling group or, until 05:13Z, by a desk note in the docs
+group. The seven release commits in the same hours all reached
+one: a release commit's build is never cancelled.
