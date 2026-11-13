@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.17 - 2026-11-12
+
+- CI: the tag build's lookup of the gate build for a pushed tag takes main's newest uncancelled build on the commit rather than a completed one, so a release cut on green legs while the suites still run promotes instead of building everything again (3.16.24.16 built everything: 13 minutes to the release)
+
 ## 3.16.24.16 - 2026-11-12
 
 - Tools: cut --sha --watch cuts the commit and then watches its tag build; the CI record carries the first cycle through the token path and the first core-code release the suite gate held and passed
