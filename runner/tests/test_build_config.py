@@ -1197,15 +1197,27 @@ class PipelinePostureTest(unittest.TestCase):
         self.assertNotIn('\n            gh workflow run build.yml', step)
         self.assertEqual(set(re.findall(r"\b([a-z-]+\.yml)\b", step)) - {"build.yml", "docker.yml"}, set())
 
-    def test_the_proofs_cancel_a_superseded_tags_run(self):
+    def test_a_running_tag_proof_finishes_and_the_newest_waits(self):
         # One concurrency group per proof workflow for every release
-        # tag, the newest tag's run cancelling the one before, so a
-        # release burst never queues nine runs per tag behind each
-        # other; the nightly and a branch dispatch keep their own.
+        # tag, and no cancelling inside it: the run that is going
+        # gives its verdict, the newest tag's run waits behind it
+        # (one running, one waiting at most). The newest tag
+        # cancelling the run before it left the Python range proof
+        # with 26 cancelled runs in 39 and no verdict to read; a
+        # group per tag had piled the runs up. The nightly and a
+        # branch dispatch keep their own groups.
         for name in self.PROOF_WORKFLOWS:
             wf = _workflow_text(name)
             self.assertIn("startsWith(github.ref, 'refs/tags/v') && 'tags' ||", wf, name)
-            self.assertRegex(wf, r"cancel-in-progress: \$\{\{ startsWith\(github\.ref, 'refs/tags/v'\)", name)
+            line = [ln.strip() for ln in wf.splitlines() if ln.strip().startswith("cancel-in-progress:")]
+            self.assertEqual(len(line), 1, name)
+            if name == "platform-matrix.yml":
+                # pushes and pull requests still replace their own
+                # matrix; a tag never cancels
+                self.assertEqual(line[0], "cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') && "
+                                          "(github.event_name == 'push' || github.event_name == 'pull_request') }}")
+            else:
+                self.assertEqual(line[0], "cancel-in-progress: false", name)
 
     def test_the_suites_are_real_jobs_again(self):
         workflow = _workflow()

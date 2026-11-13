@@ -45,15 +45,18 @@ on:
 # cancel the nightly, and the nightly does not cancel a push:
 # the event name is part of the group.
 concurrency:
-  # One group for every release tag, the newest tag's run cancelling
-  # the one before: a release burst cuts a tag every ten minutes, and
-  # nine proof runs per tag queued up behind each other and held the
-  # runners the next cycle's gate needed (2026-11-12: a gate build's
-  # macOS leg waited eight minutes behind three tags' proofs). A
-  # superseded tag's proof is the newer tag's to give; the nightly
-  # and a dispatch on a branch keep a group of their own.
+  # One group for every release tag. The run that is going finishes
+  # and gives its verdict; the newest tag's run waits behind it and
+  # replaces any older one still waiting -- one running and one
+  # waiting at most. A group per tag piled nine runs per tag behind
+  # each other and held the runners the next cycle's gate needed
+  # (2026-11-12: a gate build's macOS leg waited eight minutes
+  # behind three tags' proofs); the newest tag cancelling the run
+  # before it left the long proofs with no verdict to read at all
+  # (26 of the Python range proof's last 39 runs cancelled). The
+  # nightly and a dispatch on a branch keep a group of their own.
   group: platform-matrix-${{ startsWith(github.ref, 'refs/tags/v') && 'tags' || format('{0}-{1}', github.ref, github.event_name) }}
-  cancel-in-progress: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'push' || github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') && (github.event_name == 'push' || github.event_name == 'pull_request') }}
 
 permissions: {}
 
