@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.15 - 2026-11-13
+
+- Q169: the 3.16.25.13 follow-on conclusion -- a wall-clock flake on the 3.14 leg, Q169 stays closed
+
 ## 3.16.25.14 - 2026-11-13
 
 - Q172: the duplication audit folds into the statistics record and the second re-measure conclusion holds on the 3.16.25.13 head
