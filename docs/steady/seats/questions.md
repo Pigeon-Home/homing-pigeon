@@ -1850,7 +1850,133 @@ rule):**
   audit's suite runs green with the new measure pinned
   on synthetic trees.
 
-**Answer** --
+**Conclusions (2026-11-13):** S1 holds exactly, measured
+before any fold edit: a derivation on the stated rule --
+the running interpreter's `unicodedata.category` groups
+S, then M, then N, code points ascending, minus the 261
+named covered characters and the 45 S/M/N characters
+standing as segment openers in `briefing._LEDGER_SEGMENTS`
+at the parent of the Q165 landing commit -- reproduces
+both written-out lists whole: same 11,745 separators,
+same order, in both suffix shapes, on this machine's
+Python 3.12.3 (Unicode 15.0.0). The group counts read as
+filed: 3,798 symbols in the BMP and 3,926 beyond it,
+2,190 marks (1,318 in the BMP, 872 beyond), 1,831 numbers
+(735 in the BMP, 1,096 beyond). S2 holds: no assertion's
+expectation changed; the existing pins (11,745 entries,
+distinct, the same separators in both lists, the sample's
+groups) pass on the derived lists, and the new
+`Q172DerivationTest` re-derives the separators
+independently from the rule's statement and pins the
+module against carrying any derived entry as a written
+string constant. S3 holds with the addendum's correction
+standing as the record: the module loses 70,327 lines
+(83,276 to 12,949) and 685,920 tokens by the tree's own
+estimator (804,899 to 118,979); the landing commit's tree
+measures 24,378,233 tokens, down 682,388 from the
+25,060,621 of its parent head -- the ~24.3 million the
+addendum states, not the 24.28 million first supposed,
+and `version4`'s odometer keeps the version's third
+component at 25, as the addendum states. S4 holds: run
+before the fold, the new measure names the Q165 lists --
+76,209 templated lines in the briefing module, over the
+supposed 70,000, of 79,949 in the whole tree (5.32%);
+run after the fold, the module's templated count falls
+by 70,474 to 5,735 (the earlier filings' smaller written
+lists, which no decision has asked to fold), and the
+tree's templated count is 9,475 lines, 0.66% of the
+tree's lines, under the supposed 1%. One measure-design
+note belongs to the record: the masked-group count is
+taken over the lines of a written-out list (a list, tuple
+or set literal of at least 8 elements), because masked
+equality over lines at large also names ordinary code
+that merely resembles other code (a masked group over
+"import" lines, over "return" lines), which is the
+window measure's ground, not a templated list's; on the
+list reading every figure in S4 and S5 lands as
+supposed. S5 holds: the near-duplicate share rises only
+by the smaller denominator, 3.09% to 3.24% (46,360 lines
+both runs), and total latent -- near plus templated plus
+exact, overlaps counted once -- is 55,027 lines, 3.84%
+of the tree, well under the standing 5% limit; the
+change the numbers support is the statistics record's
+correction, not a cleanup. The pre-fold tree, read with
+the measure, stood at 8.36% total latent: the excess over
+the limit was the Q165 lists, and the fold removed it.
+S6 holds: the shrink guard names the briefing module
+(83,276 lines to 12,949 in the working tree), and the
+landing commit carries its `Shrink-OK` form. S7 holds:
+the briefing-contradiction suite runs green locally on
+the folded module (the Q165, Q166 and Q172 classes whole,
+and the module whole under the pre-push regression
+guard), the duplication audit's suite runs green with
+the new measure pinned on synthetic trees (20 tests), and
+`test_skip_registry` runs green -- no new skip reason was
+needed or registered. The full audit, before and after,
+stands in
+`docs/infrastructure-documents/project/dormant-code-audit-2026-11-13.md`.
+
+**Answer (2026-11-13):** the ask is done as filed, under
+the owner's decision (Q171, AGENTS.md rule 16).
+
+1. The two Q165 lists are derived when the test runs:
+   `runner/tests/test_briefing_contradiction.py` builds
+   `Q165_LEDGER_FIRING` and `Q165_LEDGER_SILENT` at load
+   from `_q165_separators()`, the derivation S1 states,
+   over the template the module already held
+   (`_Q165_TEMPLATE_PREFIX` and the two suffixes, moved
+   above the lists). The module carries no written-out
+   templated list: the two literal lists' 70,474 lines are
+   gone, and `Q172DerivationTest` holds the line.
+2. `runner/tools/duplication_audit.py` gains the
+   templated measure rule 16 names -- `_templated_marked`:
+   the lines of a written-out list count when they are
+   equal to other such lines once the one varying token
+   is masked, a masked group standing at the audit's own
+   repetition scale of 8, exact repetition counting the
+   same way -- and the audit's JSON and summary carry the
+   templated figures and a total latent figure that
+   unions the near and templated marks once per line
+   beside the exact copies. `TemplatedTests` pin the
+   measure on synthetic trees.
+3. The audit was run again, before the fold and after:
+   the statistics record states the re-measured figures
+   (total latent 3.84% of the tree: near 3.24%, templated
+   0.66%, exact 0.02%; non-latent 96.16%; audit date
+   2026-11-13), the fresh audit record stands beside it,
+   and the figure mentions in AGENTS.md and PROTOCOL.md
+   read to the same numbers.
+
+**Landing note (2026-11-13):** this answer was written
+on an earlier head and transplanted onto the moved main
+(the Q181 landing) before it pushed; the audit was
+re-measured first-hand on the landing base and the tree
+totals above are the re-measured figures. The fold's own
+figures stand exactly as first measured -- the module's
+70,327 lines and 685,920 tokens, its templated count
+76,209 to 5,735, and the tree's token delta of 682,388 --
+and every later desk entry and closure stands as it
+stood; only this entry's totals moved, by the base's
+growth since the first measure (25,060,621 tokens and
+1,501,662 lines before the fold; 8.36% total latent
+before, 3.84% after).
+
+**Applied in:** the commits carrying this answer -- the
+fold and the audit measure
+(`runner/tests/test_briefing_contradiction.py`,
+`runner/tools/duplication_audit.py`,
+`runner/tests/test_duplication_audit.py`), this entry,
+the fresh audit record
+(`docs/infrastructure-documents/project/dormant-code-audit-2026-11-13.md`),
+and the statistics refresh
+(`docs/infrastructure-documents/project/statistics.md`,
+AGENTS.md, PROTOCOL.md).
+
+**Closure (2026-11-13):** Q172 is CLOSED. The done-when
+conditions stand met on the landing tree: the module
+carries no written-out templated list, the audit
+measures a templated list where one exists, and the
+statistics record states the re-measured figures.
 
 ## Q171 (the owner decides, 2026-11-12): a residual chain stops after two rounds, a templated list is derived, the order of work, and a page for the machines
 
