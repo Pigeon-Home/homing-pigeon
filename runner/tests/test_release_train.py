@@ -348,6 +348,89 @@ class WatchTest(unittest.TestCase):
             self.assertEqual(rt.watch_tag_build("3.16.21.2", 1), 1)
 
 
+class RedMainWarningTest(unittest.TestCase):
+    """A release of tests, tools or docs does not wait for the
+    suites, so it can be prepared on a main whose suite is red; the
+    train names that red where the seat preparing reads it, and
+    never refuses on it."""
+
+    def _api(self, runs, jobs):
+        def api(path, *a, **k):
+            if path.startswith("/actions/workflows/build.yml/runs?branch=main"):
+                return {"workflow_runs": runs}
+            for rid, js in jobs.items():
+                if path.startswith("/actions/runs/%s/jobs" % rid):
+                    return {"jobs": js}
+            raise AssertionError(path)
+        return api
+
+    def _job(self, name, conclusion, status="completed"):
+        return {"name": name, "status": status, "conclusion": conclusion}
+
+    def test_the_newest_suite_verdict_is_named_when_red(self):
+        # The record of 13 Nov 2026, in small: the head's suite is
+        # still running, a docs landing skipped the suite, a
+        # superseded head was cancelled before its suite finished,
+        # and the newest verdict stands on a run a later head
+        # cancelled after its Linux suite and one Windows part had
+        # already failed.
+        runs = [
+            {"id": 6, "event": "push", "conclusion": None, "head_sha": "f" * 40},
+            {"id": 5, "event": "push", "conclusion": "success", "head_sha": "e" * 40},
+            {"id": 4, "event": "push", "conclusion": "cancelled", "head_sha": "d" * 40},
+            {"id": 3, "event": "pull_request", "conclusion": "failure", "head_sha": "c" * 40},
+            {"id": 2, "event": "push", "conclusion": "cancelled", "head_sha": "b" * 40},
+            {"id": 1, "event": "push", "conclusion": "success", "head_sha": "a" * 40},
+        ]
+        jobs = {
+            6: [self._job("test", None, "in_progress"), self._job("test-windows (1)", "failure")],
+            5: [self._job("docs", "success"), self._job("test", "skipped")],
+            4: [self._job("test", "cancelled"), self._job("test-windows", "cancelled")],
+            2: [self._job("test", "failure"), self._job("test-windows (1)", "failure"),
+                self._job("test-windows (2)", "success"), self._job("test-macos", "cancelled")],
+            1: [self._job("test", "success")],
+        }
+        with mock.patch.object(rt, "api", self._api(runs, jobs)):
+            text = rt.red_main_warning()
+        self.assertIn("main's suite is red: test, test-windows (1) failed on bbbbbbbb (build run 2, the newest "
+                      "build of main with a suite verdict; 3 newer builds of main carry none)", text)
+        self.assertIn("never stops a cut", text)
+        # the red on the newest build of all is named without the count
+        with mock.patch.object(rt, "api", self._api(runs[4:], jobs)):
+            self.assertIn("(build run 2, the newest build of main with a suite verdict).", rt.red_main_warning())
+        # a pull request's build is another tree's: read past, uncounted
+        with mock.patch.object(rt, "api", self._api(runs[3:], jobs)):
+            self.assertIn("(build run 2, the newest build of main with a suite verdict).", rt.red_main_warning())
+        with mock.patch.object(rt, "api", self._api(runs[2:], jobs)):
+            self.assertIn("; 1 newer build of main carries none)", rt.red_main_warning())
+
+    def test_a_green_newest_verdict_says_nothing_whatever_came_before(self):
+        runs = [{"id": 2, "event": "push", "conclusion": None, "head_sha": "b" * 40},
+                {"id": 1, "event": "push", "conclusion": "failure", "head_sha": "a" * 40}]
+        jobs = {2: [self._job("test", "success"), self._job("test-windows (1)", None, "in_progress")],
+                1: [self._job("test", "failure")]}
+        with mock.patch.object(rt, "api", self._api(runs, jobs)):
+            self.assertEqual(rt.red_main_warning(), "")
+        with mock.patch.object(rt, "api", self._api([], {})):
+            self.assertEqual(rt.red_main_warning(), "")
+
+    def test_a_record_it_cannot_read_says_nothing(self):
+        def down(path, *a, **k):
+            raise RuntimeError("no GH_TOKEN/GITHUB_TOKEN and no gh on PATH")
+        with mock.patch.object(rt, "api", down):
+            self.assertEqual(rt.red_main_warning(), "")
+        with mock.patch.object(rt, "api", lambda path, *a, **k: None):
+            self.assertEqual(rt.red_main_warning(), "")
+
+    def test_prepare_cut_and_status_carry_it(self):
+        import inspect
+        for fn in (rt.cmd_prepare, rt.cmd_cut, rt.cmd_status):
+            self.assertIn("red_main_warning()", inspect.getsource(fn), fn.__name__)
+        # and the release commit's message carries it beside the
+        # latent-code warning
+        self.assertIn('message += "\\n" + red + "\\n"', inspect.getsource(rt.cmd_prepare))
+
+
 class ReferenceDeflateTest(unittest.TestCase):
     """The as-assembled zip figure is re-recorded only under the
     reference zlib: zlib-ng packs the same tree to another size
@@ -634,6 +717,7 @@ class CutWatchShaTest(unittest.TestCase):
         args = mock.Mock(watch=watch, sha=args_sha,
                          version=args_version, limit=5)
         with mock.patch.object(rt, "latent_warning", lambda *a, **k: ""), \
+                mock.patch.object(rt, "red_main_warning", lambda *a, **k: ""), \
                 mock.patch.object(rt, "carriers",
                                   lambda root=None: {"pyproject.toml": self.VERSION}), \
                 mock.patch.object(rt, "_git", fake_git), \

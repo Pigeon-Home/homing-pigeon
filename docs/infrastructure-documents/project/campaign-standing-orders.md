@@ -41,7 +41,13 @@ top: an item lower down is taken when nothing above it is open.
    starts, and the seeded mutation walk. Open as this order
    lands: the Python range proof (Q169), the seeded mutation walk
    (Q170), and the FreeBSD proof, which has no green run in its
-   last 39.
+   last 39. Where a red main is read: `python3
+   runner/tools/release_train.py status` names the newest suite
+   verdict on main when it is red, with its commit and its run;
+   `prepare` and `cut` print the same line, and a release commit
+   prepared over a red main carries it in its message. A seat
+   that reads that line takes the red before anything else,
+   whoever's landing it came from.
 2. **What a release waits on stays fast.** A release that carries
    core code waits for the Linux suite and the two parts of the
    Windows suite beside the eight artifact legs
@@ -168,7 +174,10 @@ waiting is not testing.
 ## The loop, regression pass, and green-main rules
 
 1. Pull main. If the last rule refresh was more than an hour ago, do
-   it now (above).
+   it now (above). Read `python3 runner/tools/release_train.py
+   status` (from 2026-11-13): a line there that begins "WARNING —
+   main's suite is red" is the first open item, ahead of the
+   questions and the queue.
 2. Read `docs/steady/seats/questions.md`. Anything answered since the last
    pass that changes the campaign's own work (a fix to re-verify, a
    probe to retire, a decision that moves an assertion) comes first.

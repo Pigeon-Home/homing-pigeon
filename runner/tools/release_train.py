@@ -420,6 +420,58 @@ def _statistics_facts(root):
         return None
 
 
+SUITE_JOBS = ("test", "test-windows")
+
+
+def red_main_warning():
+    """What main's newest suite verdict says when it is red, or ''.
+
+    The builds of main are read newest first (a push or a
+    dispatch), down to the first whose Linux suite came to a
+    verdict of its own, and a failed Linux suite or Windows part
+    is named with its commit and run. The verdict is the job's,
+    not the run's: a run a later head cancelled still carries the
+    verdict of a suite that had finished, and a run whose suite
+    was skipped (a change of docs alone) or cancelled says nothing
+    about the tree (the line counts the newer builds it read past,
+    so a red that a later landing may have mended reads as such).
+    The cut gate waits for the suites only for a
+    release that carries core code, so a release of tests, tools
+    or docs can be prepared on a main whose suite is red:
+    3.16.24.22 was, ten minutes after the Linux suite first read
+    red on a landing that left a new skip without its registered
+    reason. The order of work puts a red
+    signal first; this names it where a seat preparing a release
+    reads it. It warns and never refuses, and a record it cannot
+    read says nothing.
+    """
+    try:
+        runs = (api("/actions/workflows/build.yml/runs?branch=main&per_page=15") or {}).get("workflow_runs", [])
+        newer = 0
+        for run in runs:
+            if run.get("event") not in ("push", "workflow_dispatch"):
+                continue
+            jobs = run_jobs(run["id"])
+            linux = jobs.get("test") or {}
+            if linux.get("status") != "completed" or linux.get("conclusion") not in ("success", "failure"):
+                newer += 1
+                continue
+            red = sorted(j.get("name", n) for n in SUITE_JOBS for j in cut_gate.match(n, jobs)
+                         if j.get("status") == "completed" and j.get("conclusion") == "failure")
+            if not red:
+                return ""
+            later = ("; %d newer build%s of main carr%s none" % (newer, "" if newer == 1 else "s", "ies" if newer == 1 else "y")
+                     if newer else "")
+            return ("WARNING — main's suite is red: %s failed on %s (build run %s, the newest "
+                    "build of main with a suite verdict%s). The order of work puts a red signal "
+                    "first; this warning never stops a cut, and a release that carries core "
+                    "code will wait at the gate until the suites are green."
+                    % (", ".join(red), run.get("head_sha", "")[:8], run["id"], later))
+    except Exception:  # a warning that cannot read its record says nothing
+        return ""
+    return ""
+
+
 def latent_warning(root=ROOT):
     """The latent-code warning a cut carries, or '' when there is none.
 
@@ -524,6 +576,7 @@ def cmd_status(args):
     sha = _git("rev-parse", "HEAD")
     state, detail = gate_verdict(sha, version)
     _say("build on HEAD %s: %s (%s)" % (sha[:8], state, detail))
+    _say(red_main_warning() or "main's newest suite verdict: green")
     rel = api("/releases/latest") or {}
     _say("latest release: %s published %s with %d assets" % (rel.get("tag_name"), rel.get("published_at"), len(rel.get("assets", []))))
     out = local_guards()
@@ -537,9 +590,13 @@ def cmd_status(args):
 def cmd_prepare(args):
     # The latent-code warning rides in the cut's output and in the
     # release commit's message; it never refuses (see latent_warning).
+    # A red suite on main rides the same two places (red_main_warning).
     warn = latent_warning()
     if warn:
         _say(warn)
+    red = red_main_warning()
+    if red:
+        _say(red)
     # Tracked changes only: an untracked file (a scratch worktree, a
     # local note) is not a change and is never added below.
     if _git("status", "--porcelain", "--untracked-files=no"):
@@ -572,6 +629,8 @@ def cmd_prepare(args):
     message = "release: %s — %s\n\n%s\n" % (version, subject, "\n".join("- " + n for n in args.note))
     if warn:
         message += "\n" + warn + "\n"
+    if red:
+        message += "\n" + red + "\n"
     if args.trailer:
         message += "\n" + "\n".join(args.trailer) + "\n"
     _git("add", "-u")
@@ -607,6 +666,9 @@ def cmd_cut(args, sha=None):
     warn = latent_warning()
     if warn:
         _say(warn)
+    red = red_main_warning()
+    if red:
+        _say(red)
     # --watch alone watches the tag build of the carriers' version;
     # with --sha it cuts that commit and then watches (a cut with
     # both on 2026-11-13 watched a tag build another seat's cut had
