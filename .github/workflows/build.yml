@@ -75,7 +75,16 @@ concurrency:
   # checked on 2026-11-12), so a documentation push under another
   # message still takes the rolling group.
   group: build-${{ github.ref }}-${{ startsWith(github.event.head_commit.message, 'release:') && github.sha || ((startsWith(github.event.head_commit.message, 'desk:') || startsWith(github.event.head_commit.message, 'docs:') || ((startsWith(github.event.head_commit.message, 'Update ') || startsWith(github.event.head_commit.message, 'Create ') || startsWith(github.event.head_commit.message, 'Delete ')) && endsWith(github.event.head_commit.message, '.md'))) && 'docs' || 'rolling') }}
-  cancel-in-progress: ${{ !(startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.head_commit.message, 'release:')) }}
+  # Only the rolling group cancels. The docs group is named by the
+  # head commit's message, and a push whose head is a desk note can
+  # carry code beneath it: its build runs the suites in the docs
+  # group, where the next desk note or web edit used to cancel
+  # them. Two such builds lost their suites that way on 2026-11-13
+  # (0b59937c to a web edit, 644358bc to the desk note after it),
+  # and a third was cancelled two minutes after its suites had
+  # read green. A docs build is a minute; one waiting behind a
+  # suite costs nothing, since nothing gates on it.
+  cancel-in-progress: ${{ !(startsWith(github.ref, 'refs/tags/v') || startsWith(github.event.head_commit.message, 'release:') || (startsWith(github.event.head_commit.message, 'desk:') || startsWith(github.event.head_commit.message, 'docs:') || ((startsWith(github.event.head_commit.message, 'Update ') || startsWith(github.event.head_commit.message, 'Create ') || startsWith(github.event.head_commit.message, 'Delete ')) && endsWith(github.event.head_commit.message, '.md')))) }}
 
 jobs:
   scope:

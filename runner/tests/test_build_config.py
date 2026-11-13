@@ -187,6 +187,19 @@ class MutationGateTest(unittest.TestCase):
         self.assertIn("startsWith(github.event.head_commit.message, "
                       "'release:')", block)
         self.assertNotIn("cancel-in-progress: false", block)
+        # Only the rolling group cancels: the docs group is named by
+        # the head commit's message, and a push whose head is a desk
+        # note can carry code beneath it, whose suites the next desk
+        # note or web edit used to cancel (the builds of 0b59937c
+        # and 644358bc on 2026-11-13). The cancelling rule excludes
+        # exactly the head messages the group sends to 'docs'.
+        group = [ln for ln in block.splitlines() if ln.strip().startswith("group:")][0]
+        cancel = [ln for ln in block.splitlines() if ln.strip().startswith("cancel-in-progress:")][0]
+        m = re.search(r"\|\| \((\(startsWith\(github\.event\.head_commit\.message, 'desk:'\).*'\.md'\)\)\)) && 'docs' \|\| 'rolling'\)", group)
+        self.assertIsNotNone(m, "the group's docs condition")
+        self.assertTrue(cancel.strip().startswith("cancel-in-progress: ${{ !(startsWith(github.ref, 'refs/tags/v') || "
+                                                  "startsWith(github.event.head_commit.message, 'release:') || "), cancel)
+        self.assertIn("|| " + m.group(1) + ") }}", cancel)
 
     def test_only_scarce_runners_carry_a_timer(self):
         # The measurement experiment is over. The one timer the
@@ -1250,8 +1263,13 @@ class PipelinePostureTest(unittest.TestCase):
         self.assertIn("import cut_gate", text)
         self.assertIn("cut_gate.need(os.environ[\"SHA\"], os.environ[\"VERSION\"])", text)
         self.assertNotIn("need = {", text, "cut-release carries a need set of its own")
-        sys.path.insert(0, os.path.join(_root(), "runner", "tools"))
-        import cut_gate
+        # loaded by its path: an entry left on sys.path is a leak the
+        # pre-push guard names on whichever module runs next
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "cut_gate", os.path.join(_root(), "runner", "tools", "cut_gate.py"))
+        cut_gate = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(cut_gate)
         self.assertFalse(cut_gate.relief_active(_root()), "build.yml still carries a live relief marker")
         legs = set(cut_gate.LEGS)
         both = legs | set(cut_gate.SUITES)
