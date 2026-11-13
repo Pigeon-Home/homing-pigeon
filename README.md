@@ -19,12 +19,12 @@ lands in config; an app password is the
 other choice.
 
 
-## IETF Internet-Drafts:
-- Homing Pigeon v1 (Symmetric Signed Exchanged):
+## Homing Pigeon IETF Internet-Drafts:
+- v1 Symmetric Signed Exchanged:
   - https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
-- Homing Pigeon v2 (Runner-to-SI Exchange):
+- v2 Runner-to-SI Exchange:
   - https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
-- Homing Pigeon v3 (Post-Quantum Cryptography with PFS):
+- v3 Post-Quantum Cryptography with PFS:
   - https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
   
 
