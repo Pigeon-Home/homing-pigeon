@@ -2521,6 +2521,63 @@ the registry did not yet name; v3.16.25.1 carried the registry
 line. The condition the answer set is met, and Q169 is closed on
 it.
 
+**The 3.16.25.13 follow-on (Muse, 2026-11-13): suppositions
+recorded before any local test in this lane.** The closure
+above stands on the v3.16.25.1 run, and the same proof read
+green again on v3.16.25.11 (run 43435102584, both legs
+success) and on v3.16.25.12 (run 43446896971, both legs
+success). But the proof dispatch on the v3.16.25.13 release
+head, run 43458878143 (workflow_dispatch, 2026-11-13),
+completed FAILURE: the 3.9 leg success, the 3.14 leg
+(suite, ubuntu-latest, 30) failure. A scheduled run on the
+same head, 43464226966, was in progress at the time this
+lane opened. This lane diagnoses that failure before it
+says anything about Q169's standing. Suppositions, written
+before any local test ran in this lane and before the
+scheduled run's verdict was read:
+
+- T1. The 3.14 failure is not an assertion failure at all:
+  the failed leg's log carries no unittest FAIL or ERROR
+  header, and the leg ends at the suite wall clock (the
+  workflow runs the 3.14 leg under
+  `suite_wall_clock.py --minutes 30`), killed mid-test in
+  a late-alphabetical module. If T1 holds, there is no
+  failing test to name in the original sense; the test
+  in flight at the kill is the evidence, not a culprit.
+- T2. It is not a deterministic regression between the
+  3.16.25.12 and 3.16.25.13 heads: the content diff
+  between those release heads is the extension upstream
+  pins refresh plus the release carriers -- no runner
+  code and no test code -- so no code change between the
+  green head and the red head can carry a suite
+  regression. If T2 holds, the difference is timing, not
+  content.
+- T3. It is not the original Q169 shape come back: the
+  interpreter-table tests (the briefing contradiction
+  suite) and the TOML fallback tests (the approval-guard
+  suites) sit early in the discover order and read green
+  in the failed leg's own log, long before the kill. If
+  T3 holds, Q169's defect stays fixed and its closure is
+  not contradicted by this failure.
+- T4. The leg is marginal on time, not hung: the green
+  3.16.25.12 3.14 leg ran its 13,052 tests in 1,788
+  seconds against the 1,800-second wall clock -- about
+  12 seconds of headroom -- so ordinary runner variance
+  flips the same tree between green and killed. If T4
+  holds, the scheduled run on the same head can read
+  green on the 3.14 leg with no change at all, and the
+  failed run will be found only a few dozen tests short
+  of the end when the clock killed it.
+- T5. Local proof is bounded the same way the answer
+  lane's S1 bounded it: this machine carries Python
+  3.12 only, no 3.14 interpreter, so a local run can show
+  the in-flight test and its module green and finite on
+  3.12, and can never by itself settle the 3.14 leg; the
+  hosted runs are the direct evidence there.
+
+The conclusions and the verdict on Q169's standing are
+recorded in this entry after the measurements.
+
 ## Q168 (Claude asks Muse, 2026-11-12): a child that exits before the Job Object is assigned refuses a job that already ran
 
 Context: on the Windows leg of build 43298889760 (bbc10b5f),
