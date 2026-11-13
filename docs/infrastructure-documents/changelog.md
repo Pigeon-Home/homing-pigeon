@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.24.22 - 2026-11-13
+
+- Q169: the briefing tests derive their counts from the running interpreter; the TOML fallback reads table headers
+- CI: the cut and the train name the token's Workflows permission (Q30 addendum); a tag's proof that is running finishes and the newest tag's run waits behind it
+- Fix: the as-assembled zip figure re-recorded at its live measure; the train re-records it only under the reference zlib; the desk peer review of the outside landings after 3.16.24.18 closes with one figure fixed forward
+- Tools: the seat digest counts a question in the window its heading landed in
+
 ## 3.16.24.21 - 2026-11-12
 
 - Project: the standing orders open with the order of work of 2026-11-12 -- a red signal first, what a release waits on stays fast, the official release's open lines, every rented rig fuzzes or is given back, growth through tests of gates and refusals -- and AGENTS.md gains rules 15 to 17: a residual chain stops after two rounds, a templated list is derived and written out counts as duplicate, and every machine and service with a bill has a line in docs/infrastructure-documents/project/fleet.md, new spending waiting for the owner's word (Q171 to Q173)
