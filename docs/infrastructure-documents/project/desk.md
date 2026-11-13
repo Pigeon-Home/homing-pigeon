@@ -28976,3 +28976,81 @@ No production code, no gate rule and no test
 changed in this lane.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+## Q174 third case: the DocsPublicAddressTest
+sys.path leak -- suppositions recorded before
+the fix (2026-11-13)
+
+This lane is the desk's fix-forward for Q174's
+third case, filed in the commit of 12:27 AM PST
+on 2026-11-13 ("desk: Q174's second and third
+cases"): in `runner/tests/test_fleet_page.py`,
+`_is_project_version` inserts REPO on `sys.path`
+every time it classifies a quad and never takes
+it off. The suppositions below are written
+before any fix in this lane is made; the
+conclusions follow in this same section, and
+the fix itself is recorded under Q174 in the
+questions file.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q174-3-S1 -- the leak's sole source in the
+  module is the per-call insert.** Read
+  first-hand: the module names `sys.path` in
+  exactly one place, the `sys.path.insert(0,
+  REPO)` inside `_is_project_version`, called
+  once per quad by `_public_addresses_in`.
+  Reproduced first-hand in a scratch clone at
+  the filed head before any fix: the 5
+  DocsPublicAddressTest tests pass whole, and
+  `sys.path` grows from 6 entries at the start
+  to 506 after the run, 499 of them duplicate
+  REPO entries. (The guard's own numbers,
+  8 to 507, differ only in the harness's
+  seeding.) No other line in the module
+  mutates `sys.path`.
+- **Q174-3-S2 -- importing version4 once, at
+  module level, classifies identically and
+  mutates nothing per call.** `version4.parse`
+  is a pure function of the quad; importing
+  the module once -- inserting REPO only if
+  it is absent, at import time, before any
+  test runs -- gives every classification the
+  same parser with no per-call `sys.path`
+  change. The guard seeds REPO on `sys.path`
+  before it loads a module for its leak run,
+  so an import-time guarded insert is not a
+  per-test leak there either; under a plain
+  unittest run it happens once, not per quad.
+- **Q174-3-S3 -- a pin that snapshots
+  `sys.path` around repeated classification
+  fails on the old shape and passes on the
+  fixed shape.** On the old code, repeated
+  `_is_project_version` and
+  `_public_addresses_in` calls grow the
+  snapshot and duplicate REPO; on the fixed
+  code the snapshot after is exactly the
+  snapshot before -- same entries, same
+  order, no duplicates added.
+- **Q174-3-S4 -- the existing family stays
+  green whole.** The fleet page, month-total,
+  SSH-reading and docs-address tests in the
+  module all pass on the fixed tree, with the
+  scan's verdicts on versions, non-global
+  quads, planted addresses and bookended
+  addresses unchanged.
+- **Q174-3-S5 -- the regression guard reads
+  green over the module, leaks included, and
+  the standing guards hold.** Run before the
+  push, `regression_guard.py` over
+  `runner/tests/test_fleet_page.py` reads
+  green on native, repeat, shuffled, windows,
+  leaks and gates, and the fix commit's
+  message carries that verdict line, as
+  Q174's answer requires of a test-module
+  landing. No file is added, so no new file
+  stands in the repository root; the string
+  the repository never carries stands in no
+  diff of this lane; and the shrink guard is
+  clean over the lane's commits.
