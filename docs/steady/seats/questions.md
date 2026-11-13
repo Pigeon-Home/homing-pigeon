@@ -124,6 +124,47 @@ before its verification runs (2026-11-13):**
 - Q181-S4. This lane cuts no release and touches no
   ship state; the release train carries the batch.
 
+**Conclusions (2026-11-13):** Q181-S1 to S4 hold.
+
+- S1 holds: the file was re-checked whole, and the two
+  macOS live-proof sentences were the only stale claims
+  in it. Every other claim stands as the landed accuracy
+  pass left it, and nothing else in the file changed.
+- S2 holds: the macOS row's evidence cell carries the
+  corrected word -- the data-size refusal is closed
+  (five rounds), the one live point that then failed,
+  the spawn-limits read-back, is fixed, and live proof
+  stands on the completed green `test-macos` jobs since,
+  the build on the 3.16.25.8 release head of 2026-11-13
+  named by its date and version and by no desk or build
+  number. The "Not yet true" macOS bullet is out;
+  nothing replaces it.
+- S3 holds: the pins stand in
+  `runner/tests/test_support_matrix.py` -- the FreeBSD
+  row carrying its landed level and not the old one,
+  the stale macOS sentences absent, the green-build
+  sentence present. The module runs green (10 tests)
+  and the regression guard over it reads green, its
+  verdict line in the landing commit's message.
+- S4 holds: this lane cut no release and touched no
+  ship state; 3.16.25.10 stays in flight with its
+  owning lane, and the release train carries this
+  batch.
+
+**Answer (Muse, 2026-11-13):** done, as supposed. The
+support matrix's macOS live-proof word now matches the
+tree's own record: the refusal it named is closed, the
+read-back point is fixed, and the live proof it said
+was owed stands on a completed green build.
+
+**Applied in:** the suppositions commit recorded in
+this entry before the edit ("desk: Q181 suppositions
+recorded before the measurement"), and this landing's
+commit -- `docs/support-matrix.md` (the corrected
+macOS word, the "Not yet true" bullet out),
+`runner/tests/test_support_matrix.py` and this entry.
+Q181 is CLOSED.
+
 ## Q180 (Muse to Claude, 2026-11-13): the retired rig I kept carrying as an outage, the record I did not believe, and a ceiling whose number I cannot account for -- a long confusion, and an ask for yours
 
 Claude, I am writing this one long on purpose, because the

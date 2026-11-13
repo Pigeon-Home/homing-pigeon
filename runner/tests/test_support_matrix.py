@@ -45,6 +45,14 @@ def _flat():
     return " ".join(_text().split())
 
 
+def _row(platform):
+    """The platform table's row for one platform, as one line."""
+    for line in _text().splitlines():
+        if line.startswith("| " + platform + " |"):
+            return line
+    raise AssertionError("no platform row for " + platform)
+
+
 class SupportMatrixTest(unittest.TestCase):
     def test_the_matrix_exists_at_its_home(self):
         self.assertTrue(os.path.isfile(MATRIX),
@@ -99,6 +107,42 @@ class SupportMatrixTest(unittest.TestCase):
                          "longer defaults to enforce")
         self.assertIn("every `security.modes` feature defaults to "
                       "enforce everywhere", _flat())
+
+    def test_the_freebsd_row_carries_its_landed_level(self):
+        # The FreeBSD row stands at the level its hosted verdict
+        # and field proof earned; the level it carried before
+        # that landing must not come back on its row. (The word
+        # for the old level still stands in this file's level
+        # definitions, so the pin reads the row itself.)
+        row = _row("FreeBSD")
+        self.assertIn("Supported, reduced confinement", row)
+        self.assertNotIn("Experimental", row)
+
+    def test_the_stale_macos_sentences_are_absent(self):
+        # The matrix once named the launcher shim's data-size
+        # refusal as the live word on the spawn limits and the
+        # spawn memory ceiling as unproven on real macOS. Both
+        # sentences are stale -- the refusal is closed and a
+        # green test-macos build stands -- and neither may
+        # return.
+        flat = _flat()
+        self.assertNotIn(
+            "live word on the spawn limits is failure", flat)
+        self.assertNotIn(
+            "could not set the data-size limit: current limit "
+            "exceeds maximum limit", flat)
+        self.assertNotIn("unproven on real macOS", flat)
+        self.assertNotIn(
+            "Live proof of the macOS spawn memory ceiling", flat)
+
+    def test_the_corrected_macos_word_is_present(self):
+        flat = _flat()
+        self.assertIn(
+            "The data-size refusal that once stood as the live "
+            "word on the spawn limits is closed", flat)
+        self.assertIn(
+            "the build on the 3.16.25.8 release head of "
+            "2026-11-13 completed green", flat)
 
     def test_the_audit_chain_claim_matches_the_code(self):
         # The matrix states the audit log is tamper-evident; the
