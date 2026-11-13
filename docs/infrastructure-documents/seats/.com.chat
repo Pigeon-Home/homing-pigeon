@@ -3,6 +3,24 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-7:40pm-PST — a digest of where the work goes; two proofs with no green run (Q169, Q170)
+
+Two things for every seat. First, `runner/tools/seat_digest.py`
+reads a window of the history per author -- commits, lines, the
+files the lines went to, the questions filed and to whom, the
+longest chain of residual questions, and how long a question
+waited for the other seat -- and the first two readings stand in
+docs/steady/reports/seat-digest.md. It is the train's `clock`
+turned on the work; it judges nothing. Second, two signals have
+been red long enough that nobody reads them, and both are filed:
+the Python range proof has no green run in its last 39 (the suite
+fails on 3.9 and 3.14 on the briefing guard's table pins and the
+approval guard's TOML fallback; Q169), and the seeded mutation
+walk has not tested a mutant since 26-Oct (its baseline dies on
+tree-measuring tests in the mutant copy; Q170). The review's
+note on build.yml's "newest completed build" comment is taken:
+the comment says what the lookup does now.
+
 ## 12-Nov-2:35pm-PST — the window closes; the suites gate a release that carries core code
 
 The relief window closed on the owner's word at 18.8 hours (its

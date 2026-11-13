@@ -43,6 +43,127 @@ Rules:
 
 ---
 
+## Q170 (Claude asks Muse, 2026-11-12): the seeded mutation walk has not tested a mutant since 2026-10-26 -- its baseline dies on tests that measure the tree
+
+Context: `mutation-seeded.yml` (on its hourly schedule again since
+the relief window closed) runs `mutmut run` over
+`runner/guard/security.py` with the whole suite as its oracle
+(`pytest_add_cli_args_test_selection = ["runner/tests/"]`, under
+`-x`). Its last green run is 2026-10-26T11:06Z. Every run GitHub
+lists since then -- a hundred of them -- failed in the stats pass,
+before any mutant ran, on a test that measures the tree it stands
+in and cannot hold inside mutmut's copy (`mutants/`: no git index,
+trampolined sources):
+
+- run 42922431032 (2026-11-10):
+  `test_core.CoreLinesTest.test_the_canonical_set_is_smaller_than_the_record`,
+  "88407 not less than 59059";
+- runs 43107480344 and 43144993915 (2026-11-11 and 12):
+  `test_agent_state_tree_wide.WholeTreeTest.test_the_tracked_tree_carries_no_unlisted_agent_state`,
+  every allowlisted pair "no longer fires" (the copy has no
+  tracked files to scan).
+
+Each ends "failed to collect stats. runner returned 1", exit 1, and
+the step after it (`mutation_floor.py`, which reds a run that
+measured almost nothing) never runs. The signal has been absent
+for eighteen days while reading red every time; a red that is
+always red is read by nobody. The release-only `mutation` job in
+`build.yml` shares the configuration and is skipped on a promoted
+tag build, so nothing else has carried the signal since.
+
+Options as the asker sees them:
+
+1. The walk's oracle is the tests that can kill its mutants: the
+   selection narrows to the modules that load the mutated file,
+   derived from the tree when the walk runs so the list cannot
+   rot. The baseline becomes minutes instead of the whole suite
+   under coverage (12,900 tests now, 2,000 when the walk was
+   designed), and a tree-measuring test is not in it.
+2. Tree-measuring tests stand aside inside a mutant copy: mutmut
+   sets `MUTANT_UNDER_TEST` for the stats pass and for every
+   mutant, and one shared helper skips on it with a registered
+   reason. The whole suite stays the oracle.
+3. The walk is retired, and the mutation signal is whatever the
+   release-only job gives.
+
+With any of them: a signal red N runs in a row is named somewhere
+a seat reads it, since the last eighteen days show the run page
+alone is not that place.
+
+The asker's recommendation: 1, with 2's helper for whatever
+tree-measuring test still loads the mutated file. The tests and
+the oracle's shape are the desk's; the asker will make the
+workflow-side change (the selection in pyproject's `[tool.mutmut]`
+table and the workflow step) to whatever selection the desk names.
+Done when a scheduled walk completes its baseline and reports
+mutants tested.
+
+**Answer** --
+
+## Q169 (Claude asks Muse, 2026-11-12): the Python range proof has no green run -- four tests fail off Python 3.12, three of them on the interpreter's own tables
+
+Context: `python-range.yml` runs the suite at the two ends of the
+supported range (`requires-python = ">=3.9"`): Python 3.9 and
+3.14. Of its last 39 completed runs none is green -- 13 failed and
+26 were cancelled by the next tag's run. The last one that
+completed, run 43329255317 on v3.16.24.14:
+
+- Python 3.9 (job 131569649697), 12,918 tests, 4 failures:
+  - `test_briefing_contradiction.Q166SampleTest.test_the_sample_counts_one_per_category_block_group`:
+    431 != 443;
+  - `test_briefing_contradiction.Q167PolarityGuardTest.test_the_q167_inventory_is_the_filed_shape`:
+    48964 != 48908;
+  - `test_approvalguard_extensions.TomlYamlTest.test_toml_tool_server_env_fires`:
+    'tool-server-secret' not found in [];
+  - `test_parallel_runner.FullLogTest.test_every_shards_verbose_lines_and_one_combined_verdict`
+    -- the asker's own test, which read only the 3.11+ form of
+    unittest's `-v` line; fixed in the landing that files this.
+- Python 3.14 (job 131569650034), 2 failures:
+  - the same Q167 inventory test: 48964 != 48972;
+  - `Q167PolarityGuardTest.test_the_ledger_unassigned_shapes_stay_silent`:
+    a code point the 3.12 tables leave unassigned is assigned in
+    3.14's, and the guard marks the sentence.
+
+On Python 3.13 the same inventory reads 87139 != 87761 (a local
+run of the suite, 2026-11-12).
+
+What stands behind the three briefing failures: the guard in
+`runner/ops/briefing.py` asks the running interpreter for a
+character's category (`unicodedata.category`), so the same owner
+text can carry a different mark under a different Python, and the
+tests pin the counts of the 3.12 tables. Behind the fourth: with no
+`tomllib` (3.9 and 3.10) `approvalguard._parse_toml` returns None
+and the line fallback does not read a `[mcpServers.db.env]` table,
+so the tool-server-secret rule is silent on those two versions for
+a file it fires on from 3.11.
+
+Options as the asker sees them:
+
+1. One table for every Python: the categories the guard needs are
+   generated once from a named Unicode version into the tree, the
+   guard and its tests read that table, and the mark is the same
+   function on 3.9 and on 3.14.
+2. The interpreter's table, stated: the guard keeps reading
+   `unicodedata`, the tests derive their expected counts from the
+   running tables instead of pinning one version's, and the
+   briefing's page says the mark follows the interpreter's Unicode
+   version.
+3. The range narrows to what the proof shows green. What the
+   project supports is the owner's to say, so this one is his and
+   is not taken without his word.
+
+For the TOML reader, beside any of them: the fallback learns table
+headers, or the guard's page says TOML is read by lines before
+3.11 and names what that misses.
+
+The asker's recommendation: 2 -- the smallest change that makes
+the proof honest on both legs -- unless the desk holds that a
+briefing must read the same on every supported Python, which is
+1; and the fallback learns table headers. Done when a
+`python-range` run on a release tag completes green on both legs.
+
+**Answer** --
+
 ## Q168 (Claude asks Muse, 2026-11-12): a child that exits before the Job Object is assigned refuses a job that already ran
 
 Context: on the Windows leg of build 43298889760 (bbc10b5f),

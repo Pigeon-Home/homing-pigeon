@@ -96,8 +96,9 @@ jobs:
       # A tag names the gate build to promote -- the dispatch input
       # from cut-release, or, for a tag the cut pushed with
       # RELEASE_TOKEN (the push fires this workflow itself and a
-      # push carries no input), the newest completed build of main
-      # on the tag's commit, found below; the artifact legs and the
+      # push carries no input), the newest build of main on the
+      # tag's commit that was not cancelled, found below (its
+      # suites may still be running); the artifact legs and the
       # suites skip, and the release job publishes that build's
       # artifacts after the promotion check reads it against the
       # cut gate's rule.

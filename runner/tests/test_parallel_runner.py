@@ -793,8 +793,13 @@ class FullLogTest(_OutsideActions):
         rc, text = self._run({"test_alpha": _PASS2, "test_beta": _PASS})
         self.assertEqual(rc, 0)
         self.assertEqual(text.count("=== shard "), 2)
-        self.assertIn("test_one (test_alpha.T.test_one) ... ok", text)
-        self.assertIn("test_one (test_beta.T.test_one) ... ok", text)
+        # unittest's -v line names the method twice from Python 3.11
+        # ("test_one (test_alpha.T.test_one) ... ok") and once
+        # before it ("test_one (test_alpha.T) ... ok"); the Python
+        # range proof runs this on 3.9, where the longer form read
+        # red on every tag.
+        self.assertRegex(text, r"test_one \(test_alpha\.T(\.test_one)?\) \.\.\. ok")
+        self.assertRegex(text, r"test_one \(test_beta\.T(\.test_one)?\) \.\.\. ok")
         tail = text.split("=== combined ===", 1)[1]
         self.assertRegex(tail, r"Ran 3 tests in [0-9.]+s\n\nOK\n")
 
