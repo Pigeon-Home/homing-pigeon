@@ -327,9 +327,7 @@ members of a `"v": 1` message. They are not a separate message version.
 
 ## Proven platforms
 
-Every push runs one portable proof on a core set of legs, and the nightly run takes the whole corpus: native runners, distributions, other architectures, maker-board userspaces under QEMU, BSD virtual machines and administrator fat-fingers, and a leg fails unless every test ran and passed. The full table and the board notes are in [docs/steady/use/platforms.md](docs/steady/use/platforms.md).
-
-[![platform-matrix](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml/badge.svg)](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/platform-matrix.yml)
+The platform proof story lives with setup now: [Proven platforms](INSTALL.md#proven-platforms) in INSTALL.md, with the full table and the board notes in [docs/steady/use/platforms.md](docs/steady/use/platforms.md).
 
 ## Extending the agent: senses and transports
 
