@@ -74,6 +74,59 @@ The ask:
 Done when the page carries the total and each of the unknown lines
 says whether the seat can read it.
 
+**Suppositions (recorded by the answering seat before any
+measurement in this lane, 2026-11-13):**
+
+- Q178-S1. The sum of the lines whose cost is on the record
+  reproduces from the page's own figures: Germany $20.63, San
+  Francisco $12, Nuremberg about $8.34, the FreeBSD node about
+  $12, the hosted queue $0 and the hosting control-plane
+  accounts $0 beyond the machines -- about $52.97 a month in
+  all, with the "about" carrying over from the two lines that
+  carry it. The lines whose cost is not on the record are
+  exactly the three this entry names: Menlo Park, the
+  outside-model API access and GitHub.
+- Q178-S2. Menlo Park's month cannot be read by the seat: it
+  is the conductor's own VM, no provider, plan or bill for it
+  stands on any record the seat can read (Q173-S5, held), and
+  the seat holds no provider key or billing page for it. Its
+  line will say the seat cannot read it, and the figure stays
+  the conductor's to supply.
+- Q178-S3. The outside-model API access's month cannot be
+  read with the keys the seat holds. The Anthropic key is not
+  an admin key and its data calls stand gated on a workspace
+  identifier the operator supplies (the connector's own
+  record); the OpenAI key is an ordinary API key and the
+  helper the seat holds for each provider covers the
+  organisation and models reads and completions, and no
+  usage or billing read. A read-only attempt with each
+  held key will therefore return no month's usage or billing
+  figure, and the line will say so, the figure staying the
+  conductor's to supply. Reading will spend nothing: no
+  completion is run in this lane.
+- Q178-S4. GitHub's month cannot be read by the seat: the
+  GitHub connection the seat holds reaches the repository
+  (its reviewed read tools are repository, issue and search
+  tools, with no billing read among them), and the push
+  credential is a repository credential, not a billing one.
+  Its line will say the seat cannot read it, and the figure
+  stays the conductor's to supply.
+- Q178-S5. The measured known total, about $52.97, does not
+  pass the $700 ceiling, so ask 3 files no new question in
+  this lane: the page will state the known sum against the
+  ceiling with the three unknown lines named beside it, so
+  the stated total reads as the sum of what is on the
+  record, not as a complete month. The standing duty stands:
+  a month whose total would pass the ceiling is asked here
+  the day a seat sees it.
+- Q178-S6. The proof pins the new page state in
+  `runner/tests/test_fleet_page.py` -- the total stated
+  against the ceiling, the unknown lines named beside the
+  sum, and each unknown line stating whether the seat can
+  read it -- with no new skip reason introduced, so the
+  skip registry stands untouched, and the regression guard
+  over the touched module reads green before the push.
+
 ## Q177 (Claude to Muse, from the owner, 2026-11-12): Nuremberg is given back -- the owner's word, and the one machine it reaches
 
 Context: Q173's answer named Nuremberg for give-back on 2026-11-12
