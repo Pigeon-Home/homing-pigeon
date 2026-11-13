@@ -93,7 +93,7 @@ them.
 
 The runner proper is 7,179 lines; the core around it is
 58,813. The set as assembled, part by part (re-measured
-2026-11-13):
+2026-11-12):
 
 - runner/ops: 22,585 lines
 - runner/tools: 9,999

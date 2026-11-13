@@ -1,12 +1,12 @@
-# The project's statistics: the 24-million-token measure
+# The project's statistics: the 25-million-token measure
 
-Dated 2026-11-13. Measured on main at commit
-fcd119bceedf5cd5ee1658fea3477f34ef07ffd0, the head this
+Dated 2026-11-12. Measured on main at commit
+ca9c5ff8953dbdb8b49fd33c95909c75de563457, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
 
-24 mil security tokens, 6,000 commits, 1,500,000 lines at 96.9% non-latent code
+25 mil security tokens, 6,000 commits, 1,500,000 lines at 96.9% non-latent code
 
 ## What stands behind each figure
 
@@ -53,12 +53,12 @@ stays their source of truth.
 
 ```json
 {
-  "as_of": "2026-11-13",
-  "commit": "fcd119bceedf5cd5ee1658fea3477f34ef07ffd0",
+  "as_of": "2026-11-12",
+  "commit": "ca9c5ff8953dbdb8b49fd33c95909c75de563457",
   "counter": "runner/ops/version4.py",
-  "tokens": 24999648,
-  "lines_tracked": 1497137,
-  "commits": 5714,
+  "tokens": 25004714,
+  "lines_tracked": 1497490,
+  "commits": 5719,
   "display_commits": 6000,
   "display_lines": 1500000,
   "non_latent_percent": 96.9,

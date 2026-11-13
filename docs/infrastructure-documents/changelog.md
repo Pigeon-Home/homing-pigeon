@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.1 - 2026-11-12
+
+- Fix: the skip registry carries the reason for the TOML comparison's skip (the comparison with tomllib runs on 3.11 and later); the suites on main read green again
+- Tools: the release train names a red suite on main where a release is prepared -- `status`, `prepare`, `cut` and the release commit's message carry main's newest suite verdict when it is red; it warns and never refuses
+- Docs: the order of work names where a red main is read; the CI record carries the account of 3.16.24.22
+
 ## 3.16.24.22 - 2026-11-13
 
 - Q169: the briefing tests derive their counts from the running interpreter; the TOML fallback reads table headers
