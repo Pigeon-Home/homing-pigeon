@@ -36,6 +36,14 @@ on:
   # Its own `push: tags` trigger went with RELEASE_TOKEN (2026-11-12):
   # a tag pushed with the token fires push triggers, and nine
   # proof workflows on every tag held the account's runners.
+  # A pull request that touches the paths below runs this proof;
+  # a push to main does not (the tag build dispatches it).
+  pull_request:
+    paths:
+      - "runner/**"
+      - "SECURITY.md"
+      - "docs/steady/security/**"
+      - ".github/workflows/switch-proofs.yml"
   schedule:
     # Daily, off the hour and off the release path, so a quiet main
     # still gets one full run a day on fresh runner images.

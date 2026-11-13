@@ -22,6 +22,16 @@ on:
   # Its own `push: tags` trigger went with RELEASE_TOKEN (2026-11-12):
   # a tag pushed with the token fires push triggers, and nine
   # proof workflows on every tag held the account's runners.
+  # A pull request that touches the paths below runs this proof;
+  # a push to main does not (the tag build dispatches it).
+  pull_request:
+    paths:
+      - "runner/tests/test_secret_files_job_user.py"
+      - "runner/tests/test_credential_canary.py"
+      - "runner/runner.py"
+      - "runner/ops/remediation_ops.py"
+      - "runner/guard/security.py"
+      - ".github/workflows/job-user.yml"
   schedule:
     # The nightly, so the proof runs daily while pushes to main do
     # not fire it.
