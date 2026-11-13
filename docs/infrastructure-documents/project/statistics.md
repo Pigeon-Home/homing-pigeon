@@ -1,7 +1,7 @@
 # The project's statistics: the 24-million-token measure
 
 Dated 2026-11-13. Measured on main at commit
-6fb9de1c33560538f38cd22db79e0741b24f7ddf, the head this
+07cec18613cc7e8d5f63de9b3e7952a8cb699ff3, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
@@ -10,7 +10,7 @@ The recorded line, in the display form settled for publication:
 
 ## What stands behind each figure
 
-- Tokens: 24,395,857, counted over the whole tree by the project's
+- Tokens: 24,396,328, counted over the whole tree by the project's
   own estimator (runner/ops/version4.py) — the same measure the
   version number's 3rd component carries: the version's odometer
   keeps the component at 25, the whole millions the fresh measure
@@ -22,11 +22,11 @@ The recorded line, in the display form settled for publication:
   is sec-tokens. Verify it on any checkout:
   `python3 runner/ops/version4.py measure` prints the count and
   its whole millions.
-- Lines: 1,433,076 lines in tracked files at the measured head. The display
+- Lines: 1,433,117 lines in tracked files at the measured head. The display
   figure, 1,400,000, is that count rounded.
 - Commits: the display figure, 6,000, is rounded from a
   full-history recount at the measured head, taken from a
-  complete clone, which counts 5,797. The project's local
+  complete clone, which counts 5,801. The project's local
   mirrors are shallow (810 commits deep) and cannot recount
   the whole history on their own — the recount above rests on
   the complete clone, and any future count should be taken
@@ -60,11 +60,11 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-13",
-  "commit": "6fb9de1c33560538f38cd22db79e0741b24f7ddf",
+  "commit": "07cec18613cc7e8d5f63de9b3e7952a8cb699ff3",
   "counter": "runner/ops/version4.py",
-  "tokens": 24395857,
-  "lines_tracked": 1433076,
-  "commits": 5797,
+  "tokens": 24396328,
+  "lines_tracked": 1433117,
+  "commits": 5801,
   "display_commits": 6000,
   "display_lines": 1400000,
   "non_latent_percent": 96.16,

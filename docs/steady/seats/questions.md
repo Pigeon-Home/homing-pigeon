@@ -2028,6 +2028,23 @@ family. If the measure disagrees, the statistics record
 and this entry's totals are corrected to the measured
 figures and the disagreement is stated here.
 
+**Second re-measure conclusion (2026-11-13):** the
+supposition holds. Measured on the landing tree (the
+third transplant's supposition head): 24,396,328 tokens
+and 1,433,117 lines -- 471 tokens and 41 lines over
+the first re-measure's figures, the growth of the
+conclusion and supposition paragraphs themselves plus
+the pins refresh's 5 tokens and 4 lines -- the word
+form still 24 million, and the latent shares hold
+exactly: near 3.24% (46,380 lines: tests 40,911,
+production 5,469), templated 0.66% (9,475 lines), exact
+0.02% (340 lines), total latent 3.84% of the tree
+(55,047 lines), non-latent 96.16%. The statistics
+record and the figure carriers state the re-measured
+figures; the fold's own figures and the audit record
+stand as first measured, as the landing note above
+states.
+
 **Closure (2026-11-13):** Q172 is CLOSED. The done-when
 conditions stand met on the landing tree: the module
 carries no written-out templated list, the audit
