@@ -14374,8 +14374,112 @@ before writing any conclusion:
   with the Windows durations guard family green
   on the current head.
 
-The verdict read, and the conclusions against
-these suppositions, follow in this section.
+**Re-test verdict (2026-11-13):** GREEN -- the
+fifth re-pack's re-test is CLOSED. This lane read
+the hosted verdicts first-hand through `gh` after
+the suppositions above landed on main (the
+suppositions commit of 3:19 PM PST, 2026-11-13).
+The qualifying builds are the completed main
+builds on the release heads that carry the fifth
+re-pack, 3.16.25.12 through 3.16.25.15:
+
+- Run 43445467613, created 2026-11-13T14:43:36Z
+  on the 3.16.25.12 release head: run completed
+  success; build-windows completed success,
+  build-windows-arm64 completed success,
+  test-windows (1) completed success and
+  test-windows (2) completed success.
+- Run 43457582775, created 2026-11-13T15:56:11Z
+  on the 3.16.25.13 release head: run completed
+  success; build-windows, build-windows-arm64,
+  test-windows (1) and test-windows (2) all
+  completed success.
+- Run 43468810234, created 2026-11-13T17:02:47Z
+  on the 3.16.25.14 release head: run completed
+  success; build-windows, build-windows-arm64,
+  test-windows (1) and test-windows (2) all
+  completed success.
+- Run 43478308789, created 2026-11-13T18:00:15Z
+  on the 3.16.25.15 release head: run completed
+  success; build-windows, build-windows-arm64,
+  test-windows (1) and test-windows (2) all
+  completed success.
+
+Settled against the suppositions, one by one:
+
+- Q136-RP5-RT-S1: confirmed, four times over.
+  Every qualifying main build is green whole on
+  its Windows legs; no shard hit the 20-minute
+  wall on any of them. The wall-clock red the
+  fifth re-pack addressed reads cleared on heads
+  carrying it.
+- Q136-RP5-RT-S2: confirmed. The tag builds for
+  the same versions (runs 43446113742,
+  43458095902, 43474359729 and 43479565679, on
+  v3.16.25.12 through v3.16.25.15) show
+  build-windows, build-windows-arm64 and
+  test-windows all skipped under the promotion
+  model; they supply no verdict, and none is
+  counted for or against this re-test. The
+  verdict rests on the main builds above.
+- Q136-RP5-RT-S3: confirmed. Judged separately,
+  as the re-pack prescribed, the version-rot
+  family does not stand on any qualifying head:
+  a test-windows job completed success carries
+  no failure of any family inside it, rot
+  included, and the bumps those release heads
+  carry are the clearing the re-pack predicted.
+  Nothing rot-shaped is mixed into the
+  wall-clock judgement above.
+- Q136-RP5-RT-S4: confirmed. The completed main
+  build on the docs-only Q170-closure head (run
+  43523051332, created 2026-11-13T22:54:31Z)
+  reads success overall with its Windows legs
+  skipped; it supplies no verdict and is not
+  counted.
+- Q136-RP5-RT-S5: confirmed. On the current
+  head the table carries 450 files at a
+  720-second budget and the 20-minute wall; the
+  eight fifth re-pack floors stand at or above
+  their floors in merged price (test_transports
+  329.2 against 300, test_enforce_posture_
+  reconciliation 284.7 against 280,
+  test_oracle_opinion 269.5 against 245,
+  test_negative_concurrency 188.9 against 160,
+  test_audience 125.1 against 120,
+  test_protocol_examples 91.6 against 90,
+  test_concurrency_poison 75.7 against 70 and
+  test_oracle_chat 60.1 against 55);
+  test_decision1_startup itself no longer stands
+  in the table, divided into its split pieces
+  (refuse-main 340, refuse-policies 330,
+  defaults 300, readers 100 and the gates pieces
+  beside them) by the follow-on lane the fifth
+  re-pack's own advance statement prescribed;
+  and the Windows durations guard family runs
+  green on this head in this lane (52 tests, OK).
+
+One honest bound on the claim: the qualifying
+heads carry the fifth re-pack together with the
+Q136 follow-on work its own record set in motion
+(the file split, the gates split and the shard-5
+and shard-7 fixes), as every head carrying the
+re-pack since its landing has; this verdict is
+the re-test the fifth re-pack named -- a
+completed build-windows verdict on a head
+carrying it, under rule 8 -- and it is green.
+It is not a re-run of the fifth table alone in
+its 2026-11-11 form, and no such claim is made.
+
+**Applied in:** the suppositions commit recorded
+in this section before the verdict read, and this
+landing -- this entry only. No code or test file
+changed, no release was cut and no ship state was
+touched; 3.16.25.16 stands in flight under its
+own lane. The fifth re-pack's re-test is CLOSED.
+This record closes that re-test only; Q136's
+follow-on sections keep the verdicts their own
+records state.
 
 ---
 
