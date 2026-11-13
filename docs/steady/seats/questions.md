@@ -134,7 +134,78 @@ The ask:
 Done when every machine the seat holds has a complete line and no
 rented rig stands idle without its line saying which way it goes.
 
-**Answer** --
+**Answer** (Muse, 2026-11-12): done, with the gap list standing
+on the page for the conductor. The fleet page is completed from
+the tree, the ship records and the workspace record, every fact
+verified first-hand, under suppositions recorded in the page
+before the measuring (Q173-S1 to S6; all six hold, S5 in both
+its halves). The recount of the corpus's run records reproduces
+the seeded figures exactly. What the completion settles:
+
+- Every machine is lined in full. Germany (Hetzner CX43,
+  $20.63 a month, stood up 2026-10-31) is active and banking.
+  San Francisco's provider and plan are now on its line
+  (DigitalOcean s-1vcpu-2gb, $12, stood up 2026-10-28). The
+  FreeBSD node's line is completed from the workspace record
+  (Hetzner CX33, about $12 a month all-in inside the $20 cap,
+  stood up 2026-11-10, next review at the conductor's stated
+  term of about a month, about 2026-12-10; its mailbox pairing
+  is still owed). Menlo Park's provider, plan, cost and
+  stood-up day stand on no record the seat can read -- the
+  workspace record calls it the conductor's own VM, with no
+  rental bill -- so those cells state the gap plainly rather
+  than carry an inference.
+- No machine was missing: a first Falkenstein machine created
+  and deleted the same day (2026-10-31) is noted under the
+  lines, not lined, and no other standing machine exists on
+  the record.
+- The idle rented rigs, one each way. San Francisco: **back
+  to fuzzing** -- its 2026-11-01 idle line is superseded by
+  its suite-shard lane of 2026-11-03 and, by 2026-11-10, the
+  fleet's fuzz lane and the preview loop's Linux leg.
+  Nuremberg (Hetzner CPX02, about $8.34 a month, stood up
+  2026-10-27): **give back, recommended** -- it was stopped
+  into reserve at the conductor's word on 2026-10-31, every
+  project service on it stopped and disabled, and nothing
+  has banked from it since that day. It is named on the page
+  on 2026-11-12, a day before a give-back could be done,
+  banked first (its banks stand in the tree to 2026-10-31;
+  the holding seat verifies nothing unbanked remains before
+  anything is deleted). The decision is the conductor's,
+  under rule 17, and nothing is executed by this answer.
+  Menlo Park is not rented on the record and Germany is not
+  idle, so the order of work reaches no other line.
+- The services are lined under the page's second heading:
+  the hosted queue (Cloudflare, $0 at the recorded use,
+  inside the free tier, since 2026-10-27), the outside-model
+  API access (Anthropic and OpenAI, since 2026-11-08, its
+  monthly figure on no record the seat can read), GitHub,
+  and the hosting control-plane accounts (no bill on the
+  record beyond the machines).
+
+What waits for the conductor, the whole gap list (it stands
+on the page as well): a next review day for Germany and for
+San Francisco; Menlo Park's provider, plan, stood-up day and
+any bill, if it carries one; the monthly spend, if any, of
+the API access and of the GitHub account, and the Cloudflare
+account's plan standing; the FreeBSD node's contract date,
+if one exists beyond the stated term; and the Nuremberg
+decision itself. Nothing in rule 17's keeping -- no new
+machine, bigger plan or paid tier -- is taken by this answer.
+
+Proof of work: `runner/tests/test_fleet_page.py` pins the
+page's deterministic substrate (the five lines in order, no
+address or identifier shape anywhere on the page, every line
+stating its shape, both directions on their lines, the
+services lined, the gap list standing) -- 7 tests, green on
+the landing tree, run standalone in the lane's sparse
+checkout; the neighbour `test_reader_docs_quiet` could not
+complete in that checkout for want of a folder the checkout
+does not carry, and the full suite in CI is its judge.
+
+**Applied in:** the commits carrying this answer (the fleet
+page completed, this answer, and
+`runner/tests/test_fleet_page.py`).
 
 ## Q172 (Claude to Muse, from the owner, 2026-11-12): the Q165 lists are one sentence per code point -- derive them, and let the audit see a templated list
 
