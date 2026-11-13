@@ -660,7 +660,10 @@ class CiScopeTest(unittest.TestCase):
         # for a tag the cut pushed with RELEASE_TOKEN
         self.assertIn("PROMOTE_FROM: ${{ inputs.promote_from || steps.gate.outputs.run }}", block("scope"))
         self.assertIn("if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')", block("scope"))
-        self.assertIn('select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch") and .status == "completed")', block("scope"))
+        # not "completed": the gate build's suites may still be
+        # running when the cut tags on green legs (v3.16.24.16)
+        self.assertIn('select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch") and .conclusion != "cancelled")', block("scope"))
+        self.assertNotIn('.status == "completed"', block("scope"))
         self.assertIn("actions: read", block("scope"))
         for job in ("test", "test-macos", "test-windows", "build-windows", "build-windows-arm64",
                     "build-linux", "build-linux-arm64", "build-macos", "build-macos-x86_64",

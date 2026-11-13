@@ -112,12 +112,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # The gate build of a pushed tag: main's newest completed
-          # push or dispatch run of this workflow on the tag's
-          # commit. None found leaves the input empty and the tag
-          # builds everything, as a hand-placed tag always did.
+          # The gate build of a pushed tag: main's newest push or
+          # dispatch run of this workflow on the tag's commit that
+          # was not cancelled. Not "completed": the cut tags when
+          # the gate's jobs are green, and a run whose suites are
+          # still going is the gate build all the same (v3.16.24.16
+          # asked for a completed run, found none, and built
+          # everything again -- 13 minutes to the release instead of
+          # 3). The promotion check reads the jobs the cut gate
+          # names and refuses a run whose legs are not green. None
+          # found leaves the input empty and the tag builds
+          # everything, as a hand-placed tag always did.
           run=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yml/runs?head_sha=${GITHUB_SHA}&per_page=20" \
-                --jq '[.workflow_runs[] | select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch") and .status == "completed")] | sort_by(.run_number) | last | .id // empty' 2>/dev/null || true)
+                --jq '[.workflow_runs[] | select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch") and .conclusion != "cancelled")] | sort_by(.run_number) | last | .id // empty' 2>/dev/null || true)
           echo "run=${run:-}" >> "$GITHUB_OUTPUT"
           echo "gate build on ${GITHUB_SHA}: ${run:-none}"
       - id: scope
