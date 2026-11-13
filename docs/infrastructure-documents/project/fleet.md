@@ -45,6 +45,49 @@ doing"); the standing orders' ledger line of 2026-10-27 for
 Nuremberg; and the desk's record of the FreeBSD node
 (`desk.md`, "Where the work stands").
 
+## Q173 completion: suppositions, recorded before the measuring
+
+Recorded by the Muse seat on 2026-11-12, before the recount
+and the workspace-record check this completion rests on (the
+conductor's supposition-first rule). Each is settled in the
+conclusions under the completed lines below.
+
+- **Q173-S1.** A recount of `runner/tests/de_dust/runs.jsonl`
+  by the rig name each record carries reproduces the seeded
+  counts and last dates exactly -- Germany 11,423 to
+  2026-11-12, Menlo Park 7,025 to 2026-11-01, San Francisco
+  399 to 2026-11-01, Nuremberg 1,250 to 2026-10-31 -- plus
+  one stray record under a clipped form of San Francisco's
+  name, dated 2026-10-31, which the forum already explains
+  as a timer line that split on the space.
+- **Q173-S2.** No machine beyond the five lines stands in the
+  tree or the workspace record as a fleet machine today: the
+  first Falkenstein machine was created and deleted the same
+  day (2026-10-31) during a location comparison, and no Mac
+  joins the fleet (the desk's record, 2026-11-11).
+- **Q173-S3.** Nuremberg is the only rented rig idle with
+  nothing banked since its last review: it was stopped into
+  reserve at the conductor's word on 2026-10-31, every project
+  service on it stopped and disabled, and no record of it
+  working stands after that day.
+- **Q173-S4.** San Francisco's later record supersedes its
+  2026-11-01 idle line: a suite-shard lane on 2026-11-03, and
+  by 2026-11-10 the fleet's fuzz lane and the preview loop's
+  Linux leg. It has gone back to work and is not a give-back
+  candidate.
+- **Q173-S5.** The FreeBSD node's provider, plan and cost are
+  provable from the workspace record (the Phase 2 report of
+  2026-11-10) though the tree alone calls it only a dedicated
+  host; Menlo Park's provider, plan, cost and stood-up day
+  are provable nowhere -- the workspace record calls it the
+  conductor's own VM -- and those cells will stay stated as
+  gaps rather than be filled by inference.
+- **Q173-S6.** Of the services, only the hosted queue's bill
+  is provable from the tree (inside the provider's free tier
+  at the recorded use); the outside-model API access carries
+  no monthly figure on any record the seat can read, and
+  that cell will stand as a gap for the conductor to supply.
+
 ## Services with a bill
 
 Not on the record as lines yet. The seat that holds each one
