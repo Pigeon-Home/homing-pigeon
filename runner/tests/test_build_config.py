@@ -1138,8 +1138,13 @@ class PipelinePostureTest(unittest.TestCase):
                 if not line.lstrip().startswith("#"))
             self.assertNotIn("branches: [main]", live,
                              "%s still fires on pushes to main" % name)
-            self.assertIn('tags: ["v*"]', wf,
-                          "%s does not run on release tags" % name)
+            # no push trigger at all since the cut pushes tags with
+            # RELEASE_TOKEN (2026-11-12): the tag build dispatches
+            # the proofs when the tag's tree changed under runner/
+            self.assertNotIn("\n  push:", live,
+                             "%s fires on a push of its own" % name)
+            self.assertNotIn('tags: ["v*"]', live,
+                             "%s fires on every release tag" % name)
             self.assertIn("schedule:", wf,
                           "%s lost its nightly" % name)
             self.assertIn("workflow_dispatch:", wf,
@@ -1163,7 +1168,11 @@ class PipelinePostureTest(unittest.TestCase):
         self.assertEqual(named, set(self.PROOF_WORKFLOWS))
         self.assertIn('gh workflow run "$wf" --repo "$REPO" --ref "$TAG"', block)
         self.assertIn("needs: [release, pypi-publish, sourceforge, gitlab]", block)
-        self.assertIn("github.event_name == 'workflow_dispatch'", block)
+        # pushed or dispatched: the proof workflows carry no push
+        # trigger of their own, so this job is the one place a
+        # release tag starts them
+        self.assertNotIn("github.event_name == 'workflow_dispatch'", block)
+        self.assertIn("startsWith(github.ref, 'refs/tags/v')", block)
         self.assertIn("needs.release.result == 'success'", block)
         self.assertEqual({("actions", "write"), ("contents", "read")}, _perm_entries(block))
         # the push trigger's runner/** filter, read against the previous tag
@@ -1209,7 +1218,8 @@ class PipelinePostureTest(unittest.TestCase):
         for job in ("scope", "shape", "typecheck"):
             block = _job_block(workflow, job)
             self.assertNotIn("continue-on-error", block, job)
-            self.assertNotIn("refs/tags", block, job)
+            self.assertNotIn("if: startsWith(github.ref, 'refs/tags", block, job)
+            self.assertNotIn("if: >-\n      startsWith(github.ref, 'refs/tags", block, job)
 
     def test_the_cut_reads_the_cut_gates_rule(self):
         # One rule for the cut, the promotion check and the train

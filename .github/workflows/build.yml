@@ -89,26 +89,44 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read
     outputs:
       corpus_only: ${{ steps.scope.outputs.corpus_only }}
       docs_only: ${{ steps.scope.outputs.docs_only }}
-      # A tag dispatch from cut-release names the gate build to
-      # promote; the artifact legs and the suites skip, and the
-      # release job publishes that build's artifacts (see the
-      # promote_from input above).
+      # A tag names the gate build to promote -- the dispatch input
+      # from cut-release, or, for a tag the cut pushed with
+      # RELEASE_TOKEN (the push fires this workflow itself and a
+      # push carries no input), the newest completed build of main
+      # on the tag's commit, found below; the artifact legs and the
+      # suites skip, and the release job publishes that build's
+      # artifacts after the promotion check reads it against the
+      # cut gate's rule.
       promote: ${{ steps.scope.outputs.promote }}
       promote_run: ${{ steps.scope.outputs.promote_run }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+      - id: gate
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The gate build of a pushed tag: main's newest completed
+          # push or dispatch run of this workflow on the tag's
+          # commit. None found leaves the input empty and the tag
+          # builds everything, as a hand-placed tag always did.
+          run=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/build.yml/runs?head_sha=${GITHUB_SHA}&per_page=20" \
+                --jq '[.workflow_runs[] | select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch") and .status == "completed")] | sort_by(.run_number) | last | .id // empty' 2>/dev/null || true)
+          echo "run=${run:-}" >> "$GITHUB_OUTPUT"
+          echo "gate build on ${GITHUB_SHA}: ${run:-none}"
       - id: scope
         env:
           EVENT: ${{ github.event_name }}
           BEFORE: ${{ github.event.before }}
           AFTER: ${{ github.sha }}
           REF: ${{ github.ref }}
-          PROMOTE_FROM: ${{ inputs.promote_from }}
+          PROMOTE_FROM: ${{ inputs.promote_from || steps.gate.outputs.run }}
         run: python3 runner/tools/ci_scope.py >> "$GITHUB_OUTPUT"
 
   shape:
@@ -1329,12 +1347,14 @@ jobs:
     # took the runners the release and the next cycle's gate were
     # waiting for (a gate build's macOS leg waited eight minutes
     # behind three tags' proofs); from the end of the tag build
-    # they are off the critical path. A tag pushed by hand fires
-    # them itself, so only a dispatch starts them here;
+    # they are off the critical path. The proof workflows carry no
+    # push trigger of their own since the cut pushes tags with
+    # RELEASE_TOKEN (2026-11-12), so this job is the one place a
+    # tag starts them, pushed or dispatched;
     # runner/tests/test_build_config.py keeps this list equal to
     # the proof workflows.
     if: >-
-      startsWith(github.ref, 'refs/tags/v') && github.event_name == 'workflow_dispatch'
+      startsWith(github.ref, 'refs/tags/v')
       && !cancelled() && needs.release.result == 'success'
     needs: [release, pypi-publish, sourceforge, gitlab]
     runs-on: ubuntu-latest

@@ -625,12 +625,16 @@ class CiScopeTest(unittest.TestCase):
 
     def test_promote_needs_a_tag_dispatch_and_a_run_id(self):
         # The gate build's run id rides the tag dispatch from
-        # cut-release; a push, a branch dispatch, a hand-placed tag
-        # (no input) or a non-numeric input all build as before.
+        # cut-release, or the scope job's lookup for a tag the cut
+        # pushed with RELEASE_TOKEN; a push to a branch, a branch
+        # dispatch, a hand-placed tag with no gate build found or a
+        # non-numeric input all build as before.
         from runner.tools import ci_scope as C
         self.assertEqual(("true", "43179987340"),
                          C.promote("workflow_dispatch", "refs/tags/v3.16.21.4", " 43179987340 "))
-        self.assertEqual(("false", ""), C.promote("push", "refs/tags/v3.16.21.4", "43179987340"))
+        self.assertEqual(("true", "43179987340"), C.promote("push", "refs/tags/v3.16.21.4", "43179987340"))
+        self.assertEqual(("false", ""), C.promote("push", "refs/heads/main", "43179987340"))
+        self.assertEqual(("false", ""), C.promote("push", "refs/tags/v3.16.21.4", ""))
         self.assertEqual(("false", ""), C.promote("workflow_dispatch", "refs/heads/main", "43179987340"))
         self.assertEqual(("false", ""), C.promote("workflow_dispatch", "refs/tags/v3.16.21.4", ""))
         self.assertEqual(("false", ""), C.promote("workflow_dispatch", "refs/tags/v3.16.21.4", "latest"))
@@ -652,7 +656,12 @@ class CiScopeTest(unittest.TestCase):
         self.assertIn("promote_from:", live.split("jobs:", 1)[0])
         self.assertIn("promote: ${{ steps.scope.outputs.promote }}", block("scope"))
         self.assertIn("promote_run: ${{ steps.scope.outputs.promote_run }}", block("scope"))
-        self.assertIn("PROMOTE_FROM: ${{ inputs.promote_from }}", block("scope"))
+        # the dispatch input, or the gate build the scope job finds
+        # for a tag the cut pushed with RELEASE_TOKEN
+        self.assertIn("PROMOTE_FROM: ${{ inputs.promote_from || steps.gate.outputs.run }}", block("scope"))
+        self.assertIn("if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')", block("scope"))
+        self.assertIn('select(.head_branch == "main" and (.event == "push" or .event == "workflow_dispatch") and .status == "completed")', block("scope"))
+        self.assertIn("actions: read", block("scope"))
         for job in ("test", "test-macos", "test-windows", "build-windows", "build-windows-arm64",
                     "build-linux", "build-linux-arm64", "build-macos", "build-macos-x86_64",
                     "build-pi-light", "build-python"):

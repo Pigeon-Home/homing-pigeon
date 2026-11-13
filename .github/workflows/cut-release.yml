@@ -193,6 +193,7 @@ jobs:
           EOF
 
       - name: tag
+        id: tag
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.ver.outputs.tag }}
@@ -202,6 +203,29 @@ jobs:
           set -euo pipefail
           # The job log is not readable from every seat; a failure
           # here rides as an annotation with the service's own words.
+          git config user.name "cut-release"
+          git config user.email "cut-release@users.noreply.github.com"
+          # With RELEASE_TOKEN (the owner's fine-grained token, the
+          # checkout's credential since 2026-11-12), the tag is a git
+          # push: a push fires build.yml and docker.yml on the tag
+          # by their own triggers, the tag can carry any workflow
+          # file, and the commit need not be main's head. The REST
+          # path below stays for a run without the secret.
+          if [ "$HAVE_RELEASE_TOKEN" = "true" ]; then
+            if ! out=$(git tag -a "$TAG" "$SHA" -m "Version ${TAG#v}" 2>&1); then
+              echo "::error title=tag::git tag failed: $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
+              exit 1
+            fi
+            if ! out=$(git push origin "refs/tags/$TAG" 2>&1); then
+              echo "::error title=tag push::git push with RELEASE_TOKEN failed: $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
+              echo "::error title=remedy::the secret may have expired or lost contents: write on this repository; see docs/steady/seats/questions.md Q30"
+              exit 1
+            fi
+            echo "pushed $TAG -> $SHA (git, RELEASE_TOKEN); the push starts the tag build and the image builds"
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "pushed=false" >> "$GITHUB_OUTPUT"
           # Path one: an annotated tag object and its ref through the
           # REST API, which creates the ref without a push and so
           # without the push-time workflow check.
@@ -217,10 +241,7 @@ jobs:
           fi
           api_err=$(tr '\n' ' ' < api.err | cut -c1-600)
           echo "::warning title=REST tag::the API would not create $TAG ($api_err); trying git"
-          # Path two: a git push, with RELEASE_TOKEN when the owner set
-          # one (the checkout's credential), else GITHUB_TOKEN.
-          git config user.name "cut-release"
-          git config user.email "cut-release@users.noreply.github.com"
+          # Path two: a git push with GITHUB_TOKEN.
           if ! out=$(git tag -a "$TAG" "$SHA" -m "Version ${TAG#v}" 2>&1); then
             echo "::error title=tag::git tag failed: $(echo "$out" | tr '\n' ' ' | cut -c1-900)"
             exit 1
@@ -235,6 +256,9 @@ jobs:
           echo "pushed $TAG -> $SHA (git)"
 
       - name: start the release pipeline on the tag
+        # Only for a tag the REST path placed: a tag pushed with
+        # RELEASE_TOKEN fired build.yml and docker.yml itself.
+        if: steps.tag.outputs.pushed != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.ver.outputs.tag }}

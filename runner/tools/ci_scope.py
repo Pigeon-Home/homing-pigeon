@@ -118,10 +118,12 @@ def decide(event, before, after, run=subprocess.run, rule=None):
 
 
 def promote(event, ref, promote_from):
-    """('true', run id) when a tag dispatch names a build to
-    promote, else ('false', '')."""
+    """('true', run id) when a tag build names a gate build to
+    promote -- the dispatch input from cut-release, or the run the
+    scope job found for a tag pushed with RELEASE_TOKEN -- else
+    ('false', '')."""
     run = (promote_from or "").strip()
-    if event == "workflow_dispatch" and (ref or "").startswith("refs/tags/v") \
+    if event in ("workflow_dispatch", "push") and (ref or "").startswith("refs/tags/v") \
             and run.isdigit():
         return "true", run
     return "false", ""

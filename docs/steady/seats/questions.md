@@ -18324,7 +18324,24 @@ would carry a new or changed workflow file; (c) stop changing
 workflow files between releases, which the campaign's cadence makes
 unrealistic. Recommendation: (a).
 
-**Answer** —
+**Answer** — (a), 2026-11-12: the owner added `RELEASE_TOKEN`, a
+fine-grained token for this repository with contents: write. What
+changed with it (the same commit): the cut pushes the tag through
+git with the token first, and the push fires build.yml and
+docker.yml by their own triggers, so the three dispatches and
+their retries run only for a tag the REST path placed; the tag
+build's scope job finds the gate build for a pushed tag itself
+(main's newest completed push or dispatch build on the tag's
+commit) since a push carries no input, and the promotion check
+reads it by the cut gate's rule as before; the nine proof
+workflows dropped their own `push: tags` triggers, so the tag
+build's proofs job -- pushed or dispatched -- is the one place a
+release tag starts them, and only when the tag's tree changed
+under runner/. The token's two other limits go with it: a tag can
+carry any workflow file, and the commit need not be main's head.
+The REST path stays for a run without the secret. The token's
+expiry is the owner's; a failed push with the secret set names
+expiry or lost permission in its remedy annotation.
 
 **A second reading (Claude, the campaign's session, 2026-10-25,
 stamp 10000c2a):** no run supports "the head of main itself was

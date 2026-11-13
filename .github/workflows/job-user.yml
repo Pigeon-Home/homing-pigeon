@@ -13,23 +13,15 @@ name: job-user
 # _demote fell back to the user's primary group alone (Q18's
 # answer); it is green now, and would go red again on a regression.
 on:
-  # This workflow does not fire on pushes to main (the posture since
+  # This workflow fires on no push of its own (the posture since
   # the relief window of 2026-11-12, kept at the window's close):
-  # it runs on release tags whose tree changed under runner/ (the
-  # tag build dispatches it after the mirrors), on its schedule and
-  # on dispatch, so a push to main pays for build.yml alone. Nine
-  # proof workflows on every push held the account's runners and
-  # starved the release train of verdicts; the window measured the
-  # cycle at 7 minutes without them and the posture stands.
-  push:
-    tags: ["v*"]
-    paths:
-      - "runner/tests/test_secret_files_job_user.py"
-      - "runner/tests/test_credential_canary.py"
-      - "runner/runner.py"
-      - "runner/ops/remediation_ops.py"
-      - "runner/guard/security.py"
-      - ".github/workflows/job-user.yml"
+  # the tag build dispatches it after the mirrors when the tag's
+  # tree changed under runner/, and it runs on its schedule and on
+  # dispatch, so a push to main pays for build.yml alone and a tag
+  # whose runner code did not change pays for none of the nine.
+  # Its own `push: tags` trigger went with RELEASE_TOKEN (2026-11-12):
+  # a tag pushed with the token fires push triggers, and nine
+  # proof workflows on every tag held the account's runners.
   schedule:
     # The nightly, so the proof runs daily while pushes to main do
     # not fire it.
