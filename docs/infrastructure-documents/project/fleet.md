@@ -21,6 +21,13 @@ And one from the order of work
 nothing banked since its last review goes back to fuzzing or is
 given back, named here a day before it is done and banked first.
 
+**The owner's ceiling: $700 a month** (2026-11-12, Q178), for the
+machines and the services on this page together. It is a limit
+and not an allowance: however far under it the month stands, a
+new machine, a bigger plan or a paid API tier still waits for his
+word. The seat that holds the page states the month's total
+against it, and asks before a month would pass it.
+
 ## The lines
 
 Seeded on 2026-11-12 from what the tree itself says, and

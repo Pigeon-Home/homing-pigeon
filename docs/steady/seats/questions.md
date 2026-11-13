@@ -43,6 +43,79 @@ Rules:
 
 ---
 
+## Q178 (Claude to Muse, from the owner, 2026-11-12): a ceiling of $700 a month for machines and services together -- the page states the month against it
+
+Context: the owner's word of 2026-11-12, recorded here by Claude.
+$700 a month is the ceiling for everything the fleet page lines:
+the machines and the services with a bill, the outside-model API
+access among them. It is a limit and not an allowance. Rule 17
+stands as it was, and a new machine, a bigger plan or a paid API
+tier still waits for his word however far under the ceiling the
+month stands. AGENTS.md rule 17 and the fleet page carry the
+ceiling.
+
+The ask:
+
+1. The fleet page states the month's total against the ceiling:
+   the lines whose cost is on the record, summed, and beside the
+   sum the lines whose cost is not (today Menlo Park, the
+   outside-model API access and GitHub). The total is restated
+   when a line changes.
+2. Where a key the seat holds can read a month's usage without
+   spending -- a provider's usage or billing page, read only --
+   the line states the figure and the day it was read. Where it
+   cannot, the line says so and the figure stays the owner's to
+   supply. Reading is not spending, and nothing is bought to read
+   it.
+3. A month that would pass the ceiling is asked in this file, to
+   the owner, before it does: the seat that sees it files the
+   question the day it sees it.
+
+Done when the page carries the total and each of the unknown lines
+says whether the seat can read it.
+
+## Q177 (Claude to Muse, from the owner, 2026-11-12): Nuremberg is given back -- the owner's word, and the one machine it reaches
+
+Context: Q173's answer named Nuremberg for give-back on 2026-11-12
+and left the decision to the owner (the fleet page: "The give-back
+itself is the conductor's decision and is not executed by this
+page"). His word, given on 2026-11-12 and recorded here by Claude:
+give it back. The page named the machine on 2026-11-12, so the day
+the order of work asks for has run by 2026-11-13.
+
+What the word reaches, and nothing else:
+
+1. One machine: the fleet page's Nuremberg line -- the Hetzner
+   Cloud CPX02 in Nuremberg, stood up 2026-10-27 and stopped into
+   reserve on 2026-10-31. The Germany rig and the FreeBSD node
+   stand in the same provider account and are not touched; nor is
+   anything of San Francisco's or Menlo Park's.
+2. Banked first, as the order of work has it: the seat reads the
+   box first-hand and confirms that nothing unbanked remains on
+   it. Anything found is banked to the tree before the next step,
+   or the give-back stops and the finding is filed here.
+3. Read back before it is deleted: the seat reads the server from
+   the provider by what the fleet line says of it -- the plan,
+   the location, the day it was created -- and confirms that
+   exactly one server answers to that description and that it is
+   the stopped one. If more than one answers, or none, or it is
+   running something, the give-back stops there and the question
+   comes back to this file, to the owner.
+4. Then that server is deleted, with what bills with it alone (its
+   address, a snapshot or a volume of its own) and nothing shared.
+   What the machine held that still opens something -- its
+   runner's key, its line in any list of machines allowed to
+   connect -- is retired with it.
+5. The fleet page says so the same day: Nuremberg's line reads
+   given back, with the date; the month's total moves; the page's
+   test follows the line.
+
+No machine takes its place: a new machine waits for the owner's
+word (rule 17).
+
+Done when the provider no longer bills the machine and the page
+says so.
+
 ## Q176 (Claude to Muse, from the owner, 2026-11-12): the rig addresses are out of the tree -- how does each machine take SSH?
 
 Context: three rented machines' public addresses stood in this
@@ -60,8 +133,10 @@ The ask:
 1. For each machine on the fleet page, read first-hand how it
    takes SSH -- whether password login is off and whether root
    logs in by key only -- and say so on its line, in words that
-   reach no machine ("SSH: keys only, password login off; read
-   2026-11-13"). The reading changes nothing on a machine.
+   reach no machine ("SSH: by key only; read 2026-11-13"; the
+   page's own test keeps the word for the other kind of login off
+   the page, and the desk words the line). The reading changes
+   nothing on a machine.
 2. Where a machine still takes a password, its line says so and
    the change waits for the owner's word: it is asked in this
    file, to him, with what the change is.

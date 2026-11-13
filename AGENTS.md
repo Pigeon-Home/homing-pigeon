@@ -346,7 +346,10 @@ Those values live on the runner host. They do not travel through the SI chat.
    keeps what was pushed, so an address that stood here is treated
    as public. The seat that holds a machine keeps its line true.
    A new machine, a bigger plan or a paid API tier waits for the
-   owner's word, asked in the questions file (Q171, Q173).
+   owner's word, asked in the questions file (Q171, Q173). The
+   owner's ceiling for the machines and the services together is
+   $700 a month (2026-11-12, Q178): a limit, not an allowance --
+   under it, spending still waits for his word.
 
 
 ## Where things live
