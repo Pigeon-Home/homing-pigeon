@@ -71,7 +71,7 @@ stays their source of truth.
   "core_tokens": 719575,
   "core_assembled_lines": 65992,
   "core_assembled_nonblank": 59822,
-  "core_assembled_zip_bytes": 856590,
+  "core_assembled_zip_bytes": 855207,
   "core_assembled_tokens": 731154
 }
 ```
