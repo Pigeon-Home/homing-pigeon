@@ -1634,3 +1634,16 @@ watched instead of cutting (fixed: with a commit it cuts, then
 watches). The shape of a core-code cycle under the posture is
 therefore the Linux suite plus six: about nineteen minutes, against
 seven for a release of docs, tests or a corpus.
+
+### 3.16.24.16 and .17: a pushed tag looks for its gate build (13 Nov 2026)
+
+3.16.24.16 (a tools-and-docs release, the legs alone) tagged at 2.8
+minutes and published at 16.6: the tag build's lookup of the gate
+build asked for a completed run of main on the commit, and the
+gate build was still running its suites when the cut tagged on
+green legs, so the tag build found nothing and built everything
+again, its release waiting on its own Linux suite. The lookup takes
+main's newest uncancelled build now; the promotion check reads the
+legs as before. 3.16.24.17 through it: gate 2.7, tag 3.5, release
+6.0, every mirror by 8.0 minutes -- the floor, through the token
+path, with no dispatch anywhere in the cycle.
