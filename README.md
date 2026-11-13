@@ -26,7 +26,7 @@ other choice.
     -  https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md
   
 
-[![Homing Pigeon — how it fits together](assets/how-it-fits-together-wide.svg)](assets/how-it-fits-together.svg)
+[![Homing Pigeon — how it fits together](assets/how-it-fits-together-wide.svg)](https://raw.githubusercontent.com/Pigeon-Home/homing-pigeon/main/assets/how-it-fits-together.svg)
 
 
 ## What this is for
