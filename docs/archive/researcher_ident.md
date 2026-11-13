@@ -110,6 +110,15 @@ for HEAD and every other commit.
 | `afa4a62edf697615a063c95bb269db10fe8a418d` | `60000b3a-32a6-4847-996f-638cbcb6d854` | rule 3 |
 | `631c6ac310a2a57214d792fab599a346abe42587` | `60000b3a-32a6-4847-996f-638cbcb6d854` | rule 3 |
 | `5b02741ef90fafe86cc97f5843c5b2db84d02807` | `60000b3a-32a6-4847-996f-638cbcb6d854` | rule 3 |
+| `d3e7e4d9782356290613649fccd0e14993876ef8` | `00000000-muse-c743-42a8-a31ea4481a94` | rule 4 |
+
+The last row was added on 2026-11-13 under Q179, and it does
+not predate the decision above: the 3.16.25.7 release commit's
+caller supplied a stamp generated for that one cut's session
+and never registered it, so the record accepts that commit
+only. The seat's stamp stands unchanged in the table above,
+the accepted stamp is not a seat stamp, and it signs
+nothing else.
 
 ## Sessions on the record (2026-10-30)
 

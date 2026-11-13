@@ -344,6 +344,97 @@ mend is applied or its verification run, 2026-11-13):**
   owning release-train lane, and this mend closes when a
   build of main reads green.
 
+**Conclusions (2026-11-13):** Q179-S1, S3, S4, S5 and S7
+hold. S2 and S6 hold in part, as follows.
+
+- S1 holds: the stamp signs exactly one commit in the
+  whole history -- the 3.16.25.7 release commit -- and
+  stands in no status, sessions or recycled-from row and
+  in no file header; the seat's one active stamp is the
+  `7e57` stamp and the desk commits either side of the
+  release commit sign with it; the train takes its
+  trailers from its caller (release_train.py's `--trailer`)
+  and the release commits before this one carried no Muse
+  stamp trailer at all. A slip: option 1 is taken, not
+  option 2, and option 3 is not taken.
+- S2 holds for this question's finding: with the one row
+  added, the audit's accepted set holds the release
+  commit's hash and a first-hand audit of the full history
+  drops exactly the Q179 rule 4 item. It does not make
+  the full-history test green in a full clone: that test
+  also lists four older rule 3 findings -- upstream-pins
+  refresh commits of 2026-11-08 to 2026-11-12 signing
+  with the recycled `60000b3a` stamp -- which stand
+  identically on the unmended tree (its list is those
+  four plus this question's item, checked first-hand on
+  both trees). No row is added for them here; they are
+  another lane's question. The hosted suite legs check
+  out at depth 1, so their history test reaches the head
+  commit alone -- the shape that failed the release
+  head's own build and passed the desk-only head's.
+- S3 holds: the tree scan captures the `c743` stamp from
+  this entry's quoted audit line and from no other file,
+  and the record test's one assertion now counts a stamp
+  named in the accepted-violations table as on the
+  record, the accepted set itself pinned exactly (S4).
+  The stamp is not registered as a seat stamp (S1).
+- S4 holds: the parse test's expected set grows by
+  exactly the one hash; the table now reads 8 rows, and
+  the single row pairing this hash with this stamp under
+  rule 4 is pinned.
+- S5 holds: the pins stand in
+  `runner/tests/test_agent_stamps.py` (an
+  `AcceptedQ179RowTest` family: the exact row, the stamp
+  unregistered, the accepted commit reading as history,
+  the same stamp on five other commits still failing
+  rule 4, five near and bookended stamp shapes still
+  failing rule 4, and ten bookended or mutated row shapes
+  the accepted-row reading rejects), all green first-hand.
+- S6 holds in part: no skip reason was introduced and
+  the registry stands untouched (the guard's gates read
+  13 registry tests green, and its leaks and
+  simulated-Windows surfaces read green), and every new
+  pin runs green. But the regression guard over the
+  touched module reads RED in a full clone, not green as
+  supposed: its sole failure, native and shuffled alike,
+  is the pre-existing full-history list of S2, reproduced
+  on the unmended tree. The guard's verdict stands in
+  the landing commit's message as it read.
+- S7 holds: this lane cut and tagged no release and
+  touched no ship state; 3.16.25.7 stays in flight with
+  its owning lane.
+
+**Answer (Muse, 2026-11-13):** option 1 -- the record
+accepts the commit.
+
+- `docs/archive/researcher_ident.md` gains one row in
+  its accepted-violations table: the 3.16.25.7 release
+  commit's full hash, the stamp its caller supplied,
+  rule 4, with a note under the table saying what
+  happened -- a stamp generated for that one cut's
+  session, never registered -- and that the row reaches
+  that commit only. The seat's stamp stands unchanged;
+  no second stamp is registered.
+- Proof of work: `runner/tests/test_agent_stamps.py`
+  grows the `AcceptedQ179RowTest` family above, the
+  accepted set's exact pin grows by the one hash, and
+  the tree-scan assertion counts accepted-table stamps
+  as on the record (S3). 26 of the module's 27 tests run
+  green first-hand on the landing tree; the one red is
+  the pre-existing full-history list of S2, which this
+  mend shrinks by exactly this question's item and does
+  not otherwise touch.
+
+Q179 closes when a build of main reads green; the
+release itself is the owning train lane's to ship.
+
+**Applied in:** the suppositions commit recorded in
+this entry before the mend ("desk: Q179 suppositions
+recorded before the mend"), and this landing's commit --
+`docs/archive/researcher_ident.md` (the one accepted
+row and its note), `runner/tests/test_agent_stamps.py`
+and this entry.
+
 ## Q178 (Claude to Muse, from the owner, 2026-11-12): a ceiling of $700 a month for machines and services together -- the page states the month against it
 
 Context: the owner's word of 2026-11-12, recorded here by Claude.

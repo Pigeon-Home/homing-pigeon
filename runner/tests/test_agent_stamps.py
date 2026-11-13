@@ -13,6 +13,7 @@ one (AGENTS.md rule 10).
 """
 import re
 import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -50,6 +51,15 @@ def _rows():
         if m:
             rows[m.group(1)] = (m.group(2), m.group(4))
     return rows
+
+
+def _accepted_rows():
+    """(commit, stamp, rule) rows of the record's accepted-violations
+    table, read straight off docs/archive/researcher_ident.md."""
+    text = IDENT.read_text(encoding="utf-8")
+    return re.findall(
+        r"^\|\s*`([0-9a-f]{40})`\s*\|\s*`(%s)`\s*\|\s*rule\s*([1-4])\s*\|"
+        % STAMP, text, re.M)
 
 
 def _tree_stamps():
@@ -96,7 +106,17 @@ class AgentStampRecordTest(unittest.TestCase):
     def test_every_stamp_in_the_tree_is_on_the_record(self):
         found = _tree_stamps()
         self.assertIn("40000e00-1234-4abc-9def-0123456789ab", found)
-        self.assertLessEqual(found, set(_rows()))
+        # "On the record" is the status table plus the stamps the
+        # accepted-violations table names: the Q179 stamp stands in
+        # the tree only because the desk entry quotes the audit line
+        # that failed on it, and the record takes it as an accepted
+        # historical violation on one commit, not as a seat stamp.
+        accepted = {stamp for _sha, stamp, _rule in _accepted_rows()}
+        self.assertIn("00000000-muse-c743-42a8-a31ea4481a94", found)
+        self.assertNotIn("00000000-muse-c743-42a8-a31ea4481a94",
+                         set(_rows()))
+        self.assertIn("00000000-muse-c743-42a8-a31ea4481a94", accepted)
+        self.assertLessEqual(found, set(_rows()) | accepted)
 
     def test_agents_md_names_the_recycled_stamps(self):
         text = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
@@ -197,6 +217,7 @@ class StampAuditRulesTest(unittest.TestCase):
             "afa4a62edf697615a063c95bb269db10fe8a418d",
             "631c6ac310a2a57214d792fab599a346abe42587",
             "5b02741ef90fafe86cc97f5843c5b2db84d02807",
+            "d3e7e4d9782356290613649fccd0e14993876ef8",
         }, rows)
 
     def test_an_accepted_historical_commit_is_history_not_a_violation(self):
@@ -240,6 +261,112 @@ class StampAuditRulesTest(unittest.TestCase):
         (c,) = SA.parse_log(text)
         self.assertEqual(c.stamps, [_A])
         self.assertEqual(c.session, "session_01ABC")
+
+
+_Q179_SHA = "d3e7e4d9782356290613649fccd0e14993876ef8"
+_Q179_STAMP = "00000000-muse-c743-42a8-a31ea4481a94"
+_Q179_SEAT = "00000000-muse-7e57-d0c5-58316a922026"
+
+
+def _q179_commit(sha, stamps):
+    when = _T0 + SA.datetime.timedelta(days=400)
+    return SA.Commit(sha, when, "Muse", list(stamps), None,
+                     "release: 3.16.25.7")
+
+
+class AcceptedQ179RowTest(unittest.TestCase):
+    """Q179: the record accepts the 3.16.25.7 release commit, whose
+    caller supplied a stamp generated for that one cut's session
+    and never registered it -- option 1, the commit accepted, not
+    option 2, the stamp registered. The acceptance is exactly
+    that commit, that stamp and rule 4, and nothing wider."""
+
+    def test_the_row_pairs_exactly_that_commit_stamp_and_rule(self):
+        rows = _accepted_rows()
+        self.assertEqual(8, len(rows))
+        self.assertEqual([(_Q179_SHA, _Q179_STAMP, "4")],
+                         [r for r in rows if r[0] == _Q179_SHA])
+        self.assertEqual([(_Q179_SHA, _Q179_STAMP, "4")],
+                         [r for r in rows if r[1] == _Q179_STAMP])
+
+    def test_the_stamp_is_not_registered_as_a_seat_stamp(self):
+        self.assertNotIn(_Q179_STAMP, SA.record())
+        self.assertNotIn(_Q179_STAMP, _rows())
+        listed = set(re.findall(r"^(%s)$" % STAMP,
+                                IDENT.read_text(encoding="utf-8"), re.M))
+        self.assertNotIn(_Q179_STAMP, listed)
+        # The seat's stamp stands as it was: one active Muse row.
+        self.assertEqual("active", SA.record()[_Q179_SEAT])
+
+    def test_the_accepted_commit_reads_as_history_not_a_violation(self):
+        _s, violations, history = SA.audit(
+            [_q179_commit(_Q179_SHA, [_Q179_STAMP])], SA.record(),
+            accepted=SA.accepted_commits())
+        self.assertEqual([], violations)
+        self.assertTrue(any("accepted historical violation" in m
+                            for _r, m in history), history)
+
+    def test_the_same_stamp_on_any_other_commit_still_fails_rule_4(self):
+        others = ["0" * 40, "f" * 40,
+                  "e" + _Q179_SHA[1:],          # first digit off
+                  _Q179_SHA[:-1] + "9",         # last digit off
+                  _Q179_SHA[:9] + "0" + _Q179_SHA[10:]]
+        for sha in others:
+            with self.subTest(sha=sha):
+                _s, violations, _h = SA.audit(
+                    [_q179_commit(sha, [_Q179_STAMP])], SA.record(),
+                    accepted=SA.accepted_commits())
+                self.assertEqual(["rule 4"],
+                                 [r for _c, r, _m in violations])
+
+    def test_a_stamp_near_the_accepted_one_still_fails_rule_4(self):
+        near = [_Q179_STAMP[:-1] + "5",                 # last digit off
+                "00000000-muse-c744-42a8-a31ea4481a94",  # session block off
+                "-" + _Q179_STAMP,                      # bookended, front
+                _Q179_STAMP + "-",                      # bookended, back
+                ";" + _Q179_STAMP + ";",                # bookended, both
+                ]
+        for stamp in near:
+            with self.subTest(stamp=stamp):
+                _s, violations, _h = SA.audit(
+                    [_q179_commit("a" * 40, [stamp])], SA.record(),
+                    accepted=SA.accepted_commits())
+                self.assertEqual(["rule 4"],
+                                 [r for _c, r, _m in violations])
+
+    def test_the_seat_s_own_stamp_on_another_commit_is_no_violation(self):
+        # A recorded stamp signing elsewhere is ordinary work, not
+        # something the Q179 acceptance is needed for or grants.
+        _s, violations, _h = SA.audit(
+            [_q179_commit("b" * 40, [_Q179_SEAT])], SA.record(),
+            accepted=SA.accepted_commits())
+        self.assertEqual([], violations)
+
+    def test_the_accepted_row_reading_rejects_mutated_rows(self):
+        good = "| `%s` | `%s` | rule 4 |\n" % (_Q179_SHA, _Q179_STAMP)
+        rejects = {
+            "short hash": good.replace(_Q179_SHA, _Q179_SHA[:39]),
+            "long hash": good.replace(_Q179_SHA, _Q179_SHA + "a"),
+            "upper hash": good.replace(_Q179_SHA, _Q179_SHA.upper()),
+            "bookended hash": good.replace(
+                "`%s`" % _Q179_SHA, "`-%s-`" % _Q179_SHA),
+            "unbackticked hash": good.replace("`%s`" % _Q179_SHA,
+                                              _Q179_SHA),
+            "bookended stamp": good.replace(
+                "`%s`" % _Q179_STAMP, "`;%s;`" % _Q179_STAMP),
+            "short stamp": good.replace(_Q179_STAMP, _Q179_STAMP[:35]),
+            "rule 0": good.replace("rule 4", "rule 0"),
+            "rule 5": good.replace("rule 4", "rule 5"),
+            "bookended rule": good.replace("rule 4 |", "rule 4- |"),
+        }
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "ident.md"
+            path.write_text(good, encoding="utf-8")
+            self.assertEqual({_Q179_SHA}, SA.accepted_commits(path))
+            for name, text in rejects.items():
+                with self.subTest(shape=name):
+                    path.write_text(text, encoding="utf-8")
+                    self.assertEqual(set(), SA.accepted_commits(path))
 
 
 class StampHistoryTest(unittest.TestCase):
