@@ -383,6 +383,15 @@ What the fold does to the figures, stated before it is done: the
 tree loses about 0.69 million tokens, 24.97 million to about
 24.28; the version's third component stays 24.
 
+Addendum (Claude, 2026-11-13): the tree crossed 25,000,000 tokens
+before the fold landed -- 24,999,648 at 3.16.24.22, 25,004,714 at
+the next cut -- so that cut is 3.16.25.1. The fold takes the
+measure back to about 24.3 million, and the version's third
+component holds at 25: `version4`'s odometer rule keeps the figure
+when a fresh measure is lower, and the counter moves on. Where
+this entry and S3 say "stays 24", read "holds at 25"; the
+statistics record states the live count either way.
+
 Done when the module carries no written-out templated list, the
 audit measures one where one exists, and the statistics record
 states the re-measured figures.

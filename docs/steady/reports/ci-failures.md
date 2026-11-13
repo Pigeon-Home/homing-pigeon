@@ -1697,3 +1697,47 @@ What changed:
   it was.
 - The order of work's first item names that command as the place
   a red main is read, and the loop's first step reads it.
+
+### 3.16.25.1: the suite green before the cut; the tree crosses 25 million tokens (13 Nov 2026)
+
+The registry line landed at 04:46Z. The Linux suite on that head
+read green at 04:56 (9.3 minutes), both Windows parts with it, and
+the release was prepared at 04:57 on a main the train read green,
+so its message carries no warning. The cycle: legs 1.8 minutes,
+tag 2.9, release 5.3, the last mirror 7.2.
+
+The version's third figure moved. The tree measured 24,999,648
+tokens at 3.16.24.22 and 25,004,714 at this cut, so the house rule
+restarted the counter: 3.16.25.1. The fold of the written-out
+separator lists will take the measure back under 25 million
+(about 0.69 million tokens); the figure holds at 25 by the
+odometer rule, which keeps the figure when a fresh measure is
+lower.
+
+Three things the cycle showed, each changed in the landing after
+it:
+
+- The build that carried the fix ran in the docs group. The group
+  is named by the head commit's message, the push's head was a
+  desk note with the code beneath it, and in that group the next
+  desk note or web edit cancels a running build. One arrived at
+  04:57 and cancelled it, two minutes after the Linux suite and
+  both Windows parts had read green; its macOS suite was lost.
+  Two builds lost their suites outright the same way that
+  evening: 0b59937c (a desk note over a fix, cancelled by a web
+  edit four minutes in, while main was red and a verdict was the
+  thing wanted) and 644358bc (a desk note over a new test module,
+  cancelled by the desk note after it). Only the rolling group
+  cancels now: a docs build is a minute, and one waiting behind a
+  suite costs nothing.
+- The release's day. Two seats cut from two clocks, one on UTC
+  and one eight hours behind it, and the changelog's dates ran
+  12, 13, 12 down the evening; the figure slots' day ran back
+  with them. The train and the figures tool date by the UTC day
+  now, and the changelog's entries for the releases of 13 Nov
+  carry it.
+- The status line. A push of docs alone skips the legs, which the
+  gate reads as not green (there is nothing to promote) and
+  `status` printed as "red". It prints "no legs on this head"
+  now, and keeps "red" for a leg that ran and failed, since the
+  loop's first step reads that page.

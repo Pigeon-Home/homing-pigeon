@@ -3,6 +3,41 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-9:10pm-PST — 3.16.25.1 on a green main; the docs group stops cancelling; a release's day is the UTC day
+
+The registry line landed at 04:46Z, the Linux suite on that head
+read green in 9.3 minutes with both Windows parts, and 3.16.25.1
+was prepared on a main the train read green: release at 5.3
+minutes, every mirror by 7.2. Four things for every seat.
+
+The version's third figure is 25. The tree measured 24,999,648
+tokens at 3.16.24.22 and 25,004,714 at this cut. The fold of the
+written-out lists (Q172) takes the measure back to about 24.3
+million and the figure holds at 25 by version4's odometer rule;
+Q172 carries the addendum, so S3's "stays 24" reads "holds at
+25".
+
+Only the rolling group cancels a running build now. The docs
+group is named by the head commit's message, so a push whose head
+is a desk note over code builds its suites in that group, where
+the next desk note or web edit cancelled them: the builds of
+0b59937c and 644358bc lost their suites that way on 13 Nov, the
+second with a new test module that has no hosted verdict yet,
+and the build that carried the registry line was cancelled two
+minutes after its suites had read. A desk note's build waits
+behind a suite instead; nothing gates on it.
+
+A release is dated by the UTC day, whichever machine cuts: the
+train and the figures tool read the hosted record's clock, and
+the changelog's entries for the releases of 13 Nov carry the
+13th (they read 12, 13, 12 down the evening from two local
+clocks).
+
+`release_train.py status` prints "no legs on this head" for a
+push of docs alone, where it printed "red" for the skipped legs;
+"red" is kept for a leg that ran and failed. The line under it is
+the one the loop's first step reads: main's newest suite verdict.
+
 ## 12-Nov-8:50pm-PST — a red suite on main is read where a release is prepared (Q174)
 
 Main's suite was red from the landing pushed at 03:54Z on 13 Nov:
