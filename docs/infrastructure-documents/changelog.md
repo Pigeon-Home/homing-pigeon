@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.7 - 2026-11-13
+
+- Desk: Q174's second and third cases — one verdict line, and a red guard pushed without one
+- Desk: Q176 answered — each fleet machine's SSH reading on its line, and the docs public-address test
+- Desk: Q178 — the fleet page states the month against the $700 ceiling, about $52.97 on the record
+
 ## 3.16.25.6 - 2026-11-13
 
 - Tools: the release train reads every cut run of a cycle, so a second run that is refused the tag beside a first that placed it is the cut made
