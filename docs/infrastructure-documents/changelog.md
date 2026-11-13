@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.12 - 2026-11-13
+
+- Q170: the mutation walk's oracle narrows to the modules that load the mutated file
+- Desk: Q170 answered -- the walk's oracle narrows to the modules that load the mutated file; the hosted verdict is still owed
+
 ## 3.16.25.11 - 2026-11-13
 
 - Desk: Q181 closed -- the support matrix's macOS live-proof word corrected; the data-size refusal closed, live proof on the green test-macos build
