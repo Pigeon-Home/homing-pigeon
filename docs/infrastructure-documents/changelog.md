@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.3 - 2026-11-13
+
+- Carries 3.16.25.2, which was prepared and not released: the cut gate held it on a red suite
+- Fix: the skip guard's fixture ids under the old discovery root are built in two pieces, so the layout scan reads green and the suites on main with it
+- Tools: the release train's red-main warning names a failed job as soon as it has failed, the build's first-minute check among them
+
 ## 3.16.25.2 - 2026-11-13
 
 - README: DRU's own edits land in a run of updates
