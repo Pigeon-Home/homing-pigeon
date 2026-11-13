@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.5 - 2026-11-13
+
+- Gate: a release cut while main's suite is red waits for the suites on its own commit, whatever it carries; the release train's warning reads the same record and says so
+- Docs: machine addresses, server names and provider ids no longer stand in the tree; the rule that keeps them off the fleet page reaches every page
+- Docs: the fleet page carries a monthly ceiling for the machines and the services together
+
 ## 3.16.25.4 - 2026-11-13
 
 - Docs: the CI record carries 3.16.25.2 (a cut the gate held on a red suite) and 3.16.25.3 (a core-code release through the gate: release at 14.6 minutes, every mirror by 17.5)
