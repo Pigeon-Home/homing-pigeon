@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.13 - 2026-11-13
+
+- Extensions: refresh upstream pins
+
 ## 3.16.25.12 - 2026-11-13
 
 - Q170: the mutation walk's oracle narrows to the modules that load the mutated file
