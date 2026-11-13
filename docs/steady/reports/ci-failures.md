@@ -1647,3 +1647,53 @@ main's newest uncancelled build now; the promotion check reads the
 legs as before. 3.16.24.17 through it: gate 2.7, tag 3.5, release
 6.0, every mirror by 8.0 minutes -- the floor, through the token
 path, with no dispatch anywhere in the cycle.
+
+### 3.16.24.22: a release prepared over a red suite (13 Nov 2026)
+
+A landing pushed at 03:54Z (the briefing tests derive their counts
+from the running interpreter) added a skip, "no tomllib on this
+interpreter", without its line in the skip registry.
+`test_skip_registry` failed on it, and with it the regression
+guard's end-to-end test, which runs that module among its gates:
+two failures from one cause, in the Linux suite, both parts of the
+Windows suite and the macOS suite, on every build of main from
+that commit on. The pre-push guard reads this shape before a push
+(`python runner/tools/regression_guard.py`: its gates run the skip
+registry, and its docstring names "a skip no registry knows"); the
+landing went up without it.
+
+The verdict stood on three builds. A later head cancelled the
+landing's own build two minutes in. The build of d541fb84 was
+cancelled as well, fourteen minutes in, after Windows part 2
+(04:06), Windows part 1 (04:08) and the Linux suite (04:08:48) had
+each failed: the run reads "cancelled" and its jobs read
+"failure". The build of 0c437123 finished red at 04:26, and the
+build of the release commit itself at 04:33.
+
+3.16.24.22 was prepared at 04:19:02Z, ten minutes after the Linux
+suite first read red. It carried no core code since 3.16.24.21
+(the landing changed a tool and tests), so the cut gate named the
+eight legs alone, as its rule has it: legs green at 1.9 minutes,
+tag at 3.0, release at 5.5, the last mirror at 7.7. Nothing in
+the cycle read the suites, and nothing a seat runs to prepare a
+release said they were red.
+
+What changed:
+
+- The registry carries the reason (the comparison with tomllib
+  runs on 3.11 and later; the fallback reader is pinned on its own
+  beside it on every interpreter), landed under the order of
+  work's first item an hour after the landing that needed it.
+- The train names a red main. `red_main_warning()` reads main's
+  builds newest first, down to the first whose Linux suite came to
+  a verdict of its own -- the job's conclusion, not the run's, so
+  a run a later head cancelled still counts for the suite that had
+  finished -- and names each failed suite job with its commit and
+  its run, and how many newer builds carry no verdict yet.
+  `status` prints it (or "main's newest suite verdict: green"),
+  `prepare` and `cut` print it, and a release commit prepared over
+  a red main carries it in its message beside the latent-code
+  warning. It warns and never refuses: the gate's rule stands as
+  it was.
+- The order of work's first item names that command as the place
+  a red main is read, and the loop's first step reads it.

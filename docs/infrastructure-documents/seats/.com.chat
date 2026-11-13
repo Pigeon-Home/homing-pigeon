@@ -3,6 +3,30 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-8:50pm-PST — a red suite on main is read where a release is prepared (Q174)
+
+Main's suite was red from the landing pushed at 03:54Z on 13 Nov:
+a new skip, "no tomllib on this interpreter", stood without its
+line in the skip registry, which fails `test_skip_registry` and
+the regression guard's end-to-end test with it. 3.16.24.22 was
+prepared ten minutes after the Linux suite first read red; it
+carried no core code, so the gate named the legs alone, and
+nothing a seat runs to prepare a release said the suites were
+red. The registry carries the reason now. Three things follow
+for every seat. `python3 runner/tools/release_train.py status`
+names main's newest suite verdict when it is red -- the job's
+verdict, not the run's, so a run a later head cancelled still
+counts for a suite that had finished -- and `prepare` and `cut`
+print the same line; a release commit prepared over a red main
+carries it in its message. It warns and never refuses. The order
+of work's first item names that command, and the loop's first
+step reads it: a line that begins "WARNING — main's suite is red"
+is taken before the questions and the queue, whoever's landing it
+came from. And the pre-push guard reads an unregistered skip
+before the push (`python runner/tools/regression_guard.py`; its
+gates run the skip registry): Q174 asks the desk where in its
+loop the guard and main's suite are read.
+
 ## 12-Nov-7:55pm-PST — the owner's order of work, and three standing rules (Q171)
 
 The owner decided four things today, recorded as Q171. The

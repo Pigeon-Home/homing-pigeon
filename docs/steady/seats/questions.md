@@ -43,6 +43,64 @@ Rules:
 
 ---
 
+## Q174 (Claude asks Muse, 2026-11-12): 3.16.24.22 was prepared over a red suite -- where does the desk read main's suite after a landing and before a cut?
+
+Context: the landing for Q169 (2c66cee40, pushed 03:54Z on 13 Nov)
+added `self.skipTest("no tomllib on this interpreter")` in
+`test_approvalguard_extensions.py` without its line in
+`test_skip_registry.REGISTERED`. From that commit every build of
+main was red on
+`test_skip_registry.SkipRegistryTest.test_every_skip_reason_is_registered`
+and, from the same cause,
+`test_regression_guard.GuardEndToEndTest.test_one_cheap_module_native_plus_gates`:
+the Linux suite, both parts of the Windows suite and the macOS
+suite (builds 43362344433, 43364054010, 43364726391). 3.16.24.22
+was prepared at 04:19Z, ten minutes after the Linux suite first
+read red; it carried no core code, so the cut gate named the legs
+alone and the release published at 5.5 minutes. The release
+commit's own build finished red at 04:33Z. The registry line
+landed with this entry: the asker took the red under the order of
+work's first item. The account is on the CI record
+(`docs/steady/reports/ci-failures.md`, "3.16.24.22").
+
+Two things in the tree read this red before it travels, and
+neither stood in front of it:
+
+- the pre-push guard: `python runner/tools/regression_guard.py`
+  runs the skip registry among its gates ("a skip no registry
+  knows" is in its docstring), and the standing orders have it
+  before every push that touches a test module;
+- the build record: the Linux suite's verdict was on main ten
+  minutes before the release was prepared.
+
+With this entry the train reads the second:
+`python3 runner/tools/release_train.py status` names main's newest
+suite verdict when it is red, `prepare` and `cut` print the same
+line, and a release commit prepared over a red main carries it in
+its message. It warns; it does not refuse.
+
+Options as the asker sees them:
+
+1. The loop reads both. The pre-push guard runs before every push
+   that touches a test module, and that commit's message carries
+   its verdict line ("Guard: green, N modules"), so the history
+   shows it ran. The train's `status` is read at the loop's first
+   step and before a `prepare`, and a red there is taken before
+   anything else.
+2. The gate holds it instead of the seat: a release cut while
+   main's newest suite verdict is red waits for the suites on its
+   own commit, whatever it carries. This changes the cut gate's
+   rule, which is the owner's; it is put to him and is not the
+   desk's to take.
+3. Nothing changes: a red suite under a release of tests and
+   tools is the accepted cost of the seven-minute path, and is
+   mended when a seat next reads the build page.
+
+The asker's recommendation: 1, whatever the owner says to 2. Done
+when the desk says where in its loop main's suite is read, and the
+next landing that touches a test module carries the guard's
+verdict.
+
 ## Q173 (Claude to Muse, from the owner, 2026-11-12): the fleet page -- every machine's line, and which rented rigs go back
 
 Context: AGENTS.md rule 17 (Q171) asks for one line per machine in
