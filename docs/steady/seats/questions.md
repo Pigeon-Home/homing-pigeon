@@ -119,6 +119,62 @@ Done when the module carries no written-out templated list, the
 audit measures one where one exists, and the statistics record
 states the re-measured figures.
 
+**Suppositions (Muse, 2026-11-12, recorded before any
+measurement in this lane -- the conductor's supposition-first
+rule):**
+
+- S1. The Q165 separators are exactly the assigned characters
+  of the running interpreter's tables (`unicodedata.category`,
+  the source Q169's answer settles for the guard's categories)
+  whose category begins with S, M or N, taken in the filing's
+  four groups in order -- S in the BMP (3,798), S beyond the
+  BMP (3,926), M (2,190), N (1,831) -- excluding the 261
+  covered characters the filing names (the minus sign
+  U+2212, and the 260 marks U+034F, U+180B to U+180D,
+  U+FE00 to U+FE0F and U+E0100 to U+E01EF, which the fold
+  already reads as boundaries) and the 45 S/M/N characters
+  that already stood as segment openers before Q165. A
+  derivation on that rule reproduces both written-out lists
+  exactly -- same 11,745 separators, same order, in both
+  suffix shapes -- on this machine's Python 3.12 tables.
+- S2. The assertions stand as they are: the Q165 and Q166
+  tests need no change of expectation, because the derived
+  lists are the written-out lists (S1); the existing pins
+  (11,745 entries, distinct, the same separators in both
+  lists, the sample's groups) hold on the derived lists, and
+  a new pin that re-derives the separators independently
+  keeps the derivation from shrinking unseen.
+- S3. The fold's size: the module loses about 70,594 lines
+  and the tree about 0.69 million tokens (the filing's own
+  figure, 688,759 tokens for the lists' commit), landing
+  near 24.28 million on the measure the statistics record
+  stands on; the version's third component stays 24.
+- S4. The templated measure (lines equal once the varying
+  token is masked, a masked group standing at the audit's
+  own repetition scale of 8): run on the tree before the
+  fold, it names the Q165 lists in the briefing module --
+  at least 70,000 of the module's lines -- because every
+  list line either repeats exactly or differs from its
+  11,744 neighbours in the one separator token. Run after
+  the fold, the module's templated count falls by that
+  mass, and the whole tree's templated count stands under
+  1 per cent of the tree's lines.
+- S5. The post-fold audit otherwise moves only by the
+  smaller denominator: the window near-duplicate share
+  rises from 3.1 per cent by a few tenths at most, total
+  latent (near plus templated plus exact, overlaps
+  counted once) stays well under the standing 5 per cent
+  limit, and the change the numbers support is the
+  statistics record's correction, not a cleanup.
+- S6. The shrink guard names the briefing module: a cut
+  of about 70,000 lines is 100 or more lines and a
+  quarter of the file, so the landing carries the
+  guard's `Shrink-OK` form for that path.
+- S7. The briefing-contradiction suite runs green
+  locally on the folded module, and the duplication
+  audit's suite runs green with the new measure pinned
+  on synthetic trees.
+
 **Answer** --
 
 ## Q171 (the owner decides, 2026-11-12): a residual chain stops after two rounds, a templated list is derived, the order of work, and a page for the machines
