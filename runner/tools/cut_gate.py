@@ -23,6 +23,18 @@ the suites it would wait for ran on the same core a published
 release already waited for. The macOS suite stays advisory, as it
 was before the window.
 
+The suites join the gate in one more case, at the cut (the owner,
+2026-11-12): main's suite is red -- the newest suite verdict among
+the builds before the release commit's own is red, or a watched job
+has failed on the release commit's own build. 3.16.24.22 carried no
+core code and was cut over a suite that had read red ten minutes
+earlier; the short path rests on the suites having read green on
+what came before, and a red there takes the reason away. Such a
+release waits for the suites on its own commit, which read green
+only once the red is mended. The cut reads this (cut-release's gate
+step and the train's wait); the promotion check does not, since by
+then the cut has decided and the record it read has moved on.
+
 During the window the suites are advisory everywhere (every touched
 workflow carries a RELIEF-48H marker with the expiry) and the gate
 is the legs alone, whatever the release carries: `need` reads the
@@ -30,7 +42,8 @@ marker from build.yml and the clock.
 
 A record that cannot be read is a refusal, never a pass: no
 previous release, a compare the API will not give whole, a job
-missing from the run.
+missing from the run, a list of main's builds the API will not
+give.
 
 `proofs-due` answers the tag build's other question from the local
 history: did anything under runner/ change between two tags other
@@ -61,6 +74,11 @@ LEGS = frozenset({"build-python", "build-linux", "build-linux-arm64",
                   "build-windows", "build-windows-arm64", "build-macos",
                   "build-macos-x86_64", "build-pi-light"})
 SUITES = ("test", "test-windows")
+# What says main's suite is red: a failed job among the suites the
+# gate names, or the build's first-minute check beside them (the
+# shrink guard and the core measure): no gate itself, and the first
+# of them to read.
+WATCHED = ("shape",) + SUITES
 # Never runner code for the gate's purpose, core list or not: the
 # tests, the version carrier, and runner/ops/core.py, whose
 # as-assembled constants every release commit re-records (a file
@@ -227,8 +245,86 @@ def changed_since(prev_tag, sha, api=api):
     return {f.get("filename", ""): f.get("patch") for f in files}
 
 
-def need(sha, version, api=api, relief=None, root=ROOT):
-    """(the set of job names the release waits for, the reason)."""
+def own_build(sha, api=api):
+    """The run id of main's build on `sha` (its newest push or
+    dispatch run, cancelled ones aside), or None."""
+    d = api("/actions/workflows/build.yml/runs?head_sha=%s&per_page=20" % sha)
+    runs = d.get("workflow_runs", []) if isinstance(d, dict) else []
+    ids = [r["id"] for r in runs
+           if isinstance(r, dict) and "id" in r
+           and r.get("event") in ("push", "workflow_dispatch")
+           and r.get("head_branch") == "main" and r.get("conclusion") != "cancelled"]
+    return max(ids) if ids else None
+
+
+def run_jobs(run_id, api=api):
+    """{name: job} of a run, or None when the record cannot be read."""
+    d = api("/actions/runs/%s/jobs?per_page=100" % run_id)
+    if not isinstance(d, dict) or not isinstance(d.get("jobs"), list):
+        return None
+    return {j["name"]: j for j in d["jobs"] if isinstance(j, dict) and "name" in j}
+
+
+def failed_watched(jobs):
+    """The jobs among WATCHED that completed in failure, by name."""
+    return sorted(j.get("name", n) for n in WATCHED for j in match(n, jobs)
+                  if j.get("status") == "completed" and j.get("conclusion") == "failure")
+
+
+def suite_verdict(api=api, before=None):
+    """Main's newest suite verdict: (state, the commit, the run id,
+    the failed jobs, the newer builds read past). state is 'red',
+    'green', 'none' or 'unread'.
+
+    Main's builds are read newest first (a push or a dispatch),
+    down to the first that carries a verdict: a job among WATCHED
+    that failed, or a Linux suite that read green with nothing
+    failed beside it. A failed job is a verdict as soon as it has
+    failed, while the rest still run. The verdict is the job's, not
+    the run's: a run a later head cancelled still carries the
+    verdict of a job that had finished, and a run whose suite was
+    skipped (a change of docs alone) or cancelled says nothing
+    about the tree and is read past. `before` is a build's run id:
+    only builds older than it are read, so the reading at a release
+    commit is of what came before it and does not move with what
+    lands after. 'unread' is a list of builds, or a build's jobs,
+    that the API would not give.
+    """
+    # a hundred builds back: a run of docs pushes (twenty web edits
+    # in half an hour on 2026-11-13) stands between a release commit
+    # and the last suite verdict more often than not
+    d = api("/actions/workflows/build.yml/runs?branch=main&per_page=100")
+    if not isinstance(d, dict) or not isinstance(d.get("workflow_runs"), list):
+        return "unread", "", None, [], 0
+    newer = 0
+    for run in d["workflow_runs"]:
+        if not isinstance(run, dict) or "id" not in run:
+            continue
+        if run.get("event") not in ("push", "workflow_dispatch"):
+            continue
+        if before is not None and run["id"] >= before:
+            continue
+        jobs = run_jobs(run["id"], api)
+        if jobs is None:
+            return "unread", str(run.get("head_sha", "")), run["id"], [], newer
+        red = failed_watched(jobs)
+        if red:
+            return "red", str(run.get("head_sha", "")), run["id"], red, newer
+        linux = jobs.get("test") or {}
+        if linux.get("status") == "completed" and linux.get("conclusion") == "success":
+            return "green", str(run.get("head_sha", "")), run["id"], [], newer
+        newer += 1
+    return "none", "", None, [], newer
+
+
+def need(sha, version, api=api, relief=None, root=ROOT, red_main=True):
+    """(the set of job names the release waits for, the reason).
+
+    `red_main` is the cut's reading, on by default: a release that
+    carries no runner code still waits for the suites when main's
+    newest suite verdict before the release commit's own build is
+    red. The promotion check passes False (see the module's head).
+    """
     if relief is None:
         relief = relief_active(root)
     if relief:
@@ -244,6 +340,25 @@ def need(sha, version, api=api, relief=None, root=ROOT):
     if code:
         return set(LEGS) | set(SUITES), "runner code since %s (%s%s): the suites too" % (
             prev, ", ".join(code[:4]), "" if len(code) <= 4 else " and %d more" % (len(code) - 4))
+    if red_main:
+        both = set(LEGS) | set(SUITES)
+        own = own_build(sha, api)
+        if own is not None:
+            # a job that has failed on the commit's own build stays
+            # failed: this half of the reading only ever grows
+            jobs = run_jobs(own, api)
+            if jobs is None:
+                return both, "no runner code since %s, but this commit's own build (run %s) cannot be read: the suites too" % (prev, own)
+            red = failed_watched(jobs)
+            if red:
+                return both, ("no runner code since %s, but %s failed on this commit's own build (run %s): "
+                              "the suites too" % (prev, ", ".join(red), own))
+        state, vsha, run, red, _newer = suite_verdict(api, before=own)
+        if state == "red":
+            return both, ("no runner code since %s, but main's newest suite verdict before this commit is red "
+                          "(%s on %s, run %s): the suites too" % (prev, ", ".join(red), vsha[:8], run))
+        if state == "unread":
+            return both, "no runner code since %s, but main's suite verdict cannot be read: the suites too" % prev
     return set(LEGS), "no runner code since %s: the legs alone" % prev
 
 

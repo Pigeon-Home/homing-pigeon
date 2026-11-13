@@ -184,6 +184,10 @@ class ClockTest(unittest.TestCase):
         if "/build.yml/runs?branch=v3.16.21.1" in path:
             return {"workflow_runs": [{"id": 2, "status": "in_progress",
                                        "run_started_at": "2026-11-12T06:37:13Z"}]}
+        # the cut's reading of main's suite: nothing red before the
+        # release commit's own build
+        if "/build.yml/runs?branch=main" in path:
+            return {"workflow_runs": [{"id": 1, "event": "push", "head_sha": self.SHA}]}
         # the cut gate's rule: a docs-only release, the legs alone
         if path.startswith("/releases?"):
             return [{"tag_name": "v3.16.20.10", "draft": False, "published_at": "2026-11-12T04:29:30Z"}]
@@ -394,7 +398,7 @@ class RedMainWarningTest(unittest.TestCase):
             text = rt.red_main_warning()
         self.assertIn("main's suite is red: test, test-windows (1) failed on bbbbbbbb (build run 2, the newest "
                       "build of main with a suite verdict; 3 newer builds of main carry none)", text)
-        self.assertIn("never stops a cut", text)
+        self.assertIn("a release cut over it waits at the gate for the suites on its own commit", text)
         # the red on the newest build of all is named without the count
         with mock.patch.object(rt, "api", self._api(runs[4:], jobs)):
             self.assertIn("(build run 2, the newest build of main with a suite verdict).", rt.red_main_warning())

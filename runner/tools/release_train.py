@@ -142,14 +142,16 @@ def failed_step(run_id):
     return ""
 
 
-def gate_jobs(sha=None, version=None):
+def gate_jobs(sha=None, version=None, red_main=True):
     """The job names the release on `sha` waits for: the rule in
     runner/tools/cut_gate.py, read by the cut, the promotion check
     and this train alike. Without a commit and a version, the legs
-    that always gate (the eight artifact legs)."""
+    that always gate (the eight artifact legs). `red_main` is the
+    cut's reading of main's suite (see cut_gate.need); the
+    promotion check passes False."""
     if sha is None or version is None:
         return set(cut_gate.LEGS)
-    need, _why = cut_gate.need(sha, version, api=api)
+    need, _why = cut_gate.need(sha, version, api=api, red_main=red_main)
     return need
 
 
@@ -430,63 +432,43 @@ def _statistics_facts(root):
         return None
 
 
-# The jobs the red-main warning reads: the suites the gate names, and
-# the build's first-minute check beside them (the shrink guard and the
-# core measure), which is no gate and reads red first.
-SUITE_JOBS = ("shape", "test", "test-windows")
-
-
 def red_main_warning():
     """What main's newest suite verdict says when it is red, or ''.
 
-    The builds of main are read newest first (a push or a
-    dispatch), down to the first that carries a suite verdict: a
-    Linux suite, a Windows part or the first-minute shape check
-    that failed, or a Linux suite that read green. A failed job is
-    named with its commit and run as soon as it has failed, while
-    the rest still run: on 2026-11-13 the shape check read red 36
-    seconds after a push, a Windows part seven minutes after it,
-    and the Linux suite thirteen. The
-    verdict is the job's, not the run's: a run a later head
-    cancelled still carries the verdict of a suite job that had
-    finished, and a run whose suite was skipped (a change of docs
-    alone) or cancelled says nothing about the tree (the line
-    counts the newer builds it read past, so a red that a later
-    landing may have mended reads as such). The cut gate waits for
-    the suites only for a release that carries core code, so a
-    release of tests, tools or docs can be prepared on a main whose
-    suite is red: 3.16.24.22 was, ten minutes after the Linux suite
-    first read red on a landing that left a new skip without its
-    registered reason. The order of work puts a red signal first;
-    this names it where a seat preparing a release reads it. It
-    warns and never refuses, and a record it cannot read says
-    nothing.
+    The reading is the cut gate's own (cut_gate.suite_verdict):
+    main's builds newest first, down to the first that carries a
+    verdict -- a Linux suite, a Windows part or the first-minute
+    shape check that failed, or a Linux suite that read green. A
+    failed job is named with its commit and run as soon as it has
+    failed, while the rest still run: on 2026-11-13 the shape check
+    read red 36 seconds after a push, a Windows part seven minutes
+    after it, and the Linux suite thirteen. The verdict is the
+    job's, not the run's, and the line counts the newer builds it
+    read past, so a red that a later landing may have mended reads
+    as such.
+
+    3.16.24.22 was prepared ten minutes after the Linux suite first
+    read red, on a landing that left a new skip without its
+    registered reason; it carried no core code, and the gate of
+    that day named the legs alone. The gate reads the same record
+    now: a release cut over a red main waits for the suites on its
+    own commit (the owner, 2026-11-12). The order of work puts a
+    red signal first; this names it where a seat preparing a
+    release reads it. A record it cannot read says nothing here,
+    and the gate refuses on it.
     """
     try:
-        runs = (api("/actions/workflows/build.yml/runs?branch=main&per_page=15") or {}).get("workflow_runs", [])
-        newer = 0
-        for run in runs:
-            if run.get("event") not in ("push", "workflow_dispatch"):
-                continue
-            jobs = run_jobs(run["id"])
-            red = sorted(j.get("name", n) for n in SUITE_JOBS for j in cut_gate.match(n, jobs)
-                         if j.get("status") == "completed" and j.get("conclusion") == "failure")
-            linux = jobs.get("test") or {}
-            if not red:
-                if linux.get("status") == "completed" and linux.get("conclusion") == "success":
-                    return ""
-                newer += 1
-                continue
-            later = ("; %d newer build%s of main carr%s none" % (newer, "" if newer == 1 else "s", "ies" if newer == 1 else "y")
-                     if newer else "")
-            return ("WARNING — main's suite is red: %s failed on %s (build run %s, the newest "
-                    "build of main with a suite verdict%s). The order of work puts a red signal "
-                    "first; this warning never stops a cut, and a release that carries core "
-                    "code will wait at the gate until the suites are green."
-                    % (", ".join(red), run.get("head_sha", "")[:8], run["id"], later))
+        state, sha, run, red, newer = cut_gate.suite_verdict(api=api)
     except Exception:  # a warning that cannot read its record says nothing
         return ""
-    return ""
+    if state != "red":
+        return ""
+    later = ("; %d newer build%s of main carr%s none" % (newer, "" if newer == 1 else "s", "ies" if newer == 1 else "y")
+             if newer else "")
+    return ("WARNING — main's suite is red: %s failed on %s (build run %s, the newest "
+            "build of main with a suite verdict%s). The order of work puts a red signal "
+            "first, and a release cut over it waits at the gate for the suites on its "
+            "own commit." % (", ".join(red), sha[:8], run, later))
 
 
 def latent_warning(root=ROOT):
@@ -882,7 +864,7 @@ def promote_problem(run_id, sha, run=None, jobs=None, artifacts=None, version=No
         return "run %s is a build of %s, not of main" % (run_id, run.get("head_branch"))
     if jobs is None:
         jobs = run_jobs(run_id)
-    need = gate_jobs(sha, version)
+    need = gate_jobs(sha, version, red_main=False)
     if not need:
         return "the cut gate names no jobs"
     missing, bad, pending = cut_gate.verdict(need, jobs)

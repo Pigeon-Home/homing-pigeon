@@ -1277,7 +1277,15 @@ class PipelinePostureTest(unittest.TestCase):
         rels = [{"tag_name": "v0.0.0.9", "draft": False, "published_at": "2026-11-12T00:00:00Z"}]
 
         def api_for(files):
-            return lambda path: rels if path.startswith("/releases") else {"files": [{"filename": f} for f in files]}
+            def api(path):
+                if path.startswith("/releases"):
+                    return rels
+                if path.startswith("/actions/"):
+                    # the cut's reading of main's suite: no build on
+                    # the commit, nothing red before it
+                    return {"workflow_runs": []}
+                return {"files": [{"filename": f} for f in files]}
+            return api
         need, why = cut_gate.need("0" * 40, "0.0.0.10", api=api_for(["runner/ops/exec.py", "docs/a.md"]), root=_root())
         self.assertEqual(need, both, why)
         need, why = cut_gate.need("0" * 40, "0.0.0.10", api=api_for(["docs/a.md", "runner/tests/test_a.py", "runner/_version.py"]), root=_root())

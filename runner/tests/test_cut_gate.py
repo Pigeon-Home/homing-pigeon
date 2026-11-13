@@ -24,7 +24,11 @@ LEGS = set(rg.LEGS)
 BOTH = LEGS | set(rg.SUITES)
 
 
-def _api(releases=None, files=None, truncated=False):
+def _api(releases=None, files=None, truncated=False, builds=(), jobs=None, own=()):
+    """A scripted record. `builds` is main's builds newest first
+    (None: a list the API will not give), `own` the builds on the
+    commit being cut, `jobs` {run id: [job, ...]} (a run id absent
+    from it is a job list the API will not give)."""
     def api(path):
         if path.startswith("/releases"):
             return releases
@@ -35,8 +39,23 @@ def _api(releases=None, files=None, truncated=False):
             if truncated:
                 fs = fs * (300 // max(1, len(fs)) + 1)
             return {"files": fs}
+        if path.startswith("/actions/workflows/build.yml/runs?head_sha="):
+            return {"workflow_runs": list(own)}
+        if path.startswith("/actions/workflows/build.yml/runs?branch=main"):
+            return None if builds is None else {"workflow_runs": list(builds)}
+        if path.startswith("/actions/runs/") and "/jobs" in path:
+            rid = int(path.split("/")[3])
+            return {"jobs": (jobs or {})[rid]} if rid in (jobs or {}) else None
         raise AssertionError(path)
     return api
+
+
+def _build(rid, sha="b" * 40, event="push", conclusion=None):
+    return {"id": rid, "event": event, "head_branch": "main", "head_sha": sha, "conclusion": conclusion}
+
+
+def _job(name, conclusion, status="completed"):
+    return {"name": name, "status": status, "conclusion": conclusion}
 
 
 def _releases(*tags):
@@ -146,6 +165,145 @@ class NeedTest(unittest.TestCase):
             {"tag_name": "v3.16.24.10", "draft": False, "published_at": "2026-11-12T23:30:00Z"}]
         need, why = self._need(_api(rels, ["docs/a.md"]))
         self.assertIn("since v3.16.24.10", why)
+
+    DOCS = ["docs/a.md", "runner/tools/release_train.py", "runner/_version.py"]
+
+    def test_a_red_main_brings_the_suites_to_a_release_of_docs_and_tools(self):
+        # 3.16.24.22, in small: no core code since the release
+        # before, and the newest suite verdict before the release
+        # commit's own build is red.
+        rels = _releases("v3.16.24.10")
+        own = [_build(20, SHA)]
+        builds = [_build(20, SHA), _build(19, "0c437123" + "0" * 32), _build(18, conclusion="success")]
+        jobs = {20: [_job("shape", "success"), _job("test", None, "in_progress")],
+                19: [_job("test", "failure"), _job("test-windows (1)", "failure"), _job("test-windows (2)", "failure")],
+                18: [_job("test", "success")]}
+        need, why = self._need(_api(rels, self.DOCS, builds=builds, jobs=jobs, own=own))
+        self.assertEqual(need, BOTH)
+        self.assertEqual(why, "no runner code since v3.16.24.10, but main's newest suite verdict before this commit "
+                              "is red (test, test-windows (1), test-windows (2) on 0c437123, run 19): the suites too")
+        # the red mended before the release commit: the short path
+        jobs[19] = [_job("test", "success")]
+        need, why = self._need(_api(rels, self.DOCS, builds=builds, jobs=jobs, own=own))
+        self.assertEqual(need, LEGS)
+        self.assertEqual(why, "no runner code since v3.16.24.10: the legs alone")
+
+    def test_what_lands_after_the_release_commit_is_not_its_verdict(self):
+        rels = _releases("v3.16.24.10")
+        own = [_build(20, SHA)]
+        builds = [_build(21, "a" * 40), _build(20, SHA), _build(19)]
+        jobs = {21: [_job("shape", "failure")], 20: [_job("test", None, "in_progress")], 19: [_job("test", "success")]}
+        need, why = self._need(_api(rels, self.DOCS, builds=builds, jobs=jobs, own=own))
+        self.assertEqual(need, LEGS)
+
+    def test_a_job_that_failed_on_the_commits_own_build_brings_the_suites(self):
+        rels = _releases("v3.16.24.10")
+        own = [_build(20, SHA)]
+        builds = [_build(20, SHA), _build(19)]
+        jobs = {20: [_job("shape", "failure"), _job("test", None, "in_progress")], 19: [_job("test", "success")]}
+        need, why = self._need(_api(rels, self.DOCS, builds=builds, jobs=jobs, own=own))
+        self.assertEqual(need, BOTH)
+        self.assertIn("shape failed on this commit's own build (run 20): the suites too", why)
+        # its own green never shrinks the gate: a part still running
+        # beside a green Linux suite is read by the verdict over the
+        # need set, not here
+        jobs[20] = [_job("shape", "success"), _job("test", "success"), _job("test-windows (1)", None, "in_progress")]
+        jobs[19] = [_job("test", "failure")]
+        need, why = self._need(_api(rels, self.DOCS, builds=builds, jobs=jobs, own=own))
+        self.assertEqual(need, BOTH)
+        self.assertIn("before this commit is red (test on bbbbbbbb, run 19)", why)
+
+    def test_a_suite_record_that_cannot_be_read_refuses_into_the_suites(self):
+        rels = _releases("v3.16.24.10")
+        need, why = self._need(_api(rels, self.DOCS, builds=None))
+        self.assertEqual(need, BOTH)
+        self.assertIn("main's suite verdict cannot be read", why)
+        need, why = self._need(_api(rels, self.DOCS, own=[_build(20, SHA)], jobs={}))
+        self.assertEqual(need, BOTH)
+        self.assertIn("this commit's own build (run 20) cannot be read", why)
+
+    def test_the_promotion_check_keeps_the_rule_of_the_core_alone(self):
+        # by then the cut has decided, and the record it read has
+        # moved on: a red that landed since is not the tag's
+        rels = _releases("v3.16.24.10")
+        builds = [_build(19)]
+        jobs = {19: [_job("test", "failure")]}
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "runner", "ops"))
+            with open(os.path.join(d, "runner", "ops", "core.py"), "w", encoding="utf-8") as fh:
+                fh.write('CORE_FILES = (\n    "runner/runner.py",\n)\n')
+            api = _api(rels, self.DOCS, builds=builds, jobs=jobs)
+            self.assertEqual(rg.need(SHA, "3.16.24.11", api=api, relief=False, root=d)[0], BOTH)
+            need, why = rg.need(SHA, "3.16.24.11", api=api, relief=False, root=d, red_main=False)
+            self.assertEqual(need, LEGS)
+            self.assertEqual(why, "no runner code since v3.16.24.10: the legs alone")
+            # and core code needs no second reason
+            need, why = rg.need(SHA, "3.16.24.11", api=_api(rels, ["runner/runner.py"], builds=None), relief=False, root=d)
+            self.assertIn("runner code since v3.16.24.10 (runner/runner.py)", why)
+
+
+class SuiteVerdictTest(unittest.TestCase):
+    """Main's newest suite verdict, read from the builds' jobs: the
+    first failed job is a red, a green Linux suite with nothing
+    failed beside it is a green, and a build with neither is read
+    past."""
+
+    def test_a_failed_job_is_a_red_as_soon_as_it_has_failed(self):
+        # 13 Nov 2026, the build of 1ff0cd49: the shape check read
+        # red 36 seconds after the push, the suites still running
+        api = _api(builds=[_build(9, "9" * 40), _build(8, "8" * 40)],
+                   jobs={9: [_job("shape", "failure"), _job("test", None, "in_progress"),
+                             _job("test-windows (1)", None, "in_progress")],
+                         8: [_job("shape", "success"), _job("test", "success")]})
+        self.assertEqual(rg.suite_verdict(api), ("red", "9" * 40, 9, ["shape"], 0))
+        api = _api(builds=[_build(9, "9" * 40)],
+                   jobs={9: [_job("shape", "success"), _job("test", None, "in_progress"),
+                             _job("test-windows (2)", "failure")]})
+        self.assertEqual(rg.suite_verdict(api), ("red", "9" * 40, 9, ["test-windows (2)"], 0))
+
+    def test_the_verdict_is_the_jobs_not_the_runs(self):
+        # a run a later head cancelled after its suite had failed is
+        # a red; a pull request's build is another tree's; a docs
+        # push and a build cancelled before its suite say nothing
+        builds = [_build(6), _build(5, conclusion="success"), _build(4, conclusion="cancelled"),
+                  _build(3, event="pull_request", conclusion="failure"),
+                  _build(2, "2" * 40, conclusion="cancelled"), _build(1, conclusion="success")]
+        jobs = {6: [_job("test", None, "in_progress")],
+                5: [_job("docs", "success"), _job("test", "skipped")],
+                4: [_job("test", "cancelled"), _job("test-windows", "cancelled")],
+                2: [_job("test", "failure"), _job("test-windows (1)", "failure"), _job("test-windows (2)", "success")],
+                1: [_job("test", "success")]}
+        self.assertEqual(rg.suite_verdict(_api(builds=builds, jobs=jobs)),
+                         ("red", "2" * 40, 2, ["test", "test-windows (1)"], 3))
+
+    def test_green_is_a_linux_suite_that_read_green_with_nothing_failed(self):
+        builds = [_build(3), _build(2, "2" * 40), _build(1)]
+        jobs = {3: [_job("shape", "success"), _job("test", None, "in_progress")],
+                2: [_job("shape", "success"), _job("test", "success"), _job("test-windows (1)", None, "in_progress")],
+                1: [_job("test", "failure")]}
+        self.assertEqual(rg.suite_verdict(_api(builds=builds, jobs=jobs)), ("green", "2" * 40, 2, [], 1))
+        self.assertEqual(rg.suite_verdict(_api(builds=[])), ("none", "", None, [], 0))
+
+    def test_only_builds_before_the_one_named_are_read(self):
+        builds = [_build(9, "9" * 40), _build(7, "7" * 40), _build(5, "5" * 40)]
+        jobs = {9: [_job("test", "failure")], 7: [_job("test", None, "in_progress")], 5: [_job("test", "success")]}
+        api = _api(builds=builds, jobs=jobs)
+        self.assertEqual(rg.suite_verdict(api)[:3], ("red", "9" * 40, 9))
+        self.assertEqual(rg.suite_verdict(api, before=9), ("green", "5" * 40, 5, [], 1))
+        self.assertEqual(rg.suite_verdict(api, before=5), ("none", "", None, [], 0))
+
+    def test_a_record_the_api_will_not_give_is_unread(self):
+        self.assertEqual(rg.suite_verdict(_api(builds=None))[0], "unread")
+        self.assertEqual(rg.suite_verdict(lambda path: {"message": "Not Found"})[0], "unread")
+        # a build whose jobs cannot be read may be the red one
+        self.assertEqual(rg.suite_verdict(_api(builds=[_build(4)], jobs={}))[:3], ("unread", "b" * 40, 4))
+
+    def test_the_commits_own_build(self):
+        own = [_build(12), _build(11, conclusion="cancelled"), _build(13, event="pull_request"),
+               dict(_build(14), head_branch="v1.2.3.4")]
+        self.assertEqual(rg.own_build(SHA, _api(own=own)), 12)
+        self.assertIsNone(rg.own_build(SHA, _api()))
+        self.assertIsNone(rg.own_build(SHA, lambda path: None))
 
 
 class VerdictTest(unittest.TestCase):
