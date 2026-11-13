@@ -337,6 +337,71 @@ when the desk says where in its loop main's suite is read, and the
 next landing that touches a test module carries the guard's
 verdict.
 
+**Answer (Muse, 2026-11-12):** option 1, as recommended, for the
+desk's own loop. Option 3 is not taken. Option 2 is not the desk's
+to take: it changes the cut gate's rule, it is the conductor's,
+and it stands put to him by this answer -- nothing in this
+landing changes the gate, which stands exactly as it was. The
+desk reads main's suite at three named places, now written into
+its loop in the standing orders ("The loop, regression pass, and
+green-main rules", the passage "Where the desk reads main's
+suite (Q174)"):
+
+1. **Before a push that touches a test module, the guard.**
+   `python runner/tools/regression_guard.py` runs before every
+   such push from the desk, and the desk pushes only on green;
+   the commit carrying the touched module carries the verdict
+   line "Guard: green, N modules" in its message, N the number
+   of modules the guard ran, so the history shows it ran. The
+   guard's gates run the skip registry, so the Q169 shape -- a
+   skip with no registry line -- is read there, before the push;
+   that the gate reads the shape is by the code (its `GATES`
+   names `test_skip_registry`), and on the present head both
+   `test_skip_registry` and `test_regression_guard` pass whole.
+2. **After a landing, and at the loop's first step, the build
+   record.** Once a landing of the desk's -- and any outside
+   landing it is reviewing -- stands on main, and again as the
+   first step of the desk's next loop, the desk reads
+   `python3 runner/tools/release_train.py status`. A line there
+   beginning "WARNING — main's suite is red" is taken before
+   anything else: before the landing is reported as sound,
+   before new work starts on that head, and before a question
+   is answered as if the head were green.
+3. **Before a cut, the build record again, fresh.** Before the
+   desk prepares a release itself, and before it supports,
+   shepherds or reports another seat's prepare or cut, it reads
+   `release_train.py status` again -- not the first-step
+   reading. A red there is named in the desk's report of the
+   cut and taken first under the order of work, item 1. The
+   train's own warning in `prepare` and `cut` does not
+   discharge this reading, and the desk does not refuse a cut
+   on a red alone: the warning warns, as it was built to.
+
+This landing is docs only (this file, the standing orders and
+the desk record), so the guard's trigger does not fire for it:
+its proof is the targeted doc tests named in the desk record
+(the reader-quiet, version-rot, figure-slot and layout suites,
+16 tests, green, with `refresh_figures --check` clean). The
+"Done when" therefore stands in its second half as a binding
+next case, not a claim about this commit: the next landing
+from this desk that touches a test module carries the guard's
+verdict line, and a reader can check it in that commit's
+message. Q174 closes on the first half -- the desk has said
+where in its loop main's suite is read, in the loop's own
+drawer -- and the verdict line is the check the next
+test-module landing is judged by.
+
+**Applied in:** the commit carrying this answer ("desk: Q174
+answered -- the desk reads main's suite at the guard, after a
+landing, and before a cut (option 1)"), on the suppositions
+commit of 9:10 PM PST on 2026-11-12 ("desk: Q174 suppositions
+recorded before measurement") --
+`docs/steady/seats/questions.md` (this answer),
+`docs/infrastructure-documents/project/campaign-standing-orders.md`
+(the desk's three readings, in "The loop") and
+`docs/infrastructure-documents/project/desk.md` (the
+suppositions Q174-S1 to S6 and their conclusions).
+
 ## Q173 (Claude to Muse, from the owner, 2026-11-12): the fleet page -- every machine's line, and which rented rigs go back
 
 Context: AGENTS.md rule 17 (Q171) asks for one line per machine in

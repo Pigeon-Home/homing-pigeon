@@ -192,6 +192,43 @@ waiting is not testing.
 5. Mark it done with the commit or run that proves it, and return to
    step 1.
 
+**Where the desk reads main's suite (Q174, Muse, 2026-11-12).**
+The desk -- the Muse seat, which answers the questions file and
+lands its own work beside this campaign -- reads main's suite at
+three named places, and a red at any of them is taken before
+anything else, whoever's landing it came from:
+
+1. Before a push that touches a test module: `python
+   runner/tools/regression_guard.py` runs first (section P),
+   and the desk pushes only on green. The commit that carries
+   the touched module carries the guard's verdict line in its
+   message -- "Guard: green, N modules", N the number of
+   modules the guard ran -- so the history shows it ran. A red
+   guard is fixed or filed, never pushed around.
+2. After a landing, and at the loop's first step: `python3
+   runner/tools/release_train.py status` is read once the
+   desk's own landing -- and any outside landing it is
+   reviewing -- stands on main, and again as the first step
+   of the desk's next loop, beside step 1 above. A line there
+   that begins "WARNING — main's suite is red" is the first
+   open item: the desk takes the red (fixes it forward or
+   files it) before it reports a landing as sound, before it
+   starts new work on that head, and before it answers a
+   question as if the head were green.
+3. Before a cut: before the desk prepares a release itself,
+   and before it supports, shepherds or reports another
+   seat's prepare or cut, it reads `release_train.py status`
+   again -- a fresh reading, not the loop's first-step one --
+   and a red there is named in the desk's report of the cut
+   and taken first under the order of work, item 1. The
+   train's own warning in `prepare` and `cut` does not
+   discharge this reading: the desk reads the build record
+   itself. It warns, as the train warns, and does not refuse
+   a cut on a red alone: whether a cut must wait while main's
+   newest suite verdict is red is the conductor's decision
+   (Q174, option 2), put to him in the questions file and not
+   taken by the desk.
+
 A finding that needs production code is filed as a question for
 Claude, in the four-part format, with a failing-by-design test. The
 campaign does not wait for the fix: it moves to the next item and

@@ -28889,3 +28889,90 @@ Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
   carries stands in no diff of this lane;
   and the shrink guard is clean over each
   of the lane's commits.
+
+Conclusions (2026-11-12), against the suppositions
+Q174-S1 to Q174-S6 above, measured first-hand in a
+scratch clone. Remote main moved three times while
+the suppositions commit was landing (a Q173 answer,
+a Q175 filing and the conductor's own README edits);
+each time the commit was rebased onto the fresh head
+and the push verified by foreground `git ls-remote`
+with a content grep at the remote ref in the same
+call, the form the standing push rule names. Every
+supposition holds.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+- **Q174-S1 holds.** The answer landing's diff
+  names exactly three files -- the questions
+  file, the campaign standing orders and this
+  desk record -- and no test module, so the
+  guard's trigger does not fire for it, as
+  supposed. Its proof is the doc tests of
+  Q174-S2, and the guard's verdict line binds
+  the next desk landing that touches a test
+  module, as the answer states.
+- **Q174-S2 holds.** On the answered tree the
+  four suites pass whole together (16 tests,
+  OK): `test_reader_docs_quiet`,
+  `test_doc_version_rot`, `test_doc_figure_slots`
+  and `test_layout`; and `refresh_figures
+  --check` is clean ("figure slots and the
+  display line match the facts").
+- **Q174-S3 holds.** At the suppositions
+  commit's parent, the standing orders' loop
+  step 1 reads `release_train.py status` and
+  the order of work's first item names the
+  same command, section P has the pre-push
+  guard, and a grep for the verdict line's
+  form ("Guard: green") over the standing
+  orders and this record returns nothing:
+  the three commitments were absent, as
+  supposed. The answer adds them as one
+  passage in "The loop" -- the guard before
+  a push that touches a test module, with
+  its verdict line in the commit's message;
+  `status` after a landing and at the loop's
+  first step; `status` again, fresh, before
+  the desk prepares or supports a cut -- so
+  the commitment stands where a successor
+  reads the loop, checkable against the next
+  test-module commit's message and against
+  the desk's own reports.
+- **Q174-S4 holds.** `release_train.py` at
+  the head prints `red_main_warning()` in
+  `status` (or "main's newest suite verdict:
+  green"), and the same warning in `prepare`
+  and `cut`, read first-hand; and
+  `test_release_train` passes whole, run
+  with `test_skip_registry` (45 tests, OK).
+  The hosted suite verdict itself was not
+  re-run by this lane, as the supposition
+  stated in advance.
+- **Q174-S5 holds.** `regression_guard.py`'s
+  `GATES` names `test_skip_registry` beside
+  the version-rot and layout scans, read
+  first-hand. `test_skip_registry` passes in
+  the run above and `test_regression_guard`
+  passes whole (15 tests, OK) on the head
+  where the registry carries the tomllib
+  reason. The counterfactual about the Q169
+  landing rests on that code reading, exactly
+  as the supposition limited it.
+- **Q174-S6 holds.** No file is added by
+  either of the lane's commits, so no new
+  file stands in the repository root; the
+  string the repository never carries stands
+  in no diff of the lane (checked over both
+  commits); and the shrink guard, run before
+  the answer's push, is clean over the lane.
+
+The answer as a whole: option 1 is adopted
+for the desk's own loop and written into the
+standing orders where the loop stands; option
+2 is recorded as the conductor's, put to
+him, and not taken; option 3 is not taken.
+No production code, no gate rule and no test
+changed in this lane.
+
+Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
