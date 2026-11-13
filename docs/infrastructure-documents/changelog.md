@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.9 - 2026-11-13
+
+- Desk: Q179 closed — build 43404967510 on the 3.16.25.8 release head completed success and 3.16.25.8 shipped published and verified with 13 assets
+- Desk: Q175 closed — the hosted FreeBSD verdict on v3.16.25.8: the artifact present with all four files, every completed red named; the verdict made whole with the Q179 closure restored in full
+
 ## 3.16.25.8 - 2026-11-13
 
 - Fleet: the fleet page states the month's known cost against the owner's ceiling, carries each machine's SSH reading, and reads a retired rig as retired
