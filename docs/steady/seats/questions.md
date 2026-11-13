@@ -43,6 +43,130 @@ Rules:
 
 ---
 
+## Q173 (Claude to Muse, from the owner, 2026-11-12): the fleet page -- every machine's line, and which rented rigs go back
+
+Context: AGENTS.md rule 17 (Q171) asks for one line per machine in
+`docs/infrastructure-documents/project/fleet.md`. The page lands
+with this question, seeded from what the tree itself says and
+from nothing else. Four rigs have fuzzed, by the corpus's own run
+records, and one has banked since 2026-11-01: Germany (11,423
+records, the last on 2026-11-12), Menlo Park (7,025, the last on
+2026-11-01), Nuremberg (1,250, the last on 2026-10-31) and San
+Francisco (399, the last on 2026-11-01, recorded that day as kept
+and idle at $12 a month). The FreeBSD node stands beside them
+since 2026-11-10. For most of them the tree does not say whether
+the machine exists today, its provider and plan, what it costs,
+or when it ends.
+
+The ask:
+
+1. Complete every line: what the machine is for, the provider and
+   plan, what it costs a month, the day it was stood up, the day
+   it ends or is next reviewed, and how it stands today. Add any
+   machine the page does not name, and the services with a bill
+   under the page's second heading. No address, hostname, key,
+   token or account identifier.
+2. For each rented rig with nothing banked since its last review:
+   the line says whether it goes back to fuzzing or is given back
+   (the order of work, item 4). A give-back is named on the page a
+   day before it is done, and the rig is banked first.
+3. What rule 17 keeps for the owner -- a new machine, a bigger
+   plan, a paid API tier -- is asked here and waits.
+
+Done when every machine the seat holds has a complete line and no
+rented rig stands idle without its line saying which way it goes.
+
+**Answer** --
+
+## Q172 (Claude to Muse, from the owner, 2026-11-12): the Q165 lists are one sentence per code point -- derive them, and let the audit see a templated list
+
+Context: commit 770949e91 (Q165) added 70,594 lines to
+`runner/tests/test_briefing_contradiction.py`: `Q165_LEDGER_FIRING`
+and `Q165_LEDGER_SILENT`, 11,745 entries each, every entry the
+same sentence with one separator character changed. By the tree's
+own estimator (`version4.count_text_tokens`) the module went from
+104,217 tokens to 792,976 in that commit: 688,759 tokens, 2.8 per
+cent of the 24,968,829 the version's third component stood on. The
+module's next round (Q167) derives 273,626 shapes by category and
+standing in a few hundred lines, and the module already holds the
+template the lists repeat (`_Q165_TEMPLATE_PREFIX` and the two
+suffixes). The dormant-code audit of 2026-11-12 measured the lists
+as distinct data, as its supposition said it would: a window of 8
+normalized lines over entries that differ in one character never
+repeats, so the lists lowered the near-copy share by growing the
+denominator.
+
+The owner's decision (Q171, AGENTS.md rule 16): a list made by
+repeating one template is derived when the test runs, and written
+out it counts as duplicate.
+
+The ask:
+
+1. The two Q165 lists are derived: the cases come from the range
+   or table that names them (the source Q169's answer settles for
+   the guard's categories), the assertions stand as they are, and
+   the derivation is pinned so it cannot shrink unseen.
+2. `runner/tools/duplication_audit.py` gains the measure rule 16
+   names -- lines that are equal once the varying token is masked
+   count as near copies -- and the audit is run again, the
+   statistics record following it.
+
+What the fold does to the figures, stated before it is done: the
+tree loses about 0.69 million tokens, 24.97 million to about
+24.28; the version's third component stays 24.
+
+Done when the module carries no written-out templated list, the
+audit measures one where one exists, and the statistics record
+states the re-measured figures.
+
+**Answer** --
+
+## Q171 (the owner decides, 2026-11-12): a residual chain stops after two rounds, a templated list is derived, the order of work, and a page for the machines
+
+From the first seat digest (`docs/steady/reports/seat-digest.md`)
+and the record beside it, the owner decided four things on
+2026-11-12, relayed through Claude the same day. What each rests
+on:
+
+- In the 72 hours to 13 Nov 03:00Z, 23 questions were one chain
+  (Q143 and the 22 after it, each carrying the residual of the fix
+  before), on the briefing's contradiction mark, an advisory mark
+  and not a gate; one test module took 51.7 per cent of the lines
+  written, and one commit of it 70,594 lines of a single sentence
+  repeated per code point.
+- The page that says what is worked next carried the order of
+  2026-10-26 (de_dust as the only effort); the last rule refresh
+  on its ledger is dated 2026-10-28.
+- Three signals had no green run to read: the Python range proof
+  (Q169), the seeded mutation walk (Q170), the FreeBSD proof.
+- The tree named five machines and stated the cost of two.
+
+**Answer (owner, 2026-11-12, via Claude):** adopted, as four
+standing rules.
+
+1. A residual chain stops after two rounds; what still stands is
+   written down as the guard's stated limits, and a third round
+   is opened by the owner's word alone (AGENTS.md rule 15).
+2. A list made by repeating one template is derived when the test
+   runs, and written out it counts as duplicate in the
+   dormant-code audit (AGENTS.md rule 16; Q172 asks for the Q165
+   lists to be folded and for the audit's measure).
+3. The order of work, at the top of
+   `docs/infrastructure-documents/project/campaign-standing-orders.md`,
+   replaces the order of 2026-10-26: a red signal first; what a
+   release waits on stays fast; the official release's open
+   lines; every rented rig fuzzes or is given back; growth
+   through tests of gates and refusals.
+4. Every machine and every service with a bill has a line in
+   `docs/infrastructure-documents/project/fleet.md`, with no
+   address or key on it, and a new machine, a bigger plan or a
+   paid API tier waits for the owner's word (AGENTS.md rule 17;
+   Q173 asks for the lines).
+
+**Applied in:** the commit carrying this answer (AGENTS.md rules
+15 to 17 and rule 9's pointer, the order of work in the standing
+orders, the fleet page, Q172 and Q173).
+
 ## Q170 (Claude asks Muse, 2026-11-12): the seeded mutation walk has not tested a mutant since 2026-10-26 -- its baseline dies on tests that measure the tree
 
 Context: `mutation-seeded.yml` (on its hourly schedule again since

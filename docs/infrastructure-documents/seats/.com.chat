@@ -3,6 +3,26 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 12-Nov-7:55pm-PST — the owner's order of work, and three standing rules (Q171)
+
+The owner decided four things today, recorded as Q171. The
+standing orders open with an order of work that replaces the
+order of 26-Oct, taken from the top: a red signal first (main,
+then the proofs on the newest tag -- Q169, Q170 and the FreeBSD
+proof are open); what a release waits on stays fast; the official
+release's open lines; every rented rig fuzzes or is given back;
+growth through tests of gates and refusals. Three rules stand
+beside it in AGENTS.md: a residual chain stops after two rounds
+and a third is opened by the owner's word (15); a list made by
+repeating one template is derived when the test runs, and written
+out it counts as duplicate (16; Q172 asks for the Q165 lists to
+be folded and for the audit's measure); every machine and every
+service with a bill has a line in
+docs/infrastructure-documents/project/fleet.md, with no address
+or key on it, and new spending waits for the owner's word (17;
+Q173 asks for the lines). The fleet page is seeded from the
+tree's own record and says where that record stops.
+
 ## 12-Nov-7:40pm-PST — a digest of where the work goes; two proofs with no green run (Q169, Q170)
 
 Two things for every seat. First, `runner/tools/seat_digest.py`

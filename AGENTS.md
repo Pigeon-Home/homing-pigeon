@@ -277,7 +277,9 @@ Those values live on the runner host. They do not travel through the SI chat.
    owner, and stops only for a secret, a machine, an owner decision
    or money. During a campaign it speaks to the owner in chat only to
    ask him something he must decide, and it re-reads its rules at
-   least hourly (both in the standing orders).
+   least hourly (both in the standing orders). From 2026-11-12 the
+   standing orders open with the owner's order of work, which
+   ranks what is taken next (Q171).
 11. **The conductor (2026-10-26).** The owner of this repository is
    the conductor, by his own word, and that is his title in every
    document, ledger line, question and note written from now on:
@@ -307,6 +309,39 @@ Those values live on the runner host. They do not travel through the SI chat.
    Eight lines on answering the size of the ask, deciding only what
    already waits on the conductor, and not echoing another Claude
    seat.
+15. **A residual chain stops after two rounds (owner, 2026-11-12).**
+   When a fix's re-test finds shapes the fix left standing, they
+   are filed once, and what that second fix leaves is filed once
+   more. After the second residual round the chain ends: the
+   shapes still standing are written into the page that describes
+   the guard, as its stated limits, and a third round on the same
+   guard is opened by the owner's word alone, asked in the
+   questions file. The rule counts rounds; a question a seat
+   answers at its own desk stands as before. Its record is the
+   chain of 2026-11-10 to 12 on the briefing's contradiction mark:
+   23 questions, Q143 to Q167, and over half the lines written in
+   those three days (`docs/steady/reports/seat-digest.md`, Q171).
+16. **A templated list is derived, and written out it is duplicate
+   (owner, 2026-11-12).** A list made by repeating one template --
+   the same sentence, call or record once per code point, number
+   or name -- is one test with many cases: the cases are derived
+   when the test runs, from the range or table that names them,
+   and are not written line by line into the tree. Written out,
+   the lines count as near copies in the dormant-code audit
+   whatever a window of whole lines sees, because they are equal
+   once the varying token is masked. The size the version number
+   carries stays honest only while duplicate code is held to a
+   minimum (the fair warning at the top of this file); this is
+   how a list is held to it (Q171, Q172).
+17. **Machines and money (owner, 2026-11-12).** Every machine the
+   project rents or runs, and every service with a bill, has a
+   line in `docs/infrastructure-documents/project/fleet.md`: what
+   it is for, the provider and plan, what it costs a month, the
+   day it was stood up, and the day it ends or is next reviewed.
+   No address, hostname, key, token or account identifier goes on
+   that page. The seat that holds a machine keeps its line true.
+   A new machine, a bigger plan or a paid API tier waits for the
+   owner's word, asked in the questions file (Q171, Q173).
 
 
 ## Where things live

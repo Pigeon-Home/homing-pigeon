@@ -28,6 +28,48 @@ Questions to Claude or the owner go in `docs/steady/seats/questions.md`
 (AGENTS.md rules 7 and 8). This file says only what to work on next
 and when to stop.
 
+## The order of work, from 2026-11-12
+
+The owner's order of 2026-11-12, recorded here by Claude at his
+word (Q171). It replaces the order of 2026-10-26 at the head of
+"The queue" -- de_dust as the only effort -- which stands below
+as the record of what ran until today. Work is taken from the
+top: an item lower down is taken when nothing above it is open.
+
+1. **A red signal first.** Main's build, then the proofs on the
+   newest release tag: the nine proof workflows the tag build
+   starts, and the seeded mutation walk. Open as this order
+   lands: the Python range proof (Q169), the seeded mutation walk
+   (Q170), and the FreeBSD proof, which has no green run in its
+   last 39.
+2. **What a release waits on stays fast.** A release that carries
+   core code waits for the Linux suite and the two parts of the
+   Windows suite beside the eight artifact legs
+   (`runner/tools/cut_gate.py`). The Linux suite took 12.5
+   minutes on 2026-11-13 and is the floor of such a release;
+   keeping those jobs short is the second call on a seat's hour.
+3. **The official release's open lines.** What still stands open
+   in `release-readiness.md` and in the phase-2 plan of
+   `docs/steady/security/default-posture.md` is worked to done,
+   test first.
+4. **Every rented rig fuzzes or is given back.** `fleet.md`
+   (AGENTS.md rule 17) names the machines. A rented rig with
+   nothing banked since its last review goes back to fuzzing or
+   is given back -- named on that page a day before it is done,
+   and banked first. What a rig that fuzzes runs is the queue
+   below and `docs/steady/project/de_dust2.md`.
+5. **Growth through tests of gates and refusals.** New test
+   surface goes first where the runner refuses, confines,
+   verifies or gates -- the switch roster, the refusal classes,
+   the doors -- and to an advisory mark after that; AGENTS.md
+   rules 15 and 16 say when a chain stops and how a list is
+   written.
+
+What the order leaves as it was: the hourly regression pass stays
+suspended (the hosted suites judge every push, and gate a release
+that carries core code); "When to stop and ask the owner" stands as
+written; the queue below is the detail under items 4 and 5.
+
 ## Talking to the owner
 
 The owner is the conductor (AGENTS.md rule 11, 2026-10-26): the
@@ -130,7 +172,9 @@ waiting is not testing.
 2. Read `docs/steady/seats/questions.md`. Anything answered since the last
    pass that changes the campaign's own work (a fix to re-verify, a
    probe to retire, a decision that moves an assertion) comes first.
-3. Take the first open item from the queue below. Mark it taken by
+3. Take the first open item from the queue below (from
+   2026-11-12, as "The order of work" at the top of this file
+   ranks it). Mark it taken by
    writing one line under it ("taken <date>, <agent stamp>") in the
    same commit as the first test for it.
 4. Work it to done (the definition is under each queue). Commit as
@@ -221,6 +265,10 @@ Nothing else is a reason to stop. "The list is done" is not: the
 queue below does not run out (queue D refills it).
 
 ## The queue, in order
+
+**Lifted on 2026-11-12 by "The order of work" at the top of this
+file, which ranks what is taken; the paragraph below is kept as
+the record of the order that ran from 2026-10-26 until then.**
 
 **The conductor's order of 2026-10-26, which overrides the order of
 this queue until he lifts it: Project de_dust (section M) is
