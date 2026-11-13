@@ -1,42 +1,48 @@
-# The project's statistics: the 25-million-token measure
+# The project's statistics: the 24-million-token measure
 
 Dated 2026-11-13. Measured on main at commit
-acc57e557a53523ffa52b4a23ce102d4ca68bc25, the head this
+46f0e9d59b8c3d1fbb76ad99321d3ce183094353, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
 
-25 mil security tokens, 6,000 commits, 1,500,000 lines at 96.9% non-latent code
+24 mil security tokens, 6,000 commits, 1,400,000 lines at 96.16% non-latent code
 
 ## What stands behind each figure
 
-- Tokens: 20,435,240, counted over the whole tree by the project's
+- Tokens: 24,381,671, counted over the whole tree by the project's
   own estimator (runner/ops/version4.py) — the same measure the
-  version number's 3rd component carries, which is why the line
-  reads 20. Display form: 20 mil security tokens — security
+  version number's 3rd component carries: the version's odometer
+  keeps the component at 25, the whole millions the fresh measure
+  crossed before the Q172 fold took the count back under it.
+  Display form: 24 mil security tokens — security
   tokens is this record's name for the tree's tokens counted
   by the project's own estimator, so called because the tree's
   tokens all serve its security. The short form of the name
   is sec-tokens. Verify it on any checkout:
   `python3 runner/ops/version4.py measure` prints the count and
   its whole millions.
-- Lines: 1,341,311 lines in tracked files at the measured head. The display
-  figure, 1,300,000, is that count rounded.
-- Commits: the display figure, 5,000, is rounded from a
+- Lines: 1,431,926 lines in tracked files at the measured head. The display
+  figure, 1,400,000, is that count rounded.
+- Commits: the display figure, 6,000, is rounded from a
   full-history recount at the measured head, taken from a
-  complete clone, which counts 5,195. The project's local
+  complete clone, which counts 5,791. The project's local
   mirrors are shallow (810 commits deep) and cannot recount
   the whole history on their own — the recount above rests on
   the complete clone, and any future count should be taken
   the same way.
-- Non-latent: 96.9%, from the fresh dormant-code audit
-  ([dormant-code-audit-2026-11-12.md](dormant-code-audit-2026-11-12.md), 2026-11-12,
-  measured at bcd0b8ad255280c5fa6718887f7b99a27ce9e0e1):
-  duplicate and latent code held at 3.1% of the
-  tree in near copies and 0.02% in exact copies. The audit
-  supersedes the 2026-11-09 audit's figures (96.83%, from
-  3.17% near copies), whose record stands in
-  [dormant-code-audit.md](dormant-code-audit.md); the
+- Non-latent: 96.16%, from the fresh dormant-code audit
+  ([dormant-code-audit-2026-11-13.md](dormant-code-audit-2026-11-13.md), 2026-11-13,
+  measured before and after the Q172 fold): total latent
+  code held at 3.84% of the tree — 3.24% in near copies,
+  0.66% in templated lines (the lines of a written-out
+  list, equal once the one varying token is masked; the
+  measure is new with this audit, and the tree before the
+  fold read 8.36% total latent under it) and 0.02% in
+  exact copies. The audit supersedes the 2026-11-12
+  audit's figures (96.9%, from 3.1% near copies by the
+  window measure alone), whose record stands in
+  [dormant-code-audit-2026-11-12.md](dormant-code-audit-2026-11-12.md); the
   family-by-family analysis stands
   in [duplication-audit.md](duplication-audit.md).
 
@@ -54,17 +60,18 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-13",
-  "commit": "acc57e557a53523ffa52b4a23ce102d4ca68bc25",
+  "commit": "46f0e9d59b8c3d1fbb76ad99321d3ce183094353",
   "counter": "runner/ops/version4.py",
-  "tokens": 25074489,
-  "lines_tracked": 1502790,
-  "commits": 5794,
+  "tokens": 24381671,
+  "lines_tracked": 1431926,
+  "commits": 5792,
   "display_commits": 6000,
-  "display_lines": 1500000,
-  "non_latent_percent": 96.9,
-  "latent_near_percent": 3.1,
+  "display_lines": 1400000,
+  "non_latent_percent": 96.16,
+  "latent_near_percent": 3.24,
+  "latent_templated_percent": 0.66,
   "latent_exact_percent": 0.02,
-  "audit_date": "2026-11-12",
+  "audit_date": "2026-11-13",
   "core_files": 136,
   "core_lines": 64930,
   "core_lines_nonblank": 58874,
