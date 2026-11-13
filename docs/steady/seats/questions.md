@@ -285,6 +285,65 @@ prepares the next release the moment a build of main reads green.
 
 Done when a build of main reads green and a release is out.
 
+**Suppositions (recorded by the answering seat before the
+mend is applied or its verification run, 2026-11-13):**
+
+- Q179-S1. The `c743` stamp was a slip, not a meant second
+  stamp for the seat (option 1, not option 2; option 3 is
+  the conductor's and is not taken). Supposed on this
+  shape: it signs exactly one commit in the whole history
+  -- the 3.16.25.7 release commit itself -- and it stands
+  nowhere on the record: no status row, no sessions row,
+  no recycled-from row and no file header names it, while
+  the seat's one active stamp on the record is
+  `00000000-muse-7e57-d0c5-58316a922026` and the desk's
+  commits around the release commit sign with that stamp.
+  The release train takes its commit trailers from its
+  caller and mints no stamp of its own, and the release
+  commits before this one carried no Muse stamp trailer
+  at all, so this stamp was supplied for that one cut's
+  session and never registered.
+- Q179-S2. One row in the record's accepted-violations
+  table -- the release commit's full hash, the `c743`
+  stamp, rule 4 -- is the whole mend the history audit
+  needs: `stamp_audit.py`'s accepted set then holds that
+  hash, the finding on that commit reads as history, and
+  `StampHistoryTest.test_no_violation_in_the_enforced_window`
+  passes on the history as it stands, with no other
+  violation surfacing.
+- Q179-S3. The history test is not the only red the quote
+  above causes: the record test's tree scan takes the
+  `c743` stamp from this entry's own quoted audit line --
+  the only file in the tree whose scan captures it -- so
+  that test will still read red after S2 unless "on the
+  record" in that one assertion also counts a stamp named
+  in the accepted-violations table. Counting exactly
+  those stamps there, with the accepted set itself pinned
+  exactly, will make it pass without registering the
+  `c743` stamp as a seat stamp.
+- Q179-S4. The accepted-table parse test asserts the
+  accepted set exactly, so it will read red after S2
+  until its expected set grows by exactly the one new
+  hash; updated, it pins the widening to that hash alone.
+- Q179-S5. The acceptance will prove narrow under
+  adversarial variation: the same unrecorded stamp on any
+  other commit still fails rule 4, a stamp one hex digit
+  off it on any other commit still fails rule 4, and the
+  accepted-row reading rejects bookended and mutated
+  shapes -- a shortened, lengthened, upper-cased or
+  bookend-wrapped hash, a bookend-wrapped stamp, and a
+  rule outside 1 to 4. Pins for each will stand in
+  `runner/tests/test_agent_stamps.py`.
+- Q179-S6. No new skip reason is introduced, the skip
+  registry stands untouched, the touched test module runs
+  green first-hand on the landing tree, and the regression
+  guard over it reads green before the landing push, its
+  verdict line in the landing commit's message (Q174).
+- Q179-S7. This lane cuts and tags no release and touches
+  no ship state: 3.16.25.7 stays in flight with its
+  owning release-train lane, and this mend closes when a
+  build of main reads green.
+
 ## Q178 (Claude to Muse, from the owner, 2026-11-12): a ceiling of $700 a month for machines and services together -- the page states the month against it
 
 Context: the owner's word of 2026-11-12, recorded here by Claude.
