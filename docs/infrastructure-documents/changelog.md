@@ -4,7 +4,7 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.16.25.1 - 2026-11-12
+## 3.16.25.1 - 2026-11-13
 
 - Fix: the skip registry carries the reason for the TOML comparison's skip (the comparison with tomllib runs on 3.11 and later); the suites on main read green again
 - Tools: the release train names a red suite on main where a release is prepared -- `status`, `prepare`, `cut` and the release commit's message carry main's newest suite verdict when it is red; it warns and never refuses
@@ -17,16 +17,16 @@ facts a reader may need to cite. Git history carries the rest.
 - Fix: the as-assembled zip figure re-recorded at its live measure; the train re-records it only under the reference zlib; the desk peer review of the outside landings after 3.16.24.18 closes with one figure fixed forward
 - Tools: the seat digest counts a question in the window its heading landed in
 
-## 3.16.24.21 - 2026-11-12
+## 3.16.24.21 - 2026-11-13
 
 - Project: the standing orders open with the order of work of 2026-11-12 -- a red signal first, what a release waits on stays fast, the official release's open lines, every rented rig fuzzes or is given back, growth through tests of gates and refusals -- and AGENTS.md gains rules 15 to 17: a residual chain stops after two rounds, a templated list is derived and written out counts as duplicate, and every machine and service with a bill has a line in docs/infrastructure-documents/project/fleet.md, new spending waiting for the owner's word (Q171 to Q173)
 - Re-cut of 3.16.24.20, which never published: main moved past its commit before the cut, and the workflow token tags the head only
 
-## 3.16.24.20 - 2026-11-12
+## 3.16.24.20 - 2026-11-13
 
 - Project: the standing orders open with the order of work of 2026-11-12 -- a red signal first, what a release waits on stays fast, the official release's open lines, every rented rig fuzzes or is given back, growth through tests of gates and refusals -- and AGENTS.md gains rules 15 to 17: a residual chain stops after two rounds, a templated list is derived and written out counts as duplicate, and every machine and service with a bill has a line in docs/infrastructure-documents/project/fleet.md, new spending waiting for the owner's word (Q171 to Q173)
 
-## 3.16.24.19 - 2026-11-12
+## 3.16.24.19 - 2026-11-13
 
 - Tools: runner/tools/seat_digest.py reads a window of the history per author -- the commits, the lines and the files they went to, the questions filed and to whom, the longest chain of residual questions, and how long a question waited for the other seat; the first two readings stand in docs/steady/reports/seat-digest.md
 - Tests: the parallel runner's full-log test reads both forms of unittest's -v line, so it holds on Python 3.9; Q169 (the Python range proof has no green run) and Q170 (the seeded mutation walk's baseline dies in the mutant copy) are filed
@@ -36,15 +36,15 @@ facts a reader may need to cite. Git history carries the rest.
 - 3.16.24.17 published and verified on the record; stamp MATCH x3
 - desk peer review of the outside landings after 3.16.24.15 closes with every supposition holding, no fix owed
 
-## 3.16.24.17 - 2026-11-12
+## 3.16.24.17 - 2026-11-13
 
 - CI: the tag build's lookup of the gate build for a pushed tag takes main's newest uncancelled build on the commit rather than a completed one, so a release cut on green legs while the suites still run promotes instead of building everything again (3.16.24.16 built everything: 13 minutes to the release)
 
-## 3.16.24.16 - 2026-11-12
+## 3.16.24.16 - 2026-11-13
 
 - Tools: cut --sha --watch cuts the commit and then watches its tag build; the CI record carries the first cycle through the token path and the first core-code release the suite gate held and passed
 
-## 3.16.24.15 - 2026-11-12
+## 3.16.24.15 - 2026-11-13
 
 - CI: with the owner's RELEASE_TOKEN the cut pushes the tag through git and the push starts the tag build and the image builds by their own triggers (Q30 answered); the tag build finds the gate build for a pushed tag itself and promotes its artifacts; the nine proof workflows fire from the tag build's proofs job alone, only when the tag's tree changed under runner/
 

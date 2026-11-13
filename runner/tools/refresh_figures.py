@@ -218,7 +218,9 @@ def measure_facts(root, previous):
     core_lines, core_nonblank = core.measure_core_lines(root)
     assembled = list(core.CORE_FILES) + list(ASSEMBLED_EXTRA)
     facts = {
-        "as_of": datetime.date.today().isoformat(),
+        # the UTC day, the hosted record's clock: a seat's local
+        # day ran the figure's date backwards between two cuts
+        "as_of": datetime.datetime.now(datetime.timezone.utc).date().isoformat(),
         "commit": _git(root, "rev-parse", "HEAD"),
         "counter": previous.get("counter", "runner/ops/version4.py"),
         "tokens": tokens,

@@ -431,6 +431,49 @@ class RedMainWarningTest(unittest.TestCase):
         self.assertIn('message += "\\n" + red + "\\n"', inspect.getsource(rt.cmd_prepare))
 
 
+class ReleaseDayTest(unittest.TestCase):
+    """A release is dated by the UTC day, whichever machine cuts:
+    the changelog's dates ran 12, 13, 12 down one evening while two
+    seats dated their cuts by two local clocks."""
+
+    def test_the_day_is_the_utc_day_whatever_the_local_clock(self):
+        import datetime
+        west = datetime.timezone(datetime.timedelta(hours=-8))
+        east = datetime.timezone(datetime.timedelta(hours=14))
+        # 12 Nov, 8:57 in the evening eight hours behind UTC: the 13th
+        self.assertEqual(rt.release_day(datetime.datetime(2026, 11, 12, 20, 57, tzinfo=west)), "2026-11-13")
+        # 14 Nov, early morning fourteen hours ahead of UTC: still the 13th
+        self.assertEqual(rt.release_day(datetime.datetime(2026, 11, 14, 5, 0, tzinfo=east)), "2026-11-13")
+        self.assertEqual(rt.release_day(),
+                         datetime.datetime.now(datetime.timezone.utc).date().isoformat())
+
+    def test_no_tool_that_dates_a_release_reads_the_local_day(self):
+        for rel in ("runner/tools/release_train.py", "runner/tools/refresh_figures.py"):
+            with open(os.path.join(REPO, rel), encoding="utf-8") as fh:
+                self.assertNotIn("date.today()", fh.read(), rel)
+
+
+class HeadBuildLineTest(unittest.TestCase):
+    """The loop's first step reads `status`; a head of docs alone
+    built no legs, and the line must not call that a red build."""
+
+    def test_skipped_legs_are_not_a_red_build(self):
+        line = rt.head_build_line("46d03b067c1c", "red",
+                                  "run 43369036184: build-linux=completed/skipped, build-macos=completed/skipped")
+        self.assertEqual(line, "build on HEAD 46d03b06: no legs on this head (run 43369036184 skipped them: "
+                               "a push of docs alone; a release commit builds its own)")
+        self.assertNotIn("red", line)
+
+    def test_a_leg_that_failed_is_red_and_the_rest_read_as_before(self):
+        self.assertEqual(
+            rt.head_build_line("0123456789", "red", "run 7: build-linux=completed/failure, build-macos=completed/skipped"),
+            "build on HEAD 01234567: red (run 7: build-linux=completed/failure, build-macos=completed/skipped)")
+        self.assertEqual(rt.head_build_line("0123456789", "green", "run 7: 8 gate jobs green"),
+                         "build on HEAD 01234567: green (run 7: 8 gate jobs green)")
+        self.assertEqual(rt.head_build_line("0123456789", "none", "no build run on this commit (cancelled runs are not verdicts)"),
+                         "build on HEAD 01234567: none (no build run on this commit (cancelled runs are not verdicts))")
+
+
 class ReferenceDeflateTest(unittest.TestCase):
     """The as-assembled zip figure is re-recorded only under the
     reference zlib: zlib-ng packs the same tree to another size

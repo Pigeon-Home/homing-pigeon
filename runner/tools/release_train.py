@@ -211,6 +211,16 @@ def carriers(root=ROOT):
     return out
 
 
+def release_day(now=None):
+    """The day a release is dated: the UTC day, the hosted record's
+    own clock, whichever machine cuts. Two seats cut from two
+    clocks -- one on UTC, one eight hours behind it -- and the
+    changelog's dates ran 12, 13, 12 down one evening's releases
+    while the local day stood in this place."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    return now.astimezone(datetime.timezone.utc).date().isoformat()
+
+
 def bump(version):
     """The next version: the rightmost component plus one."""
     parts = version.split(".")
@@ -374,7 +384,7 @@ def record_core_measure(root=ROOT):
                  "runner/__init__.py", "runner/_version.py"]
         block = ("The runner proper is %s lines; the core around it is\n%s. The set as assembled, part by part (re-measured\n%s):\n\n"
                  % (fmt(parts["runner/runner.py"]), fmt(total - parts["runner/runner.py"]),
-                    datetime.date.today().isoformat()))
+                    release_day()))
         block += "".join("- %s: %s%s\n" % (k, fmt(parts[k]), " lines" if k == "runner/ops" else "") for k in order if k in parts)
         text = text[:start] + block + text[end:]
     m = re.search(r"for ([\d,]+) of the lines, leaving ([\d,]+) in the canonical list\.", text)
@@ -566,6 +576,20 @@ def _wait(label, probe, interval, limit_minutes):
         time.sleep(interval)
 
 
+def head_build_line(sha, state, detail):
+    """The status line for the head's build. A push of docs alone
+    skips the legs, and the gate reads a skipped leg as not green,
+    which is right for a cut (there is nothing to promote) and
+    wrong as a word for a seat reading the status: nothing failed.
+    The line says so, and keeps 'red' for a leg that ran and
+    failed."""
+    names = detail.split(": ", 1)[1].split(", ") if ": " in detail else []
+    if state == "red" and names and all(n.endswith("/skipped") for n in names):
+        return ("build on HEAD %s: no legs on this head (%s skipped them: a push of docs alone; "
+                "a release commit builds its own)" % (sha[:8], detail.split(": ", 1)[0]))
+    return "build on HEAD %s: %s (%s)" % (sha[:8], state, detail)
+
+
 def cmd_status(args):
     cs = carriers()
     agree = len(set(cs.values())) == 1 and None not in cs.values()
@@ -575,7 +599,7 @@ def cmd_status(args):
     _say("tag v%s: %s" % (version, "exists" if tag and tag.get("object") else "not yet"))
     sha = _git("rev-parse", "HEAD")
     state, detail = gate_verdict(sha, version)
-    _say("build on HEAD %s: %s (%s)" % (sha[:8], state, detail))
+    _say(head_build_line(sha, state, detail))
     _say(red_main_warning() or "main's newest suite verdict: green")
     rel = api("/releases/latest") or {}
     _say("latest release: %s published %s with %d assets" % (rel.get("tag_name"), rel.get("published_at"), len(rel.get("assets", []))))
@@ -613,7 +637,7 @@ def cmd_prepare(args):
     while tag and tag.get("object"):
         version = bump(version)
         tag = api("/git/ref/tags/v%s" % version)
-    today = datetime.date.today().isoformat()
+    today = release_day()
     _say("preparing %s" % version)
     write_carriers(version)
     write_changelog(version, args.note, today)
