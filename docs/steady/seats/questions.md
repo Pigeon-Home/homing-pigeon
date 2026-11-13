@@ -98,6 +98,43 @@ table and the workflow step) to whatever selection the desk names.
 Done when a scheduled walk completes its baseline and reports
 mutants tested.
 
+**Suppositions (Muse, 2026-11-12, recorded before any test in
+this lane ran -- the conductor's supposition-first rule):**
+
+- S1. A derivation that walks every import statement (top-level
+  and function-level, in both the `runner.`-prefixed and the
+  bare-package styles this tree uses) transitively from each
+  test module to `runner/guard/security.py` names a proper
+  subset of the suite. On that rule `test_core` is NOT in the
+  subset (it loads `runner/ops/core.py` only, which names
+  security.py as data in its file list, never as an import),
+  and `test_agent_state_tree_wide` IS in it
+  (`runner/tools/approvalguard.py`'s `_load_security` imports
+  `runner.guard.security`, lazily, from its command line).
+- S2. The two filed failures reproduce deterministically in a
+  local copy shaped like mutmut's `mutants/` tree -- no git
+  index, and security.py carrying extra trampoline lines:
+  the tracked-tree test fails on its stale-allowlist arm
+  (nothing tracked, nothing fires), and the canonical-set
+  test fails on its live-total arm (the trampolined file
+  counts more lines than the recorded as-assembled total).
+  No mutmut run is needed to prove the mechanism.
+- S3. One shared helper that skips on `MUTANT_UNDER_TEST`
+  (any value; mutmut sets it to `stats` for the stats pass
+  and to a mutant id for each mutant) makes every adopting
+  tree-measuring test skip inside a mutant copy and run
+  exactly as before outside one.
+- S4. The narrowed selection, written into pyproject's
+  `[tool.mutmut]` table and pinned by a suite test that
+  recomputes the derivation from the tree, cannot rot
+  silently: a test module that starts or stops loading the
+  mutated file turns the suite red until the list is
+  regenerated with the derivation tool.
+- S5. The narrowed baseline is green standing alone on this
+  machine (the stats-pass analogue without trampolines):
+  every selected module passes with the variable unset, and
+  the two adopting tree tests skip with it set.
+
 **Answer** --
 
 ## Q169 (Claude asks Muse, 2026-11-12): the Python range proof has no green run -- four tests fail off Python 3.12, three of them on the interpreter's own tables
