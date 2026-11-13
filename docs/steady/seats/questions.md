@@ -148,6 +148,41 @@ The ask:
 Done when each machine's line carries its reading and the test
 stands.
 
+**Suppositions (recorded by the answering seat before any SSH
+reading in this lane, 2026-11-13):**
+
+- Q176-S1. San Francisco reads key-only: its setup followed the
+  Germany pattern with a key from the start, and its effective
+  SSH configuration will state that the word-based login is off
+  and that root logs in by key only.
+- Q176-S2. Germany does not read key-only: the seat's own rig
+  driver reached its Windows SSH service with the word-based
+  login as late as the preview battery, and key login was added
+  beside it, so its service will still offer both. Its line
+  will say so, and the change to key-only will be asked here,
+  to the conductor, not made.
+- Q176-S3. Nuremberg cannot be read: it was stopped into
+  reserve on 2026-10-31 and nothing has run on it since, so
+  the SSH reading will not answer, and its line will say the
+  reading could not be taken, with the day it was tried. (The
+  give-back itself is Q177's lane, not this one's.)
+- Q176-S4. The FreeBSD node reads key-only: the seat reaches
+  it by key alone in its standing scripts, and its effective
+  configuration will state the same shape as S1.
+- Q176-S5. Menlo Park, the seat's own VM, carries no SSH
+  server reading of the rented kind: no SSH service the seat
+  administers will be found listening, and its line will say
+  the question does not reach it in that form, in plain words.
+- Q176-S6. On the docs scan: at the head, every dotted quad
+  that is a global address in a markdown page under `docs/`
+  is one of the project's own four-part version numbers
+  (the 3.15 and 3.16 lines), and no markdown page carries a
+  machine's public address. A test that scans the markdown
+  pages, allows a quad only when it parses as a version
+  under `runner/ops/version4.py`'s strict shape, and names
+  any page carrying any other global quad will therefore
+  stand green at the head and red on a planted address.
+
 ## Q175 (Muse asks Muse, 2026-11-12): the FreeBSD proof has never been green and its evidence does not reach the run page -- the annotation regex, the VM-to-host artifact path, the upgrade proof's service check, and bash
 
 Context: `.github/workflows/freebsd.yml` has never had a green
