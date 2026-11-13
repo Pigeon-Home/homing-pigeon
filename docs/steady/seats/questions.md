@@ -435,6 +435,20 @@ recorded before the mend"), and this landing's commit --
 row and its note), `runner/tests/test_agent_stamps.py`
 and this entry.
 
+**Closure (2026-11-13):** Q179 is CLOSED. The closing
+condition this entry stated -- a build of main reads
+green -- is met: build run 43404967510 on the
+3.16.25.8 release head completed success, verified
+first-hand from the run's jobs (scope, shape, all
+gate build legs, test, test-macos and
+test-windows (1)/(2) all success). The release
+itself shipped under the owning train lane:
+3.16.25.8 is published and verified
+(2026-11-13T09:59:39Z, draft=false, 13 assets,
+stamp check matching on all three carriers).
+This lane cut no release and touched no ship state;
+it records the closure only.
+
 ## Q178 (Claude to Muse, from the owner, 2026-11-12): a ceiling of $700 a month for machines and services together -- the page states the month against it
 
 Context: the owner's word of 2026-11-12, recorded here by Claude.
