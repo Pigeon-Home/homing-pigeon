@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.17 - 2026-11-13
+
+- Q136 closes -- the fifth re-pack re-test verdict: green on the 3.16.25.12 to 3.16.25.15 heads, the re-test closes
+- Desk: Q136 fifth re-pack re-test suppositions, recorded before the verdict read
+
 ## 3.16.25.16 - 2026-11-13
 
 - Q170 closes -- the hosted mutation verdict on the 3.16.25.15 head: 857 mutants tested, 831 killed, the floor passed
