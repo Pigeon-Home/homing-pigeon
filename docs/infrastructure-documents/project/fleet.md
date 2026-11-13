@@ -50,6 +50,16 @@ statement; the standing duty stands, and a month whose total
 would pass the ceiling is asked in the questions file the
 day a seat sees it.
 
+One line in that sum is a retired line. Nuremberg, counted
+above at about $8.34, was given back at the conductor's
+word and verified absent from the provider account on
+2026-11-13; its line keeps the record of what it cost, so
+the sum above stays the sum of the lines on the page,
+retired line included, and is restated when a line's
+figure itself changes. The month the fleet still stands
+in rents for about $44.63 -- the stated sum less the
+retired line's about $8.34.
+
 ## The lines
 
 Seeded on 2026-11-12 from what the tree itself says, and
@@ -67,7 +77,7 @@ each record carries, recounted for this completion.
 | Germany | The fleet's Windows seat: the Windows half of the suite live, and 8 cores of fuzzing | Hetzner Cloud, CX43 (8 shared vCPU, 16 GB), Falkenstein | $20.63 (EUR 18.49 at the rate of 2026-10-31), billed hourly to the monthly cap | 2026-10-31 | no fixed end on the record (billed hourly to the monthly cap); the next review day is not on the record -- the conductor to supply it | 11,423; 2026-11-01; 2026-11-12 | Active, and not idle: banking, with fuzz records to 2026-11-12, carrying the Windows seat SSH: not by key only -- its SSH service offers the word-based login beside the key; read 2026-11-13. A change to key-only waits for the conductor's word, asked under Q176 in the questions file. |
 | Menlo Park | The Linux VM that hosts the Muse seat: 4 cores for the suite's shard lanes, the rotation lane and fuzz lanes | not on the record -- the workspace record calls it the conductor's own VM; its provider and plan stand nowhere the seat can read | no rental bill on the record -- the conductor's own VM, per the workspace record; any bill it carries is the conductor's to supply. The seat cannot read a month's usage for it: it holds no provider key or billing page for this machine (stated 2026-11-13, Q178), so the figure stays the conductor's to supply | not on the record | not on the record -- the conductor to supply a review day if the machine carries one | 7,025; 2026-10-30; 2026-11-01 | The seat itself, and not idle: it hosts this seat's suite shard lanes, rotation lane and fuzz lanes (the inventory of 2026-11-03), and its lanes stood alive at the watchdog read of 2026-11-10. Its corpus records end 2026-11-01 because the seat's work moved to the suite lanes, not because the machine stopped. Not rented on the record, so the fuzz-or-give-back rule does not reach it SSH: no SSH server stands on this machine -- none is installed and nothing listens for it; read on the machine itself, 2026-11-13. |
 | San Francisco | One core: a second, small machine reaching the suite's verdicts independently | DigitalOcean, s-1vcpu-2gb (1 vCPU, 2 GB, 50 GB), San Francisco 2 | $12 | 2026-10-28 | not on the record -- the conductor to supply the next review day | 399; 2026-10-30; 2026-11-01 | **Back to fuzzing.** Its fuzzing was stopped and the box kept idle on 2026-11-01; it carried a suite-shard lane of its own on 2026-11-03, and by 2026-11-10 it runs the fleet's fuzz lane and the preview loop's Linux leg. It stands idle no longer and is not a give-back candidate SSH: not read on 2026-11-13 -- repeated tries reached no SSH banner from the machine, so its posture is not guessed here; the reading is still owed and will be taken when it answers. |
-| Nuremberg | The second rig of the campaign: one core of corpus growing, and the hosted runner the hosted queue was first proven on | Hetzner Cloud, CPX02 (1 vCPU, AMD EPYC-Genoa, 1 GB), Nuremberg | about $8.34 (EUR 7.49 at the rate of 2026-10-28) | 2026-10-27 | reviewed 2026-10-31, when it was stopped into reserve (see the standing column) | 1,250; 2026-10-30; 2026-10-31 | **Recommendation: give back.** Stopped at the conductor's word on 2026-10-31 and put in reserve: every project service on it stopped and disabled, the box doing nothing since, absent from the three-machine inventory of 2026-11-03, and nothing banked since 2026-10-31. Named here on 2026-11-12, a day before a give-back could be done, and banked first: its banks stand in the tree to 2026-10-31, and the seat that holds it verifies nothing unbanked remains on the box before anything is deleted. The give-back itself is the conductor's decision and is not executed by this page SSH: not read on 2026-11-13 -- the machine, stopped into reserve since 2026-10-31, answered no SSH reading, so its posture is not guessed here. (Its give-back is Q177's lane, not this reading's.) |
+| Nuremberg | The second rig of the campaign: one core of corpus growing, and the hosted runner the hosted queue was first proven on | Hetzner Cloud, CPX02 (1 vCPU, AMD EPYC-Genoa, 1 GB), Nuremberg | about $8.34 (EUR 7.49 at the rate of 2026-10-28) | 2026-10-27 | retired -- given back at the conductor's word; verified absent from the provider account on 2026-11-13 (see the standing column) | 1,250; 2026-10-30; 2026-10-31 | **RETIRED -- given back at the conductor's word, and gone.** Stopped into reserve on 2026-10-31: every project service on it stopped and disabled, nothing banked since, its banks standing in the tree to 2026-10-31. The give back the conductor ordered on 2026-11-12 (Q177) stands executed: a first-hand read of the provider account on 2026-11-13 found the account holding only Germany and the FreeBSD node, and no machine answering to Nuremberg's line standing in it at all. The machine is retired, not down: its SSH silence since 2026-11-09 is a retired machine being gone, it is expected, and it is NOT an outage -- no seat is to report this machine as unreachable or file its silence as a problem again. SSH: not read on 2026-11-13, and no reading is owed: the machine no longer stands to be read, and its posture is not guessed here. |
 | The FreeBSD node | The FreeBSD proof on a kernel of its own: the platform's confinement backend proven where no VM step inside a Linux CI runner could prove it | Hetzner Cloud, CX33, on the conductor's existing Hetzner account (the workspace record of the Phase 2 report, 2026-11-10) | about $12 all-in: $9.99 gross for the node plus the charge for its primary address, and about $1 for its snapshot (the workspace record, 2026-11-10), inside the $20-a-month cap the conductor set | 2026-11-10 | next review about 2026-12-10: the conductor's stated term is about a month (2026-11-09), a plan on the workspace record, not a provider contract date | none (not a fuzzing rig) | Proven, and not idle: the runner is installed, a first proof job passed end to end through the installed config, and its confinement backend landed and stands field-proven (the desk's record). Its mailbox pairing is still owed. Keep it to its review day; at that review it is given back unless the conductor extends it SSH: root by key only -- the word-based method is not offered; read 2026-11-13. |
 
 The SSH readings on the lines (Q176, read 2026-11-13) were
@@ -79,12 +89,16 @@ service offers the word-based login beside the key, and its
 configuration carries no uncommented line turning that
 login off. The FreeBSD node's effective configuration
 states the word-based login off and root by key only, and
-its service does not offer that method. San Francisco and
-Nuremberg did not answer -- no banner on repeated tries for
-the one, a machine stopped into reserve for the other --
-so their lines record the reading as not taken rather
-than a posture, and San Francisco's reading is still owed
-when it answers.
+its service does not offer that method. San Francisco did
+not answer -- no banner on repeated tries -- so its line
+records the reading as not taken rather than a posture,
+and its reading is still owed when it answers. Nuremberg
+did not answer either, and owes no reading: the machine
+is retired and no longer stands in the provider account
+(verified first-hand on 2026-11-13), so its line records
+the reading as not taken because no machine stands to be
+read -- its silence is a retired machine being gone, not
+an outage and not a posture unread.
 
 One machine the page does not carry as a line, because it does
 not stand: a first machine of the Germany rig's name and shape
