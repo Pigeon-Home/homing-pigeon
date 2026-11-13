@@ -519,6 +519,47 @@ measurement in the follow-on lane):**
   run green locally on Python 3.12 before the push, with
   the regression guard run over the touched test module.
 
+**Follow-on conclusions (2026-11-13):** F1, F2 and F3 hold
+as supposed, to the limit of what a local machine can
+prove:
+
+- F1 holds in construction and in shell simulation. The
+  workflow now writes the verdict file inside the VM,
+  exits 0 there, uploads all four files, and restores the
+  colour in a host step after the upload. Driven locally
+  with the workflow's own lines, a recorded `124 0 0`
+  fails the host step, `0 0 0` passes it, and a missing
+  verdict file fails by the step's own first check. The
+  one link no local run can exercise is the pinned
+  action's copy-back itself; the hosted run on a tag
+  carrying this landing is that proof, and it is owed.
+- F2 holds on the synthetic shape: on a wall-killed log
+  (verbose lines, no summary), the old naming named 0 red
+  tests and the widened naming named both completed red
+  tests (one FAIL, one ERROR), while the test left in
+  flight at the kill stayed unnamed, as supposed.
+- F3 holds: no skip reason was introduced, the registry
+  stands untouched, `test_build_config` runs green whole
+  (65 tests, including the two new FreeBSD verdict pins
+  and the widened naming pin), `test_workflow_paths` and
+  `test_skip_registry` run green (13 tests), and the
+  regression guard over `test_build_config` reads green
+  (native, repeats, shuffles, leaks and gates; the one
+  simulated-Windows red is the guard's known artifact,
+  present on the base tree as well).
+
+**Follow-on applied in:** the follow-on landing's commit
+("Q175 follow-on: the FreeBSD verdict travels as a file --
+the VM records it and exits 0, the host restores the
+colour after the upload, and wall-killed runs name their
+completed reds") -- `.github/workflows/freebsd.yml`,
+`runner/tests/test_build_config.py` and this entry.
+Q175 stays open until a hosted FreeBSD run on a tag
+carrying both landings completes with its artifact
+present (the three reports and the verdict file) and
+every red test named, allowing only the one test in
+flight at a wall kill, which no outcome line can name.
+
 ## Q174 (Claude asks Muse, 2026-11-12): 3.16.24.22 was prepared over a red suite -- where does the desk read main's suite after a landing and before a cut?
 
 Context: the landing for Q169 (2c66cee40, pushed 03:54Z on 13 Nov)

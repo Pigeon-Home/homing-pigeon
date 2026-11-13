@@ -71,6 +71,19 @@ jobs:
           # live to the run page and cannot be lost with the
           # copy-back. Until this stood here the artifacts total
           # for this workflow was 0 on every run.
+          #
+          # The hosted verdict on v3.16.25.3 (Q175, run
+          # 43380594494) showed the copy-back asking is not
+          # enough on its own: in the pinned action the
+          # copy-back section stands after the run block, and a
+          # non-zero run exit throws past it, so copy-back ran
+          # only after a successful run and the artifact total
+          # stayed 0 on the red run that needed the evidence.
+          # The run below therefore records its verdict in a
+          # file in the workspace and exits 0 itself; the
+          # copy-back and the upload then happen, and a host
+          # step after the upload reads the verdict file and
+          # restores the run's true colour.
           sync: rsync
           copyback: true
           # The VM's output is the step's, so ::error lines written
@@ -147,12 +160,28 @@ jobs:
             echo "== the suite's failing tests, named in this log"
             grep -E "^(FAIL|ERROR): " /tmp/suite-freebsd.log || true
             grep -E "^(Ran [0-9]+ tests|OK|FAILED)" /tmp/suite-freebsd.log || true
+            # On a wall-killed run (exit 124) the summary lines
+            # above never print: unittest writes its FAIL:/ERROR:
+            # headers only when the suite completes. The verbose
+            # per-test outcome lines are written as each test
+            # finishes, so they name every completed red test
+            # even then. The test in flight at the kill carries
+            # no outcome line and stays unnamed.
+            grep -E "\.\.\. (FAIL|ERROR)$" /tmp/suite-freebsd.log || true
             # The reports join the tree only now, for the artifact: a
             # root .md present while the suite runs reads as a live
             # doc to the doc guards.
             cp /tmp/suite-freebsd.log /tmp/switch-proofs-freebsd-root.md /tmp/freebsd-sh.log "$GITHUB_WORKSPACE"/ 2>/dev/null || true
             [ "$rc" -eq 0 ] || echo "::error title=freebsd suite::the suite exited $rc; the failing tests are annotated above and the log is in the artifact"
-            [ "$rc" -eq 0 ] && [ "$rrc" -eq 0 ] && [ "$src" -eq 0 ]
+            # The verdict travels as a file, not as this script's
+            # exit code (Q175 follow-on): in the pinned action a
+            # non-zero run exit throws past the copy-back section,
+            # so a red script would lose the reports it just wrote.
+            # The script exits 0; the host step after the upload
+            # reads this file and fails the job on any non-zero
+            # code recorded here, or on the file missing.
+            printf '%s %s %s\n' "$rc" "$rrc" "$src" > "$GITHUB_WORKSPACE/freebsd-verdict.txt" || true
+            exit 0
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
@@ -161,7 +190,24 @@ jobs:
             suite-freebsd.log
             switch-proofs-freebsd-root.md
             freebsd-sh.log
+            freebsd-verdict.txt
           # warn, not ignore (Q175): an empty artifact was the
           # standing state for this workflow's whole history and
           # `ignore` is what kept that invisible on the run page.
           if-no-files-found: warn
+      - name: the FreeBSD verdict, restored on the host
+        if: always()
+        run: |
+          # The VM step exits 0 even on a red suite so the
+          # action's copy-back runs (see the verdict file's
+          # comment inside the VM); this step is where the
+          # run's colour is decided. A missing verdict file
+          # means the evidence path broke again, and that is
+          # a failure too, not a pass.
+          if [ ! -f freebsd-verdict.txt ]; then
+            echo "::error title=freebsd verdict::no verdict file arrived from the VM; the evidence path is broken"
+            exit 1
+          fi
+          read -r rc rrc src < freebsd-verdict.txt
+          echo "freebsd verdict: suite=$rc roster=$rrc sh=$src"
+          [ "$rc" = "0" ] && [ "$rrc" = "0" ] && [ "$src" = "0" ]

@@ -1359,7 +1359,8 @@ class FreeBSDWorkflowEvidenceTest(unittest.TestCase):
         live = self._live()
         for name in ("suite-freebsd.log",
                      "switch-proofs-freebsd-root.md",
-                     "freebsd-sh.log"):
+                     "freebsd-sh.log",
+                     "freebsd-verdict.txt"):
             self.assertIn(name, live)
         self.assertIn("if-no-files-found: warn", live)
         self.assertNotIn("if-no-files-found: ignore", live)
@@ -1370,6 +1371,11 @@ class FreeBSDWorkflowEvidenceTest(unittest.TestCase):
                       live)
         self.assertIn('grep -E "^(Ran [0-9]+ tests|OK|FAILED)" '
                       '/tmp/suite-freebsd.log', live)
+        # The verbose per-test outcomes stand beside the summary
+        # grep: on a wall-killed run the summary never prints,
+        # and these lines are the only naming that survives.
+        self.assertIn('grep -E "\\.\\.\\. (FAIL|ERROR)$" '
+                      '/tmp/suite-freebsd.log', live)
         # The naming stands after the suite runs and before the
         # step's verdict is returned, so a red suite is named on
         # the run page of the very run that produced it.
@@ -1377,3 +1383,41 @@ class FreeBSDWorkflowEvidenceTest(unittest.TestCase):
                         live.index('grep -E "^(FAIL|ERROR): "'))
         self.assertLess(live.index('grep -E "^(FAIL|ERROR): "'),
                         live.index('cp /tmp/suite-freebsd.log'))
+        self.assertLess(live.index('grep -E "\\.\\.\\. (FAIL|ERROR)$"'),
+                        live.index('cp /tmp/suite-freebsd.log'))
+
+    def test_the_run_records_its_verdict_and_exits_zero(self):
+        # Q175 follow-on, from the hosted verdict on v3.16.25.3:
+        # in the pinned vmactions action a non-zero run exit
+        # throws past the copy-back section, so the reports a
+        # red run wrote never reached the host. The verdict
+        # therefore travels as a file in the workspace and the
+        # run script exits 0; the old exit-code verdict line
+        # must not stand in the VM script.
+        live = self._live()
+        self.assertIn("printf '%s %s %s\\n' \"$rc\" \"$rrc\" \"$src\" > "
+                      "\"$GITHUB_WORKSPACE/freebsd-verdict.txt\"",
+                      live)
+        self.assertNotIn('[ "$rc" -eq 0 ] && [ "$rrc" -eq 0 ] && '
+                         '[ "$src" -eq 0 ]', live)
+        # The verdict is written after the reports are copied
+        # into the workspace, and the script's exit 0 follows
+        # it, so the copy-back carries all four files together.
+        self.assertLess(live.index('cp /tmp/suite-freebsd.log'),
+                        live.index('freebsd-verdict.txt" || true'))
+        self.assertLess(live.index('freebsd-verdict.txt" || true'),
+                        live.index("\n            exit 0"))
+
+    def test_the_host_restores_the_verdict_after_the_upload(self):
+        # The host step that reads the verdict file decides the
+        # job's colour, and it stands after the upload step, so
+        # the artifact is banked before the job can fail.
+        live = self._live()
+        self.assertIn("the FreeBSD verdict, restored on the host",
+                      live)
+        self.assertIn("no verdict file arrived from the VM", live)
+        self.assertIn('[ "$rc" = "0" ] && [ "$rrc" = "0" ] && '
+                      '[ "$src" = "0" ]', live)
+        self.assertLess(live.index("actions/upload-artifact"),
+                        live.index(
+                            "the FreeBSD verdict, restored on the host"))
