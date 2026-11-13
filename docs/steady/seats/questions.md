@@ -2575,8 +2575,92 @@ scheduled run's verdict was read:
   3.12, and can never by itself settle the 3.14 leg; the
   hosted runs are the direct evidence there.
 
-The conclusions and the verdict on Q169's standing are
-recorded in this entry after the measurements.
+**Conclusions (2026-11-13):** every supposition holds.
+
+- T1 holds exactly. The failed 3.14 leg's log carries no
+  unittest FAIL or ERROR header at all: 11,087 test lines
+  read ok or skipped, and the leg ends with the wall
+  clock's own words -- "suite wall clock: 30 minutes
+  elapsed, the run is killed", "still running after 30
+  minutes; the suite was killed here", exit code 124.
+  The test in flight at the kill,
+  `test_workspace_isolation.NothingOutsideWorkProperty.test_nothing_outside_work_after_any_job`,
+  had started about 2 seconds earlier (the last ok line,
+  a DownloadTest test, is stamped 16:34:04Z; the kill is
+  stamped 16:34:06Z): it was in flight, not hung and not
+  failed. There is no failing test in this run to name;
+  the failure is the clock, not an assertion.
+- T2 holds exactly. The content diff between the green
+  3.16.25.12 head and the red 3.16.25.13 head is one
+  content commit, the extension upstream pins refresh
+  (the osquery, softflowd and zeek feed PIN and extension
+  files), plus the release carriers. No runner code and
+  no test code changed between the green head and the
+  red head, so no code regression can carry the
+  difference.
+- T3 holds exactly. In the failed leg's own log the
+  briefing contradiction suite reads green whole (its
+  last ok line is stamped 16:07:05Z) and the
+  approval-guard suites read green whole (81 ok lines) --
+  every test Q169's answer touched passed on Python 3.14
+  in the red run itself.
+- T4 holds, and stronger than supposed. The test count
+  is identical on all three runs of the day (13,052).
+  The green 3.16.25.12 3.14 leg ran them in 1,788.053
+  seconds against the 1,800-second wall clock -- 12
+  seconds of headroom. The red dispatch run reached
+  11,087 ok lines against the green run's 11,127 total
+  when the clock killed it -- about 40 test lines short
+  of the end. And the scheduled run 43464226966 on the
+  same 3.16.25.13 head then completed SUCCESS on both
+  legs (3.14 at 16:56Z, 3.9 at 17:27Z), running the same
+  13,052 tests in 1,227.299 seconds. One tree, three
+  paces -- 1,227 seconds, 1,788 seconds, and past 1,800
+  -- so the leg's verdict on a slow runner draw is a
+  timing flake: marginal headroom plus large pace
+  variance, not a deterministic failure.
+- T5 holds as bounded. This machine carries Python
+  3.12.3 only and no 3.14 interpreter, and it carries no
+  `hypothesis`, so the property class in flight at the
+  kill is not even defined locally: the module
+  `test_workspace_isolation` runs 16 tests green there
+  in 13.8 seconds without it, and the briefing and
+  approval-guard suites run 378 tests green on 3.12.
+  The hosted runs above are the direct 3.14 evidence,
+  as supposed. Side observation, recorded for what it
+  is and no more: the regression guard over the
+  untouched `test_workspace_isolation` module read RED
+  once in this lane (504 seconds) -- under the guard's
+  repetition one shuffled run errored in
+  `SweepTest.test_a_script_that_is_a_symlink_is_refused`
+  with an empty result list (`smtp.sent[0]`), a
+  repeat-sensitivity in that module on the current
+  tree, unrelated to the hosted kill (that test reads
+  ok in the hosted logs) and to this desk-only landing,
+  which touches no test module.
+
+**Verdict on Q169's standing:** Q169 stays closed, and
+the closure is not contradicted by the 3.16.25.13
+dispatch failure. The condition the answer set -- a
+`python-range` run on a release tag completing green on
+both legs -- was met on v3.16.25.1 (the closure above),
+met again on v3.16.25.11 (run 43435102584) and
+v3.16.25.12 (run 43446896971), and is now met on the
+very head in question: the scheduled run 43464226966 on
+v3.16.25.13 completed green on both legs. The red
+dispatch run 43458878143 carries no Q169-shape failure
+and is explained whole by the wall clock, so it does
+not reopen the question and no fix to Q169's defect is
+owed. What IS owed, as its own item and not as part of
+Q169: the 3.14 leg's 30-minute wall clock no longer
+fits the suite on a slow runner draw -- 12 seconds of
+headroom on the 3.16.25.12 head, and the suite only
+grows. Until the desk takes that up (a longer clock for
+the leg, a sharded leg, or a faster suite), green
+`python-range` verdicts on the 3.14 leg will keep
+depending on the runner draw, and a red one should be
+read against the wall-clock line in its log before it
+is read as a regression.
 
 ## Q168 (Claude asks Muse, 2026-11-12): a child that exits before the Job Object is assigned refuses a job that already ran
 
