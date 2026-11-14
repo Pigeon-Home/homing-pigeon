@@ -248,7 +248,12 @@ def _install_prefix(path):
     prefix bind instead of binding the whole root or tree. Never a
     user home directory either (Q-new-25): a bin grandparent that
     is a home directory (/home/<user>/bin/python3) falls back to
-    the bin directory itself, so the whole home is never bound."""
+    the bin directory itself, so the whole home is never bound.
+    A path carrying a NUL is no path at all: it gets no
+    prefix, the same skip interpreter_binds gives it whole
+    (Q190 family)."""
+    if not isinstance(path, str) or "\x00" in path:
+        return None
     parent = os.path.dirname(path)
     if os.path.basename(parent) == "bin":
         grand = os.path.dirname(parent)

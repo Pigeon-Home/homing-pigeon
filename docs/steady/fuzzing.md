@@ -725,3 +725,30 @@ each seam: a NUL-carrying path is skipped (no prefix) or
 refused with RuntimeError, never carried and never an
 unhandled exception. The family's conclusions stand below
 once it has run.
+
+Conclusions (2026-11-14, the same lane, after the run).
+The family stands in `runner/tests/test_q190_shotgun.py`:
+23 test methods carrying some 570 derived cases (14 NUL
+bookends per base path -- runs of 1, 2 and 10 at the front,
+the back, both ends and the middle, plus the bare shapes --
+across every surface named at Q190, and the full
+36-character bookend alphabet over interpreter_binds and
+_install_prefix). Against the suppositions: S1, S2 stand
+exactly as written. S3 stands for an interpreter outside
+the mounted trees and fails for one under them: a
+NUL-carrying path under /usr passed FreeBSD's
+translate_argv unchanged, because its mounted-tree check
+is a prefix check the NUL does not disturb -- not a crash,
+but not a refusal either, and now refused at the top of
+the translation, by name. S4 and S5 stand exactly as
+written: both _install_prefix helpers answered a
+NUL-derived prefix (in the leading shape, a prefix string
+carrying the NUL itself), and the macOS realpath seams
+raised the unhandled ValueError. All four seams now take
+the landed fix's shape: _install_prefix (both backends)
+answers no prefix for a NUL-carrying path, and the macOS
+interpreter_read_paths and _profile_realpath refuse one
+with RuntimeError, which carries build_profile and
+build_sandbox_argv with them. The family passes whole,
+and the confinement, macOS and FreeBSD suites pass beside
+it unchanged.

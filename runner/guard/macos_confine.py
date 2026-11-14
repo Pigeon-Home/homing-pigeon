@@ -244,8 +244,11 @@ def _install_prefix(path):
     user home directory: a bin grandparent that is a home
     directory falls back to the bin directory itself, so the
     whole home is never named. The mirror of the Linux
-    sandbox's interpreter-prefix rule.
+    sandbox's interpreter-prefix rule. A path carrying a NUL
+    is no path at all and gets no prefix (Q190 family).
     """
+    if not isinstance(path, str) or "\x00" in path:
+        return None
     parent = os.path.dirname(path)
     if os.path.basename(parent) == "bin":
         grand = os.path.dirname(parent)
@@ -273,6 +276,13 @@ def interpreter_read_paths(interpreter):
     """
     if not isinstance(interpreter, str) or not interpreter:
         raise RuntimeError("interpreter must be a non-empty string")
+    if "\x00" in interpreter:
+        # A path no filesystem can hold cannot be resolved,
+        # and realpath would raise ValueError on it: refuse
+        # in this function's own RuntimeError shape (Q190).
+        raise RuntimeError(
+            "cannot resolve interpreter %r for the profile"
+            % interpreter)
     if "/" in interpreter:
         resolved = interpreter
     else:
@@ -644,8 +654,14 @@ def _profile_realpath(path):
     the POSIX form, normalized, because the profile writer
     takes only leading-slash paths; no profile is enforced on
     such a host, and the field tests that build one there pass
-    POSIX paths by design.
+    POSIX paths by design. A path carrying a NUL is refused
+    outright: realpath would raise ValueError on it, where
+    the profile writer's own shape is a RuntimeError refusal
+    (Q190 family).
     """
+    if isinstance(path, str) and "\x00" in path:
+        raise RuntimeError(
+            "a profile path must not contain a NUL: %r" % (path,))
     real = os.path.realpath(path)
     if isinstance(path, str) and path.startswith("/") \
             and not real.startswith("/"):

@@ -461,6 +461,14 @@ def translate_argv(argv, cwd, st, which=shutil.which, notes=None):
     prefixes = []
     out = []
     for i, arg in enumerate(argv):
+        if i == 0 and "\x00" in arg:
+            # A path no filesystem can hold cannot be an
+            # interpreter inside the jail either; under a
+            # mounted tree it would otherwise pass the
+            # mounted-tree check below unchanged (Q190 family).
+            raise RuntimeError(
+                "interpreter %r carries a NUL byte; no "
+                "filesystem can hold that path" % arg)
         if i == 0 and "/" not in arg:
             resolved = which(arg)
             if resolved is None:

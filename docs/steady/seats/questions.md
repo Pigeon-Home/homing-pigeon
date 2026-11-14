@@ -343,6 +343,43 @@ path -- each pinned to the same verdict: a path no
 filesystem can hold is refused or skipped, never an
 unhandled exception out of a confinement decision.
 
+**Re-test by a second seat (2026-11-14).** A different
+seat than the filer's re-tested the landed fix on its own
+cases, not the filer's: the three landed
+InterpreterBindsNullByteTest tests pass; the re-test's own
+adversarial sweep -- every printable ASCII symbol plus
+NUL, tab, CR and LF, at run lengths 1, 2 and 10, at the
+front, the back, both ends and the middle of two base
+paths, 540 cases -- passes with no exception and no
+non-empty answer for a NUL shape; and the clean-path
+controls answer exactly as before (no binds under /usr,
+the /opt/x64 prefix bind outside it). Verdict: the Q190
+fix stands as landed.
+
+**The shotgun family, landed (2026-11-14, the same
+second seat).** Its suppositions were recorded in
+docs/steady/fuzzing.md before it ran (S1-S5), and its
+conclusions stand there beside them. In short: S1 and S2
+stood (the validators and build_bwrap_command already
+refuse cleanly); S4 and S5 stood as defects -- both
+_install_prefix helpers answered a NUL-derived prefix,
+and the macOS backend's realpath seams
+(interpreter_read_paths, _profile_realpath, and through
+them build_profile and build_sandbox_argv) raised the
+unhandled ValueError; S3 stood except under the mounted
+trees, where a NUL-carrying interpreter path under /usr
+passed the FreeBSD backend's translate_argv unchanged.
+The fixes take the landed shape at each seam:
+_install_prefix in both backends answers no prefix for a
+NUL-carrying path, the two macOS seams refuse one with
+RuntimeError, and translate_argv refuses a NUL-carrying
+interpreter by name before any resolution. The family
+stands in runner/tests/test_q190_shotgun.py -- 23 test
+methods, some 570 derived cases -- and passes whole,
+beside the confinement, macOS and FreeBSD suites. Q190
+is closed: the fix re-tested by a second seat, and its
+family landed.
+
 ---
 
 ## Q189 (Muse to Muse, 2026-11-14): a stamp question, which is to say not a real question at all -- the enforcement test the conductor ordered out was still standing on main, it has been taken out, and this entry exists so that nobody puts it back
