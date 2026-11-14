@@ -2428,6 +2428,29 @@ _HOST_PLATFORM = sys.platform
 FREEBSD_PROBE_ASKED = ("the FreeBSD jail backend's probe, asked on "
                        "this machine as this user,")
 
+# The switch that keeps the seed's questions off the machine.
+# The probe builds a jail, the door trial runs a job in one and
+# the installer makes an account: an install changing the
+# machine it installs on. Whatever drives the installer or the
+# wizard on a machine it is not installing -- the test suite,
+# on any host it runs on -- sets the switch off in the
+# environment, where every copy of this module and every
+# process it starts reads it. The seed then states the
+# platform's map, as it does for a platform it was only told
+# about, and says the machine was not asked.
+SEED_SWITCH = "HP_SEED_ASKS_MACHINE"
+SEED_SWITCH_OFF = ("0", "no", "off", "false")
+SEED_NOT_ASKED = ("this machine was not asked: %s is off in the "
+                  "environment" % SEED_SWITCH)
+
+
+def seed_asks_the_machine(environ=None) -> bool:
+    """Whether a seed may put its questions to this machine:
+    True unless the environment switches them off."""
+    environ = os.environ if environ is None else environ
+    word = str(environ.get(SEED_SWITCH, "")).strip().lower()
+    return word not in SEED_SWITCH_OFF
+
 # The job user a fresh FreeBSD config names once the seed has
 # left the jail on. The jail cannot be made without root, so a
 # job with no job user is root's uid inside it -- without
@@ -2782,7 +2805,10 @@ def fresh_platform_modes(cfg, platform=None, probe=None):
     about this machine, and gets the stated map -- unless the
     caller hands in a `probe` of its own, which is then the one
     asked. A mode the config already states below enforce is
-    the operator's word: it stays, and nothing is asked.
+    the operator's word: it stays, and nothing is asked. Where
+    the environment switches the questions off (SEED_SWITCH)
+    the machine is not asked either: the map states audit and
+    `asked` carries SEED_NOT_ASKED as the reason.
     """
     plat = sys.platform if platform is None else platform
     modes = dict(platform_modes(plat))
@@ -2792,6 +2818,8 @@ def fresh_platform_modes(cfg, platform=None, probe=None):
         return modes, None
     if probe is None and platform is None \
             and _HOST_PLATFORM.startswith("freebsd"):
+        if not seed_asks_the_machine():
+            return modes, (SEED_NOT_ASKED, ())
         probe = freebsd_seed_probe
     if probe is None:
         return modes, None
@@ -2847,9 +2875,11 @@ def fresh_job_user(cfg, asked, platform=None, trial=None,
     A config that names a job user in any shape, or states the
     job_user mode below enforce, is the operator's and is not
     asked about. `trial` and `account` are the tests' doors, as
-    `probe` is: with a platform named, or off a FreeBSD host,
-    nothing is asked unless a trial is handed in, and no
-    account is looked for unless one is handed in with it.
+    `probe` is: with a platform named, off a FreeBSD host, or
+    with the questions switched off in the environment
+    (SEED_SWITCH), nothing is asked unless a trial is handed
+    in, and no account is looked for unless one is handed in
+    with it.
     """
     if asked is None or asked[0] is not None:
         return None, None
@@ -2860,7 +2890,8 @@ def fresh_job_user(cfg, asked, platform=None, trial=None,
         return None, None
     if trial is None:
         if platform is not None \
-                or not _HOST_PLATFORM.startswith("freebsd"):
+                or not _HOST_PLATFORM.startswith("freebsd") \
+                or not seed_asks_the_machine():
             return None, None
         trial = freebsd_job_user_trial
         if account is None:
@@ -2946,6 +2977,8 @@ def seed_reason(asked, feature, default) -> str:
     where it was asked about that feature, else `default`."""
     if feature == "confinement" and asked is not None \
             and asked[0] is not None:
+        if asked[0] == SEED_NOT_ASKED:
+            return SEED_NOT_ASKED
         return f"{FREEBSD_PROBE_ASKED} did not pass: {asked[0]}"
     return default
 

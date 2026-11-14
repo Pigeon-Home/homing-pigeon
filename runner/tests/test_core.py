@@ -192,9 +192,12 @@ class CoreListTest(unittest.TestCase):
         # that seed names grew runner/ops/install.py by 144
         # lines and runner/ops/setup.py by 4, over a tree
         # that also carries the briefing's spaced-token rule
-        # (runner/ops/briefing.py by 10 lines).
-        self.assertEqual(67851, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(61497, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # (runner/ops/briefing.py by 10 lines), and again the
+        # same day after the seed's questions to the machine
+        # took a switch in the environment grew
+        # runner/ops/install.py by 33 lines.
+        self.assertEqual(67884, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(61527, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

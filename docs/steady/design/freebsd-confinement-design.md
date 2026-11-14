@@ -391,6 +391,46 @@ where no user is named yet. An ordinary user's install names
 none and makes no account: with no jail there is no door, and
 the demote needs root as the jail does.
 
+### Where the machine is not asked
+
+The seed's questions change the machine they are put to. The
+probe builds a jail and removes it, the trial runs a job in
+one, and the installer's account stays. That is an install
+changing the machine it installs on, and not every run of the
+installer or the wizard is one: the test suite drives both on
+whatever host it happens to run on, with the steps that
+install a service replaced and the seed left as it is. On a
+FreeBSD host, as root, with a backend that engages, such a
+run is to the seed an install like any other.
+
+So the questions have a switch, and it is in the environment:
+`HP_SEED_ASKS_MACHINE`. With `0`, `no`, `off` or `false`
+there, the seed asks the machine nothing. It states the
+platform's map — `audit` — as it does for a platform it was
+only told about, names no job user, makes no account, and
+the line that states the mode says the machine was not asked.
+Any other word, or none, leaves the questions on: an
+operator's install carries no word and is asked.
+
+The environment is the place because it reaches everything
+such a run starts. A test process holds more than one copy of
+the installer — its test modules load it by package name, by
+its own directory and by its file — and some tests start it
+as a program. One word in the environment is read by all of
+them; a switch on a module would be read by one.
+
+The suite sets the word for itself, in its package, and
+leaves a word the environment already carries. The tests of
+the questions themselves switch them on by name. A door a
+caller hands in — a scripted probe, trial or account — is
+asked whatever the word: the switch closes the doors to the
+machine, not the tests' own.
+
+An operator may use the word the same way, for an install
+that should build nothing and add no user. The config then
+stands at `audit` until its operator sets `enforce` and names
+a job user, and the startup gate verifies both.
+
 ## The release, and what stands behind it
 
 The process object owns the teardown: the jail's rctl rules,
@@ -769,3 +809,41 @@ rctl rule, and no jobs account.
 
 The project's own node has not run these tests, and the seven
 that make an account are not to run there.
+
+### The suite on a FreeBSD host
+
+Other modules' tests run the installer's main and the setup
+wizard on the host the suite is on. From the release that
+first asked the probe, the suite run as root on a FreeBSD
+host whose backend engages put the seed's questions to that
+host from those tests: the probe's jail, then the door trial,
+and, in the one release that made the account before the
+switch stood (2026-11-14), the account — `pw useradd` reached
+from a test of another module. The hosted guests ran this
+module alone as root, and the hosted suite runs as an
+ordinary user, where the probe refuses and nothing is built.
+A host where that release's suite was run whole as root may
+hold a `pigeon-jobs` account the suite made; `pw userdel -n
+pigeon-jobs` removes it.
+
+Suppositions, recorded 2026-11-14 before the first hosted run
+of the switch:
+
+29. On a guest, as root, the other modules' tests that reach
+    the seed — the installer's main with its service steps
+    replaced, the wizard, and the installer's own modules
+    with their copies of it — run in a process the suite
+    starts, with no word handed down, and leave no jobs
+    account and nothing else on the guest.
+30. The same installer tests, started with the word on, make
+    the account on that guest: the switch is what keeps them
+    off the machine. With the word off and handed down, they
+    make none.
+31. The tests of the questions themselves still ask the
+    machine under the suite's word: the sixteen live seed
+    tests pass as they did.
+32. The posture tests that ask for a clean report read clean
+    on a FreeBSD host whose suite is not root. They read red
+    on the hosted suite from the release that gave the report
+    its FreeBSD line: the report was right to warn there, and
+    the tests answered for bwrap alone.

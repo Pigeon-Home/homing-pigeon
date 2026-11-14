@@ -85,6 +85,21 @@ run — the suite and the roster on that kernel — is still owed.
 | FreeBSD 15 (a VM inside a Linux runner) | as an ordinary user, under the wall clock | as root with a second user: the POSIX controls | not built (sdist install) | weekly, on dispatch, and when `freebsd.yml` changes; no green run yet |
 | FreeBSD 14.5 and 15.0, as root (VMs inside Linux runners, `freebsd-confinement.yml`) | the jail backend's own module, live classes included: RACCT enabled in two guests, off in a third | — | not built | weekly and on dispatch; first green run 2026-11-14 |
 
+A test run is not an install. The suite drives the installer and
+the setup wizard on whatever host it runs on, and on FreeBSD their
+seed puts questions to the machine: a jail built for the probe, a
+trial job run in one, an account made for the jobs. The test
+package (`runner/tests/__init__.py`) switches those questions off
+for the run by setting `HP_SEED_ASKS_MACHINE=0` in the environment,
+where every copy of the installer a test loads and every process a
+test starts reads the same word; the tests of the questions
+themselves (`runner/tests/test_freebsd_confine.py`) switch them on
+by name. The package is imported when the suite is run by module
+name or by discovery from the repository root (`-s runner/tests
+-t .`). A test module started by its file path does not import
+it: on a FreeBSD host, as root, give such a run the word in its
+environment.
+
 The roster (`runner/tests/switch_roster.py`) says, per control, what
 a leg must provide: `posix` (any of the three kernels), `linux`,
 `bwrap` (a working sandbox), `root` (a real second user to drop

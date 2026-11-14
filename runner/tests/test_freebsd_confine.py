@@ -31,9 +31,11 @@ named only where RACCT can hold them, and there is no Capsicum
 in this backend), and every failure lands in the refuse
 direction.
 """
+import contextlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -49,6 +51,10 @@ if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
 
 import runner.runner as rr
+# The suite's word for the seed's questions to the machine, set
+# however this module is loaded -- by name, where the package
+# has already set it, or by its file.
+import runner.tests  # noqa: F401
 from runner.guard import freebsd_confine as FC
 from runner.ops import remediation_ops as REM
 from runner.ops import install as INS
@@ -384,6 +390,14 @@ def _modes_in(path):
         return json.load(fh)["security"]["modes"]
 
 
+def _machine_asked(word="1"):
+    """The seed's questions to the machine, switched on for one
+    test (or off, by `word`). The suite switches them off for
+    every test that does not ask for them
+    (runner/tests/__init__.py): a test run is not an install."""
+    return mock.patch.dict(os.environ, {INS.SEED_SWITCH: word})
+
+
 class _Probe:
     """A scripted answer to the seed's question, and what it
     was asked with."""
@@ -529,7 +543,8 @@ class SeedTest(unittest.TestCase):
     def test_a_freebsd_host_is_asked_through_the_backend_s_probe(self):
         cfg = {"security": {"modes": {"confinement": "enforce"}}}
         probe = _Probe()
-        with mock.patch.object(INS, "_HOST_PLATFORM", "freebsd14"), \
+        with _machine_asked(), \
+                mock.patch.object(INS, "_HOST_PLATFORM", "freebsd14"), \
                 mock.patch.object(INS.sys, "platform", "freebsd14"), \
                 mock.patch.object(INS, "freebsd_seed_probe", probe):
             modes, asked = INS.fresh_platform_modes(cfg)
@@ -843,8 +858,9 @@ class SeedTest(unittest.TestCase):
                 if make:
                     return name, True, None
                 return None, False, None
-            with mock.patch.object(INS, "_HOST_PLATFORM",
-                                   "freebsd14"), \
+            with _machine_asked(), \
+                    mock.patch.object(INS, "_HOST_PLATFORM",
+                                      "freebsd14"), \
                     mock.patch.object(INS, "freebsd_job_user_trial",
                                       trial), \
                     mock.patch.object(INS, "freebsd_job_account",
@@ -1663,6 +1679,294 @@ class SeedTest(unittest.TestCase):
             setattr(other, INS._BY_PATH_MARK, True)
             INS._release_freebsd_confine()
             self.assertNotIn("guard", sys.modules)
+
+
+class SeedSwitchTest(unittest.TestCase):
+    """The switch that keeps the seed's questions off the machine.
+
+    The suite drives the installer and the wizard on whatever
+    host it runs on. On a FreeBSD host, as root, the seed's
+    questions build a jail and the installer makes an account:
+    an install changing its machine, which a test run is not.
+    The word is carried in the environment, so every copy of the
+    installer a test loads and every process a test starts reads
+    the same one."""
+
+    class _Doors:
+        """The three doors to the machine, as ones that count."""
+
+        def __init__(self):
+            self.probe, self.trial = _Probe(), _Trial()
+            self.made = []
+
+        def account(self, name=INS.FREEBSD_JOB_ACCOUNT, make=False):
+            self.made.append(make)
+            return name, bool(make), None
+
+        def reached(self):
+            return [what for what, calls in (
+                ("probe", self.probe.asked), ("trial", self.trial.asked),
+                ("account", self.made)) if calls]
+
+    @contextlib.contextmanager
+    def _on_a_freebsd_host(self, word, module=INS):
+        """`module`'s seed as it stands on a FreeBSD host with
+        `word` in the environment (None: the word unset), its
+        doors to the machine counting."""
+        doors = self._Doors()
+        with contextlib.ExitStack() as stack:
+            if word is None:
+                env = stack.enter_context(mock.patch.dict(os.environ))
+                env.pop(INS.SEED_SWITCH, None)
+            else:
+                stack.enter_context(_machine_asked(word))
+            stack.enter_context(mock.patch.object(
+                module, "_HOST_PLATFORM", "freebsd14"))
+            stack.enter_context(mock.patch.object(
+                module.sys, "platform", "freebsd14"))
+            stack.enter_context(mock.patch.object(
+                module, "freebsd_seed_probe", doors.probe))
+            stack.enter_context(mock.patch.object(
+                module, "freebsd_job_user_trial", doors.trial))
+            stack.enter_context(mock.patch.object(
+                module, "freebsd_job_account", doors.account))
+            yield doors
+
+    # --- the word ------------------------------------------------
+
+    def test_the_questions_are_on_unless_a_word_says_off(self):
+        asks = INS.seed_asks_the_machine
+        self.assertTrue(asks({}))
+        for word in ("1", "yes", "on", "true", "", " ", "2", "enforce"):
+            self.assertTrue(asks({INS.SEED_SWITCH: word}), repr(word))
+        for word in ("0", "no", "off", "false", "OFF", "No", " 0 ",
+                     "False\n"):
+            self.assertFalse(asks({INS.SEED_SWITCH: word}), repr(word))
+        self.assertEqual(INS.SEED_SWITCH, "HP_SEED_ASKS_MACHINE")
+        # with nothing handed in it reads this process's environment
+        with _machine_asked("0"):
+            self.assertFalse(asks())
+        with _machine_asked("1"):
+            self.assertTrue(asks())
+
+    def test_the_suite_runs_with_the_questions_off(self):
+        # runner/tests/__init__.py sets the word for the run and
+        # leaves a word the environment already carries
+        self.assertIn(INS.SEED_SWITCH, os.environ)
+        ask = ("import os, runner.tests; "
+               "print(os.environ[%r])" % INS.SEED_SWITCH)
+        for carried, want in ((None, "0"), ("1", "1"), ("0", "0"),
+                              ("off", "off")):
+            env = dict(os.environ)
+            env.pop(INS.SEED_SWITCH, None)
+            if carried is not None:
+                env[INS.SEED_SWITCH] = carried
+            out = subprocess.run(
+                [sys.executable, "-c", ask], cwd=_REPO, env=env,
+                capture_output=True, text=True, timeout=120)
+            self.assertEqual(out.returncode, 0, out.stderr)
+            self.assertEqual(out.stdout.strip(), want, carried)
+
+    def test_a_process_a_test_starts_reads_the_same_word(self):
+        # the environment is what a child inherits: an installer
+        # a test runs as a program is switched off with the rest
+        out = subprocess.run(
+            [sys.executable, "-I", "-c",
+             "import os; print(os.environ.get(%r))" % INS.SEED_SWITCH],
+            capture_output=True, text=True, timeout=120)
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertEqual(out.stdout.strip(), os.environ[INS.SEED_SWITCH])
+
+    # --- the seed, switched off ------------------------------------
+
+    def test_switched_off_a_freebsd_host_is_asked_nothing(self):
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        for word in ("0", "off"):
+            with self._on_a_freebsd_host(word) as doors:
+                modes, asked = INS.fresh_platform_modes(cfg)
+                # and the second question is not put either, even
+                # behind a first one that passed
+                user, door = INS.fresh_job_user(
+                    cfg, (None, _PASS_LINES), make=True)
+            self.assertEqual(modes, {"confinement": "audit"})
+            self.assertEqual(asked, (INS.SEED_NOT_ASKED, ()))
+            self.assertEqual((user, door), (None, None))
+            self.assertEqual(doors.reached(), [], word)
+
+    def test_switched_on_or_unset_the_same_host_is_asked(self):
+        # the installer as an operator runs it: no word in the
+        # environment, and the machine is asked
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        for word in (None, "1"):
+            with self._on_a_freebsd_host(word) as doors:
+                modes, asked = INS.fresh_platform_modes(cfg)
+                user, door = INS.fresh_job_user(cfg, asked, make=True)
+            self.assertEqual(modes, {}, word)
+            self.assertEqual(asked, (None, _PASS_LINES))
+            self.assertEqual(user, "pigeon-jobs")
+            self.assertEqual(doors.reached(),
+                             ["probe", "trial", "account"], word)
+            self.assertEqual(doors.made, [True])
+
+    def test_the_installer_says_the_machine_was_not_asked(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = _seeded_config(d)
+            out = io.StringIO()
+            with self._on_a_freebsd_host("0") as doors, \
+                    redirect_stdout(out):
+                applied = INS.apply_platform_modes(path)
+            with open(path, encoding="utf-8") as fh:
+                security = json.load(fh)["security"]
+        self.assertEqual(doors.reached(), [])
+        self.assertEqual(applied, {"confinement": "audit"})
+        self.assertEqual(security["modes"]["confinement"], "audit")
+        self.assertNotIn("job_user", security)
+        said = out.getvalue()
+        self.assertIn(
+            "platform: security.modes.confinement stated as audit in "
+            "%s (this machine was not asked: HP_SEED_ASKS_MACHINE is "
+            "off in the environment; the mode is stated in the file "
+            "rather than left to refuse the first start)" % path, said)
+        # a probe that was not asked did not fail
+        self.assertNotIn("did not pass", said)
+        self.assertNotIn("left at enforce", said)
+        self.assertNotIn("pigeon-jobs", said)
+
+    def test_the_wizard_s_seed_is_switched_off_with_it(self):
+        cfg = {"security": {"modes": {
+            "confinement": "enforce", "job_user": "enforce"}}}
+        answers = []
+        with self._on_a_freebsd_host("0") as doors:
+            SU.seed_platform_modes(cfg, asked=answers)
+        self.assertEqual(doors.reached(), [])
+        self.assertEqual(cfg["security"]["modes"]["confinement"], "audit")
+        self.assertNotIn("job_user", cfg["security"])
+        self.assertEqual(answers, [((INS.SEED_NOT_ASKED, ()), None, None)])
+        self.assertEqual(
+            INS.seed_reason(answers[0][0], "confinement", "the default"),
+            INS.SEED_NOT_ASKED)
+        # another feature's reason is its own
+        self.assertEqual(
+            INS.seed_reason(answers[0][0], "job_user", "the default"),
+            "the default")
+
+    def test_the_pages_give_the_switch_as_it_is_read(self):
+        # The operator's page quotes the line a switched-off seed
+        # prints and names the words that switch it; the design
+        # page names the switch. The line is the seed's own.
+        with open(os.path.join(_REPO, "docs", "steady", "security",
+                               "freebsd.md"), encoding="utf-8") as fh:
+            page = fh.read()
+        with open(os.path.join(_REPO, "docs", "steady", "design",
+                               "freebsd-confinement-design.md"),
+                  encoding="utf-8") as fh:
+            design = fh.read()
+        with tempfile.TemporaryDirectory() as d:
+            path = _seeded_config(d)
+            out = io.StringIO()
+            with self._on_a_freebsd_host("0"), redirect_stdout(out):
+                INS.apply_platform_modes(path)
+        printed = [
+            line.replace(path, "/root/.homing-pigeon/config.json")
+            for line in out.getvalue().splitlines()
+            if line.startswith("platform: ")]
+        self.assertEqual(len(printed), 1, printed)
+        self.assertIn("\n  " + printed[0] + "\n", page)
+        self.assertIn("`%s=0`" % INS.SEED_SWITCH, page)
+        for text in (page, design):
+            for word in INS.SEED_SWITCH_OFF:
+                self.assertIn("`%s`" % word, text)
+        self.assertIn("`%s`" % INS.SEED_SWITCH, design)
+
+    def test_a_door_handed_in_is_still_the_one_asked(self):
+        # the switch closes the doors to the machine; a test that
+        # hands in a door of its own is asking that door
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        probe, trial = _Probe(), _Trial()
+        with self._on_a_freebsd_host("0") as doors:
+            modes, asked = INS.fresh_platform_modes(cfg, probe=probe)
+            user, door = INS.fresh_job_user(cfg, asked, trial=trial)
+        self.assertEqual(asked, (None, _PASS_LINES))
+        self.assertEqual(user, "nobody")
+        self.assertEqual(len(probe.asked), 1)
+        self.assertEqual(trial.users(), ["nobody"])
+        self.assertEqual(doors.reached(), [])
+
+    # --- every copy of the installer -------------------------------
+
+    def _copy(self, name):
+        """install.py loaded again under `name`, as the installer's
+        own test modules load it: a module of its own, with its
+        own doors."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(name, _INSTALL_PY)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_every_copy_of_the_installer_reads_the_one_word(self):
+        copy = self._copy("install_loaded_again_for_the_switch")
+        self.assertIsNot(copy, INS)
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        with self._on_a_freebsd_host("0", copy) as doors:
+            modes, asked = copy.fresh_platform_modes(cfg)
+            user, door = copy.fresh_job_user(
+                cfg, (None, _PASS_LINES), make=True)
+        self.assertEqual(modes, {"confinement": "audit"})
+        self.assertEqual(asked, (copy.SEED_NOT_ASKED, ()))
+        self.assertEqual((user, door), (None, None))
+        self.assertEqual(doors.reached(), [])
+        # and asked, the copy asks through its own doors
+        with self._on_a_freebsd_host("1", copy) as doors:
+            modes, asked = copy.fresh_platform_modes(cfg)
+        self.assertEqual(doors.reached(), ["probe"])
+
+    def _installer_main(self, word):
+        """The installer's own main with its service steps
+        replaced -- the way other modules' tests run it -- on a
+        FreeBSD host whose probe would pass."""
+        sides = ("install_files", "ensure_shared_secret",
+                 "store_additional_secret", "install_ollama_and_model",
+                 "apply_profile", "apply_instruction_flags",
+                 "install_freebsd", "uninstall_freebsd")
+        with tempfile.TemporaryDirectory() as d, \
+                self._on_a_freebsd_host(word) as doors, \
+                contextlib.ExitStack() as stack:
+            for name in sides:
+                stack.enter_context(mock.patch.object(INS, name))
+            stack.enter_context(mock.patch.object(
+                sys.stdin, "isatty", return_value=False))
+            stack.enter_context(mock.patch.object(sys, "argv", [
+                "install", "--dir", d, "--no-inference", "--no-profile"]))
+            out = io.StringIO()
+            with redirect_stdout(out):
+                code = INS.main()
+            installs = INS.install_freebsd.call_count
+        return code, out.getvalue(), doors, installs
+
+    def test_an_installer_run_as_another_module_runs_it_asks_nothing(self):
+        # The shape that reaches pw(8) from another module's test
+        # on a FreeBSD host, as root: main() with the service
+        # steps replaced and the seed left as it is. Under the
+        # suite's word the seed states audit and no door is
+        # reached.
+        code, said, doors, installs = self._installer_main("0")
+        self.assertEqual(code, 0, said)
+        self.assertEqual(installs, 1)
+        self.assertEqual(doors.reached(), [])
+        self.assertIn("this machine was not asked", said)
+        self.assertNotIn("pigeon-jobs", said)
+
+    def test_the_same_run_asks_and_makes_where_the_word_is_on(self):
+        # what the switch is there for: the same call, asked, goes
+        # through all three doors and tells the account door to
+        # make
+        code, said, doors, installs = self._installer_main("1")
+        self.assertEqual(code, 0, said)
+        self.assertEqual(installs, 1)
+        self.assertEqual(doors.reached(), ["probe", "trial", "account"])
+        self.assertEqual(doors.made, [True])
+        self.assertIn("security.job_user names pigeon-jobs", said)
 
 
 class FakeProcess:
@@ -4295,6 +4599,11 @@ class _LiveSeed(unittest.TestCase):
     first job read back."""
 
     def setUp(self):
+        # These are the tests of the seed's questions to the
+        # machine, so the questions are on for them.
+        switch = _machine_asked()
+        switch.start()
+        self.addCleanup(switch.stop)
         self.folder = tempfile.mkdtemp(prefix="hp-live-seed-")
         self.addCleanup(shutil.rmtree, self.folder, True)
         self.before = _leftovers()
@@ -4939,6 +5248,190 @@ class LiveAccountTest(_LiveSeed):
         after_entry = pwd.getpwnam("pigeon-jobs")
         self.assertEqual(tuple(after_entry), tuple(before_entry))
         self.assertEqual(after_entry.pw_gecos, "made by hand")
+        self._nothing_left()
+
+
+def _as_an_ordinary_user(work, wait=180):
+    """Run `work` in a child that is `nobody` from its first
+    line to its exit, and hand back what it said: (exit status,
+    the dict `work` returned, or {"error": ...}). Whatever
+    `work` loads is loaded by the caller first -- the child
+    reads no source file as the ordinary user."""
+    import pwd
+    import select
+    import signal
+    import time
+    nobody = pwd.getpwnam("nobody")
+    read_end, write_end = os.pipe()
+    pid = os.fork()
+    if pid == 0:
+        code = 1
+        try:
+            os.close(read_end)
+            os.setgroups([])
+            os.setgid(nobody.pw_gid)
+            os.setuid(nobody.pw_uid)
+            said = work()
+            said["uid"] = os.geteuid()
+            os.write(write_end, json.dumps(said).encode("utf-8"))
+            code = 0
+        except BaseException as e:  # reported, never raised here
+            try:
+                os.write(write_end, json.dumps(
+                    {"error": repr(e)}).encode("utf-8"))
+            except OSError:
+                pass
+        finally:
+            os._exit(code)
+    os.close(write_end)
+    chunks, deadline, answered = [], time.time() + wait, False
+    while True:
+        ready = select.select(
+            [read_end], [], [], max(0.0, deadline - time.time()))[0]
+        if not ready:
+            break
+        chunk = os.read(read_end, 65536)
+        if not chunk:
+            answered = True
+            break
+        chunks.append(chunk)
+    os.close(read_end)
+    if not answered:
+        os.kill(pid, signal.SIGKILL)
+    status = os.waitpid(pid, 0)[1]
+    if not answered:
+        return status, {"error": "no answer inside %d seconds" % wait}
+    try:
+        return status, json.loads(b"".join(chunks).decode("utf-8"))
+    except ValueError as e:
+        return status, {"error": "unreadable answer: %s" % e}
+
+
+@unittest.skipUnless(
+    FC.IS_FREEBSD_BACKEND and os.geteuid() == 0,
+    "run on FreeBSD as root")
+class LivePostureTest(unittest.TestCase):
+    """The posture tests as the hosted suite runs them on
+    FreeBSD: as an ordinary user, where the jail backend cannot
+    engage and the report says so. A test that asks for a clean
+    report answers for the backend, so the module reads clean
+    there. Nothing is built and nothing is added to the host."""
+
+    @staticmethod
+    def _the_module():
+        import runner.tests.test_posture as TP
+        from runner.ops import posture as P
+        stream = io.StringIO()
+        with redirect_stdout(io.StringIO()):
+            result = unittest.TextTestRunner(
+                stream=stream, verbosity=0).run(
+                    unittest.defaultTestLoader.loadTestsFromModule(TP))
+        return {
+            "ran": result.testsRun,
+            "red": sorted(t.id().rsplit(".", 2)[-1] + ": "
+                          + text.strip().splitlines()[-1][:200]
+                          for t, text in result.failures + result.errors),
+            "host": [list(line) for line
+                     in P._freebsd_confinement_lines({})]}
+
+    def test_the_posture_tests_read_clean_as_an_ordinary_user(self):
+        # as root first: the module reads clean here too, and
+        # everything it loads is loaded before the child starts
+        as_root = self._the_module()
+        self.assertEqual(as_root["red"], [])
+        self.assertGreaterEqual(as_root["ran"], 24)
+        self.assertEqual([level for level, _text in as_root["host"]][0],
+                         "OK", as_root["host"])
+
+        def work():
+            tempfile.tempdir = "/tmp"
+            return self._the_module()
+        status, said = _as_an_ordinary_user(work)
+        self.assertNotIn("error", said)
+        self.assertEqual(status, 0, said)
+        self.assertNotEqual(said["uid"], 0)
+        self.assertEqual(said["ran"], as_root["ran"])
+        self.assertEqual(said["red"], [])
+        # the host's own word for this user is the warning the
+        # clean reads are not: the report is right to give it
+        self.assertEqual(len(said["host"]), 1, said["host"])
+        level, text = said["host"][0]
+        self.assertEqual(level, "WARN")
+        self.assertIn("FreeBSD jail backend cannot engage: creating a "
+                      "jail needs root", text)
+
+
+@unittest.skipUnless(
+    FC.IS_FREEBSD_BACKEND and os.geteuid() == 0 and _DISPOSABLE_GUEST,
+    "making an account is tested on a disposable FreeBSD guest")
+class LiveSuiteTest(_LiveSeed):
+    """Other modules' tests run the installer and the wizard on
+    whatever host the suite is on. This guest is the host where
+    that matters: FreeBSD, root, a jail backend that engages --
+    where the installer's seed, asked, makes the jobs account.
+    The suite's word keeps those tests off the machine; the
+    control shows what the same tests do without it."""
+
+    # The tests that reach the seed from outside this module:
+    # the installer's main with its service steps replaced, the
+    # wizard, and the installer's own modules, which load copies
+    # of it of their own.
+    OTHERS = ("runner.tests.test_coverage_seams.InstallMainTest",
+              "runner.tests.test_pi_light.InstallPiLightTest",
+              "runner.tests.test_setup",
+              "runner.tests.test_setup_gaps",
+              "runner.tests.test_first_run_scenario",
+              "runner.tests.test_first_ping",
+              "runner.tests.test_install_edges",
+              "runner.tests.test_install_onehome")
+    MAIN = ("runner.tests.test_coverage_seams.InstallMainTest",)
+
+    def setUp(self):
+        super().setUp()
+        # Each test starts with no such account and leaves none.
+        LiveAccountTest._clear()
+        self.addCleanup(LiveAccountTest._clear)
+
+    def _run(self, names, word):
+        """Those tests in a process of their own, as the suite
+        starts them, with `word` in its environment (None: no
+        word handed down, and the test package sets its own)."""
+        env = dict(os.environ)
+        env.pop(INS.SEED_SWITCH, None)
+        if word is not None:
+            env[INS.SEED_SWITCH] = word
+        done = subprocess.run(
+            [sys.executable, "-m", "unittest", *names], cwd=_REPO,
+            env=env, capture_output=True, text=True, timeout=900)
+        ran = re.search(r"^Ran (\d+) tests? in", done.stderr, re.M)
+        return (int(ran.group(1)) if ran else 0), done.stderr[-3000:]
+
+    def test_the_suite_s_own_tests_leave_the_user_database_alone(self):
+        self.assertIsNone(_account_ids())
+        ran, tail = self._run(self.OTHERS, None)
+        self.assertGreaterEqual(ran, 100, tail)
+        self.assertIsNone(
+            _account_ids(), "the suite made the jobs account:\n" + tail)
+        self._nothing_left()
+
+    def test_the_same_tests_are_an_installer_where_the_word_is_on(self):
+        # The control. With the questions on, the installer's
+        # main as another module's tests run it is an install on
+        # this machine: the probe passes here and the account is
+        # made. It is removed again when this test ends.
+        self.assertIsNone(_account_ids())
+        ran, tail = self._run(self.MAIN, "1")
+        self.assertGreaterEqual(ran, 3, tail)
+        self.assertIsNotNone(
+            _account_ids(),
+            "the installer's main, asked, made no account:\n" + tail)
+        self._nothing_left()
+        # and switched off by a word handed down, it makes none
+        LiveAccountTest._clear()
+        self.assertIsNone(_account_ids())
+        ran, tail = self._run(self.MAIN, "0")
+        self.assertGreaterEqual(ran, 3, tail)
+        self.assertIsNone(_account_ids(), tail)
         self._nothing_left()
 
 

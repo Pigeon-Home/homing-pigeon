@@ -51,8 +51,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 67,851 lines,
-61,497 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 67,884 lines,
+61,527 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -505,6 +505,14 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # whole set re-measured over the current tree,
 # which also carries the briefing's spaced-token
 # rule (runner/ops/briefing.py by 10 lines).
+# Re-measured again the same day after the seed's
+# questions to the machine took a switch in the
+# environment (HP_SEED_ASKS_MACHINE: off, the seed
+# states the platform's map and says the machine
+# was not asked; the test suite sets it off for
+# itself), growing runner/ops/install.py by 33
+# lines, the whole set re-measured over the
+# current tree.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 136 since
@@ -518,13 +526,13 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 139
 AS_ASSEMBLED_ZIP_BYTES = 876587
-AS_ASSEMBLED_LINES = 67851
-AS_ASSEMBLED_NONBLANK_LINES = 61497
+AS_ASSEMBLED_LINES = 67884
+AS_ASSEMBLED_NONBLANK_LINES = 61527
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 23286,
+    "runner/ops": 23319,
     "runner/tools": 10056,
     "runner/wire": 9033,
     "runner/runner.py": 7180,

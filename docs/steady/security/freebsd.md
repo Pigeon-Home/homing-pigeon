@@ -396,6 +396,32 @@ a package leaves the users it made, because files a job left
 are still owned by it. `pw userdel -n pigeon-jobs` removes
 it.
 
+### Seeding without asking the machine
+
+The seed's questions change the machine for a moment — a jail
+built and removed for the probe, a job run in one for the
+trial — and the installer's account stays. Set
+`HP_SEED_ASKS_MACHINE=0` in the environment the installer or
+the wizard runs in to have none of it. The seed then states
+`security.modes.confinement` at `audit`, names no job user,
+makes no account, and says the machine was not asked:
+
+  ```
+  platform: security.modes.confinement stated as audit in /root/.homing-pigeon/config.json (this machine was not asked: HP_SEED_ASKS_MACHINE is off in the environment; the mode is stated in the file rather than left to refuse the first start)
+  ```
+
+`0`, `no`, `off` and `false` switch the questions off. Any
+other word, or none, leaves them on, so an install run as
+usual is asked. To turn the jail on afterwards, set the mode
+to `enforce` and name a job user; the startup gate verifies
+both at the next start.
+
+The switch is for a run that is not an install of the machine
+it is on. The project's own test suite sets it for itself:
+the suite drives the installer and the wizard on whatever
+host it runs on, and a test run builds no jail and adds no
+user there.
+
 ## The first backend's field test
 
 What follows is the record of the first backend (2026-11-10):
