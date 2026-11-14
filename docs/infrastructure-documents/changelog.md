@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.11 - 2026-11-14
+
+- Build: bump pyrefly from 1.4.0 to 1.4.1 in /.github (dependabot, PR #117).
+- Build: bump softprops/action-gh-release from 3.0.3 to 3.0.4 (dependabot, PR #118).
+- Build: bump vmactions/freebsd-vm from 1.5.9 to 1.6.0 (dependabot, PR #119).
+- Build: bump hypothesis from 6.170.14 to 6.170.15 in /.github (dependabot, PR #120).
+
 ## 3.16.26.10 - 2026-11-14
 
 - build(deps): bump coverage from 7.17.1 to 7.17.2 in /.github (dependabot[bot])
