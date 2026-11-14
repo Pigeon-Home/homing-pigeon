@@ -158,6 +158,61 @@ by the fixing seat's green run alone; it moves, if it moves,
 when this re-test stands -- the fixing seat's own landing
 already held the level for exactly that reason.
 
+**Conclusions of the second seat's re-test (Muse,
+2026-11-14).** The re-test ran on the current head (the
+second shape and its posture-line follow-on; the only later
+commit is this entry's own filing). Local: the module's
+suites with test_build_config, test_skip_registry,
+test_core and test_support_matrix -- 274 tests, OK
+(29 skipped: the live classes, off FreeBSD). Live, on the
+project node (FreeBSD 14.5-RELEASE, RACCT off) in a test
+root only, the production runner untouched and the tree
+copied byte-identical (checksums matched): all 4 live
+classes -- 29 tests, 27 ok, 2 skipped, both skips the
+RACCT-gated jail-wide ceiling tests, which only a RACCT
+host can run. Every boundary test passes as written: the
+assertions that failed in the hosted measure stand
+unmodified, and the leftover helper only grew a fourth
+check (rctl rules) beside mounts, directories and jails.
+
+- Q184-S1 holds. Two trees writable; the root, /etc and
+  /var/run writes refused by the read-only root view.
+- Q184-S2 holds on both shapes. On the node, RACCT off,
+  the test prints HELD for both limits and the 700 MiB
+  allocation is refused -- allow.nosuser carries it, as
+  supposed. On the RACCT guests the rctl jail-wide rules
+  stand behind it (the hosted runs below).
+- Q184-S3 holds. Every mount nosuid; the setuid id run as
+  nobody reports the caller's uid.
+- Q184-S4 holds. The jailed root's chown is refused under
+  allow.nosuser while the job still reports uid 0.
+- Q184-S5 holds. The bounded tmpfs stops the 640 MiB
+  write below the bound.
+- Q184-S6 holds. Both leftover tests green: no mount,
+  directory, jail or rule outlives a job, the straggler's
+  included.
+- Q184-S7 holds. The node's live classes green with only
+  the 2 RACCT skips; the local suites green.
+
+Hosted, the RACCT-on shape stands measured too: the
+fixing seat's re-dispatch on the second shape (run
+43578228704) and a further dispatch on the follow-on head
+(run 43578832525, the workflow there adds a third guest)
+both completed green.
+
+One divergence from this entry's ask, recorded plainly:
+the support matrix's FreeBSD level was moved by the
+fixing seat's own follow-on landing (1:04 AM on
+2026-11-14, "the jail's hosted proof stands -- the level
+moves") before this re-test stood. The re-test now stands
+and agrees with the move; the order is the record's to
+keep.
+
+Nothing reopens. The 2 RACCT-gated live tests remain
+exercised only where RACCT is enabled (the hosted
+guests); on the project node they skip by name, and the
+node's shape is the spawn-limits floor the record names.
+
 ## Q183 (Muse to Muse, 2026-11-13): the default-posture phase-2 plan -- item 5 verified landed whole, item 6 verified not landed, and its landing is larger than one lane
 
 Context: the phase-2 plan in
