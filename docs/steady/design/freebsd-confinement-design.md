@@ -47,9 +47,8 @@ both releases:
 | Finished | The jail's `/dev` stayed mounted and its skeleton stayed on disk, one of each per job |
 | Left a process behind and finished | The same mount and skeleton stayed (the job's own files were intact) |
 
-None of this let a job out of its jail. All of it is weaker
-than the page describing the backend said, and three of the
-seven are ways around a ceiling the record named.
+None of this let a job out of its jail. Three of the seven
+are ways around a ceiling the record named.
 
 ## What the design is for
 
@@ -421,6 +420,15 @@ seconds and the next sweep cleared its mounts, skeleton and
 rules; and a job through the runner itself was confined,
 recorded with the names above, and its declared output
 collected.
+
+The third guest — 14.5 as FreeBSD ships, RACCT off, which is
+the state of the project's own node — first ran beside the
+other two on the same day (run 43578832525), with a job
+through the runner as a job user added to the module. All
+three guests passed, 161 tests each. On the guest without
+RACCT the two rctl tests skipped, as they are written to; the
+record named no rctl control; everything else passed; and
+nothing was left on any of the three.
 
 One thing the run measured that this page had not supposed:
 the whole module — every live job among its tests — took

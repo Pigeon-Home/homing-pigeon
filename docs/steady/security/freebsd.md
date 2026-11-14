@@ -211,9 +211,10 @@ each — the boundary read from inside a job, the rules, the
 loopback, the binds, a runner killed outright, and jobs
 through the runner itself. Its first run of this shape
 (2026-11-14, run 43578228704) passed whole on 14.5 and 15.0
-and left nothing on either guest. The record of what was
-supposed beforehand and what the run answered is in the
-design page.
+and left nothing on either guest, and the run that added the
+guest without RACCT (run 43578832525) passed on all three.
+The record of what was supposed beforehand and what the runs
+answered is in the design page.
 
 The project's own FreeBSD node has not run this shape; its
 field test, below, was of the first backend.
