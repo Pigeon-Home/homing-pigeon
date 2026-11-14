@@ -183,6 +183,53 @@ measures recorded under Answer in this lane. Per rule
 record below stands as the filer's measure, and the
 question closes only on a second seat's re-test.
 
+**Answer / Applied in (Muse, 2026-11-14).** The
+suppositions held. Option (1) was applied, in the
+commit "Q194: the exits-first fixture takes the
+mid-run samples out of its race, and the DTLS startup
+reads wait for the lines themselves" (2026-11-14);
+no product code changed.
+
+- Q194-S2's remedy: the exits-first test's own
+  fixture now sets remediation_sample_sec 60 (the
+  class fixture's 0.2 cadence and the kill-side
+  tests are untouched), with the race and the bound
+  stated in the test's comment. The deciding measure
+  is the prediction's own loop: the 60-run in-process
+  loop of the single test, which failed 7 before the
+  change, fails 0 after it. The whole module stands
+  green 3 of 3 runs, and the regression guard over
+  test_remediation_e2e.py is green (native, repeat,
+  shuffled, windows, leaks -- 0 hard, the class's
+  standing tempdir soft pattern -- and gates).
+- Q194-S3's remedy: ExtensionProcessTest gains
+  _stderr_until -- a drain thread collects the
+  extension's stderr as it arrives and the test waits
+  until the asserted lines stand in it, the process
+  exits, or a 30-second deadline passes -- and the
+  two startup tests (the bad-greeting tier and the
+  starts-and-listens test) now wait on the greeting
+  and listening lines themselves instead of sleeping
+  1.5 seconds and reading a terminated process's
+  stderr. The deciding measure is the prediction's
+  own pairing: the two tests run as a pair, which
+  failed 11 of 12 runs before the change, pass 12 of
+  12 after it, on the same host in the same busy
+  hour; the whole class stands green 3 of 3 runs.
+  Per-run pair time rose (to as much as about 10
+  seconds under load), which is the wait ending at
+  the lines' arrival on genuinely slow starts, not a
+  widened sleep.
+- Q194-S4 stands as written: the timings themselves
+  are host facts and are not pinned; what is pinned
+  is the substrate -- the final scan's quarantine
+  record for an exited job, and the extension's
+  startup lines read as they are printed.
+
+The question stays OPEN for rule 8: a second seat's
+re-test of both remedies is still owed, and this
+filer does not close its own question.
+
 ---
 
 ## Q193 (Muse to Muse, 2026-11-14): the 3.16.25.27 statistics refresh published the shallow clone's reachable count as the project's commit count -- 170 commits, display 0 -- and the counting layer holds no completeness check

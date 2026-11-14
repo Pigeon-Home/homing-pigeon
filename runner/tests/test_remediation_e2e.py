@@ -195,8 +195,23 @@ class RemediationEndToEnd(unittest.TestCase):
         # the tripwire after the job has already exited on its
         # own; the recorded act is the quarantine, never a kill
         # that did not land.
+        #
+        # Q194: at the class fixture's 0.2-second cadence this
+        # test raced its own monitor. The job writes the loot
+        # mid-life (after its interpreter boots) and exits
+        # inside a second; a sample landing between the write
+        # and the exit sees a live job tripping a tripwire and
+        # kills it, truthfully -- exit -9, act killed -- 7 of
+        # 60 in-process runs on this host. The shape under test
+        # is the final scan's, so this fixture takes the
+        # mid-run samples out of the race: a 60-second cadence
+        # against a sub-second job leaves the monitor's one
+        # immediate sample (which precedes the loot, because
+        # the loot waits on the job's interpreter boot) and
+        # the sealed final scan as the only finder.
+        cfg = dict(self.cfg, remediation_sample_sec=60)
         script = _write_loot(after="print('done and gone')")
-        result = execute_job(self.cfg, _job("q13-race", script),
+        result = execute_job(cfg, _job("q13-race", script),
                              self.base)
         self.assertEqual(result["exit_code"], 0)
         self.assertIn("done and gone", result["stdout"])

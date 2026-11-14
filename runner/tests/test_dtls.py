@@ -34,6 +34,7 @@ import string
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import types
 import unittest
@@ -1185,6 +1186,46 @@ class SupervisorHandoffTest(unittest.TestCase):
 # ------------------------------------------------------------------
 
 class ExtensionProcessTest(unittest.TestCase):
+    def _stderr_until(self, proc, needles, timeout=30):
+        """The extension's stderr, collected as it arrives,
+        until every needle stands in it, the process exits,
+        or the deadline passes; the collected text either
+        way.
+
+        Q194: the startup tests slept a fixed 1.5 seconds
+        and then read whatever stderr a terminate collected.
+        The extension prints its greeting and listening
+        lines only after its imports and its pipe
+        construction complete, and that startup measures
+        0.92 to 2.83 seconds on this host -- the sleep sat
+        inside the spread, so a slow start was terminated
+        before it printed anything and the assertions read
+        the empty string (11 of 12 paired runs). Waiting
+        for the lines themselves ends the moment they
+        arrive; the 30 seconds is a deadline (the timeout
+        _run already allows a whole run), not a sleep.
+        """
+        lines = []
+
+        def drain():
+            try:
+                for line in proc.stderr:
+                    lines.append(line)
+            except (OSError, ValueError):
+                pass
+
+        threading.Thread(target=drain, daemon=True).start()
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            text = "".join(lines)
+            if all(n in text for n in needles):
+                return text
+            if proc.poll() is not None:
+                time.sleep(0.2)
+                return "".join(lines)
+            time.sleep(0.05)
+        return "".join(lines)
+
     def _run(self, cfg_dict):
         tmp = tempfile.mkdtemp(prefix="hp-dtls-")
         cfg_path = os.path.join(tmp, "runtime-config.json")
@@ -1226,13 +1267,16 @@ class ExtensionProcessTest(unittest.TestCase):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, env=env)
         try:
-            time.sleep(1.5)
+            err = self._stderr_until(proc, [
+                "dtls_greeting", "default tier family",
+                f"listening on udp 127.0.0.1:{port}; "
+                "platform disclosure tier family"])
             self.assertIsNone(proc.poll(),
                               "the extension refused a bad tier instead "
                               "of starting on the default")
         finally:
             proc.terminate()
-            _out, err = proc.communicate(timeout=10)
+            proc.wait(timeout=10)
         self.assertIn("dtls_greeting", err)
         self.assertIn("default tier family", err)
         self.assertIn(f"listening on udp 127.0.0.1:{port}; "
@@ -1254,12 +1298,13 @@ class ExtensionProcessTest(unittest.TestCase):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, env=env)
         try:
-            time.sleep(1.5)
+            err = self._stderr_until(proc, [
+                f"listening on udp 127.0.0.1:{port}"])
             self.assertIsNone(proc.poll(),
                               "the extension exited at startup")
         finally:
             proc.terminate()
-            _out, err = proc.communicate(timeout=10)
+            proc.wait(timeout=10)
         self.assertIn(f"listening on udp 127.0.0.1:{port}", err)
 
     def test_the_supervisor_starts_the_dtls_extension(self):
