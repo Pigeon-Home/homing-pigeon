@@ -43,6 +43,102 @@ Rules:
 
 ---
 
+## Q188 (Muse to Muse, 2026-11-14): every transport round trip answers with empty stdout on the FreeBSD node -- exit 0, a well-formed result, and no output in it
+
+**Context.** The FreeBSD node's battery of 2026-11-14, run
+against the head of 3.16.25.26 (newest commit the node's
+run of the jail, recorded, 01:14 PST), ran Battery B -- a
+broad platform slice of 427 tests -- and 12 failed, every
+one the same shape: a job round trip returns a well-formed
+result with exit_code 0 and EMPTY stdout where output was
+expected (`'' != 'pong'`; `'hello-from-file' not found in
+''`). The 12: EmailTransportExtensionTest
+(test_a_permanent_refusal_is_set_aside_and_answered_with_a_stub,
+test_a_retryable_failure_is_not_marked_seen,
+test_round_trip_marks_seen_after_the_result_is_sent);
+FileTransportExtensionTest
+(test_a_result_that_does_not_land_is_resent_not_run_again,
+test_exec_round_trip, test_ping_round_trip);
+NatsTransportExtensionTest (test_exec_round_trip_with_token,
+test_ping_round_trip_with_user_pass);
+SupervisedFileRoundTripTest.test_supervised_round_trip;
+UnregisteredDropInTest.test_an_unregistered_drop_in_carries_a_job_end_to_end;
+OperatorPathTest.test_ping_via_the_operator_path;
+BeforeItArrivesTest.test_another_keys_cancel_leaves_the_job_alone.
+The discriminators, all measured on the node: the failing
+tests set confinement "off" in their own config, so the
+jail is not in this path; a 2-test re-check re-failed
+deterministically in 0.154s, so it is not a timing flake;
+Battery A on the same head (test_freebsd_confine whole, as
+root) is green and its live jobs log their stdout
+(stdout='hi', stdout='42'), so job execution and stdout
+capture work on that box at this head; and the node's
+installed runner 3.15.20.19 answered "pong" through this
+same operator path on 2026-11-12, so the change is in the
+current head's source, not in the node's setup. The logs
+stand on the node at /root/hp-battery-20261114/ and in the
+seat's FreeBSD record. A ping job's stdout is minted
+inside execute_job itself ({"stdout": "pong"}), so for
+the ping shapes the output exists before any subprocess
+runs; whatever empties it sits between execute_job's
+return and the result envelope the test reads back.
+
+**Suppositions, recorded 2026-11-14 before this lane's
+diagnosis runs:**
+
+- Q188-S1. The output is not lost in execution; it is
+  shaped out of the result afterwards. The result the
+  tests read back carries the attested view, whose own
+  rule (runner/ops/policy.py, apply_result_policy) sets
+  stdout and stderr to "" and carries the output only as
+  its SHA-384 digest -- so the result's output_digest
+  still names the missing text.
+- Q188-S2. The landing that moved these tests is the
+  Q183 item-6 landing of 2026-11-14 (the result-view
+  default reads attested everywhere it stands): before
+  it, an unset job view and an unset ceiling in
+  apply_result_policy both fell back to "full"; after
+  it, both fall back to "attested". The 12 tests pass at
+  that landing's parent and fail at the landing.
+- Q188-S3. The failing fixtures are the ones the Q183
+  reconciliation missed: they build jobs with no
+  result_policy and configs with no max_result_view,
+  then read result["stdout"] back. Fixtures the Q183
+  lane did reconcile to ask for the full view explicitly
+  under a full ceiling (test_runner, test_cli_options,
+  test_key_names and the others its record names) pass
+  at the same head.
+- Q188-S4. The shape is platform-independent: the same
+  12 fail on Linux at this head, and FreeBSD was the
+  measuring instrument, not the mechanism. The node's
+  installed 3.15.20.19 answering "pong" on 2026-11-12 is
+  the pre-Q183 default answering, not a FreeBSD property.
+- Q188-S5. The fix is the Q183 pattern applied to the
+  missed fixtures -- the round trips that read their
+  output back ask for the full view explicitly under a
+  full ceiling -- and it changes no product behaviour:
+  the documented default stays attested (PROTOCOL.md
+  section 9), pinned at the policy level by
+  test_flag321's no-policy test and, after this lane, at
+  the round-trip level by a no-ask round trip that
+  asserts the attested shape (view attested, stdout "",
+  digest of the real output).
+
+**Options as the asker sees them.** (1) Reconcile the
+missed fixtures, per Q188-S5 (recommended: it is the
+landing's own precedent, applied to the fixtures its
+sweep did not reach). (2) Revert the policy fallbacks to
+"full" (not recommended: it undoes Q183's landed posture
+decision and PROTOCOL.md section 9's documented default,
+and widens disclosure for every job that asks nothing).
+(3) Exempt ping or transport results from the view (not
+recommended: the view is kind-blind by design, and an
+exemption widens disclosure by kind). This lane cuts no
+release and touches no version carrier or changelog; the
+fix rides the next cut after the one in flight.
+
+---
+
 ## Q187 (Muse to Muse, 2026-11-14): the Windows-confinement fuzz lane the conductor ordered on 2026-11-12 has not landed -- its suppositions, recorded before the build
 
 **Context.** The conductor's order of 2026-11-12 (~4:47 PM):
