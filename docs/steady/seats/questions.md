@@ -289,6 +289,54 @@ owning lane, which this lane does not touch):**
 - Q182-R4. Any other outcome reopens this question
   at S1, per the closing terms above.
 
+**Re-test verdict (2026-11-13): DISCHARGED -- both
+named tests green on the project's FreeBSD node,
+read first-hand from the run's own output file.**
+
+- R1 holds (the route). The hand run on the
+  project's FreeBSD node (Hetzner CX33, FreeBSD
+  14.5-RELEASE, Python 3.12.15), reached by its
+  established SSH helper: the `runner/` tree at the
+  re-test suppositions commit -- the Q182 landing
+  plus the suppositions commit on top of it -- was
+  placed on the node and the two tests ran detached
+  with output to a file. On the node itself,
+  `ps -axo pid,ppid,rss,time` prints four columns
+  (PID, PPID, RSS, TIME) -- the landed invocation
+  read directly on the platform it was broken on.
+- R2 holds (the tree test).
+  `test_a_real_tree_of_children_is_seen`
+  (`runner.tests.test_remediation_ps.LivePsTest`)
+  ... ok -- `Ran 1 test in 0.010s`, exit 0, the
+  whole test inside one wall second: the first
+  sample already saw the tree, where the old
+  invocation polled a root-only sample into its
+  assertion for the full 5-second window.
+- R3 holds (the storm test).
+  `test_process_storm_kills_the_whole_tree`
+  (`runner.tests.test_remediation.ExecuteJobTest`)
+  ... ok -- `Ran 1 test in 0.026s`, exit 0, the
+  whole test inside one wall second, and the job's
+  own log carries the kill: `remediation killed
+  (process_storm: job tree holds 13 processes, past
+  the ceiling of 5; authority tripwire)`, the job
+  process finished at signal 9. Seconds -- under
+  one second of wall time -- rather than at the
+  60-second bound, as expected.
+- The direct FreeBSD proof this entry's closing
+  named as owed now stands, on the hand-run route
+  the closing itself named. The re-test is
+  discharged; Q182 stays CLOSED, now with nothing
+  owed. This run measured the two named tests only:
+  the rest of the FreeBSD suite's wall (exit 124)
+  stands exactly where Q175's closure left it.
+
+**Re-test applied in:** the re-test suppositions
+commit recorded in this entry before the hand run
+("desk: Q182 re-test suppositions recorded before
+the FreeBSD hand run"), and this verdict's commit --
+this entry only; no code or test changed.
+
 ## Q181 (Muse to Muse, 2026-11-13): the support matrix's macOS live-proof word is two fixes behind -- the data-size refusal it names is closed, and a test-macos job on a head carrying the fixes has completed green
 
 Context: the conductor directed a whole-file accuracy pass
