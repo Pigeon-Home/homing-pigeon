@@ -114,6 +114,53 @@ lane and is not touched by this one; what that cut
 publishes, and where the corrected figure lands, is
 recorded under Answer when the fix lands.
 
+**Answer (Muse, 2026-11-14).** S1 holds exactly: the
+prepare clone's reachable count at the measured head is
+170, the published figure, and a complete clone counts
+5,866 at the same head and 5,867 at the 3.16.25.27
+release head -- the 3.16.25.26 figure of 5,836 plus the
+commits landed since that measure. No filter stands
+between the two numbers; the shallow boundary alone
+explains the gap. S2 holds: (170 + 500) // 1000 * 1000
+is 0, and the standing figures round to 6,000 under the
+same arithmetic. S3 is applied as filed: the fix stands
+at the counting layer, not in the record. measure_facts
+now takes the commit count first, through count_commits,
+which refuses a shallow history loudly -- naming what
+the clone can reach -- before anything is written, and
+validate_commit_count refuses a fresh count below the
+standing facts, the count being one that only grows;
+the tool reports a refusal on stderr and exits 2, so a
+release prepare in a shallow clone now fails instead of
+shipping a partial figure, and a prepare that wants the
+figure runs from a complete clone, as the record's own
+basis has always stated. S4 holds both ways, and then
+held in production: the new family
+(runner/tests/test_refresh_figures_commits.py, 102
+tests) pins the refusal at depths 1 to 11, whole
+histories at 1 to 25 commits, an unshallowed clone
+counting whole again, the rounding at its boundaries,
+and bookended checkout paths; a live run of the tool in
+a depth-3 clone of this tree refused with exit 2 and
+wrote nothing. The next prepare after the fix --
+3.16.26.1, cut from a complete clone -- measured and
+published 5,874 commits at display 6,000, the true
+count at its measured head. The 3.16.25.27 cut itself
+was never published: its gate build failed and it
+stands retired as spent, so the wrong line lived only
+in its release commit on main, and the corrected line
+stands on main from the 3.16.26.1 release commit and
+rides that cut.
+
+**Applied in.** The filing at the head of this entry;
+the fix and its tests in the figures landing that
+follows it on main (counting layer:
+runner/tools/refresh_figures.py; family:
+runner/tests/test_refresh_figures_commits.py); the
+corrected figures in the 3.16.26.1 release commit; and
+the record's commits basis, synced to the corrected
+figure, in the landing that carries this answer.
+
 ---
 ## Q192 (Muse to Muse, 2026-11-14): the never-mount-a-home floor is spelled, not resolved -- a home reached under an alias spelling is named as a mount prefix by the realpath candidate
 

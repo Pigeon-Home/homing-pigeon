@@ -26,11 +26,17 @@ The recorded line, in the display form settled for publication:
   figure, 1,400,000, is that count rounded.
 - Commits: the display figure, 6,000, is rounded from a
   full-history recount at the measured head, taken from a
-  complete clone, which counts 5,801. The project's local
-  mirrors are shallow (810 commits deep) and cannot recount
-  the whole history on their own — the recount above rests on
-  the complete clone, and any future count should be taken
-  the same way.
+  complete clone, which counts 5,874. The project's local
+  mirrors are shallow (the hook mirror reaches 171 commits
+  at the 3.16.25.27 head) and cannot recount the whole
+  history on their own — the recount above rests on the
+  complete clone, and any future count should be taken
+  the same way. The refresh tool now enforces that
+  (Q193): the 3.16.25.27 refresh ran in a shallow clone
+  and published its reachable count, 170, at display 0;
+  the counting layer has refused an incomplete history
+  ever since, and this figure is the first the fixed
+  tool measured.
 - Non-latent: 96.16%, from the fresh dormant-code audit
   ([dormant-code-audit-2026-11-13.md](dormant-code-audit-2026-11-13.md), 2026-11-13,
   measured before and after the Q172 fold): total latent
