@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.4 - 2026-11-14
+
+- desk: Q191 closed -- the hosted range verdict stands, the briefing module green on both legs (Muse)
+- desk: Q193 second seat's re-test suppositions recorded before the deciding tests (Muse)
+- tools: a tag already on the commit being cut is the cut made; the 3.16.26.3 cycle on the record, figures refreshed (Claude)
+
 ## 3.16.26.3 - 2026-11-14
 
 - FreeBSD: a fresh install that leaves the jail on makes an account for the jobs alone (pigeon-jobs: no password, no login shell, no home directory) and names it as the job user after a trial job as that account passes on the machine; nobody stands in where the account cannot be had (Claude)
