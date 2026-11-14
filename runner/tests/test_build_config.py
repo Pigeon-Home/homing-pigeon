@@ -487,7 +487,7 @@ class PipelineLiftsTest(unittest.TestCase):
                  "freebsd.yml", "python-range.yml", "upgrade-proof.yml", "soak.yml", "queues-worker.yml",
                  "hardware.yml", "cut-release.yml", "job-user.yml",
                  "mutation-seeded.yml", "upstream-pins.yml",
-                 "stamp-audit.yml")
+                 "stamp-audit.yml", "freebsd-confinement.yml")
 
     def _wf(self, name):
         with open(os.path.join(_root(), ".github", "workflows", name),
@@ -800,7 +800,8 @@ class PipelineLessonsTest(unittest.TestCase):
            "soak.yml", "coverage.yml",
            "cut-release.yml", "env-axes.yml", "freebsd.yml", "hardware.yml",
            "job-user.yml", "queues-worker.yml", "switch-proofs.yml",
-           "upstream-pins.yml", "stamp-audit.yml")
+           "upstream-pins.yml", "stamp-audit.yml",
+           "freebsd-confinement.yml")
 
     def test_unittest_output_piped_to_tee_captures_stderr(self):
         # unittest writes its report to stderr. 8dc7ac7 piped

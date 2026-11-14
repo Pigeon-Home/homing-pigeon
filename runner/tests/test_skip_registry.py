@@ -242,9 +242,10 @@ REGISTERED = {
         "instead",
     "run on FreeBSD as root":
         "test_freebsd_confine's live backend tests run on a "
-        "FreeBSD host as root (the fleet FreeBSD node), where a "
-        "real jail can engage; everywhere else the stub and the "
-        "injection seams are the subject",
+        "FreeBSD host as root, where a real jail can engage: "
+        "the freebsd-confinement workflow's 14.5 and 15.0 "
+        "guests, and the fleet FreeBSD node; everywhere else "
+        "the stub and the injection seams are the subject",
     "the stub exists only off darwin":
         "test_macos_confine's stub tests are exercised on every "
         "host that is not macOS, where the Seatbelt backend is "

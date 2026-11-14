@@ -15,6 +15,8 @@ no Capsicum in this backend), and every failure lands in the
 refuse direction.
 """
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import types
@@ -414,6 +416,255 @@ class LiveBackendTest(unittest.TestCase):
             # The refusal must be the ceiling's -- an allocation
             # failure -- not the job failing to start at all.
             self.assertIn(b"MemoryError", err)
+
+
+# The interpreter the live jobs run: the pkg-installed python3,
+# which the skeleton's loader hints let run inside the jail.
+_LIVE_PYTHON = "/usr/local/bin/python3"
+
+
+def _leftovers():
+    """What a finished job may have left on the host: the
+    mounts below a jail skeleton, the skeleton directories,
+    and the jails still standing under this backend's name."""
+    prefix = getattr(FC, "SKELETON_PREFIX", "hp-jail-")
+    mounts = set()
+    try:
+        out = subprocess.run(
+            ["/sbin/mount", "-p"], stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            timeout=30).stdout.decode("utf-8", "replace")
+    except (OSError, subprocess.SubprocessError):
+        out = ""
+    for line in out.splitlines():
+        fields = line.split()
+        if len(fields) > 1 and prefix in fields[1]:
+            mounts.add(fields[1])
+    folder = getattr(FC, "SKELETON_DIR", None) or tempfile.gettempdir()
+    try:
+        dirs = {n for n in os.listdir(folder) if n.startswith(prefix)}
+    except OSError:
+        dirs = set()
+    jails = set()
+    try:
+        out = subprocess.run(
+            ["/usr/sbin/jls", "name"], stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            timeout=30).stdout.decode("utf-8", "replace")
+    except (OSError, subprocess.SubprocessError):
+        out = ""
+    for name in out.split():
+        if name.startswith("hp"):
+            jails.add(name)
+    return mounts, dirs, jails
+
+
+@unittest.skipUnless(
+    FC.IS_FREEBSD_BACKEND and os.geteuid() == 0,
+    "run on FreeBSD as root")
+class LiveBoundaryTest(unittest.TestCase):
+    """What a confined job can and cannot do, on a real kernel.
+
+    Each test starts a real job through the backend's own spawn
+    and reads what the job itself reports from inside its jail.
+    The claims are the ones the platform page makes: two trees
+    are writable and no others, the ceiling cannot be lifted by
+    the job it holds, a set-user-ID bit buys nothing, the
+    scratch tree is bounded, the host's processes and network
+    do not exist in there, and a finished job leaves nothing
+    behind on the host.
+    """
+
+    def _job(self, argv, user=None, timeout=120):
+        """Run argv confined in a fresh work directory; return
+        (exit code, stdout, stderr, work directory)."""
+        work = tempfile.mkdtemp(prefix="hp-live-")
+        self.addCleanup(shutil.rmtree, work, True)
+        os.chmod(work, 0o755)
+        if user is not None:
+            import pwd
+            rec = pwd.getpwnam(user)
+            os.chown(work, rec.pw_uid, rec.pw_gid)
+        proc = FC.spawn_confined_process(
+            list(argv), cwd=work, env={}, user=user)
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        finally:
+            proc.close()
+        return proc.returncode, out, err, work
+
+    def _sh(self, script, user=None, timeout=120):
+        return self._job(["/bin/sh", "-c", script], user=user,
+                         timeout=timeout)
+
+    def _py(self, source, user=None, timeout=120):
+        return self._job([_LIVE_PYTHON, "-c", source], user=user,
+                         timeout=timeout)
+
+    def test_two_trees_are_writable_and_no_others(self):
+        _rc, out, err, work = self._sh(
+            "echo x > /work/in-work.txt && echo WROTE-WORK; "
+            "echo x > /tmp/in-tmp.txt && echo WROTE-TMP; "
+            "echo x > /escape-root.txt && echo WROTE-ROOT; "
+            "echo x > /etc/escape.txt && echo WROTE-ETC; "
+            "echo x > /var/run/escape.txt && echo WROTE-VAR; "
+            "mkdir /newdir && echo MADE-DIR; "
+            "echo x > /usr/escape.txt && echo WROTE-USR; "
+            "echo x > /bin/escape.txt && echo WROTE-BIN; "
+            "echo DONE")
+        self.assertIn(b"DONE", out, err)
+        self.assertIn(b"WROTE-WORK", out, err)
+        self.assertIn(b"WROTE-TMP", out, err)
+        for word in (b"WROTE-ROOT", b"WROTE-ETC", b"WROTE-VAR",
+                     b"MADE-DIR", b"WROTE-USR", b"WROTE-BIN"):
+            self.assertNotIn(word, out, (word, err))
+        self.assertTrue(
+            os.path.exists(os.path.join(work, "in-work.txt")))
+
+    def test_a_job_cannot_lift_its_memory_ceiling(self):
+        # A resource limit is the job's own to raise when the
+        # job holds the privilege to raise it. The job asks for
+        # an unlimited address space and then for 700 MiB; the
+        # ceiling must answer both.
+        _rc, out, err, _work = self._py(
+            "import resource\n"
+            "inf = resource.RLIM_INFINITY\n"
+            "for name in ('RLIMIT_AS', 'RLIMIT_DATA'):\n"
+            "    try:\n"
+            "        resource.setrlimit(getattr(resource, name), "
+            "(inf, inf))\n"
+            "        print('LIFTED', name)\n"
+            "    except (ValueError, OSError) as e:\n"
+            "        print('HELD', name, e)\n"
+            "try:\n"
+            "    a = bytearray(700 * 1024 * 1024)\n"
+            "    a[::4096] = b'1' * 179200\n"
+            "    print('ALLOCATED')\n"
+            "except MemoryError:\n"
+            "    print('REFUSED')\n")
+        self.assertIn(b"HELD RLIMIT_AS", out, (out, err))
+        self.assertIn(b"HELD RLIMIT_DATA", out, (out, err))
+        self.assertNotIn(b"LIFTED", out, (out, err))
+        self.assertIn(b"REFUSED", out, (out, err))
+        self.assertNotIn(b"ALLOCATED", out, (out, err))
+
+    def test_root_inside_the_jail_holds_no_privilege(self):
+        # Without a job user the job is uid 0 in its jail. The
+        # number is all it keeps: an act that needs the
+        # super-user's privilege is refused.
+        _rc, out, err, _work = self._sh(
+            "id -u; touch /work/f; "
+            "chown 65534 /work/f && echo CHOWNED || "
+            "echo CHOWN-REFUSED")
+        self.assertEqual(out.split()[0], b"0", (out, err))
+        self.assertIn(b"CHOWN-REFUSED", out, (out, err))
+        self.assertNotIn(b"CHOWNED", out, (out, err))
+
+    def test_a_set_user_id_bit_buys_nothing(self):
+        # A root-owned set-user-ID program inside the one tree
+        # a job can stage files into. Run by the job user it
+        # must report the job user, not root.
+        import pwd
+        nobody = pwd.getpwnam("nobody")
+        work = tempfile.mkdtemp(prefix="hp-live-")
+        self.addCleanup(shutil.rmtree, work, True)
+        os.chmod(work, 0o755)
+        os.chown(work, nobody.pw_uid, nobody.pw_gid)
+        target = os.path.join(work, "suid-id")
+        shutil.copyfile("/usr/bin/id", target)
+        os.chown(target, 0, 0)
+        os.chmod(target, 0o4755)
+        proc = FC.spawn_confined_process(
+            ["/bin/sh", "-c", "/work/suid-id -u"],
+            cwd=work, env={}, user="nobody")
+        try:
+            out, err = proc.communicate(timeout=60)
+        finally:
+            proc.close()
+        self.assertEqual(out.strip(), b"%d" % nobody.pw_uid,
+                         (out, err))
+
+    def test_the_scratch_tree_is_bounded(self):
+        # /tmp is memory. A job that could fill it without
+        # bound would hold the host's memory outside every
+        # ceiling a process carries.
+        _rc, out, err, _work = self._sh(
+            "dd if=/dev/zero of=/tmp/big bs=1048576 count=640 "
+            "> /dev/null 2>&1; "
+            "ls -l /tmp/big | awk '{print \"SIZE\", $5}'",
+            timeout=300)
+        words = out.split()
+        self.assertIn(b"SIZE", words, (out, err))
+        size = int(words[words.index(b"SIZE") + 1])
+        self.assertLess(size, 640 * 1024 * 1024, (out, err))
+
+    def test_the_host_s_processes_do_not_exist_inside(self):
+        _rc, out, err, _work = self._sh("ps -ax -o pid=")
+        pids = {int(tok) for tok in out.split() if tok.isdigit()}
+        self.assertTrue(pids, (out, err))
+        self.assertNotIn(os.getpid(), pids, (out, err))
+        self.assertNotIn(1, pids, (out, err))
+        self.assertLess(len(pids), 10, (out, err))
+
+    def test_there_is_no_network_at_all(self):
+        _rc, out, err, _work = self._py(
+            "import socket\n"
+            "def attempt(label, fam, addr):\n"
+            "    try:\n"
+            "        s = socket.socket(fam, socket.SOCK_STREAM)\n"
+            "        s.settimeout(5)\n"
+            "        s.bind(addr)\n"
+            "        print(label, 'BOUND')\n"
+            "    except OSError as e:\n"
+            "        print(label, 'NO-BIND', e)\n"
+            "attempt('V4', socket.AF_INET, ('127.0.0.1', 0))\n"
+            "attempt('V6', socket.AF_INET6, ('::1', 0))\n"
+            "try:\n"
+            "    s = socket.socket(socket.AF_INET, "
+            "socket.SOCK_STREAM)\n"
+            "    s.settimeout(5)\n"
+            "    s.connect(('1.1.1.1', 53))\n"
+            "    print('OUT CONNECTED')\n"
+            "except OSError as e:\n"
+            "    print('OUT NO-CONNECT', e)\n",
+            timeout=60)
+        self.assertIn(b"V4 NO-BIND", out, (out, err))
+        self.assertIn(b"V6 NO-BIND", out, (out, err))
+        self.assertIn(b"OUT NO-CONNECT", out, (out, err))
+
+    def test_a_finished_job_leaves_nothing_on_the_host(self):
+        before = _leftovers()
+        rc, out, err, _work = self._sh("echo DONE")
+        self.assertEqual(rc, 0, (out, err))
+        after = _leftovers()
+        self.assertEqual(after[0] - before[0], set(),
+                         "mounts left behind")
+        self.assertEqual(after[1] - before[1], set(),
+                         "skeleton directories left behind")
+        self.assertEqual(after[2] - before[2], set(),
+                         "jails left standing")
+
+    def test_a_straggler_does_not_cost_the_job_its_files(self):
+        # A job that leaves a process behind, sitting in the
+        # work directory: the release ends the process, and the
+        # files the job wrote must still be on the host after.
+        before = _leftovers()
+        rc, out, err, work = self._sh(
+            "echo keep > /work/result.txt; cd /work; "
+            "sleep 600 > /dev/null 2>&1 < /dev/null & "
+            "echo STARTED")
+        self.assertEqual(rc, 0, (out, err))
+        self.assertIn(b"STARTED", out, (out, err))
+        path = os.path.join(work, "result.txt")
+        self.assertTrue(os.path.exists(path),
+                        "the release removed the job's own file")
+        with open(path, encoding="ascii") as fh:
+            self.assertEqual(fh.read().strip(), "keep")
+        after = _leftovers()
+        self.assertEqual(after[0] - before[0], set(),
+                         "mounts left behind")
+        self.assertEqual(after[2] - before[2], set(),
+                         "jails left standing")
 
 
 if __name__ == "__main__":

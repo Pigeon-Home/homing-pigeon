@@ -1,0 +1,138 @@
+name: freebsd-confinement
+
+# The FreeBSD confinement backend's live proof
+# (runner/guard/freebsd_confine.py). The backend is a jail, and a
+# jail is made by root on a real FreeBSD kernel: the suite's
+# FreeBSD run (freebsd.yml) is an ordinary user's, so every live
+# test of the backend skips there, and until this workflow the
+# only kernel those tests had met was the project's own node.
+#
+# Two guests, each a VM inside a Linux runner (the action
+# freebsd.yml uses, pinned by the same SHA): 14.5, the release
+# the project's node runs, and 15.0, the release freebsd.yml
+# boots. Inside each, as root, the backend's own test module
+# runs whole -- the seams, then the live classes: the probe, a
+# job inside its jail, and what that job can and cannot do
+# there, read from the job's own report.
+#
+# RACCT: the kernel's resource accounting is a boot tunable
+# (kern.racct.enable), off as shipped, and a per-jail rctl rule
+# can deny nothing without it. `prepare` writes the tunable into
+# /boot/loader.conf and asks the action to keep the prepared
+# image (cache-after-prepare): the action then shuts the guest
+# down and boots it again from that image before `run`, so the
+# tunable is live when the tests start, and a later run boots
+# the kept image directly. The run reads the tunable back and
+# fails by name when it is not on -- a proof that skipped its
+# rctl tests would read green and prove less than it says.
+#
+# A signal on the backend, not a gate on a release: weekly and
+# on dispatch, never on the release path.
+on:
+  schedule:
+    - cron: "41 9 * * 3"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  # One run per ref at a time, and the one that is going
+  # finishes: its verdict is the point.
+  group: freebsd-confinement-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  confinement:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        release: ["14.5", "15.0"]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: the backend's live tests, as root, inside a FreeBSD VM
+        uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1.5.9
+        with:
+          release: ${{ matrix.release }}
+          mem: 4096
+          # The evidence path out of the VM is the one freebsd.yml
+          # states: a copy-based sync, the copy-back asked for in
+          # the open, the verdict carried as a file, and the whole
+          # log printed into this step's own output as well.
+          sync: rsync
+          copyback: true
+          cache-after-prepare: true
+          prepare: |
+            set -e
+            freebsd-version
+            export ASSUME_ALWAYS_YES=yes
+            pkg bootstrap -f > pkg.log 2>&1 || true
+            pkg update -f >> pkg.log 2>&1 || true
+            # The backend's live jobs run the pkg-installed
+            # interpreter by its plain name; the meta-package
+            # installs the default flavor and that name.
+            PY=""
+            if pkg install -y python3 >> pkg.log 2>&1; then
+              PY=python3
+            else
+              for v in 312 311; do
+                if pkg install -y "python$v" >> pkg.log 2>&1; then
+                  PY="python3.${v#3}"; break
+                fi
+              done
+            fi
+            [ -n "$PY" ] || { echo "::error title=freebsd-confinement prepare::no python installs: $(tail -n 6 pkg.log | tr '\n' ' ' | cut -c1-600)"; exit 1; }
+            [ -x /usr/local/bin/python3 ] || ln -s "/usr/local/bin/$PY" /usr/local/bin/python3
+            /usr/local/bin/python3 -c "import sys; print(sys.version.split()[0])"
+            rm -f pkg.log
+            # The boot tunable, live after the action's own
+            # reboot from the prepared image.
+            grep -q '^kern.racct.enable=' /boot/loader.conf 2>/dev/null || echo 'kern.racct.enable=1' >> /boot/loader.conf
+            tail -n 3 /boot/loader.conf
+          run: |
+            cd "$GITHUB_WORKSPACE" || { echo "::error title=freebsd-confinement::no workspace at $GITHUB_WORKSPACE"; exit 1; }
+            echo "== the guest"
+            freebsd-version -kru
+            id
+            racct="$(sysctl -n kern.racct.enable 2>/dev/null || echo unreadable)"
+            vimage="$(sysctl -n kern.features.vimage 2>/dev/null || echo 0)"
+            echo "kern.racct.enable=$racct kern.features.vimage=$vimage"
+            /usr/local/bin/python3 -c "import sys; print('python', sys.version.split()[0])"
+            frc=0
+            [ "$racct" = "1" ] || { frc=1; echo "::error title=freebsd-confinement::RACCT is not enabled in the guest (kern.racct.enable=$racct): the rctl tests would skip, and this proof does not read green on a skip"; }
+            echo "== the backend's test module, as root"
+            rc=0
+            /usr/local/bin/python3 -m unittest runner.tests.test_freebsd_confine -v > /tmp/freebsd-confinement.log 2>&1 || rc=$?
+            cat /tmp/freebsd-confinement.log
+            echo "== what the run left on the guest"
+            mount -p | grep hp-jail || echo "no jail mounts"
+            jls name | grep '^hp' || echo "no jails"
+            ls -d /tmp/hp-jail-* 2>/dev/null || echo "no skeleton directories"
+            rctl 2>/dev/null | grep 'jail:hp' || echo "no rctl rules"
+            cp /tmp/freebsd-confinement.log "$GITHUB_WORKSPACE"/ 2>/dev/null || true
+            [ "$rc" -eq 0 ] || echo "::error title=freebsd-confinement::the live tests exited $rc; the failing tests are named in this log and the log is in the artifact"
+            # The verdict travels as a file and the script exits 0,
+            # for the reason freebsd.yml records: in the pinned
+            # action a non-zero run exit throws past the copy-back.
+            printf '%s %s\n' "$rc" "$frc" > "$GITHUB_WORKSPACE/freebsd-confinement-verdict.txt" || true
+            exit 0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: freebsd-confinement-${{ matrix.release }}
+          path: |
+            freebsd-confinement.log
+            freebsd-confinement-verdict.txt
+          if-no-files-found: warn
+      - name: the verdict, restored on the host
+        if: always()
+        run: |
+          if [ ! -f freebsd-confinement-verdict.txt ]; then
+            echo "::error title=freebsd-confinement verdict::no verdict file arrived from the VM; the evidence path is broken"
+            exit 1
+          fi
+          read -r rc frc < freebsd-confinement-verdict.txt
+          echo "freebsd-confinement verdict: tests=$rc racct=$frc"
+          [ "$rc" = "0" ] && [ "$frc" = "0" ]
