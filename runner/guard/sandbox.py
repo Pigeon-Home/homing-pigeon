@@ -318,6 +318,15 @@ def build_bwrap_command(cfg, interpreter, script_name, workdir, args, env,
     """
     if not interpreter or not all(isinstance(x, str) for x in interpreter):
         raise RuntimeError("interpreter must be a non-empty list of strings")
+    if any("\x00" in x for x in interpreter):
+        # A NUL in the name is refused here, in the open: on
+        # POSIX the resolution below would find nothing and
+        # refuse anyway, but on Windows shutil.which raises
+        # ValueError for the same name instead of returning
+        # None, and the refusal this function promises is the
+        # RuntimeError (Q190's family, the build path's own
+        # shape).
+        raise RuntimeError("interpreter must not contain NUL characters")
     if (not isinstance(script_name, str) or not script_name
             or script_name in (".", "..")
             or "/" in script_name or "\\" in script_name

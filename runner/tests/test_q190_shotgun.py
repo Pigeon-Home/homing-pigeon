@@ -35,6 +35,7 @@ shotgun suppositions paragraph); the conclusions stand
 there beside them.
 """
 import os
+import shutil
 import string
 import sys
 import unittest
@@ -268,8 +269,13 @@ class BuildBwrapInterpreterNulTest(unittest.TestCase):
         argv = SB.build_bwrap_command(
             {}, ["sh"], "s.sh", "/tmp/w", [], {})
         self.assertEqual(argv[0], SB.BWRAP_BIN)
-        self.assertIn(SYSTEM.replace("python3", "sh")
-                      if False else "/usr/bin/sh", argv)
+        # The interpreter the host resolves is the one the
+        # command carries: /usr/bin/sh on the POSIX legs, and
+        # on a Windows host whatever sh the PATH offers (the
+        # Git sh, on the hosted legs). The control is that a
+        # clean name still builds -- not which sh the host
+        # happens to have.
+        self.assertIn(shutil.which("sh"), argv)
 
 
 if __name__ == "__main__":

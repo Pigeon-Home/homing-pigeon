@@ -150,7 +150,8 @@ def _build_body(args):
     if args.key_id:
         payload["key_id"] = args.key_id
     view = getattr(args, "view", None)
-    if view:
+    if isinstance(view, str) and view in (
+            "full", "redacted", "summary", "attested"):
         # The result view is asked for explicitly, as the mail
         # sender's --view asks: unstated, the runner reads the
         # job under the attested default and the output this

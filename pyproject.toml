@@ -452,6 +452,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_watchers.py",
     "runner/tests/test_windows_cli_sim.py",
     "runner/tests/test_windows_confine.py",
+    "runner/tests/test_windows_confine_fuzz.py",
     "runner/tests/test_windows_extensions_negative.py",
     "runner/tests/test_windows_platform_proofs.py",
     "runner/tests/test_windows_run_as.py",
