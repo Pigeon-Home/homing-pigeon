@@ -9,7 +9,6 @@
   "runner.tests.test_additional_negative_deep_2026_10_15": 2.1,
   "runner.tests.test_additional_negative_key_query_2026_10_15": 16.9,
   "runner.tests.test_additional_negative_verify_review_2026_10_15": 8.1,
-  "runner.tests.test_agent_stamps": 7.6,
   "runner.tests.test_agent_state_ignore_renderings": 0.7,
   "runner.tests.test_aggressive_poll_negative": 1.0,
   "runner.tests.test_aide_feed": 12.1,

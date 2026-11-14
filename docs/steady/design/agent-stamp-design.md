@@ -1,10 +1,9 @@
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 # Agent-Stamp: tracing work back to the agent chat that did it
 
-Status: the record is enforced by `runner/tests/test_agent_stamps.py`
-(every stamp in the tree is on `docs/archive/researcher_ident.md`,
-every recycled stamp names an active carrier); the spelling lint is
-not built. The rest is the design as captured.
+Status: the record is a written convention only; no test enforces
+it, and a stamp mistake stops nothing. The spelling lint is not
+built. The rest is the design as captured.
 
 ## Problem
 
