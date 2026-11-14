@@ -449,11 +449,12 @@ root, so a job with no job user is root's uid too.
   `/usr`. Where `/usr/home` is a dataset of its own, or homes
   stand under `/home`, they are not in the jail.
 - The floor that keeps a home directory out of an
-  interpreter's mount knows a home by its name
-  (`/home/<name>`, `/root`, the runner's own). On a host whose
-  `/home` is a link to a place outside the mounted trees, an
-  interpreter in another user's `bin` brings that user's home
-  in, read-only, under its real path.
+  interpreter's mount knows a home by its shape: `/root`, the
+  runner's own home, and any directory whose path ends in
+  `home/<name>` or `Users/<name>`, reached through a link or
+  not. A home kept under another name altogether is not known
+  to it, and an interpreter in its `bin` brings that home in,
+  read-only.
 - The per-process ceiling is not a kernel rule (above).
 - Memory a job holds outside any process's address space — a
   shared-memory object it never maps — is bounded by neither
