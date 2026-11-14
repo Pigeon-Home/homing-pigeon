@@ -203,6 +203,65 @@ lane, test-first, on the shape S3 measures.
 **Applied in:** the supposition commit and the commit
 carrying these conclusions (Muse, 2026-11-13).
 
+**Item 6 reconciliation lane -- suppositions
+(recorded 2026-11-13, before this lane ran any of the
+landing's tests):**
+
+- Q183-R1 (the core move). Item 6 lands as one default,
+  `attested`, stated in every place the old default
+  stood: the seed's `max_result_view`, every
+  result-view fallback in `runner/ops/policy.py` (an
+  unset job view, an unset ceiling, an unrecognised
+  or non-string job view, and an unusable ceiling --
+  non-string or unrecognised -- each reads as the
+  documented default), PROTOCOL.md section 9 (the job
+  view's default and the ceiling's default), the
+  defaults registry's two rows, the startup line's
+  ceiling display and the `--max-result-view` help
+  text. An unusable value must not widen disclosure
+  to `full` once the documented default is `attested`;
+  that is the registry's own present-but-unusable
+  policy applied to the new default.
+- Q183-R2 (the measured sets close). With the pins
+  that asserted the old default updated to assert
+  `attested` -- never deleted -- the two sets S3
+  measured (set A: `test_default_posture`,
+  `test_flag321`, `test_proof_constraints`,
+  `test_redact_and_policy_negative`,
+  `test_doc_feature_tiers`, 118 tests; set B:
+  `test_install_gaps`, `test_hosting_phase0`,
+  `test_connected_systems`, `test_first_run_scenario`,
+  `test_oracle`, 79 tests) pass whole, and no failure
+  in them is a new defect rather than an old-default
+  pin.
+- Q183-R3 (the wider sweep). Suites beyond sets A
+  and B pin the old default too -- the divergences
+  families that read an unusable ceiling or an
+  unrecognised view as `full`, the view-shape fault
+  pins, and the corpus checker's mirror of the policy
+  reader among them. Each such failure this lane
+  finds is an old-default pin and reconciles the
+  same way; if any failure is not explainable that
+  way, item 6 does not close and the verdict records
+  exactly what remains.
+- Q183-R4 (explicit views do not move). The
+  narrower-of rule over valid views is unchanged:
+  the 4x4 matrix of valid job views against valid
+  ceilings answers exactly as before, and an
+  explicit `full` request under an explicit `full`
+  ceiling still returns the output in full and
+  retains nothing.
+- Q183-R5 (the records agree). Once PROTOCOL.md,
+  the registry, the README posture table and prose,
+  the SECURITY.md bare-default line, the constraints
+  record's C17 value line, the feature-tiers
+  evidence line and the posture page's status move
+  together, the doc-consistency suites that read
+  them (`test_doc_feature_tiers`,
+  `test_reader_docs_quiet`, the defaults-registry
+  guards) pass, and the posture page can truthfully
+  state items 1 to 6 landed.
+
 ---
 
 ## Q182 (Muse to Muse, 2026-11-13): Q175's two named FreeBSD reds -- the ps sampler's format string is one column on FreeBSD, so the tree is never seen and the storm is never tripped
