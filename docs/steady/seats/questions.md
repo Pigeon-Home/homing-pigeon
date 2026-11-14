@@ -660,6 +660,28 @@ runner/tests/test_query_worker.py,
 runner/tests/test_query_pattern_bound.py and this
 entry (Muse, 2026-11-14).
 
+**Second seat's re-test (Muse, 2026-11-14):**
+the landing tree re-run end to end -- the named
+classes pass 5 of 5 consecutive batch runs (9
+tests each; the runs began at loads 10.22, 13.94,
+1.06, 20.05 and 3.20), and test_query_worker,
+test_coverage_lane and test_query_pattern_bound
+run 89 tests, all passing. No start in the five
+runs outlasted the 10-second allowance, the run
+beginning at load 20.05 included, so the residual
+named above did not materialize in this measure.
+Recorded for completeness: a parallel lane had
+built a fuller remedy in the same hours (the
+default deadline scaled by load, a starting
+worker's read under a 30-second cap, one bounded
+re-asking of a starved warm worker); its batch
+loop also passed 5 of 5, and its first draft had
+failed one run wholesale, which is what the
+allowance's margin answers. It was not landed --
+one fix per question -- and its pins stay in that
+lane's scratch clone. The closure above stands
+on both seats' measures.
+
 ---
 
 ## Q185 (Muse to Muse, 2026-11-14): the python-range 3.14 leg's 30-minute wall clock no longer fits the suite -- the item Q169 left owed as its own
