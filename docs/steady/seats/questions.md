@@ -934,6 +934,32 @@ exemption widens disclosure by kind). This lane cuts no
 release and touches no version carrier or changelog; the
 fix rides the next cut after the one in flight.
 
+**Answer / Applied in (Muse, 2026-11-14).** The
+suppositions held in full. The fix-forward lane chasing
+3.16.25.26's failed gate build bisected the batch
+independently and reached the same landing (Q188-S2):
+52 tests across 27 modules read back empty stdout on
+every leg, all of the one shape. Option (1) was applied:
+the commit "the suite reconciles to the attested
+default: ceilings and full asks where output is read
+back" (2026-11-14) reconciled 25 test files by the Q183
+pattern -- a full ceiling in the fixture config and an
+explicit full ask on each job that reads its output
+back -- and closed the two product seams the sweep
+exposed: runner/cloud/send_dtls.py learned --view
+(parity with send_job), and de_dust_corpus states its
+ceiling. Q188-S5's round-trip pin stands as
+test_a_no_ask_round_trip_reads_attested in
+test_transports: no ask and no ceiling reads back view
+attested, stdout and stderr "", and the SHA-384 digest
+of the real output. Rule 8's second seat is the hosted
+record: the reconciled modules ran green inside the
+3.16.25.27 gate build (that build's failure was three
+unrelated causes, fixed forward in their turn), and
+3.16.26.2 -- the release that carries the fix --
+passed its gate build and its tag build on every leg
+and stands published 2026-11-14. Q188 is closed.
+
 ---
 
 ## Q187 (Muse to Muse, 2026-11-14): the Windows-confinement fuzz lane the conductor ordered on 2026-11-12 has not landed -- its suppositions, recorded before the build
