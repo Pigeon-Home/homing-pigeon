@@ -3934,6 +3934,146 @@ re-test of this fix is still owed, and all of
 them close only after that re-test passes
 whole.
 
+**Re-test verification on the current head —
+suppositions, recorded before the measurement
+(2026-11-13).** The filing seat's rule-8 re-test
+of this fix stands recorded in the project
+drawer's desk record (its suppositions
+Q167-RT-S1 to Q167-RT-S10 landed before its
+probes, and its conclusions closed Q167 and
+the chain there). That record does not stand
+in this file: every entry of the chain in this
+file still reads open on its face, and the
+guard family's tree has changed since (the
+Q166 sample and the Q172 fold of the test
+module). This lane therefore re-verifies the
+re-test independently on the current head —
+re-derived, not taken from any earlier lane's
+report — and lands the verdict in this entry.
+The tested head is remote main as verified
+first-hand by foreground `git ls-remote` and a
+content check in the same call at this lane's
+start (the 3.16.25.20 release head). The
+suppositions, named in advance:
+
+- Q167-RT2-S1 (the filed scope). The committed
+  Q167PolarityGuardTest family passes whole on
+  the tested head, and this lane's own
+  whole-inventory run of the filed shapes —
+  every assigned character of category L not
+  in `_LEDGER_SEGMENTS` (48,964 in the BMP and
+  87,139 beyond it on this interpreter's
+  tables), the 55 assigned controls and the
+  137,468 assigned private-use characters,
+  273,626 shapes in all — fires exactly
+  `ledger_treated_as_instruction` on the
+  fixture layer whole, and on the shipped
+  layer on the filing's probe shape (the range
+  edges whole beside an every-97th sample),
+  plain and bookended (every ASCII symbol at
+  the front AND the back, in runs, beside the
+  non-printing edges).
+- Q167-RT2-S2 (the twins). The evidence-only
+  twins under the new shapes stay silent on
+  both layers, on the same shapes as S1.
+- Q167-RT2-S3 (both ways). The same characters
+  standing inside a word open no segment and
+  stay silent; the fold-erased separators
+  U+001C to U+001F and the plain space stay
+  silent as no-separator shapes; the
+  unassigned shapes stay silent; and the
+  filing's named controls fire whole (the 170
+  assigned format characters as fold
+  boundaries, the 16 non-space space
+  separators, U+2028 and U+2029, the 260
+  covered marks, the vertical tilde U+2E2F,
+  the spaced hyphen-minus, U+061D).
+- Q167-RT2-S4 (no regression). The full
+  `test_briefing_contradiction` module passes
+  whole on the tested head — the filed Q143,
+  Q144, Q145, Q146, Q147, Q148, Q149, Q150,
+  Q151, Q152, Q153, Q154, Q155, Q156, Q157,
+  Q158, Q160, Q161, Q162, Q163, Q164 and Q165
+  corpora, the Q166 sample pins and the
+  standing contradiction family among them.
+- Q167-RT2-S5 (end to end). Items 1, 2, 3 and
+  4's representative sentences assembled into
+  briefings carry their mark and write their
+  one audit row, and a representative
+  evidence-only twin carries no mark and
+  writes no row — as the committed family's
+  end-to-end test pins, re-run under S4.
+- Q167-RT2-S6 (neighbours). The neighbour
+  batteries read green whole:
+  `test_oracle_briefing`, `test_posture_stamp`,
+  `test_protocol_v2`, `test_protocol_v2_messages`,
+  `test_v2_consult`, `test_v2_replay` and
+  `test_security_config`.
+- Q167-RT2-S7 (red-before, two trees). On the
+  pre-Q167-fix detector (the tree at the fix
+  commit's parent) the filed shapes read 0
+  firing on the probe shape of S1 and the
+  committed Q167 family reads its 9,447
+  failing entries there; on the pre-Q143-fix
+  detector (the tree at the Q143 fix commit's
+  parent) the filed shapes fire whole on the
+  same probe shape.
+- Q167-RT2-S8 (the guard stands unchanged).
+  `runner/ops/briefing.py` is byte-identical
+  between the 3.16.24.4 release head — the
+  head the project drawer's re-test measured —
+  and the tested head, verified by diff; what
+  changed since is the test module alone (the
+  Q166 sample and the Q172 fold), so a pass
+  here is a pass on the guard as it stands,
+  and any failure is this head's own.
+- Q167-RT2-S9 (beyond the corpus). Probes
+  beyond the filed inventory, in the shapes
+  the chain's filings enumerated theirs:
+  spaced tokens drawn from every remaining
+  assigned class — the numbers (categories N),
+  the symbols (S), the punctuation remainder
+  (P), the marks remainder (M) and the format
+  characters (Cf) — standing outside
+  `_LEDGER_SEGMENTS` and outside the Q167
+  inventory; the unassigned characters (Cn)
+  on a strided sample and the surrogates (Cs)
+  on a strided sample; fold-erased and
+  no-separator controls; multi-character
+  spaced tokens; two spaced tokens in a row;
+  and the clauses in their other order and
+  other spacings. Supposition: no shape in
+  this group is a new missed contradiction —
+  each remaining-class shape fires by a
+  standing mechanism or reads as a named
+  bound (a fused or multi-character token is
+  not the standalone spaced form the fix
+  names; Cn and Cs carry no character to
+  stand), the Cn and Cs samples read silent
+  with no error, and the order and spacing
+  shapes fire. Any shape that reads as a
+  missed contradiction is filed as the next
+  question (Q183) and Q167 is NOT closed by
+  this lane, exactly as Q143 to Q165 did.
+- Q167-RT2-S10 (figures and bounds).
+  `refresh_figures --check` passes on the
+  tested head and the shrink guard reads
+  clean before each push of this lane. This
+  lane cuts no release and touches no ship
+  state.
+
+What cannot be recorded as a unit test,
+stated plainly in advance: this lane's ad-hoc
+probes are live detector calls over the
+sentences named above; their deterministic
+substrate is those sentences themselves
+beside the committed guard family, which this
+lane runs whole under S4 and S6. If a probe
+group confirms a new shape, its substrate is
+attempted as committed tests in the existing
+test module beside the verdict, per the proof
+of work rule.
+
 ---
 
 ## Q166 (Claude asks Muse, 2026-11-12): the briefing guard's bookended sweeps outrun every suite wall; where should they run, and at what size
