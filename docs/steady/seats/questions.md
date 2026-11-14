@@ -43,6 +43,120 @@ Rules:
 
 ---
 
+## Q182 (Muse to Muse, 2026-11-13): Q175's two named FreeBSD reds -- the ps sampler's format string is one column on FreeBSD, so the tree is never seen and the storm is never tripped
+
+Context: Q175 closed on hosted FreeBSD run 43405943903
+(tag v3.16.25.8, verdict `124 0 0`) with its artifact
+present and every completed red named. Its closing note
+left two named reds standing for triage as their own
+work:
+
+- `test_a_real_tree_of_children_is_seen`
+  (`runner.tests.test_remediation_ps.LivePsTest`) ... FAIL
+- `test_process_storm_kills_the_whole_tree`
+  (`runner.tests.test_remediation.ExecuteJobTest`) ... ERROR
+
+The evidence of that run, read first-hand by this lane
+from the run's own artifact (still unexpired when
+downloaded on 2026-11-13): `suite-freebsd.log` carries
+only the two verbose outcome lines for these tests.
+There are no summary `FAIL:` / `ERROR:` sections and no
+tracebacks for either -- the suite was wall-killed
+before unittest printed its summary, so no summary was
+ever written. The FAIL-versus-ERROR shapes and the
+neighbouring lines are all the run gives, and they give
+this much: every other test in `test_remediation_ps`
+passed in the same run, including `PsTableTest`'s
+fake-table pins of the parsing and the tree walking,
+and the storm test's neighbours in `ExecuteJobTest`
+passed. Both reds go through one sampler:
+`runner/oracle/remediation.py`'s `sample_tree_ps`, which
+dispatches off Linux to one `ps` call per sample with
+`_PS_ARGS = ("ps", "-axo", "pid=,ppid=,rss=,time=")`.
+
+**Suppositions (recorded 2026-11-13, before the
+distinguishing simulation in S4 and before any fix in
+this lane; a Linux baseline of the two named tests,
+run while the code was read, is reported in the
+conclusions as a baseline and is not the distinguishing
+measurement):**
+
+- Q182-S1 (the format supposition). The `_PS_ARGS`
+  format string is a GNU/macOS shape. On FreeBSD,
+  ps(1)'s `-o` grammar allows an equals sign only on
+  the LAST keyword of the list, where the string after
+  it spans the rest of the argument: the FreeBSD 15.0
+  ps(1) page says "The last keyword in the list may be
+  appended with an equals sign (`=') and a string that
+  spans the rest of the argument, and can contain space
+  and comma characters", and the ps source's
+  `parsefmt` carries the same rule in its comment (an
+  item containing an equals sign "may contain embedded
+  separator characters and is always the last item").
+  FreeBSD ps therefore reads the sampler's one argument
+  `pid=,ppid=,rss=,time=` as ONE column -- pid, with
+  the header text `,ppid=,rss=,time=` -- and prints one
+  field per process. `_ps_table` skips every line with
+  fewer than 4 fields, returns an empty table, and
+  `sample_tree_ps` returns the root alone on FreeBSD,
+  deterministically, whatever the tree holds.
+- Q182-S2 (the LivePs shape). If S1 holds, LivePsTest
+  polls a root-only sample for its full 5-second window
+  and fails its `len(sample) >= 3` assertion: a FAIL,
+  exactly the recorded shape. That is a platform
+  ps-format defect in the sampler's invocation, not a
+  defect in the tree walking (pinned green by
+  `PsTableTest` on the same FreeBSD run) and not a
+  wall-clock or load flake (a flake would have to
+  starve every sample in the window, and the recorded
+  outcome is the deterministic root-only outcome S1
+  predicts).
+- Q182-S3 (the storm shape). If S1 holds, the job
+  monitor's sampler never sees more than the root pid,
+  the storm ceiling of 5 is never crossed, the job's
+  12 sleeps run their full 25 seconds and exit clean,
+  `execute_job` returns no `remediation` member, and
+  the test's `r["remediation"]` raises KeyError: an
+  ERROR, exactly the recorded shape. The test's own
+  comment records the kill taking about 25 seconds on
+  FreeBSD; under S1 that figure is the sleeps' own
+  duration, not a slow kill.
+- Q182-S4 (what distinguishes them). (a) A
+  transliteration of FreeBSD's `parsefmt` over the
+  format string `pid=,ppid=,rss=,time=` yields one
+  column, and over a plain `pid,ppid,rss,time` list
+  yields four. (b) Single-column output in the shape
+  FreeBSD would print, fed through `_ps_table` and
+  `sample_tree_ps`, yields an empty table and a
+  root-only sample; the LivePs polling shape over it
+  yields the FAIL shape and a monitor sample over it
+  trips no storm. (c) On this Linux machine both named
+  tests pass repeatedly and under load and the whole
+  `test_remediation_ps` module passes: the walking,
+  the parsing of four-column output and the storm
+  logic are sound where the table arrives in the
+  expected shape. None of (a) to (c) is a FreeBSD
+  execution, and this lane claims no FreeBSD verdict
+  from them; the direct FreeBSD proof is named in the
+  conclusions as still owed.
+- Q182-S5 (the fix shape, only if S1 to S3 hold). The
+  portable invocation is the plain keyword list with
+  no equals signs -- `("ps", "-axo", "pid,ppid,rss,time")`
+  -- which the GNU, macOS and FreeBSD ps grammars all
+  read as four columns; the header line it prints is
+  skipped by `_ps_table`'s integer parse, as a bad row
+  already is. Pins: the parser accepts a header-bearing
+  table; the sampler's args carry no equals sign, and
+  the FreeBSD-grammar simulation of the new args yields
+  four columns while the old args yield one. No new
+  skip reason is introduced; `test_remediation_ps` and
+  `test_remediation` run green locally and the
+  regression guard over the touched modules reads green
+  before the push, its verdict line in the landing
+  commit's message.
+- Q182-S6. This lane cuts no release and touches no
+  ship state; the release train carries the batch.
+
 ## Q181 (Muse to Muse, 2026-11-13): the support matrix's macOS live-proof word is two fixes behind -- the data-size refusal it names is closed, and a test-macos job on a head carrying the fixes has completed green
 
 Context: the conductor directed a whole-file accuracy pass
