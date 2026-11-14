@@ -161,6 +161,15 @@ super-user's privilege grants; ordinary ownership still
 applies, so it reads and writes its own work directory as
 before.
 
+Ordinary ownership cuts the other way too. The job is still
+the owner of everything root owns, so a root-only file in a
+tree the jail shows it is read. On FreeBSD the tree that
+matters is `/usr/local/etc`, where packages keep their
+settings and sometimes a secret. This is the one thing the
+Linux sandbox holds by default that this jail does not: a
+Linux job is the runner's ordinary user and reads what that
+user reads. A job user closes it.
+
 A job with a job user (`security.modes.job_user` at `enforce`
 with a user named) is demoted at the jail door: `jexec -u`,
 resolved in the host's user database. The demote needs the
@@ -354,10 +363,11 @@ runner's jobs are never touched.
 | System trees | `/usr` read-only | `/usr`, `/usr/local`, `/bin`, `/lib`, `/libexec`, `/sbin` read-only |
 | The root itself | A tmpfs of bwrap's own, which takes writes for the life of the job | Read-only |
 | `/tmp` | A tmpfs at the kernel's default size, half the host's memory | A tmpfs at the configured size |
-| Home directories | Not visible | Not visible |
+| Home directories | Not visible | Not visible, unless the host keeps them inside the `/usr` filesystem |
 | Network | A namespace with a loopback of its own | None; a loopback of its own by a switch |
 | Host's processes | Visible through `/proc` (the process namespace is shared) | Not visible |
 | Root inside | uid 0 in a user namespace, its capabilities dropped | uid 0 with no privilege, or the job user |
+| What a job reads in the trees it is shown | What the runner's own user can read | Under a job user, what that user can read; with none, what root owns as well |
 | Set-user-ID programs | Not honoured (no new privileges) | Not honoured (`nosuid` mounts) |
 | Memory ceiling, per process | None | 512 MiB, not the job's to raise |
 | Ceilings on the whole job | None | Processes and address space, where RACCT is enabled |
@@ -371,7 +381,9 @@ The Linux column is bwrap as this project starts it
 (`DEFAULT_FLAGS` in `runner/guard/sandbox.py`) and
 bubblewrap's documented behaviour. The FreeBSD column is what
 the live tests read from inside a job. Linux keeps one thing
-this design cannot have: it confines without root.
+this design cannot have: it confines without root. The row
+on what a job reads follows from it — the runner here is
+root, so a job with no job user is root's uid too.
 
 ## What it does not do
 
@@ -380,6 +392,22 @@ this design cannot have: it confines without root.
   interpreters cannot enter it for them.
 - It is not unprivileged. The runner must run as root for the
   backend to engage.
+- Without a job user there is no ownership boundary. The job
+  holds no privilege and is still the owner of what root
+  owns: it reads a root-only file in any tree the jail shows
+  it (above, under Privilege). A job user is the remedy, and
+  a fresh install names none.
+- Home directories inside `/usr`. A host that keeps them in
+  the `/usr` filesystem — `/usr/home` on UFS, the layout
+  before FreeBSD 14.0 — shows them read-only with the rest of
+  `/usr`. Where `/usr/home` is a dataset of its own, or homes
+  stand under `/home`, they are not in the jail.
+- The floor that keeps a home directory out of an
+  interpreter's mount knows a home by its name
+  (`/home/<name>`, `/root`, the runner's own). On a host whose
+  `/home` is a link to a place outside the mounted trees, an
+  interpreter in another user's `bin` brings that user's home
+  in, read-only, under its real path.
 - The per-process ceiling is not a kernel rule (above).
 - Memory a job holds outside any process's address space — a
   shared-memory object it never maps — is bounded by neither
@@ -557,3 +585,11 @@ directory, no rctl rule.
 
 The seed's live tests have run on the hosted guests. The
 project's own node has not run them.
+
+### What a job reads
+
+Supposition, recorded 2026-11-14 before its first hosted run:
+
+16. A job with no job user reads a root-only file in a tree
+    the jail shows it; the same job under a job user is
+    refused the file.

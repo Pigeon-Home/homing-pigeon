@@ -112,8 +112,9 @@ class SupportMatrixTest(unittest.TestCase):
         # The FreeBSD row stands at the level its proofs earned:
         # above Experimental since its hosted verdict and field
         # proof, and out of the reduced-confinement level since
-        # the jail was rebuilt to hold what the Linux sandbox
-        # holds and the hosted live proof of that shape passed
+        # the jail was rebuilt (a read-only root, no privilege
+        # inside, ceilings the job cannot raise) and the hosted
+        # live proof of that shape passed
         # (2026-11-14). Neither earlier level may come back on
         # its row. (The words for them still stand in this
         # file's level definitions, so the pin reads the row
@@ -166,6 +167,9 @@ class SupportMatrixTest(unittest.TestCase):
         # classes but not the battery.
         row = _row("FreeBSD")
         self.assertIn("The backend needs root", row)
+        # What root's uid still reads, and what closes it.
+        self.assertIn("still the owner of what root owns", row)
+        self.assertIn("until `security.job_user` names a user", row)
         self.assertIn("there is no Capsicum", row)
         self.assertIn("named only where RACCT is enabled", row)
         self.assertIn("refuses when it cannot engage", row)

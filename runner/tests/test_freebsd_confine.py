@@ -1356,6 +1356,16 @@ class TranslateTest(unittest.TestCase):
     """A host command becomes the command that runs in-jail."""
 
     def setUp(self):
+        # The paths below describe a FreeBSD host, not the host
+        # the suite runs on. That host's own links -- a /home or
+        # a /tmp that leads elsewhere, as on macOS -- are not the
+        # subject, so a path resolves to itself here unless a
+        # test scripts a link of its own.
+        resolved = mock.patch.object(
+            FC._sandbox.os.path, "realpath",
+            side_effect=lambda path, *a, **k: path)
+        resolved.start()
+        self.addCleanup(resolved.stop)
         self.st = FC.confinement_settings({})
         self.which = {"sh": "/bin/sh",
                       "python3": "/usr/local/bin/python3"}.get
@@ -3102,6 +3112,39 @@ class LiveControlsTest(unittest.TestCase):
         self.assertNotIn(b"HAS-WORK", out, err)
         self.assertTrue(os.path.exists(os.path.join(work, "out.txt")))
         self.assertFalse(os.path.exists(os.path.join(data, "new.txt")))
+
+    def test_root_s_own_files_are_read_until_a_job_user_is_named(self):
+        # The limit the platform page states. A job with no job
+        # user is uid 0 inside its jail: no privilege, and still
+        # the owner of what root owns, so a root-only file in a
+        # tree the jail shows it is read. Under a job user the
+        # same file is refused. The tree here is an operator's
+        # bind; the host's own trees are shown the same way.
+        shown = tempfile.mkdtemp(prefix="hp-live-shown-")
+        self.addCleanup(shutil.rmtree, shown, True)
+        os.chmod(shown, 0o755)
+        secret = os.path.join(shown, "root-only.txt")
+        with open(secret, "w") as fh:
+            fh.write("ROOT-ONLY-DATA\n")
+        os.chmod(secret, 0o600)
+        cfg = {"security": {"confinement": {
+            "extra_ro_binds": [[shown, "/shown"]]}}}
+        argv = ["/bin/sh", "-c",
+                "id -u; cat /shown/root-only.txt 2>/dev/null "
+                "|| echo REFUSED; echo DONE"]
+        _proc, out, err, _work = self._job(argv, cfg=cfg)
+        self.assertIn(b"DONE", out, err)
+        self.assertEqual(out.split()[0], b"0", out)
+        self.assertIn(b"ROOT-ONLY-DATA", out, err)
+        import pwd
+        nobody = pwd.getpwnam("nobody")
+        _proc, out, err, _work = self._job(argv, cfg=cfg,
+                                           user="nobody")
+        self.assertIn(b"DONE", out, err)
+        self.assertEqual(out.split()[0],
+                         str(nobody.pw_uid).encode(), out)
+        self.assertIn(b"REFUSED", out, err)
+        self.assertNotIn(b"ROOT-ONLY-DATA", out, err)
 
     def test_an_interpreter_outside_the_trees_runs_from_its_prefix(self):
         prefix = os.path.realpath(tempfile.mkdtemp(

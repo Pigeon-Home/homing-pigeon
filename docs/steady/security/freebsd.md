@@ -47,7 +47,9 @@ is what an operator needs from it.
   job user is uid 0 inside its jail, and the jail is created
   with `allow.nosuser`: that uid cannot raise a resource
   limit, change a file's owner, or do anything else the
-  super-user's privilege grants.
+  super-user's privilege grants. It is still root's uid when
+  a file's owner is asked for, which is why a job user is
+  worth naming (below).
 - **No set-user-ID.** Every mount is `nosuid`, so a
   set-user-ID bit on any file a job can reach buys nothing.
 - **A per-process memory ceiling** (`spawn_resource_limits`):
@@ -147,6 +149,12 @@ the demote. On its own (confinement at `audit` or `off`),
 `job_user` on FreeBSD is the ordinary POSIX demote, which
 engages as it does on Linux.
 
+Name one. The jail cannot be made without root, so a job
+with no job user is root's uid inside it — without
+privilege, and still the owner of what root owns (below,
+under what this does not provide). A fresh install names no
+job user.
+
 ### Startup, and after a job
 
 At `enforce` the startup gate probes the backend and refuses
@@ -189,6 +197,21 @@ its mounts and its skeleton. Three things stand behind that:
 - **Not without root.** Making a jail and mounting into it
   need root: the runner must run as root for the backend to
   engage. The Linux sandbox confines without it.
+- **No ownership boundary without a job user.** A job with
+  no job user is uid 0 inside its jail. It holds no
+  privilege, and it is still the owner of everything root
+  owns: a root-only file in a tree the jail shows it is read.
+  The tree that matters is `/usr/local/etc`, where packages
+  keep their settings and sometimes a secret. On Linux the
+  job is the runner's ordinary user and reads what that user
+  reads. Set `security.job_user` to a user of the job's own
+  and the job reads only what that user can.
+- **Home directories inside `/usr`.** A host that keeps them
+  in the `/usr` filesystem — `/usr/home` on UFS, the layout
+  before FreeBSD 14.0 — shows them to a job, read-only, with
+  the rest of `/usr`. Where `/usr/home` is a dataset of its
+  own, or homes stand under `/home`, they are not in the
+  jail.
 - **The per-process ceiling is not a kernel rule.** It is a
   resource limit applied at spawn, and it holds because the
   job has no privilege to raise it. The kernel rules are the

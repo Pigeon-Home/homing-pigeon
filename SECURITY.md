@@ -585,7 +585,10 @@ and a bounded `/tmp` the only two trees that take a write,
 no network at all, every mount `nosuid`, root inside the
 jail holding no privilege, and a 512 MiB per-process
 ceiling the job cannot raise; on a host with RACCT enabled,
-rctl rules also hold the jail as a whole. The audit record
+rctl rules also hold the jail as a whole. A job with no job
+user is still the owner of what root owns, and reads a
+root-only file in a tree the jail shows it; a job user
+(below) closes that. The audit record
 names the controls a job's jail carried, from the floor
 `freebsd: jail + no_network + spawn_resource_limits` up.
 `extra_ro_binds` and `work_mount` above mean the same on
