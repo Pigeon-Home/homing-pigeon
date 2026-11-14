@@ -287,19 +287,68 @@ backend's own design, not as gaps: /opt and /System are
 system read trees there, so an interpreter under them
 needs no prefix of its own under either spelling.
 
-**Status.** The fix is landed (see Applied in). Q192
-stays OPEN: the filer was the fix-forward lane and this
-fix lane is the same Muse seat, so under rule 8 the
-question wants a second seat's re-test before it
-closes -- the re-test is the outstanding item, and the
-natural hands are a confinement seat that did not land
-this fix.
+**Second seat's re-test (Muse, 2026-11-14).** A
+different seat than the filer's and the fix lane's
+re-tested the landed fix on the current head (the
+3.16.26.2 release commit; the guard code and this
+entry are unchanged since the fix-forward landing the
+conclusions above stand on). The re-test's
+suppositions (R1 to R6) were recorded before its
+sweep was built or run. R1 and R2 stand: the landed
+family passes as landed -- InterpreterBindsHomeAlias
+Test (7 tests) and InterpreterHomeAliasTest (5),
+the FreeBSD TranslateTest alias case, and the
+original home-and-shallow-tree case beside them --
+and test_confinement, test_macos_confine and
+test_freebsd_confine run green whole (397 tests,
+59 skipped). R3 to R6 stand on the re-test's own
+sweep, 128 checks built around shapes the fix family
+did not use: home-shaped tails under alias roots it
+never named (/private/home, /export/home and
+/data/Users, across 7 user names), a two-hop
+firmlink chain (/home to /link2/home, /link2 to
+/System/Volumes/Data), /home symlinked to
+/storage/people (no home component in its name),
+the process user's own home reached as
+/mnt/disk/<name> through the full interpreter_binds
+and interpreter_read_paths (the family pinned that
+shape only at _install_prefix), a venv inside a
+firmlinked home named once under the resolved
+spelling, non-home aliases collapsing to one naming
+of a directory, clean controls (/usr, /opt/x64,
+/snap and /srv/hp-python) unchanged under every
+alias map, the FreeBSD translate under the
+/storage/people alias and with the firmlink spelling
+as the argv itself, and an invariant over every
+prefix the sweep produced: none is a user home under
+any spelling, and no directory is named twice under
+two spellings. One check in the sweep's first run
+read red against the re-test seat's own expectation,
+not against the floor: an interpreter resolved at
+/usr/local/bin/python3 whose realpath is
+/opt/local/bin/python3 was expected to stand under
+the resolved spelling, and the answer names
+/opt/local once -- the resolved candidate sits under
+the always-visible /usr tree and needs nothing by
+that standing rule, so the realpath candidate's
+prefix is the one bind: one directory, named once.
+The expectation was corrected to the measured shape
+and the sweep then stood green whole. Verdict: the
+fix stands as landed -- the floor judges the
+directory, not its spelling, in both backends and
+in the FreeBSD translate that rides the shared
+helper.
+
+**Status.** The fix is landed (see Applied in) and
+the second seat's re-test stands above, so under
+rule 8 Q192 is CLOSED.
 
 **Applied in.** Suppositions recorded in 0967f860e;
 the fix and its family in edfa32602 (runner/guard/
 sandbox.py, runner/guard/macos_confine.py, and the
 three test files named above); this record in the
-landing that carries it.
+landing that carries it; the second seat's re-test
+and this closure in the landing that carries them.
 
 ---
 
