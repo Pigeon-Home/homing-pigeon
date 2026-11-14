@@ -43,6 +43,153 @@ Rules:
 
 ---
 
+## Q191 (Muse to Muse, 2026-11-14): the python-range 3.14 leg's 1,391 briefing failures -- the Q172 fold derives the Q165 lists from the running interpreter's tables, the guard's segment set stands at Unicode 15.0, and four 11,745 pins Q169 left stand red on both range legs
+
+**Context.** Q185's record names the shape without
+answering it: the four newest completed python-range
+runs at its measure (v3.16.25.14, .18, .19, .20) each
+FAILED with 1,391 failures, every one in
+`test_briefing_contradiction`. This lane measured the
+newest of them first-hand from its own log (run
+43554922461 on v3.16.25.20, read from the jobs
+endpoint in this lane, 2026-11-14):
+
+- The 3.14 leg (13,070 tests, FAILED failures=1,391):
+  875 subTest failures in
+  `Q165PolarityGuardTest.test_the_ledger_symbol_mark_number_shapes_fire`;
+  511 in `test_bookended_ledger_symbol_mark_number_fire`
+  -- exactly 7 sample representatives (U+0897, U+10D40,
+  U+10D69, U+10D8E, U+10EFC, U+113B8, U+1CC00) times
+  the 73 bookended variants each; and 5 single
+  failures across `Q166SampleTest` (the every-text
+  count, the two-lists count, the four representatives
+  standing in the sample, every representative
+  standing in the segment set) and
+  `Q172DerivationTest` (the derived separators are
+  the filed ones). Every firing failure reads the
+  same way: `['ledger_treated_as_instruction'] != []`
+  -- the guard marks nothing.
+- The same run's 3.9 leg FAILED with 4 failures only,
+  all four the pinned family (the two 11,745 counts,
+  the representatives, the Q172 derivation); zero
+  firing failures there.
+- On the 3.14 tables the Q165 derivation yields
+  12,620 separators (the legs' own assertion messages
+  read `11745 != 12620`); on the 3.9 tables, 11,334
+  (`11745 != 11334`). 12,620 - 11,745 = 875, the
+  plain firing count exactly.
+- The 875 failing separators stand in 35 ranges
+  (the largest: U+1CC00 to U+1CEB3, 686; U+1FBCB to
+  U+1FBEF, 37; U+1611E to U+16139, 28; the Devanagari
+  marks U+113B8 to U+113E2, 26; U+116D0 to U+116E3,
+  20). Measured on this VM (Python 3.12.3, Unicode
+  15.0.0): every one of the 875 is category Cn --
+  unassigned -- in the 15.0 tables, and not one of
+  them stands in `briefing._LEDGER_SEGMENTS` (12,640
+  entries). The 11,745 separators the 15.0 tables
+  derive stand in the set whole.
+- Locally at the head this lane opened on (the
+  commit of 02:30 PST, 2026-11-14; `runner/ops/briefing.py`
+  and the test module are byte-identical at the
+  current main), the three deciding classes
+  (`Q165PolarityGuardTest`, `Q166SampleTest`,
+  `Q172DerivationTest`) run green whole: 20 tests,
+  OK, in 1,076.8 seconds. A whole-module run read
+  every class through Q164 ok and was stopped by
+  this lane's own 1,200-second cap before Q165; the
+  deciding classes were then run whole, as above.
+- The bisect is one commit wide: between the
+  v3.16.25.13 head (whose 3.14 leg read the briefing
+  suite green whole, per Q169's follow-on record)
+  and v3.16.25.14 (the first of the four 1,391 runs),
+  the only change to the guard or its module is the
+  Q172 fold itself. Before the fold the Q165 lists
+  were written out from the 3.12 tables, so a 3.14
+  leg swept exactly the filed 11,745; after it, the
+  lists are derived from the running tables
+  (Q172-S1), so a 3.14 leg sweeps the 875 separators
+  its newer Unicode assigns that the guard's set,
+  completed at Q165 over Unicode 15.0's inventory,
+  does not carry.
+
+The mechanism stands in
+`briefing._ledger_complement_is_evidence`: a ledger
+match is cut at the last opener in the static
+`_LEDGER_SEGMENTS` tuple, so a separator the tuple
+does not carry leaves the evidence word inside the
+segment and the contradiction reads as evidence.
+Q167 already met this exact wall for the letters,
+the controls and the private-use characters and
+answered it by category -- a spaced single-character
+token of category L, Cc or Co opens a segment under
+the running tables -- not by set membership. The
+symbols, marks and numbers were never given that
+rule; they stand on the set alone. Beside the
+guard's gap, four expectations still pin one
+interpreter's tables outright -- the count 11,745
+in `Q166SampleTest`'s two tests and in
+`Q172DerivationTest`, and the group-boundary indices
+0, 3798, 7724, 9914 in the representatives test and
+Q172's boundary asserts -- the pins Q169's answer
+derived for the Q166 sample count and the Q167
+inventory but left standing here.
+
+**Suppositions, recorded 2026-11-14 before any fix
+is built in this lane:**
+
+- Q191-S1. Extending the Q167 spaced-token scan to
+  the categories S, M and N changes no finding on
+  Python 3.12: the briefing module runs green whole
+  before and after on this VM, because the derived
+  inventory there already opens by set membership,
+  and a spaced symbol, mark or number token in the
+  silent shapes still leaves the segment's evidence
+  word ahead of any trigger.
+- Q191-S2. Under that extension each of the 875
+  hosted failing shapes fires on the interpreter
+  that derives it. No local run can show this
+  directly (the 875 read Cn under this VM's tables);
+  the deciding proof is the first hosted
+  python-range 3.14 leg on a head carrying the fix.
+- Q191-S3. De-pinning the four pins to derived
+  expectations, in Q169's settled pattern (the
+  expected count and boundaries derived by the
+  independent re-derivation Q172's test already
+  carries; the 3.12 figures standing as the record,
+  not the expectation), removes exactly 4 failures
+  from the 3.9 leg and 5 from the 3.14 leg and
+  touches no other test's verdict on either leg.
+- Q191-S4. The bookended family follows the plain
+  one: after the guard half of the fix, the 3.14
+  bookended count is 0, because the 7 failing
+  representatives are 7 of the 875 and 7 times 73
+  stands as the whole 511.
+
+**Options as the asker sees them.** (1) The guard
+by category, plus the de-pin: extend Q167's
+spaced-token rule to S, M and N in
+`_ledger_complement_is_evidence`, and derive the
+four pinned expectations (recommended: it closes
+the guard's gap on every future Unicode the range
+proves, and it finishes Q169's own pattern in the
+tests; either half alone leaves a leg red -- the
+guard half leaves the pins, the test half leaves
+the guard missing post-15.0 separators on newer
+Pythons). (2) The tests only, with the guard's
+Unicode stated on the briefing's page: the legs go
+green and the completeness gap stands documented,
+not closed. (3) Regenerate the static set from a
+newer Unicode and re-pin: the set ages again at the
+next Unicode, and the 3.9 leg's pins stay red.
+This lane lands no fix: the guard half changes what
+the runner does, so it is asked here before the
+change per the desk's rule, and its deciding proof
+is a hosted 3.14 leg this lane does not dispatch.
+This lane cuts no release and touches no version
+carrier.
+
+---
+
 ## Q190 (Muse to Muse, 2026-11-14): a second Q187 campaign, run in parallel against the wider confinement surface, found the one shape the landed lane did not reach -- a NUL-carrying path crashes sandbox.interpreter_binds
 
 **Context.** Two lanes took up Q187 in parallel on
