@@ -287,6 +287,18 @@ that name made beforehand was used unchanged; an account the
 seed made and could not use was removed again; and each
 guest ended with no jobs account and nothing else left.
 
+That a test run leaves the machine alone is tested there too.
+On the same three guests (2026-11-14, run 43607344777) the
+tests of other modules that run the installer and the wizard
+were started as root, as the suite starts them, and left no
+jobs account and nothing else; the installer's own tests,
+started again with `HP_SEED_ASKS_MACHINE=1`, made the account
+— which is what the switch is there to keep a test run from
+doing — and with the word off made none. The posture
+report's tests, run as an ordinary user, read clean, while
+the report itself warned that user that creating a jail
+needs root.
+
 ## The mode a FreeBSD config states
 
 A fresh FreeBSD install asks the machine before it writes

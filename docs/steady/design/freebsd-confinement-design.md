@@ -817,12 +817,12 @@ wizard on the host the suite is on. From the release that
 first asked the probe, the suite run as root on a FreeBSD
 host whose backend engages put the seed's questions to that
 host from those tests: the probe's jail, then the door trial,
-and, in the one release that made the account before the
-switch stood (2026-11-14), the account — `pw useradd` reached
-from a test of another module. The hosted guests ran this
-module alone as root, and the hosted suite runs as an
+and, in the two releases that made the account before the
+switch stood (both of 2026-11-14), the account — `pw useradd`
+reached from a test of another module. The hosted guests ran
+this module alone as root, and the hosted suite runs as an
 ordinary user, where the probe refuses and nothing is built.
-A host where that release's suite was run whole as root may
+A host where either release's suite was run whole as root may
 hold a `pigeon-jobs` account the suite made; `pw userdel -n
 pigeon-jobs` removes it.
 
@@ -847,3 +847,27 @@ of the switch:
     on the hosted suite from the release that gave the report
     its FreeBSD line: the report was right to warn there, and
     the tests answered for bwrap alone.
+
+Conclusions, from the first hosted run of the switch
+(2026-11-14, run 43607344777, FreeBSD 14.5-RELEASE and
+15.0-RELEASE-p13 with RACCT enabled, and 14.5-RELEASE
+without): all four held, on all three guests, on the first
+run. The module ran whole as root in each — 257 tests — and
+each guest was read afterwards: no jail mount, no jail, no
+skeleton directory, no rctl rule, and no jobs account.
+
+| What was asked | What happened |
+|---|---|
+| The other modules' installer and wizard tests, as root, in a process the suite started with no word handed down | More than a hundred tests ran, and left no jobs account and nothing else on the guest |
+| The installer's own tests again, with the word on | Made `pigeon-jobs` on each guest: the same tests, to the seed an install of that machine. The account was removed when the test ended |
+| The same tests, with the word off and handed down | Made no account |
+| The sixteen live seed tests, under the suite's word | Passed as they had: they switch the questions on by name |
+| The posture tests, as an ordinary user | All 24 read clean, while the report's own word for that user was the warning that creating a jail needs root |
+
+The hosted suite runs as an ordinary user, and it had read
+those six posture tests red: in its whole run on the tag
+before the change (run 43601192519) 13,260 tests ran and six
+were red, all six these. On its run after the change (run
+43607347206) none of them is named red. That run was ended
+by its 30-minute clock before the suite's end, so it is not
+a whole green run of the suite.
