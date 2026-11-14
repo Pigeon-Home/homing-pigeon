@@ -535,3 +535,25 @@ of the seed:
 15. A second run over the same config changes nothing: a
     config the seed left at `enforce` is asked again and
     stays, and a config at `audit` is not asked.
+
+Conclusions, from the first hosted run of the seed
+(2026-11-14, run 43585328369, FreeBSD 14.5-RELEASE and
+15.0-RELEASE-p13 with RACCT enabled, and 14.5-RELEASE
+without): all six held, on all three guests, on the first
+run. The module ran whole as root in each — 192 tests, the
+six live tests of the seed among them — and each guest was
+read afterwards: no jail mount, no jail, no skeleton
+directory, no rctl rule.
+
+| What was asked | What the seed did |
+|---|---|
+| The installer's seed, as root | Left `enforce`, wrote nothing, and printed the names a job's jail carries on that guest |
+| A runner on that config | Passed the startup gate; its first job ran at `/work`, was refused a write to the root, and was recorded with the names the seed printed |
+| The same seed, as an ordinary user | Stated `audit`; the line said creating a jail needs root |
+| A config asking for a jail-wide ceiling by number | `enforce`, with `rctl_resource_limits` named, on the two guests with RACCT; `audit`, naming RACCT and its tunable, on the guest without |
+| The installer started by its file's path | The same seed, with nothing of the runner loaded and nothing left loaded |
+| The setup wizard's seed | The same answer from the same machine |
+| The seed, a second time | Asked again; nothing changed |
+
+The seed's live tests have run on the hosted guests. The
+project's own node has not run them.

@@ -223,6 +223,16 @@ that need RACCT skipped by name. Its 17-step battery, below,
 was of the first backend and has not been run against this
 shape.
 
+The mode a fresh install states is tested the same two ways:
+with a scripted probe on every platform, and with the real
+one on the three hosted guests — the seed asked as root, as
+an ordinary user, for a config that asks more than the host
+holds, by the installer's own file, and through the wizard,
+and a runner started on the seeded config confining its
+first job. Their first run (2026-11-14, run 43585328369)
+passed on all three and left nothing on any of them. The
+node has not run them.
+
 ## The mode a FreeBSD config states
 
 A fresh FreeBSD install asks the machine before it writes
