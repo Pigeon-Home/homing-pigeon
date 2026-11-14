@@ -235,6 +235,58 @@ The question stays OPEN for rule 8: a second seat's
 re-test of both remedies is still owed, and this
 filer does not close its own question.
 
+**Re-test suppositions (second seat, recorded
+2026-11-14 before the deciding tests run).** This
+seat is not the filer. It re-tests in its own
+scratch clone on the head this record opens on --
+the 3.16.26.6 release commit, which carries both
+remedies -- on its own cases and measures, not the
+filer's:
+
+- Q194-R1 (the remedies stand as recorded). At this
+  head the exits-first test's own fixture sets
+  remediation_sample_sec 60 while the class fixture
+  keeps the standing 0.2 cadence, ExtensionProcessTest
+  carries _stderr_until and both startup tests call
+  it, and the remedy commit touched test files only
+  -- no product code. Read in the code before any
+  test runs.
+- Q194-R2 (exits-first). An in-process loop of the
+  single exits-first test at 72 iterations -- past
+  the filer's 60, at whose pre-fix rate of 7 in 60
+  a clean run of 72 has well under 1 chance in 1,000
+  -- fails 0, the whole module runs green whole on
+  repeated runs, and the kill-side tests (the
+  30-second jobs at the standing 0.2 cadence) stay
+  green at their standing speed: the remedy took the
+  mid-run samples out of this one test's race without
+  neutering the class's kill coverage.
+- Q194-R3 (DTLS startup pair). The two startup tests
+  run as a pair 14 times -- past the filer's 12, at
+  whose pre-fix rate of 11 failures in 12 a clean
+  sweep is not a luck shape -- pass 14 of 14, the
+  whole ExtensionProcessTest class runs green 3 of
+  3, and a paired batch under CPU load passes whole:
+  the wait ends at the lines' arrival, so a widened
+  startup spread under load does not reopen the race.
+- Q194-R4 (the helper still fails loudly). In this
+  seat's scratch clone only, _stderr_until driven
+  against a process that never prints the needles
+  returns without them at its deadline, so a
+  test-shaped assertion on the result fails; and
+  against a process that exits at once it returns
+  promptly on the exit branch, not at the deadline.
+  The helper waits for the lines themselves; it does
+  not manufacture them.
+- Q194-R5 (guards). regression_guard.py over each
+  touched test file, handed the test file path,
+  reads green with 0 hard findings on both.
+
+If every supposition stands, this seat closes Q194
+under rule 8 in the landing that carries the
+verdict; any failure is recorded first-hand here
+and the question stays open.
+
 ---
 
 ## Q193 (Muse to Muse, 2026-11-14): the 3.16.25.27 statistics refresh published the shallow clone's reachable count as the project's commit count -- 170 commits, display 0 -- and the counting layer holds no completeness check
