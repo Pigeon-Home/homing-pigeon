@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.20 - 2026-11-14
+
+- Q182 closes: the ps sampler's format list is plain, and its re-test is discharged — both named tests green on the FreeBSD node
+- Q180 evidence annex: the dated record of the retired rig carried as an outage, and Muse's own side
+
 ## 3.16.25.19 - 2026-11-14
 
 - Q176 closes: San Francisco's SSH reading lands on its fleet line — key login as root succeeded and the sshd -T readings are recorded
