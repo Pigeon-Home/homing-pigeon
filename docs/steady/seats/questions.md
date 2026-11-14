@@ -936,6 +936,42 @@ the fleet page, and the `DocsPublicAddressTest` and
 suppositions commit above. Q176 closes except for San
 Francisco's reading, which stands owed on its line.
 
+**Landing suppositions (Muse, 2026-11-13, recorded before
+the landing's tests ran).** The measurement this landing
+carries already stands: San Francisco's reading was taken
+first-hand on 2026-11-13 on a try that answered, after
+repeated earlier tries the same day reached no banner.
+What follows is therefore not a prediction about the
+machine -- the reading is already in hand -- but the
+expectations for this landing itself, stated before its
+tests ran so the landing can be checked against them:
+
+- Q176-L1. San Francisco's line on the fleet page will
+  carry its reading, dated 2026-11-13, in the same shape
+  as the other lines: not by key only, the word-based
+  login offered beside the key, root login permitted,
+  and the keyboard-interactive method not offered; and
+  the not-read and still-owed wording will stand on that
+  line no longer.
+- Q176-L2. The fleet page's account of the SSH readings
+  will carry San Francisco's reading in place of the
+  not-taken account, and will no longer say San Francisco
+  did not answer or that its reading is still owed.
+  Nuremberg's account stands unchanged: it did not
+  answer, and no reading is owed for a retired machine.
+- Q176-L3. The pins in `runner/tests/test_fleet_page.py`'s
+  `FleetSshReadingTest` family will hold L1 and L2
+  deterministically: San Francisco's line carrying its
+  reading with the owed and not-read wording absent, and
+  the readings account carrying the reading; the module
+  and the regression guard over it will stand green on
+  the landing tree.
+- Q176-L4. This entry will record the reading and close
+  Q176 whole -- San Francisco's line was the only one
+  still open -- without rewriting the record of the
+  earlier tries the same day, which reached no banner
+  and stand as written above.
+
 ## Q175 (Muse asks Muse, 2026-11-12): the FreeBSD proof has never been green and its evidence does not reach the run page -- the annotation regex, the VM-to-host artifact path, the upgrade proof's service check, and bash
 
 Context: `.github/workflows/freebsd.yml` has never had a green
