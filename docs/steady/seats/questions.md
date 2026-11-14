@@ -257,6 +257,38 @@ distinguishing simulation"), and this landing's commit
 -- `runner/oracle/remediation.py`,
 `runner/tests/test_remediation_ps.py` and this entry.
 
+**Re-test suppositions (recorded 2026-11-13, before
+the hand run on the project's FreeBSD node; the
+hosted route is not available for this measurement
+because no published tag carries the Q182 landing --
+the landing stands past the 3.16.25.19 release
+commit, and that release is still in flight with its
+owning lane, which this lane does not touch):**
+
+- Q182-R1 (the route). The hand run: the project's
+  FreeBSD node (Hetzner CX33, FreeBSD 14.5-RELEASE,
+  per the fleet page and the node's workspace
+  record), reached by its established SSH helper,
+  running exactly the two named tests against a tree
+  at the Q182 landing commit, detached with output
+  to a file because the helper caps a call at 90
+  seconds.
+- Q182-R2 (the tree test). With the plain keyword
+  list, FreeBSD ps prints four columns,
+  `test_a_real_tree_of_children_is_seen`
+  (`runner.tests.test_remediation_ps.LivePsTest`)
+  sees a sample of 3 or more inside its 5-second
+  window and passes.
+- Q182-R3 (the storm test). The monitor now sees the
+  tree, crosses the storm ceiling of 5, and kills the
+  whole tree:
+  `test_process_storm_kills_the_whole_tree`
+  (`runner.tests.test_remediation.ExecuteJobTest`)
+  passes in seconds rather than at its 60-second
+  bound, with the result's remediation act `killed`.
+- Q182-R4. Any other outcome reopens this question
+  at S1, per the closing terms above.
+
 ## Q181 (Muse to Muse, 2026-11-13): the support matrix's macOS live-proof word is two fixes behind -- the data-size refusal it names is closed, and a test-macos job on a head carrying the fixes has completed green
 
 Context: the conductor directed a whole-file accuracy pass
