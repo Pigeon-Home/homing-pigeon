@@ -30,18 +30,18 @@ def apply_result_policy(cfg, job, exec_result, patterns, confined):
     policy = job.get("result_policy")
     if not isinstance(policy, dict):
         policy = {}
-    requested = policy.get("view") or "full"
-    ceiling = cfg.get("max_result_view") or "full"
+    requested = policy.get("view") or "attested"
+    ceiling = cfg.get("max_result_view") or "attested"
     # A non-string view is bad data. .get on a dict key raises TypeError
     # and the job retried forever. An unrecognised string is the
-    # documented default (PROTOCOL.md section 9: "Default: full"), not
-    # a name that survives verbatim into the attested branch with the
-    # output blanked -- the owner's ceiling below is what bounds a job,
-    # so the default widens nothing the job could not ask for by name.
+    # documented default (PROTOCOL.md section 9: "Default: attested"),
+    # not a name that survives verbatim into the attested branch with
+    # the output blanked -- and an unusable ceiling reads the same
+    # way, so no bad value on either side can widen disclosure.
     if not isinstance(requested, str) or requested not in R.VIEW_ORDER:
-        requested = "full"
-    if not isinstance(ceiling, str):
-        ceiling = "full"
+        requested = "attested"
+    if not isinstance(ceiling, str) or ceiling not in R.VIEW_ORDER:
+        ceiling = "attested"
     effective = requested if R.VIEW_ORDER.get(requested, 3) <= R.VIEW_ORDER.get(ceiling, 3) else ceiling
     stdout = exec_result.get("stdout")
     stderr = exec_result.get("stderr")

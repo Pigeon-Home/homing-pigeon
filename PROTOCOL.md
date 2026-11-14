@@ -880,7 +880,7 @@ The job gains an optional `result_policy` object:
 ```
 
 - `view`: one of `full` (stdout and stderr), `redacted`, `summary`, `attested`.
-  Default: `full` (backward compatible).
+  Default: `attested`.
 - `redact_patterns`: reserved. In `redacted` view the runner applies
   every family it is configured with (its built-in set plus the
   owner's `redact_patterns_extra`) and reads no list from the job.
@@ -896,7 +896,7 @@ The job gains an optional `result_policy` object:
   budget is a job worth a human look.
 
 **The ceiling is set by the runner owner, not the SI.** `config.json`
-gains `max_result_view` (default `full`). The effective view is the
+gains `max_result_view` (default `attested`). The effective view is the
 *narrower* of the job's request and the runner's ceiling — a job can
 never widen disclosure beyond what the machine's owner allows. This is
 the load-bearing privacy property: the SI composes the job, but the

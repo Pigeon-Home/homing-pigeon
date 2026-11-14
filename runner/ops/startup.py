@@ -107,7 +107,7 @@ def log_startup(cfg, args, base_dir):
         f"workers={_runner()._worker_count(cfg, args)} "
         f"timeout={cfg.get('default_timeout_sec', 300)}s")
     R.log(f"judge={cfg.get('judge') or 'off'} "
-        f"ceiling={cfg.get('max_result_view') or 'full'} "
+        f"ceiling={cfg.get('max_result_view') or 'attested'} "
         f"workspace={cfg.get('workspace_root') or '(none)'}")
     if inf:
         R.log(f"ask=on model={inf.get('model')} endpoint={inf.get('endpoint')}")

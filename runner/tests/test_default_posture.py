@@ -15,11 +15,11 @@ together:
   feature names it states are exactly the code's feature list;
 - a config with no security block reads every feature as
   enforce, so the permissive side of a first run is the non-mode
-  keys (judge off, result view full), never the modes;
+  keys (judge off, result view attested), never the modes;
 - applying any built-in profile to the seed leaves the effective
   modes all-enforce, except the hosted profile, which sets
   exactly the modes it names;
-- the result-view code default, with no key anywhere, is full.
+- the result-view code default, with no key anywhere, is attested.
 
 The behavioral half of the evidence (startup refusals, the
 job-time fallback chains) is pinned by the suites that own it:
@@ -81,12 +81,12 @@ class SeedEnumerationTests(unittest.TestCase):
 
     def test_seed_states_the_permissive_layer(self):
         # The "just run it" row of the README posture table, as the
-        # seed states it: judge off, full result view. The fresh
-        # install tightens both through its profile (below); a
+        # seed states it: judge off, attested result view. The fresh
+        # install tightens the judge through its profile (below); a
         # hand-written config that omits them gets these.
         seed = _seed()
         self.assertEqual(seed["judge"], "off")
-        self.assertEqual(seed["max_result_view"], "full")
+        self.assertEqual(seed["max_result_view"], "attested")
         self.assertIs(seed["security"]["require_posture"], False)
 
     def test_seed_names_no_job_user(self):
@@ -169,15 +169,65 @@ class JobUserEngagementTests(unittest.TestCase):
 
 
 class CodeDefaultTests(unittest.TestCase):
-    def test_result_view_default_is_full(self):
+    def test_result_view_default_is_attested(self):
         # No ceiling in the config, no view in the job: the result
-        # carries the job's output in full.
+        # is attested -- the digest and attestations ride, the
+        # job's output does not.
         result, retain = POLICY.apply_result_policy(
             {}, {"job_id": "posture-1", "kind": "exec"},
             {"exit_code": 0, "stdout": "hello", "stderr": ""}, {}, True)
-        self.assertEqual(result["view"], "full")
-        self.assertEqual(result["stdout"], "hello")
-        self.assertFalse(retain)
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["stdout"], "")
+        self.assertNotIn("hello", json.dumps(result))
+        self.assertTrue(retain)
+
+    def test_unset_job_view_reads_attested_under_a_full_ceiling(self):
+        # The ask-side fallback, isolated: even under the widest
+        # explicit ceiling, a job that asks for nothing reads as
+        # the attested default, not as the ceiling.
+        result, retain = POLICY.apply_result_policy(
+            {"max_result_view": "full"},
+            {"job_id": "posture-1a", "kind": "exec"},
+            {"exit_code": 0, "stdout": "hello", "stderr": ""}, {}, True)
+        self.assertEqual(result["view"], "attested")
+        self.assertTrue(retain)
+
+    def test_unset_ceiling_reads_attested_under_a_full_request(self):
+        # The ceiling-side fallback, isolated: a job that asks
+        # for full in so many words is clamped by the attested
+        # default when the owner set no ceiling.
+        result, retain = POLICY.apply_result_policy(
+            {}, {"job_id": "posture-1b", "kind": "exec",
+                 "result_policy": {"view": "full"}},
+            {"exit_code": 0, "stdout": "hello", "stderr": ""}, {}, True)
+        self.assertEqual(result["view"], "attested")
+        self.assertTrue(retain)
+
+    def test_unrecognised_view_reads_attested(self):
+        # An unrecognised ask is the documented default, under
+        # the widest ceiling and under none alike.
+        for cfg in ({"max_result_view": "full"}, {}):
+            result, retain = POLICY.apply_result_policy(
+                cfg, {"job_id": "posture-1c", "kind": "exec",
+                      "result_policy": {"view": "sideways"}},
+                {"exit_code": 0, "stdout": "hello", "stderr": ""},
+                {}, True)
+            self.assertEqual(result["view"], "attested", cfg)
+            self.assertTrue(retain, cfg)
+
+    def test_unusable_ceiling_reads_attested(self):
+        # A ceiling that is not a view at all -- an unrecognised
+        # string or a non-string -- reads as the documented
+        # default, so it clamps a full request to attested.
+        for ceiling in ("sideways", "FULL", 5, ["full"]):
+            result, retain = POLICY.apply_result_policy(
+                {"max_result_view": ceiling},
+                {"job_id": "posture-1d", "kind": "exec",
+                 "result_policy": {"view": "full"}},
+                {"exit_code": 0, "stdout": "hello", "stderr": ""},
+                {}, True)
+            self.assertEqual(result["view"], "attested", ceiling)
+            self.assertTrue(retain, ceiling)
 
     def test_result_view_attested_withholds_output(self):
         # The profile layer's ceiling, for contrast: attested

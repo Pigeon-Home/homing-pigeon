@@ -3718,7 +3718,7 @@ def check_queries(entry):
     apply_result_policy and answer_queries under every ceiling the
     owner can set. Contract: neither raises; the view handed back is
     the one asked for, capped at the ceiling, and an unknown or
-    absent request is full; the retain flag follows the view; under
+    absent request is attested; the retain flag follows the view; under
     summary and attested nothing of the output comes back, and
     attested blanks the streams; under redacted no line handed back
     matches the owner's pattern; the answers are one per query, each
@@ -3774,7 +3774,7 @@ def check_queries(entry):
     policy_text = json.dumps(policy, sort_keys=True, default=str)
     text_lines = (out + err).splitlines()
     want = policy.get("view") if isinstance(policy, dict) else None
-    asked = want if isinstance(want, str) and want in R.VIEW_ORDER else "full"
+    asked = want if isinstance(want, str) and want in R.VIEW_ORDER else "attested"
     refused = False
     for ceiling in _QUERY_CEILINGS:
         cfg = {} if ceiling is None else {"max_result_view": ceiling}
@@ -3789,7 +3789,7 @@ def check_queries(entry):
             raise Crash("shape", "apply_result_policy returned "
                         f"{type(got).__name__}")
         result, retain = got
-        top = ceiling if ceiling in R.VIEW_ORDER else "full"
+        top = ceiling if ceiling in R.VIEW_ORDER else "attested"
         expect = asked if R.VIEW_ORDER[asked] <= R.VIEW_ORDER[top] else top
         view = result.get("view")
         if view != expect:

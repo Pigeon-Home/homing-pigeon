@@ -457,14 +457,14 @@ class ResultPolicyCeilingPins(unittest.TestCase):
         self.assertEqual(result["view"], "attested")
         self.assertTrue(retain)
 
-    def test_c17_absent_and_unrecognised_views_read_as_full(self):
+    def test_c17_absent_and_unrecognised_views_read_as_attested(self):
         result, _ = self._result({"max_result_view": "summary"}, {})
-        self.assertEqual(result["view"], "summary")
+        self.assertEqual(result["view"], "attested")
         job = {"result_policy": {"view": "everything"}}
         result, _ = self._result({"max_result_view": "redacted"}, job)
-        self.assertEqual(result["view"], "redacted")
+        self.assertEqual(result["view"], "attested")
         result, _ = self._result({}, job)
-        self.assertEqual(result["view"], "full")
+        self.assertEqual(result["view"], "attested")
 
     def test_c17_query_budget_is_the_smaller_of_the_two(self):
         self.assertEqual(R.query_budget({}, {}), 8)
@@ -485,7 +485,7 @@ class ResultPolicyCeilingPins(unittest.TestCase):
         # carried in the job changes nothing.
         job = {"result_policy": {"view": "redacted",
                                  "redact_patterns": ["hello"]}}
-        result, _ = self._result({}, job)
+        result, _ = self._result({"max_result_view": "full"}, job)
         self.assertEqual(result["stdout"], "hello world")
         self.assertEqual(result["redacted_families"], [])
         self.assertIn("aws_key", R._redact_patterns({}))

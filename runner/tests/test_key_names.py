@@ -206,21 +206,29 @@ class _MailTest(unittest.TestCase):
 
 
 class ResultNamesItsKeyTest(_MailTest):
+    # The key name is this class's subject, not the result view:
+    # the jobs below ask for the full view explicitly (the fixture
+    # ceiling allows it) so the ping's output stays readable as
+    # roundtrip proof under the attested default.
     def test_an_unnamed_job_learns_the_default_keys_name(self):
-        result = self._send(TR.job_payload(str(uuid.uuid4())))
+        result = self._send(TR.job_payload(
+            str(uuid.uuid4()), result_policy={"view": "full"}))
         self.assertEqual(result["stdout"], "pong")
         self.assertEqual(result["key_id"], security.key_fingerprint(SECRET))
 
     def test_a_job_named_by_fingerprint_is_answered_under_it(self):
         name = security.key_fingerprint(SECRET)
-        result = self._send(TR.job_payload(str(uuid.uuid4()), key_id=name))
+        result = self._send(TR.job_payload(
+            str(uuid.uuid4()), key_id=name,
+            result_policy={"view": "full"}))
         self.assertEqual(result["stdout"], "pong")
         self.assertEqual(result["key_id"], name)
 
     def test_an_additional_key_is_named_as_configured(self):
         self.cfg["additional_secrets"] = {"ops": OTHER}
-        result = self._send(TR.job_payload(str(uuid.uuid4()), key_id="ops"),
-                            secret=OTHER)
+        result = self._send(TR.job_payload(
+            str(uuid.uuid4()), key_id="ops",
+            result_policy={"view": "full"}), secret=OTHER)
         self.assertEqual(result["stdout"], "pong")
         self.assertEqual(result["key_id"], "ops")
         self.assertNotIn(OTHER, json.dumps(result))

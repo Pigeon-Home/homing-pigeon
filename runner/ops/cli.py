@@ -155,7 +155,7 @@ def build_parser():
                    choices=["full", "redacted", "summary", "attested"],
                    default=None, metavar="MODE",
                    help="narrowest result view the runner will "
-                        "return (default: full)")
+                        "return (default: attested)")
     g = ap.add_argument_group(
         "modes",
         "Feature modes for this process; the same values the\n"

@@ -1345,9 +1345,16 @@ class HandleMailFailureBranchesTest(_VerbosityGuard):
         # they are not this fixture's subject, and unstated
         # they refuse the jobs on a host with no confinement
         # backend ahead of the mail branches under test
-        # (enforce-posture reconciliation, round four).
+        # (enforce-posture reconciliation, round four). The
+        # result ceiling is stated at full for the same
+        # reason: the branches' results are read back here,
+        # and the attested default would blank their output;
+        # a job that reads its output back also asks for the
+        # full view in so many words, since an unset ask now
+        # reads as the attested default, not as the ceiling.
         cfg = cfg or {"mailbox_user": "t@example.com",
                       "shared_secret": SECRET,
+                      "max_result_view": "full",
                       "security": {"modes": {"confinement": "off",
                                              "job_user": "off",
                                              "audience": "off"}}}
@@ -1370,7 +1377,8 @@ class HandleMailFailureBranchesTest(_VerbosityGuard):
 
     def test_an_encrypted_exec_job_runs_and_reports(self):
         smtp, _log = self._run(
-            self._exec_mail("enc-exec-1", "print('sealed hi')"))
+            self._exec_mail("enc-exec-1", "print('sealed hi')",
+                            result_policy={"view": "full"}))
         result = self._result(smtp, "enc-exec-1")
         self.assertIsNotNone(result)
         self.assertEqual(result["exit_code"], 0)
@@ -1378,7 +1386,8 @@ class HandleMailFailureBranchesTest(_VerbosityGuard):
 
     def test_an_opinion_failure_costs_no_result(self):
         smtp, logs = self._run(
-            self._exec_mail("op-fail-1", "print('still ran')"),
+            self._exec_mail("op-fail-1", "print('still ran')",
+                            result_policy={"view": "full"}),
             patches=[(runner._opinion, "plan_before",
                       {"side_effect": RuntimeError("opinion down")})])
         result = self._result(smtp, "op-fail-1")

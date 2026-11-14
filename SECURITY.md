@@ -508,7 +508,7 @@ its 19,227 jobs are worth knowing before loosening a real box:
   `flagread` job printed a planted fake credential file;
   `runner.log` redacted the key, the result carried it verbatim.
   The installer's profiles set the ceiling to `attested` for that
-  reason; the bare config default is `full`.
+  reason; the bare config default is `attested`.
 - A job running as root read `/etc/shadow` and returned it. Only
   confinement and `job_user` stop that; a signature does not.
 - `--posture` warns when `audience` or a `policy_*` mode is off and

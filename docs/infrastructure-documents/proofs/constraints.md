@@ -452,8 +452,8 @@ refuse-class setting it stops the runner before any job is read.
   and is read nowhere in the runner.
 - **Value:** views, ordered narrowest first — `attested` (0),
   `summary` (1), `redacted` (2), `full` (3). A requested view
-  that is absent or unrecognised reads as `full`; the ceiling,
-  `max_result_view`, defaults to `full` when absent. The
+  that is absent or unrecognised reads as `attested`; the ceiling,
+  `max_result_view`, defaults to `attested` when absent. The
   effective view is the requested view when its order is at most
   the ceiling's, and the ceiling otherwise. Query budget: the
   job's `query_budget` and the owner's `max_query_budget` each

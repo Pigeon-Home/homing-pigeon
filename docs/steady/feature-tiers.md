@@ -124,7 +124,7 @@ commit is 654de37cd8a0dfa152e07fe4a2093d9b1b015c1b:
 | The audit log | The `security` block in the example config (`audit_max_lines`); `runner/tests/test_audit_chain.py` |
 | Confinement: the platform backends — the Linux bubblewrap sandbox, the Windows Job Object + restricted token + low integrity backend, the FreeBSD per-job jail — and the workspace snapshot check | `security.modes.confinement` reads `enforce` in the example config; the README: a sandbox that cannot engage refuses to start the runner at that default. PROTOCOL.md 9.4 calls confinement "(optional)" — the protocol does not require it; the shipped runner turns it on |
 | The separate job user | `security.modes.job_user` reads `enforce` in the example config |
-| Simple result handling: the signed result at the full view, stashed in the outbox and resent until delivered | `max_result_view` reads `full` in the example config; the stash is PROTOCOL.md section 5 |
+| Simple result handling: the signed result at the default view, stashed in the outbox and resent until delivered | `max_result_view` reads `attested` in the example config; the stash is PROTOCOL.md section 5 |
 
 ## Tier 2 — advanced, supported
 

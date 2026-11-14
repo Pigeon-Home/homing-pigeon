@@ -194,22 +194,19 @@ Job 4) and the cut-release workflow's guards, in their order:
 The honest state of the lines above, so the checklist is
 never read as claiming more than stands:
 
-- **The phase-2 changes are landing, not yet landed
-  whole.** Section 2's six behavior changes stand as a plan
-  in the posture record; items 1 and 2 — confinement and
-  the job user at enforce failing the job instead of
-  stepping down — landed on 2026-11-09 with their tests.
-  Items 3, 4 and 5 have landed beside them: the unengaged
-  mode named at startup and in the posture report, the
-  audience check refusing startup without a runner id, and
-  the installer stating the platform gates in the seeded
-  config (2026-11-10). Item 6 remains: the single
+- **The phase-2 changes have landed whole.** Section 2's
+  six behavior changes stand as a plan in the posture
+  record; items 1 and 2 — confinement and the job user at
+  enforce failing the job instead of stepping down —
+  landed on 2026-11-09 with their tests. Items 3, 4 and 5
+  landed beside them: the unengaged mode named at startup
+  and in the posture report, the audience check refusing
+  startup without a runner id, and the installer stating
+  the platform gates in the seeded config (2026-11-10).
+  Item 6 has landed beside them (2026-11-13): the single
   result-view default — the seed and the code fallback
-  still read `full`, so a hand-written or no-profile config
-  still tells the wider story the posture record names.
-  Until it lands test-first, this is the largest single
-  gap between the tree as it stands and this checklist
-  fully checked.
+  read `attested`, so a hand-written or no-profile config
+  tells the same story as a fresh install.
 - **The release gate is advisory, not enforcing.** The
   candidate-record tooling and the validator stand landed;
   the trains do not yet refuse a tag for want of a signed

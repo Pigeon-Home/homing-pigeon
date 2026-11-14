@@ -1436,7 +1436,8 @@ class ViewShapeFaultTest(unittest.TestCase):
     """Finding: a view that is not a string crashed the result policy.
 
     VIEW_ORDER.get on a dict raises TypeError. The job retried
-    forever. A non-string view is full. The job completes.
+    forever. A non-string view reads as the documented
+    default. The job completes.
     """
 
     def test_dict_view_does_not_stop_the_job(self):

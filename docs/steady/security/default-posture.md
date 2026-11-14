@@ -240,9 +240,10 @@ without a runner id refuses startup, closing the
 warn-and-skip path. Item 5 has landed beside them
 (2026-11-10): a first install states the platform gates in
 the seeded config, and the Windows guidance names the two
-modes. Item 6 has not landed: the seed and the code fallback
-still read `full`, so the config-file defaults and a fresh
-install do not yet tell the same story.
+modes. Item 6 has landed beside them
+(2026-11-13): the seed and the code fallback read
+`attested`, so the config-file defaults and a fresh
+install tell the same story.
 
 1. **Confinement at enforce fails the job, not open.** When
    the sandbox cannot engage or its command cannot be built

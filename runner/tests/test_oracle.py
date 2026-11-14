@@ -14,9 +14,19 @@ sys.path.insert(0, REPO)
 from runner.runner import apply_result_policy, _redact_patterns
 
 class OracleTest(unittest.TestCase):
-    def test_full_view_default(self):
-        cfg = {"max_result_view": "full"}
+    def test_attested_view_default(self):
+        cfg = {}
         job = {"job_id": "j1", "kind": "ping"}
+        er = {"exit_code": 0, "stdout": "pong", "stderr": "", "timed_out": False, "duration_sec": 0.0}
+        result, retain = apply_result_policy(cfg, job, er, _redact_patterns(cfg), False)
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["stdout"], "")
+        self.assertTrue(retain)
+
+    def test_full_view_when_asked_and_allowed(self):
+        cfg = {"max_result_view": "full"}
+        job = {"job_id": "j1", "kind": "ping",
+               "result_policy": {"view": "full"}}
         er = {"exit_code": 0, "stdout": "pong", "stderr": "", "timed_out": False, "duration_sec": 0.0}
         result, retain = apply_result_policy(cfg, job, er, _redact_patterns(cfg), False)
         self.assertEqual(result["view"], "full")

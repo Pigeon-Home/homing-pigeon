@@ -262,6 +262,111 @@ landing's tests):**
   guards) pass, and the posture page can truthfully
   state items 1 to 6 landed.
 
+**Item 6 reconciliation verdict (2026-11-13):**
+R1, R2, R4 and R5 hold whole; R3 holds for every
+family it names, with one pre-existing failure
+recorded below that is not item 6's. Item 6 is
+landed and Q183 is closed.
+
+- R1 holds. The seed's `max_result_view`, every
+  result-view fallback in `runner/ops/policy.py`
+  (unset job view, unset ceiling, unrecognised or
+  non-string job view, and an unusable ceiling --
+  non-string or unrecognised -- each now reads as
+  the documented default instead of widening to
+  `full`), PROTOCOL.md section 9 (the job view's
+  default and the ceiling's default), the defaults
+  registry's two rows, the startup line's ceiling
+  display and the `--max-result-view` help text all
+  state `attested`. `test_default_posture` gained
+  four pins isolating each fallback (an unset ask
+  under a `full` ceiling, an unset ceiling under a
+  `full` ask, an unrecognised ask, an unusable
+  ceiling) beside the moved default pin; no pin was
+  deleted.
+- R2 holds. Set A (`test_default_posture`,
+  `test_flag321`, `test_proof_constraints`,
+  `test_redact_and_policy_negative`,
+  `test_doc_feature_tiers`) runs 122 tests, all
+  passing -- the 118 S3 measured plus the four new
+  fallback pins. Set B (`test_install_gaps`,
+  `test_hosting_phase0`, `test_connected_systems`,
+  `test_first_run_scenario`, `test_oracle`) runs
+  80 tests, all passing -- the 79 S3 measured plus
+  the Oracle family's new explicit-`full` pin. Every
+  failure in them was an old-default pin, updated
+  to assert `attested`.
+- R3 holds for the families it names. The
+  divergences view families
+  (`TestUnrecognisedViewDefaultsToAttested`,
+  `TestMaxResultViewCeilingShapesReadAsAttested`,
+  including the 4x4 matrix) pass inside
+  `test_doc_default_divergences`; the view-shape
+  faults (`test_extension_poison`, 96 tests) pass
+  whole; the corpus checker's mirror of the policy
+  reader in `runner/tools/de_dust_corpus.py` reads
+  the new default (its contract line included), and
+  its replay families pass (`test_queries` and
+  `test_query` in `test_de_dust_corpus`, 2 tests).
+  Two further old-default pins the sweep found
+  beyond the named families reconciled the same
+  way in this landing: `test_runner` (19 tests)
+  and `test_cli_options` (88 tests) -- jobs that
+  read their output back now ask for the `full`
+  view in so many words under a `full` ceiling,
+  since an unset ask no longer reads as the
+  ceiling; both suites then pass whole.
+  The one failure that is NOT an old-default pin,
+  recorded exactly: the grep max-matches classes
+  in `test_doc_default_divergences`
+  (`TestGrepMaxMatchesDefaultsTo10`,
+  `TestGrepMaxMatchesFifteenShapesAtReader`) and
+  `test_grep_answers_under_the_full_view` in
+  `test_proof_conformance_p2` fail intermittently
+  on this VM with the grep query worker's 2-second
+  deadline expiring (`rejected: timeout`, zero
+  matches). These call the query reader with an
+  explicit `full` view on a code path item 6 does
+  not touch, and the same probe run against the
+  unmodified head this lane started from times out
+  at least as often (1 of 10 calls answered there,
+  against 3 of 10 on the landed tree, under the
+  same load), so the failure stands on the base
+  independently of this landing and is not item
+  6's to close; it remains as a pre-existing
+  timing flake for a lane of its own. The full
+  divergences module therefore does not pass
+  whole on this machine, and no count from it is
+  claimed beyond the view families named above.
+- R4 holds. The 4x4 matrix of valid job views
+  against valid ceilings answers exactly as
+  before (pinned in the ceiling-shapes class
+  above), and an explicit `full` request under an
+  explicit `full` ceiling still returns the output
+  in full and retains nothing (pinned in
+  `test_oracle` and `test_proof_conformance_p2`).
+- R5 holds. PROTOCOL.md, the registry, the README
+  posture table and prose, the SECURITY.md
+  bare-default line, the constraints record's C17
+  value line, the feature-tiers evidence line, the
+  posture page's status and the readiness page's
+  standing-gaps bullet moved together in this
+  landing; `test_doc_feature_tiers` (12 tests),
+  `test_reader_docs_quiet` (2 tests) and the
+  defaults-registry guards
+  (`test_defaults_table_hunt`, 33 tests;
+  `test_decision1_startup_defaults`, 20 tests)
+  pass, and the posture page now truthfully states
+  items 1 to 6 landed.
+
+**Answer (Muse, 2026-11-13):** item 6 landed as
+supposed; Q183 is closed, with the grep-deadline
+flake above left on the record as pre-existing
+and unrelated.
+
+**Applied in:** the commit carrying this verdict
+(Muse, 2026-11-13).
+
 ---
 
 ## Q182 (Muse to Muse, 2026-11-13): Q175's two named FreeBSD reds -- the ps sampler's format string is one column on FreeBSD, so the tree is never seen and the storm is never tripped

@@ -79,7 +79,8 @@ class ResultViewCeilingTest(base._GateCase):
 
     def test_the_job_may_narrow_below_the_ceiling(self):
         result = _run_result(
-            "view-2", job_extra={"result_policy": {"view": "summary"}})
+            "view-2", job_extra={"result_policy": {"view": "summary"}},
+            cfg_extra={"max_result_view": "full"})
         self.assertEqual(result["view"], "summary")
         self.assertNotIn("stdout", result)
 
@@ -93,13 +94,15 @@ class ResultViewCeilingTest(base._GateCase):
 
     def test_an_unrecognised_ask_reads_as_the_documented_default(self):
         result = _run_result(
-            "view-4", job_extra={"result_policy": {"view": "bogus"}})
-        self.assertEqual(result["view"], "full")
-        self.assertEqual(result["stdout"], "hello world")
+            "view-4", job_extra={"result_policy": {"view": "bogus"}},
+            cfg_extra={"max_result_view": "full"})
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["stdout"], "")
 
     def test_the_full_view_carries_the_output_verbatim(self):
         result = _run_result(
-            "view-5", job_extra={"result_policy": {"view": "full"}})
+            "view-5", job_extra={"result_policy": {"view": "full"}},
+            cfg_extra={"max_result_view": "full"})
         self.assertEqual(result["view"], "full")
         self.assertEqual(result["stdout"], "hello world")
 
@@ -115,6 +118,7 @@ class RedactionTest(base._GateCase):
         result = _run_result(
             "redact-1",
             job_extra={"result_policy": {"view": "redacted"}},
+            cfg_extra={"max_result_view": "full"},
             exec_result=self._EXEC_KEY)
         self.assertNotIn(self._KEY, result["stdout"])
         self.assertIn("[REDACTED:aws_key]", result["stdout"])
@@ -124,6 +128,7 @@ class RedactionTest(base._GateCase):
             "redact-2",
             job_extra={"result_policy": {"view": "redacted"},
                        "redact_patterns_extra": ["hello"]},
+            cfg_extra={"max_result_view": "full"},
             exec_result=dict(_EXEC, stdout="hello world"))
         self.assertEqual(result["stdout"], "hello world")
 
@@ -131,7 +136,8 @@ class RedactionTest(base._GateCase):
         result = _run_result(
             "redact-3",
             job_extra={"result_policy": {"view": "redacted"}},
-            cfg_extra={"redact_patterns_extra":
+            cfg_extra={"max_result_view": "full",
+                       "redact_patterns_extra":
                        {"greeting": "hello"}},
             exec_result=dict(_EXEC, stdout="hello world"))
         self.assertNotIn("hello", result["stdout"])
@@ -155,7 +161,8 @@ class QueryCeilingTest(base._GateCase):
     def test_grep_answers_under_the_full_view(self):
         answers = self._answers("q-1", {
             "view": "full",
-            "queries": [{"op": "grep", "pattern": "hello"}]})
+            "queries": [{"op": "grep", "pattern": "hello"}]},
+            cfg_extra={"max_result_view": "full"})
         self.assertEqual(len(answers), 1)
         self.assertNotIn("rejected", answers[0])
         self.assertIn("hello world", answers[0]["matches"])
@@ -163,7 +170,8 @@ class QueryCeilingTest(base._GateCase):
     def test_grep_is_refused_under_the_summary_view(self):
         answers = self._answers("q-2", {
             "view": "summary",
-            "queries": [{"op": "grep", "pattern": "hello"}]})
+            "queries": [{"op": "grep", "pattern": "hello"}]},
+            cfg_extra={"max_result_view": "full"})
         self.assertEqual(answers,
                          [{"op": "grep", "rejected": "policy"}])
 
@@ -180,6 +188,7 @@ class QueryCeilingTest(base._GateCase):
             "q-4",
             {"view": "redacted",
              "queries": [{"op": "tail", "lines": 5}]},
+            cfg_extra={"max_result_view": "full"},
             exec_result=dict(_EXEC, stdout="key is " + key + " ok"))
         self.assertEqual(len(answers), 1)
         dumped = json.dumps(answers)
@@ -190,7 +199,8 @@ class QueryCeilingTest(base._GateCase):
         answers = self._answers("q-5", {
             "view": "full", "query_budget": 1,
             "queries": [{"op": "grep", "pattern": "hello"},
-                        {"op": "grep", "pattern": "world"}]})
+                        {"op": "grep", "pattern": "world"}]},
+            cfg_extra={"max_result_view": "full"})
         self.assertEqual(len(answers), 2)
         self.assertEqual(answers[1], {"rejected": "budget"})
 
@@ -200,7 +210,8 @@ class QueryCeilingTest(base._GateCase):
             {"view": "full", "query_budget": 5,
              "queries": [{"op": "grep", "pattern": "hello"},
                          {"op": "grep", "pattern": "world"}]},
-            cfg_extra={"max_query_budget": 1})
+            cfg_extra={"max_result_view": "full",
+                       "max_query_budget": 1})
         self.assertEqual(answers[1], {"rejected": "budget"})
 
     def test_a_rejected_query_still_spends(self):

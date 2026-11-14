@@ -126,6 +126,13 @@ class RunnerTest(unittest.TestCase):
             "max_output_bytes": 100000,
             "base_dir": self.tmp,
             "default_timeout_sec": 300,
+            # The result view is not this fixture's subject
+            # either: the ceiling is stated at full, and a job
+            # whose output the suite reads back asks for the
+            # full view in so many words, so its output is not
+            # blanked by the attested default (an unset ask
+            # reads as that default, not as the ceiling).
+            "max_result_view": "full",
             # The platform gates are not this fixture's
             # subject; stated off so a host with no
             # confinement backend does not refuse the jobs
@@ -147,7 +154,8 @@ class RunnerTest(unittest.TestCase):
 
     def test_ping_roundtrip(self):
         jid = str(uuid.uuid4())
-        _, smtp, seen = self.run_cycle([job_email(job_payload(jid))])
+        _, smtp, seen = self.run_cycle([job_email(job_payload(
+            jid, result_policy={"view": "full"}))])
         self.assertEqual(len(smtp.sent), 1)
         self.assertIn(jid, smtp.sent[0]["Subject"])
         result = verify_body(result_body(smtp.sent[0]), SECRET)
@@ -159,7 +167,8 @@ class RunnerTest(unittest.TestCase):
     def test_exec_sh(self):
         jid = str(uuid.uuid4())
         p = job_payload(jid, kind="exec", script="echo hello-from-test",
-                        interpreter=["sh"])
+                        interpreter=["sh"],
+                        result_policy={"view": "full"})
         _, smtp, _ = self.run_cycle([job_email(p)])
         result = verify_body(result_body(smtp.sent[0]), SECRET)
         self.assertEqual(result["exit_code"], 0)
@@ -167,7 +176,8 @@ class RunnerTest(unittest.TestCase):
 
     def test_exec_default_interpreter(self):
         jid = str(uuid.uuid4())
-        p = job_payload(jid, kind="exec", script="echo default-ok")
+        p = job_payload(jid, kind="exec", script="echo default-ok",
+                        result_policy={"view": "full"})
         _, smtp, _ = self.run_cycle([job_email(p)])
         result = verify_body(result_body(smtp.sent[0]), SECRET)
         self.assertEqual(result["exit_code"], 0)

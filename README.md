@@ -114,18 +114,19 @@ and — in the watching postures — pages you when something trips.
 It also answers the SI's questions about job output, at the
 disclosure ceiling you set, and not one byte past it.
 
-That ceiling is the thing to understand. By default it is **full
-output**: the SI sees what the job printed, because that is what
-makes the runbook loop above useful. Tighten it, and the shape
-changes: the SI questions the Oracle rather than inspecting output,
-and gets back HMAC-signed *attestations* — "did the tests pass?",
-"does the output contain secrets?" — proofs about the output that
-reveal nothing else. It's the interactive-proof shape applied at
-the trust boundary — prove things about your data without showing
-your data — without any zero-knowledge proving machinery: the
-attestation is an HMAC, and the runner itself is trusted. The
-attestation shape is there when you want it; it is not the posture
-the box ships in.
+That ceiling is the thing to understand. By default it is
+**attested**: the SI does not see what the job printed. It questions
+the Oracle rather than inspecting output, and gets back HMAC-signed
+*attestations* — "did the tests pass?", "does the output contain
+secrets?" — proofs about the output that reveal nothing else. It's
+the interactive-proof shape applied at the trust boundary — prove
+things about your data without showing your data — without any
+zero-knowledge proving machinery: the attestation is an HMAC, and
+the runner itself is trusted. Full output is there when the owner
+wants it: set the ceiling to `full` in the config and the SI sees
+what the job printed, which is what makes the runbook loop above
+most direct — at the price of everything the job can print crossing
+the wire.
 
 ```
   Cloud SI                                  Your machine
@@ -161,7 +162,7 @@ Your machine runs two roles in one box:
 | runs jobs; caged by default  | watches resources            |
 | answers queries at the       | pages you when a             |
 | ceiling you set -- the       | threshold trips              |
-| default is full output       | orders kills via remediation |
+| default is attested          | orders kills via remediation |
 +------------------------------+------------------------------+
 ```
 
@@ -209,15 +210,15 @@ box may refuse, is the owner's to pick per machine.
   sensors               off          on           on
   resources             on           on           on
   dri                   off          on           on
-  max_result_view       full         attested     attested
+  max_result_view       attested     attested     attested
 ```
 
 **just run it** (the config-file defaults): the owner trusts the
 signer, so the box just works. The runner executes any signed job and
-shows the SI full output. The Oracle still reviews every job (its
+returns the result as attestations. The Oracle still reviews every job (its
 notes ride in the result) and logs resource pressure, but it never
 pages the owner and never blocks a job. A fresh install sits one
-notch tighter: on non-Pi hardware the installer applies the
+notch tighter on the judge: on non-Pi hardware the installer applies the
 `password-only` profile (judge `advisory`, view `attested`) unless
 `--profile` names another or `--no-profile` is passed, and a
 Raspberry Pi, or any install from the pi-light archive, gets

@@ -1955,7 +1955,7 @@ class ResultPolicyTest(unittest.TestCase):
 
     def test_full_is_not_retained_and_keeps_the_secret(self):
         result, retain = R.apply_result_policy(
-            {}, self._job("full"), self._ran(),
+            {"max_result_view": "full"}, self._job("full"), self._ran(),
             R.BUILTIN_REDACT_PATTERNS, None)
         self.assertFalse(retain)
         self.assertIn(_KEY, result["stdout"])
@@ -2013,14 +2013,14 @@ class ResultPolicyTest(unittest.TestCase):
     def test_bad_shapes_fall_closed(self):
         result, retain = R.apply_result_policy(
             "nope", "nope", "nope", "nope", None)
-        self.assertFalse(retain)
-        self.assertEqual(result["view"], "full")
+        self.assertTrue(retain)
+        self.assertEqual(result["view"], "attested")
         result, retain = R.apply_result_policy(
             {"max_result_view": 5},
             {"result_policy": {"view": 5}},
             self._ran(), {}, None)
-        self.assertFalse(retain)
-        self.assertEqual(result["view"], "full")
+        self.assertTrue(retain)
+        self.assertEqual(result["view"], "attested")
 
     def test_a_path_past_the_saved_script_cut_is_not_notable(self):
         early = "echo " + ("a" * 400) + " && cat /etc/shadow"

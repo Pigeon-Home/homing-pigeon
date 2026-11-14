@@ -3553,12 +3553,14 @@ class SummaryExitPoisonTest(unittest.TestCase):
         job = {"kind": "ping", "job_id": "j",
                "result_policy": {"view": "summary"}}
         result, retain = apply_result_policy(
-            {}, job, {"stdout": "a", "stderr": "", "exit_code": Eq()}, {}, None)
+            {"max_result_view": "summary"}, job,
+            {"stdout": "a", "stderr": "", "exit_code": Eq()}, {}, None)
         self.assertEqual(result.get("result_class"), "fail")
         self.assertEqual(result.get("view"), "summary")
         self.assertIsInstance(retain, bool)
         result, retain = apply_result_policy(
-            {}, job, {"stdout": "a", "stderr": "", "exit_code": 0}, {}, None)
+            {"max_result_view": "summary"}, job,
+            {"stdout": "a", "stderr": "", "exit_code": 0}, {}, None)
         self.assertEqual(result.get("result_class"), "ok")
 
     def test_concurrent_bad_summary_exits_do_not_raise(self):

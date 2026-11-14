@@ -211,7 +211,7 @@ class FeatureTiersEvidenceTest(unittest.TestCase):
         modes = cfg["security"]["modes"]
         self.assertEqual("enforce", modes["confinement"])
         self.assertEqual("enforce", modes["job_user"])
-        self.assertEqual("full", cfg["max_result_view"])
+        self.assertEqual("attested", cfg["max_result_view"])
         self.assertEqual("repair", cfg["oracle_opinion_mode"])
         self.assertEqual("deterministic", cfg["remediation_mode"])
         self.assertEqual("enforce", cfg["extension_review"])

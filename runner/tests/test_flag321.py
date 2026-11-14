@@ -53,7 +53,10 @@ class RetainContractTest(unittest.TestCase):
         job = {"job_id": "j1", "kind": "exec",
                "result_policy": {"view": "full"}}
         self.assertFalse(_retain({"max_result_view": "full"}, job))
-        self.assertFalse(_retain({}, job))
+        # A bare config is not the wide case any more: its ceiling
+        # reads as the attested default, so the full ask is
+        # clamped and the job is retained.
+        self.assertTrue(_retain({}, job))
 
     def test_non_full_views_retain(self):
         for view in ("attested", "redacted", "summary"):
@@ -72,10 +75,18 @@ class RetainContractTest(unittest.TestCase):
         self.assertEqual(result["view"], "attested")
         self.assertTrue(retain)
 
-    def test_no_policy_inherits_the_ceiling(self):
+    def test_no_policy_reads_the_attested_default(self):
+        # A job with no policy asks for nothing, and an unset ask
+        # reads as the attested default -- narrower than every
+        # ceiling, so the result is attested and retained under
+        # an attested and a full ceiling alike.
         job = {"job_id": "j1", "kind": "exec"}
-        self.assertTrue(_retain({"max_result_view": "attested"}, job))
-        self.assertFalse(_retain({"max_result_view": "full"}, job))
+        for ceiling in ("attested", "full"):
+            result, retain = R.apply_result_policy(
+                {"max_result_view": ceiling}, job, _exec_result(), {},
+                confined=None)
+            self.assertEqual(result["view"], "attested", ceiling)
+            self.assertTrue(retain, ceiling)
 
 
 def _retained(job_id, script, stdout, when):

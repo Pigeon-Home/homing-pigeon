@@ -71,7 +71,7 @@
   "_local_signal_port": "loopback TCP port for direct-push local signals; 0 or false turns the listener off (the inbox still works); read at startup",
   "local_wake_cooldown_sec": 900,
   "_local_wake_cooldown_sec": "minimum seconds between Oracle wake briefings for the same sensor+signal; a high or critical locally filed alert wakes the Oracle, which writes its assessment to oracle-briefs.jsonl in the base dir",
-  "max_result_view": "full",
+  "max_result_view": "attested",
   "max_query_budget": 8,
   "max_queries_per_hour": 0,
   "output_retention_days": 7,

@@ -74,22 +74,27 @@ class TestMissingSeverityDefaultsToInfoOnReadBack(unittest.TestCase):
             self.assertEqual(titles, ["none-severity"])
 
 
-class TestUnrecognisedViewDefaultsToFull(unittest.TestCase):
-    """Divergence: an unrecognised result view string is treated
-    as the narrowest (attested) view instead of the default full.
+class TestUnrecognisedViewDefaultsToAttested(unittest.TestCase):
+    """Divergence (fixed, and its default since moved): an
+    unrecognised result view string was treated as the
+    narrowest (attested) view's blanked output while carrying
+    the unrecognised name, instead of the documented default.
 
-    (a) Doc claim (PROTOCOL.md, section 9, lines 492-493):
+    (a) Doc claim (PROTOCOL.md, section 9):
         "`view`: one of `full` (stdout and stderr), `redacted`,
-        `summary`, `attested`. Default: `full` (backward
-        compatible)."
+        `summary`, `attested`. Default: `attested`."
         The same default is stated for the owner's ceiling in
-        docs/infrastructure-documents/oracle/configuring-oracle.md ("`max_result_view` -- the
-        narrowest view the runner will ever return (`full`,
-        `redacted`, `summary`, or `attested`)") and in the
-        runner's --help ("--max-result-view MODE ... (default:
-        full)"). The code's own handling of a non-string view
-        states the same intent (runner/tests/test_extension_poison.py,
-        ViewShapeFaultTest: "A non-string view is full.").
+        PROTOCOL.md section 9 ("`max_result_view` (default
+        `attested`)") and in the runner's --help
+        ("--max-result-view MODE ... (default: attested)").
+        The code's own handling of a non-string view states
+        the same intent (runner/tests/test_extension_poison.py,
+        ViewShapeFaultTest: a non-string view reads as the
+        documented default). The default itself moved from
+        `full` to `attested` under the desk's Q183 item 6;
+        before that move this class pinned the same rule
+        against the old default under the name
+        TestUnrecognisedViewDefaultsToFull.
 
     (b) How the bug was found: the campaign's doc-default hunt
         (2026-10-22 23:01 PDT tick) exercised
@@ -97,26 +102,29 @@ class TestUnrecognisedViewDefaultsToFull(unittest.TestCase):
         unset and varied around it -- omitted result_policy,
         view omitted, None, empty string, a non-string (123),
         and unrecognised strings ("sideways", "bogus", and the
-        uppercase "FULL") -- with no max_result_view ceiling
-        configured, checking the returned view, stdout/stderr,
-        and retain flag for each.
+        uppercase "FULL") -- checking the returned view,
+        stdout/stderr, and retain flag for each.
 
-    (c) Behavior actually observed: omitted, None, empty, and
-        non-string views all read as the documented default:
-        view "full", stdout/stderr carried, retain False. An
-        unrecognised string does not: apply_result_policy ranks
-        it with VIEW_ORDER.get(requested, 3) -- full's rank -- so
-        it survives as the effective view verbatim, then falls
-        into the final else branch reserved for attested, so the
-        result carries view "sideways" (resp. "FULL"/"bogus"),
-        stdout and stderr blanked to "", an attestations member,
-        and retain True. Observed on 2026-10-22 with stdout
-        "hello-out"/stderr "hello-err": every unrecognised
-        string above returned blanked output and retain True,
-        while every unset form returned the full output.
+    (c) Behavior actually observed, then and now: omitted,
+        None, empty, and non-string views all read as the
+        documented default. An unrecognised string did not:
+        apply_result_policy ranked it with VIEW_ORDER.get(
+        requested, 3) -- full's rank -- so it survived as the
+        effective view verbatim, then fell into the final else
+        branch reserved for attested, so the result carried
+        view "sideways" (resp. "FULL"/"bogus"), stdout and
+        stderr blanked to "", an attestations member, and
+        retain True. The reader now coerces an unrecognised
+        view to the documented default itself, so the result
+        carries view "attested", the blanked streams and
+        retain True that the attested view means -- under the
+        widest explicit ceiling, which is how the tests below
+        isolate the ask-side rule from the ceiling's own
+        identical default.
 
-    (d) Do not make this test pass by editing the test. It passes
-        only when the bug described above is fixed in the code.
+    (d) Do not make this test pass by editing the test. It
+        passes only when the code reads an unrecognised view
+        as the documented default PROTOCOL.md states.
     """
 
     def _apply(self, job):
@@ -124,23 +132,24 @@ class TestUnrecognisedViewDefaultsToFull(unittest.TestCase):
         exec_result = {"stdout": "hello-out", "stderr": "hello-err",
                        "exit_code": 0, "stdout_truncated": False,
                        "stderr_truncated": False}
-        return apply_result_policy({}, job, exec_result, {}, False)
+        return apply_result_policy({"max_result_view": "full"}, job,
+                                   exec_result, {}, False)
 
-    def test_unrecognised_view_string_defaults_to_full(self):
+    def test_unrecognised_view_string_defaults_to_attested(self):
         result, retain = self._apply(
             {"result_policy": {"view": "sideways"}})
-        self.assertEqual(result.get("view"), "full")
-        self.assertEqual(result.get("stdout"), "hello-out")
-        self.assertEqual(result.get("stderr"), "hello-err")
-        self.assertFalse(retain)
+        self.assertEqual(result.get("view"), "attested")
+        self.assertEqual(result.get("stdout"), "")
+        self.assertEqual(result.get("stderr"), "")
+        self.assertTrue(retain)
 
-    def test_uppercase_view_defaults_to_full(self):
+    def test_uppercase_view_defaults_to_attested(self):
         result, retain = self._apply(
             {"result_policy": {"view": "FULL"}})
-        self.assertEqual(result.get("view"), "full")
-        self.assertEqual(result.get("stdout"), "hello-out")
-        self.assertEqual(result.get("stderr"), "hello-err")
-        self.assertFalse(retain)
+        self.assertEqual(result.get("view"), "attested")
+        self.assertEqual(result.get("stdout"), "")
+        self.assertEqual(result.get("stderr"), "")
+        self.assertTrue(retain)
 
 
 class TestNullTaskTimeoutDefaultsTo86400(unittest.TestCase):
@@ -10190,40 +10199,43 @@ class TestWorkspaceRootSymlinkCountsWorkspaceFilesAsOutside(unittest.TestCase):
 
 
 
-class TestMaxResultViewCeilingShapesReadAsFull(unittest.TestCase):
+class TestMaxResultViewCeilingShapesReadAsAttested(unittest.TestCase):
     """Second-run hunt coverage: the owner's ceiling
-    key max_result_view itself, varied for the first
-    time -- an unusable ceiling reads as the
-    documented default full.
+    key max_result_view itself, varied -- an unusable
+    ceiling reads as the documented default attested.
 
-    (a) Doc claims (PROTOCOL.md, section 9, lines
-        537-541): "config.json gains `max_result_view`
-        (default `full`). The effective view is the
+    (a) Doc claims (PROTOCOL.md, section 9):
+        "config.json gains `max_result_view`
+        (default `attested`). The effective view is the
         *narrower* of the job's request and the
         runner's ceiling -- a job can never widen
         disclosure beyond what the machine's owner
         allows." The same key and set are stated in
-        docs/infrastructure-documents/oracle/configuring-oracle.md (line 41):
+        docs/infrastructure-documents/oracle/configuring-oracle.md:
         "`max_result_view` -- the narrowest view the
         runner will ever return (`full`, `redacted`,
         `summary`, or `attested`). A job can request
         a narrower view; it can never request a
         wider one." Registry row "max_result_view":
-        enum, default full, policy default (Decision
+        enum, default attested, policy default (Decision
         1: a present-but-unusable value reads as its
         documented default). PROTOCOL.md section 12
         restates the property as non-escalation:
         neither the job's result_policy nor any
         query can widen disclosure past the owner's
-        max_result_view.
+        max_result_view. The default itself moved from
+        `full` to `attested` under the desk's Q183
+        item 6; before that move this class pinned the
+        same shapes against the old default under the
+        name TestMaxResultViewCeilingShapesReadAsFull.
 
     (b) How it was hunted: step-8 artifact Target 6
         (core rows covered only for the shapes their
         class exercised) names apply_result_policy's
         view ranking as second-run core work. The
         named class for this row,
-        TestUnrecognisedViewDefaultsToFull, varies
-        the JOB's view with no ceiling configured;
+        TestUnrecognisedViewDefaultsToAttested, varies
+        the JOB's view under an explicit ceiling;
         the ceiling key itself had never been
         varied. On 2026-10-24 this tick probed
         runner.runner.apply_result_policy with the
@@ -10238,25 +10250,26 @@ class TestMaxResultViewCeilingShapesReadAsFull(unittest.TestCase):
         and unusable ceilings against narrower job
         views (redacted, summary, attested).
 
-    (c) Behavior actually observed: NO divergence.
-        Every unusable ceiling reads as the
-        documented default full: a job requesting
-        full returns view "full" with stdout and
-        stderr carried and retain False (a
-        non-string ceiling is coerced to "full" by
-        the reader; an unrecognised string ranks
-        with full, so the ceiling string itself
-        never survives as the effective view). The
-        4x4 matrix is exactly the documented
-        narrower-of rule: the effective view is
-        the narrower of the job's request and a
-        valid ceiling in every cell. An unusable
-        ceiling does not block a narrower job
-        view either: with the ceiling "sideways"
-        or "FULL", jobs requesting redacted,
-        summary or attested still return that
-        narrower view. Observed on 2026-10-24
-        against current main.
+    (c) Behavior actually observed: under the old
+        default every unusable ceiling read as full.
+        Since the default moved, every unusable
+        ceiling reads as attested: a job requesting
+        full returns view "attested" with stdout and
+        stderr blanked and retain True (a non-string
+        or unrecognised ceiling is coerced to the
+        documented default by the reader, so the
+        ceiling string itself never survives as the
+        effective view). The 4x4 matrix is exactly
+        the documented narrower-of rule: the
+        effective view is the narrower of the job's
+        request and a valid ceiling in every cell.
+        An unusable ceiling no longer leaves a wider
+        job view where it was either: read as the
+        narrowest view, it clamps redacted and
+        summary asks to attested, and an attested
+        ask stands. Observed on 2026-10-24 against
+        the old default, and re-observed on
+        2026-11-13 against the new one.
 
     (d) This is a coverage record, not a divergence:
         it stays green as long as the ceiling keeps
@@ -10277,7 +10290,7 @@ class TestMaxResultViewCeilingShapesReadAsFull(unittest.TestCase):
         return apply_result_policy(cfg, job, exec_result,
                                    {}, False)
 
-    def test_unusable_ceiling_reads_as_documented_full(self):
+    def test_unusable_ceiling_reads_as_documented_attested(self):
         bad = [None, "", "sideways", "bogus", "FULL",
                "Redacted", " full", "full ", 123, 0,
                True, ["redacted"], {"x": 1}]
@@ -10285,15 +10298,15 @@ class TestMaxResultViewCeilingShapesReadAsFull(unittest.TestCase):
             with self.subTest(ceiling=repr(ceiling)):
                 result, retain = self._apply(
                     {"max_result_view": ceiling}, "full")
-                self.assertEqual(result.get("view"), "full")
+                self.assertEqual(result.get("view"), "attested")
                 self.assertEqual(
-                    result.get("stdout"), "hello-out")
+                    result.get("stdout"), "")
                 self.assertEqual(
-                    result.get("stderr"), "hello-err")
-                self.assertFalse(retain)
+                    result.get("stderr"), "")
+                self.assertTrue(retain)
         result, retain = self._apply({}, "full")
-        self.assertEqual(result.get("view"), "full")
-        self.assertFalse(retain)
+        self.assertEqual(result.get("view"), "attested")
+        self.assertTrue(retain)
 
     def test_valid_ceilings_take_the_narrower_view(self):
         order = ["attested", "summary", "redacted", "full"]
@@ -10309,7 +10322,7 @@ class TestMaxResultViewCeilingShapesReadAsFull(unittest.TestCase):
                         result.get("view"), want)
                     self.assertEqual(retain, want != "full")
 
-    def test_unusable_ceiling_keeps_narrower_job_views(self):
+    def test_unusable_ceiling_clamps_wider_job_views(self):
         for ceiling in ("sideways", "FULL"):
             for job_view in ("redacted", "summary",
                              "attested"):
@@ -10318,7 +10331,7 @@ class TestMaxResultViewCeilingShapesReadAsFull(unittest.TestCase):
                     result, retain = self._apply(
                         {"max_result_view": ceiling}, job_view)
                     self.assertEqual(
-                        result.get("view"), job_view)
+                        result.get("view"), "attested")
                     self.assertTrue(retain)
 
 
