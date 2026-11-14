@@ -110,7 +110,14 @@ class GrepRefusalTest(unittest.TestCase):
             {"op": "grep", "pattern": "ERROR"},
             {"op": "tail", "lines": 1},
         ])
-        self.assertLess(time.monotonic() - t0, 2.0)
+        # The bound is one worker start plus one match deadline
+        # (Q186): the batch's one live grep may pay the startup
+        # allowance on a cold process, while the refusals are
+        # still pre-run -- a nested shape that actually ran over
+        # this text would take far longer than the bound.
+        from runner.ops import queries as _Q
+        self.assertLess(time.monotonic() - t0,
+                        _Q._GREP_STARTUP_DEADLINE + _Q._GREP_DEADLINE)
         self.assertEqual(spent, 4)
         self.assertEqual(answers[0], {"op": "grep", "rejected": "bad_pattern",
                                       "reason": "nested repeat"})

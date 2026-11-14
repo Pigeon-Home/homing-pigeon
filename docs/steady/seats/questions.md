@@ -339,6 +339,119 @@ batch failures the p2 test passed standalone (1 test,
   remedy candidates stand as filed; the fix is its
   own lane under this question.
 
+**Conclusions and remedy (Muse, 2026-11-14).** A
+second measure, taken with the other lanes running
+(the release gate, the Q185 and Q187 lanes; the
+1-minute load average ranged from about 1 to about
+29 across the measure, most readings between 10 and
+24), confirms the first measure and prices the start:
+
+- Q186-S1 holds. Cold calls -- a fresh process, one
+  grep_matches call over the 250-line payload on the
+  default 2.0-second deadline, at a load of about
+  13 -- timed out 12 of 15 (the 3 that answered took
+  0.60 to 1.37 seconds). The named classes on the
+  unmodified head failed 2 of 2 batch runs (9 tests,
+  41 and 44 subTest failures, about 121 seconds a
+  run -- a run's wall is its grep calls expiring at
+  2 seconds each, the worker killed after each one,
+  so every call in the run started cold). The same
+  shape fails outside the named classes on the base:
+  test_query_pattern_bound's
+  test_a_nested_repeat_is_refused_before_it_runs,
+  whose one live grep starts the worker, failed on
+  the unmodified head at 2.10 seconds against its
+  own 2.0-second batch bound.
+- Q186-S2 holds. In 5 forced-timeout rounds (a
+  0.001-second deadline) every expiry returned
+  ("timeout",) with no exception escaping, and the
+  next call started a fresh worker and answered
+  (1.9 seconds cold, then about 0.002 seconds
+  warm). A 40-call warm-process probe took 1
+  timeout -- its cold first call, at 2.09 seconds --
+  and answered the other 39.
+- Q186-S3 holds, with the refinement the first
+  measure named now priced. The matching itself,
+  run in process over the exact payloads (120 and
+  250 matching lines), took a median of 0.004
+  milliseconds (50 repetitions, maximum 0.102).
+  Warm worker calls took a median of 0.003
+  seconds. Cold calls given a 30-second deadline
+  answered 22 of 22, taking 0.79 to 3.08 seconds
+  at loads of about 4 to 10 and 1.19 to 6.78
+  seconds at a load of about 29: the whole cost
+  the deadline was charging is the interpreter's
+  start, the module import and scheduling, not
+  the match.
+
+The remedy, chosen by those numbers. One retry on
+the timeout path is rejected: a retry is another
+cold start with the same distribution, so at the
+measured cold rate two 2-second tries answer only
+about a third of the time. A bounded payload for
+the full view is rejected: the payloads are 120 to
+250 short lines and the matching over them is
+0.004 milliseconds. A longer deadline for every
+call is rejected: warm replies take 0.003 seconds,
+and raising the general deadline raises the
+runaway-pattern kill bound on every call for no
+measured need. What lands instead prices the start
+separately: `_GREP_STARTUP_DEADLINE = 10.0` in
+runner/ops/queries.py -- a call on the default
+deadline that starts the worker (the first call in
+a process, a dead worker replaced, a broken-pipe
+restart) reads its first reply under the 10-second
+startup allowance, about 1.5 times the largest
+start measured (6.78 seconds); a call that reuses
+a live worker keeps the 2.0-second match deadline,
+so a runaway pattern on a warm worker is still
+killed at 2 seconds; and a caller that names a
+deadline gets exactly that deadline, cold or warm,
+so the engineered short deadlines in the pattern
+tests stand untouched. The only production caller
+(answer_queries) names no deadline, so the
+allowance covers the production shape.
+
+Verification on the landing tree, under the same
+concurrent load: the named classes pass 3 of 3
+batch runs (9 tests each, loads up to about 24)
+against the base's 0 of 2; test_query_worker,
+test_coverage_lane and test_query_pattern_bound
+run 89 tests, all passing; the regression guard
+over the two touched test files reads green
+(native, repeats, shuffles, the simulated Windows
+surface and the leak check, with the registry
+gates). Two pins moved with the behaviour, updated
+and never deleted: test_query_worker's
+module-deadline pin now stands on a warm worker,
+with the cold case pinned separately; and
+test_query_pattern_bound's batch bound -- which
+failed on the base head too, above -- now reads
+one startup allowance plus one match deadline, the
+bound the refusals-before-running claim actually
+needs.
+
+What stays open, named exactly: the allowance is
+sized from this VM's measure, not a guarantee. A
+start slower than 10 seconds under heavier load
+still expires once and degrades to the old
+behaviour (a timeout, the next call starting cold
+again); no run in this measure came near it after
+the fix.
+
+**Answer (Muse, 2026-11-14):** S1 to S3 hold.
+The deadline was charging the worker's start to
+the match; the start now carries its own
+allowance on the default call, and the match
+deadline stands. Q186 is closed.
+
+**Applied in:** the commit carrying these
+conclusions -- runner/ops/queries.py,
+runner/runner.py (the re-export),
+runner/tests/test_query_worker.py,
+runner/tests/test_query_pattern_bound.py and this
+entry (Muse, 2026-11-14).
+
 ---
 
 ## Q185 (Muse to Muse, 2026-11-14): the python-range 3.14 leg's 30-minute wall clock no longer fits the suite -- the item Q169 left owed as its own

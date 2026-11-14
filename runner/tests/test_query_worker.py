@@ -6,7 +6,10 @@ every way the parent's side reads a worker that misbehaves: it does
 not start, it dies between calls, it answers with something that is
 not a reply. Each of those is a timeout or a bad pattern to the
 query, never an exception, and a broken worker is dropped so the
-next call starts a fresh one."""
+next call starts a fresh one. A call that starts the worker reads
+its first reply under the startup allowance, not the 2-second
+match deadline, so the interpreter's start is not charged to the
+match (Q186)."""
 
 import io
 import json
@@ -180,11 +183,68 @@ class GrepMatchesTest(unittest.TestCase):
         self.assertEqual(1, starts)
 
     def test_no_deadline_given_is_the_module_deadline(self):
+        # A warm call: the worker already stands, so no deadline
+        # given reads a reply under the module deadline exactly.
+        # The cold case is pinned separately below (Q186).
+        Q._worker = _FakeProc()
+        with mock.patch.object(Q, "_read_line", return_value=None) as rl, \
+                mock.patch.object(
+                    Q, "_start_worker",
+                    side_effect=AssertionError("a warm call starts none")):
+            Q.grep_matches("x", ["x"], 5)
+        self.assertEqual(Q._GREP_DEADLINE, rl.call_args[0][1])
+
+    def test_a_warm_worker_keeps_a_small_given_deadline(self):
+        Q._worker = _FakeProc()
+        with mock.patch.object(Q, "_read_line", return_value=None) as rl, \
+                mock.patch.object(
+                    Q, "_start_worker",
+                    side_effect=AssertionError("a warm call starts none")):
+            Q.grep_matches("x", ["x"], 5, deadline=2)
+        self.assertEqual(2, rl.call_args[0][1])
+
+    def test_a_cold_start_reads_under_the_startup_allowance(self):
         proc = _FakeProc()
         with mock.patch.object(Q, "_read_line", return_value=None) as rl, \
                 mock.patch.object(Q, "_start_worker", return_value=proc):
             Q.grep_matches("x", ["x"], 5)
-        self.assertEqual(Q._GREP_DEADLINE, rl.call_args[0][1])
+        self.assertEqual(Q._GREP_STARTUP_DEADLINE, rl.call_args[0][1])
+
+    def test_an_explicit_deadline_stands_on_a_cold_start(self):
+        # The allowance covers only the default call: a caller
+        # that names a deadline gets exactly it, cold or warm.
+        proc = _FakeProc()
+        with mock.patch.object(Q, "_read_line", return_value=None) as rl, \
+                mock.patch.object(Q, "_start_worker", return_value=proc):
+            Q.grep_matches("x", ["x"], 5, deadline=2)
+        self.assertEqual(2, rl.call_args[0][1])
+
+    def test_an_explicit_larger_deadline_stands_on_a_cold_start(self):
+        proc = _FakeProc()
+        with mock.patch.object(Q, "_read_line", return_value=None) as rl, \
+                mock.patch.object(Q, "_start_worker", return_value=proc):
+            Q.grep_matches("x", ["x"], 5, deadline=30)
+        self.assertEqual(30, rl.call_args[0][1])
+
+    def test_a_replaced_worker_reads_under_the_startup_allowance(self):
+        Q._worker = _FakeProc(alive=False)
+        fresh = _FakeProc()
+        with mock.patch.object(Q, "_read_line", return_value=None) as rl, \
+                mock.patch.object(Q, "_start_worker", return_value=fresh):
+            Q.grep_matches("x", ["x"], 5)
+        self.assertEqual(Q._GREP_STARTUP_DEADLINE, rl.call_args[0][1])
+
+    def test_a_broken_pipe_restart_reads_under_the_allowance(self):
+        dead = _FakeProc(write_error=BrokenPipeError())
+        fresh = _FakeProc()
+        with mock.patch.object(Q, "_read_line", return_value=None) as rl, \
+                mock.patch.object(Q, "_start_worker",
+                                  side_effect=[dead, fresh]):
+            Q.grep_matches("x", ["x"], 5)
+        self.assertEqual(Q._GREP_STARTUP_DEADLINE, rl.call_args[0][1])
+
+    def test_the_startup_allowance_exceeds_the_match_deadline(self):
+        self.assertGreater(Q._GREP_STARTUP_DEADLINE, Q._GREP_DEADLINE)
 
     def test_a_late_reply_is_a_timeout(self):
         proc = _FakeProc(b'{"matches": []}\n')
@@ -273,6 +333,20 @@ class StartWorkerTest(unittest.TestCase):
         Q._worker = None
         try:
             got = Q.grep_matches("^b", ["a", "bb", "cb"], 5, deadline=30)
+        finally:
+            Q._drop_worker()
+            Q._worker = saved
+        self.assertEqual(("ok", ["bb"], False), got)
+
+    def test_a_real_worker_answers_a_cold_call_on_no_deadline(self):
+        # Q186: the production shape -- answer_queries names no
+        # deadline and the first call in a process starts the
+        # worker. The startup allowance, not the 2-second match
+        # deadline, bounds that start, so the call answers.
+        saved = Q._worker
+        Q._worker = None
+        try:
+            got = Q.grep_matches("^b", ["a", "bb", "cb"], 5)
         finally:
             Q._drop_worker()
             Q._worker = saved

@@ -1568,6 +1568,7 @@ query_seen_key = _queries.query_seen_key
 _carriable = _queries._carriable
 _stream_text = _queries._stream_text
 _GREP_DEADLINE = _queries._GREP_DEADLINE
+_GREP_STARTUP_DEADLINE = _queries._GREP_STARTUP_DEADLINE
 _worker = _queries._worker
 _worker_lock = _queries._worker_lock
 _query_worker_argv = _queries._query_worker_argv

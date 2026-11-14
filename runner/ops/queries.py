@@ -279,6 +279,24 @@ def _stream_text(exec_result):
 # and this engine cannot be interrupted in the process that owns
 # the mailbox, so the match runs in another process (Q84).
 _GREP_DEADLINE = 2.0
+# The 2 seconds above size the match, not the worker's start. A
+# call that starts the worker pays the interpreter's start and
+# this module's import before any matching runs, and under load
+# that start alone measured 0.8 to 6.8 seconds (Q186: 22 cold
+# starts given the time, every one answering; the matching over
+# the same payloads took 0.004 milliseconds in process and a
+# warm worker answers in about 0.003 seconds) -- past the match
+# deadline, so a cold call timed out before its pattern ever
+# ran, the worker was killed, and every later call in the
+# process started cold again. A call on the default deadline
+# that starts the worker therefore reads its first reply under
+# this startup allowance instead; a call that reuses a live
+# worker keeps the match deadline, so a runaway pattern on a
+# warm worker is still killed at 2 seconds. A caller that
+# names a deadline gets exactly that deadline, cold or warm:
+# the allowance covers only the default call, whose 2 seconds
+# were sized for the match alone.
+_GREP_STARTUP_DEADLINE = 10.0
 _worker = None
 _worker_lock = threading.Lock()
 
@@ -372,16 +390,23 @@ def _read_line(stream, deadline):
 def grep_matches(pattern, lines, limit, deadline=None):
     """Match in the query worker. ("ok", matches, truncated) or
     ("timeout",). One worker for this process; a late reply is
-    killed and the next call starts another."""
+    killed and the next call starts another. A call on the
+    default deadline that starts the worker reads that first
+    reply under _GREP_STARTUP_DEADLINE, so the start is not
+    charged to the match (Q186); a named deadline stands
+    exactly as given."""
     global _worker
+    defaulted = deadline is None
     if deadline is None:
         deadline = _GREP_DEADLINE
     payload = (json.dumps({"pattern": pattern, "lines": lines,
                            "limit": limit}) + "\n").encode("utf-8")
     with _worker_lock:
+        started = False
         try:
             if _worker is None or _worker.poll() is not None:
                 _worker = _start_worker()
+                started = True
             proc = _worker
             try:
                 proc.stdin.write(payload)
@@ -389,6 +414,7 @@ def grep_matches(pattern, lines, limit, deadline=None):
             except (BrokenPipeError, OSError, ValueError):
                 _stop_worker(proc)
                 _worker = _start_worker()
+                started = True
                 proc = _worker
                 proc.stdin.write(payload)
                 proc.stdin.flush()
@@ -396,6 +422,8 @@ def grep_matches(pattern, lines, limit, deadline=None):
             _runner().log(f"query worker did not start: {e}", "WARN")
             _worker = None
             return ("timeout",)
+        if started and defaulted:
+            deadline = _GREP_STARTUP_DEADLINE
         raw = _read_line(proc.stdout, deadline)
         if raw is None or (proc.poll() is not None and not raw):
             _stop_worker(proc)
