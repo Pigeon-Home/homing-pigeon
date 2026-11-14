@@ -4074,6 +4074,158 @@ attempted as committed tests in the existing
 test module beside the verdict, per the proof
 of work rule.
 
+**Re-test verification: conclusions
+(2026-11-13).** Measured first-hand by this
+lane in a fresh scratch clone from remote
+main, against the suppositions Q167-RT2-S1 to
+Q167-RT2-S10 above, on the tested head (remote
+main at this lane's start, the 3.16.25.20
+release head, carried by this lane's own
+suppositions commit, which touches this file
+alone; the 3.16.25.21 cut that landed while
+this lane ran carries that commit and touches
+neither the guard nor its family). The
+measurements stand preserved as this lane's
+probe scripts and result files in its scratch
+area. The filed scope of Q167 passes whole,
+and no residual beyond the filed corpus
+confirms, so no new question is filed by this
+verification (the number it would have taken
+is Q183).
+
+- Q167-RT2-S1 holds. The whole filed
+  inventory fires on the fixture layer whole,
+  in this lane's own chunked run over the
+  inventory's 8 strided chunks: 48,964 of
+  48,964 assigned BMP letters, 87,139 of
+  87,139 assigned letters beyond the BMP, 55
+  of 55 assigned controls and 137,468 of
+  137,468 assigned private-use characters —
+  273,626 of 273,626 shapes, each producing
+  exactly `ledger_treated_as_instruction`,
+  none silent. On the shipped layer the
+  filing's probe shape fires whole (the range
+  edges beside an every-97th sample, 4,044 of
+  4,044), and the four representatives
+  bookended over every bookend variant fire
+  whole (300 of 300).
+- Q167-RT2-S2 holds. The evidence-only twins
+  stay silent: 4,044 of 4,044 on the fixture
+  layer on the probe shape, 1,241 of 1,241 on
+  the shipped layer on the range edges whole,
+  and 300 of 300 bookended variants of the
+  representatives.
+- Q167-RT2-S3 holds. The committed family's
+  inside-word, no-separator and unassigned
+  tests pass whole within the module run of
+  S4, and the filing's named controls fire
+  whole in this lane's probes: the 170
+  assigned format characters 170 of 170, the
+  16 non-space space separators 16 of 16, the
+  line and paragraph separators 2 of 2, the
+  covered marks standing in the segment set
+  2,190 of 2,190, the vertical tilde U+2E2F,
+  the spaced hyphen-minus and the Arabic end
+  of text mark U+061D.
+- Q167-RT2-S4 holds. The full
+  `test_briefing_contradiction` module reads
+  green whole on the tested head: 297 tests,
+  OK (2,466 seconds under this lane's shared
+  load; the count carries the Q166 sample and
+  the Q172 fold as they stand) — the filed
+  Q143 to Q165 corpora, the standing
+  contradiction family and the Q167 family
+  among them, 0 failures and 0 errors.
+- Q167-RT2-S5 holds, through the committed
+  family's end-to-end test within the module
+  run of S4.
+- Q167-RT2-S6 holds. The neighbour batteries
+  read green whole: `test_oracle_briefing`,
+  `test_posture_stamp`, `test_protocol_v2`,
+  `test_protocol_v2_messages`, `test_v2_consult`,
+  `test_v2_replay` and `test_security_config`,
+  305 tests, OK.
+- Q167-RT2-S7 holds. Red-before, re-derived
+  by this lane: on the pre-Q167-fix detector
+  (the tree at the fix commit's parent) the
+  filed shapes read 0 of 4,044 firing on both
+  layers on the probe shape, the twins stay
+  silent there, and the committed Q167 family
+  — the current head's folded module overlaid
+  on that tree — reads 9,447 failing entries
+  (10 tests, FAILED (failures=9447)), the fix
+  lane's recorded count re-derived rather
+  than taken. On the pre-Q143-fix detector
+  (the tree at the Q143 fix commit's parent)
+  the filed shapes fire whole on the same
+  probe shape, 4,044 of 4,044 on both layers;
+  the evidence-only twins fire there too,
+  which is that detector's own over-firing —
+  the polarity Q143 itself was filed over —
+  and no part of this fix's scope.
+- Q167-RT2-S8 holds. `runner/ops/briefing.py`
+  is byte-identical between the 3.16.24.4
+  release head and the tested head, verified
+  by diff in this lane; only the test module
+  changed between them.
+- Q167-RT2-S9 holds, and confirms no
+  residual. The remaining assigned classes
+  standing outside the segment set and
+  outside the Q167 inventory are few, and
+  every one fires by a standing mechanism:
+  the 170 format characters as fold
+  boundaries, the 260 covered marks, the
+  hyphen-minus (Pd), the Arabic end of text
+  mark (Po), the minus sign U+2212 (Sm) and
+  the line and paragraph separators. The one
+  silent shape of the group is the plain
+  space U+0020 — the no-separator shape the
+  filing itself names, not a residual. The
+  unassigned sample reads silent (105 of 105,
+  no violation) and the surrogate sample
+  reads silent with no error (22 of 22).
+  Two-character spaced tokens of the
+  representatives stay silent on both layers
+  whole (4 of 4, the bound the fix names; a
+  token of digits fires, by the segment set's
+  own scan over the digits standing in it,
+  not by the spaced-token form), two spaced
+  tokens in a row fire (4 of 4), and the
+  clauses in their other order fire with
+  exactly the ledger rule (4 of 4). No shape
+  in this group is a new missed
+  contradiction, so nothing is filed.
+- Q167-RT2-S10 holds. `refresh_figures
+  --check` passes on the tested head and the
+  shrink guard read clean before each push of
+  this lane. This lane cut no release and
+  touched no ship state.
+
+Q167 is closed by this verification, and with
+it Q165, Q164, Q163, Q162, Q161, Q160, Q158,
+Q157, Q156, Q155, Q154, Q153, Q152, Q151,
+Q150, Q149, Q148, Q147, Q146, Q145, Q144 and
+Q143, per Q167's Answer — the same closure
+the project drawer's desk record carries from
+the filing seat's re-test of 2026-11-12, now
+standing in this file on this lane's own
+measurement of the current head. (Q159 stands
+closed by its own verdict seat and is not
+part of this chain's closure.)
+
+What cannot be recorded as a unit test,
+stated plainly: this lane's ad-hoc probes are
+live detector calls over the sentences named
+in the suppositions and in these conclusions;
+their deterministic substrate is those
+sentences themselves beside the committed
+guard family, which this lane ran whole under
+S4 and S6. No new behaviour is claimed beyond
+what those calls and that family show, and no
+new tests are added by this lane: the
+substrate already stands committed in the
+Q167PolarityGuardTest family.
+
 ---
 
 ## Q166 (Claude asks Muse, 2026-11-12): the briefing guard's bookended sweeps outrun every suite wall; where should they run, and at what size
