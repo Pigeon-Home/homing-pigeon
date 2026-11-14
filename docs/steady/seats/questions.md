@@ -86,6 +86,16 @@ the procedure. Conclusions land under this entry. Live
 Windows behaviour is proven on the Germany rig's battery,
 not inferred from this VM.
 
+**First step (Muse, 2026-11-14).** The filing's scan is
+verified at the current head: none of the eight fuzz
+suites on main references the Windows confinement
+backend (runner/guard/windows_confine.py), and
+test_windows_confine.py carries 81 fixed tests with no
+generated-input driver. The build itself -- the fuzzer,
+its seeds as unit tests, and the proof record -- is a
+lane of its own, not landed by this filing; it waits on
+nothing but a lane taking it up.
+
 ---
 
 ## Q186 (Muse to Muse, 2026-11-14): the grep query worker's 2-second deadline expires under load -- the pre-existing flake Q183 left for a lane of its own
@@ -136,6 +146,36 @@ the timeout path, or a bounded payload for the full
 view -- is chosen by the numbers and lands as its own
 fix with its own tests; this filing lands none of them.
 
+**First measure (Muse, 2026-11-14).** A batch loop of
+the three named tests on this VM failed 3 of 3 runs
+(recorded loads 1.41, 15.60 and 21.68 -- failures at
+every load, worse as load rose). A manual batch of the
+two divergence classes ran 8 tests in 117 seconds and
+FAILED with 37 failures, the diffs showing empty match
+lists against the expected `ERROR line N` lists -- the
+timeout signature, zero matches returned. Between
+batch failures the p2 test passed standalone (1 test,
+1.7 seconds, OK) in the same tree.
+
+- Q186-S1 holds, stronger than supposed: on this
+  machine today the named classes fail wholesale in
+  batch, not occasionally.
+- Q186-S2 holds. No exception escaped in any run; the
+  standalone pass between batch failures and the probe
+  below show the next call starting a fresh worker and
+  answering. The timeouts are reader expiries.
+- Q186-S3 holds with one refinement. A direct probe of
+  grep_matches over a 5,000-line payload answered 30
+  of 30 calls at both the 2.0-second and a 30-second
+  deadline, warm calls costing 0.01 to 0.08 seconds:
+  the matching work is not the constraint. The cold
+  first call took 4.28 seconds of wall on the
+  worker-start and write path while still answering --
+  the deadline binds against worker start and
+  scheduling latency under load, not match cost. The
+  remedy candidates stand as filed; the fix is its
+  own lane under this question.
+
 ---
 
 ## Q185 (Muse to Muse, 2026-11-14): the python-range 3.14 leg's 30-minute wall clock no longer fits the suite -- the item Q169 left owed as its own
@@ -180,6 +220,36 @@ a sharded leg, or a faster suite -- and lands it with
 the arithmetic recorded in the workflow, as the floor
 leg's 75 minutes were landed. Conclusions land under
 this entry.
+
+**First measure (Muse, 2026-11-14).**
+
+- Q185-S1 holds. Full discovery at the current head
+  counts 13,215 tests, against 13,052 in the Q169-era
+  record: 163 more tests at the same 30-minute clock.
+- Q185-S2 holds in its deciding part and fails in its
+  letter. The 3.14 legs of the five most recent
+  completed python-range runs measured: 1,815 seconds
+  (the v3.16.25.13 dispatch -- past the 1,800-second
+  wall, killed, as Q169 recorded), 1,245 seconds (the
+  scheduled main run, green), and 1,541, 1,206 and
+  1,625 seconds on the v3.16.25.18, .19 and .20 tags,
+  each failing on test reds before the wall could bind.
+  So the wall is reached on a slow draw, as supposed,
+  but not uniformly within 5 percent: the fit is
+  draw-dependent exactly as Q169 predicted, and most
+  recent tag redness is not the wall's doing.
+- Q185-S3 stands as framed: the local count bounds the
+  growth side only; the hosted durations above are the
+  deciding measure.
+
+Recommendation recorded for the fix lane, by the
+workflow's own precedent (the floor leg's 75 minutes,
+arithmetic in the file): raise the 3.14 leg's clock --
+45 minutes covers the worst observed green pace
+(1,245 seconds) by 2.2 times and the killed run's
+need by 1.5 times -- or shard the leg. The change
+itself is a fix lane under this question and is not
+landed by this measure.
 
 ---
 
