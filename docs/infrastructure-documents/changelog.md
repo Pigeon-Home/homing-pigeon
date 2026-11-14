@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.22 - 2026-11-14
+
+- Q167 re-test verification conclusions land; Q167 closed, no residual filed
+
 ## 3.16.25.21 - 2026-11-14
 
 - Q167 re-test verification suppositions (Q167-RT2-S1 to Q167-RT2-S10) recorded before the measurement.
