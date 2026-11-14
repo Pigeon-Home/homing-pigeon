@@ -231,13 +231,18 @@ Behavior changes, in the order the evidence supports. None of
 these are made by the commits that carry this page; each lands
 with its own tests when it is taken up.
 
-Status (2026-11-11): items 1 and 2 have since landed, in the
+Status (2026-11-13): items 1 and 2 have since landed, in the
 shape they state — under `enforce` the job is refused, never
 run weaker — and items 3 and 4 have landed beside them: a job
 user that engages nothing is named at startup and in the
 posture report as not engaged, and audience at `enforce`
 without a runner id refuses startup, closing the
-warn-and-skip path.
+warn-and-skip path. Item 5 has landed beside them
+(2026-11-10): a first install states the platform gates in
+the seeded config, and the Windows guidance names the two
+modes. Item 6 has not landed: the seed and the code fallback
+still read `full`, so the config-file defaults and a fresh
+install do not yet tell the same story.
 
 1. **Confinement at enforce fails the job, not open.** When
    the sandbox cannot engage or its command cannot be built

@@ -122,6 +122,87 @@ reconciliation lane that takes the PROTOCOL.md
 default, the registry and the suite harnesses together,
 the way items 1 and 2 were landed.
 
+**Conclusions (2026-11-13):** S1, S2 and S4 hold as
+supposed; S3 holds on the measurement below.
+
+- S1 holds, read first-hand. `platform_modes()` maps
+  win32 to confinement and job_user at `audit`, darwin
+  and every other non-Linux platform to confinement at
+  `audit`, and Linux to no statement;
+  `apply_platform_modes()` writes only a mode still
+  stated at `enforce`, in the file, and prints each
+  statement; `_setup_fresh_config` calls it after the
+  profile on fresh installs, and the wizard's
+  `seed_platform_modes()` states the same map.
+  `docs/steady/security/windows.md` ("The two modes a
+  Windows config states") names `confinement` and
+  `job_user` and states that a fresh Windows install
+  writes both at `audit`. On the unmodified head,
+  `test_default_posture`, `test_install_platforms`,
+  `test_setup` and `test_first_ping` run 114 tests,
+  all passing, including the PlatformModesTest family
+  and the wizard and bench platform-gate pins.
+- S2 holds, read first-hand. The seed states
+  `max_result_view` at `full`
+  (`runner/config.example.json`);
+  `runner/ops/policy.py` reads an unset job view and
+  an unset ceiling as `full`, and an unrecognised view
+  as `full`; PROTOCOL.md section 9 states the
+  ceiling's default as `full` and the job view's
+  default as `full`; the defaults registry pins
+  `full`; the README posture table (the
+  `max_result_view` row) reads `full` / `attested` /
+  `attested` across its three postures; and
+  `test_default_posture.py` pins the seed's and the
+  code's default at `full` in
+  `test_seed_states_the_permissive_layer` and
+  `test_result_view_default_is_full`. No commit on
+  main carries item 6; the log's phase-2 landings are
+  items 1 and 2, items 3 and 4, and item 5 with its
+  follow-ons, all dated 2026-11-10.
+- S3 holds. A throwaway prototype (seed and both
+  policy fallbacks moved to `attested`, nothing else;
+  discarded after the run, never committed) was
+  measured against two completed sets. Set A --
+  `test_default_posture`, `test_flag321`,
+  `test_proof_constraints`,
+  `test_redact_and_policy_negative`,
+  `test_doc_feature_tiers`: 118 tests, 7 failures --
+  the posture module's own two pins, two
+  RetainContractTest pins in `test_flag321`, two C17
+  ceiling pins in `test_proof_constraints`, and the
+  feature-tiers config-defaults pin. Set B --
+  `test_install_gaps`, `test_hosting_phase0`,
+  `test_connected_systems`, `test_first_run_scenario`,
+  `test_oracle`: 79 tests, 1 further failure
+  (`test_full_view_default`). A third, heavier set was
+  started and did not finish inside its window, so no
+  count is claimed from it; the completed sets already
+  put the failures across five modules beyond the
+  posture module's own file, and the static pins stand
+  beside them (PROTOCOL.md section 9, the defaults
+  registry, the constraints record's "defaults to
+  `full` when absent"). Item 6 is therefore larger
+  than one lane: its landing moves a PROTOCOL.md
+  default, the registry, the reader pages that state
+  `full`, and harnesses in at least the flag321,
+  proof-constraints and Oracle families.
+- S4 is applied in the commit carrying these
+  conclusions: the posture page's phase-2 status line
+  and the readiness page's standing-gaps bullet now
+  state items 1 to 5 landed and item 6 remaining, and
+  no reader page carries this question's number or
+  trail. Item 6 itself is NOT landed by this lane and
+  is not recorded anywhere as landed.
+
+**Answer (Muse, 2026-11-13):** accepted as filed.
+Item 5 is verified landed whole; item 6 stands open
+under this question for a dedicated reconciliation
+lane, test-first, on the shape S3 measures.
+
+**Applied in:** the supposition commit and the commit
+carrying these conclusions (Muse, 2026-11-13).
+
 ---
 
 ## Q182 (Muse to Muse, 2026-11-13): Q175's two named FreeBSD reds -- the ps sampler's format string is one column on FreeBSD, so the tree is never seen and the storm is never tripped
