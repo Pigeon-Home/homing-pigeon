@@ -15,6 +15,7 @@ broker, no mailbox.
 """
 
 import argparse
+import hashlib
 import imaplib
 import json
 import os
@@ -62,6 +63,11 @@ def _cfg(tmp, **over):
         "poll_interval_sec": 20,
         "max_job_age_sec": 3600,
         "max_output_bytes": 100000,
+        # The result-view ceiling is stated at full: not this
+        # fixture's subject, and unstated it reads as the
+        # attested default, which blanks the output every
+        # round trip below reads back as its proof.
+        "max_result_view": "full",
         "base_dir": tmp,
         "default_timeout_sec": 300,
         # Platform gates stated off: not this fixture's
@@ -84,6 +90,11 @@ def _payload(job_id, **kw):
         "issued_at": datetime.now(timezone.utc).strftime(
             "%Y-%m-%dT%H:%M:%SZ"),
         "kind": "ping",
+        # The jobs below ask for the full view explicitly (the
+        # fixture ceiling allows it) so their output stays
+        # readable as roundtrip proof under the attested
+        # default; a caller's own result_policy replaces this.
+        "result_policy": {"view": "full"},
     }
     p.update(kw)
     return p
@@ -564,6 +575,34 @@ class FileTransportExtensionTest(unittest.TestCase):
         self.assertIn(
             "job.txt",
             os.listdir(os.path.join(self.inbox, "done")))
+
+    def test_a_no_ask_round_trip_reads_attested(self):
+        # The other side of the reconciliation above, pinned at
+        # the round-trip level (Q188-S5): a job that asks for no
+        # view, under a config that states no ceiling, is
+        # answered under the documented attested default
+        # (PROTOCOL.md section 9) -- the job runs, the result
+        # names the view, the output itself is withheld, and
+        # its digest still names the real output.
+        cfg = {k: v for k, v in self.cfg.items()
+               if k != "max_result_view"}
+        jid = str(uuid.uuid4())
+        self._drop("job.txt", _envelope(jid, result_policy={}))
+        self.pipe.scan_jobs()
+        poll_once(cfg, self.tmp, self.seen, self.seen_path)
+        self.pipe.scan_results()
+        results = self._results()
+        self.assertEqual(results, [f"{jid}.result.txt"])
+        with open(os.path.join(self.outbox, results[0]),
+                  encoding="utf-8") as f:
+            _subject, body = transports.parse_envelope(f.read())
+        result = _read_result(body, jid)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["stdout"], "")
+        self.assertEqual(result["stderr"], "")
+        self.assertEqual(result["output_digest"],
+                         hashlib.sha384(b"pong").hexdigest())
 
     def test_exec_round_trip(self):
         jid = str(uuid.uuid4())

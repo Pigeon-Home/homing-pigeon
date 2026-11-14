@@ -99,8 +99,13 @@ class StashHarness(unittest.TestCase):
 
     def _counter_job(self, jid, marker):
         script = 'echo run >> "%s"\necho hello' % marker
+        # The full view is asked for explicitly (the harness
+        # ceiling allows it): the resend assertions read the
+        # delivered stdout back, and an unset ask reads as the
+        # attested default, which carries none.
         return TR.job_payload(jid, kind="exec", script=script,
-                              interpreter=["sh"])
+                              interpreter=["sh"],
+                              result_policy={"view": "full"})
 
     def _runs(self, marker):
         if not os.path.exists(marker):

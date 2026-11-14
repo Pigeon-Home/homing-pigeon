@@ -241,6 +241,7 @@ class EndToEndTest(unittest.TestCase):
         job = TR.job_payload(jid, kind="exec",
                              script="cat data/in.csv",
                              interpreter=["sh"],
+                             result_policy={"view": "full"},
                              files=[{"name": "data/in.csv",
                                      "url": "https://example.com/in.csv"}])
 

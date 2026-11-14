@@ -137,7 +137,12 @@ class RunTest(unittest.TestCase):
         shutil.rmtree(self.h.tmp, ignore_errors=True)
 
     def result(self, **job):
-        p = TR.job_payload(str(uuid.uuid4()), kind="recipe", **job)
+        # The full view is asked for explicitly (the harness
+        # ceiling allows it): callers read the recipe's stdout
+        # back as their proof, which the attested default
+        # withholds.
+        p = TR.job_payload(str(uuid.uuid4()), kind="recipe",
+                           result_policy={"view": "full"}, **job)
         _, smtp, _ = self.h.run_cycle([TR.job_email(p)])
         return TR.verify_body(TR.result_body(smtp.sent[0]), TR.SECRET)
 

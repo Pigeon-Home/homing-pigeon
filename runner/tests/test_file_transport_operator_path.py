@@ -73,6 +73,11 @@ class OperatorPathTest(unittest.TestCase):
             "poll_interval_sec": 20,
             "max_job_age_sec": 3600,
             "max_output_bytes": 100000,
+            # The result-view ceiling is stated at full: the
+            # operator path is this rig's subject, and unstated
+            # the ceiling reads as the attested default, which
+            # caps even an explicit full ask.
+            "max_result_view": "full",
             "base_dir": self.base,
             "default_timeout_sec": 300,
             "runner_id": RUNNER_ID,
@@ -138,7 +143,11 @@ class OperatorPathTest(unittest.TestCase):
         return send_job._open_body(text, args, jid)
 
     def test_ping_via_the_operator_path(self):
-        jid = self._submit(self.ring, "--aud", RUNNER_ID)
+        # The job asks for the full view explicitly (the fixture
+        # ceiling allows it) so its pong stays readable in the
+        # result the operator picks up.
+        jid = self._submit(self.ring, "--aud", RUNNER_ID,
+                           "--view", "full")
         self._cycle()
         self.assertEqual(sorted(os.listdir(self.pipe.outbox)),
                          [jid + ".result.txt"])

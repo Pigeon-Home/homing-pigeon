@@ -519,8 +519,13 @@ if given is not None:
                     return smtp, seen
 
                 def job(jid, files):
+                    # The full view is asked for explicitly (the
+                    # harness ceiling allows it): the property reads
+                    # the listing back out of the result's stdout,
+                    # which the attested default withholds.
                     return TR.job_payload(jid, kind="exec", script="ls -R",
-                                          interpreter=["sh"], files=files)
+                                          interpreter=["sh"], files=files,
+                                          result_policy={"view": "full"})
 
                 cycle([TR.job_email(job(str(uuid.uuid4()), []))])
                 before = _names_outside_state(h.tmp)

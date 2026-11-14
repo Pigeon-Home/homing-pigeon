@@ -92,6 +92,11 @@ def _cfg(base, **over):
         "poll_interval_sec": 20,
         "max_job_age_sec": 3600,
         "max_output_bytes": 100000,
+        # The result-view ceiling is stated at full: key parity
+        # is this fixture's subject, and unstated the ceiling
+        # reads as the attested default, which blanks the pong
+        # the control tests read back as their proof of answer.
+        "max_result_view": "full",
         "base_dir": base,
         "default_timeout_sec": 30,
         "workers": 1,
@@ -151,7 +156,8 @@ class ControlsTest(_Rig):
 
     def test_the_current_key_is_answered_at_the_mailbox(self):
         jid = "q110-control-current"
-        _, smtp, seen = self.cycle([job_email(job_payload(jid))])
+        _, smtp, seen = self.cycle([job_email(job_payload(
+            jid, result_policy={"view": "full"}))])
         self.assertEqual(len(smtp.sent), 1)
         result = _result(smtp.sent[0], CURRENT, jid)
         self.assertEqual(result["stdout"], "pong")
@@ -161,7 +167,9 @@ class ControlsTest(_Rig):
         cfg = _cfg(self.tmp, additional_secrets={"old": OLD})
         jid = "q110-control-old"
         _, smtp, _seen = self.cycle(
-            [job_email(job_payload(jid, key_id="old"), secret=OLD)],
+            [job_email(job_payload(jid, key_id="old",
+                                   result_policy={"view": "full"}),
+                       secret=OLD)],
             cfg=cfg)
         self.assertEqual(len(smtp.sent), 1)
         result = _result(smtp.sent[0], OLD, jid)

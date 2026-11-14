@@ -166,7 +166,11 @@ class OutputsByViewTest(unittest.TestCase):
 
     def view(self, name):
         job = {"job_id": "j", "kind": "exec", "result_policy": {"view": name}}
-        result, _retain = POL.apply_result_policy({}, job, dict(self.EXEC), {}, True)
+        # The ceiling is stated at full: this class's subject is
+        # what each named view carries, so no view under test may
+        # be capped down to the attested default before it renders.
+        result, _retain = POL.apply_result_policy(
+            {"max_result_view": "full"}, job, dict(self.EXEC), {}, True)
         return result.get("outputs")
 
     def test_full_carries_the_bytes(self):

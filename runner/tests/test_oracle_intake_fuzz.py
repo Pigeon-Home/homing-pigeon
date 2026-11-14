@@ -524,6 +524,11 @@ class RingTwoJobTest(unittest.TestCase):
             "shared_secret": SECRET,
             "max_job_age_sec": 3600,
             "default_timeout_sec": 30,
+            # The result-view ceiling is stated at full: the
+            # envelope handling is this rig's subject, and
+            # unstated the ceiling reads as the attested default,
+            # which blanks the pong a ping is read back by.
+            "max_result_view": "full",
             "base_dir": self.tmp,
             # Confinement stated off: the good job's marker is
             # written beside the workdir, and unstated the mode
@@ -878,7 +883,8 @@ class RingTwoJobTest(unittest.TestCase):
 
     def test_a_ping_does_not_run_its_script(self):
         job_id = uuid.uuid4().hex
-        out = self._run(job_id, self._poison(job_id, kind="ping"))
+        out = self._run(job_id, self._poison(
+            job_id, kind="ping", result_policy={"view": "full"}))
         self.assertFalse(os.path.exists(self.marker))
         self.assertEqual(self._opened(out, job_id)["stdout"], "pong")
         good_id = uuid.uuid4().hex

@@ -1326,6 +1326,11 @@ def _supervised_cfg(tmp, port):
         "poll_interval_sec": 20,
         "max_job_age_sec": 3600,
         "max_output_bytes": 100000,
+        # The result-view ceiling is stated at full: the DTLS
+        # round trip is this fixture's subject, and unstated the
+        # ceiling reads as the attested default, which caps even
+        # an explicit full ask.
+        "max_result_view": "full",
         "base_dir": tmp,
         "default_timeout_sec": 300,
         "transports": ["dtls"],
@@ -1353,6 +1358,10 @@ class SupervisedDtlsRoundTripTest(unittest.TestCase):
              "--port", str(cfg["transport_dtls"]["port"]),
              "--secret", SECRET, "--kind", "exec",
              "--script-file", script, "--cleartext",
+             # The full view is asked for explicitly (the fixture
+             # ceiling allows it) so the script's output stays
+             # readable in the result this test reads back.
+             "--view", "full",
              # The sender's --wait is its whole budget, the
              # handshake included, and the handshake's first
              # retransmission waits 2 poll periods by design

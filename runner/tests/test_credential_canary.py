@@ -140,9 +140,16 @@ class _CanaryBase(unittest.TestCase):
         # facts below pin a job's reach with no fence in force;
         # unstated the mode reads enforce under the lockdown
         # default and the sandbox would decide the reach.
+        # The result-view ceiling is stated at full for the same
+        # reason: the sinks below render every named view, and an
+        # unstated ceiling reads as the attested default, which
+        # would collapse all four renderings to attested and make
+        # the view comparisons (the redacted pair above all)
+        # vacuous.
         self.cfg = {"base_dir": self.base,
                     "mailbox_password": CANARY,
                     "canary_config_key": CANARY,
+                    "max_result_view": "full",
                     "security": {"modes": {"confinement": "off"}}}
         # The runner log file sink lives in the base dir.
         self._old_log_file = R._LOG_FILE

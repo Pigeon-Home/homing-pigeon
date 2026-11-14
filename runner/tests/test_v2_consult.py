@@ -1099,6 +1099,11 @@ class ExecutionInvarianceTest(_Guard):
         from runner.wire import jobcrypto
         cfg = {"mailbox_user": "t@example.com",
                "shared_secret": SECRET,
+               # Ceiling stated at full: the consult is the
+               # subject, and unstated the ceiling reads as the
+               # attested default, which blanks the output the
+               # invariance is read from.
+               "max_result_view": "full",
                "security": {"modes": {"confinement": "off",
                                       "job_user": "off",
                                       "audience": "off"}},
@@ -1115,7 +1120,8 @@ class ExecutionInvarianceTest(_Guard):
                "issued_at": _now(), "kind": "exec",
                "script": "hp-no-such-tool-xyz 2>/dev/null; "
                          "echo hp-consult-ok",
-               "interpreter": ["/bin/sh"]}
+               "interpreter": ["/bin/sh"],
+               "result_policy": {"view": "full"}}
         body = jobcrypto.encrypt_body(
             runner.sign_payload(job, SECRET), SECRET,
             job_id="inv1", key_id="", sign=runner.sign_payload)

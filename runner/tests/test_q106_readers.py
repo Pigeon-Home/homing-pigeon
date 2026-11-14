@@ -67,7 +67,8 @@ class OutputCommitmentTest(unittest.TestCase):
         job = {"job_id": "j", "kind": "exec", "result_policy": {"view": view}}
         exe = {"stdout": "out\n", "stderr": "", "exit_code": 0,
                "outputs": outputs}
-        result, _retain = PO.apply_result_policy({}, job, exe, {}, True)
+        result, _retain = PO.apply_result_policy(
+            {"max_result_view": "full"}, job, exe, {}, True)
         return result
 
     def test_every_view(self):

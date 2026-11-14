@@ -149,6 +149,13 @@ def _build_body(args):
     }
     if args.key_id:
         payload["key_id"] = args.key_id
+    view = getattr(args, "view", None)
+    if view:
+        # The result view is asked for explicitly, as the mail
+        # sender's --view asks: unstated, the runner reads the
+        # job under the attested default and the output this
+        # sender prints is withheld (PROTOCOL.md section 9).
+        payload["result_policy"] = {"view": view}
     if args.kind == "exec":
         if args.script_file:
             with open(args.script_file, encoding="utf-8") as f:
@@ -236,6 +243,11 @@ def main(argv=None):
                     help="job kind (default ping)")
     ap.add_argument("--script-file",
                     help="script text for --kind exec")
+    ap.add_argument("--view", default=None,
+                    choices=("full", "redacted", "summary", "attested"),
+                    help="the view the result is asked for; the "
+                         "runner never widens it past its own "
+                         "ceiling (unstated: the attested default)")
     ap.add_argument("--timeout", type=int, default=300,
                     help="job timeout_sec for exec (default 300)")
     ap.add_argument("--job-id", default=None)

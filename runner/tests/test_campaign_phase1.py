@@ -199,7 +199,8 @@ class CampaignResultPolicyTests(unittest.TestCase):
                        "exit_code": 0, "timed_out": False,
                        "duration_sec": 0.01}
         result, _retain = R.apply_result_policy(
-            {}, job, exec_result, R._redact_patterns({}), confined=False)
+            {"max_result_view": "full"}, job, exec_result,
+            R._redact_patterns({}), confined=False)
         self.assertEqual(result["view"], "redacted")
         self.assertNotIn(AWS_VALUE, result["stdout"])
         self.assertIn("[REDACTED:aws_key]", result["stdout"])
@@ -292,8 +293,8 @@ class CampaignNegativeControls(unittest.TestCase):
                        "exit_code": 0, "timed_out": False,
                        "duration_sec": 0.01}
         result, _retain = R.apply_result_policy(
-            {}, job, exec_result, R._redact_patterns({}),
-            confined=False)
+            {"max_result_view": "full"}, job, exec_result,
+            R._redact_patterns({}), confined=False)
         self.assertEqual(result["view"], "full")
         self.assertIn(AWS_VALUE, result["stdout"])
 

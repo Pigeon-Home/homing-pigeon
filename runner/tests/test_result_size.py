@@ -166,7 +166,12 @@ class RefusedSMTP(TR.FakeSMTP):
 
 class StubTest(StashHarness):
     def _big_job(self, jid):
+        # The job asks for the full view explicitly (the harness
+        # ceiling allows it): these tests read the delivered
+        # stdout back as their proof, and an unset ask reads as
+        # the attested default, which carries no stdout at all.
         return TR.job_payload(jid, kind="exec", interpreter=["sh"],
+                              result_policy={"view": "full"},
                               script="i=0; while [ $i -lt 400 ]; do "
                                      "echo line-$i-xxxxxxxxxxxxxxxxxxxxxxxxxxxxx;"
                                      " i=$((i+1)); done")

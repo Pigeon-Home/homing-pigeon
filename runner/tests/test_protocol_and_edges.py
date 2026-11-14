@@ -136,6 +136,11 @@ def base_job(jid, **kw):
     p = {
         "v": 1, "type": "job", "job_id": jid,
         "issued_at": now_iso(), "kind": "ping",
+        # Jobs built here ask for the full view explicitly (the
+        # fixture ceilings allow it) so their output stays
+        # readable as the edges' proof under the attested
+        # default; a caller's own result_policy replaces this.
+        "result_policy": {"view": "full"},
     }
     p.update(kw)
     return p
@@ -152,6 +157,10 @@ class ProtocolTests(unittest.TestCase):
             "smtp_host": "fake", "smtp_port": 587,
             "max_job_age_sec": 3600,
             "max_output_bytes": 40,
+            # Ceiling stated at full (see base_job): unstated it
+            # reads as the attested default and blanks the
+            # outputs these tests read back.
+            "max_result_view": "full",
             "default_timeout_sec": 300,
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
@@ -261,6 +270,8 @@ class ExecutionEdgeTests(unittest.TestCase):
             "mailbox_password": SECRET,
             "shared_secret": SECRET,
             "max_output_bytes": 30,
+            # Ceiling stated at full (see base_job).
+            "max_result_view": "full",
             "default_timeout_sec": 300,
             # Platform gates stated off: not this fixture's
             # subject, and unstated they refuse the jobs on
@@ -832,6 +843,8 @@ class AdversarialTests(unittest.TestCase):
             "mailbox_password": SECRET,
             "shared_secret": SECRET,
             "max_job_age_sec": 3600,
+            # Ceiling stated at full (see base_job).
+            "max_result_view": "full",
             # Platform gates stated off: see ExecutionEdgeTests.
             "security": {"modes": {"confinement": "off",
                                    "job_user": "off",

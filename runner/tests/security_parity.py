@@ -70,6 +70,11 @@ def base_config(tmpdir):
         "poll_interval_sec": 20,
         "max_job_age_sec": 3600,
         "max_output_bytes": 100000,
+        # The result-view ceiling is stated at full: the parity
+        # question is the security modes, and unstated the
+        # ceiling reads as the attested default, which blanks
+        # every corpus output the comparisons are made over.
+        "max_result_view": "full",
         "base_dir": tmpdir,
         "default_timeout_sec": 300,
         "workers": 1,
@@ -82,6 +87,11 @@ def _payload(job_id, issued_at=None, **kw):
         "issued_at": (issued_at or datetime.now(timezone.utc)
                       ).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "kind": "ping",
+        # Corpus jobs ask for the full view explicitly (the
+        # base_config ceiling allows it) so their output stays
+        # readable as the parity evidence under the attested
+        # default; a caller's own result_policy replaces this.
+        "result_policy": {"view": "full"},
     }
     p.update(kw)
     return p

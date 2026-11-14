@@ -141,7 +141,13 @@ class ConnectorCaptureTests(unittest.TestCase):
             result, SECRET, job["job_id"], result.get("key_id") or "")
         result = verify_body(inner, SECRET)
         self.assertEqual(result["exit_code"], 0)
-        self.assertEqual(result["stdout"], "pong")
+        # The captured job asks for no result view (its signed
+        # body is genuine captured traffic and cannot gain one),
+        # so its result reads as the attested default: the pong
+        # is answered and marked seen, and the attested shape
+        # withholds the stdout the full view used to carry.
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["stdout"], "")
         self.assertIn(job["job_id"], seen)
 
     def test_sig_marker_inside_script_still_verifies(self):

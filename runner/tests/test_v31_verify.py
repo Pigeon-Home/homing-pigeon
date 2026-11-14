@@ -418,6 +418,12 @@ class QueryMailVerifyTest(unittest.TestCase):
             "poll_interval_sec": 20,
             "max_job_age_sec": 3600,
             "max_output_bytes": 100000,
+            # The result-view ceiling is stated at full: the
+            # query path is this rig's subject, and unstated the
+            # ceiling reads as the attested default, which caps
+            # even an explicit full ask and blanks the pong the
+            # follow-up query greps for.
+            "max_result_view": "full",
             "base_dir": self.tmp,
             "default_timeout_sec": 300,
             "max_query_budget": 8,
@@ -699,12 +705,18 @@ class JudgeOffPathTest(unittest.TestCase):
             "base_dir": tmp,
             "judge": "off",
             "workers": 1,
+            # Ceiling stated at full, and the job below asks for
+            # it: the judge is this test's subject, and under the
+            # attested default the pong's stdout is withheld.
+            "max_result_view": "full",
         }
         jid = str(uuid.uuid4())
         smtp = FakeSMTP()
         poll_once(
             cfg, tmp, {}, os.path.join(tmp, "seen.json"),
-            imap=FakeIMAP([job_email(job_payload(jid, script="rm -rf /"))]),
+            imap=FakeIMAP([job_email(job_payload(
+                jid, script="rm -rf /",
+                result_policy={"view": "full"}))]),
             smtp=smtp,
         )
         result = _read_result(smtp.sent[0])

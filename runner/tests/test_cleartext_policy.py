@@ -427,6 +427,22 @@ class SenderFlagsTest(CleartextBase):
         self.assertEqual(proc.returncode, 0)
         self.assertIn("--cleartext", proc.stdout)
 
+    def test_send_dtls_view_is_asked_in_the_payload(self):
+        # The DTLS sender asks for its result view the way the
+        # mail sender's --view asks: stated, the signed payload
+        # carries the ask; unstated, it carries none and the
+        # runner reads the job under the attested default.
+        _job_id, envelope = send_dtls._build_body(
+            self._dtls_args(cleartext=True, view="full"))
+        _subject, body = ch.parse_envelope(envelope.decode("utf-8"))
+        payload = verify_body(body.strip(), SECRET)
+        self.assertEqual(payload["result_policy"], {"view": "full"})
+        _job_id, envelope = send_dtls._build_body(
+            self._dtls_args(cleartext=True))
+        _subject, body = ch.parse_envelope(envelope.decode("utf-8"))
+        payload = verify_body(body.strip(), SECRET)
+        self.assertNotIn("result_policy", payload)
+
     # The board subcommands must follow the same rule as `new`: the
     # default runner refuses a cleartext board message, so a tool
     # that emitted one by default produced messages nobody could

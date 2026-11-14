@@ -89,7 +89,8 @@ class BeforeItArrivesTest(_Rig):
         jid = str(uuid.uuid4())
         ack = ack_of(self.cycle(cancel_mail(jid, OPS, "ops")), OPS)
         self.assertEqual(ack["status"], "will_refuse")
-        smtp = self.cycle(TR.job_email(TR.job_payload(jid)))
+        smtp = self.cycle(TR.job_email(TR.job_payload(
+            jid, result_policy={"view": "full"})))
         r = TR.verify_body(TR.result_body(smtp.sent[0]), TR.SECRET)
         self.assertEqual(r["stdout"], "pong")
 

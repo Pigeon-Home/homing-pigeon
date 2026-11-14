@@ -385,6 +385,11 @@ class MailTest(unittest.TestCase):
             "workers": 1,
             "max_job_age_sec": 3600,
             "default_timeout_sec": 30,
+            # The result-view ceiling is stated at full: not
+            # this fixture's subject, and unstated it reads as
+            # the attested default, which blanks the output a
+            # result is read back by.
+            "max_result_view": "full",
             "oracle_opinion_mode": "off",
             # Platform gates stated off: not this fixture's
             # subject, and unstated they refuse the jobs on
@@ -496,6 +501,10 @@ class MailTest(unittest.TestCase):
                        "answer": {"answer": "do not run"}}, fh)
             fh.write("\n")
         job = _job(job_id, kind="exec", script="echo ok")
+        # The job asks for the full view explicitly (the fixture
+        # ceiling allows it) so its stdout stays readable beside
+        # the preseeded answer it carries.
+        job["result_policy"] = {"view": "full"}
         smtp = self._poll([
             _mail("[HOMING-PIGEON] job " + job_id, job, job_id)],
             protocol_v2=True, oracle_mode="deterministic")

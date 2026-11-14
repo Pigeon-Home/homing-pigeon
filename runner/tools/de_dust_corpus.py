@@ -3531,7 +3531,13 @@ def _query_vocabulary(apply=PO.apply_result_policy):
         for exe in (dict(_QUERY_EXEC, stdout="", stderr=""),
                     dict(_QUERY_EXEC, stdout="", stderr="", outputs=[])):
             try:
-                result, _retain = apply({}, job, exe, _QUERY_PATTERNS, True)
+                # The ceiling is stated at full: the sweep renders
+                # every view as itself, and an unstated ceiling
+                # reads as the attested default, which would cap
+                # each rendering down to attested and leave the
+                # wider views' fixed text out of the vocabulary.
+                result, _retain = apply({"max_result_view": "full"}, job,
+                                        exe, _QUERY_PATTERNS, True)
                 parts.append(json.dumps(result, sort_keys=True, default=str))
             except Exception:
                 pass

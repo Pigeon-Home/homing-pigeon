@@ -139,7 +139,12 @@ class PongTest(unittest.TestCase):
         import uuid
         self.cfg.update(cfg)
         jid = str(uuid.uuid4())
-        _, smtp, _ = self.run_cycle([TR.job_email(TR.job_payload(jid))])
+        # The ping asks for the full view explicitly (the harness
+        # ceiling allows it): the card is this class's subject,
+        # and the pong's stdout stays readable beside it under
+        # the attested default.
+        _, smtp, _ = self.run_cycle([TR.job_email(TR.job_payload(
+            jid, result_policy={"view": "full"}))])
         return TR.verify_body(TR.result_body(smtp.sent[0]), TR.SECRET)
 
     def test_the_default_pong_carries_the_family_card(self):

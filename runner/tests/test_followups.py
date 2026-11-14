@@ -399,9 +399,14 @@ class JudgmentDenylistTest(unittest.TestCase):
             "base_dir": tmp,
             "judge": "advisory",
             "workers": 1,
+            # Ceiling stated at full, and the job below asks for
+            # it: the judge is this test's subject, and under the
+            # attested default the pong's stdout is withheld.
+            "max_result_view": "full",
         }
         jid = str(uuid.uuid4())
-        mail = job_email(job_payload(jid, script="mkfs"))
+        mail = job_email(job_payload(
+            jid, script="mkfs", result_policy={"view": "full"}))
         smtp = FakeSMTP()
         poll_once(cfg, tmp, {}, os.path.join(tmp, "seen.json"),
                   imap=FakeIMAP([mail]), smtp=smtp)

@@ -93,6 +93,11 @@ class _CycleRig(unittest.TestCase):
             "smtp_host": "fake", "smtp_port": 587,
             "max_job_age_sec": 3600,
             "max_output_bytes": 100000,
+            # The result-view ceiling is stated at full: the
+            # examples are this rig's subject, and unstated the
+            # ceiling reads as the attested default, which blanks
+            # the output the examples are proven by.
+            "max_result_view": "full",
             "default_timeout_sec": 300,
             # The gates this rig is not about are stated off:
             # unstated, they default to enforce, and on a host
@@ -136,6 +141,10 @@ class JobSketchAsWrittenTest(_CycleRig):
             "args": sketch["args"],
             "env": sketch["env"],
             "timeout_sec": sketch["timeout_sec"],
+            # The sketch's own fields stand as written; the ask
+            # is the harness's, so the run's output is readable
+            # as the proof the sketch executed.
+            "result_policy": {"view": "full"},
         }
         _, smtp, seen = self.cycle([job_email(job)])
         self.assertIn(jid, seen)
