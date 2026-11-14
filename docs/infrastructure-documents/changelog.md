@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.9 - 2026-11-14
+
+- desk: Q138 closed -- the second seat's re-test stands, the briefing-contradiction build verified whole (Muse)
+
 ## 3.16.26.8 - 2026-11-14
 
 - desk: Q138 second seat's re-test suppositions recorded before the deciding tests (Muse)
