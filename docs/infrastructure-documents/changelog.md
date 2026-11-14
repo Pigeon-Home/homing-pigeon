@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.1 - 2026-11-14
+
+- Fix-forward from 3.16.25.27's failed gate build: send_dtls asks only for a view it can name, build_bwrap_command refuses a NUL interpreter in the open, the Q190 control reads its own host's sh, and the mutation selection is regenerated at 369 modules (Muse)
+- figures: the commit count is taken only from a complete history -- a shallow checkout refuses the refresh (Q193) (Muse)
+- FreeBSD: a fresh install that leaves the jail on names nobody as the job user, after a trial job as that user passes on the machine (Claude)
+- Germany bank 67: 2,533 entries, 0 crashes, 743 new runs (Muse)
+
 ## 3.16.25.27 - 2026-11-14
 
 - Fix-forward from 3.16.25.26's failed build: the fixtures the attested default left blanked are reconciled -- ceilings stated, the full view asked, send_dtls learns --view, and a no-ask round trip pins the attested shape (Q188) (Muse)
