@@ -43,6 +43,146 @@ Rules:
 
 ---
 
+## Q187 (Muse to Muse, 2026-11-14): the Windows-confinement fuzz lane the conductor ordered on 2026-11-12 has not landed -- its suppositions, recorded before the build
+
+**Context.** The conductor's order of 2026-11-12 (~4:47 PM):
+a roughly 5-minute in-memory fuzzer on the Windows
+confinement surface, then the seeds plus small test runs
+committed as unit tests on main, supposition-first, with a
+written proof-of-work record in the repository. As of this
+filing nothing on main answers to it. The fuzz suites that
+stand -- test_fuzz_surfaces, test_fuzz_parsers,
+test_fuzz_guided, test_hybrid_fuzz, test_job_fuzz,
+test_oracle_intake_fuzz, test_transport_log_relay_fuzz,
+test_dtls_fuzz -- exercise other surfaces; none drives the
+Windows confinement backend with generated inputs. This
+entry records the lane's suppositions before its build,
+per the project's supposition-first rule; the build itself
+is the lane that follows, and this filing does not land it.
+
+**Suppositions, recorded 2026-11-14 before the build:**
+
+- Q187-S1: the backend's input surface (job specs, paths,
+  command lines, environment blocks, limit values) takes
+  generated malformed inputs without an unhandled exception
+  escaping the confinement decision -- every generated case
+  ends refused, cleanly errored, or confined, never a crash
+  of the guard itself.
+- Q187-S2: every bookend and boundary shape the project
+  fuzz rule names (special characters front and back,
+  symbol-only strings, the non-printing edge cases) is
+  refused or confined, never silently widened into a
+  weaker confinement than the job asked for.
+- Q187-S3: a roughly 5-minute in-memory run completes and
+  records its case count, its seed corpus and any finding
+  shapes, at whatever count this machine's pace gives; a
+  finding, if one stands, gets the shotgun family around
+  it, not a single regression test.
+
+**The ask.** The lane builds test-first: the fuzzer, the
+seeds as unit tests on main, and the written proof in
+docs/steady/fuzzing.md naming the tests, the corpus and
+the procedure. Conclusions land under this entry. Live
+Windows behaviour is proven on the Germany rig's battery,
+not inferred from this VM.
+
+---
+
+## Q186 (Muse to Muse, 2026-11-14): the grep query worker's 2-second deadline expires under load -- the pre-existing flake Q183 left for a lane of its own
+
+**Context.** Q183's answer (2026-11-13) closed that
+question with one failure left on the record as
+pre-existing and unrelated: the grep max-matches classes
+in test_doc_default_divergences
+(TestGrepMaxMatchesDefaultsTo10,
+TestGrepMaxMatchesFifteenShapesAtReader) and
+test_grep_answers_under_the_full_view in
+test_proof_conformance_p2 fail intermittently on this VM
+with the grep query worker's 2-second deadline expiring
+(`rejected: timeout`, zero matches), and the same probe
+against the unmodified head Q183 started from timed out
+at least as often (1 of 10 calls answered there, against
+3 of 10 on the landed tree, under the same load). The
+mechanism stands in runner/ops/queries.py: grep_matches
+writes the query to a worker process and reads one line
+under _GREP_DEADLINE = 2.0; on expiry it returns
+("timeout",) and the caller reads a rejection. The
+failing shapes call the query reader with an explicit
+`full` view over large line sets.
+
+**Suppositions, recorded 2026-11-14 before this lane's
+measure:**
+
+- Q186-S1: repeated runs of the named classes on this VM
+  under its ordinary load fail intermittently with
+  `rejected: timeout` at a rate measurably above zero,
+  in the direction of Q183's probe (most calls timing
+  out under load), while the same classes pass in a
+  single run when the worker answers inside the deadline.
+- Q186-S2: the timeouts are deadline expiries in the
+  reader, not worker crashes: after a timeout the next
+  call starts a fresh worker and can answer, and no
+  exception escapes grep_matches on the timeout path.
+- Q186-S3: the deadline, not the matching work, is the
+  binding constraint for these shapes: the worker's own
+  matching over the same payload completes in well under
+  2 seconds when it is given the time, so the expiry is
+  the reader's clock (worker start plus scheduling under
+  load), not the match cost.
+
+**The ask.** Measure first, per the suppositions. The
+remedy -- a longer or load-aware deadline, one retry on
+the timeout path, or a bounded payload for the full
+view -- is chosen by the numbers and lands as its own
+fix with its own tests; this filing lands none of them.
+
+---
+
+## Q185 (Muse to Muse, 2026-11-14): the python-range 3.14 leg's 30-minute wall clock no longer fits the suite -- the item Q169 left owed as its own
+
+**Context.** Q169's verdict (2026-11-13), verbatim in
+its operative part: "What IS owed, as its own item and
+not as part of Q169: the 3.14 leg's 30-minute wall clock
+no longer fits the suite on a slow runner draw -- 12
+seconds of headroom on the 3.16.25.12 head, and the
+suite only grows. Until the desk takes that up (a longer
+clock for the leg, a sharded leg, or a faster suite),
+green `python-range` verdicts on the 3.14 leg will keep
+depending on the runner draw." This entry takes it up.
+The workflow (.github/workflows/python-range.yml) runs
+the full discovered suite under
+runner/tools/suite_wall_clock.py on two legs: the 3.9
+floor leg at 75 minutes and the 3.14 leg at 30 minutes,
+both on the recorded reasoning that the wall clock is a
+hang-catcher, not a size budget -- the reasoning that
+already raised the floor leg when size alone killed it.
+
+**Suppositions, recorded 2026-11-14 before this lane's
+measure:**
+
+- Q185-S1: the suite has grown since the 3.16.25.12
+  head: the discovered test count at the current head
+  exceeds the Q169-era count (13,052 tests in the
+  record), so at the same runner pace the 12 seconds of
+  headroom has shrunk or gone.
+- Q185-S2: the recent hosted python-range runs' 3.14
+  legs stand at or near the 1,800-second wall (within
+  roughly 5 percent), confirming the fit is now
+  draw-dependent rather than comfortable.
+- Q185-S3: this VM's pace cannot settle the hosted fit
+  either way (different hardware, shared CPUs); the
+  local numbers bound the growth side only, and the
+  hosted leg durations are the deciding measure.
+
+**The ask.** Measure, then the desk picks one of the
+three shapes Q169 named -- a longer clock for the leg,
+a sharded leg, or a faster suite -- and lands it with
+the arithmetic recorded in the workflow, as the floor
+leg's 75 minutes were landed. Conclusions land under
+this entry.
+
+---
+
 ## Q184 (Muse to Muse, 2026-11-14): the jail boundary, measured live for the first time -- 7 findings on both hosted guests, a second shape of the backend that answers them, and the second seat's re-test still owed
 
 **Context.** The hosted live proof for the FreeBSD jail backend
