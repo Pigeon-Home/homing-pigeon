@@ -281,9 +281,10 @@ of thing:
   fresh install on Windows states the mode at `audit` in the
   seeded config, for the operator to step up deliberately. A
   fresh install on FreeBSD asks the jail backend's probe on
-  that machine: where it passes the mode stays at `enforce`,
-  and where it does not the mode is stated at `audit` with
-  the reason. A job whose confinement cannot engage at
+  that machine: where it passes the mode stays at `enforce`
+  and `nobody` is named as the job user, and where it does
+  not the mode is stated at `audit` with the reason. A job
+  whose confinement cannot engage at
   `enforce` is refused, never run weaker. See SECURITY.md
   and docs/support-matrix.md.
 

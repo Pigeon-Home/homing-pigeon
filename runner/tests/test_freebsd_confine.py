@@ -393,7 +393,36 @@ class _Probe:
         self.asked = []
 
     def __call__(self, cfg):
-        self.asked.append(cfg)
+        # As it stood when asked: the seed writes into the same
+        # object afterwards.
+        self.asked.append(json.loads(json.dumps(cfg)))
+        if self.error is not None:
+            raise self.error
+        if self.problem is not None:
+            return (self.problem, ())
+        return (None, self.lines)
+
+
+_DOOR_LINES = ("FreeBSD jail backend: freebsd: jail + no_network + "
+               "spawn_resource_limits",
+               "a job goes in as nobody at the jail door "
+               "(security.job_user) and reads what that user can read",
+               "RACCT is not enabled on this host")
+
+
+class _Trial:
+    """A scripted answer to the seed's second question -- the
+    throwaway job as the job user -- and what it was asked
+    with."""
+
+    def __init__(self, problem=None, lines=_DOOR_LINES, error=None):
+        self.problem, self.lines, self.error = problem, lines, error
+        self.asked = []
+
+    def __call__(self, cfg, user):
+        # As it stood when asked: the seed writes into the same
+        # object afterwards.
+        self.asked.append((json.loads(json.dumps(cfg)), user))
         if self.error is not None:
             raise self.error
         if self.problem is not None:
@@ -405,11 +434,12 @@ class SeedTest(unittest.TestCase):
     """The mode a fresh FreeBSD config states: the machine's
     answer where it is asked, the stated map where it is not."""
 
-    def _apply(self, path, platform="freebsd14", probe=None):
+    def _apply(self, path, platform="freebsd14", probe=None,
+               trial=None):
         out = io.StringIO()
         with redirect_stdout(out):
-            applied = INS.apply_platform_modes(path, platform,
-                                               probe=probe)
+            applied = INS.apply_platform_modes(
+                path, platform, probe=probe, trial=trial)
         return applied, out.getvalue()
 
     # --- the map, where nothing is asked -----------------------
@@ -606,6 +636,372 @@ class SeedTest(unittest.TestCase):
             self.assertEqual(_modes_in(path)["confinement"], "audit")
             self.assertIn("did not pass: jail(8) is gone", out)
 
+    # --- the job user the seed names ---------------------------
+
+    def _security_in(self, path):
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)["security"]
+
+    def test_a_passing_trial_names_the_job_user(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = _seeded_config(d)
+            with open(path, encoding="utf-8") as fh:
+                before = json.load(fh)
+            trial = _Trial()
+            applied, out = self._apply(path, probe=_Probe(),
+                                       trial=trial)
+            with open(path, encoding="utf-8") as fh:
+                after = json.load(fh)
+        # No mode moved; one block was added and nothing else.
+        self.assertEqual(applied, {})
+        self.assertEqual(after["security"]["job_user"],
+                         {"user": "nobody"})
+        del after["security"]["job_user"]
+        self.assertEqual(after, before)
+        self.assertEqual(len(trial.asked), 1)
+        self.assertEqual(trial.asked[0][1], "nobody")
+        lines = out.splitlines()
+        self.assertIn("security.modes.confinement left at enforce "
+                      "in %s" % path, lines[0])
+        self.assertIn("security.job_user names nobody in %s" % path,
+                      lines[1])
+        self.assertIn("a trial job as nobody inside a jail on this "
+                      "machine passed", lines[1])
+        self.assertIn("reads what root owns", lines[1])
+        # The report's lines are the ones for the config as it
+        # now stands: the trial's, not the probe's.
+        self.assertEqual(lines[2:],
+                         ["platform: " + t for t in _DOOR_LINES])
+        self.assertNotIn("no_superuser", out)
+
+    def test_a_failing_trial_names_no_one_and_says_why(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = _seeded_config(d)
+            with open(path, "rb") as fh:
+                before = fh.read()
+            applied, out = self._apply(
+                path, probe=_Probe(),
+                trial=_Trial(problem="jexec: nobody: no such user"))
+            with open(path, "rb") as fh:
+                after = fh.read()
+        self.assertEqual(applied, {})
+        self.assertEqual(before, after)
+        lines = out.splitlines()
+        self.assertIn("left at enforce", lines[0])
+        self.assertIn("security.job_user left unnamed in %s" % path,
+                      lines[1])
+        self.assertIn("did not pass: jexec: nobody: no such user",
+                      lines[1])
+        self.assertIn("reads what root owns", lines[1])
+        self.assertIn("name a user of the job's own", lines[1])
+        # What a job's jail carries with no job user: the probe's
+        # lines.
+        self.assertEqual(lines[2:],
+                         ["platform: " + t for t in _PASS_LINES])
+
+    def test_a_trial_that_cannot_answer_names_no_one(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = _seeded_config(d)
+            applied, out = self._apply(
+                path, probe=_Probe(),
+                trial=_Trial(error=OSError("no jexec")))
+            security = self._security_in(path)
+        self.assertEqual(applied, {})
+        self.assertNotIn("job_user", security)
+        self.assertIn("did not pass: no jexec", out)
+
+    def test_the_trial_is_asked_about_the_config_as_written(self):
+        block = {"extra_ro_binds": [["/srv/tools", "/tools"]]}
+        trial = _Trial()
+        with tempfile.TemporaryDirectory() as d:
+            path = _seeded_config(d, confinement=block)
+            self._apply(path, probe=_Probe(), trial=trial)
+        cfg, user = trial.asked[0]
+        self.assertEqual(user, INS.FREEBSD_SEED_JOB_USER)
+        self.assertEqual(cfg["security"]["confinement"], block)
+        self.assertNotIn("job_user", cfg["security"])
+
+    def test_a_named_job_user_is_the_operator_s_and_not_asked(self):
+        for block in ({"user": "pigeon-jobs"}, {"user": ""}, "odd"):
+            trial = _Trial()
+            with tempfile.TemporaryDirectory() as d:
+                path = _seeded_config(d)
+                with open(path, encoding="utf-8") as fh:
+                    cfg = json.load(fh)
+                cfg["security"]["job_user"] = block
+                with open(path, "w", encoding="utf-8") as fh:
+                    json.dump(cfg, fh)
+                with open(path, "rb") as fh:
+                    before = fh.read()
+                applied, out = self._apply(path, probe=_Probe(),
+                                           trial=trial)
+                with open(path, "rb") as fh:
+                    after = fh.read()
+            self.assertEqual(applied, {}, block)
+            self.assertEqual(before, after, block)
+            self.assertEqual(trial.asked, [], block)
+            self.assertNotIn("security.job_user names", out, block)
+
+    def test_a_job_user_mode_stated_lower_is_not_asked(self):
+        for mode in ("audit", "off"):
+            trial = _Trial()
+            with tempfile.TemporaryDirectory() as d:
+                path = _seeded_config(d, modes={"job_user": mode})
+                applied, out = self._apply(path, probe=_Probe(),
+                                           trial=trial)
+                security = self._security_in(path)
+            self.assertEqual(applied, {}, mode)
+            self.assertEqual(trial.asked, [], mode)
+            self.assertNotIn("job_user", security, mode)
+            self.assertIn("left at enforce", out, mode)
+
+    def test_no_job_user_where_the_jail_is_not_on(self):
+        # The second question follows a first one that passed: a
+        # probe that did not pass, a mode the operator stated
+        # down, and a seed that asked nothing each name no one.
+        cases = (
+            (_Probe(problem=_ROOT_REASON), None),
+            (_Probe(), {"confinement": "audit"}),
+            (None, None),
+        )
+        for probe, modes in cases:
+            trial = _Trial()
+            with tempfile.TemporaryDirectory() as d:
+                path = _seeded_config(d, modes=modes)
+                self._apply(path, probe=probe, trial=trial)
+                security = self._security_in(path)
+            self.assertEqual(trial.asked, [], (probe, modes))
+            self.assertNotIn("job_user", security, (probe, modes))
+
+    def test_a_named_platform_runs_no_trial_of_its_own(self):
+        # A scripted probe and no scripted trial: nothing is run
+        # on this machine for a platform the caller named.
+        with mock.patch.object(INS, "freebsd_job_user_trial",
+                               side_effect=AssertionError("run")):
+            with tempfile.TemporaryDirectory() as d:
+                path = _seeded_config(d)
+                applied, out = self._apply(path, probe=_Probe())
+                security = self._security_in(path)
+        self.assertEqual(applied, {})
+        self.assertNotIn("job_user", security)
+        self.assertNotIn("security.job_user names", out)
+
+    def test_a_freebsd_host_is_asked_through_the_door_trial(self):
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        trial = _Trial()
+        with mock.patch.object(INS, "_HOST_PLATFORM", "freebsd14"), \
+                mock.patch.object(INS, "freebsd_job_user_trial", trial):
+            user, door = INS.fresh_job_user(cfg, (None, _PASS_LINES))
+        self.assertEqual(user, "nobody")
+        self.assertEqual(door, (None, _DOOR_LINES))
+        self.assertEqual(trial.asked, [(cfg, "nobody")])
+
+    def test_a_missing_config_takes_the_job_user_too(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            applied, _out = self._apply(path, probe=_Probe(),
+                                        trial=_Trial())
+            self.assertEqual(applied, {})
+            with open(path, encoding="utf-8") as fh:
+                self.assertEqual(json.load(fh), {
+                    "security": {"job_user": {"user": "nobody"}}})
+
+    def test_a_later_run_names_no_second_user(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = _seeded_config(d)
+            self._apply(path, probe=_Probe(), trial=_Trial())
+            with open(path, "rb") as fh:
+                before = fh.read()
+            trial = _Trial()
+            applied, out = self._apply(path, probe=_Probe(),
+                                       trial=trial)
+            with open(path, "rb") as fh:
+                after = fh.read()
+        self.assertEqual(applied, {})
+        self.assertEqual(before, after)
+        self.assertEqual(trial.asked, [])
+        self.assertIn("left at enforce", out)
+        self.assertNotIn("security.job_user names", out)
+
+    def test_the_trial_s_config_is_a_copy(self):
+        cfg = {"security": {"confinement": {
+            "extra_ro_binds": [["/srv/tools", "/tools"]]}}}
+        bound = INS._seed_config_with(cfg, bind=["/x/shown", "/shown"])
+        named = INS._seed_config_with(cfg, job_user="nobody")
+        self.assertEqual(
+            bound["security"]["confinement"]["extra_ro_binds"],
+            [["/srv/tools", "/tools"], ["/x/shown", "/shown"]])
+        self.assertEqual(named["security"]["job_user"],
+                         {"user": "nobody"})
+        self.assertEqual(cfg, {"security": {"confinement": {
+            "extra_ro_binds": [["/srv/tools", "/tools"]]}}})
+        # A config with no security block, or none at all.
+        self.assertEqual(
+            INS._seed_config_with(None, bind=["/a", "/b"]),
+            {"security": {"confinement": {
+                "extra_ro_binds": [["/a", "/b"]]}}})
+        self.assertEqual(
+            INS._seed_config_with({"security": "odd"},
+                                  job_user="nobody"),
+            {"security": {"job_user": {"user": "nobody"}}})
+
+    # --- the door trial itself ---------------------------------
+
+    def _door(self, out=b"65534\nWORK-OK\nEND\n", err=b"",
+              ids=(65534, 65534), spawn_error=None, wait_error=None,
+              backend="scripted", cfg=None):
+        """Run the trial against a scripted backend; return its
+        answer and what the backend saw."""
+        seen = {"spawned": [], "closed": 0, "posture": []}
+
+        class _Job:
+            def communicate(self, timeout=None):
+                seen["timeout"] = timeout
+                if wait_error is not None:
+                    raise wait_error
+                return out, err
+
+            def close(self):
+                seen["closed"] += 1
+
+        def _spawn(argv, cwd=None, env=None, user=None, cfg=None):
+            binds = cfg["security"]["confinement"]["extra_ro_binds"]
+            shown = binds[-1][0]
+            secret = os.path.join(shown, "root-only")
+            seen["spawned"].append({
+                "argv": argv, "cwd": cwd, "env": env, "user": user,
+                "binds": binds, "work_is_dir": os.path.isdir(cwd),
+                "secret_mode": os.stat(secret).st_mode & 0o777,
+                "folder": os.path.dirname(shown)})
+            if spawn_error is not None:
+                raise spawn_error
+            return _Job()
+
+        def _posture(cfg=None):
+            seen["posture"].append(cfg)
+            return [("OK", t) for t in _DOOR_LINES]
+
+        if backend == "scripted":
+            backend = types.SimpleNamespace(
+                IS_FREEBSD_BACKEND=True,
+                spawn_confined_process=_spawn,
+                posture_lines=_posture)
+
+        def _ids(user):
+            if ids is None:
+                raise KeyError(user)
+            return ids
+        given = []
+        with mock.patch.object(INS, "_import_freebsd_confine",
+                               return_value=backend), \
+                mock.patch.object(INS, "_user_ids", _ids), \
+                mock.patch.object(
+                    INS, "_posix_chown",
+                    lambda path, uid, gid: given.append(
+                        (os.path.basename(path), uid, gid))):
+            answer = INS.freebsd_job_user_trial(
+                cfg if cfg is not None else {}, "nobody")
+        seen["given"] = given
+        return answer, seen
+
+    def test_the_trial_job_goes_in_as_the_user_and_passes(self):
+        cfg = {"security": {"confinement": {
+            "extra_ro_binds": [["/srv/tools", "/tools"]]}}}
+        answer, seen = self._door(cfg=cfg)
+        self.assertEqual(answer, (None, _DOOR_LINES))
+        (job,) = seen["spawned"]
+        self.assertEqual(job["argv"],
+                         ["/bin/sh", "-c", INS._DOOR_SCRIPT])
+        self.assertEqual(job["user"], "nobody")
+        self.assertEqual(job["env"], {})
+        # Its work directory was handed to the user, and the tree
+        # with the root-only file was shown beside the operator's
+        # own binds.
+        self.assertTrue(job["work_is_dir"])
+        self.assertEqual(seen["given"], [("work", 65534, 65534)])
+        self.assertEqual(job["binds"][0], ["/srv/tools", "/tools"])
+        self.assertEqual(job["binds"][-1][1], INS._DOOR_MOUNT)
+        if os.name != "nt":
+            self.assertEqual(job["secret_mode"], 0o600)
+        # The job was released, nothing of the trial is left, and
+        # the caller's config is as it was.
+        self.assertEqual(seen["closed"], 1)
+        self.assertFalse(os.path.exists(job["folder"]))
+        self.assertEqual(cfg["security"]["confinement"][
+            "extra_ro_binds"], [["/srv/tools", "/tools"]])
+        # The lines are the report's for the config with the user
+        # named.
+        (named,) = seen["posture"]
+        self.assertEqual(named["security"]["job_user"],
+                         {"user": "nobody"})
+
+    def test_what_the_trial_job_must_show(self):
+        cases = (
+            (b"0\nWORK-OK\nEND\n", "ran as uid 0, not as nobody"),
+            (b"65534\nEND\n", "could not write its work mount"),
+            (b"65534\nWORK-OK\nROOT-ONLY\nREAD-ROOT\nEND\n",
+             "read a root-only file as nobody"),
+            (b"65534\nWORK-OK\n", "did not finish: jexec: gone"),
+            (b"", "did not finish: jexec: gone"),
+        )
+        for out, expect in cases:
+            with self.subTest(expect=expect, out=out):
+                (problem, lines), seen = self._door(
+                    out=out, err=b"jexec: gone\n")
+                self.assertIn(expect, problem)
+                self.assertEqual(lines, ())
+                self.assertEqual(seen["closed"], 1)
+                self.assertFalse(
+                    os.path.exists(seen["spawned"][0]["folder"]))
+
+    def test_a_trial_that_cannot_run_is_a_reason(self):
+        (problem, lines), seen = self._door(
+            spawn_error=RuntimeError("jail: no such tool"))
+        self.assertEqual(problem, "the trial job could not be run: "
+                                  "jail: no such tool")
+        self.assertEqual(lines, ())
+        self.assertFalse(os.path.exists(seen["spawned"][0]["folder"]))
+        # A job that never ends is released and named.
+        (problem, _lines), seen = self._door(
+            wait_error=subprocess.TimeoutExpired("jexec", 30))
+        self.assertIn("could not be run", problem)
+        self.assertEqual(seen["closed"], 1)
+        self.assertEqual(seen["timeout"], 30)
+        self.assertFalse(os.path.exists(seen["spawned"][0]["folder"]))
+
+    def test_a_user_the_machine_cannot_use_is_a_reason(self):
+        (problem, _lines), seen = self._door(ids=None)
+        self.assertIn("nobody is not in this machine's user "
+                      "database", problem)
+        self.assertEqual(seen["spawned"], [])
+        (problem, _lines), seen = self._door(ids=(0, 0))
+        self.assertEqual(problem, "nobody is uid 0 on this machine")
+        self.assertEqual(seen["spawned"], [])
+
+    def test_no_backend_no_trial(self):
+        for backend in (None,
+                        types.SimpleNamespace(IS_FREEBSD_BACKEND=False)):
+            (problem, lines), seen = self._door(backend=backend)
+            self.assertIn("could not be loaded", problem)
+            self.assertEqual(lines, ())
+
+    def test_a_pass_stands_without_the_report_s_lines(self):
+        backend = types.SimpleNamespace(IS_FREEBSD_BACKEND=True)
+
+        class _Job:
+            def communicate(self, timeout=None):
+                return b"65534\nWORK-OK\nEND\n", b""
+
+            def close(self):
+                pass
+        backend.spawn_confined_process = lambda *a, **k: _Job()
+
+        def _posture(cfg=None):
+            raise RuntimeError("no sysctl")
+        backend.posture_lines = _posture
+        answer, _seen = self._door(backend=backend)
+        self.assertEqual(answer, (None, ()))
+
     # --- the setup wizard's seed -------------------------------
 
     def test_the_wizard_s_seed_takes_the_same_answer(self):
@@ -617,7 +1013,11 @@ class SeedTest(unittest.TestCase):
         self.assertEqual(stated, {})
         self.assertEqual(cfg["security"]["modes"]["confinement"],
                          "enforce")
-        self.assertEqual(answers, [(None, _PASS_LINES)])
+        # The probe's answer, and no job user: with a platform
+        # named and no trial handed in, the second question is
+        # not put.
+        self.assertEqual(answers, [((None, _PASS_LINES), None, None)])
+        self.assertNotIn("job_user", cfg["security"])
         answers = []
         stated = SU.seed_platform_modes(
             cfg, "freebsd14", probe=_Probe(problem=_ROOT_REASON),
@@ -625,14 +1025,41 @@ class SeedTest(unittest.TestCase):
         self.assertEqual(stated, {"confinement": "audit"})
         self.assertEqual(cfg["security"]["modes"]["confinement"],
                          "audit")
-        self.assertEqual(answers, [(_ROOT_REASON, ())])
+        self.assertEqual(answers, [((_ROOT_REASON, ()), None, None)])
 
-    def _fresh_wizard(self, statement):
+    def test_the_wizard_s_seed_names_the_job_user_too(self):
+        cfg = {"security": {"modes": {
+            "confinement": "enforce", "job_user": "enforce"}}}
+        answers = []
+        stated = SU.seed_platform_modes(
+            cfg, "freebsd14", probe=_Probe(), asked=answers,
+            trial=_Trial())
+        self.assertEqual(stated, {})
+        self.assertEqual(cfg["security"]["job_user"],
+                         {"user": "nobody"})
+        self.assertEqual(cfg["security"]["modes"], {
+            "confinement": "enforce", "job_user": "enforce"})
+        self.assertEqual(answers, [(
+            (None, _PASS_LINES), "nobody", (None, _DOOR_LINES))])
+        # A trial that does not pass names no one, and its reason
+        # rides back.
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        answers = []
+        SU.seed_platform_modes(
+            cfg, "freebsd14", probe=_Probe(), asked=answers,
+            trial=_Trial(problem="no door"))
+        self.assertNotIn("job_user", cfg["security"])
+        self.assertEqual(answers, [(
+            (None, _PASS_LINES), None, ("no door", ()))])
+
+    def _fresh_wizard(self, statement, job_user=(None, None)):
         with tempfile.TemporaryDirectory() as d:
             path = os.path.join(d, "config.json")
             out = io.StringIO()
             with mock.patch.object(SU, "_fresh_platform_modes",
                                    return_value=statement), \
+                 mock.patch.object(SU, "_fresh_job_user",
+                                   return_value=job_user), \
                  mock.patch("builtins.input", side_effect=[
                      "runner@example.com", "", "my-client-id", "y"]), \
                  mock.patch.object(SU, "browser_consent",
@@ -641,21 +1068,36 @@ class SeedTest(unittest.TestCase):
                                    return_value=None), \
                  redirect_stdout(out):
                 SU.run_setup_wizard(path)
-            return _modes_in(path), out.getvalue(), path
+            with open(path, encoding="utf-8") as fh:
+                security = json.load(fh)["security"]
+            return security, out.getvalue(), path
 
     def test_the_wizard_says_the_jail_stays_on(self):
-        modes, out, path = self._fresh_wizard(
+        security, out, path = self._fresh_wizard(
             ({}, (None, _PASS_LINES)))
-        self.assertEqual(modes["confinement"], "enforce")
+        self.assertEqual(security["modes"]["confinement"], "enforce")
+        self.assertNotIn("job_user", security)
         self.assertIn("security.modes.confinement left at enforce "
                       "in %s" % path, out)
         self.assertIn("platform: " + _PASS_LINES[0], out)
         self.assertNotIn("stated as audit", out)
 
+    def test_the_wizard_says_who_the_jobs_go_in_as(self):
+        security, out, path = self._fresh_wizard(
+            ({}, (None, _PASS_LINES)),
+            job_user=("nobody", (None, _DOOR_LINES)))
+        self.assertEqual(security["modes"]["confinement"], "enforce")
+        self.assertEqual(security["job_user"], {"user": "nobody"})
+        self.assertIn("security.job_user names nobody in %s" % path,
+                      out)
+        self.assertIn("platform: " + _DOOR_LINES[1], out)
+        self.assertNotIn("no_superuser", out)
+
     def test_the_wizard_says_why_the_jail_is_stated_down(self):
-        modes, out, path = self._fresh_wizard(
+        security, out, path = self._fresh_wizard(
             ({"confinement": "audit"}, (_ROOT_REASON, ())))
-        self.assertEqual(modes["confinement"], "audit")
+        self.assertEqual(security["modes"]["confinement"], "audit")
+        self.assertNotIn("job_user", security)
         self.assertIn("security.modes.confinement stated as audit "
                       "in %s" % path, out)
         self.assertIn("did not pass: " + _ROOT_REASON, out)
@@ -2412,6 +2854,49 @@ class PostureTest(_FakeHostCase):
             "+ no_superuser + rctl_resource_limits + "
             "spawn_resource_limits")])
 
+    def test_a_named_job_user_is_who_the_report_says_goes_in(self):
+        # With a job user engaged the record carries no
+        # no_superuser -- the demote at the door is the job_user
+        # record's -- and the report says who the job goes in as.
+        cfg = {"security": {"job_user": {"user": "nobody"}}}
+        lines = self.lines(cfg)
+        self.assertEqual(lines[0], (
+            "OK", "FreeBSD jail backend: freebsd: jail + no_network "
+            "+ spawn_resource_limits"))
+        self.assertEqual(lines[1], (
+            "OK", "a job goes in as nobody at the jail door "
+            "(security.job_user) and reads what that user can read"))
+        self.assertIn("kern.racct.enable=1", lines[2][1])
+        self.assertEqual(len(lines), 3)
+        self.host.racct = True
+        lines = self.lines(cfg)
+        self.assertEqual(lines[0], (
+            "OK", "FreeBSD jail backend: freebsd: jail + no_network "
+            "+ rctl_resource_limits + spawn_resource_limits"))
+        self.assertEqual(len(lines), 2)
+
+    def test_a_job_user_that_is_not_engaged_changes_nothing(self):
+        plain = self.lines()
+        cases = (
+            {"security": {"modes": {"job_user": "audit"},
+                          "job_user": {"user": "nobody"}}},
+            {"security": {"modes": {"job_user": "off"},
+                          "job_user": {"user": "nobody"}}},
+            {"security": {"job_user": {"user": ""}}},
+            {"security": {"job_user": "nobody"}},
+            {"security": {"modes": "odd",
+                          "job_user": {"user": "nobody"}}},
+            {"security": "odd"},
+        )
+        for cfg in cases:
+            with self.subTest(cfg=cfg):
+                self.assertEqual(self.lines(cfg), plain)
+        self.assertEqual(FC._engaged_job_user(
+            {"security": {"modes": {"job_user": "enforce"},
+                          "job_user": {"user": "pigeon-jobs"}}}),
+            "pigeon-jobs")
+        self.assertIsNone(FC._engaged_job_user(None))
+
     def test_what_would_refuse_the_start_is_a_warning(self):
         cases = (
             ({"security": {"confinement": {
@@ -2432,16 +2917,22 @@ class PostureTest(_FakeHostCase):
 
     def test_the_platform_page_shows_the_seed_s_lines_as_printed(self):
         # The operator's page quotes what a fresh install prints
-        # where the probe passes on a host without RACCT: the
-        # seed's own line, and the report's lines beneath it.
+        # where the probe and the trial job pass on a host
+        # without RACCT: the seed's own two lines, and the
+        # report's lines for the config with the job user named
+        # beneath them.
         page = os.path.join(_REPO, "docs", "steady", "security",
                             "freebsd.md")
         with open(page, encoding="utf-8") as fh:
             text = fh.read()
         answer = (None, tuple(t for _level, t in self.lines()))
+        named = {"security": {"job_user": {
+            "user": INS.FREEBSD_SEED_JOB_USER}}}
+        door = (None, tuple(t for _level, t in self.lines(named)))
         printed = INS.seed_kept_lines(
-            answer, "/root/.homing-pigeon/config.json")
-        self.assertEqual(len(printed), 3)
+            answer, "/root/.homing-pigeon/config.json",
+            INS.FREEBSD_SEED_JOB_USER, door)
+        self.assertEqual(len(printed), 5)
         for line in printed:
             self.assertIn("\n  " + line + "\n", text)
 
@@ -3357,23 +3848,36 @@ class LiveRunnerTest(unittest.TestCase):
     FC.IS_FREEBSD_BACKEND and os.geteuid() == 0,
     "run on FreeBSD as root")
 class LiveSeedTest(unittest.TestCase):
-    """The mode a fresh install states, on a real kernel: the
-    seed puts the real probe the startup gate's question and
-    writes what the machine answers -- as root, as an ordinary
-    user, for a config that asks more than the host holds, by
-    the installer's file path, and through the wizard -- and a
-    runner started on the seeded config confines its first job."""
+    """What a fresh install states, on a real kernel: the seed
+    asks the real probe the startup gate's question, runs the
+    real trial job as the job user, and writes what the machine
+    answers -- as root, as an ordinary user, for a config that
+    asks more than the host holds, for a config that names its
+    own job user, by the installer's file path, and through the
+    wizard -- and a runner started on the seeded config runs
+    its first job confined, as that user."""
 
     def setUp(self):
         self.folder = tempfile.mkdtemp(prefix="hp-live-seed-")
         self.addCleanup(shutil.rmtree, self.folder, True)
         self.before = _leftovers()
+        self.doors = self._doors()
+
+    @staticmethod
+    def _doors():
+        try:
+            return {n for n in os.listdir(tempfile.gettempdir())
+                    if n.startswith("hp-seed-door-")}
+        except OSError:
+            return set()
 
     def _nothing_left(self):
         after = _leftovers()
         for what in ("mounts", "dirs", "jails", "rules"):
             self.assertEqual(after[what] - self.before[what], set(),
                              "%s left behind" % what)
+        self.assertEqual(self._doors() - self.doors, set(),
+                         "a door trial's folder left behind")
 
     def _seed(self, path):
         out = io.StringIO()
@@ -3381,44 +3885,87 @@ class LiveSeedTest(unittest.TestCase):
             applied = INS.apply_platform_modes(path)
         return applied, out.getvalue()
 
-    def test_as_root_the_seed_leaves_the_jail_on(self):
-        path = _seeded_config(self.folder)
-        with open(path, "rb") as fh:
-            before = fh.read()
-        applied, out = self._seed(path)
-        with open(path, "rb") as fh:
-            after = fh.read()
-        self.assertEqual(applied, {}, out)
-        self.assertEqual(before, after)
-        self.assertEqual(_modes_in(path)["confinement"], "enforce")
+    @staticmethod
+    def _config(path):
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def _names_nobody(self, path, out, before):
+        """The seed left the jail on and named the job user: one
+        block added to the file and nothing else changed, and
+        the lines say what was decided and what a job's jail
+        carries now."""
+        after = self._config(path)
+        self.assertEqual(after["security"]["modes"]["confinement"],
+                         "enforce")
+        self.assertEqual(after["security"]["job_user"],
+                         {"user": "nobody"})
+        del after["security"]["job_user"]
+        self.assertEqual(after, before)
         self.assertIn("security.modes.confinement left at enforce "
                       "in %s" % path, out)
-        # The controls a job's jail carries on this host, named
-        # as the audit record will name them.
+        self.assertIn("security.job_user names nobody in %s (a "
+                      "trial job as nobody inside a jail on this "
+                      "machine passed" % path, out)
+        # The controls a job's jail carries on this host under
+        # the config as it now stands: no no_superuser, because
+        # the job is not uid 0 any more.
         self.assertIn("platform: FreeBSD jail backend: freebsd: "
-                      "jail + no_network + no_superuser", out)
+                      "jail + no_network + ", out)
+        self.assertNotIn("no_superuser", out)
+        self.assertIn("platform: a job goes in as nobody at the "
+                      "jail door", out)
+        self.assertNotIn("stated as audit", out)
+
+    def test_as_root_the_seed_leaves_the_jail_on_and_names_nobody(self):
+        path = _seeded_config(self.folder)
+        before = self._config(path)
+        applied, out = self._seed(path)
+        self.assertEqual(applied, {}, out)
+        self._names_nobody(path, out, before)
         self.assertEqual("rctl_resource_limits" in out,
                          _racct_live(), out)
         self.assertEqual("kern.racct.enable=1" in out,
                          not _racct_live(), out)
-        self.assertNotIn("stated as audit", out)
-        # A later run over the same config asks again and
-        # changes nothing.
+        # A later run over the same config asks the first
+        # question again, finds a job user named, and changes
+        # nothing.
+        with open(path, "rb") as fh:
+            seeded = fh.read()
         applied, out = self._seed(path)
         with open(path, "rb") as fh:
             again = fh.read()
         self.assertEqual(applied, {}, out)
-        self.assertEqual(again, before)
+        self.assertEqual(again, seeded)
         self.assertIn("left at enforce", out)
+        self.assertNotIn("security.job_user names", out)
+        self.assertIn("platform: a job goes in as nobody at the "
+                      "jail door", out)
         self._nothing_left()
 
-    def test_a_runner_on_the_seeded_config_confines_its_first_job(self):
+    def test_a_runner_on_the_seeded_config_runs_its_job_as_nobody(self):
+        import pwd
         from runner.guard import security as S
-        path = _seeded_config(self.folder)
+        nobody = pwd.getpwnam("nobody")
+        # A tree the operator shows every job, with a file only
+        # root may read in it.
+        shown = os.path.join(self.folder, "shown")
+        os.mkdir(shown)
+        os.chmod(shown, 0o755)
+        os.chmod(self.folder, 0o755)
+        with open(os.path.join(shown, "root-only.txt"), "w") as fh:
+            fh.write("ROOT-ONLY-DATA\n")
+        os.chmod(os.path.join(shown, "root-only.txt"), 0o600)
+        with open(os.path.join(shown, "for-all.txt"), "w") as fh:
+            fh.write("FOR-ALL-DATA\n")
+        os.chmod(os.path.join(shown, "for-all.txt"), 0o644)
+        path = _seeded_config(self.folder, confinement={
+            "extra_ro_binds": [[shown, "/shown"]]})
         applied, out = self._seed(path)
         self.assertEqual(applied, {}, out)
-        with open(path, encoding="utf-8") as fh:
-            seeded = json.load(fh)
+        seeded = self._config(path)
+        self.assertEqual(seeded["security"]["job_user"],
+                         {"user": "nobody"})
         base = os.path.join(self.folder, "base")
         os.mkdir(base)
         # The security block exactly as the seed left it, on a
@@ -3428,17 +3975,37 @@ class LiveSeedTest(unittest.TestCase):
         job = {"v": 1, "type": "job", "job_id": "fbsd-seeded",
                "issued_at": "2026-11-14T12:00:00Z", "kind": "exec",
                "interpreter": ["python3"],
-               "script": ("import os\n"
-                          "print('cwd:', os.getcwd())\n"
-                          "try:\n"
-                          "    open('/escape.txt', 'w').write('x')\n"
-                          "    print('root: wrote')\n"
-                          "except OSError:\n"
-                          "    print('root: blocked')\n")}
+               "script": (
+                   "import os\n"
+                   "print('uid:', os.getuid())\n"
+                   "print('cwd:', os.getcwd())\n"
+                   "open('out.txt', 'w').write('wrote-ok')\n"
+                   "for label, name in (('root', '/escape.txt'),\n"
+                   "                    ('shown', '/shown/x.txt')):\n"
+                   "    try:\n"
+                   "        open(name, 'w').write('x')\n"
+                   "        print(label + ': wrote')\n"
+                   "    except OSError:\n"
+                   "        print(label + ': blocked')\n"
+                   "print('for-all:',\n"
+                   "      open('/shown/for-all.txt').read().strip())\n"
+                   "try:\n"
+                   "    print('root-only:',\n"
+                   "          open('/shown/root-only.txt').read())\n"
+                   "except OSError:\n"
+                   "    print('root-only: refused')\n"),
+               "outputs": ["out.txt"]}
         result = rr.execute_job(cfg, job, base)
         self.assertEqual(result["exit_code"], 0, result)
-        self.assertIn("cwd: /work", result["stdout"])
-        self.assertIn("root: blocked", result["stdout"])
+        said = result["stdout"]
+        self.assertIn("uid: %d" % nobody.pw_uid, said)
+        self.assertIn("cwd: /work", said)
+        self.assertIn("root: blocked", said)
+        self.assertIn("shown: blocked", said)
+        self.assertIn("for-all: FOR-ALL-DATA", said)
+        self.assertIn("root-only: refused", said)
+        self.assertNotIn("ROOT-ONLY-DATA", said)
+        self.assertEqual(len(result["outputs"]), 1, result)
         rows = []
         with open(os.path.join(base, S.AUDIT_FILE),
                   encoding="utf-8") as fh:
@@ -3451,9 +4018,68 @@ class LiveSeedTest(unittest.TestCase):
                     if r.get("feature") == "confinement"
                     and r.get("decision") == "confined"]
         self.assertEqual(len(confined), 1, rows)
-        # The record carries the names the seed printed.
-        self.assertIn("platform: FreeBSD jail backend: "
-                      + confined[0].get("reason", "<none>"), out)
+        reason = confined[0].get("reason", "<none>")
+        self.assertNotIn("no_superuser", reason)
+        # The record carries the names the seed printed, and the
+        # job_user record names the demote.
+        self.assertIn("platform: FreeBSD jail backend: " + reason, out)
+        self.assertTrue(any(
+            r.get("feature") == "job_user"
+            and r.get("decision") == "run_as" for r in rows), rows)
+        self._nothing_left()
+
+    def test_the_door_trial_on_this_machine(self):
+        problem, lines = INS.freebsd_job_user_trial({})
+        self.assertIsNone(problem)
+        self.assertTrue(lines[0].startswith(
+            "FreeBSD jail backend: freebsd: jail + no_network + "),
+            lines)
+        self.assertNotIn("no_superuser", lines[0])
+        self.assertTrue(lines[1].startswith(
+            "a job goes in as nobody at the jail door"), lines)
+        # A user that would close nothing, and one that is not
+        # there, are reasons; neither builds a jail.
+        problem, lines = INS.freebsd_job_user_trial({}, "root")
+        self.assertEqual(problem, "root is uid 0 on this machine")
+        self.assertEqual(lines, ())
+        problem, lines = INS.freebsd_job_user_trial(
+            {}, "hp-no-such-user")
+        self.assertIn("hp-no-such-user is not in this machine's "
+                      "user database", problem)
+        self._nothing_left()
+
+    def test_a_config_that_names_its_own_job_user_keeps_it(self):
+        path = _seeded_config(self.folder)
+        cfg = self._config(path)
+        cfg["security"]["job_user"] = {"user": "daemon"}
+        with open(path, "w", encoding="utf-8") as fh:
+            json.dump(cfg, fh)
+        with open(path, "rb") as fh:
+            before = fh.read()
+        applied, out = self._seed(path)
+        with open(path, "rb") as fh:
+            after = fh.read()
+        self.assertEqual(applied, {}, out)
+        self.assertEqual(before, after)
+        self.assertIn("left at enforce", out)
+        self.assertNotIn("security.job_user names", out)
+        # The report reads the operator's user.
+        self.assertIn("platform: a job goes in as daemon at the "
+                      "jail door", out)
+        self._nothing_left()
+
+    def test_a_job_user_mode_stated_down_names_no_one(self):
+        path = _seeded_config(self.folder, modes={"job_user": "off"})
+        with open(path, "rb") as fh:
+            before = fh.read()
+        applied, out = self._seed(path)
+        with open(path, "rb") as fh:
+            after = fh.read()
+        self.assertEqual(applied, {}, out)
+        self.assertEqual(before, after)
+        self.assertIn("left at enforce", out)
+        self.assertNotIn("security.job_user names", out)
+        self.assertIn("no_superuser", out)
         self._nothing_left()
 
     def test_an_ordinary_user_s_seed_states_audit_and_names_root(self):
@@ -3486,7 +4112,7 @@ class LiveSeedTest(unittest.TestCase):
                 with redirect_stdout(out):
                     applied = INS.apply_platform_modes(path)
                 said = {"uid": os.geteuid(), "applied": applied,
-                        "modes": _modes_in(path),
+                        "security": self._config(path)["security"],
                         "out": out.getvalue()}
                 os.write(write_end, json.dumps(said).encode("utf-8"))
                 code = 0
@@ -3527,36 +4153,42 @@ class LiveSeedTest(unittest.TestCase):
         self.assertEqual(said["uid"], nobody.pw_uid, said)
         self.assertEqual(said["applied"], {"confinement": "audit"},
                          said)
-        self.assertEqual(said["modes"]["confinement"], "audit")
-        self.assertEqual(said["modes"]["job_user"], "enforce")
+        modes = said["security"]["modes"]
+        self.assertEqual(modes["confinement"], "audit")
+        self.assertEqual(modes["job_user"], "enforce")
+        # No jail, so no job user: a demote needs root too.
+        self.assertNotIn("job_user", said["security"])
         self.assertIn("security.modes.confinement stated as audit "
                       "in %s" % path, said["out"])
         self.assertIn("did not pass: creating a jail needs root",
                       said["out"])
         self.assertNotIn("left at enforce", said["out"])
+        self.assertNotIn("security.job_user names", said["out"])
         self._nothing_left()
 
     def test_named_ceilings_are_seeded_by_what_the_host_holds(self):
         path = _seeded_config(
             self.folder, confinement={"freebsd": {"job_processes": 64}})
+        before = self._config(path)
         applied, out = self._seed(path)
         if _racct_live():
             self.assertEqual(applied, {}, out)
-            self.assertEqual(_modes_in(path)["confinement"],
-                             "enforce")
+            self._names_nobody(path, out, before)
             self.assertIn("rctl_resource_limits", out)
         else:
             self.assertEqual(applied, {"confinement": "audit"}, out)
-            self.assertEqual(_modes_in(path)["confinement"], "audit")
+            security = self._config(path)["security"]
+            self.assertEqual(security["modes"]["confinement"], "audit")
+            self.assertNotIn("job_user", security)
             self.assertIn("did not pass: ", out)
             self.assertIn("RACCT is not enabled on this host", out)
             self.assertIn("kern.racct.enable=1", out)
+            self.assertNotIn("security.job_user names", out)
         self._nothing_left()
 
     def test_the_installer_started_by_path_seeds_the_same(self):
         path = _seeded_config(self.folder)
-        with open(path, "rb") as fh:
-            before = fh.read()
+        before = self._config(path)
         driver = (
             "import json, runpy, sys\n"
             "ns = runpy.run_path(sys.argv[1], "
@@ -3575,12 +4207,7 @@ class LiveSeedTest(unittest.TestCase):
         lines = text.splitlines()
         said = json.loads(lines[-1])
         self.assertEqual(said, {"applied": {}, "pulled_in": []}, text)
-        with open(path, "rb") as fh:
-            self.assertEqual(fh.read(), before)
-        self.assertIn("security.modes.confinement left at enforce "
-                      "in %s" % path, lines[0])
-        self.assertIn("platform: FreeBSD jail backend: freebsd: "
-                      "jail + no_network + no_superuser", text)
+        self._names_nobody(path, text, before)
         self._nothing_left()
 
     def test_the_wizard_s_seed_asks_the_same_machine(self):
@@ -3591,11 +4218,16 @@ class LiveSeedTest(unittest.TestCase):
         self.assertEqual(stated, {})
         self.assertEqual(cfg["security"]["modes"]["confinement"],
                          "enforce")
-        self.assertEqual(len(answers), 1)
-        self.assertIsNone(answers[0][0])
-        self.assertTrue(answers[0][1][0].startswith(
+        self.assertEqual(cfg["security"]["job_user"],
+                         {"user": "nobody"})
+        ((answer, user, door),) = answers
+        self.assertIsNone(answer[0])
+        self.assertEqual(user, "nobody")
+        self.assertIsNone(door[0])
+        self.assertTrue(door[1][0].startswith(
             "FreeBSD jail backend: freebsd: jail + no_network"),
             answers)
+        self.assertNotIn("no_superuser", door[1][0])
         self._nothing_left()
 
 

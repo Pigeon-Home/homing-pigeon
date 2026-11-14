@@ -2419,6 +2419,26 @@ _HOST_PLATFORM = sys.platform
 FREEBSD_PROBE_ASKED = ("the FreeBSD jail backend's probe, asked on "
                        "this machine as this user,")
 
+# The user a fresh FreeBSD config names for its jobs once the
+# seed has left the jail on. The jail cannot be made without
+# root, so a job with no job user is root's uid inside it --
+# without privilege, and still the reader of what root owns in
+# the trees the jail shows. Every base system's user database
+# has this user, and it owns nothing a job should read.
+FREEBSD_SEED_JOB_USER = "nobody"
+FREEBSD_DOOR_ASKED = "a trial job as %s inside a jail on this machine"
+FREEBSD_NO_JOB_USER = ("a jailed job with no job user is root's uid "
+                       "and reads what root owns in the trees it is "
+                       "shown")
+
+# Where the door trial's root-only file is shown inside its jail,
+# and what the trial job does: say who it is, write its work
+# mount, and try the file.
+_DOOR_MOUNT = "/hp-seed-door"
+_DOOR_SCRIPT = ("id -u; : > door.txt && echo WORK-OK; "
+                "cat " + _DOOR_MOUNT + "/root-only 2>/dev/null "
+                "&& echo READ-ROOT; echo END")
+
 
 # The names the by-path load below puts in sys.modules, and the
 # mark it leaves on the package it made, so the release takes
@@ -2531,6 +2551,128 @@ def freebsd_seed_probe(cfg):
         _release_freebsd_confine()
 
 
+def _seed_config_with(cfg, bind=None, job_user=None) -> dict:
+    """A copy of `cfg` with one read-only bind added to the
+    jail's, or a job user named; the caller's own is not
+    touched."""
+    out = json.loads(json.dumps(cfg)) if isinstance(cfg, dict) else {}
+    sec = out.get("security")
+    if not isinstance(sec, dict):
+        sec = out["security"] = {}
+    if bind is not None:
+        conf = sec.get("confinement")
+        if not isinstance(conf, dict):
+            conf = sec["confinement"] = {}
+        binds = conf.get("extra_ro_binds")
+        conf["extra_ro_binds"] = (
+            list(binds) if isinstance(binds, list) else []) + [bind]
+    if job_user is not None:
+        sec["job_user"] = {"user": job_user}
+    return out
+
+
+def _user_ids(user):
+    """(uid, gid) of `user` in this machine's user database.
+    KeyError when it has no such user, or no such database."""
+    try:
+        import pwd
+    except ImportError:
+        raise KeyError("this platform has no user database")
+    entry = pwd.getpwnam(user)
+    return entry.pw_uid, entry.pw_gid
+
+
+def _posix_chown(path, uid, gid) -> None:
+    """Hand `path` to (uid, gid). Windows has no chown; the trial
+    that calls this never runs there, and a test that drives it
+    there gets the trial's own refusal instead of an
+    AttributeError."""
+    chown = getattr(os, "chown", None)
+    if chown is None:
+        raise OSError("this platform cannot change a file's owner")
+    chown(path, uid, gid)
+
+
+def freebsd_job_user_trial(cfg, user=FREEBSD_SEED_JOB_USER):
+    """Run one throwaway job as `user` inside a jail on this machine.
+
+    The seed's second question, asked only after the first has
+    passed. A jail is built as a job's is built under this
+    config, with one tree more shown in it: a directory holding
+    a file only root may read. The job goes in as `user` at the
+    jail door, and must say it is that user, write its work
+    mount, and be refused the file -- the three things a named
+    job user is for.
+
+    Returns (problem, lines) in freebsd_seed_probe's shape:
+    None and the posture report's lines for this config with
+    `user` named, or the reason and no lines. Every failure is
+    a reason, never a pass, and nothing of the trial is left
+    behind.
+    """
+    folder = None
+    try:
+        try:
+            uid, gid = _user_ids(user)
+        except KeyError as e:
+            return ("%s is not in this machine's user database (%s)"
+                    % (user, e), ())
+        if uid == 0:
+            return ("%s is uid 0 on this machine" % user, ())
+        backend = _import_freebsd_confine()
+        if backend is None or not getattr(
+                backend, "IS_FREEBSD_BACKEND", False):
+            return ("the jail backend (runner/guard/"
+                    "freebsd_confine.py) could not be loaded on "
+                    "this machine", ())
+        folder = tempfile.mkdtemp(prefix="hp-seed-door-")
+        work = os.path.join(folder, "work")
+        shown = os.path.join(folder, "shown")
+        os.mkdir(work)
+        os.mkdir(shown)
+        _posix_chown(work, uid, gid)
+        os.chmod(shown, 0o755)
+        secret = os.path.join(shown, "root-only")
+        with open(secret, "w", encoding="utf-8") as fh:
+            fh.write("ROOT-ONLY\n")
+        os.chmod(secret, 0o600)
+        proc = backend.spawn_confined_process(
+            ["/bin/sh", "-c", _DOOR_SCRIPT], cwd=work, env={},
+            user=user,
+            cfg=_seed_config_with(cfg, bind=[shown, _DOOR_MOUNT]))
+        try:
+            out, err = proc.communicate(timeout=30)
+        finally:
+            proc.close()
+        words = out.decode("utf-8", "replace").split()
+        if "END" not in words:
+            return ("the trial job did not finish: %s"
+                    % err.decode("utf-8", "replace").strip()[:200], ())
+        if words[0] != str(uid):
+            return ("the trial job ran as uid %s, not as %s (uid %d)"
+                    % (words[0], user, uid), ())
+        if "WORK-OK" not in words:
+            return ("the trial job could not write its work mount "
+                    "as %s" % user, ())
+        if "READ-ROOT" in words:
+            return ("the trial job read a root-only file as %s"
+                    % user, ())
+        try:
+            lines = tuple(
+                text for _level, text in backend.posture_lines(
+                    _seed_config_with(cfg, job_user=user)))
+        except Exception:
+            lines = ()
+        return (None, lines)
+    except Exception as e:
+        return ("the trial job could not be run: %s"
+                % (str(e) or type(e).__name__), ())
+    finally:
+        if folder is not None:
+            shutil.rmtree(folder, ignore_errors=True)
+        _release_freebsd_confine()
+
+
 def _stated_modes(cfg) -> dict:
     sec = cfg.get("security") if isinstance(cfg, dict) else None
     modes = sec.get("modes") if isinstance(sec, dict) else None
@@ -2583,16 +2725,80 @@ def fresh_platform_modes(cfg, platform=None, probe=None):
     return modes, (str(problem), ())
 
 
-def seed_kept_lines(asked, cfg_path) -> list:
+def fresh_job_user(cfg, asked, platform=None, trial=None):
+    """The job user a fresh config takes once the seed has left
+    its jail on.
+
+    Returns (user, door). `user` is the name to write under
+    security.job_user, or None. `door` is None when the machine
+    was not asked this second question, and otherwise its
+    answer, (problem, lines), in freebsd_seed_probe's shape.
+
+    The question is put only where the first one was put and
+    passed (`asked`), the job_user mode stands at enforce, and
+    the config names no job user: a jail that goes on with none
+    leaves a job root's uid, and a throwaway job as
+    FREEBSD_SEED_JOB_USER is run inside a jail on this machine
+    (freebsd_job_user_trial) to show that naming that user
+    closes it here. Where the trial passes the user is named;
+    where it does not, none is, and the reason rides back in
+    `door`. A config that names a job user in any shape, or
+    states the job_user mode below enforce, is the operator's
+    and is not asked about. `trial` is the tests' door, as
+    `probe` is: with a platform named, or off a FreeBSD host,
+    nothing is asked unless one is handed in.
+    """
+    if asked is None or asked[0] is not None:
+        return None, None
+    sec = cfg.get("security") if isinstance(cfg, dict) else None
+    if isinstance(sec, dict) and "job_user" in sec:
+        return None, None
+    if _stated_modes(cfg).get("job_user", "enforce") != "enforce":
+        return None, None
+    if trial is None:
+        if platform is not None \
+                or not _HOST_PLATFORM.startswith("freebsd"):
+            return None, None
+        trial = freebsd_job_user_trial
+    try:
+        problem, lines = trial(cfg, FREEBSD_SEED_JOB_USER)
+    except Exception as e:
+        problem, lines = (str(e) or type(e).__name__), ()
+    if problem is None:
+        return FREEBSD_SEED_JOB_USER, (None, tuple(lines))
+    return None, (str(problem), ())
+
+
+def seed_kept_lines(asked, cfg_path, user=None, door=None) -> list:
     """What a seed prints when the machine's answer left
-    confinement at enforce; empty when it did not."""
+    confinement at enforce; empty when it did not.
+
+    The line that says so, then what was decided about the job
+    user where that was asked -- named, or left unnamed with
+    the reason -- then the posture report's lines for the
+    config as it now stands."""
     if asked is None or asked[0] is not None:
         return []
     lines = [f"platform: security.modes.confinement left at "
              f"enforce in {cfg_path} ({FREEBSD_PROBE_ASKED} "
              f"passed; the startup gate asks it again at every "
              f"start)"]
-    lines.extend("platform: " + text for text in asked[1])
+    shown = asked[1]
+    if user is not None:
+        lines.append(
+            f"platform: security.job_user names {user} in "
+            f"{cfg_path} ({FREEBSD_DOOR_ASKED % user} passed; "
+            f"{FREEBSD_NO_JOB_USER})")
+        if door is not None:
+            shown = door[1]
+    elif door is not None and door[0] is not None:
+        lines.append(
+            f"platform: security.job_user left unnamed in "
+            f"{cfg_path} "
+            f"({FREEBSD_DOOR_ASKED % FREEBSD_SEED_JOB_USER} did "
+            f"not pass: {door[0]}; {FREEBSD_NO_JOB_USER} -- name "
+            f"a user of the job's own under security.job_user)")
+    lines.extend("platform: " + text for text in shown)
     return lines
 
 
@@ -2606,7 +2812,7 @@ def seed_reason(asked, feature, default) -> str:
 
 
 def apply_platform_modes(cfg_path: str, platform=None,
-                         probe=None) -> dict:
+                         probe=None, trial=None) -> dict:
     """State fresh_platform_modes() in a fresh install's config.json.
 
     Only a mode the config currently states at enforce moves --
@@ -2631,8 +2837,10 @@ def apply_platform_modes(cfg_path: str, platform=None,
     passes, confinement stays at enforce, nothing is written
     for it, and the line printed says so and names what a job's
     jail carries on this host; where it does not, the line that
-    states audit carries the probe's reason. `probe` is the
-    tests' door.
+    states audit carries the probe's reason. Where the jail
+    stays on and the config names no job user, one is named
+    too (see fresh_job_user), and that is written whether or
+    not a mode moved. `probe` and `trial` are the tests' doors.
     """
     plat = platform if platform is not None else sys.platform
     if not platform_modes(plat):
@@ -2644,7 +2852,8 @@ def apply_platform_modes(cfg_path: str, platform=None,
     if not isinstance(cfg, dict):
         return {}
     modes, asked = fresh_platform_modes(cfg, platform, probe)
-    for line in seed_kept_lines(asked, cfg_path):
+    user, door = fresh_job_user(cfg, asked, platform, trial)
+    for line in seed_kept_lines(asked, cfg_path, user, door):
         print(line)
     sec = cfg.get("security") if isinstance(cfg.get("security"), dict) \
         else {}
@@ -2655,10 +2864,13 @@ def apply_platform_modes(cfg_path: str, platform=None,
         if cur.get(feature, "enforce") == "enforce":
             new_modes[feature] = mode
             applied[feature] = mode
-    if not applied:
+    if not applied and user is None:
         return {}
     sec = dict(sec)
-    sec["modes"] = new_modes
+    if applied:
+        sec["modes"] = new_modes
+    if user is not None:
+        sec["job_user"] = {"user": user}
     cfg["security"] = sec
     _write_json(cfg_path, cfg)
     for feature, mode in applied.items():

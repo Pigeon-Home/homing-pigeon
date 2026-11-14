@@ -149,11 +149,13 @@ the demote. On its own (confinement at `audit` or `off`),
 `job_user` on FreeBSD is the ordinary POSIX demote, which
 engages as it does on Linux.
 
-Name one. The jail cannot be made without root, so a job
-with no job user is root's uid inside it — without
+Have one named. The jail cannot be made without root, so a
+job with no job user is root's uid inside it — without
 privilege, and still the owner of what root owns (below,
-under what this does not provide). A fresh install names no
-job user.
+under what this does not provide). A fresh install whose
+jail goes on names `nobody` for that reason (below, under the
+mode a FreeBSD config states); a user made for the jobs
+alone is better, and a config that names one keeps it.
 
 ### Startup, and after a job
 
@@ -204,8 +206,11 @@ its mounts and its skeleton. Three things stand behind that:
   The tree that matters is `/usr/local/etc`, where packages
   keep their settings and sometimes a secret. On Linux the
   job is the runner's ordinary user and reads what that user
-  reads. Set `security.job_user` to a user of the job's own
-  and the job reads only what that user can.
+  reads. With `security.job_user` naming a user, the job
+  reads only what that user can. A fresh install whose jail
+  goes on names `nobody`; an install seeded before that, or
+  one whose trial job did not pass, names none until its
+  operator does.
 - **Home directories inside `/usr`.** A host that keeps them
   in the `/usr` filesystem — `/usr/home` on UFS, the layout
   before FreeBSD 14.0 — shows them to a job, read-only, with
@@ -271,13 +276,16 @@ with the config it is about to leave on disk: a throwaway
 jail is built, the boundary is read from inside it, and all
 of it is removed.
 
-- **Where the probe passes, the mode stays at `enforce`.**
-  Nothing is written for it. The installer says so, and
-  prints what a job's jail carries on that host:
+- **Where the probe passes, the mode stays at `enforce`**,
+  and a job user is named for the jail's jobs (the next
+  section). The installer says so, and prints what a job's
+  jail carries on that host:
 
   ```
   platform: security.modes.confinement left at enforce in /root/.homing-pigeon/config.json (the FreeBSD jail backend's probe, asked on this machine as this user, passed; the startup gate asks it again at every start)
-  platform: FreeBSD jail backend: freebsd: jail + no_network + no_superuser + spawn_resource_limits
+  platform: security.job_user names nobody in /root/.homing-pigeon/config.json (a trial job as nobody inside a jail on this machine passed; a jailed job with no job user is root's uid and reads what root owns in the trees it is shown)
+  platform: FreeBSD jail backend: freebsd: jail + no_network + spawn_resource_limits
+  platform: a job goes in as nobody at the jail door (security.job_user) and reads what that user can read
   platform: RACCT is not enabled on this host, so the jail-wide rctl ceilings are not written (kern.racct.enable=1 in /boot/loader.conf and a reboot engage them)
   ```
 
@@ -316,6 +324,33 @@ Three more rules:
 
 `job_user` is not stated down: the POSIX demote engages on
 FreeBSD as it does on Linux.
+
+### The job user a fresh install names
+
+Where the probe passed, the seed asks the machine one thing
+more before it writes: it runs a throwaway job as `nobody`
+inside a jail, with a file only root may read in a tree the
+jail shows it. The job must report `nobody`'s uid, write its
+work mount, and be refused the file.
+
+- **Where that trial passes, `security.job_user` names
+  `nobody`** in the config. Every job goes in at the jail
+  door as that user from the first start, and reads what
+  that user can read — not what root owns.
+- **Where it does not pass, no user is named.** The line
+  that says so carries the reason, and says what a job with
+  no job user reads.
+
+A config that already names a job user keeps it and is not
+asked about; neither is one whose `job_user` mode is stated
+at `audit` or `off`. A later run of the installer names a
+user only where none is named yet. An ordinary user's
+install names none: there is no jail to go into, and the
+demote needs root as the jail does.
+
+`nobody` is in every FreeBSD base system and owns nothing a
+job should read. A user made for the jobs alone is better:
+create one, and write its name under `security.job_user`.
 
 ## The first backend's field test
 

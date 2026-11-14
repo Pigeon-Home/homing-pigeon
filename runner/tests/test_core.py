@@ -183,9 +183,13 @@ class CoreListTest(unittest.TestCase):
         # lines and runner/ops/setup.py by 37, over a tree
         # that also carries the query worker's start
         # allowance (runner/ops/queries.py by 28 lines, the
-        # runner proper by 1).
-        self.assertEqual(67282, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(60966, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner proper by 1), and again the same day after
+        # the seed took to naming a job user where it leaves
+        # the jail on grew runner/ops/install.py by 212
+        # lines, runner/guard/freebsd_confine.py by 27 and
+        # runner/ops/setup.py by 13.
+        self.assertEqual(67534, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(61199, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

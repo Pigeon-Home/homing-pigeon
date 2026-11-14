@@ -1083,6 +1083,23 @@ def sweep_stale(host=None):
     return removed
 
 
+def _engaged_job_user(cfg):
+    """The user a job goes in as at the jail door under this
+    config, or None: security.job_user's user, when the
+    job_user mode stands at enforce (its unset reading). The
+    report's own reading of the shape -- it never raises."""
+    sec = cfg.get("security") if isinstance(cfg, dict) else None
+    if not isinstance(sec, dict):
+        return None
+    modes = sec.get("modes", {})
+    if not isinstance(modes, dict) \
+            or modes.get("job_user", "enforce") != "enforce":
+        return None
+    block = sec.get("job_user")
+    user = block.get("user") if isinstance(block, dict) else None
+    return user if isinstance(user, str) and user else None
+
+
 def posture_lines(cfg=None, host=None):
     """(level, text) lines for the posture report: what a job's
     jail would carry on this host, read without building one.
@@ -1090,21 +1107,31 @@ def posture_lines(cfg=None, host=None):
     The report is advisory and read-only, so this is the cheap
     half -- the config, root, the tools, the host's facts --
     and never the trial. A WARN is something the startup gate
-    would refuse on at enforce.
+    would refuse on at enforce. Where the config names a job
+    user for an engaged job_user mode, the controls are the
+    ones such a job's jail carries -- no_superuser is not among
+    them, the demote at the door is -- and a line says who the
+    job goes in as.
     """
     host = host or _HOST
     refuse = "; confinement in enforce mode would refuse to start"
+    user = _engaged_job_user(cfg)
     try:
         st = confinement_settings(cfg)
         problem = _basic_problem(host, st)
         if problem is not None:
             raise RuntimeError(problem)
-        controls, rctl = controls_for(host, st)
+        controls, rctl = controls_for(host, st, user)
     except RuntimeError as e:
         return [("WARN", "FreeBSD jail backend cannot engage: %s%s"
                  % (e, refuse))]
     lines = [("OK", "FreeBSD jail backend: %s"
               % confinement_status(controls))]
+    if user is not None:
+        lines.append((
+            "OK", "a job goes in as %s at the jail door "
+            "(security.job_user) and reads what that user can "
+            "read" % user))
     if not rctl:
         lines.append((
             "OK", "RACCT is not enabled on this host, so the "

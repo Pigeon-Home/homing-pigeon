@@ -44,6 +44,7 @@ try:
     from runner.ops.install import platform_modes as _platform_modes
     from runner.ops.install import (
         fresh_platform_modes as _fresh_platform_modes,
+        fresh_job_user as _fresh_job_user,
         seed_kept_lines as _seed_kept_lines,
         seed_reason as _seed_reason)
 except ImportError:
@@ -53,12 +54,13 @@ except ImportError:
         from ops.install import platform_modes as _platform_modes
         from ops.install import (
             fresh_platform_modes as _fresh_platform_modes,
+            fresh_job_user as _fresh_job_user,
             seed_kept_lines as _seed_kept_lines,
             seed_reason as _seed_reason)
     except ImportError:
         _placeholder = _patterned = None
         _platform_modes = None
-        _fresh_platform_modes = None
+        _fresh_platform_modes = _fresh_job_user = None
         _seed_kept_lines = _seed_reason = None
 
 
@@ -188,7 +190,7 @@ def _blank_config() -> dict:
 
 
 def seed_platform_modes(cfg: dict, platform=None, probe=None,
-                        asked=None) -> dict:
+                        asked=None, trial=None) -> dict:
     """State the platform gates in a config the wizard just seeded.
 
     The installer states them on its fresh-install path (install.py's
@@ -205,22 +207,28 @@ def seed_platform_modes(cfg: dict, platform=None, probe=None,
     The same statement includes the one that asks the machine:
     on a FreeBSD host the jail backend's probe is asked the
     startup gate's question (install.py's fresh_platform_modes),
-    and where it passes confinement is not stated down. `probe`
-    is the tests' door, as it is there. `asked`, when a list is
-    handed in, receives the machine's answer -- (problem,
-    lines) -- if it was asked, so the caller can say what was
-    decided and why.
+    and where it passes confinement is not stated down and a
+    job user is named for the jail's jobs where the config
+    names none (install.py's fresh_job_user). `probe` and
+    `trial` are the tests' doors, as they are there. `asked`,
+    when a list is handed in, receives what the machine was
+    asked and answered -- (answer, user, door): the probe's
+    answer, the job user named or None, and the door trial's
+    answer or None -- so the caller can say what was decided
+    and why.
     """
     if _platform_modes is None or not isinstance(cfg, dict):
         return {}
+    user = None
     if _fresh_platform_modes is not None:
         modes, answer = _fresh_platform_modes(cfg, platform, probe)
+        door = None
+        if _fresh_job_user is not None:
+            user, door = _fresh_job_user(cfg, answer, platform, trial)
         if answer is not None and asked is not None:
-            asked.append(answer)
+            asked.append((answer, user, door))
     else:
         modes = _platform_modes(platform)
-    if not modes:
-        return {}
     sec = cfg.get("security") if isinstance(cfg.get("security"), dict) \
         else {}
     cur = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
@@ -230,10 +238,13 @@ def seed_platform_modes(cfg: dict, platform=None, probe=None,
         if cur.get(feature, "enforce") == "enforce":
             new_modes[feature] = mode
             applied[feature] = mode
-    if not applied:
+    if not applied and user is None:
         return {}
     sec = dict(sec)
-    sec["modes"] = new_modes
+    if applied:
+        sec["modes"] = new_modes
+    if user is not None:
+        sec["job_user"] = {"user": user}
     cfg["security"] = sec
     return applied
 
@@ -404,12 +415,14 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
         # that already existed keeps the owner's stated modes.
         # On FreeBSD the statement is the machine's answer: the
         # jail backend's probe is asked here, and a pass leaves
-        # confinement at enforce and says so.
+        # confinement at enforce, names a job user for the
+        # jail's jobs, and says so.
         answers = []
         stated = seed_platform_modes(cfg, asked=answers)
-        answer = answers[0] if answers else None
+        answer, user, door = answers[0] if answers \
+            else (None, None, None)
         if _seed_kept_lines is not None:
-            for line in _seed_kept_lines(answer, cfg_path):
+            for line in _seed_kept_lines(answer, cfg_path, user, door):
                 print(line)
         for feature, mode in stated.items():
             why = f"{feature} cannot engage on {sys.platform}"

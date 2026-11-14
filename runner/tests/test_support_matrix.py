@@ -170,6 +170,12 @@ class SupportMatrixTest(unittest.TestCase):
         # What root's uid still reads, and what closes it.
         self.assertIn("still the owner of what root owns", row)
         self.assertIn("until `security.job_user` names a user", row)
+        # What a fresh install does about it, and what an
+        # earlier one does not.
+        self.assertIn("A fresh install whose probe passes names "
+                      "`nobody`", row)
+        self.assertIn("an install seeded before that names none",
+                      row)
         self.assertIn("there is no Capsicum", row)
         self.assertIn("named only where RACCT is enabled", row)
         self.assertIn("refuses when it cannot engage", row)

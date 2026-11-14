@@ -14,6 +14,8 @@ The mode a fresh install states — the installer asking this
 backend's probe before it writes the seed — was added to this
 page on 2026-11-14, at the owner's direction, and built the
 same day (`runner/ops/install.py`, `runner/ops/setup.py`).
+The job user that seed names where it leaves the jail on was
+added and built the same day, at the owner's direction.
 
 Confinement is the software suite's own, platform by
 platform. The protocol documents do not specify it — a
@@ -168,7 +170,9 @@ matters is `/usr/local/etc`, where packages keep their
 settings and sometimes a secret. This is the one thing the
 Linux sandbox holds by default that this jail does not: a
 Linux job is the runner's ordinary user and reads what that
-user reads. A job user closes it.
+user reads. A job user closes it, and a fresh install whose
+jail goes on names one (below, under the mode a fresh install
+states).
 
 A job with a job user (`security.modes.job_user` at `enforce`
 with a user named) is demoted at the jail door: `jexec -u`,
@@ -325,6 +329,46 @@ machine that changes between the install and a later start.
 The startup gate answers that in both places — it refuses the
 start and names why.
 
+### The job user a fresh install names
+
+A jail that goes on with no job user leaves one thing open:
+the job is root's uid, and reads what root owns in the trees
+it is shown (Privilege, above). So a seed that leaves the
+jail on names a job user as well.
+
+Where the probe passed, the config's `job_user` mode stands
+at `enforce`, and the config names no job user, the seed asks
+the machine a second question. It runs a throwaway job as
+`nobody` inside a jail built as a job's is built under that
+config, with one tree more shown in it: a directory holding a
+file only root may read. The job must report `nobody`'s uid,
+write its work mount, and be refused the file — the three
+things a named job user is for.
+
+- The trial passes: `security.job_user` is written into the
+  config, naming `nobody`. From the first start every job
+  goes in at the jail door as that user and reads what that
+  user can read. The installer says so, and the lines it
+  prints for a job's jail are the ones for the config as it
+  now stands.
+- The trial does not pass: no user is named. The reason is
+  printed, and the line says what a job with no job user
+  reads.
+
+`nobody` is in every FreeBSD base system's user database and
+owns nothing a job should read. A user made for the jobs
+alone is better, and an operator who names one keeps it: a
+config that already names a job user is not asked about, and
+neither is one whose `job_user` mode the operator has stated
+at `audit` or `off`.
+
+The rest is the mode's rule. The question is put only to the
+machine being seeded, only where the first question was put
+and passed, and — on a later run of the installer — only
+where no user is named yet. An ordinary user's install names
+none: with no jail there is no door, and the demote needs
+root as the jail does.
+
 ## The release, and what stands behind it
 
 The process object owns the teardown: the jail's rctl rules,
@@ -375,7 +419,7 @@ runner's jobs are never touched.
 | Interpreter outside the trees | Its prefix, read-only, recorded | The same rule, the same record |
 | Runner gone | The sandbox's command is killed | The jail is removed: every process ends |
 | Startup probe | Starts the sandbox once | Builds a jail and reads the boundary from inside |
-| A fresh install | `enforce`; the startup gate decides | `enforce` where the installer's probe passes; `audit`, stated with the reason, where it does not |
+| A fresh install | `enforce`; the startup gate decides | `enforce` where the installer's probe passes, with `nobody` named as the job user; `audit`, stated with the reason, where it does not |
 
 The Linux column is bwrap as this project starts it
 (`DEFAULT_FLAGS` in `runner/guard/sandbox.py`) and
@@ -395,8 +439,10 @@ root, so a job with no job user is root's uid too.
 - Without a job user there is no ownership boundary. The job
   holds no privilege and is still the owner of what root
   owns: it reads a root-only file in any tree the jail shows
-  it (above, under Privilege). A job user is the remedy, and
-  a fresh install names none.
+  it (above, under Privilege). A job user is the remedy. A
+  fresh install whose jail goes on names `nobody`; a config
+  seeded before that, or one whose trial did not pass, names
+  none until its operator does.
 - Home directories inside `/usr`. A host that keeps them in
   the `/usr` filesystem — `/usr/home` on UFS, the layout
   before FreeBSD 14.0 — shows them read-only with the rest of
@@ -600,3 +646,26 @@ job with no job user, uid 0 inside its jail, read a file only
 root may read from a tree the jail showed it; the same job
 under a job user was refused it. The limit stands as this
 page states it, and a job user is what closes it.
+
+### The job user the seed names
+
+Suppositions, recorded 2026-11-14 before the first hosted run
+of it:
+
+17. Where the seed leaves the jail on, it names `nobody`: the
+    trial job reports `nobody`'s uid, writes its work mount
+    and is refused a root-only file; `security.job_user` is
+    written, and nothing else in the file changes.
+18. A runner started on that config runs its first job as
+    `nobody`, confined: the record names no `no_superuser`,
+    the job_user record names the demote, a file all may
+    read in a tree the jail shows is read, and a root-only
+    file beside it is refused.
+19. A config that names a job user of its own keeps it, and
+    one whose `job_user` mode is stated down names none; no
+    trial runs for either. An ordinary user's seed names
+    none.
+20. A later run over the seeded config changes nothing and
+    runs no trial.
+21. The trial leaves nothing on the host: no mount, no
+    directory, no jail, no rule, and no folder of its own.
