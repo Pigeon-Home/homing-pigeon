@@ -219,7 +219,12 @@ no product code changed.
   Per-run pair time rose (to as much as about 10
   seconds under load), which is the wait ending at
   the lines' arrival on genuinely slow starts, not a
-  widened sleep.
+  widened sleep. The regression guard over
+  test_dtls.py, completed after the fix landed, is
+  green: native 186 tests green, repeat and shuffled
+  green, the simulated-Windows count better than its
+  baseline (5 red against 7 on the parent head, the
+  known artifacts), leaks 0 hard, and gates green.
 - Q194-S4 stands as written: the timings themselves
   are host facts and are not pinned; what is pinned
   is the substrate -- the final scan's quarantine
