@@ -745,3 +745,27 @@ The tests that make an account run only on a guest that is
 thrown away afterwards. On any other host, the project's own
 node among them, they skip, and the tests that run there
 name a user without making one.
+
+Conclusions, from its first hosted run (2026-11-14, run
+43597374538, FreeBSD 14.5-RELEASE and 15.0-RELEASE-p13 with
+RACCT enabled, and 14.5-RELEASE without): all seven held, on
+all three guests, on the first run. The module ran whole as
+root in each — 242 tests, the seven that make an account and
+the nine that do not among them — and each guest was read
+afterwards: no jail mount, no jail, no skeleton directory, no
+rctl rule, and no jobs account.
+
+| What was asked | What happened |
+|---|---|
+| The installer's seed, on a guest with no such account | Made `pigeon-jobs` — a password field no hash can match, `/usr/sbin/nologin`, `/nonexistent` and no directory there, a group of its own with no one else in it — ran the trial as it, and named it |
+| A runner on that config | Its first job ran as the account's uid (1001 on each guest), confined, read the file all may read and was refused the root-only file beside it |
+| The seed again, and a fresh config beside it | The second run made nothing, ran no trial and changed nothing; the fresh config used the account as it stood |
+| An account of that name made another way first | Used as it stood; not a field of it changed |
+| The wizard's seed | Without the account, named `nobody` and made nothing; with it, named `pigeon-jobs` |
+| A maker that reports it could not make the account | `nobody` named on its own trial; the line gave the reason |
+| An account made, and a trial that refuses it | The account was removed again, and `nobody` stood in on its own trial |
+| The installer started by its file's path | Made the account and named it, with nothing of the runner loaded |
+| The same seed, handed the finder instead of the maker | Named `nobody`, ran its first job as uid 65534, and added nothing to the user database |
+
+The project's own node has not run these tests, and the seven
+that make an account are not to run there.

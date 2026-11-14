@@ -276,6 +276,17 @@ tree it was shown while reading the file beside it that all
 may read; a config that named its own job user kept it; and
 nothing was left on any guest. The node has not run these.
 
+The account the installer makes is tested on the same guests
+and nowhere else, because the tests add a user to the host
+they run on. On their first run (2026-11-14, run 43597374538)
+the installer made `pigeon-jobs` on all three guests, with
+nothing to log in with and a group of its own, and named it;
+a runner on that config ran its first job as the account's
+uid and the job was refused a root-only file; an account of
+that name made beforehand was used unchanged; an account the
+seed made and could not use was removed again; and each
+guest ended with no jobs account and nothing else left.
+
 ## The mode a FreeBSD config states
 
 A fresh FreeBSD install asks the machine before it writes
