@@ -174,9 +174,12 @@ class CoreListTest(unittest.TestCase):
         # backend's second shape grew
         # runner/guard/freebsd_confine.py by 814 lines,
         # runner/guard/sandbox.py by 14 and
-        # runner/ops/remediation_ops.py by 13.
-        self.assertEqual(66898, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(60616, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner/ops/remediation_ops.py by 13, and again the
+        # same day after the posture report's FreeBSD line
+        # grew runner/guard/freebsd_confine.py by 31 lines
+        # and runner/ops/posture.py by 20.
+        self.assertEqual(66948, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(60661, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

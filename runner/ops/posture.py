@@ -160,7 +160,16 @@ def _check_job_user_engagement(cfg, results):
                         "own account)"))
 
 
-def _check_confinement_backend(results):
+def _freebsd_confinement_lines(cfg):
+    """The FreeBSD jail backend's own account of this host."""
+    try:
+        from runner.guard import freebsd_confine
+    except ImportError:
+        from guard import freebsd_confine  # type: ignore
+    return freebsd_confine.posture_lines(cfg)
+
+
+def _check_confinement_backend(results, cfg=None):
     if sys.platform.startswith("linux"):
         if shutil.which("bwrap"):
             results.append(("OK", "confinement",
@@ -169,6 +178,16 @@ def _check_confinement_backend(results):
             results.append(("WARN", "confinement",
                             "bwrap not installed (confinement in enforce "
                             "mode would refuse to start)"))
+    elif sys.platform.startswith("freebsd"):
+        # The jail backend says which controls a job's jail
+        # would carry here, and what would refuse the start.
+        try:
+            lines = _freebsd_confinement_lines(cfg)
+        except Exception as e:
+            lines = [("WARN", "FreeBSD jail backend could not be "
+                      "read: %s" % e)]
+        for level, text in lines:
+            results.append((level, "confinement", text))
     else:
         results.append(("OK", "confinement",
                         "bwrap is Linux-only; not applicable on %s"
@@ -371,7 +390,7 @@ def build_posture(cfg, cfg_path, base_dir):
     _check_key_policies(cfg, results)
     _check_recommended_features(cfg, results)
     _check_job_user_engagement(cfg, results)
-    _check_confinement_backend(results)
+    _check_confinement_backend(results, cfg)
     _check_service_unit(results)
 
     _check_secret("shared_secret", cfg.get("shared_secret"), results)

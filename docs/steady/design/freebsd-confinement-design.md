@@ -342,9 +342,17 @@ this design cannot have: it confines without root.
   sweep's rule about live runners and the probe's refusals are
   pinned there.
 - The kernel is tested where it is real: the
-  `freebsd-confinement` workflow boots FreeBSD 14.5 and 15.0
-  guests with RACCT enabled and runs the same module as root,
-  the live classes included. Weekly and on dispatch.
+  `freebsd-confinement` workflow boots three guests — FreeBSD
+  14.5 and 15.0 with RACCT enabled, and 14.5 as FreeBSD ships,
+  RACCT off — and runs the same module as root in each, the
+  live classes included: the boundary read from inside a job,
+  the jail-wide rules, the loopback, the binds, the
+  interpreter's prefix, a runner killed outright, and jobs
+  through the runner itself, with and without a job user.
+  Weekly and on dispatch.
+- The posture report (`--posture`) names, on a FreeBSD host,
+  the controls a job's jail would carry there and what would
+  refuse the start, without building a jail.
 - The project's own node has not run this shape. Its field
   test of 2026-11-10 was of the first backend.
 
@@ -376,3 +384,45 @@ of this shape:
    skeleton.
 9. After a job, nothing of it is left on the host: no mount,
    no directory, no jail, no rule.
+
+Conclusions, from the first hosted run of this shape
+(2026-11-14, run 43578228704, FreeBSD 14.5-RELEASE and
+15.0-RELEASE-p13, RACCT enabled in both): all nine held, on
+both releases, on the first run. The module ran whole as root
+in each guest — 155 tests, the 5 that exist only off FreeBSD
+skipped, the 28 live tests among the rest all passing — and
+each guest was read afterwards: no jail mount, no jail, no
+skeleton directory, no rctl rule.
+
+Against the table at the top of this page, the same nine
+boundary tests that held two of nine on the first backend
+hold nine of nine on this one:
+
+| What the job did | What happens now |
+|---|---|
+| Asked for an unlimited address space, then for 700 MiB | Both refused, as root and as a job user |
+| Wrote `/`, `/etc`, `/var/run`; made a directory at the root | All refused; the work mount and `/tmp` took their writes |
+| Ran a root-owned set-user-ID program as the job user | It ran as the job user |
+| Changed a file's owner | Refused |
+| Wrote 640 MiB into `/tmp` | Stopped at the bound |
+| Finished | Nothing of the job left on the host |
+| Left a process behind and finished | The process ended with the jail; the job's files intact; nothing left |
+
+The live tests of the further controls passed in the same
+run: a fork past the jail's process ceiling refused; four
+processes each under the per-process ceiling refused the
+allocation that took them together past the jail's; a job
+with a loopback reached its own listener, not the host's and
+not the world, and could not change the interface; an
+operator's bind read and not written, a moved work mount
+landed in; an interpreter run from a prefix mounted for it,
+and noted; a runner killed outright lost its jail within
+seconds and the next sweep cleared its mounts, skeleton and
+rules; and a job through the runner itself was confined,
+recorded with the names above, and its declared output
+collected.
+
+One thing the run measured that this page had not supposed:
+the whole module — every live job among its tests — took
+under 8 seconds in a guest, so a jail of this shape costs a
+job a fraction of a second to build and remove.

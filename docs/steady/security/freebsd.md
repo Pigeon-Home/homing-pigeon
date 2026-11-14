@@ -162,6 +162,12 @@ jail cannot be built is refused at job time the same way.
 There is no path on which a job runs unconfined under
 `enforce`.
 
+`--posture` on a FreeBSD host prints the same answer without
+building anything: the controls a job's jail would carry
+there, the RACCT tunable when the jail-wide ceilings are not
+engaged, and a warning for anything the startup gate would
+refuse on.
+
 When a job ends the backend removes its rctl rules, its jail,
 its mounts and its skeleton. Three things stand behind that:
 
@@ -193,6 +199,24 @@ its mounts and its skeleton. Three things stand behind that:
 - **Disk.** The work directory is on the host's disk and is
   not bounded here. Keep jobs' outputs inside it.
 - **No CPU ceiling.**
+
+### What stands behind this page
+
+The backend's logic is tested on every platform against a
+host that exists only as its own record. The kernel is tested
+where it is real: the `freebsd-confinement` workflow boots
+FreeBSD 14.5 and 15.0 guests with RACCT enabled, and 14.5 as
+FreeBSD ships, and runs the backend's test module as root in
+each — the boundary read from inside a job, the rules, the
+loopback, the binds, a runner killed outright, and jobs
+through the runner itself. Its first run of this shape
+(2026-11-14, run 43578228704) passed whole on 14.5 and 15.0
+and left nothing on either guest. The record of what was
+supposed beforehand and what the run answered is in the
+design page.
+
+The project's own FreeBSD node has not run this shape; its
+field test, below, was of the first backend.
 
 ## The mode a FreeBSD config states
 

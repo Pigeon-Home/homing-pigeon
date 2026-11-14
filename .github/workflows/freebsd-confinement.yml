@@ -7,24 +7,32 @@ name: freebsd-confinement
 # test of the backend skips there, and until this workflow the
 # only kernel those tests had met was the project's own node.
 #
-# Two guests, each a VM inside a Linux runner (the action
+# Three guests, each a VM inside a Linux runner (the action
 # freebsd.yml uses, pinned by the same SHA): 14.5, the release
 # the project's node runs, and 15.0, the release freebsd.yml
-# boots. Inside each, as root, the backend's own test module
-# runs whole -- the seams, then the live classes: the probe, a
-# job inside its jail, and what that job can and cannot do
-# there, read from the job's own report.
+# boots, both with RACCT enabled; and 14.5 again as FreeBSD
+# ships, RACCT off, which is the node's own state. Inside each,
+# as root, the backend's own test module runs whole -- the
+# seams, the logic against the fake host, then the live
+# classes: the probe, a job inside its jail, a job through the
+# runner itself, and what a job can and cannot do in there,
+# read from the job's own report.
 #
 # RACCT: the kernel's resource accounting is a boot tunable
 # (kern.racct.enable), off as shipped, and a per-jail rctl rule
-# can deny nothing without it. `prepare` writes the tunable into
-# /boot/loader.conf and asks the action to keep the prepared
-# image (cache-after-prepare): the action then shuts the guest
-# down and boots it again from that image before `run`, so the
+# can deny nothing without it. In the two guests that are to
+# have it, `prepare` writes the tunable into /boot/loader.conf,
+# and every guest asks the action to keep the prepared image
+# (cache-after-prepare): the action then shuts the guest down
+# and boots it again from that image before `run`, so the
 # tunable is live when the tests start, and a later run boots
 # the kept image directly. The run reads the tunable back and
-# fails by name when it is not on -- a proof that skipped its
-# rctl tests would read green and prove less than it says.
+# fails by name when a guest is not in the state its leg
+# names -- a proof that skipped its rctl tests where it was to
+# run them would read green and prove less than it says. The
+# third guest is where they skip by design: its proof is that
+# the backend engages, and names no rctl control, on a host
+# that cannot hold one.
 #
 # A signal on the backend, not a gate on a release: weekly and
 # on dispatch, never on the release path.
@@ -47,7 +55,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        release: ["14.5", "15.0"]
+        include:
+          - release: "14.5"
+            racct: "on"
+          - release: "15.0"
+            racct: "on"
+          - release: "14.5"
+            racct: "off"
     permissions:
       contents: read
     steps:
@@ -88,9 +102,13 @@ jobs:
             /usr/local/bin/python3 -c "import sys; print(sys.version.split()[0])"
             rm -f pkg.log
             # The boot tunable, live after the action's own
-            # reboot from the prepared image.
-            grep -q '^kern.racct.enable=' /boot/loader.conf 2>/dev/null || echo 'kern.racct.enable=1' >> /boot/loader.conf
-            tail -n 3 /boot/loader.conf
+            # reboot from the prepared image -- in the guests
+            # whose leg asks for it.
+            if [ "${{ matrix.racct }}" = "on" ]; then
+              grep -q '^kern.racct.enable=' /boot/loader.conf 2>/dev/null || echo 'kern.racct.enable=1' >> /boot/loader.conf
+            fi
+            echo "racct leg: ${{ matrix.racct }}"
+            tail -n 3 /boot/loader.conf 2>/dev/null || true
           run: |
             cd "$GITHUB_WORKSPACE" || { echo "::error title=freebsd-confinement::no workspace at $GITHUB_WORKSPACE"; exit 1; }
             echo "== the guest"
@@ -100,8 +118,14 @@ jobs:
             vimage="$(sysctl -n kern.features.vimage 2>/dev/null || echo 0)"
             echo "kern.racct.enable=$racct kern.features.vimage=$vimage"
             /usr/local/bin/python3 -c "import sys; print('python', sys.version.split()[0])"
+            want="${{ matrix.racct }}"
             frc=0
-            [ "$racct" = "1" ] || { frc=1; echo "::error title=freebsd-confinement::RACCT is not enabled in the guest (kern.racct.enable=$racct): the rctl tests would skip, and this proof does not read green on a skip"; }
+            if [ "$want" = "on" ] && [ "$racct" != "1" ]; then
+              frc=1; echo "::error title=freebsd-confinement::RACCT is not enabled in the guest (kern.racct.enable=$racct): the rctl tests would skip, and this leg does not read green on a skip"
+            fi
+            if [ "$want" = "off" ] && [ "$racct" = "1" ]; then
+              frc=1; echo "::error title=freebsd-confinement::this guest was to run as FreeBSD ships, RACCT off, and it is on: the leg would prove the other two legs' shape a third time"
+            fi
             echo "== the backend's test module, as root"
             rc=0
             /usr/local/bin/python3 -m unittest runner.tests.test_freebsd_confine -v > /tmp/freebsd-confinement.log 2>&1 || rc=$?
@@ -121,7 +145,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: always()
         with:
-          name: freebsd-confinement-${{ matrix.release }}
+          name: freebsd-confinement-${{ matrix.release }}-racct-${{ matrix.racct }}
           path: |
             freebsd-confinement.log
             freebsd-confinement-verdict.txt

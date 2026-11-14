@@ -1075,6 +1075,37 @@ def sweep_stale(host=None):
     return removed
 
 
+def posture_lines(cfg=None, host=None):
+    """(level, text) lines for the posture report: what a job's
+    jail would carry on this host, read without building one.
+
+    The report is advisory and read-only, so this is the cheap
+    half -- the config, root, the tools, the host's facts --
+    and never the trial. A WARN is something the startup gate
+    would refuse on at enforce.
+    """
+    host = host or _HOST
+    refuse = "; confinement in enforce mode would refuse to start"
+    try:
+        st = confinement_settings(cfg)
+        problem = _basic_problem(host, st)
+        if problem is not None:
+            raise RuntimeError(problem)
+        controls, rctl = controls_for(host, st)
+    except RuntimeError as e:
+        return [("WARN", "FreeBSD jail backend cannot engage: %s%s"
+                 % (e, refuse))]
+    lines = [("OK", "FreeBSD jail backend: %s"
+              % confinement_status(controls))]
+    if not rctl:
+        lines.append((
+            "OK", "RACCT is not enabled on this host, so the "
+            "jail-wide rctl ceilings are not written "
+            "(kern.racct.enable=1 in /boot/loader.conf and a "
+            "reboot engage them)"))
+    return lines
+
+
 _trial_lock = threading.Lock()
 _trial_passed = set()
 _swept = []

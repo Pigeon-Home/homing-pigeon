@@ -83,6 +83,7 @@ run — the suite and the roster on that kernel — is still owed.
 | Windows (windows-latest) | `build-windows` job, the suite sharded by the duration table (`runner/tools/windows_durations.py`) into balanced shards | `windows` leg: the platform-neutral controls | smoked | as Linux |
 | macOS (macos-15) | `test-macos` job, the suite run 3 ways in parallel (`--jobs 3`) | `macos` leg and `macos-root` leg (a second user): the POSIX controls, the drop included | smoked (both macOS builds) | as Linux |
 | FreeBSD 15 (a VM inside a Linux runner) | as an ordinary user, under the wall clock | as root with a second user: the POSIX controls | not built (sdist install) | weekly, on dispatch, and when `freebsd.yml` changes; no green run yet |
+| FreeBSD 14.5 and 15.0, as root (VMs inside Linux runners, `freebsd-confinement.yml`) | the jail backend's own module, live classes included: RACCT enabled in two guests, off in a third | — | not built | weekly and on dispatch; first green run 2026-11-14 |
 
 The roster (`runner/tests/switch_roster.py`) says, per control, what
 a leg must provide: `posix` (any of the three kernels), `linux`,

@@ -51,8 +51,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 66,898 lines,
-60,616 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 66,948 lines,
+60,661 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -469,6 +469,13 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # runner/guard/sandbox.py by 14, and its wiring
 # grew runner/ops/remediation_ops.py by 13, the
 # whole set re-measured over the current tree.
+# Re-measured again the same day after the posture
+# report took a FreeBSD line (the controls a job's
+# jail would carry on the host, read without
+# building one), growing
+# runner/guard/freebsd_confine.py by 31 lines and
+# runner/ops/posture.py by 20, the whole set
+# re-measured over the current tree.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 136 since
@@ -482,19 +489,19 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 139
 AS_ASSEMBLED_ZIP_BYTES = 865179
-AS_ASSEMBLED_LINES = 66898
-AS_ASSEMBLED_NONBLANK_LINES = 60616
+AS_ASSEMBLED_LINES = 66948
+AS_ASSEMBLED_NONBLANK_LINES = 60661
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 22598,
+    "runner/ops": 22617,
     "runner/tools": 10056,
     "runner/wire": 9033,
     "runner/runner.py": 7179,
     "runner/oracle": 5063,
     "runner/transport_extensions": 2775,
-    "runner/guard": 6408,
+    "runner/guard": 6439,
     "runner/cloud": 2049,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,

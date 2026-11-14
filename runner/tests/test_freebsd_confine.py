@@ -1924,6 +1924,96 @@ class EdgeTest(_FakeHostCase):
             self.assertTrue(FC._Host().pid_alive(1))
 
 
+class PostureTest(_FakeHostCase):
+    """The posture report's FreeBSD line: what a job's jail
+    would carry on this host, read without building one."""
+
+    def lines(self, cfg=None):
+        return FC.posture_lines(cfg, host=self.host)
+
+    def test_a_host_that_can_engage_names_its_controls(self):
+        lines = self.lines()
+        self.assertEqual(lines[0], (
+            "OK", "FreeBSD jail backend: freebsd: jail + no_network "
+            "+ no_superuser + spawn_resource_limits"))
+        # Without RACCT the report says how to get the rules.
+        self.assertEqual(lines[1][0], "OK")
+        self.assertIn("kern.racct.enable=1", lines[1][1])
+        self.assertIn("/boot/loader.conf", lines[1][1])
+        # Nothing was built to say so.
+        self.assertEqual(self.host.ran(FC.JAIL_BIN), [])
+        self.assertEqual(self.host.ran(FC.MOUNT_BIN), [])
+        self.assertEqual(self.skeletons(), [])
+
+    def test_racct_is_named_and_the_hint_goes(self):
+        self.host.racct = True
+        self.assertEqual(self.lines(), [(
+            "OK", "FreeBSD jail backend: freebsd: jail + no_network "
+            "+ no_superuser + rctl_resource_limits + "
+            "spawn_resource_limits")])
+
+    def test_what_would_refuse_the_start_is_a_warning(self):
+        cases = (
+            ({"security": {"confinement": {
+                "extra_flags": ["--unshare-pid"]}}}, "--unshare-pid"),
+            (_fcfg(job_processes=8), "kern.racct.enable=1"),
+            (_fcfg(nonsense=1), "nonsense"),
+        )
+        for cfg, expect in cases:
+            with self.subTest(expect=expect):
+                ((level, text),) = self.lines(cfg)
+                self.assertEqual(level, "WARN")
+                self.assertIn(expect, text)
+                self.assertIn("would refuse to start", text)
+        self.host._euid = 1001
+        ((level, text),) = self.lines()
+        self.assertEqual(level, "WARN")
+        self.assertIn("needs root", text)
+
+    def test_the_report_asks_the_backend_on_freebsd_only(self):
+        from runner.ops import posture as P
+        seen = []
+
+        def _lines(cfg):
+            seen.append(cfg)
+            return [("OK", "FreeBSD jail backend: x"), ("WARN", "y")]
+        cfg = {"security": {}}
+        results = []
+        with mock.patch.object(P.sys, "platform", "freebsd14"), \
+                mock.patch.object(P, "_freebsd_confinement_lines",
+                                  _lines):
+            P._check_confinement_backend(results, cfg)
+        self.assertEqual(results, [
+            ("OK", "confinement", "FreeBSD jail backend: x"),
+            ("WARN", "confinement", "y")])
+        self.assertIs(seen[0], cfg)
+
+        def _boom(cfg):
+            raise RuntimeError("module gone")
+        results = []
+        with mock.patch.object(P.sys, "platform", "freebsd14"), \
+                mock.patch.object(P, "_freebsd_confinement_lines",
+                                  _boom):
+            P._check_confinement_backend(results)
+        self.assertEqual(results[0][0], "WARN")
+        self.assertIn("module gone", results[0][2])
+        # Elsewhere the backend is not asked.
+        results = []
+        with mock.patch.object(P.sys, "platform", "darwin"), \
+                mock.patch.object(P, "_freebsd_confinement_lines",
+                                  _boom):
+            P._check_confinement_backend(results, cfg)
+        self.assertEqual(results[0][0], "OK")
+
+    def test_the_report_s_own_reader_reaches_the_backend(self):
+        from runner.ops import posture as P
+        with mock.patch.object(FC, "posture_lines",
+                               return_value=[("OK", "z")]) as lines:
+            self.assertEqual(P._freebsd_confinement_lines({"a": 1}),
+                             [("OK", "z")])
+        lines.assert_called_once_with({"a": 1})
+
+
 class HostFaceTest(unittest.TestCase):
     """The real host object, where this machine can answer."""
 
@@ -2600,6 +2690,8 @@ class LiveControlsTest(unittest.TestCase):
         finally:
             runner.kill()
             runner.wait(timeout=30)
+            runner.stdout.close()
+            runner.stderr.close()
         import time
         gone = False
         for _attempt in range(60):
@@ -2643,7 +2735,8 @@ class LiveRunnerTest(unittest.TestCase):
     gate, the seam, the backend, the record and the collected
     output, end to end at confinement enforce."""
 
-    def _run(self, script, confinement=None, outputs=()):
+    def _run(self, script, confinement=None, outputs=(),
+             job_user=None):
         import json
         from runner.guard import security as S
         base = tempfile.mkdtemp(prefix="hp-live-runner-")
@@ -2652,6 +2745,9 @@ class LiveRunnerTest(unittest.TestCase):
             "confinement": "enforce", "job_user": "off"}}}
         if confinement:
             cfg["security"]["confinement"] = confinement
+        if job_user:
+            cfg["security"]["modes"]["job_user"] = "enforce"
+            cfg["security"]["job_user"] = {"user": job_user}
         job = {"v": 1, "type": "job", "job_id": "fbsd-live",
                "issued_at": "2026-11-14T12:00:00Z", "kind": "exec",
                "interpreter": ["python3"], "script": script}
@@ -2713,6 +2809,23 @@ class LiveRunnerTest(unittest.TestCase):
         for what in ("mounts", "dirs", "jails", "rules"):
             self.assertEqual(after[what] - before[what], set(),
                              "%s left behind" % what)
+
+    def test_a_job_user_through_the_runner_goes_in_at_the_door(self):
+        import pwd
+        nobody = pwd.getpwnam("nobody")
+        result, audit, _cfg, _base = self._run(
+            "import os\n"
+            "print('uid:', os.getuid())\n"
+            "open('out.txt', 'w').write('as-the-user')\n",
+            outputs=["out.txt"], job_user="nobody")
+        self.assertEqual(result["exit_code"], 0, result)
+        self.assertIn("uid: %d" % nobody.pw_uid, result["stdout"])
+        self.assertEqual(len(result["outputs"]), 1, result)
+        rows = [a for a in audit if a.get("decision") == "confined"]
+        self.assertEqual(len(rows), 1, audit)
+        self.assertNotIn("no_superuser", rows[0].get("reason", ""))
+        self.assertTrue(rows[0].get("reason", "").startswith(
+            "freebsd: jail + no_network"), rows)
 
     def test_the_config_s_work_mount_reaches_the_job(self):
         result, _audit, _cfg, _base = self._run(

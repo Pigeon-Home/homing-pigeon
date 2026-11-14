@@ -109,14 +109,67 @@ class SupportMatrixTest(unittest.TestCase):
                       "enforce everywhere", _flat())
 
     def test_the_freebsd_row_carries_its_landed_level(self):
-        # The FreeBSD row stands at the level its hosted verdict
-        # and field proof earned; the level it carried before
-        # that landing must not come back on its row. (The word
-        # for the old level still stands in this file's level
-        # definitions, so the pin reads the row itself.)
+        # The FreeBSD row stands at the level its proofs earned:
+        # above Experimental since its hosted verdict and field
+        # proof, and out of the reduced-confinement level since
+        # the jail was rebuilt to hold what the Linux sandbox
+        # holds and the hosted live proof of that shape passed
+        # (2026-11-14). Neither earlier level may come back on
+        # its row. (The words for them still stand in this
+        # file's level definitions, so the pin reads the row
+        # itself.)
         row = _row("FreeBSD")
-        self.assertIn("Supported, reduced confinement", row)
+        self.assertTrue(row.startswith("| FreeBSD | **Supported** |"),
+                        row[:60])
+        self.assertNotIn("reduced confinement", row)
         self.assertNotIn("Experimental", row)
+
+    def test_the_reduced_level_names_the_platforms_it_fits(self):
+        # The level's definition says, platform by platform, why
+        # confinement there is weaker than the Linux sandbox. It
+        # must go on naming macOS and Windows, and must not go
+        # on describing a FreeBSD jail as one of them.
+        flat = _flat()
+        start = flat.index("- **Supported, reduced confinement**")
+        end = flat.index("- **Experimental**")
+        definition = flat[start:end]
+        self.assertIn("on macOS", definition)
+        self.assertIn("on Windows", definition)
+        self.assertNotIn("on FreeBSD the backend applies", definition)
+
+    def test_the_freebsd_row_s_numbers_and_names_match_the_code(self):
+        # The row states the jail's ceilings and the record's
+        # floor; both are read out of the backend, not copied.
+        from runner.guard import freebsd_confine as FC
+        row = _row("FreeBSD")
+        mib = 1024 * 1024
+        self.assertEqual(FC.DEFAULT_PROCESS_MEMORY_BYTES % mib, 0)
+        self.assertIn(
+            "%d MiB per-process memory ceiling"
+            % (FC.DEFAULT_PROCESS_MEMORY_BYTES // mib), row)
+        self.assertIn(
+            "bounded `/tmp` (%d MiB)" % (FC.DEFAULT_TMP_BYTES // mib),
+            row)
+        self.assertIn("%d processes" % FC.DEFAULT_JOB_PROCESSES, row)
+        self.assertIn(
+            "%d GiB of address space"
+            % (FC.DEFAULT_JOB_MEMORY_BYTES // (1024 * mib)), row)
+        self.assertIn('"%s"' % FC.STATUS_CONFINEMENT, row)
+        for name in ("no_superuser", "rctl_resource_limits",
+                     "private_loopback"):
+            self.assertIn(name, FC.CONTROL_ORDER)
+
+    def test_the_freebsd_row_keeps_its_honesty_lines(self):
+        # What the jail is not stays on the row beside what it
+        # is: it needs root, it is not Capsicum, the jail-wide
+        # ceilings need RACCT, and the node has not run it.
+        row = _row("FreeBSD")
+        self.assertIn("The backend needs root", row)
+        self.assertIn("there is no Capsicum", row)
+        self.assertIn("named only where RACCT is enabled", row)
+        self.assertIn("refuses when it cannot engage", row)
+        self.assertIn("has not been run on the node", row)
+        self.assertIn("the suite itself is not green", row)
 
     def test_the_stale_macos_sentences_are_absent(self):
         # The matrix once named the launcher shim's data-size
