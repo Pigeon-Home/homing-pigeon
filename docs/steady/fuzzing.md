@@ -619,3 +619,60 @@ on those two contracts, not on another 20,000 rounds of the
 six. No live socket until the new readers stop crashing on
 bytes. A Platinum percentage is coverage, not a reason to
 stop.
+
+## Windows confinement: the fuzz lane and its proof
+
+The Windows confinement backend's decision surface is fuzzed
+in `runner/tests/test_windows_confine_fuzz.py` (20 tests).
+The surface is everything a job's spec reaches before a
+confined process exists: the backend module's probes and
+spawns (`runner/guard/windows_confine.py`), the
+platform-neutral confinement trial that decides whether a
+host's confined processes can work, and the seams that gate
+and spawn on the backend's word (the confinement and
+job_user startup gates, the confinement argv gate, the
+confined and job-object spawn seams, and the job_user
+postspawn assignment), driven through scripted backends
+whose probes, spawns and assignments return fuzzed values
+or raise fuzzed exceptions, with the real mode reader
+reading fuzzed configs. The Win32 calls themselves cannot
+execute off Windows; live Windows behaviour is proven on
+the Germany rig's battery, and this lane claims none of it.
+
+The seed corpus is the bookend rule applied to nine cores
+(`python`, `s.py`, `job`, `canary-list`, a Windows work
+path, `K`, `V`, `enforce`, and the empty string): every
+ASCII symbol and every non-printing edge case (NUL, tab,
+CR, LF, VT, FF, ESC, DEL) at the front AND the back, in
+runs of 10 of the odd character at the front, the back and
+the middle, in runs of 10 ordinary characters followed by
+the odd one, as mismatched symbol pairs, and as symbol-only
+and non-printing-only strings -- 2,701 seed texts, pinned
+whole by the corpus tests. Generated cases mutate those
+seeds into job specs, paths, command lines, environment
+blocks, config blocks and limit values, including values
+JSON cannot carry (nested containers, bytes, NaN, infinity,
+integers past 2**63).
+
+The contract each case must meet: the probes and the trial
+answer a problem string or None and never raise; the
+backend's spawns and assignment raise RuntimeError only;
+the seams answer their value or refuse the job, and a
+confined answer under enforce carries exactly the backend's
+status string (`windows: job_object + restricted_token +
+low_integrity`) in its record -- never a weaker claim, and
+never the word sandbox. A bookended mode is not the mode:
+it reads as off at the seams and the startup validator
+refuses the config outright.
+
+The recorded run (2026-11-14, this machine): the campaign
+ran in memory for 300.2 seconds -- 38,700 rounds, 503,100
+surface cases -- and completed with no crash and no
+widening: every case ended refused, cleanly errored, or
+confined under the exact status. No finding stood, so no
+regression family was owed; a finding would have taken the
+shotgun family around its shape, not a single test. The
+suite carries the same campaign bounded (150 rounds beside
+the deterministic corpus families), so the seeds and a
+small run stand as unit tests on main, and the module's
+own `__main__` runs a 400-round campaign.

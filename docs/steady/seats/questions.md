@@ -192,6 +192,73 @@ its seeds as unit tests, and the proof record -- is a
 lane of its own, not landed by this filing; it waits on
 nothing but a lane taking it up.
 
+**Conclusions (Muse, 2026-11-14):** Q187-S1, S2 and S3
+hold, to the limit of what this machine can prove; the one
+link no local run can exercise is named at the end.
+
+- S1 holds. The lane landed test-first as
+  `runner/tests/test_windows_confine_fuzz.py` (20 tests):
+  the backend module's stub probes, spawns, assignment and
+  handle close, the platform-neutral confinement trial
+  through scripted spawn/grant seams, and the remediation
+  seams (the confinement and job_user startup gates, the
+  confinement argv gate, the confined and job-object spawn
+  seams, the job_user postspawn) through scripted backends
+  whose calls return fuzzed values or raise fuzzed
+  exceptions, with the real `sec_mode` reading fuzzed
+  configs. Generated inputs cover job specs, paths,
+  command lines, environment blocks and limit values,
+  including shapes JSON cannot carry. Every case ended
+  refused (a problem string, a fallback record,
+  JobRejected), cleanly errored (RuntimeError from the
+  stub's spawn/apply surface), or confined -- no unhandled
+  exception escaped any surface the campaign drives.
+- S2 holds. The seed corpus is the bookend rule whole:
+  2,701 seed texts over nine cores, every ASCII symbol and
+  every non-printing edge case (NUL, tab, CR, LF, VT, FF,
+  ESC, DEL) front AND back, runs of 10 of the odd character
+  at the front, the back and the middle, runs of 10
+  ordinary characters then the odd one, mismatched pairs,
+  and symbol-only and non-printing-only strings, pinned by
+  the corpus family. Under enforce a failing backend
+  refused every bookended job spec; audit and off spawned
+  nothing; bookended job specs rode verbatim into the
+  confined record and the spawn; the confined record's
+  reason is exactly the backend's status string and never
+  names a sandbox; and a bookended mode is not the mode --
+  it reads as off at the seams and
+  `validate_security_config` refuses the config outright,
+  so no generated shape widened a confinement.
+- S3 holds. The recorded in-memory run (2026-11-14, this
+  machine) completed in 300.2 seconds: 38,700 rounds,
+  503,100 surface cases, no crash and no widening. The
+  seed corpus and the procedure stand in
+  docs/steady/fuzzing.md beside the suite's bounded
+  campaign (150 rounds) and the corpus families. No
+  finding stood, so no shotgun family was owed; had one
+  stood, it would have taken the family around its shape,
+  per the supposition. The module runs green whole (20
+  tests) and the regression guard over it reads green
+  before the push (its verdict line is in the landing
+  commit's message).
+
+What stays open, named exactly: live Windows proof. The
+Win32 calls cannot execute on this host, so the lane
+drives the backend's decision surface through the stub
+branch and the scripted seams, exactly where the existing
+Windows suites drive it; whether a confined process works
+on a real Windows host stands on the Germany rig's
+battery, as this entry's filing said, and nothing here
+moves that word.
+
+**Answer (Muse, 2026-11-14):** the lane is landed as
+supposed; Q187 is closed, with live Windows proof left
+where it has always stood -- the rig battery.
+
+**Applied in:** the commit carrying these conclusions
+(Muse, 2026-11-14) -- `runner/tests/test_windows_confine_fuzz.py`,
+`docs/steady/fuzzing.md` and this entry.
+
 ---
 
 ## Q186 (Muse to Muse, 2026-11-14): the grep query worker's 2-second deadline expires under load -- the pre-existing flake Q183 left for a lane of its own
