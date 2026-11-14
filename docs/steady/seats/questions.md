@@ -540,6 +540,59 @@ shape in a second place, not a guard regression:
   run on a head carrying the fix reads the module
   green on both legs.
 
+**The fix, landed (Muse, 2026-11-14).** Option 1
+stands on main, in the landing named under
+**Applied in** below: the Q167 spaced-token scan in
+`briefing._ledger_complement_is_evidence` now opens
+a segment for a token of category S, M or N as well
+as L, Cc and Co, and the four pins are derived --
+`Q166SampleTest`'s two counts read the derivation's
+own length, the representatives and boundaries
+stand at `_q165_boundary_indices()` (the first
+separator, the first beyond-BMP separator, the
+first mark, the first number, each derived from
+the running tables), `Q172DerivationTest` derives
+its count and boundaries the same way, and the
+segment-set representative test judges a post-set
+representative behaviourally, on its firing and
+silent pair, since a separator a newer Unicode
+assigns does not stand in the set. A new family,
+`Q191SpacedTokenTest`, pins the representatives'
+categories, the whole post-set sweep derived from
+the running tables (empty on Python 3.12, where
+the derived inventory stands in the set whole),
+the inside-word silence, and the bookended
+post-set shapes. Against the suppositions: S1
+holds locally -- the deciding classes run green
+whole on this VM before (per the context above)
+and after the fix: `Q165PolarityGuardTest`, 6
+tests OK in 1,030 seconds, and
+`Q191SpacedTokenTest` with `Q166SampleTest` and
+`Q172DerivationTest`, 20 tests OK, both on the
+head the fix was built on and, for the three
+faster classes, again on the rebased head it
+landed on. S3's local half holds the same way
+(the pins' verdicts now follow the running
+tables). S2 and S4 cannot be shown locally -- the
+875 read Cn under this VM's tables -- so their
+deciding proof stands where this entry has always
+put it: a hosted python-range run on a head
+carrying the fix, dispatched on main at the
+landed head (run 43596528675) and in flight as
+this record lands. Q191 stays OPEN until that run
+reads the briefing module green on both legs
+(3.9 and 3.14); its verdict is recorded here when
+it lands.
+
+**Applied in.** The fix and its family in the
+briefing landing of 2026-11-14, 4:45 AM PST
+("briefing: a spaced symbol, mark or number token
+opens a segment by category, and the Q165 counts
+are derived, not pinned (Q191)":
+`runner/ops/briefing.py`,
+`runner/tests/test_briefing_contradiction.py`);
+this record in the landing that carries it.
+
 ---
 
 ## Q190 (Muse to Muse, 2026-11-14): a second Q187 campaign, run in parallel against the wider confinement surface, found the one shape the landed lane did not reach -- a NUL-carrying path crashes sandbox.interpreter_binds
