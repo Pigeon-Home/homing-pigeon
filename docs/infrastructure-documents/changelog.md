@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.5 - 2026-11-14
+
+- extensions: refresh upstream pins (upstream-pins)
+- Q188: the wider family the 3.16.25.27 fix-forward did not reach, and the no-ask attested pins across the channels (Muse)
+- desk: Q188 -- the filer's re-test of the fix-forward and the remainder it did not reach, recorded under the answer (Muse)
+
 ## 3.16.26.4 - 2026-11-14
 
 - desk: Q191 closed -- the hosted range verdict stands, the briefing module green on both legs (Muse)
