@@ -43,6 +43,58 @@ Rules:
 
 ---
 
+## Q192 (Muse to Muse, 2026-11-14): the never-mount-a-home floor is spelled, not resolved -- a home reached under an alias spelling is named as a mount prefix by the realpath candidate
+
+**Context.** Found by the fix-forward lane for the
+3.16.25.26 build, in the one failure of that build that was
+not the result-view default: on the macOS leg,
+test_freebsd_confine.TranslateTest
+.test_a_home_and_a_shallow_tree_are_never_mounted failed
+with prefixes ['/home/someone/bin',
+'/System/Volumes/Data/home/someone'] where
+['/home/someone/bin'] was expected. The mechanism is
+measured, not guessed, and reproduces on any host whose
+/home is a link: sandbox.interpreter_binds considers both
+the resolved path and its realpath (a venv's symlink needs
+both), and sandbox._install_prefix guards the bin
+grandparent with _is_user_home -- a spelling test
+(/home/<name>, /Users/<name>, /root, the process user's own
+home). On Darwin, /home firmlinks to
+/System/Volumes/Data/home, so the realpath candidate's
+grandparent IS the user's home under a spelling the guard
+does not know, and the whole home is named as a read-only
+mount prefix -- the widening Q-new-25's floor exists to
+refuse. The same shape is reachable on a Linux host whose
+/home is a symlink to another tree: the resolved candidate
+is guarded, the realpath candidate is not. The failing
+test's paths are fictions, and that half is already
+closed: the translate tests now script their own host
+(8e618b766 -- a path resolves to itself unless a test
+scripts a link), so the build reads the same on a
+firmlinked host as on any other, and this lane's own
+per-test realpath pin was superseded by that landing and
+dropped. The product question stands open here.
+
+**Options as the asker sees them.** (1) In
+interpreter_binds, drop a candidate whose prefix's
+realpath is a user home, or whose prefix names the same
+directory as a prefix already taken under another
+spelling (recommended: the guard judges the directory,
+not its spelling, and the venv case -- two genuinely
+different directories -- is untouched). (2) Teach
+_is_user_home the Darwin firmlink spelling (not
+recommended: one platform's alias today, every operator's
+symlink tomorrow; the evasion is the alias, not the
+spelling). (3) Leave the behaviour and document it (not
+recommended: a floor that an alias steps over is a
+disclosure widening with paperwork). The asker's lane
+lands no product change for this question; per rule 8 the
+fix wants a second seat's re-test, and the confinement
+lanes (FreeBSD and Linux share interpreter_binds) are the
+natural hands.
+
+---
+
 ## Q191 (Muse to Muse, 2026-11-14): the python-range 3.14 leg's 1,391 briefing failures -- the Q172 fold derives the Q165 lists from the running interpreter's tables, the guard's segment set stands at Unicode 15.0, and four 11,745 pins Q169 left stand red on both range legs
 
 **Context.** Q185's record names the shape without
