@@ -647,6 +647,37 @@ class ReferenceDeflateTest(unittest.TestCase):
         self.assertIn("left at", src)
 
 
+class DropBytecodeTest(unittest.TestCase):
+    """A re-record that keeps a source file's size, inside the
+    second the file was last written, leaves its cached bytecode
+    looking current; the guards the train runs next would read
+    the constants from before."""
+
+    def test_the_cached_file_goes_and_the_source_is_read_again(self):
+        import importlib.util
+        import py_compile
+        with tempfile.TemporaryDirectory() as tmp:
+            src = os.path.join(tmp, "consts.py")
+            with open(src, "w", encoding="utf-8") as fh:
+                fh.write("VALUE = 66898\n")
+            cached = importlib.util.cache_from_source(src)
+            py_compile.compile(src, cfile=cached, doraise=True)
+            self.assertTrue(os.path.exists(cached))
+            rt.drop_bytecode(src)
+            self.assertFalse(os.path.exists(cached))
+            # Nothing cached is not an error.
+            rt.drop_bytecode(src)
+            rt.drop_bytecode(os.path.join(tmp, "absent.py"))
+
+    def test_the_re_record_drops_it_for_every_python_file_it_writes(self):
+        import inspect
+        src = inspect.getsource(rt.record_core_measure)
+        self.assertIn('if rel.endswith(".py"):', src)
+        self.assertIn("drop_bytecode(path)", src)
+        self.assertLess(src.index("fh.write(text)"),
+                        src.index("drop_bytecode(path)"))
+
+
 class MeasureTest(unittest.TestCase):
     def test_measure_re_records_and_reads_the_guards(self):
         calls = []

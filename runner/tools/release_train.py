@@ -303,6 +303,24 @@ def reference_deflate(name=None):
     return bool(re.fullmatch(r"\d+(\.\d+)+", name))
 
 
+def drop_bytecode(path):
+    """Remove the interpreter's cached bytecode for one source
+    file. A cached file is judged current by its source's size
+    and the second it was last written, so a re-record that
+    keeps the size (66898 becomes 66948) within the second the
+    source was last touched leaves the cache looking current,
+    and the guards run next -- in a process of their own --
+    read the constants from before and fail on a tree that is
+    right (met on 2026-11-14, a comment edit and a measure in
+    one second). Dropping the cache makes the next import read
+    the source."""
+    import importlib.util
+    try:
+        os.unlink(importlib.util.cache_from_source(path))
+    except (OSError, ValueError, NotImplementedError):
+        pass
+
+
 def record_core_measure(root=ROOT):
     """Re-record runner/ops/core.py's as-assembled constants, the
     test pins, and the fuzzing page's part list from a fresh
@@ -354,6 +372,8 @@ def record_core_measure(root=ROOT):
             text = text.replace(old, new, 1)
         with open(path, "w", encoding="utf-8") as fh:
             fh.write(text)
+        if rel.endswith(".py"):
+            drop_bytecode(path)
 
     core_pairs = [
         ("AS_ASSEMBLED_ZIP_BYTES = %d" % core.AS_ASSEMBLED_ZIP_BYTES, "AS_ASSEMBLED_ZIP_BYTES = %d" % zip_bytes),
