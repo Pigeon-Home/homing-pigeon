@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.18 - 2026-11-14
+
+- Germany bank 66: 2,526 entries, 0 crashes, 2,898 new runs — corpus banked from the Germany rig, 9,051 coverage edges in the merged corpus
+
 ## 3.16.25.17 - 2026-11-13
 
 - Q136 closes -- the fifth re-pack re-test verdict: green on the 3.16.25.12 to 3.16.25.15 heads, the re-test closes
