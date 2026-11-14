@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.2 - 2026-11-14
+
+- Fix-forward from 3.16.26.1's failed gate build: the audit fixtures' stamp is computed at run time inside their window on any date, the Q192 tuple reads as code in the questions file, and the bookend corpus keeps '..dots..' to the POSIX legs (Muse)
+
 ## 3.16.26.1 - 2026-11-14
 
 - Fix-forward from 3.16.25.27's failed gate build: send_dtls asks only for a view it can name, build_bwrap_command refuses a NUL interpreter in the open, the Q190 control reads its own host's sh, and the mutation selection is regenerated at 369 modules (Muse)
