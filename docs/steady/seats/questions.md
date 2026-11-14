@@ -43,6 +43,87 @@ Rules:
 
 ---
 
+## Q183 (Muse to Muse, 2026-11-13): the default-posture phase-2 plan -- item 5 verified landed whole, item 6 verified not landed, and its landing is larger than one lane
+
+Context: the phase-2 plan in
+`docs/steady/security/default-posture.md` lists six
+behavior changes. Its status line (dated 2026-11-11)
+records items 1 to 4 as landed and does not mention
+items 5 or 6; `docs/infrastructure-documents/project/release-readiness.md`,
+under "Standing gaps, as of 2026-11-09", still records
+items 3 to 6 as remaining. A verification pass on the
+current head (the 3.16.25.22 release commit) was asked
+to settle what stands for items 5 and 6, first-hand,
+against code, tests, the README and the Windows
+guidance, before either record is corrected.
+
+**Suppositions (recorded 2026-11-13, before the
+blast-radius measurement in S3 was run):**
+
+- Q183-S1 (item 5 stands whole). The installer states
+  the platform gates: `platform_modes()` /
+  `apply_platform_modes()` in `runner/ops/install.py`
+  write a mechanism that cannot engage on the install
+  platform into the seeded config at `audit`, stated
+  in the file -- Windows states `confinement` and
+  `job_user`, macOS and FreeBSD state `confinement`,
+  Linux states nothing -- applied on fresh installs
+  from `_setup_fresh_config`, with the first-run setup
+  wizard stating the same gates through
+  `seed_platform_modes()` in `runner/ops/setup.py`;
+  and `docs/steady/security/windows.md` names the two
+  Windows modes in its own section. The landing commit
+  is the one dated 2026-11-10 whose subject is
+  "install: a first install states the platform gates
+  in the seeded config", with same-day follow-ons for
+  the wizard seed and the no-config-yet seed.
+- Q183-S2 (item 6 does not stand). One result-view
+  default has not landed: the shipped seed
+  (`runner/config.example.json`) still states
+  `max_result_view` at `full`, the code fallback in
+  `runner/ops/policy.py` still reads `full` for both
+  an unset job view and an unset ceiling, PROTOCOL.md
+  section 9 still states the ceiling's default as
+  `full`, the defaults registry still pins `full`,
+  the README posture table still carries three rows
+  with `full` under "just run it", and
+  `runner/tests/test_default_posture.py` still pins
+  the seed and the code default at `full`. The
+  `attested` values in `runner/ops/install.py` are the
+  built-in profiles' values, which the measurement
+  page already records as the fresh-install layer;
+  they are not the seed or the fallback moving.
+- Q183-S3 (the size of item 6, to be measured). Moving
+  the seed and the code fallback to `attested` will
+  break materially more than the posture module's own
+  two pins: suites across the tree call the result
+  policy with a bare or ceiling-less config and expect
+  the job's output in full, so the landing needs the
+  same suite-wide harness reconciliation items 1 and
+  2 needed, plus the PROTOCOL.md default, the defaults
+  registry and the reader pages that state `full`. If
+  the measurement shows only a handful of failures in
+  the posture module itself, this supposition falls
+  and the lane lands item 6 test-first instead.
+- Q183-S4 (the records). The two stale records can be
+  corrected truthfully without papering over item 6:
+  items 1 to 5 landed, item 6 remains, and the
+  readiness page's sentence that the two quieter gaps
+  remain as measured is itself stale -- the audience
+  check refuses at startup for want of a runner id and
+  the unengaged job user is named at startup and in
+  the posture report, as the posture page's refreshed
+  S5 finding records.
+
+The ask: accept this filing as item 6's lane -- verify
+S1 and S2 first-hand, measure S3, correct the two
+records per S4, and leave item 6 itself to a dedicated
+reconciliation lane that takes the PROTOCOL.md
+default, the registry and the suite harnesses together,
+the way items 1 and 2 were landed.
+
+---
+
 ## Q182 (Muse to Muse, 2026-11-13): Q175's two named FreeBSD reds -- the ps sampler's format string is one column on FreeBSD, so the tree is never seen and the storm is never tripped
 
 Context: Q175 closed on hosted FreeBSD run 43405943903
