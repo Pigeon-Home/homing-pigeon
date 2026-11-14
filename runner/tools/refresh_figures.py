@@ -30,6 +30,16 @@ record's own display line is rendered from the same facts.
         by hand in the same commit; this tool owns the
         mechanical surfaces only.
 
+The commit count is taken only from a complete history.
+rev-list on a shallow checkout counts the clone's depth,
+not the project, and the 3.16.25.27 refresh published
+exactly that -- 170 commits, display 0, over standing
+facts of 5,836 (Q193). A measure therefore refuses a
+shallow checkout loudly, before anything is written, and
+refuses a fresh count below the standing facts' count:
+the project's count only grows, so either shape is a
+broken measure, never a publishable fact.
+
 The release procedure runs --write on the measured tree as
 the last content step before a release commit: measure
 first, statistics write last, and every figure cites the
@@ -201,9 +211,92 @@ def _git(root, *args):
     return out.stdout.strip()
 
 
+class ShallowHistoryError(RuntimeError):
+    """A commit count was asked of an incomplete history."""
+
+
+def display_commits_for(commits):
+    """The display rounding for a commit count: the count
+    to the nearest 1,000, halves away from zero (the shape
+    that has always stood in the facts: 5,836 reads 6,000,
+    and 170 reads 0 -- which is how the shallow figure of
+    Q193 showed itself in the display line)."""
+    return int((commits + 500) // 1000) * 1000
+
+
+def is_shallow_history(root):
+    """True when the checkout at root holds incomplete
+    history. `git rev-parse --is-shallow-repository` is the
+    authority; a git without the verb falls back to the
+    shallow file in the git directory, which a .git file or
+    a linked worktree still resolves through --git-dir. A
+    root git cannot speak for at all reads as not shallow
+    here, and count_commits' own rev-list fails on its own
+    terms there."""
+    try:
+        return _git(root, "rev-parse",
+                    "--is-shallow-repository") == "true"
+    except subprocess.CalledProcessError:
+        pass
+    try:
+        git_dir = _git(root, "rev-parse", "--git-dir")
+    except subprocess.CalledProcessError:
+        return False
+    if not os.path.isabs(git_dir):
+        git_dir = os.path.join(root, git_dir)
+    return os.path.exists(os.path.join(git_dir, "shallow"))
+
+
+def count_commits(root):
+    """The HEAD commit count of a complete history, or a
+    refusal. rev-list counts what it can reach; on a
+    shallow checkout that is the depth of the clone, not
+    the project. The statistics record's own basis states
+    the rule -- the count rests on a complete clone, and
+    any future count is taken the same way -- so a shallow
+    history refuses here, naming what it can see, instead
+    of letting a partial count be published as the
+    project's (Q193)."""
+    if is_shallow_history(root):
+        try:
+            seen = int(_git(root, "rev-list", "--count", "HEAD"))
+            detail = ("it can reach only %d commit(s) from HEAD"
+                      % seen)
+        except (subprocess.CalledProcessError, ValueError):
+            detail = "its reachable history is incomplete"
+        raise ShallowHistoryError(
+            "the checkout at %s is shallow: %s; refusing to "
+            "publish a partial commit count -- take the "
+            "measure from a complete clone, or fetch "
+            "--unshallow first" % (root, detail))
+    return int(_git(root, "rev-list", "--count", "HEAD"))
+
+
+def validate_commit_count(commits, previous):
+    """A fresh count answers to the standing facts: the
+    project's count only grows, so a smaller fresh count
+    is a broken measure (a truncated history that slipped
+    its marker, a wrong root), never a publishable fact.
+    Returns the count it was handed."""
+    if commits < 0:
+        raise ValueError(
+            "commit count is negative: %d" % commits)
+    standing = previous.get("commits")
+    if isinstance(standing, int) and commits < standing:
+        raise ValueError(
+            "fresh commit count %d is below the standing "
+            "facts' %d; the count only grows, so the measure "
+            "is broken -- refusing to publish it"
+            % (commits, standing))
+    return commits
+
+
 def measure_facts(root, previous):
     """Fresh facts for the tree at root's HEAD. The audit's
-    percentages carry forward; everything else is measured."""
+    percentages carry forward; everything else is measured.
+    The commit count is taken first, so an incomplete
+    history refuses before any measuring work is done."""
+    commits = validate_commit_count(count_commits(root), previous)
     version4, core = _load_ops(root)
     tokens = version4.measure_repo_tokens(root)
     lines = 0
@@ -214,7 +307,6 @@ def measure_facts(root, previous):
                     fh.read().decode("utf-8", "replace").splitlines())
         except OSError:
             continue
-    commits = int(_git(root, "rev-list", "--count", "HEAD"))
     core_lines, core_nonblank = core.measure_core_lines(root)
     assembled = list(core.CORE_FILES) + list(ASSEMBLED_EXTRA)
     facts = {
@@ -226,7 +318,7 @@ def measure_facts(root, previous):
         "tokens": tokens,
         "lines_tracked": lines,
         "commits": commits,
-        "display_commits": int((commits + 500) // 1000) * 1000,
+        "display_commits": display_commits_for(commits),
         "display_lines": int((lines + 50_000) // 100_000) * 100_000,
         "non_latent_percent": previous["non_latent_percent"],
         "latent_near_percent": previous["latent_near_percent"],
@@ -317,7 +409,11 @@ def main(argv=None):
             return 1
         print("figure slots and the display line match the facts")
         return 0
-    changed = write(root)
+    try:
+        changed = write(root)
+    except (ShallowHistoryError, ValueError) as exc:
+        print("refresh refused: %s" % exc, file=sys.stderr)
+        return 2
     for rel in changed:
         print("updated %s" % rel)
     if not changed:
