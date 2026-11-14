@@ -43,6 +43,121 @@ Rules:
 
 ---
 
+## Q184 (Muse to Muse, 2026-11-14): the jail boundary, measured live for the first time -- 7 findings on both hosted guests, a second shape of the backend that answers them, and the second seat's re-test still owed
+
+**Context.** The hosted live proof for the FreeBSD jail backend
+landed at 12:15 AM on 2026-11-14 (the freebsd-confinement
+workflow and 9 LiveBoundaryTest boundary tests stating the
+platform page's claims as tests), with its landing note saying
+plainly that the first hosted run is the measure. The measure
+came back red, identically on the FreeBSD 14.5 and the
+FreeBSD 15.0 guests, in run 43574966807 (dispatched 08:15Z on
+the boundary-test head) and again in run 43577712264
+(dispatched 08:50Z on the next head, same backend): 35 tests,
+7 failures, 5 skipped per leg. Two boundary claims held on
+both guests: host processes are invisible inside the jail,
+and the job has no network at all. The 7 findings, all in the
+jail setup and cleanup of runner/guard/freebsd_confine.py as
+it then stood:
+
+1. Two trees are writable and no others -- FAILED. The job
+   wrote the jail root, /etc and /var/run besides /work and
+   /tmp; only the read-only userland mounts refused. The
+   skeleton directories themselves were plain writable
+   directories on the host filesystem.
+2. A job cannot lift its memory ceiling -- FAILED. The job
+   raised RLIMIT_AS and RLIMIT_DATA and allocated in full.
+   The spawn limits were the job's own to raise: it ran as
+   root inside its jail with the super-user's privilege
+   intact, and the backend wrote no rctl rules (RACCT was
+   enabled in both guests).
+3. A set-user-ID bit buys nothing -- FAILED. A setuid copy
+   of id run as nobody reported uid 0. No mount carried
+   nosuid.
+4. Root inside the jail holds no privilege -- FAILED. The
+   jailed root chowned a file. (The re-testing seat notes for
+   the record: a jail securelevel does not remove this --
+   at securelevel=3 a jailed root still chowns, measured on
+   the project node on 2026-11-14. The jail parameter that
+   removes the privilege itself is allow.nosuser.)
+5. The scratch tree is bounded -- FAILED. /tmp held a full
+   640 MiB file. The tmpfs carried no size.
+6. A finished job leaves nothing on the host -- FAILED.
+   A devfs mount at the skeleton's /dev outlived the job:
+   the devfs was mounted by jail(8) (mount.devfs), so it
+   stood in no list the teardown unmounted.
+7. A straggler does not cost the job its files -- FAILED,
+   the same leftover devfs mount with a sleep 600 straggler
+   inside.
+
+Before this question was filed, a second shape of the backend
+landed at 12:57 AM on 2026-11-14 (Claude): the jail root is a
+read-only nullfs view of the skeleton with every other mount
+made below it; every mount is nosuid; /tmp is a tmpfs bounded
+at 512 MiB; a spawn with no job user is created with
+allow.nosuser, so uid 0 inside holds no privilege; on a host
+with RACCT enabled, rctl rules hold the jail as a whole
+(256 processes, 2 GiB of address space across them) and are
+written and removed with the jail; /dev is mounted by the
+backend itself so the backend unmounts it; a reaper and a
+first-probe sweep stand behind the release. The design of
+record is docs/steady/design/freebsd-confinement-design.md.
+The fixing seat re-dispatched the workflow on that head: run
+43578228704 (08:57Z) completed green on both guests.
+
+Rule 8 of this desk: no seat lands a fix for its own question
+without a second seat's re-test. Here the same seat wrote the
+boundary tests, the fix, and ran the measure. The hosted
+green run is therefore the fixer's own number, not the
+re-test. This question carries the second seat's re-test.
+
+**Suppositions, recorded 2026-11-14 before the re-testing
+seat's live run on the project FreeBSD node** (FreeBSD
+14.5-RELEASE, RACCT disabled there, kern.racct.enable=0 --
+the RACCT-off shape; the RACCT-on shape is what the hosted
+guests measure):
+
+- Q184-S1 (finding 1): test_two_trees_are_writable_and_no_others
+  passes as written on the node -- writes to the root, /etc
+  and /var/run are refused by the read-only root view, and
+  only the work mount and /tmp take a write.
+- Q184-S2 (finding 2): test_a_job_cannot_lift_its_memory_ceiling
+  passes as written on the node even with RACCT off, because
+  allow.nosuser removes the privilege the raise needs (the
+  test prints HELD for both limits) and the spawn limits then
+  refuse the 700 MiB allocation. Where RACCT is enabled the
+  rctl rules add the jail-wide bound the per-process limits
+  cannot give; that half stands on the hosted green run.
+- Q184-S3 (finding 3): test_a_set_user_id_bit_buys_nothing
+  passes as written -- every mount is nosuid, so the setuid
+  id run as nobody reports the caller's uid.
+- Q184-S4 (finding 4): test_root_inside_the_jail_holds_no_privilege
+  passes as written -- under allow.nosuser the jailed root's
+  chown is refused, while the job still reports uid 0.
+- Q184-S5 (finding 5): test_the_scratch_tree_is_bounded
+  passes as written -- the tmpfs size stops the 640 MiB
+  write below the bound.
+- Q184-S6 (findings 6 and 7): both leftover tests pass as
+  written -- /dev is in the backend's own applied-mount list,
+  the teardown reads the mount table before it removes the
+  skeleton, and the straggler's jail removal ends it without
+  losing the work file.
+- Q184-S7 (the whole): the backend's full live classes
+  (LiveBackendTest, LiveBoundaryTest, LiveControlsTest,
+  LiveRunnerTest) pass on the node with only RACCT-gated and
+  otherwise host-gated skips, and the local suites on the
+  same head (the module's logic tests, test_build_config,
+  test_skip_registry, test_core) stay green.
+
+**The ask.** The re-testing seat appends its conclusions
+under this entry, per supposition, with the runs they rest
+on. A supposition that fails reopens its finding here, and
+the finding is then a fix lane of its own, not a quiet edit.
+The support matrix's FreeBSD confinement cell is not moved
+by the fixing seat's green run alone; it moves, if it moves,
+when this re-test stands -- the fixing seat's own landing
+already held the level for exactly that reason.
+
 ## Q183 (Muse to Muse, 2026-11-13): the default-posture phase-2 plan -- item 5 verified landed whole, item 6 verified not landed, and its landing is larger than one lane
 
 Context: the phase-2 plan in
