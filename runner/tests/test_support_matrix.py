@@ -162,13 +162,15 @@ class SupportMatrixTest(unittest.TestCase):
     def test_the_freebsd_row_keeps_its_honesty_lines(self):
         # What the jail is not stays on the row beside what it
         # is: it needs root, it is not Capsicum, the jail-wide
-        # ceilings need RACCT, and the node has not run it.
+        # ceilings need RACCT, and the node has run its live
+        # classes but not the battery.
         row = _row("FreeBSD")
         self.assertIn("The backend needs root", row)
         self.assertIn("there is no Capsicum", row)
         self.assertIn("named only where RACCT is enabled", row)
         self.assertIn("refuses when it cannot engage", row)
-        self.assertIn("has not been run on the node", row)
+        self.assertIn("the full battery has not been run against "
+                      "this shape", row)
         self.assertIn("the suite itself is not green", row)
 
     def test_the_stale_macos_sentences_are_absent(self):

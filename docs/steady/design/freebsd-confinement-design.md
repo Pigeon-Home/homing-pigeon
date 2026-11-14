@@ -352,8 +352,13 @@ this design cannot have: it confines without root.
 - The posture report (`--posture`) names, on a FreeBSD host,
   the controls a job's jail would carry there and what would
   refuse the start, without building a jail.
-- The project's own node has not run this shape. Its field
-  test of 2026-11-10 was of the first backend.
+- The project's own node (FreeBSD 14.5-RELEASE, RACCT off) ran
+  the module's live classes on 2026-11-14, independently of
+  the build, in a test root with the production install
+  untouched: every live test passed but the two that need
+  RACCT, which skip by name there. The node's 17-step battery
+  of 2026-11-10 was of the first backend and has not been run
+  against this shape.
 
 ## Suppositions and conclusions
 
@@ -429,6 +434,15 @@ three guests passed, 161 tests each. On the guest without
 RACCT the two rctl tests skipped, as they are written to; the
 record named no rctl control; everything else passed; and
 nothing was left on any of the three.
+
+The same day the live classes were run on the project's own
+node, on a byte-identical copy of the tree and apart from the
+hosted runs: 29 live tests, 27 passing and the two RACCT
+tests skipping, with the boundary tests' assertions as they
+were written against the first backend. On that host the
+record reads `freebsd: jail + no_network + no_superuser +
+spawn_resource_limits`, and the ceiling a job cannot lift is
+held there by `allow.nosuser` alone.
 
 One thing the run measured that this page had not supposed:
 the whole module — every live job among its tests — took

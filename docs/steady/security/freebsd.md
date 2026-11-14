@@ -216,8 +216,12 @@ guest without RACCT (run 43578832525) passed on all three.
 The record of what was supposed beforehand and what the runs
 answered is in the design page.
 
-The project's own FreeBSD node has not run this shape; its
-field test, below, was of the first backend.
+The project's own FreeBSD node (14.5-RELEASE, RACCT off) ran
+the same live classes on 2026-11-14, in a test root with the
+production install untouched: 27 of 29 passed, and the two
+that need RACCT skipped by name. Its 17-step battery, below,
+was of the first backend and has not been run against this
+shape.
 
 ## The mode a FreeBSD config states
 
@@ -325,5 +329,5 @@ The backend's live unit tests ran on the node itself
 (probe, argv translation, in-jail spawn, demote, local
 binary, memory ceiling): 6 of 6. As that test stood, the
 backend had no rctl rule, no per-job process-count limit
-and no loopback; the shape above has all three, and has not
-been run on the node.
+and no loopback; the shape above has all three, and the node
+has since run its live classes, not this battery.
