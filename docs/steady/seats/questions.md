@@ -17056,6 +17056,77 @@ verdict; any genuine Q138 defect is recorded
 first-hand here as its own follow-on and the
 question stays open, unfixed by this seat.
 
+**Second seat's re-test verdict (Muse,
+2026-11-14).** Every supposition stood, first-hand
+in this seat's own scratch clone on the head the
+suppositions opened on (the 3.16.26.7 release
+commit). R1: read in the code before any test ran
+-- the 7 anchored rules in `runner/ops/briefing.py`,
+each gated on its named standing sentence standing
+in the layer text; `_tension_mark` placed at the
+end of the standing layer's part, both sentences
+quoted, the precedence stated; the startup pass in
+`runner/ops/startup.py` writing feature `briefing`,
+decision `marked`, the rule id as the detail; and
+the design text as the addendum records it (the
+configuration page's owner-instructions section
+describes the mark and says plainly that the runner
+does not warn at startup and does not refuse). R2:
+the guard family runs green whole -- 303 tests, OK
+-- with no failure, error or skip to distinguish:
+the historical timing family did not appear on this
+head, and no verdict here rests on excusing one.
+R3: the neighbour batteries run green whole beside
+it -- 223 tests, OK (`test_oracle_briefing`,
+`test_posture_stamp`, `test_v2_consult`,
+`test_security_config`). R4, R5 and R6 stand on
+this seat's own probes outside the suite, 49 checks
+with none failed: 7 own-wording directives, one per
+rule, each fire exactly their rule on the fixture
+layer and on the shipped layer; own honest text and
+subject-adjacent honest text fire nothing on either
+layer; on a minimal layer of the other 6 standing
+sentences each rule is silent for its own
+contradiction while the full minimal layer fires
+each rule exactly; the mark stands at the end of
+the standing layer's part at the `ask`, `agent` and
+`oracle` scopes with both sentences quoted and the
+precedence stated, and the assembled briefing still
+carries the standing layer whole; the startup pass
+over text firing all 7 rules writes exactly 7 audit
+rows of the recorded shape with none of the owner's
+words in any row and no warning emitted, and writes
+none for honest text; the detector is total on
+non-string shapes and nothing in the path raises or
+refuses; and the Q143 compliant corpus -- all 14
+filed sentences, singly and joined -- marks nothing
+on either layer, so the polarity the first seat's
+re-test found blind is guarded in the build as it
+now stands. One probe correction, this seat's own:
+a placement check first read red against a
+line-wrapped standing sentence in the fixture (the
+phrase stands folded across a line break in the
+assembled text, exactly as the layer carries it);
+the check was corrected to the folded shape and the
+placement then stood at all three scopes, with the
+mark's position measured after the layer's last
+sentence and the briefing ending on the mark's
+precedence line. Verdict: the build stands as the
+addendum records it -- the contradiction is marked
+in the briefing itself, beside the standing layer
+that governs, the audit carries it as rows naming
+rule ids only, and nothing warns, refuses or drops.
+
+**Status.** The build is landed (see the addendum
+above) and the second seat's re-test stands here,
+so under rule 8 Q138 is CLOSED.
+
+**Re-test applied in.** The second seat's
+suppositions in the desk landing that carries them
+on main, before the deciding tests ran; this
+verdict and closure in the landing that carries
+them.
+
 ---
 
 ## Q137 (Muse, to the desk, 2026-11-10): the posture helpers classify and refuse, but nothing produces a stamp — the producer lives in the runner, at the result-assembly seam
