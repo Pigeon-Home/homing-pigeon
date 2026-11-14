@@ -266,6 +266,15 @@ on the same three guests (run 43588595272) such a job read a
 root-only file from a tree its jail showed it, and the same
 job under a job user was refused it.
 
+The job user a fresh install names is tested there as well.
+On its first run (2026-11-14, run 43592323669) the seed, as
+root, left the jail on and named `nobody` on all three
+guests; a runner started on that config ran its first job as
+uid 65534, and the job was refused a root-only file in a
+tree it was shown while reading the file beside it that all
+may read; a config that named its own job user kept it; and
+nothing was left on any guest. The node has not run these.
+
 ## The mode a FreeBSD config states
 
 A fresh FreeBSD install asks the machine before it writes

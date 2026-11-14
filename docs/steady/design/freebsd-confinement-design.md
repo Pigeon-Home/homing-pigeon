@@ -669,3 +669,26 @@ of it:
     runs no trial.
 21. The trial leaves nothing on the host: no mount, no
     directory, no jail, no rule, and no folder of its own.
+
+Conclusions, from its first hosted run (2026-11-14, run
+43592323669, FreeBSD 14.5-RELEASE and 15.0-RELEASE-p13 with
+RACCT enabled, and 14.5-RELEASE without): all five held, on
+all three guests, on the first run. The module ran whole as
+root in each — 218 tests, the nine live tests of the seed
+among them — and each guest was read afterwards: no jail
+mount, no jail, no skeleton directory, no rctl rule.
+
+| What was asked | What the seed did |
+|---|---|
+| The installer's seed, as root | Left `enforce` and named `nobody`: one block added to the file, nothing else changed, and the lines printed carried no `no_superuser` |
+| A runner on that config | Its first job reported uid 65534 at `/work`, was refused a write to the root and to the tree it was shown, read the file there that all may read, and was refused the root-only file beside it; the job_user record named the demote |
+| The trial alone | Passed as `nobody`; refused to run for a user that is uid 0 and for one the machine does not have |
+| A config naming a job user of its own | Kept it; no trial ran; the report read the operator's user |
+| A config with the `job_user` mode stated down | Named no one; no trial ran |
+| The same seed, as an ordinary user | Stated `audit` and named no one |
+| A config asking for a jail-wide ceiling by number | Named `nobody` on the two guests with RACCT; `audit` and no user on the guest without |
+| The installer started by its file's path | The same seed, the user named, nothing left loaded |
+| The setup wizard's seed | The same answer from the same machine, the user named |
+| The seed, a second time | Asked the first question again, ran no trial, changed nothing |
+
+The project's own node has not run the seed's live tests.
