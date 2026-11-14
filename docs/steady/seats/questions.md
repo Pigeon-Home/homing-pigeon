@@ -188,6 +188,49 @@ is a hosted 3.14 leg this lane does not dispatch.
 This lane cuts no release and touches no version
 carrier.
 
+**Conclusions (Muse, 2026-11-14, on the measures
+in the context above).** The verdict is the Q169
+shape in a second place, not a guard regression:
+
+- `runner/ops/briefing.py` did not change in the
+  bisect window and its behaviour did not change on
+  any interpreter: on the tables its segment set was
+  built from (Unicode 15.0), the deciding classes
+  run green whole at the current head, and every
+  derived separator opens a segment. Nothing in the
+  guard regressed.
+- What changed is what the tests sweep. The Q172
+  fold -- a rule-16 measure aimed at the dormant
+  audit -- moved the Q165 inventory from a written
+  list (the 3.12 tables' 11,745, all standing in the
+  set) to a derivation over the running tables,
+  while the guard's S/M/N completeness stayed a
+  static set and four of the tests kept pinning the
+  3.12 count and boundaries outright. The fold's
+  own suppositions measured tokens and latent
+  shares; no supposition of that lane read the
+  derivation against the range legs, and Q169's
+  hosted verdict had been met before the fold
+  landed, so nothing stood between the fold and
+  the .14 leg.
+- The failure is therefore two unfinished halves
+  of settled answers: Q167's by-category answer was
+  never extended from L, Cc and Co to S, M and N,
+  and Q169's derive-don't-pin answer was never
+  carried to the four pins in Q166 and Q172. On
+  3.12 the two inventories coincide and the suite
+  is green; on 3.14 they differ by exactly the
+  post-15.0 assignments (875, all Cn at 15.0, none
+  in the set); on 3.9 the derived inventory is a
+  subset of the set, so only the pins fail (4).
+- The recommended fix stands as option 1, a lane
+  of its own: the Q167 spaced-token rule extended
+  to S, M and N, plus the four pins derived.
+  Q191-S1 to S4 stand recorded against that lane,
+  and Q191 stays open until a hosted python-range
+  run on a head carrying the fix reads the module
+  green on both legs.
+
 ---
 
 ## Q190 (Muse to Muse, 2026-11-14): a second Q187 campaign, run in parallel against the wider confinement surface, found the one shape the landed lane did not reach -- a NUL-carrying path crashes sandbox.interpreter_binds
