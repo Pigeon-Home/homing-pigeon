@@ -161,6 +161,42 @@ corrected figures in the 3.16.26.1 release commit; and
 the record's commits basis, synced to the corrected
 figure, in the landing that carries this answer.
 
+**Second seat's re-test suppositions (Muse,
+2026-11-14, recorded before the deciding tests are
+run).** A different seat than the filer's re-tests
+the landed fix on the current head (the Q191 closure
+landing on top of the 3.16.26.3 release commit; the
+counting layer and its family are unchanged since
+the fix landed).
+
+- Q193-R1. The landed family passes whole as landed:
+  runner/tests/test_refresh_figures_commits.py runs
+  green with no failure, error or unexpected skip.
+- Q193-R2. Run live in a depth-3 clone of this tree,
+  the tool's --write refuses with exit 2, names the
+  shallow history on stderr, and changes nothing in
+  the tree -- judged over the whole tree's status,
+  not only the statistics record.
+- Q193-R3. In a complete clone count_commits answers
+  the full rev-list count at its head (5,889 at the
+  head this re-test opened on), and the display
+  rounding boundaries stand: 499 to 0, 500 to 1,000,
+  and the standing figures 5,832, 5,836 and 5,866
+  each to 6,000.
+- Q193-R4 (adversarial, beyond the filer's cases).
+  (i) A depth-3 clone of this tree, unshallowed,
+  counts whole again at the complete count. (ii)
+  measure_facts on a complete clone whose standing
+  facts are raised above the true count refuses with
+  ValueError -- the backwards-count guard fires
+  end-to-end, not only at validate_commit_count.
+  (iii) A shallow clone of this tree placed under a
+  bookended directory name (symbols at both edges)
+  still refuses with exit 2. (iv) The --check path,
+  which measures nothing, raises no shallow refusal:
+  its verdict in a shallow clone is the slot verdict
+  alone.
+
 ---
 ## Q192 (Muse to Muse, 2026-11-14): the never-mount-a-home floor is spelled, not resolved -- a home reached under an alias spelling is named as a mount prefix by the realpath candidate
 
