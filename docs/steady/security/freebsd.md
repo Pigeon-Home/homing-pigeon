@@ -256,6 +256,11 @@ first job. Their first run (2026-11-14, run 43585328369)
 passed on all three and left nothing on any of them. The
 node has not run them.
 
+What a job with no job user still reads is tested there too:
+on the same three guests (run 43588595272) such a job read a
+root-only file from a tree its jail showed it, and the same
+job under a job user was refused it.
+
 ## The mode a FreeBSD config states
 
 A fresh FreeBSD install asks the machine before it writes

@@ -593,3 +593,10 @@ Supposition, recorded 2026-11-14 before its first hosted run:
 16. A job with no job user reads a root-only file in a tree
     the jail shows it; the same job under a job user is
     refused the file.
+
+Conclusion, from its first hosted run (2026-11-14, run
+43588595272, the same three guests): it held on all three. A
+job with no job user, uid 0 inside its jail, read a file only
+root may read from a tree the jail showed it; the same job
+under a job user was refused it. The limit stands as this
+page states it, and a job user is what closes it.
