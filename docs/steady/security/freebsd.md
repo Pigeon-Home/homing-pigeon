@@ -63,6 +63,12 @@ is what an operator needs from it.
   (`rctl_resource_limits`), on a host with RACCT enabled: at
   most 256 processes in the jail, and at most 2 GiB of address
   space across all of them together, held by rctl rules.
+- **A ceiling on the job user's processes**, on every host:
+  a job that goes in as a job user is held to 256 processes,
+  set by the same `limits(1)` at the jail door. The kernel
+  counts each user's processes and refuses the fork that
+  would pass the limit, so this one needs no RACCT and no
+  reboot (below, under the job user).
 
 The jail exists before the job's first process starts (the job
 is started inside it with `jexec(8)`), so the job never runs a
@@ -87,6 +93,11 @@ A ceiling you write yourself does not follow the host:
 `job_processes` or `job_memory_bytes` in the config on a host
 without RACCT refuses the start and names the tunable.
 
+One ceiling on processes does not wait for RACCT: the job
+user's (below, under the job user). On a host as FreeBSD
+ships, a job that goes in as a job user is still held to a
+number of processes.
+
 ### Settings
 
 All optional, under `security.confinement`:
@@ -100,7 +111,8 @@ All optional, under `security.confinement`:
     "process_memory_bytes": 536870912,
     "tmp_bytes": 536870912,
     "job_memory_bytes": 2147483648,
-    "job_processes": 256
+    "job_processes": 256,
+    "job_user_processes": 256
   }
 }
 ```
@@ -120,8 +132,10 @@ All optional, under `security.confinement`:
   nothing else — the host's 127.0.0.1 is another stack. The
   record names `private_loopback` in place of `no_network`.
   It needs a kernel with VIMAGE, which GENERIC carries.
-- The four numbers are the ceilings above. A setting the
-  backend does not know is a config error, on every platform.
+- The five numbers are the ceilings above.
+  `job_user_processes` is the one that applies only to a job
+  that goes in as a job user. A setting the backend does not
+  know is a config error, on every platform.
 
 ### The interpreter
 
@@ -157,6 +171,39 @@ jail goes on makes an account for the jobs alone,
 `pigeon-jobs`, and names it for that reason (below, under
 the mode a FreeBSD config states); a config that names a
 user of its own keeps it.
+
+A job user also brings a ceiling on processes that needs
+nothing of the host. Behind the door the job's command runs
+under `limits(1)` with the process limit set (`-u`), 256
+unless `freebsd.job_user_processes` says otherwise. The
+kernel counts the processes each user holds and refuses the
+fork that would pass the limit; the job cannot raise it; and
+RACCT has no part in it, so it holds with no tunable and no
+reboot. `--posture` states the number, and so does each
+job's audit record:
+
+```
+job user pigeon-jobs held to 256 processes
+```
+
+Three things to know about it:
+
+- **The count is the account's.** Every process the account
+  holds on the host counts: every job running at that
+  moment, in whichever jail, and anything else that runs as
+  that account. An account of the jobs' own makes the
+  ceiling the jobs' own, which is one more reason not to
+  name `nobody` or a user that runs a service. A runner
+  with several workers shares the one ceiling among the jobs
+  it runs at once; raise the number for it.
+- **It must be able to engage.** `job_user_processes` in a
+  config that engages no job user refuses the start, and so
+  does a number above the most the kernel lets one user hold
+  on that host (`kern.maxprocperuid`).
+- **A job with no job user has none.** That job is uid 0,
+  and uid 0's count is the host's own root processes. Its
+  only ceiling on processes is the jail's rule, on a host
+  with RACCT enabled.
 
 ### Startup, and after a job
 
@@ -222,6 +269,10 @@ its mounts and its skeleton. Three things stand behind that:
   resource limit applied at spawn, and it holds because the
   job has no privilege to raise it. The kernel rules are the
   rctl ones, on a host with RACCT enabled.
+- **No ceiling on processes for a job with no job user**,
+  on a host without RACCT. And the job user's ceiling is the
+  account's, not one job's: jobs that run at once share it,
+  and it counts processes, not the threads inside one.
 - **Memory outside a process.** A shared-memory object a job
   creates and never maps is bounded by neither ceiling. The
   `/tmp` bound closes the largest such door.
@@ -320,6 +371,7 @@ of it is removed.
   platform: security.job_user names pigeon-jobs in /root/.homing-pigeon/config.json (a trial job as pigeon-jobs inside a jail on this machine passed; a jailed job with no job user is root's uid and reads what root owns in the trees it is shown)
   platform: FreeBSD jail backend: freebsd: jail + no_network + spawn_resource_limits
   platform: a job goes in as pigeon-jobs at the jail door (security.job_user) and reads what that user can read
+  platform: pigeon-jobs is held to 256 processes across this host (limits -u at the jail door; no RACCT needed)
   platform: RACCT is not enabled on this host, so the jail-wide rctl ceilings are not written (kern.racct.enable=1 in /boot/loader.conf and a reboot engage them)
   ```
 
@@ -373,7 +425,9 @@ Before the name is written the seed asks the machine one
 thing more: it runs a throwaway job as that account inside a
 jail, with a file only root may read in a tree the jail shows
 it. The job must report the account's uid, write its work
-mount, and be refused the file.
+mount, be refused the file, and read the ceiling on its
+account's processes as the config sets it, with no way to
+raise it.
 
 - **Where that trial passes, `security.job_user` names
   `pigeon-jobs`** in the config. Every job goes in at the

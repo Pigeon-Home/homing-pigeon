@@ -588,7 +588,8 @@ ceiling the job cannot raise; on a host with RACCT enabled,
 rctl rules also hold the jail as a whole. A job with no job
 user is still the owner of what root owns, and reads a
 root-only file in a tree the jail shows it; a job user
-(below) closes that. The audit record
+(below) closes that, and brings a ceiling on its own
+processes that needs no RACCT. The audit record
 names the controls a job's jail carried, from the floor
 `freebsd: jail + no_network + spawn_resource_limits` up.
 `extra_ro_binds` and `work_mount` above mean the same on
@@ -604,16 +605,20 @@ every platform:
     "process_memory_bytes": 536870912,
     "tmp_bytes": 536870912,
     "job_memory_bytes": 2147483648,
-    "job_processes": 256
+    "job_processes": 256,
+    "job_user_processes": 256
   }
 }
 ```
 
 `loopback` gives the job a loopback of its own and nothing
-else; the four numbers are the per-process ceiling, the size
-of `/tmp`, and the two jail-wide ceilings, which need RACCT
-(`kern.racct.enable=1` in `/boot/loader.conf`) and refuse the
-start when written on a host without it. A fresh FreeBSD
+else; the first four numbers are the per-process ceiling, the
+size of `/tmp`, and the two jail-wide ceilings, which need
+RACCT (`kern.racct.enable=1` in `/boot/loader.conf`) and
+refuse the start when written on a host without it. The
+fifth is the most processes the job user may hold across
+the host: it applies to a job that goes in as a job user,
+is set at the jail door, and needs no RACCT. A fresh FreeBSD
 install asks this backend's probe before it writes its
 config: the mode stays at `enforce` where the probe passes,
 and is stated at `audit`, with the reason printed, where it

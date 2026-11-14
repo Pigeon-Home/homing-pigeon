@@ -191,6 +191,7 @@ are what keep that user from coming back as root.
 | `/tmp` | 512 MiB | The tmpfs's size | `tmp_bytes` |
 | Processes in the jail | 256 | rctl `maxproc`, where RACCT is enabled | `job_processes` |
 | Address space of every process in the jail together | 2 GiB | rctl `vmemoryuse`, where RACCT is enabled | `job_memory_bytes` |
+| Processes of the job user, across the host | 256 | `limits(1)` at the jail door, under a job user; the job cannot raise it | `job_user_processes` |
 
 RACCT is a boot tunable (`kern.racct.enable=1` in
 `/boot/loader.conf`), off as FreeBSD ships. Where it is off
@@ -203,6 +204,48 @@ refuses the start and says which tunable to set.
 
 The per-process ceiling is a resource limit, not a kernel
 rule. It holds because the job has no privilege to raise it.
+
+### The job user's processes
+
+A job that goes in as a job user has one ceiling more, and it
+asks nothing of the host. The kernel counts the processes
+each user holds, on every FreeBSD, and refuses the fork that
+would take a user past the limit the forking process carries.
+So the job's command runs under `limits(1)` with that limit
+set too (`-u`), after the door, as the job user: 256 unless
+the config says otherwise. A limit set there is one the job
+cannot raise, because raising it takes privilege and the job
+user has none. RACCT has no part in it. The ceiling holds on
+a host as FreeBSD ships, with no tunable and no reboot.
+
+The count is the account's, not one job's. Every process the
+account holds on the host counts toward it: every job of the
+runner running at that moment, in whichever jail, and
+anything else that runs as that account. That is the second
+reason the installer's account is the jobs' alone. A ceiling
+on `nobody` is shared with whatever else `nobody` runs; a
+ceiling on `pigeon-jobs` is the jobs' to the last process. A
+runner with several workers shares the one ceiling among the
+jobs it runs at once, and `job_user_processes` raises it.
+
+A job with no job user gets no such ceiling. It is uid 0, and
+uid 0's count is the host's own root processes: a limit there
+would be the host's as much as the job's. For that job the
+jail's own rule is the only ceiling on processes, where RACCT
+is enabled.
+
+The setting follows the rule for a ceiling the operator
+wrote. `job_user_processes` in a config that engages no job
+user refuses the start, and so does a number above the most
+the kernel lets any one user hold on that host
+(`kern.maxprocperuid`): the door could not set it. The
+default adapts instead. On a host whose own limit is below
+256 the ceiling is that limit.
+
+The record's names do not change. The ceiling is one of the
+spawn's resource limits (`spawn_resource_limits`), and the
+job's audit record carries the number in its detail: `job
+user pigeon-jobs held to 256 processes`.
 
 ## Network
 
@@ -234,7 +277,8 @@ Under `security.confinement`, all optional:
     "process_memory_bytes": 536870912,
     "tmp_bytes": 536870912,
     "job_memory_bytes": 2147483648,
-    "job_processes": 256
+    "job_processes": 256,
+    "job_user_processes": 256
   }
 }
 ```
@@ -266,7 +310,11 @@ write the two trees, that lands a write on the root, that
 keeps a privilege, or that sees the host's devices (the jail
 ruleset not loaded) is a refusal by name. Where the config
 asks for a loopback the address is read back; where RACCT is
-enabled the rules are.
+enabled the rules are. A ceiling on the job user's processes
+is asked for the job user the config engages: the probe's own
+jail is the one a job with no job user gets, and a config
+that names the ceiling and engages no job user is refused
+before anything is built.
 
 A passing verdict is kept for the life of the runner process,
 for the settings it was run with, so the per-job gate does not
@@ -355,8 +403,10 @@ the machine a second question. It runs a throwaway job as
 that account inside a jail built as a job's is built under
 the config, with one tree more shown in it: a directory
 holding a file only root may read. The job must report the
-account's uid, write its work mount, and be refused the file
-— the three things a named job user is for.
+account's uid, write its work mount, be refused the file, and
+read the ceiling on its account's processes as the config
+sets it, with no way to raise it — the four things a named
+job user is for.
 
 - The trial passes: `security.job_user` is written into the
   config, naming the account. From the first start every job
@@ -476,7 +526,7 @@ runner's jobs are never touched.
 | What a job reads in the trees it is shown | What the runner's own user can read | Under a job user, what that user can read; with none, what root owns as well |
 | Set-user-ID programs | Not honoured (no new privileges) | Not honoured (`nosuid` mounts) |
 | Memory ceiling, per process | None | 512 MiB, not the job's to raise |
-| Ceilings on the whole job | None | Processes and address space, where RACCT is enabled |
+| Ceilings on the whole job | None | The job user's processes, on every host; each jail's processes and address space, where RACCT is enabled |
 | Operator binds, work mount | Yes | Yes, the same keys |
 | Interpreter outside the trees | Its prefix, read-only, recorded | The same rule, the same record |
 | Runner gone | The sandbox's command is killed | The jail is removed: every process ends |
@@ -519,6 +569,11 @@ root, so a job with no job user is root's uid too.
   to it, and an interpreter in its `bin` brings that home in,
   read-only.
 - The per-process ceiling is not a kernel rule (above).
+- A job with no job user has no ceiling on its processes
+  where RACCT is not enabled. The job user's ceiling is the
+  account's, not one job's: jobs of the account that run at
+  once share it. It counts processes, not the threads inside
+  one.
 - Memory a job holds outside any process's address space — a
   shared-memory object it never maps — is bounded by neither
   ceiling. The `/tmp` bound closes the largest such door.
@@ -544,7 +599,8 @@ root, so a job with no job user is root's uid too.
   14.5 and 15.0 with RACCT enabled, and 14.5 as FreeBSD ships,
   RACCT off — and runs the same module as root in each, the
   live classes included: the boundary read from inside a job,
-  the jail-wide rules, the loopback, the binds, the
+  the jail-wide rules, the job user's process ceiling with
+  RACCT and without, the loopback, the binds, the
   interpreter's prefix, a runner killed outright, jobs
   through the runner itself, with and without a job user, and
   the mode a fresh install states on that guest. Weekly and
@@ -871,3 +927,39 @@ were red, all six these. On its run after the change (run
 43607347206) none of them is named red. That run was ended
 by its 30-minute clock before the suite's end, so it is not
 a whole green run of the suite.
+
+### The job user's process ceiling
+
+Suppositions, recorded 2026-11-14 before the first hosted run
+of the ceiling:
+
+33. A job that goes in as a job user, under a ceiling of 24,
+    starts children until the kernel refuses the fork, and
+    the refusal is EAGAIN. The account then holds 24
+    processes in all: the job's first one and twenty-three
+    children. On the guest without RACCT too, where the
+    record names no rctl rule.
+34. The job reads 24 as both its soft and its hard limit and
+    cannot raise either. Below the ceiling the limit is its
+    own to move.
+35. The count is the account's across jails. With one job of
+    the account holding nine processes in its jail, a second
+    job in a jail of its own starts fourteen children, not
+    twenty-three.
+36. A job with no job user carries no such limit: it starts
+    forty children on every guest.
+37. On the two guests with RACCT a job meets the lower of the
+    two ceilings: under a jail rule of 12 it stops below 12,
+    and under a jail rule of 48 it stops at the account's 24.
+38. An account the installer made, held to 24, holds exactly
+    24: nothing else runs as it. The installer's trial job
+    reads the default, 256, and the installer's lines state
+    it.
+39. On a real host the startup probe refuses a config that
+    names the ceiling and engages no job user, and one that
+    names a number above `kern.maxprocperuid`; at that number
+    exactly, the door sets it.
+40. Nothing is left: when the jail goes, every process of the
+    account goes with it, and each guest ends with no jail,
+    no mount, no skeleton directory, no rule and no jobs
+    account.

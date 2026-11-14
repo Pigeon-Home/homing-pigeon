@@ -63,7 +63,17 @@ The controls, and what each one is:
   with the virtual-memory and data-size limits both set to the
   per-process ceiling (512 MiB unless the config says
   otherwise). Under no_superuser, and under a job user, the job
-  cannot raise them.
+  cannot raise them. A job that goes in as a job user carries
+  one limit more, set by the same limits(1) after the door: the
+  number of processes that user may hold (256 unless the config
+  says otherwise). The kernel counts a user's processes on
+  every FreeBSD and refuses the fork that would pass the limit,
+  so this ceiling needs no RACCT and no reboot. The count is
+  the account's across the host -- every job of the account in
+  whichever jail, and anything else that runs as it -- which is
+  why an account of the jobs' own makes the ceiling the jobs'
+  own. A job with no job user does not carry it: that job is
+  uid 0, and uid 0's count is the host's own.
 
 The jail exists before the job's first process runs (jexec
 starts the job inside it), so there is no race in which the job
@@ -99,6 +109,10 @@ What this is NOT, stated plainly wherever it is recorded:
   It is the job's own to keep only because the job holds no
   privilege to raise it; it is not a kernel rule. The kernel
   rules are the rctl ones, on a host that has RACCT enabled.
+  The job user's process ceiling is a resource limit too, and
+  the account's, not one job's: jobs of the account that run
+  at once share it, and it counts processes, not the threads
+  inside one.
 - Memory a job holds outside a process's address space -- a
   POSIX shared-memory object it never maps -- is bounded by
   neither ceiling. The /tmp bound closes the largest such door.
@@ -149,6 +163,11 @@ DEFAULT_TMP_BYTES = 512 * 1024 * 1024
 # The jail-wide ceilings, held by rctl on a host with RACCT.
 DEFAULT_JOB_MEMORY_BYTES = 2 * 1024 * 1024 * 1024
 DEFAULT_JOB_PROCESSES = 256
+# The ceiling on the processes a job user holds: applied as the
+# process-count resource limit at the jail door, for a job that
+# goes in as a job user. Held by the kernel's own count of each
+# user's processes, with RACCT or without.
+DEFAULT_JOB_USER_PROCESSES = 256
 
 # The floor: the controls every confined job has, named exactly.
 STATUS_CONFINEMENT = "freebsd: jail + no_network + spawn_resource_limits"
@@ -204,7 +223,8 @@ _RESERVED_TOP = ("usr", "bin", "lib", "libexec", "sbin", "etc",
 
 # The settings security.confinement.freebsd may carry.
 FREEBSD_KEYS = ("loopback", "process_memory_bytes", "tmp_bytes",
-                "job_memory_bytes", "job_processes")
+                "job_memory_bytes", "job_processes",
+                "job_user_processes")
 _FREEBSD_NUMBERS = FREEBSD_KEYS[1:]
 
 # The reaper: one line of sh on the read end of a pipe. The word
@@ -339,6 +359,10 @@ def confinement_settings(cfg):
         # cannot. A number means the operator asked for the rule.
         "job_memory_bytes": block.get("job_memory_bytes"),
         "job_processes": block.get("job_processes"),
+        # None here too: the default applies to a job that goes
+        # in as a job user and nothing is asked of one that does
+        # not. A number means the operator asked for the ceiling.
+        "job_user_processes": block.get("job_user_processes"),
     }
 
 
@@ -584,6 +608,66 @@ def _vimage_present(host):
     return rc == 0 and out.strip() == "1"
 
 
+def _processes_per_user(host):
+    """kern.maxprocperuid: the most processes the kernel lets
+    any one user hold on this host, or None when it cannot be
+    read. A process-count limit above it is one the kernel
+    will not let an unprivileged user set."""
+    rc, out, _err = _quiet(host, [SYSCTL_BIN, "-n",
+                                  "kern.maxprocperuid"])
+    try:
+        value = int(out.strip()) if rc == 0 else 0
+    except ValueError:
+        value = 0
+    return value if value > 0 else None
+
+
+def job_user_ceiling(host, st, user=None):
+    """The ceiling on the processes of the job user, for a job
+    that goes in as `user`; None for a job with no job user.
+
+    The number limits(1) sets at the jail door (-u). The kernel
+    counts the processes each user holds across the host and
+    refuses a fork that would take the user past the limit the
+    forking process carries, on any FreeBSD: RACCT has no part
+    in it. A job with no job user carries no such limit -- it
+    is uid 0, and that count is the host's own root processes.
+
+    Raises RuntimeError when the config names a ceiling this
+    job cannot have. The default adapts to the host, as the
+    rctl defaults do: where the kernel's own limit on one
+    user's processes is lower, that is the ceiling. A number
+    the operator wrote must engage or refuse: with no job user
+    there is no account to hold it to, and above the kernel's
+    own limit the door would refuse to set it.
+    """
+    named = st["job_user_processes"]
+    if user is None:
+        if named is not None:
+            raise RuntimeError(
+                "security.confinement.freebsd.job_user_processes "
+                "is a ceiling on the job user's processes, and "
+                "this config engages no job user (security."
+                "job_user names none, or security.modes.job_user "
+                "is not at enforce): name a job user or remove "
+                "the setting")
+        return None
+    per_user = _processes_per_user(host)
+    if named is None:
+        if per_user is None:
+            return DEFAULT_JOB_USER_PROCESSES
+        return min(DEFAULT_JOB_USER_PROCESSES, per_user)
+    if per_user is not None and named > per_user:
+        raise RuntimeError(
+            "security.confinement.freebsd.job_user_processes (%d) "
+            "is above the most processes this host lets any one "
+            "user hold (kern.maxprocperuid is %d): the limit "
+            "could not be set at the jail door. Lower the "
+            "setting or raise kern.maxprocperuid"
+            % (named, per_user))
+    return named
+
+
 def _basic_problem(host, st=None):
     """Why the backend cannot engage at all here, or None.
 
@@ -616,8 +700,12 @@ def controls_for(host, st, user=None):
     host cannot hold. A default adapts to the host -- the rctl
     ceilings are written where RACCT is enabled and not named
     where it is not -- but a setting the operator wrote must
-    engage or refuse.
+    engage or refuse. The job user's process ceiling is one of
+    the spawn's resource limits and adds no name; its own rule
+    (job_user_ceiling) is asked here, so a config that cannot
+    have it is refused wherever the controls are read.
     """
+    job_user_ceiling(host, st, user)
     controls = ["jail"]
     if st["loopback"]:
         if not _vimage_present(host):
@@ -953,16 +1041,30 @@ def _build_jail(host, st, name, workdir, user, rctl, prefixes=()):
     return base, root, applied
 
 
-def _limits(memory_bytes):
-    return [LIMITS_BIN, "-v", str(int(memory_bytes)),
+def _limits(memory_bytes, processes=None):
+    """The limits(1) prefix of a job's command: the per-process
+    memory ceiling, and for a job that goes in as a job user
+    the ceiling on that user's processes."""
+    argv = [LIMITS_BIN, "-v", str(int(memory_bytes)),
             "-d", str(int(memory_bytes))]
+    if processes is not None:
+        argv += ["-u", str(int(processes))]
+    return argv
 
 
-def _trial(host, st, timeout=15):
+def _trial(host, st, timeout=15, user=None):
     """Build a throwaway jail as a job's would be built and run
-    the trial inside it; None or the problem, by name."""
+    the trial inside it; None or the problem, by name.
+
+    `user` is the job user the config engages, if it engages
+    one. The trial's own jail is the one a job with no job user
+    gets -- the door is the job_user seam's to prove -- but
+    what the config asks of the controls is asked for the jobs
+    it will run: a ceiling on the job user's processes is
+    refused here where no job user is engaged, and passes where
+    one is."""
     try:
-        controls, rctl = controls_for(host, st, user=None)
+        _controls, rctl = controls_for(host, st, user=user)
     except RuntimeError as e:
         return str(e)
     name = jail_name("probe", host.pid())
@@ -1111,7 +1213,8 @@ def posture_lines(cfg=None, host=None):
     user for an engaged job_user mode, the controls are the
     ones such a job's jail carries -- no_superuser is not among
     them, the demote at the door is -- and a line says who the
-    job goes in as.
+    job goes in as, and another how many processes that user is
+    held to.
     """
     host = host or _HOST
     refuse = "; confinement in enforce mode would refuse to start"
@@ -1132,6 +1235,10 @@ def posture_lines(cfg=None, host=None):
             "OK", "a job goes in as %s at the jail door "
             "(security.job_user) and reads what that user can "
             "read" % user))
+        lines.append((
+            "OK", "%s is held to %d processes across this host "
+            "(limits -u at the jail door; no RACCT needed)"
+            % (user, job_user_ceiling(host, st, user))))
     if not rctl:
         lines.append((
             "OK", "RACCT is not enabled on this host, so the "
@@ -1155,7 +1262,8 @@ def _startup_problem(cfg=None, timeout=15, host=None, cached=False):
     problem = _basic_problem(host, st)
     if problem is not None:
         return problem
-    key = _settings_key(st)
+    user = _engaged_job_user(cfg)
+    key = _settings_key(st) + "|" + (user or "")
     with _trial_lock:
         if cached and key in _trial_passed:
             return None
@@ -1165,7 +1273,7 @@ def _startup_problem(cfg=None, timeout=15, host=None, cached=False):
                 sweep_stale(host)
             except Exception:
                 pass
-        problem = _trial(host, st, timeout)
+        problem = _trial(host, st, timeout, user=user)
         if problem is None:
             _trial_passed.add(key)
         return problem
@@ -1229,7 +1337,9 @@ class FreeBSDConfinedProcess:
     release: it tears the jail down once the process has
     exited. .confinement_status names exactly the controls
     this job's jail carried, and .confinement_notes any
-    read-only mount added for the job's interpreter.
+    read-only mount added for the job's interpreter and, for
+    a job that went in as a job user, the number of processes
+    that user was held to.
     """
 
     def __init__(self, argv, inner, host, name, base, applied,
@@ -1289,9 +1399,13 @@ def _spawn(argv, cwd=None, env=None, user=None, memory_bytes=None,
     if problem is not None:
         raise RuntimeError(problem)
     controls, rctl = controls_for(host, st, user)
+    ceiling = job_user_ceiling(host, st, user)
     notes = []
     inner_argv, prefixes = translate_argv(
         argv, cwd, st, which=host.which, notes=notes)
+    if ceiling is not None:
+        notes.append("job user %s held to %d processes"
+                     % (user, ceiling))
     name = jail_name("job", host.pid())
     base, _root, applied = _build_jail(
         host, st, name, cwd, user, rctl, prefixes)
@@ -1310,7 +1424,12 @@ def _spawn(argv, cwd=None, env=None, user=None, memory_bytes=None,
             # resolve in the jail's, which a skeleton /etc
             # cannot serve.
             cmd += ["-u", user]
-        cmd += [name] + _limits(memory_bytes) + inner_argv
+        # limits(1) runs inside the jail, after the door: as the
+        # job user where there is one, so the limits it sets are
+        # ones that user cannot raise -- and jexec's own change
+        # of user, which resets the limits to the login class's,
+        # is already behind it.
+        cmd += [name] + _limits(memory_bytes, ceiling) + inner_argv
         env2 = dict(env) if env is not None else dict(os.environ)
         if not env2.get("PATH"):
             env2["PATH"] = JAIL_PATH
@@ -1348,6 +1467,9 @@ if not sys.platform.startswith("freebsd"):
 
     def build_jail_argv(*args, **kwargs):
         raise RuntimeError("freebsd_confine is FreeBSD-only")
+
+    def job_user_process_ceiling(*args, **kwargs):
+        raise RuntimeError("freebsd_confine is FreeBSD-only")
 else:
     IS_FREEBSD_BACKEND = True
 
@@ -1378,6 +1500,14 @@ else:
         (translate_argv, under the config's settings)."""
         return translate_argv(argv, cwd, confinement_settings(cfg))[0]
 
+    def job_user_process_ceiling(cfg=None, user=None):
+        """The number of processes a job that goes in as `user`
+        under this config is held to on this host, or None for
+        a job with no job user (job_user_ceiling, under the
+        config's settings). Raises RuntimeError for a config
+        that cannot have the ceiling it names."""
+        return job_user_ceiling(_HOST, confinement_settings(cfg), user)
+
     def spawn_confined_process(argv, cwd=None, env=None, user=None,
                                memory_bytes=None, cfg=None):
         """Create a job process under every confinement control.
@@ -1387,7 +1517,8 @@ else:
         the work mount inside the jail. The jail is created
         first, the job is started inside it under the spawn
         resource limits via jexec (as `user` when the job_user
-        seam hands one over), and a FreeBSDConfinedProcess is
+        seam hands one over, and then held to that user's
+        process ceiling as well), and a FreeBSDConfinedProcess is
         returned whose .confinement_status names the controls
         applied. Raises RuntimeError when any control could not
         be applied -- there is no unconfined fallback to fall

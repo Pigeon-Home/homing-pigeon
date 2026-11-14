@@ -2474,11 +2474,16 @@ FREEBSD_NO_JOB_USER = ("a jailed job with no job user is root's uid "
 
 # Where the door trial's root-only file is shown inside its jail,
 # and what the trial job does: say who it is, write its work
-# mount, and try the file.
+# mount, try the file, and read the ceiling on its user's
+# processes -- then try to raise it, in a subshell, so a refusal
+# ends the subshell and not the trial.
 _DOOR_MOUNT = "/hp-seed-door"
 _DOOR_SCRIPT = ("id -u; : > door.txt && echo WORK-OK; "
                 "cat " + _DOOR_MOUNT + "/root-only 2>/dev/null "
-                "&& echo READ-ROOT; echo END")
+                "&& echo READ-ROOT; "
+                "printf 'PROCS '; ulimit -H -u; "
+                "( ulimit -H -u unlimited ) 2>/dev/null "
+                "&& echo PROCS-RAISED; echo END")
 
 
 # The names the by-path load below puts in sys.modules, and the
@@ -2704,8 +2709,9 @@ def freebsd_job_user_trial(cfg, user=FREEBSD_SHARED_JOB_USER):
     config, with one tree more shown in it: a directory holding
     a file only root may read. The job goes in as `user` at the
     jail door, and must say it is that user, write its work
-    mount, and be refused the file -- the three things a named
-    job user is for.
+    mount, be refused the file, and read the ceiling on its
+    user's processes as this config sets it, with no way to
+    raise it -- the four things a named job user is for.
 
     Returns (problem, lines) in freebsd_seed_probe's shape:
     None and the posture report's lines for this config with
@@ -2739,10 +2745,13 @@ def freebsd_job_user_trial(cfg, user=FREEBSD_SHARED_JOB_USER):
         with open(secret, "w", encoding="utf-8") as fh:
             fh.write("ROOT-ONLY\n")
         os.chmod(secret, 0o600)
+        door_cfg = _seed_config_with(cfg, bind=[shown, _DOOR_MOUNT])
+        # What the backend will hold this user's processes to
+        # under this config: the number the job must read back.
+        ceiling = backend.job_user_process_ceiling(door_cfg, user)
         proc = backend.spawn_confined_process(
             ["/bin/sh", "-c", _DOOR_SCRIPT], cwd=work, env={},
-            user=user,
-            cfg=_seed_config_with(cfg, bind=[shown, _DOOR_MOUNT]))
+            user=user, cfg=door_cfg)
         try:
             out, err = proc.communicate(timeout=30)
         finally:
@@ -2759,6 +2768,18 @@ def freebsd_job_user_trial(cfg, user=FREEBSD_SHARED_JOB_USER):
                     "as %s" % user, ())
         if "READ-ROOT" in words:
             return ("the trial job read a root-only file as %s"
+                    % user, ())
+        held = None
+        if "PROCS" in words:
+            after = words[words.index("PROCS") + 1:]
+            if after and after[0] not in ("PROCS-RAISED", "END"):
+                held = after[0]
+        if held != str(ceiling):
+            return ("the trial job read its process ceiling as %s, "
+                    "not the %d this config holds %s to"
+                    % (held or "nothing", ceiling, user), ())
+        if "PROCS-RAISED" in words:
+            return ("the trial job raised its process ceiling as %s"
                     % user, ())
         try:
             lines = tuple(

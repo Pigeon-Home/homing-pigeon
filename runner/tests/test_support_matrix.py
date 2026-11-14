@@ -155,6 +155,13 @@ class SupportMatrixTest(unittest.TestCase):
         self.assertIn(
             "%d GiB of address space"
             % (FC.DEFAULT_JOB_MEMORY_BYTES // (1024 * mib)), row)
+        # The ceiling a job user brings, and that it asks
+        # nothing of the host.
+        self.assertIn(
+            "a job that goes in as a job user is also held to %d "
+            "processes of that user across the host, by a limit "
+            "set at the jail door that needs no RACCT"
+            % FC.DEFAULT_JOB_USER_PROCESSES, row)
         self.assertIn('"%s"' % FC.STATUS_CONFINEMENT, row)
         for name in ("no_superuser", "rctl_resource_limits",
                      "private_loopback"):
@@ -180,6 +187,8 @@ class SupportMatrixTest(unittest.TestCase):
                       row)
         self.assertIn("there is no Capsicum", row)
         self.assertIn("named only where RACCT is enabled", row)
+        self.assertIn("a job with no job user has no ceiling on its "
+                      "processes there", row)
         self.assertIn("refuses when it cannot engage", row)
         self.assertIn("the full battery has not been run against "
                       "this shape", row)

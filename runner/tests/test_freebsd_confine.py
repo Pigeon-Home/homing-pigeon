@@ -40,6 +40,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import types
 import unittest
 from contextlib import redirect_stdout
@@ -421,6 +422,8 @@ _DOOR_LINES = ("FreeBSD jail backend: freebsd: jail + no_network + "
                "spawn_resource_limits",
                "a job goes in as nobody at the jail door "
                "(security.job_user) and reads what that user can read",
+               "nobody is held to 256 processes across this host "
+               "(limits -u at the jail door; no RACCT needed)",
                "RACCT is not enabled on this host")
 
 
@@ -429,7 +432,8 @@ def _door_lines(user):
     host without RACCT."""
     return (_DOOR_LINES[0],
             _DOOR_LINES[1].replace("nobody", user),
-            _DOOR_LINES[2])
+            _DOOR_LINES[2].replace("nobody", user),
+            _DOOR_LINES[3])
 
 
 def _door_record(user="nobody", problem=None, notes=(), lines=None):
@@ -1253,12 +1257,15 @@ class SeedTest(unittest.TestCase):
 
     # --- the door trial itself ---------------------------------
 
-    def _door(self, out=b"65534\nWORK-OK\nEND\n", err=b"",
+    def _door(self, out=b"65534\nWORK-OK\nPROCS 256\nEND\n", err=b"",
               ids=(65534, 65534), spawn_error=None, wait_error=None,
-              backend="scripted", cfg=None):
+              backend="scripted", cfg=None, ceiling=256):
         """Run the trial against a scripted backend; return its
-        answer and what the backend saw."""
-        seen = {"spawned": [], "closed": 0, "posture": []}
+        answer and what the backend saw. `ceiling` is what the
+        backend says it holds a job user's processes to (an
+        exception is raised in its place)."""
+        seen = {"spawned": [], "closed": 0, "posture": [],
+                "ceiling": []}
 
         class _Job:
             def communicate(self, timeout=None):
@@ -1287,11 +1294,18 @@ class SeedTest(unittest.TestCase):
             seen["posture"].append(cfg)
             return [("OK", t) for t in _DOOR_LINES]
 
+        def _ceiling(cfg=None, user=None):
+            seen["ceiling"].append((cfg, user))
+            if isinstance(ceiling, Exception):
+                raise ceiling
+            return ceiling
+
         if backend == "scripted":
             backend = types.SimpleNamespace(
                 IS_FREEBSD_BACKEND=True,
                 spawn_confined_process=_spawn,
-                posture_lines=_posture)
+                posture_lines=_posture,
+                job_user_process_ceiling=_ceiling)
 
         def _ids(user):
             if ids is None:
@@ -1340,15 +1354,58 @@ class SeedTest(unittest.TestCase):
         (named,) = seen["posture"]
         self.assertEqual(named["security"]["job_user"],
                          {"user": "nobody"})
+        # The backend was asked what it holds this user to under
+        # the very config the trial's jail was built from.
+        ((asked_cfg, asked_user),) = seen["ceiling"]
+        self.assertEqual(asked_user, "nobody")
+        self.assertEqual(
+            asked_cfg["security"]["confinement"]["extra_ro_binds"],
+            job["binds"])
+
+    def test_the_trial_job_reads_its_ceiling_and_tries_to_raise_it(self):
+        # What the job is told to do: the limit is read as the
+        # hard one, the one that takes privilege to raise, and
+        # the raise is tried where a refusal ends a subshell.
+        script = INS._DOOR_SCRIPT
+        self.assertIn("printf 'PROCS '; ulimit -H -u;", script)
+        self.assertIn("( ulimit -H -u unlimited ) 2>/dev/null "
+                      "&& echo PROCS-RAISED;", script)
+        self.assertTrue(script.endswith("echo END"))
+        self.assertLess(script.index("READ-ROOT"),
+                        script.index("PROCS"))
+        # The number is the backend's for this config and user.
+        for ceiling, out in ((256, b"65534\nWORK-OK\nPROCS 256\nEND\n"),
+                             (24, b"65534\nWORK-OK\nPROCS 24\nEND\n")):
+            answer, _seen = self._door(out=out, ceiling=ceiling)
+            self.assertEqual(answer, (None, _DOOR_LINES), ceiling)
 
     def test_what_the_trial_job_must_show(self):
         cases = (
-            (b"0\nWORK-OK\nEND\n", "ran as uid 0, not as nobody"),
-            (b"65534\nEND\n", "could not write its work mount"),
-            (b"65534\nWORK-OK\nROOT-ONLY\nREAD-ROOT\nEND\n",
+            (b"0\nWORK-OK\nPROCS 256\nEND\n",
+             "ran as uid 0, not as nobody"),
+            (b"65534\nPROCS 256\nEND\n",
+             "could not write its work mount"),
+            (b"65534\nWORK-OK\nROOT-ONLY\nREAD-ROOT\nPROCS 256\nEND\n",
              "read a root-only file as nobody"),
-            (b"65534\nWORK-OK\n", "did not finish: jexec: gone"),
+            (b"65534\nWORK-OK\nPROCS 256\n",
+             "did not finish: jexec: gone"),
             (b"", "did not finish: jexec: gone"),
+            # the ceiling: not there, another number, no number,
+            # the kernel's own limit showing through, and raised
+            (b"65534\nWORK-OK\nEND\n",
+             "read its process ceiling as nothing, not the 256 "
+             "this config holds nobody to"),
+            (b"65534\nWORK-OK\nPROCS 5547\nEND\n",
+             "read its process ceiling as 5547, not the 256 this "
+             "config holds nobody to"),
+            (b"65534\nWORK-OK\nPROCS unlimited\nEND\n",
+             "read its process ceiling as unlimited, not the 256"),
+            (b"65534\nWORK-OK\nPROCS\nEND\n",
+             "read its process ceiling as nothing, not the 256"),
+            (b"65534\nWORK-OK\nPROCS\nPROCS-RAISED\nEND\n",
+             "read its process ceiling as nothing, not the 256"),
+            (b"65534\nWORK-OK\nPROCS 256\nPROCS-RAISED\nEND\n",
+             "raised its process ceiling as nobody"),
         )
         for out, expect in cases:
             with self.subTest(expect=expect, out=out):
@@ -1367,6 +1424,20 @@ class SeedTest(unittest.TestCase):
                                   "jail: no such tool")
         self.assertEqual(lines, ())
         self.assertFalse(os.path.exists(seen["spawned"][0]["folder"]))
+        # A ceiling the backend cannot give this config is the
+        # reason, in the backend's words, and no job is started.
+        (problem, lines), seen = self._door(ceiling=RuntimeError(
+            "security.confinement.freebsd.job_user_processes (9000) "
+            "is above the most processes this host lets any one "
+            "user hold"))
+        self.assertIn("the trial job could not be run: security."
+                      "confinement.freebsd.job_user_processes (9000)",
+                      problem)
+        self.assertEqual(lines, ())
+        self.assertEqual(seen["spawned"], [])
+        self.assertEqual(
+            [n for n in os.listdir(tempfile.gettempdir())
+             if n.startswith("hp-seed-door-")], [])
         # A job that never ends is released and named.
         (problem, _lines), seen = self._door(
             wait_error=subprocess.TimeoutExpired("jexec", 30))
@@ -1396,11 +1467,12 @@ class SeedTest(unittest.TestCase):
 
         class _Job:
             def communicate(self, timeout=None):
-                return b"65534\nWORK-OK\nEND\n", b""
+                return b"65534\nWORK-OK\nPROCS 256\nEND\n", b""
 
             def close(self):
                 pass
         backend.spawn_confined_process = lambda *a, **k: _Job()
+        backend.job_user_process_ceiling = lambda *a, **k: 256
 
         def _posture(cfg=None):
             raise RuntimeError("no sysctl")
@@ -2030,6 +2102,8 @@ class FakeHost:
         self.slept = 0.0
         self.reaper_fds = []
         self.popen_error = None
+        # kern.maxprocperuid; None is a host that will not say.
+        self.per_user = 5547
 
     # -- the facts ------------------------------------------
     def euid(self):
@@ -2144,6 +2218,10 @@ class FakeHost:
             if argv[-1] == "kern.features.vimage":
                 return (0, "1\n", "") if self.vimage else (
                     1, "", "sysctl: unknown oid")
+            if argv[-1] == "kern.maxprocperuid":
+                if self.per_user is None:
+                    return (1, "", "sysctl: unknown oid")
+                return (0, "%s\n" % self.per_user, "")
         if tool == FC.JEXEC_BIN:
             name = [a for a in argv[1:] if a in self.jails]
             jail = self.jails[name[0]] if name else None
@@ -2263,6 +2341,7 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(st["tmp_bytes"], 512 * 1024 * 1024)
         self.assertIsNone(st["job_memory_bytes"])
         self.assertIsNone(st["job_processes"])
+        self.assertIsNone(st["job_user_processes"])
         for cfg in (None, [], {"security": None},
                     {"security": {"confinement": None}}):
             self.assertEqual(FC.confinement_settings(cfg), st, cfg)
@@ -2271,12 +2350,14 @@ class SettingsTest(unittest.TestCase):
         st = FC.confinement_settings(_fcfg(
             loopback=True, process_memory_bytes=1 << 30,
             tmp_bytes=1 << 20, job_memory_bytes=1 << 31,
-            job_processes=32))
+            job_processes=32, job_user_processes=48))
         self.assertIs(st["loopback"], True)
         self.assertEqual(st["process_memory_bytes"], 1 << 30)
         self.assertEqual(st["tmp_bytes"], 1 << 20)
         self.assertEqual(st["job_memory_bytes"], 1 << 31)
         self.assertEqual(st["job_processes"], 32)
+        self.assertEqual(st["job_user_processes"], 48)
+        self.assertEqual(FC.FREEBSD_KEYS[-1], "job_user_processes")
 
     def test_a_malformed_freebsd_block_is_a_config_error(self):
         bad = ([], "x", 3,
@@ -2285,7 +2366,12 @@ class SettingsTest(unittest.TestCase):
                {"job_processes": 0}, {"job_processes": -4},
                {"job_processes": True}, {"job_processes": "64"},
                {"tmp_bytes": 1.5}, {"process_memory_bytes": None},
-               {"job_memory_bytes": [1]})
+               {"job_memory_bytes": [1]},
+               {"job_user_processes": 0}, {"job_user_processes": -1},
+               {"job_user_processes": "256"},
+               {"job_user_processes": True},
+               {"job_user_processes": 25.5},
+               {"job_user_proceses": 256})
         for block in bad:
             with self.subTest(block=block):
                 with self.assertRaises(RuntimeError) as caught:
@@ -2308,6 +2394,12 @@ class SettingsTest(unittest.TestCase):
             S.validate_security_config(_fcfg(job_processes=0))
         self.assertIn("security.confinement.freebsd.job_processes",
                       str(caught.exception))
+        S.validate_security_config(_fcfg(job_user_processes=64))
+        with self.assertRaises(RuntimeError) as caught:
+            S.validate_security_config(_fcfg(job_user_processes=0))
+        self.assertIn(
+            "security.confinement.freebsd.job_user_processes must "
+            "be a positive integer", str(caught.exception))
 
     def test_bwrap_flags_are_refused_by_name(self):
         cfg = {"security": {"confinement": {
@@ -2687,6 +2779,117 @@ class ControlsTest(_FakeHostCase):
         self.assertIn("VIMAGE", str(caught.exception))
 
 
+class CeilingTest(_FakeHostCase):
+    """The ceiling on the processes of the job user: who has
+    one, what number it is, and the config that cannot have
+    the one it names."""
+
+    def ceiling(self, cfg=None, user="pigeon-jobs"):
+        return FC.job_user_ceiling(
+            self.host, FC.confinement_settings(cfg), user)
+
+    def test_a_job_user_is_held_to_the_default(self):
+        self.assertEqual(self.ceiling(), 256)
+        self.assertEqual(FC.DEFAULT_JOB_USER_PROCESSES, 256)
+        # Whoever the user is: the count is that account's.
+        self.assertEqual(self.ceiling(user="nobody"), 256)
+        # RACCT has no part in it.
+        self.host.racct = True
+        self.assertEqual(self.ceiling(), 256)
+        self.assertEqual(self.host.ran(FC.RCTL_BIN), [])
+
+    def test_a_job_with_no_job_user_has_none(self):
+        self.assertIsNone(self.ceiling(user=None))
+        # and the host is not asked anything for it
+        self.assertEqual(
+            self.host.ran(FC.SYSCTL_BIN, "kern.maxprocperuid"), [])
+
+    def test_the_number_is_the_config_s(self):
+        self.assertEqual(self.ceiling(_fcfg(job_user_processes=24)), 24)
+        self.assertEqual(self.ceiling(_fcfg(job_user_processes=1)), 1)
+        self.assertEqual(
+            self.ceiling(_fcfg(job_user_processes=5547)), 5547)
+
+    def test_the_default_follows_a_host_that_holds_fewer(self):
+        # The kernel's own limit on one user's processes is the
+        # most a limit at the door can ask for.
+        self.host.per_user = 100
+        self.assertEqual(self.ceiling(), 100)
+        self.host.per_user = 256
+        self.assertEqual(self.ceiling(), 256)
+        self.host.per_user = 9000
+        self.assertEqual(self.ceiling(), 256)
+
+    def test_a_host_that_will_not_say_gets_the_default(self):
+        for answer in (None, "", "many", "0", "-3"):
+            with self.subTest(answer=answer):
+                self.host.per_user = answer
+                self.assertIsNone(FC._processes_per_user(self.host))
+                self.assertEqual(self.ceiling(), 256)
+                self.assertEqual(
+                    self.ceiling(_fcfg(job_user_processes=9000)), 9000)
+        self.host.per_user = 5547
+        self.assertEqual(FC._processes_per_user(self.host), 5547)
+
+    def test_a_number_above_the_host_s_own_is_refused_by_name(self):
+        with self.assertRaises(RuntimeError) as caught:
+            self.ceiling(_fcfg(job_user_processes=5548))
+        text = str(caught.exception)
+        self.assertIn(
+            "security.confinement.freebsd.job_user_processes (5548) "
+            "is above the most processes this host lets any one "
+            "user hold (kern.maxprocperuid is 5547)", text)
+        self.assertIn("Lower the setting or raise kern.maxprocperuid",
+                      text)
+
+    def test_a_number_with_no_job_user_is_refused_by_name(self):
+        with self.assertRaises(RuntimeError) as caught:
+            self.ceiling(_fcfg(job_user_processes=64), user=None)
+        text = str(caught.exception)
+        self.assertIn(
+            "security.confinement.freebsd.job_user_processes is a "
+            "ceiling on the job user's processes, and this config "
+            "engages no job user", text)
+        self.assertIn("security.job_user names none", text)
+        self.assertIn("security.modes.job_user is not at enforce", text)
+        self.assertIn("name a job user or remove the setting", text)
+
+    def test_the_controls_refuse_what_the_ceiling_refuses(self):
+        # Wherever the controls are read -- the spawn, the
+        # probe, the report -- a config that cannot have its
+        # ceiling is refused, and the ceiling adds no name.
+        st = FC.confinement_settings(_fcfg(job_user_processes=64))
+        with self.assertRaises(RuntimeError) as caught:
+            FC.controls_for(self.host, st, None)
+        self.assertIn("engages no job user", str(caught.exception))
+        controls, _rctl = FC.controls_for(self.host, st, "pigeon-jobs")
+        self.assertEqual(controls, list(FC.CONFINEMENT_CONTROLS))
+        st = FC.confinement_settings(_fcfg(job_user_processes=9000))
+        with self.assertRaises(RuntimeError) as caught:
+            FC.controls_for(self.host, st, "pigeon-jobs")
+        self.assertIn("kern.maxprocperuid is 5547",
+                      str(caught.exception))
+
+    def test_the_limits_command_carries_it_after_the_memory_limits(self):
+        self.assertEqual(
+            FC._limits(4096),
+            [FC.LIMITS_BIN, "-v", "4096", "-d", "4096"])
+        self.assertEqual(
+            FC._limits(4096, 24),
+            [FC.LIMITS_BIN, "-v", "4096", "-d", "4096", "-u", "24"])
+        self.assertEqual(FC._limits(4096, None), FC._limits(4096))
+
+    def test_the_public_name_reads_the_config(self):
+        # On FreeBSD the public name answers for this machine;
+        # elsewhere it refuses, as every public name does.
+        if FC.IS_FREEBSD_BACKEND:
+            self.assertIsNone(FC.job_user_process_ceiling({}, None))
+        else:
+            with self.assertRaises(RuntimeError) as caught:
+                FC.job_user_process_ceiling({}, "nobody")
+            self.assertIn("FreeBSD-only", str(caught.exception))
+
+
 class SpawnTest(_FakeHostCase):
     """One job's jail, built and released against the fake host."""
 
@@ -2749,6 +2952,80 @@ class SpawnTest(_FakeHostCase):
         cmd = self.job_command()
         self.assertEqual(cmd[:6], [FC.JEXEC_BIN, "-d", "/work", "-u",
                                    "pigeon-jobs", name])
+        # Behind the door, limits(1) sets the user's process
+        # ceiling beside the memory ceiling, and the job's own
+        # command follows.
+        self.assertEqual(
+            cmd[6:],
+            [FC.LIMITS_BIN, "-v", "536870912", "-d", "536870912",
+             "-u", "256", "/bin/sh", "-c", "true"])
+        # The job's record says what its user was held to.
+        self.assertEqual(
+            proc.confinement_notes,
+            ["job user pigeon-jobs held to 256 processes"])
+
+    def test_a_job_with_no_job_user_carries_no_process_limit(self):
+        proc = self.spawn()
+        cmd = self.job_command()
+        limits = cmd[cmd.index(FC.LIMITS_BIN):]
+        self.assertEqual(limits[:5], [FC.LIMITS_BIN, "-v", "536870912",
+                                      "-d", "536870912"])
+        self.assertNotIn("-u", cmd)
+        self.assertEqual(proc.confinement_notes, [])
+        self.assertEqual(
+            self.host.ran(FC.SYSCTL_BIN, "kern.maxprocperuid"), [])
+
+    def test_the_job_user_s_ceiling_is_the_config_s(self):
+        proc = self.spawn(cfg=_fcfg(job_user_processes=24),
+                          user="pigeon-jobs")
+        cmd = self.job_command()
+        limits = cmd[cmd.index(FC.LIMITS_BIN):]
+        self.assertEqual(limits[5:7], ["-u", "24"])
+        self.assertEqual(proc.confinement_notes,
+                         ["job user pigeon-jobs held to 24 processes"])
+        # The record's names are the same: the ceiling is one of
+        # the spawn's resource limits.
+        self.assertEqual(proc.confinement_status, FC.STATUS_CONFINEMENT)
+        # Beside an interpreter's prefix, both are noted.
+        proc = self.spawn(["/opt/py311/bin/python3", "-c", "pass"],
+                          user="nobody")
+        self.assertEqual(
+            proc.confinement_notes,
+            ["interpreter prefix /opt/py311 mounted read-only",
+             "job user nobody held to 256 processes"])
+
+    def test_the_ceiling_stands_beside_the_jail_s_own_rule(self):
+        # On a host with RACCT a job user's job has both: the
+        # jail's rule and the account's limit.
+        self.host.racct = True
+        proc = self.spawn(cfg=_fcfg(job_processes=64,
+                                    job_user_processes=24),
+                          user="pigeon-jobs")
+        (name, _jail), = self.host.jails.items()
+        self.assertIn("jail:%s:maxproc:deny=64" % name, self.host.rules)
+        cmd = self.job_command()
+        self.assertEqual(cmd[cmd.index("-u", cmd.index(FC.LIMITS_BIN)):][:2],
+                         ["-u", "24"])
+        self.assertEqual(
+            proc.confinement_status,
+            "freebsd: jail + no_network + rctl_resource_limits + "
+            "spawn_resource_limits")
+
+    def test_a_ceiling_the_job_cannot_have_refuses_it_and_builds_nothing(self):
+        cases = (
+            (_fcfg(job_user_processes=64), None, "engages no job user"),
+            (_fcfg(job_user_processes=9000), "pigeon-jobs",
+             "kern.maxprocperuid is 5547"),
+        )
+        for cfg, user, expect in cases:
+            with self.subTest(expect=expect):
+                with self.assertRaises(RuntimeError) as caught:
+                    self.spawn(cfg=cfg, user=user)
+                self.assertIn(expect, str(caught.exception))
+                self.assertEqual(self.host.jails, {})
+                self.assertEqual(self.host.table, [])
+                self.assertEqual(self.skeletons(), [])
+                self.assertEqual(self.host.popens, [])
 
     def test_the_ceilings_are_the_config_s(self):
         self.spawn(cfg=_fcfg(process_memory_bytes=1 << 20))
@@ -3288,6 +3565,67 @@ class ProbeTest(_FakeHostCase):
         self.assertIsNone(self.probe(_fcfg(tmp_bytes=4096), cached=True))
         self.assertEqual(len(self.host.ran(FC.JAIL_BIN, "-c")), 2)
 
+    def test_a_ceiling_on_the_job_user_is_asked_for_the_config_s_own(self):
+        # The probe's jail is the one a job with no job user
+        # gets, but what the config asks is asked for the jobs
+        # it will run: with a job user engaged the ceiling
+        # stands, and the trial still proves allow.nosuser.
+        named = _fcfg(job_user_processes=64)
+        named["security"]["job_user"] = {"user": "pigeon-jobs"}
+        self.assertIsNone(self.probe(named))
+        (made,) = self.host.ran(FC.JAIL_BIN, "-c")
+        self.assertIn("allow.nosuser", made)
+        (trial,) = self.host.ran(FC.JEXEC_BIN, FC.SH_BIN)
+        self.assertNotIn("-u", trial)
+        # No job user engaged: the ceiling the operator wrote is
+        # not there, and the start is refused by name, with
+        # nothing built.
+        for cfg in (
+                _fcfg(job_user_processes=64),
+                dict(named, security=dict(
+                    named["security"], modes={"job_user": "audit"})),
+                dict(named, security=dict(
+                    named["security"], modes={"job_user": "off"})),
+                dict(named, security=dict(
+                    named["security"], job_user={"user": ""}))):
+            with self.subTest(cfg=cfg):
+                before = len(self.host.ran(FC.JAIL_BIN, "-c"))
+                problem = self.probe(cfg)
+                self.assertIn(
+                    "security.confinement.freebsd.job_user_processes "
+                    "is a ceiling on the job user's processes, and "
+                    "this config engages no job user", problem)
+                self.assertEqual(
+                    len(self.host.ran(FC.JAIL_BIN, "-c")), before)
+                self.assertEqual(self.skeletons(), [])
+        # A number the kernel would not let a user hold.
+        above = _fcfg(job_user_processes=9000)
+        above["security"]["job_user"] = {"user": "pigeon-jobs"}
+        self.assertIn("kern.maxprocperuid is 5547", self.probe(above))
+
+    def test_a_verdict_is_kept_for_the_job_user_it_was_asked_for(self):
+        # The same settings with and without the job user are
+        # two questions: a pass for one is not served to the
+        # other.
+        named = _fcfg(job_user_processes=64)
+        named["security"]["job_user"] = {"user": "pigeon-jobs"}
+        self.assertIsNone(self.probe(named, cached=True))
+        made = len(self.host.ran(FC.JAIL_BIN, "-c"))
+        self.assertIsNone(self.probe(named, cached=True))
+        self.assertEqual(len(self.host.ran(FC.JAIL_BIN, "-c")), made)
+        self.assertIn("engages no job user", self.probe(
+            _fcfg(job_user_processes=64), cached=True))
+        other = _fcfg(job_user_processes=64)
+        other["security"]["job_user"] = {"user": "nobody"}
+        self.assertIsNone(self.probe(other, cached=True))
+        self.assertEqual(len(self.host.ran(FC.JAIL_BIN, "-c")), made + 1)
+        # Without the setting a job user changes nothing the
+        # probe builds: one trial for the settings, as before.
+        plain = {"security": {"job_user": {"user": "pigeon-jobs"}}}
+        self.assertIsNone(self.probe(plain, cached=True))
+        self.assertIsNone(self.probe(plain, cached=True))
+        self.assertEqual(len(self.host.ran(FC.JAIL_BIN, "-c")), made + 2)
+
     def test_a_failing_verdict_is_not_kept(self):
         self.host.trial_out = "trial\nWORK-OK\nTMP-OK\nPRIVILEGED\n" \
             "NULL-OK\nEND\n"
@@ -3593,14 +3931,41 @@ class PostureTest(_FakeHostCase):
         self.assertEqual(lines[1], (
             "OK", "a job goes in as nobody at the jail door "
             "(security.job_user) and reads what that user can read"))
-        self.assertIn("kern.racct.enable=1", lines[2][1])
-        self.assertEqual(len(lines), 3)
+        # ... and how many processes that user is held to, which
+        # needs nothing of the host: the line is there with RACCT
+        # and without.
+        held = ("OK", "nobody is held to 256 processes across this "
+                      "host (limits -u at the jail door; no RACCT "
+                      "needed)")
+        self.assertEqual(lines[2], held)
+        self.assertIn("kern.racct.enable=1", lines[3][1])
+        self.assertEqual(len(lines), 4)
         self.host.racct = True
         lines = self.lines(cfg)
         self.assertEqual(lines[0], (
             "OK", "FreeBSD jail backend: freebsd: jail + no_network "
             "+ rctl_resource_limits + spawn_resource_limits"))
-        self.assertEqual(len(lines), 2)
+        self.assertEqual(lines[2], held)
+        self.assertEqual(len(lines), 3)
+
+    def test_the_report_states_the_ceiling_the_config_sets(self):
+        cfg = _fcfg(job_user_processes=24)
+        cfg["security"]["job_user"] = {"user": "pigeon-jobs"}
+        lines = self.lines(cfg)
+        self.assertEqual(lines[2], (
+            "OK", "pigeon-jobs is held to 24 processes across this "
+                  "host (limits -u at the jail door; no RACCT "
+                  "needed)"))
+        # A host whose own limit is lower: the default follows it.
+        self.host.per_user = 100
+        plain = {"security": {"job_user": {"user": "pigeon-jobs"}}}
+        self.assertIn("is held to 100 processes", self.lines(plain)[2][1])
+        # With no job user there is no such line.
+        self.assertFalse(
+            [t for _level, t in self.lines() if "is held to" in t])
+        # Nothing was built to say any of it.
+        self.assertEqual(self.host.ran(FC.JAIL_BIN), [])
+        self.assertEqual(self.host.ran(FC.MOUNT_BIN), [])
 
     def test_a_job_user_that_is_not_engaged_changes_nothing(self):
         plain = self.lines()
@@ -3625,11 +3990,15 @@ class PostureTest(_FakeHostCase):
         self.assertIsNone(FC._engaged_job_user(None))
 
     def test_what_would_refuse_the_start_is_a_warning(self):
+        above = _fcfg(job_user_processes=9000)
+        above["security"]["job_user"] = {"user": "nobody"}
         cases = (
             ({"security": {"confinement": {
                 "extra_flags": ["--unshare-pid"]}}}, "--unshare-pid"),
             (_fcfg(job_processes=8), "kern.racct.enable=1"),
             (_fcfg(nonsense=1), "nonsense"),
+            (_fcfg(job_user_processes=64), "engages no job user"),
+            (above, "kern.maxprocperuid is 5547"),
         )
         for cfg, expect in cases:
             with self.subTest(expect=expect):
@@ -3665,7 +4034,11 @@ class PostureTest(_FakeHostCase):
         self.assertEqual(user, "pigeon-jobs")
         printed = INS.seed_kept_lines(
             answer, "/root/.homing-pigeon/config.json", user, door)
-        self.assertEqual(len(printed), 6)
+        self.assertEqual(len(printed), 7)
+        self.assertIn(
+            "platform: pigeon-jobs is held to 256 processes across "
+            "this host (limits -u at the jail door; no RACCT needed)",
+            printed)
         for line in printed:
             self.assertIn("\n  " + line + "\n", text)
 
@@ -4115,6 +4488,69 @@ def _racct_live():
                       "kern.racct.enable")[1].strip() == "1"
 
 
+def _processes_of(user):
+    """How many processes `user` holds on this host now, in
+    every jail and outside them: the kernel's count is the
+    same one. (pgrep answers 1 and prints nothing when there
+    are none.)"""
+    _rc, out = _host_says("/bin/pgrep", "-U", user)
+    return len([line for line in out.splitlines() if line.strip()])
+
+
+def _processes_settle(user, want, wait=15):
+    """The count of `user`'s processes once a removed jail's
+    processes have finished ending; the last count read."""
+    deadline = time.time() + wait
+    while True:
+        count = _processes_of(user)
+        if count == want or time.time() >= deadline:
+            return count
+        time.sleep(0.2)
+
+
+# A job that starts children until a fork is refused, or until
+# it has started as many as it was told to: it says the limit
+# it reads on its own processes, how many children it started,
+# and how the last fork ended. The children only sleep; the job
+# ends them before it ends.
+_FORK_UNTIL_REFUSED = (
+    "import errno, os, resource, sys, time\n"
+    "print('LIMIT', *resource.getrlimit(resource.RLIMIT_NPROC))\n"
+    "kids = []\n"
+    "refused = None\n"
+    "for i in range(int(sys.argv[1])):\n"
+    "    try:\n"
+    "        pid = os.fork()\n"
+    "    except OSError as e:\n"
+    "        refused = e\n"
+    "        break\n"
+    "    if pid == 0:\n"
+    "        time.sleep(120)\n"
+    "        os._exit(0)\n"
+    "    kids.append(pid)\n"
+    "print('STARTED', len(kids))\n"
+    "if refused is None:\n"
+    "    print('UNBOUNDED')\n"
+    "else:\n"
+    "    print('REFUSED', errno.errorcode.get(refused.errno, '?'))\n"
+    "sys.stdout.flush()\n"
+    "for k in kids:\n"
+    "    os.kill(k, 9)\n"
+    "for k in kids:\n"
+    "    os.waitpid(k, 0)\n")
+
+
+def _forked(out):
+    """What a _FORK_UNTIL_REFUSED job said: (soft limit, hard
+    limit, children started, how the last fork ended)."""
+    words = out.decode("utf-8", "replace").split()
+    at = words.index("LIMIT")
+    how = "UNBOUNDED" if "UNBOUNDED" in words \
+        else words[words.index("REFUSED") + 1]
+    return (int(words[at + 1]), int(words[at + 2]),
+            int(words[words.index("STARTED") + 1]), how)
+
+
 def _vimage_live():
     return _host_says(FC.SYSCTL_BIN, "-n",
                       "kern.features.vimage")[1].strip() == "1"
@@ -4211,6 +4647,188 @@ class LiveControlsTest(unittest.TestCase):
         started = int(words[words.index(b"STARTED") + 1])
         self.assertLess(started, 20, (out, err))
         self.assertGreater(started, 5, (out, err))
+
+    def test_a_job_user_s_processes_are_held_with_racct_or_without(self):
+        # The ceiling that needs nothing of the host: a job that
+        # goes in as a job user starts children until the kernel
+        # refuses the fork, and the account holds the ceiling's
+        # number in all -- this job's first process, its
+        # children, and whatever else the account ran here.
+        before = _processes_of("nobody")
+        proc, out, err, _work = self._job(
+            [_LIVE_PYTHON, "-c", _FORK_UNTIL_REFUSED, "60"],
+            cfg=_fcfg(job_user_processes=24), user="nobody")
+        soft, hard, started, how = _forked(out)
+        self.assertEqual((soft, hard), (24, 24), (out, err))
+        self.assertEqual(how, "EAGAIN", (out, err))
+        self.assertLessEqual(started, 23, (out, err))
+        self.assertGreaterEqual(started, 23 - before, (out, err, before))
+        if before == 0:
+            self.assertEqual(started, 23, (out, err))
+        # The record: the same names as any job user's job, the
+        # ceiling in its notes -- and on a host as FreeBSD ships
+        # no rctl rule had any part in it.
+        self.assertIn("job user nobody held to 24 processes",
+                      proc.confinement_notes)
+        self.assertNotIn("no_superuser", proc.confinement_status)
+        self.assertEqual(
+            "rctl_resource_limits" in proc.confinement_status,
+            _racct_live())
+        # The jail went with the job, and its processes with it.
+        self.assertEqual(_processes_settle("nobody", before), before)
+
+    def test_a_job_user_cannot_raise_its_process_ceiling(self):
+        _proc, out, err, _work = self._job(
+            [_LIVE_PYTHON, "-c",
+             "import resource\n"
+             "inf = resource.RLIM_INFINITY\n"
+             "what = resource.RLIMIT_NPROC\n"
+             "print('LIMIT', *resource.getrlimit(what))\n"
+             "for want in ((inf, inf), (25, 25), (24, 25)):\n"
+             "    try:\n"
+             "        resource.setrlimit(what, want)\n"
+             "        print('LIFTED', want)\n"
+             "    except (ValueError, OSError) as e:\n"
+             "        print('HELD', want)\n"
+             "resource.setrlimit(what, (10, 24))\n"
+             "print('LOWERED', *resource.getrlimit(what))\n"
+             "try:\n"
+             "    resource.setrlimit(what, (24, 24))\n"
+             "    print('BACK', *resource.getrlimit(what))\n"
+             "except (ValueError, OSError) as e:\n"
+             "    print('STUCK', e)\n"],
+            cfg=_fcfg(job_user_processes=24), user="nobody")
+        self.assertIn(b"LIMIT 24 24", out, (out, err))
+        self.assertEqual(out.count(b"HELD"), 3, (out, err))
+        self.assertNotIn(b"LIFTED", out, (out, err))
+        # Below the ceiling the limit is the job's own to move.
+        self.assertIn(b"LOWERED 10 24", out, (out, err))
+        self.assertIn(b"BACK 24 24", out, (out, err))
+
+    def test_the_ceiling_is_the_account_s_across_jails(self):
+        # One job of the account holds nine processes in its
+        # jail; a second job, in a jail of its own, is refused
+        # nine sooner. The count is the account's on the host.
+        import pwd
+        before = _processes_of("nobody")
+        cfg = _fcfg(job_user_processes=24)
+        rec = pwd.getpwnam("nobody")
+        work = tempfile.mkdtemp(prefix="hp-live-")
+        self.addCleanup(shutil.rmtree, work, True)
+        os.chmod(work, 0o755)
+        os.chown(work, rec.pw_uid, rec.pw_gid)
+        first = FC.spawn_confined_process(
+            [_LIVE_PYTHON, "-c",
+             "import os, time\n"
+             "kids = []\n"
+             "for i in range(8):\n"
+             "    pid = os.fork()\n"
+             "    if pid == 0:\n"
+             "        time.sleep(120)\n"
+             "        os._exit(0)\n"
+             "    kids.append(pid)\n"
+             "open('ready', 'w').write(str(len(kids)))\n"
+             "time.sleep(120)\n"],
+            cwd=work, env={}, user="nobody", cfg=cfg)
+        try:
+            ready = os.path.join(work, "ready")
+            deadline = time.time() + 60
+            while not os.path.exists(ready) and time.time() < deadline:
+                time.sleep(0.2)
+            self.assertTrue(os.path.exists(ready),
+                            "the first job never held its processes")
+            self.assertEqual(_processes_of("nobody"), before + 9)
+            first_jail = first._name
+            proc, out, err, _work = self._job(
+                [_LIVE_PYTHON, "-c", _FORK_UNTIL_REFUSED, "60"],
+                cfg=cfg, user="nobody")
+            soft, hard, started, how = _forked(out)
+            self.assertEqual((soft, hard), (24, 24), (out, err))
+            self.assertEqual(how, "EAGAIN", (out, err))
+            # 24 in all: nine in the first jail, this job's own
+            # first process, and its children.
+            self.assertLessEqual(started, 14, (out, err))
+            self.assertGreaterEqual(started, 14 - before,
+                                    (out, err, before))
+            if before == 0:
+                self.assertEqual(started, 14, (out, err))
+            # Two jails, one count.
+            self.assertTrue(FC._JAIL_NAME.match(first_jail), first_jail)
+            self.assertIsNone(first.poll())
+        finally:
+            first.kill()
+            first.close()
+        self.assertEqual(_processes_settle("nobody", before), before)
+
+    def test_a_job_with_no_job_user_carries_no_such_ceiling(self):
+        # The stated limit: uid 0's count is the host's own, so
+        # no limit is set on it, and forty children start. Where
+        # RACCT is enabled the jail's own rule (256) is the only
+        # ceiling on this job's processes.
+        proc, out, err, _work = self._job(
+            [_LIVE_PYTHON, "-c", _FORK_UNTIL_REFUSED, "40"])
+        soft, hard, started, how = _forked(out)
+        self.assertEqual((started, how), (40, "UNBOUNDED"), (out, err))
+        self.assertGreater(soft, 256, (out, err))
+        self.assertIn("no_superuser", proc.confinement_status)
+        self.assertEqual(proc.confinement_notes, [])
+
+    def test_the_lower_of_the_two_ceilings_is_the_one_a_job_meets(self):
+        if not _racct_live():
+            self.skipTest("RACCT is not enabled on this host")
+        before = _processes_of("nobody")
+        # The jail's rule below the account's ceiling.
+        proc, out, err, _work = self._job(
+            [_LIVE_PYTHON, "-c", _FORK_UNTIL_REFUSED, "60"],
+            cfg=_fcfg(job_processes=12, job_user_processes=24),
+            user="nobody")
+        _soft, hard, started, how = _forked(out)
+        self.assertEqual(hard, 24, (out, err))
+        self.assertEqual(how, "EAGAIN", (out, err))
+        self.assertLess(started, 12, (out, err))
+        self.assertGreater(started, 3, (out, err))
+        self.assertIn("rctl_resource_limits", proc.confinement_status)
+        # The account's ceiling below the jail's rule.
+        proc, out, err, _work = self._job(
+            [_LIVE_PYTHON, "-c", _FORK_UNTIL_REFUSED, "60"],
+            cfg=_fcfg(job_processes=48, job_user_processes=24),
+            user="nobody")
+        _soft, hard, started, how = _forked(out)
+        self.assertEqual(how, "EAGAIN", (out, err))
+        self.assertLessEqual(started, 23, (out, err))
+        self.assertGreaterEqual(started, 23 - before, (out, err))
+        self.assertGreater(started, 11, (out, err))
+
+    def test_a_ceiling_the_config_cannot_have_refuses_the_start(self):
+        # On a real host: the startup gate's own probe, with
+        # the config as written.
+        self.assertIsNone(FC.freebsd_startup_problem(
+            {"security": {
+                "confinement": {"freebsd": {"job_user_processes": 64}},
+                "job_user": {"user": "nobody"}}}))
+        problem = FC.freebsd_startup_problem(
+            _fcfg(job_user_processes=64))
+        self.assertIn("engages no job user", problem or "")
+        _rc, said = _host_says(FC.SYSCTL_BIN, "-n", "kern.maxprocperuid")
+        per_user = int(said.strip())
+        self.assertGreater(per_user, 256)
+        problem = FC.freebsd_startup_problem({"security": {
+            "confinement": {"freebsd": {
+                "job_user_processes": per_user + 1}},
+            "job_user": {"user": "nobody"}}})
+        self.assertIn("kern.maxprocperuid is %d" % per_user,
+                      problem or "")
+        # At the kernel's own limit the ceiling is one a job can
+        # be given: the door sets it.
+        _proc, out, err, _work = self._job(
+            [_LIVE_PYTHON, "-c", _FORK_UNTIL_REFUSED, "2"],
+            cfg=_fcfg(job_user_processes=per_user), user="nobody")
+        soft, hard, started, how = _forked(out)
+        self.assertEqual((soft, hard, started, how),
+                         (per_user, per_user, 2, "UNBOUNDED"), (out, err))
+        # And the public name answers for this machine.
+        self.assertEqual(FC.job_user_process_ceiling({}, "nobody"), 256)
+        self.assertIsNone(FC.job_user_process_ceiling({}, None))
 
     def test_the_jail_holds_a_ceiling_on_memory_across_processes(self):
         # Four processes, each well under the per-process
@@ -4661,6 +5279,11 @@ class _LiveSeed(unittest.TestCase):
         self.assertNotIn("no_superuser", out)
         self.assertIn("platform: a job goes in as %s at the jail "
                       "door" % user, out)
+        # ... and how many processes the trial job read its user
+        # held to.
+        self.assertIn("platform: %s is held to 256 processes across "
+                      "this host (limits -u at the jail door; no "
+                      "RACCT needed)" % user, out)
         self.assertNotIn("stated as audit", out)
 
     def _shown_tree(self):
@@ -4742,6 +5365,9 @@ class _LiveSeed(unittest.TestCase):
         reason = confined[0].get("reason", "<none>")
         self.assertNotIn("no_superuser", reason)
         self.assertIn("platform: FreeBSD jail backend: " + reason, out)
+        # The job's own record says what its user was held to.
+        self.assertIn("held to 256 processes",
+                      confined[0].get("detail", ""), confined[0])
         self.assertTrue(any(
             r.get("feature") == "job_user"
             and r.get("decision") == "run_as" for r in rows), rows)
@@ -5138,6 +5764,40 @@ class LiveAccountTest(_LiveSeed):
         uid, _gid = _account_ids()
         result, rows = self._first_job(seeded["security"])
         self._job_ran_as(uid, result, rows, out)
+        self._nothing_left()
+
+    def test_the_account_s_processes_are_held_exactly(self):
+        # Nothing else runs as the installer's account, so the
+        # ceiling is the jobs' own to the last process: under a
+        # ceiling of 24 a job holds 24, its first one and
+        # twenty-three children, on every guest.
+        self.assertEqual(INS.freebsd_job_account(make=True),
+                         ("pigeon-jobs", True, None))
+        self.assertEqual(_processes_of("pigeon-jobs"), 0)
+        uid, gid = _account_ids()
+        work = os.path.join(self.folder, "held")
+        os.mkdir(work)
+        os.chmod(self.folder, 0o755)
+        os.chown(work, uid, gid)
+        proc = FC.spawn_confined_process(
+            [_LIVE_PYTHON, "-c", _FORK_UNTIL_REFUSED, "60"],
+            cwd=work, env={}, user="pigeon-jobs",
+            cfg=_fcfg(job_user_processes=24))
+        try:
+            out, err = proc.communicate(timeout=120)
+        finally:
+            proc.close()
+        self.assertEqual(_forked(out), (24, 24, 23, "EAGAIN"),
+                         (out, err))
+        self.assertEqual(proc.confinement_notes,
+                         ["job user pigeon-jobs held to 24 processes"])
+        # The trial the installer runs reads the default back.
+        problem, lines = INS.freebsd_job_user_trial({}, "pigeon-jobs")
+        self.assertIsNone(problem)
+        self.assertIn("pigeon-jobs is held to 256 processes across "
+                      "this host (limits -u at the jail door; no "
+                      "RACCT needed)", lines)
+        self.assertEqual(_processes_settle("pigeon-jobs", 0), 0)
         self._nothing_left()
 
     def test_the_wizard_s_seed_makes_no_account(self):

@@ -195,9 +195,12 @@ class CoreListTest(unittest.TestCase):
         # (runner/ops/briefing.py by 10 lines), and again the
         # same day after the seed's questions to the machine
         # took a switch in the environment grew
-        # runner/ops/install.py by 33 lines.
-        self.assertEqual(67884, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(61527, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner/ops/install.py by 33 lines, and once more
+        # after the job user's process ceiling grew
+        # runner/guard/freebsd_confine.py by 131 lines and
+        # runner/ops/install.py by 21.
+        self.assertEqual(68036, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(61670, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
