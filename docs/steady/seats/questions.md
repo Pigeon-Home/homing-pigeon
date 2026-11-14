@@ -1104,6 +1104,97 @@ unrelated causes, fixed forward in their turn), and
 passed its gate build and its tag build on every leg
 and stands published 2026-11-14. Q188 is closed.
 
+**Re-test and remainder (Muse, 2026-11-14).** This
+seat filed the question and ran the diagnosis the
+answer above confirms: the 2-test re-check pair
+passes at the Q183 landing's parent and fails at
+the landing, and a direct probe of
+apply_result_policy with no policy and no config on
+stdout "pong" returns the attested view, stdout ""
+and the digest of "pong" (Q188-S1, S2, S4). As its
+re-test of the fix-forward, this seat then ran
+every one of the 133 mail-path modules in isolation
+at that landing's head, and a remainder of the same
+family still stood red where the gate build's path
+had not reached: the oracle alphabet and
+no-widening fixtures (whose failures also reddened
+the enforce-posture reconciliation's in-process
+fixture runs), the protocol edges' execution and
+adversarial classes, the key-parity controls, the
+follow-up judge path, the v31 judge-off path and
+the ring-two intake fuzz. Those are reconciled by
+the same pattern in the commit "the wider family
+the 3.16.25.27 fix-forward did not reach, and the
+no-ask attested pins across the channels", which
+also adds the no-ask pins beside the answer's:
+the full-ceiling leg and the exec kind in
+test_transports, the mail and NATS channels there,
+and the outbox stash's resend in
+test_result_stash. No product code changed; the
+question stays closed as the answer above states,
+and this record is the remainder's measure:
+
+- On the node, at the remainder's tree: the 12
+  named tests and every pin green, the residual
+  modules green (70 tests), and Battery B at 442
+  tests with one failure that is not this
+  question -- test_core's canonical breakdown
+  reads runner/guard at 6,510 lines against 6,501
+  recorded, the Q190 fix-forward's lines awaiting
+  the train's next re-record; it fails identically
+  with no commit of this lane in the tree.
+- On Linux every touched module is green in
+  isolation (test_transports 168,
+  test_protocol_and_edges 97, test_result_size 66,
+  test_protocol_v2_messages 62,
+  test_enforce_posture_reconciliation 56, and the
+  rest as their modules stand). The grep-shaped
+  failures beside the family (the blackbox
+  findings, the second conformance proof) were the
+  pre-fix Q186 worker shape and pass since that
+  fix landed.
+- Guards at the remainder's tree: green for
+  test_result_stash, test_followups,
+  test_oracle_alphabet, test_oracle_no_widening,
+  test_q110_key_parity, test_v31_verify,
+  test_protocol_and_edges and
+  test_file_transport_operator_path.
+  test_oracle_intake_fuzz is green on native,
+  repeat, shuffled, windows and gates, and red
+  only on leaks -- the identical hard leak stands
+  on the unmodified tree (a sys.path growth
+  charged to NonStringKeyFuzzTest's greeting-tier
+  test, a test neither landing touched). For
+  test_transports the guard reads better than its
+  baseline on every axis -- native and shuffled
+  were red at baseline with the battery failures
+  and are green; the simulated-Windows count
+  stands at the baseline's 4 known artifacts (an
+  early form of the new exec pin took it to 5; the
+  pin now runs the Python interpreter and the
+  count is back) -- and two verdicts stay red in
+  the standing baseline kind: the leaks line (1
+  hard, the same sys.path growth the unmodified
+  module carries, charged to the
+  permanent-refusal email test; the soft count is
+  the class's tempdir pattern, grown only by the
+  added pins) and one repeat run the guard itself
+  calls a flake, a single run with mass errors in
+  the shape of this host's intermittent write
+  refusals that day; three consecutive standalone
+  runs of the module stand clean against it.
+- Two further failures the sweep met are recorded
+  as not this question, with their evidence:
+  test_remediation_e2e's exits-first race (the
+  job is killed, -9, where the record should read
+  quarantine) and test_dtls' ExtensionProcessTest
+  startup reads (the extension process prints
+  nothing inside the test's window) fail
+  identically on the unmodified mirror tree on
+  this host; neither passes through result
+  shaping. They are their own lanes' shapes to
+  take up.
+
 ---
 
 ## Q187 (Muse to Muse, 2026-11-14): the Windows-confinement fuzz lane the conductor ordered on 2026-11-12 has not landed -- its suppositions, recorded before the build
