@@ -188,6 +188,16 @@ def _validate_confinement_block(block):
     _bind_pairs(extra_binds)
     work_mount = block.get("work_mount", WORK_MOUNT)
     _absolute_mount(work_mount, "work_mount")
+    # The FreeBSD jail backend's own settings live in a block of
+    # their own; that module owns its schema. Checked on every
+    # platform, so a config is right or wrong the same way
+    # wherever it is read.
+    if "freebsd" in block:
+        try:
+            from runner.guard import freebsd_confine as _freebsd
+        except ImportError:
+            from guard import freebsd_confine as _freebsd  # type: ignore
+        _freebsd.validate_freebsd_block(block["freebsd"])
     return True
 
 
@@ -252,16 +262,20 @@ def _install_prefix(path):
     return None
 
 
-def interpreter_binds(resolved, extra_ro_binds=()):
+def interpreter_binds(resolved, extra_ro_binds=(),
+                      always_visible=_ALWAYS_VISIBLE):
     """Read-only binds needed for `resolved` to execute in the sandbox.
 
     Returns a list of (src, dst) pairs, possibly empty. Both the path
     as resolved and its realpath are considered: a venv's python3 is
     a symlink whose own prefix (pyvenv.cfg, site-packages) is needed
     as well as the base interpreter's. Paths already under /usr or an
-    operator extra_ro_bind need nothing.
+    operator extra_ro_bind need nothing. `always_visible` is the set
+    of trees the confinement shows without a bind: /usr for bwrap,
+    and the FreeBSD jail backend passes the trees it mounts, so one
+    rule decides the widening on both.
     """
-    visible = list(_ALWAYS_VISIBLE) + [
+    visible = list(always_visible) + [
         dst for _src, dst in extra_ro_binds if isinstance(dst, str)]
     out = []
     seen = set()

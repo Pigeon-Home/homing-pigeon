@@ -246,6 +246,21 @@ REGISTERED = {
         "the freebsd-confinement workflow's 14.5 and 15.0 "
         "guests, and the fleet FreeBSD node; everywhere else "
         "the stub and the injection seams are the subject",
+    "the jail backend's host calls are POSIX":
+        "test_freebsd_confine's two tests of the real host object "
+        "(a POSIX shell line for the reaper, a command and a "
+        "process) run on every POSIX leg; the backend never runs "
+        "on Windows, and the rest of its logic is tested there "
+        "against the fake host",
+    "RACCT is not enabled on this host":
+        "test_freebsd_confine's live rctl tests need the kernel's "
+        "resource accounting, a boot tunable; the "
+        "freebsd-confinement workflow enables it in both guests "
+        "and fails by name when it is off, so they run there",
+    "this kernel has no VIMAGE":
+        "test_freebsd_confine's live private-loopback tests need "
+        "a kernel with VIMAGE, which GENERIC carries; they run "
+        "in the freebsd-confinement workflow's guests",
     "the stub exists only off darwin":
         "test_macos_confine's stub tests are exercised on every "
         "host that is not macOS, where the Seatbelt backend is "

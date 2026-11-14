@@ -579,11 +579,38 @@ restricted token and a low integrity level, audited as
 `windows: job_object + restricted_token + low_integrity` —
 no filesystem namespace isolation, so a confined job can
 still read any path its token can read. On FreeBSD: a
-per-job jail with the host's system directories mounted
-read-only, the work directory the only writable mount, a
-fresh `/tmp`, no network at all, and a 512 MiB per-process
-ceiling applied at spawn, audited as
-`freebsd: jail + no_network + spawn_resource_limits`. A
+per-job jail with a read-only root, the host's system
+directories mounted read-only below it, the work directory
+and a bounded `/tmp` the only two trees that take a write,
+no network at all, every mount `nosuid`, root inside the
+jail holding no privilege, and a 512 MiB per-process
+ceiling the job cannot raise; on a host with RACCT enabled,
+rctl rules also hold the jail as a whole. The audit record
+names the controls a job's jail carried, from the floor
+`freebsd: jail + no_network + spawn_resource_limits` up.
+`extra_ro_binds` and `work_mount` above mean the same on
+FreeBSD; `extra_flags` are bwrap arguments, and a FreeBSD
+runner whose config carries any refuses to start. The
+jail's own settings are a block of their own, checked on
+every platform:
+
+```json
+"confinement": {
+  "freebsd": {
+    "loopback": false,
+    "process_memory_bytes": 536870912,
+    "tmp_bytes": 536870912,
+    "job_memory_bytes": 2147483648,
+    "job_processes": 256
+  }
+}
+```
+
+`loopback` gives the job a loopback of its own and nothing
+else; the four numbers are the per-process ceiling, the size
+of `/tmp`, and the two jail-wide ceilings, which need RACCT
+(`kern.racct.enable=1` in `/boot/loader.conf`) and refuse the
+start when written on a host without it. A
 platform with no backend (macOS today) refuses to start at
 `enforce`. The platform pages are
 `docs/steady/security/windows.md` and

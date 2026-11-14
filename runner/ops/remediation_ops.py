@@ -649,7 +649,11 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
     On FreeBSD at enforce the same shape comes from the FreeBSD
     backend (runner/guard/freebsd_confine.py): the jail is
     created first and the job started inside it via jexec, and
-    release tears the jail down. When the job_user seam is at
+    release tears the jail down. The config rides to the spawn
+    (the work mount, the read-only binds, the backend's own
+    settings), and a read-only mount the backend adds for the
+    job's interpreter is written into the record's detail, as
+    the Linux sandbox's bind is. When the job_user seam is at
     enforce with a user named, that user is handed to the
     FreeBSD spawn, which applies it at the jail door (jexec -u)
     -- the Popen preexec demote cannot ride a spawn that
@@ -665,8 +669,10 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
     The success record names exactly the controls applied, in
     the backend's own status string ("windows: job_object +
     restricted_token + low_integrity" / "freebsd: jail +
-    no_network + spawn_resource_limits" / "macos:
-    seatbelt_profile + no_network + spawn_resource_limits").
+    no_network + spawn_resource_limits", with the further
+    controls a FreeBSD job's jail carried named between them /
+    "macos: seatbelt_profile + no_network +
+    spawn_resource_limits").
     """
     # The platform is sys.platform alone, the signal every
     # confinement gate beside this seam uses (_confinement_argv,
@@ -764,17 +770,24 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
             if spawn is None:
                 raise RuntimeError(
                     "freebsd confinement backend has no confined spawn")
-            proc = spawn(argv, cwd=cwd, env=env, user=user)
+            # The config rides to the spawn: the jail's work
+            # mount, the operator's read-only binds and the
+            # backend's own settings are read from it there.
+            proc = spawn(argv, cwd=cwd, env=env, user=user, cfg=cfg)
         except Exception as e:
             _audit_fbsd("fallback", "freebsd_confinement_failed", e)
             raise _runner().JobRejected(
                 "confinement could not be applied on freebsd "
                 "(%s); job refused under "
                 "security.modes.confinement=enforce" % (e,))
+        # The record names the controls this job's jail carried:
+        # the process object's own string, which says more than
+        # the floor only where a control was applied.
         status = getattr(proc, "confinement_status", None) \
             or getattr(backend, "STATUS_CONFINEMENT", None) \
             or "freebsd: jail + no_network + spawn_resource_limits"
-        _audit_fbsd("confined", status)
+        notes = getattr(proc, "confinement_notes", None) or []
+        _audit_fbsd("confined", status, "; ".join(notes))
 
         def _release_fbsd():
             try:

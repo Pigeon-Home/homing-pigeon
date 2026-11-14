@@ -8,71 +8,191 @@ for: confinement.
 ## Confinement on FreeBSD
 
 There is no bwrap on FreeBSD, and the FreeBSD confinement
-backend is a jail, not a namespace sandbox. What it applies, at
-`enforce`, is named exactly in every audit and startup record:
+backend is a jail, not a namespace sandbox. Each job runs
+inside a jail made for it, and every audit and startup record
+names the controls that job's jail carried. The floor every
+confined job has is:
 
 ```
 freebsd: jail + no_network + spawn_resource_limits
 ```
 
-Each job runs inside a freshly created jail(8) whose root is a
-per-job skeleton. The host's `/usr`, `/usr/local`, `/bin`,
-`/lib`, `/libexec`
-and `/sbin` are mounted read-only (nullfs) into that root; the
-job's work directory is mounted at `/work` and is the only
-writable mount; `/tmp` is a fresh tmpfs; `/dev` is the jail
-devfs under ruleset 4, which exposes only the handful of device
-nodes a job needs. The jail is created with `ip4=disable` and
-`ip6=disable`, so the job has no network at all, loopback
-included. The memory ceiling is applied at spawn: the job's
-command runs under `limits(1)` with the virtual-memory and
-data-size limits both set to 512 MiB per process. The jail
-exists before the job's first process starts (the job is
-started inside it with `jexec(8)`), so the job never runs a
-line unconfined, and the jail is removed when the job's
-process exits.
+A record that says more names a control that was applied to
+that job. On a host with RACCT enabled, a job with no job user
+reads:
+
+```
+freebsd: jail + no_network + no_superuser + rctl_resource_limits + spawn_resource_limits
+```
+
+The design of record is
+`docs/steady/design/freebsd-confinement-design.md`; this page
+is what an operator needs from it.
+
+### What a job gets
+
+- **A root that takes no write.** The jail's root is a
+  read-only view of a per-job skeleton that holds mount points
+  and three small files. Below it, read-only: the host's
+  `/usr`, `/usr/local`, `/bin`, `/lib`, `/libexec` and `/sbin`.
+  `/dev` is devfs under ruleset 4, the handful of device nodes
+  a job needs. Two trees take a write: the job's work
+  directory, mounted at `/work`, and a fresh `/tmp`.
+- **No network at all**, loopback included: the jail is
+  created with `ip4=disable` and `ip6=disable`.
+- **A process table of its own.** The host's processes do not
+  exist inside the jail, and removing the jail ends every
+  process the job left.
+- **Root with no privilege** (`no_superuser`). A job with no
+  job user is uid 0 inside its jail, and the jail is created
+  with `allow.nosuser`: that uid cannot raise a resource
+  limit, change a file's owner, or do anything else the
+  super-user's privilege grants.
+- **No set-user-ID.** Every mount is `nosuid`, so a
+  set-user-ID bit on any file a job can reach buys nothing.
+- **A per-process memory ceiling** (`spawn_resource_limits`):
+  the job's command runs under `limits(1)` with the
+  virtual-memory and data-size limits both at 512 MiB. The job
+  cannot raise them.
+- **A bounded `/tmp`**: 512 MiB. `/tmp` is memory, and a
+  scratch tree with no size is a way around every other
+  ceiling.
+- **Ceilings on the job as a whole**
+  (`rctl_resource_limits`), on a host with RACCT enabled: at
+  most 256 processes in the jail, and at most 2 GiB of address
+  space across all of them together, held by rctl rules.
+
+The jail exists before the job's first process starts (the job
+is started inside it with `jexec(8)`), so the job never runs a
+line unconfined.
+
+### RACCT
+
+The jail-wide ceilings are rctl rules, and rctl can deny
+nothing unless the kernel's resource accounting is on. It is a
+boot tunable, off as FreeBSD ships:
+
+```
+# /boot/loader.conf
+kern.racct.enable=1
+```
+
+After a reboot with that line, `rctl_resource_limits` appears
+in the record and the two rules are written for every job. On
+a host without it the rules are not written and the record
+does not name them — the one place a default follows the host.
+A ceiling you write yourself does not follow the host:
+`job_processes` or `job_memory_bytes` in the config on a host
+without RACCT refuses the start and names the tunable.
+
+### Settings
+
+All optional, under `security.confinement`:
+
+```json
+"confinement": {
+  "extra_ro_binds": [["/opt/data", "/data"]],
+  "work_mount": "/work",
+  "freebsd": {
+    "loopback": false,
+    "process_memory_bytes": 536870912,
+    "tmp_bytes": 536870912,
+    "job_memory_bytes": 2147483648,
+    "job_processes": 256
+  }
+}
+```
+
+- `extra_ro_binds` mounts a host directory read-only inside
+  the jail, and `work_mount` moves the work directory's mount
+  point: the same two keys the Linux sandbox reads. A work
+  mount is a directory of its own at the jail root; a bind may
+  not land on the root, `/tmp`, `/dev` or the work mount.
+- `extra_flags` are bwrap arguments. The jail takes none of
+  them: a FreeBSD runner at `enforce` whose config carries any
+  refuses to start and names them.
+- `freebsd.loopback: true` gives the job a loopback of its
+  own, the shape the Linux sandbox has: the jail gets a
+  network stack of its own whose only interface is its own
+  `lo0`, up at 127.0.0.1. The job can talk to itself and to
+  nothing else — the host's 127.0.0.1 is another stack. The
+  record names `private_loopback` in place of `no_network`.
+  It needs a kernel with VIMAGE, which GENERIC carries.
+- The four numbers are the ceilings above. A setting the
+  backend does not know is a config error, on every platform.
+
+### The interpreter
+
+An interpreter under the mounted trees runs as it is. One that
+lives elsewhere — a pyenv, a venv, `/opt` — gets its own
+install prefix mounted read-only at the same path, and the
+mount is written into the audit record: the Linux sandbox's
+rule, with its floor (never a home directory, never a tree
+shallower than two components). An interpreter under `/tmp`,
+`/dev` or the work mount is refused: the jail has its own tree
+there.
+
+### The job user
 
 When `job_user` is also at `enforce` with a user named, that
-user is handed to the spawn and applied inside the jail
+user is handed to the spawn and applied at the jail door
 (`jexec -u`, resolved in the host's user database): the
-POSIX `setuid` demote cannot ride a spawn
-that replaces the process creation, so the demote happens at
-the jail door instead, the same shape as the Windows backend's
-creation-time token. On its own (confinement at `audit` or
-`off`), `job_user` on FreeBSD is the ordinary POSIX demote,
-which engages as it does on Linux.
+POSIX `setuid` demote cannot ride a spawn that replaces the
+process creation, so the demote happens at the door instead,
+the same shape as the Windows backend's creation-time token.
+The job is that user from its first instruction, the `nosuid`
+mounts keep it from coming back as root, and the record does
+not name `no_superuser` for it — the job_user record names
+the demote. On its own (confinement at `audit` or `off`),
+`job_user` on FreeBSD is the ordinary POSIX demote, which
+engages as it does on Linux.
 
-What this does not provide, plainly:
+### Startup, and after a job
 
-- The memory ceiling is a per-process resource limit applied
-  at spawn (`setrlimit` via `limits(1)`), not an `rctl(8)`
-  rule. RACCT/RCTL is present but disabled on the project's
-  FreeBSD node (`kern.racct.enable=0`, a boot tunable), so
-  rctl cannot deny anything there. The record names
-  `spawn_resource_limits` for exactly that reason; on a host
-  with RACCT enabled, an rctl-backed ceiling is a future pass,
-  and it will change the status string when it lands, not
-  before.
-- Capsicum is not used. Capability mode is entered in-process
-  by the confined program itself; the runner starts arbitrary
-  job interpreters that know nothing of it, so it does not fit
-  the launcher shape. The jail is the boundary instead.
-- The job runs as root inside its jail unless `job_user`
-  hands the spawn a user. Jail root is not host root: the
-  jailed process cannot see the host filesystem outside the
-  mounts above, and the jail defaults deny mounting, raw
-  sockets and System V IPC inside it. But root inside a jail
-  is still root over everything mounted writable there, which
-  is the job's own work directory and nothing else — keep
-  jobs' outputs inside it.
+At `enforce` the startup gate probes the backend and refuses
+to start when the probe fails, naming why. The probe builds
+one: a throwaway skeleton and its mounts, a throwaway jail
+with a job's parameters, and a trial process inside it that
+writes its work mount and `/tmp`, tries to write the jail
+root, tries an act that needs privilege, and looks at `/dev`.
+A trial that lands a write on the root, keeps a privilege, or
+sees the host's devices is a refusal by name; so is a config
+that asks for a control the host cannot hold. A job whose own
+jail cannot be built is refused at job time the same way.
+There is no path on which a job runs unconfined under
+`enforce`.
 
-At `enforce` the startup gate probes the backend — a
-throwaway skeleton, its nullfs mounts, a throwaway jail
-created and removed, and a `true` run inside it under the
-spawn limits — and refuses to start when the probe fails,
-naming why. A job whose own jail cannot be created or mounted
-is refused at job time the same way; there is no path on
-which a job runs unconfined under `enforce`.
+When a job ends the backend removes its rctl rules, its jail,
+its mounts and its skeleton. Three things stand behind that:
+
+- The skeleton is never removed through a mount. If a mount
+  will not let go, the skeleton stays where it is and the
+  job's files behind the mount are not touched.
+- If the runner itself dies, a watcher that sits beside each
+  job removes the job's jail, which ends the job.
+- The next runner to start removes what a dead runner left:
+  jails, rules, mounts and skeletons whose names carry the
+  process id of a runner that is gone.
+
+### What this does not provide
+
+- **Not Capsicum.** Capability mode is entered in-process by
+  the confined program itself; the runner starts arbitrary job
+  interpreters that know nothing of it, so it does not fit the
+  launcher shape. The jail is the boundary instead.
+- **Not without root.** Making a jail and mounting into it
+  need root: the runner must run as root for the backend to
+  engage. The Linux sandbox confines without it.
+- **The per-process ceiling is not a kernel rule.** It is a
+  resource limit applied at spawn, and it holds because the
+  job has no privilege to raise it. The kernel rules are the
+  rctl ones, on a host with RACCT enabled.
+- **Memory outside a process.** A shared-memory object a job
+  creates and never maps is bounded by neither ceiling. The
+  `/tmp` bound closes the largest such door.
+- **Disk.** The work directory is on the host's disk and is
+  not bounded here. Keep jobs' outputs inside it.
+- **No CPU ceiling.**
 
 ## The mode a FreeBSD config states
 
@@ -89,7 +209,14 @@ unconfined and the audit log records what the mode would have
 done. `job_user` is not stated down: the POSIX demote engages
 on FreeBSD as it does on Linux.
 
-## Supposition, recorded before the field test
+## The first backend's field test
+
+What follows is the record of the first backend (2026-11-10):
+a jail whose root was the per-job skeleton itself, with the
+controls of the floor and nothing else. The shape above
+replaced it on 2026-11-14.
+
+### Supposition, recorded before the field test
 
 Recorded 2026-11-10, before the backend's first field test on
 the fleet FreeBSD node (FreeBSD 14.5-RELEASE), mirroring the
@@ -118,7 +245,7 @@ supposition is that, with the backend landed, on the node:
   verification, production install untouched) behaves as it
   did in the baseline run at the seeded posture.
 
-## Conclusions from the field test
+### Conclusions from the field test
 
 The field test ran on the fleet node (FreeBSD 14.5-RELEASE)
 on 2026-11-10: the full 17-step rig battery at every
@@ -169,9 +296,9 @@ before the passing run:
   skeleton carries a copy of the hints file, nothing
   else of `/var`.
 
-The backend's live unit tests run on the node itself
+The backend's live unit tests ran on the node itself
 (probe, argv translation, in-jail spawn, demote, local
-binary, memory ceiling): 6 of 6. What this backend does
-not do stands as written above: no rctl rule, no Capsicum,
-no per-job CPU or process-count limit, no separate network
-namespace with connectivity.
+binary, memory ceiling): 6 of 6. As that test stood, the
+backend had no rctl rule, no per-job process-count limit
+and no loopback; the shape above has all three, and has not
+been run on the node.

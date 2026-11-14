@@ -169,9 +169,14 @@ class CoreListTest(unittest.TestCase):
         # lines, and again on 2026-11-12 after the macOS
         # confinement spawn-limits fix grew
         # runner/guard/macos_confine.py by 48 lines, the
-        # whole set re-measured over the current tree.
-        self.assertEqual(66057, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(59883, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # whole set re-measured over the current tree, and
+        # again on 2026-11-14 after the FreeBSD confinement
+        # backend's second shape grew
+        # runner/guard/freebsd_confine.py by 814 lines,
+        # runner/guard/sandbox.py by 14 and
+        # runner/ops/remediation_ops.py by 13.
+        self.assertEqual(66898, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(60616, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
