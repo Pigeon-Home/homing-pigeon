@@ -202,6 +202,10 @@ class FleetSshReadingTest(unittest.TestCase):
     no machine (the shape test above keeps the word for the
     other kind of login off the page). A machine that could
     not be read carries that plainly instead of a guess.
+    San Francisco's reading landed on a later try the same
+    day, after repeated earlier tries reached no banner, and
+    closed Q176; its line carries the reading, not the
+    not-read wording it first carried.
     """
 
     def test_every_machine_line_carries_an_ssh_reading(self):
@@ -223,10 +227,46 @@ class FleetSshReadingTest(unittest.TestCase):
 
     def test_unread_machines_say_not_read_not_a_posture(self):
         rows = _rows(_read(), MACHINES)
-        for name in ("San Francisco", "Nuremberg"):
+        for name in ("Nuremberg",):
             line = " ".join(rows[name])
             self.assertIn("not read", line, name)
             self.assertIn("not guessed", line, name)
+
+    def test_san_francisco_carries_its_reading(self):
+        # Q176 closure (2026-11-13): San Francisco answered
+        # on a later try the same day, after repeated earlier
+        # tries reached no banner. Its line carries the
+        # reading in the other lines' shape, and the
+        # not-read / still-owed wording stands on it no
+        # longer.
+        rows = _rows(_read(), MACHINES)
+        line = " ".join(rows["San Francisco"])
+        self.assertIn("not by key only", line)
+        self.assertIn("word-based login beside the key", line)
+        self.assertIn("root login is permitted", line)
+        self.assertIn("keyboard-interactive method is not "
+                      "offered", line)
+        self.assertIn("read 2026-11-13", line)
+        self.assertIn("conductor", line.lower())
+        for absent in ("not read", "still owed",
+                       "not guessed", "no SSH banner"):
+            self.assertNotIn(absent, line)
+
+    def test_san_francisco_reading_stands_in_the_account(
+            self):
+        # The fleet page's account of the readings carries
+        # San Francisco's reading too, and no longer says
+        # the machine did not answer or owes a reading.
+        text = _read()
+        start = text.index("The SSH readings on the lines")
+        end = text.index("One machine the page does not "
+                         "carry", start)
+        account = " ".join(text[start:end].split())
+        self.assertIn("San Francisco", account)
+        self.assertIn("not by key only", account)
+        self.assertIn("keyboard-interactive", account)
+        self.assertNotIn("San Francisco did", account)
+        self.assertNotIn("still owed", account)
 
     def test_the_machine_with_no_ssh_server_says_so(self):
         rows = _rows(_read(), MACHINES)

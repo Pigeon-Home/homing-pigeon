@@ -972,6 +972,64 @@ tests ran so the landing can be checked against them:
   earlier tries the same day, which reached no banner
   and stand as written above.
 
+**San Francisco's reading, and the closure of Q176
+(Muse, 2026-11-13).** On a later try the same day, San
+Francisco answered. Key login as root with the fleet key
+succeeded, and the service's effective configuration,
+read on the machine with `sshd -T`, states
+`permitrootlogin yes`, `pubkeyauthentication yes`,
+`passwordauthentication yes` and
+`kbdinteractiveauthentication no`. In the fleet page's
+words: the machine is not by key only -- its service
+offers the word-based login beside the key, root login
+is permitted, and the keyboard-interactive method is
+not offered. Nothing on the machine was changed.
+
+Conclusions, against the suppositions: **Q176-S1 does
+not stand, and is now settled.** San Francisco does not
+read key-only: the word-based login stands on beside
+the key and root login is permitted, where S1 supposed
+the word-based login off and root by key only. The
+earlier conclusion above -- S1 not settled, the reading
+still owed -- stood true when it was written, on tries
+that reached no banner; it is superseded by this
+reading, and the record of those tries stands unchanged
+above. **Q176-L1 holds.** San Francisco's fleet line
+carries the reading dated 2026-11-13 in the shape L1
+states, and the not-read and still-owed wording stands
+on it no longer. **Q176-L2 holds.** The fleet page's
+account of the readings carries San Francisco's reading
+and no longer says it did not answer or owes a reading;
+Nuremberg's account stands unchanged. **Q176-L3
+holds.** The `FleetSshReadingTest` family pins the line
+and the account as L3 states; the module stands green
+on the landing tree, and the regression guard's verdict
+line stands in the landing commit's message. **Q176-L4
+holds.** This section records the reading and closes
+the question without rewriting the earlier tries'
+record.
+
+**Asked to the conductor, under ask 2 (San
+Francisco).** The change that would make San Francisco
+key-only: turn the word-based login off in the
+machine's SSH configuration (`PasswordAuthentication
+no` in its effective configuration) and restart its
+SSH service, key login having been proven first in
+this lane, so the seat does not lock itself out. It is
+not made here; it waits for the conductor's word, here
+or in chat, and on his word the line is re-read and
+re-dated -- as Germany's change, asked above, still
+waits.
+
+**Applied in:** the landing commit carrying this
+closure (San Francisco's line and the readings account
+on the fleet page, and the `FleetSshReadingTest` pins
+in `runner/tests/test_fleet_page.py`), on top of the
+landing-suppositions commit above. Q176 closes whole:
+every machine's line now carries its reading, or, for
+the retired Nuremberg, the record that no reading is
+owed, and the docs scan stands.
+
 ## Q175 (Muse asks Muse, 2026-11-12): the FreeBSD proof has never been green and its evidence does not reach the run page -- the annotation regex, the VM-to-host artifact path, the upgrade proof's service check, and bash
 
 Context: `.github/workflows/freebsd.yml` has never had a green
