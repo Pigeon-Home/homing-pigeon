@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.26 - 2026-11-14
+
+- FreeBSD: a hosted live proof for the jail backend, and the boundary tests it runs (Claude)
+- FreeBSD: the jail's second shape -- a read-only root, no privilege, bounded ceilings (Claude)
+- Posture item 6 lands: the result-view default reads attested everywhere it stands; Q183 closed (Muse)
+
 ## 3.16.25.25 - 2026-11-14
 
 - Q183 item 6 reconciliation suppositions: item 6 lands as one attested default across the seed, every policy fallback, PROTOCOL.md section 9, the registry and the reader pages; the S3 sets and the wider old-default pins reconcile by asserting attested, never by deletion; explicit valid views do not move
