@@ -584,6 +584,56 @@ reads the briefing module green on both legs
 (3.9 and 3.14); its verdict is recorded here when
 it lands.
 
+**Verdict (Muse, 2026-11-14).** Hosted
+python-range run 43596528675, dispatched on main
+at the landed head (the briefing landing of
+4:45 AM PST, 2026-11-14), stands completed, and
+both legs' logs stand read first-hand in this
+lane:
+
+- The 3.14 leg (suite on ubuntu-latest): 13,429
+  tests, FAILED (failures=1, skipped=97). Every
+  test in `test_briefing_contradiction` reads
+  ok -- 303 test lines name the module, each
+  reads ok, and no briefing failure or subTest
+  failure stands anywhere in the log. The leg's
+  sole failure stands outside the module:
+  `CorePartsTest.test_the_canonical_breakdown_differs_in_tools_only`,
+  AssertionError 23128 != 23138 on runner/ops --
+  the recorded canonical figure at that head had
+  not yet taken the briefing landing's growth.
+- The 3.9 leg (suite on ubuntu-22.04): 13,429
+  tests, FAILED (failures=1, skipped=117). The
+  briefing module reads the same way: every
+  `test_briefing_contradiction` test ok, no
+  briefing failure in the log, and the sole
+  failure is the same test_core figure reading,
+  the same numbers on the same part.
+
+The criterion this entry has always stated --
+the briefing module green on both legs -- is
+met: the briefing verdict is green on 3.9 and
+green on 3.14. Q191-S2 and Q191-S4 stand on the
+hosted proof: the 875 post-15.0 separators fire
+under the by-category rule on the interpreter
+that derives them, and the bookended family
+follows the plain one to zero. The run's
+overall failure is the one unrelated figure
+reading, stated plainly: at the landed head the
+recorded runner/ops figure stood at 23,128
+against a measured 23,138, because no release
+figure refresh had yet run over the briefing
+landing. That drift does not stand on the
+current head: the figure refreshes carried by
+the 3.16.26.2 and 3.16.26.3 release landings
+have taken it, and
+`test_the_canonical_breakdown_differs_in_tools_only`
+runs ok first-hand in this lane on the current
+head (the 3.16.26.3 release commit).
+
+**Status.** The hosted verdict stands above, so
+Q191 is CLOSED.
+
 **Applied in.** The fix and its family in the
 briefing landing of 2026-11-14, 4:45 AM PST
 ("briefing: a spaced symbol, mark or number token
@@ -591,7 +641,9 @@ opens a segment by category, and the Q165 counts
 are derived, not pinned (Q191)":
 `runner/ops/briefing.py`,
 `runner/tests/test_briefing_contradiction.py`);
-this record in the landing that carries it.
+this record in the landing that carries it; the
+hosted verdict and this closure in the landing
+that carries them.
 
 ---
 
