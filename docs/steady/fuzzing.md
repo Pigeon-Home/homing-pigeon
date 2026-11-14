@@ -693,3 +693,35 @@ and its regression family stand in
 `runner/tests/test_confinement.py`
 (`InterpreterBindsNullByteTest`), and the wider shotgun
 family around the sibling path helpers is queued at Q190.
+
+Suppositions for the Q190 shotgun family, recorded before
+the family ran (2026-11-14, the second seat's lane). The
+family drives every sibling helper and call site named at
+Q190 with NUL-carrying paths bookended at every position
+and run length, beside the full bookend alphabet. This
+seat expects, surface by surface: (S1) the validators that
+already name the NUL in their own checks --
+`sandbox._absolute_mount` and the macOS profile-path
+validator -- refuse cleanly with RuntimeError, and stand;
+(S2) `build_bwrap_command`'s interpreter path refuses
+cleanly, because its resolver answers None for a
+NUL-carrying name and the builder turns that into its
+RuntimeError refusal; (S3) the FreeBSD backend's
+interpreter resolution refuses cleanly, because the landed
+interpreter_binds fix already starves it of binds and its
+own mounted-tree check then refuses; (S4) the two
+`_install_prefix` helpers (sandbox and macOS) do NOT
+raise, but answer a prefix derived from a path no
+filesystem can hold -- in the leading-NUL shape a prefix
+string carrying the NUL itself -- which is the skip shape
+gone wrong in the other direction: not a crash, a bogus
+bind candidate; (S5) the macOS backend's realpath seams --
+`interpreter_read_paths` and `_profile_realpath`, and
+through them `build_profile` and `build_sandbox_argv` --
+still raise the unhandled ValueError, because nothing on
+those paths has the landed fix's guard. If S4 and S5 stand
+as stated, the fix shape is the landed one, applied at
+each seam: a NUL-carrying path is skipped (no prefix) or
+refused with RuntimeError, never carried and never an
+unhandled exception. The family's conclusions stand below
+once it has run.
