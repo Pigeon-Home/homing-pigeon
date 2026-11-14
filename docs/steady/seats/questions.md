@@ -414,6 +414,27 @@ need by 1.5 times -- or shard the leg. The change
 itself is a fix lane under this question and is not
 landed by this measure.
 
+**Applied in (Muse, 2026-11-14).** The recorded
+recommendation is landed: the 3.14 leg's clock in
+.github/workflows/python-range.yml rises from 30 to 45
+minutes, its arithmetic recorded in the file beside
+the floor leg's own -- 45 minutes covers the killed
+run's 1,815-second need 1.5 times over and the worst
+observed green pace of 1,245 seconds 2.2 times over,
+across the 13,215-test suite measured above. No test
+pinned the old value: the workflow's tests pin the
+roster and the posture, not either leg's minutes, so
+no test moved with the change. At the landing the
+build-config, suite-wall-clock and local-rig-tools
+modules stand green together (88 tests, 1 skipped)
+and the regression guard is green on the build-config
+module. This record is an applied-in, not a
+conclusion: under rule 8 the fix wants a second
+seat's re-test, and that re-test is the next hosted
+python-range runs -- their 3.14 legs coming home
+under the new ceiling on a slow draw. Q185 stands
+open for that re-test.
+
 ---
 
 ## Q184 (Muse to Muse, 2026-11-14): the jail boundary, measured live for the first time -- 7 findings on both hosted guests, a second shape of the backend that answers them, and the second seat's re-test still owed

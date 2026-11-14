@@ -60,14 +60,23 @@ jobs:
           # not the Python version -- the one thing this workflow
           # exists to isolate. Its budget is 75 (the 30-minute run
           # covered about 6,500 of about 9,900 tests, so the suite
-          # needs roughly 46 there, plus growth headroom); the
-          # fast leg keeps 30.
+          # needs roughly 46 there, plus growth headroom).
+          # The fast leg's budget is 45 (Q185, 2026-11-14): at 30
+          # the suite -- 13,215 tests at that measure -- fit only
+          # on a good runner draw: the five most recent legs read
+          # 1,815 seconds (killed at the wall), 1,245 seconds
+          # green, and 1,541, 1,206 and 1,625 seconds failing on
+          # test reds before the wall could bind, so on a slow
+          # draw the clock was doing size duty there too. 45
+          # covers the killed run's need 1.5 times over and the
+          # worst green pace 2.2 times over, plus growth
+          # headroom; it names a hanging test, not a size.
           - python: "3.9"
             os: ubuntu-22.04
             suite-minutes: 75
           - python: "3.14"
             os: ubuntu-latest
-            suite-minutes: 30
+            suite-minutes: 45
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
