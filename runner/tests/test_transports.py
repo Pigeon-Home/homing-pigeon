@@ -633,10 +633,18 @@ class FileTransportExtensionTest(unittest.TestCase):
         # stands under the simulated Windows surface, where
         # the shell form is one of the surface's known
         # artifacts (as test_exec_round_trip's own red there
-        # already is).
+        # already is). The script writes exact bytes through
+        # sys.stdout.buffer rather than print(): a text-mode
+        # print translates its newline to CRLF on Windows,
+        # the runner faithfully digests the bytes it receives
+        # (the 3.16.26.5 gate build's one red: the CRLF digest
+        # where this pin named the LF one), and the fixture --
+        # not the runner -- is what must name the bytes.
         jid = str(uuid.uuid4())
         self._drop("job.txt", _envelope(
-            jid, kind="exec", script="print('hello-from-file')",
+            jid, kind="exec",
+            script=("import sys; sys.stdout.buffer.write("
+                    "b'hello-from-file\\n')"),
             interpreter=[sys.executable], result_policy={}))
         self._cycle()
         with open(os.path.join(self.outbox, f"{jid}.result.txt"),
@@ -649,6 +657,67 @@ class FileTransportExtensionTest(unittest.TestCase):
         self.assertEqual(
             result["output_digest"],
             hashlib.sha384(b"hello-from-file\n").hexdigest())
+
+    def _exec_no_ask_result(self, payload):
+        # One attested exec round trip whose script emits
+        # exactly payload, byte for byte, on every platform:
+        # the script is built from the payload's repr, so no
+        # text-mode newline translation can reach the bytes.
+        jid = str(uuid.uuid4())
+        script = "import sys; sys.stdout.buffer.write(%r)" % (payload,)
+        self._drop("job.txt", _envelope(
+            jid, kind="exec", script=script,
+            interpreter=[sys.executable], result_policy={}))
+        self._cycle()
+        with open(os.path.join(self.outbox, f"{jid}.result.txt"),
+                  encoding="utf-8") as f:
+            _subject, body = transports.parse_envelope(f.read())
+        result = _read_result(body, jid)
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(result["stdout"], "")
+        return result
+
+    def test_an_exec_no_ask_digest_without_a_trailing_newline(self):
+        # The platform-newline trap, pinned shut: exact-byte
+        # output with no newline at all digests as itself.
+        payload = b"hello-from-file"
+        result = self._exec_no_ask_result(payload)
+        self.assertEqual(result["output_digest"],
+                         hashlib.sha384(payload).hexdigest())
+
+    def test_an_exec_no_ask_digest_over_several_lines(self):
+        payload = b"one\ntwo\nthree\n"
+        result = self._exec_no_ask_result(payload)
+        self.assertEqual(result["output_digest"],
+                         hashlib.sha384(payload).hexdigest())
+
+    def test_an_exec_no_ask_digest_keeps_intentional_crlf_bytes(self):
+        # Bytes a script emits on purpose are digested as
+        # they are: a CRLF the fixture asks for is not a
+        # platform artifact and is never normalised away.
+        payload = b"hello-from-file\r\n"
+        result = self._exec_no_ask_result(payload)
+        self.assertEqual(result["output_digest"],
+                         hashlib.sha384(payload).hexdigest())
+
+    def test_an_exec_no_ask_digest_over_mixed_line_endings(self):
+        payload = b"one\r\ntwo\nthree\r\n"
+        result = self._exec_no_ask_result(payload)
+        self.assertEqual(result["output_digest"],
+                         hashlib.sha384(payload).hexdigest())
+
+    def test_an_exec_no_ask_digest_of_empty_output(self):
+        payload = b""
+        result = self._exec_no_ask_result(payload)
+        self.assertEqual(result["output_digest"],
+                         hashlib.sha384(payload).hexdigest())
+
+    def test_an_exec_no_ask_digest_over_a_repeated_line_run(self):
+        payload = b"hello-from-file\n" * 10 + b"\n"
+        result = self._exec_no_ask_result(payload)
+        self.assertEqual(result["output_digest"],
+                         hashlib.sha384(payload).hexdigest())
 
     def test_exec_round_trip(self):
         jid = str(uuid.uuid4())
