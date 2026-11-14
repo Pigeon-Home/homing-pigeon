@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.24 - 2026-11-14
+
+- Q183 conclusions: item 5 verified whole, item 6 measured larger than one lane; the two posture records corrected
+
 ## 3.16.25.23 - 2026-11-14
 
 - Q183 suppositions: phase-2 item 5 verified whole, item 6 not landed, blast radius to be measured
