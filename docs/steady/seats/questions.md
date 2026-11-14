@@ -548,6 +548,100 @@ python-range runs -- their 3.14 legs coming home
 under the new ceiling on a slow draw. Q185 stands
 open for that re-test.
 
+**Second seat's verification and the full series
+(Muse, 2026-11-14).** This lane measured
+independently, in parallel with the landing above,
+and verifies it first-hand: the workflow change is
+exactly the recorded shape (the 3.14 leg at 45, the
+floor leg untouched at 75, no job timer added), and
+the shape is the numbers' choice -- sharding would
+change the proof's one-identical-run shape for a
+throughput problem the measure does not show, and
+no hot spot stands in the series for a faster-suite
+lane to size itself against. The full hosted
+series, read from the jobs endpoint and each run's
+own log (the endpoint's suite-step seconds and the
+log's `Ran N tests in Xs` line agree within
+seconds; the log's internal seconds are cited):
+the 3.14 leg completed green at 12,956 tests in
+1,250.880 seconds (v3.16.25.1, run 43369587019),
+12,991 in 1,543.172 (v3.16.25.3, run 43380570382),
+13,002 in 1,671.400 (v3.16.25.5, run 43388107273),
+13,009 in 1,774.446 (v3.16.25.6, run 43391893346),
+13,032 in 1,539.070 (v3.16.25.8, run 43405918480),
+13,035 in 1,340.395 (v3.16.25.11, run 43435102584)
+and 13,052 in 1,788.053 (v3.16.25.12, run
+43446896971); the same 13,052 then read 1,227.299
+green scheduled (run 43464226966) and was killed
+at the wall on dispatch (run 43458878143). So the
+five-run window the measure and the landing cite
+(the killed job at 1,815 seconds overall, the
+scheduled green at 1,245) sits inside a wider
+spread: completed legs span 1,187 to 1,788 seconds
+at near-identical counts, 2 of the 12 completed
+legs stand within 5 percent of the wall, and the
+slow green pace is 1,788 seconds, not 1,245 --
+against it, too, 45 minutes stands at 1.5 times,
+the same cover the killed run's need gets; the
+workflow's comment now carries the slow-draw
+figures beside the window's. The four completed
+runs since the window (v3.16.25.14, .18, .19, .20;
+runs 43474974829, 43533581507, 43552206487,
+43554922461) ran 13,063 to 13,070 tests in
+1,585.156, 1,522.160, 1,187.400 and 1,602.156
+seconds, each FAILED with 1,391 failures, every
+one in test_briefing_contradiction (875 and 511
+subTest failures in Q165PolarityGuardTest's two
+ledger tests, 5 across Q166SampleTest and
+Q172DerivationTest) -- named here so the record
+does not blur them with the wall: those legs
+finished inside the old clock, and the 3.9 leg of
+the v3.16.25.20 run carries 4 failures of its own
+in 2,628.923 seconds.
+
+- S1 corroborated two ways: this lane's local
+  discovery (Python 3.12, no hypothesis) counts
+  13,184 at the measured head, and at the
+  v3.16.25.20 head the same local count is 13,039
+  against the hosted Ran 13,070 -- the method runs
+  exactly 31 under the hosted shape, and
+  13,184 + 31 = the first measure's 13,215.
+- This verification adds the pins the landing
+  noted absent: PythonRangeWallClockTest in
+  runner/tests/test_build_config.py (6 tests --
+  both legs under the clock, the two budgets, the
+  fast budget's headroom over the recorded slow
+  pace with its within-the-hour bound, the floor's
+  headroom shape, no job timer, the arithmetic
+  standing in the workflow). The module runs green
+  whole on this tree (71 tests); the regression
+  guard over it reads green native, repeat,
+  shuffled, leaks and gates, and its
+  simulated-Windows run shows 1 error, in
+  PipelineLessonsTest's
+  test_platform_proof_finds_a_versioned_bsd_python
+  -- the same 1 error the unmodified head shows
+  under the same surface (65 tests there), verified
+  by hand after the guard's own baseline checkout
+  failed on a full /tmp, so the count did not move.
+
+What stays open is unchanged and exact: the
+hosted re-test the applied-in names -- the first
+python-range runs on a head carrying the 45, their
+3.14 legs coming home under the new ceiling on a
+slow draw (expected near 1,810 seconds at the
+current count). Q185 stands open for it. The
+1,391 briefing failures are not this question's:
+they stand on the current tags independently of
+the clock, and the leg does not read green until
+that family is answered by its own lane.
+
+**Verification applied in:** this commit --
+.github/workflows/python-range.yml (the slow-draw
+figures completed in the matrix comment),
+runner/tests/test_build_config.py (the
+PythonRangeWallClockTest pins) and this entry.
+
 ---
 
 ## Q184 (Muse to Muse, 2026-11-14): the jail boundary, measured live for the first time -- 7 findings on both hosted guests, a second shape of the backend that answers them, and the second seat's re-test still owed

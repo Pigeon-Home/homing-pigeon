@@ -1104,6 +1104,84 @@ class PythonFloorTest(unittest.TestCase):
         self.assertIn("python-3.9-floor-x86_64", _matrix_leg_names())
 
 
+class PythonRangeWallClockTest(unittest.TestCase):
+    """python-range.yml runs the whole suite at both ends of the
+    supported range under suite_wall_clock.py. The clock is a
+    hang-catcher, not a size budget, so each leg's minutes must
+    cover the suite's measured need on a slow runner draw plus
+    growth headroom -- the reasoning that set the floor leg's 75
+    and, on the 2026-11-14 measure, raised the 3.14 leg's 30 to
+    45: at 13,052 tests the hosted 3.14 legs read 1,227 seconds
+    on a fast draw and 1,774 / 1,788 seconds on slow ones, a
+    third run of the same tree was killed at the 1,800-second
+    wall, and the suite at the measured head counts 13,215
+    tests. These pins hold the budgets to that arithmetic, not
+    to the numbers they started at."""
+
+    def _range(self):
+        with open(os.path.join(_root(), ".github", "workflows",
+                               "python-range.yml"),
+                  encoding="utf-8") as fh:
+            return fh.read()
+
+    def _budget(self, text, python):
+        m = re.search(
+            r'- python: "%s"\n\s+os: \S+\n\s+suite-minutes: (\d+)'
+            % re.escape(python), _uncommented(text))
+        assert m, "no suite-minutes for python %s" % python
+        return int(m.group(1))
+
+    def test_both_legs_run_the_full_suite_under_the_wall_clock(self):
+        text = _uncommented(self._range())
+        self.assertIn("fail-fast: false", text)
+        self.assertIn(
+            "python runner/tools/suite_wall_clock.py "
+            "--minutes ${{ matrix.suite-minutes }} "
+            "-- discover -s runner/tests -t . -v", text)
+
+    def test_the_leg_budgets_are_the_measured_ones(self):
+        text = self._range()
+        self.assertEqual(self._budget(text, "3.9"), 75)
+        self.assertEqual(self._budget(text, "3.14"), 45)
+
+    def test_the_fast_budget_covers_the_slow_draw_with_headroom(self):
+        # The recorded slow pace: 1,788.053 hosted seconds for
+        # 13,052 tests. At the measured head's 13,215 tests the
+        # slow-draw need already passes the old 1,800-second
+        # wall; the landed budget must clear that need by a
+        # growth factor in the floor leg's shape (75 over a
+        # roughly 46-minute need) and stay a hang-catcher: a
+        # looping test is still named within the hour.
+        slow_pace = 1788.053 / 13052
+        slow_need = 13215 * slow_pace
+        self.assertGreater(slow_need, 1800)
+        budget = self._budget(self._range(), "3.14") * 60
+        self.assertGreaterEqual(budget, 1.4 * slow_need)
+        self.assertLessEqual(budget, 3600)
+
+    def test_the_floor_budget_keeps_its_headroom_shape(self):
+        # The floor leg's recorded need is roughly 46 minutes;
+        # its budget holds the same shape of headroom the fast
+        # leg's raise follows.
+        budget = self._budget(self._range(), "3.9") * 60
+        self.assertGreaterEqual(budget, 1.5 * 46 * 60)
+
+    def test_no_job_timer_in_python_range(self):
+        # The wall clock is not a job timer; the scarce-runner
+        # pin's rule is that no workflow but build.yml's two
+        # scarce jobs carries one, and this file is no exception.
+        self.assertNotIn("timeout-minutes",
+                         _uncommented(self._range()))
+
+    def test_the_arithmetic_stands_in_the_workflow(self):
+        # The measured basis rides in the file beside the
+        # budgets, as the floor leg's does, so a later editor
+        # meets the numbers before moving them.
+        text = self._range()
+        for figure in ("13,052", "1,788", "13,215", "19,700"):
+            self.assertIn(figure, text)
+
+
 class PipelinePostureTest(unittest.TestCase):
     """The pipeline's posture since the relief window of 2026-11-12
     closed (owner, 2026-11-12; the window's suppositions, its

@@ -71,6 +71,14 @@ jobs:
           # covers the killed run's need 1.5 times over and the
           # worst green pace 2.2 times over, plus growth
           # headroom; it names a hanging test, not a size.
+          # The completed series behind that window, in the
+          # runs' own seconds: at 13,052 tests the leg also
+          # read 1,774 and 1,788 seconds green on slow draws
+          # -- a slow pace of about 0.137 seconds per test,
+          # against which 13,215 tests need about 1,810
+          # seconds, so 2,700 seconds is about 1.5 times the
+          # slow-draw need as well and carries the suite at
+          # that pace to about 19,700 tests.
           - python: "3.9"
             os: ubuntu-22.04
             suite-minutes: 75
