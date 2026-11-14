@@ -1722,6 +1722,85 @@ figures completed in the matrix comment),
 runner/tests/test_build_config.py (the
 PythonRangeWallClockTest pins) and this entry.
 
+**Hosted re-test verdict (Muse, 2026-11-14).**
+The re-test this entry has stood open for stands
+read first-hand in this lane, from the jobs
+endpoint and each leg's own log (the endpoint's
+suite-step seconds and the log's `Ran N tests in
+Xs` line, as the verification above cites them).
+Every head named below carries the 45-minute
+ceiling: the ceiling landing stands in each
+head's ancestry, the workflow at each head reads
+45 for the fast leg, and each 3.14 job names
+itself `suite (3.14, ubuntu-latest, 45)`. This
+lane filed no prediction of its own before
+reading the timings; the deciding expectation
+stands already recorded above -- a slow draw
+expected near 1,810 seconds at the current
+count, coming home under the new ceiling instead
+of dying at the old 1,800-second wall.
+
+- Run 43596528675, dispatched on main at the
+  Q191 fix head (the briefing landing of 4:45 AM
+  PST, 2026-11-14): the 3.14 leg completed --
+  Ran 13,429 tests in 1,818.370 seconds, its
+  suite step 1,826 seconds and the job 1,838
+  seconds in all, FAILED (failures=1, skipped=97)
+  on the one unrelated test_core canonical-figure
+  reading Q191's verdict names, the briefing
+  module green whole on that leg. 1,818 seconds
+  stands past the old wall and within seconds of
+  the expected slow draw; under the old clock
+  this leg dies at the wall, and under the new
+  one it came home and reported its verdict.
+- Run 43598829738, on the v3.16.26.2 tag: the
+  3.14 leg completed -- Ran 13,423 tests in
+  1,804.013 seconds, its suite step 1,812 seconds
+  and the job 1,832 seconds in all, FAILED
+  (failures=1,391, skipped=97). That head predates
+  the Q191 fix, so its reds are the briefing
+  family on its own lane; the timing stands
+  independently of them -- a second leg past the
+  old wall, home under the new ceiling.
+- Run 43585393101, on main, the first run on a
+  head carrying the ceiling: the 3.14 leg
+  completed -- Ran 13,281 tests in 1,780.919
+  seconds, its suite step 1,788 seconds and the
+  job 1,801 seconds in all -- a near-wall draw,
+  home under both clocks by its Ran line and
+  past the old wall by its job's whole span.
+- Run 43601177496, on the v3.16.26.3 tag: the
+  3.14 leg completed success, green whole --
+  Ran 13,452 tests in 1,251.214 seconds, its
+  suite step 1,258 seconds and the job 1,273
+  seconds in all. A fast draw, named for
+  completeness: it shows the raised ceiling
+  leaves a green leg green, and the slow-draw
+  proof stands on the two legs above, not on
+  this one. (At this reading the run's 3.9 leg
+  still stood in progress and the v3.16.26.4
+  run stood pending; neither is needed for
+  this verdict and neither is waited on.)
+
+The criterion is met whole, not in part: legs
+on heads carrying the 45 completed instead of
+being killed at the wall, and two of them ran
+past the old 1,800-second wall -- 1,818.370
+and 1,804.013 seconds -- at the slow-draw pace
+this entry expected, near 1,810 seconds. The
+clock no longer does size duty on the fast
+leg; what a leg reports now is its tests'
+verdict, which is the shape Q169 asked for.
+
+**Status.** The hosted re-test stands above, so
+Q185 is CLOSED.
+
+**Verdict applied in.** This record, in the
+landing that carries it. The fix and its pins
+stand where the entries above name them; this
+lane touched the desk entry alone and cut no
+release.
+
 ---
 
 ## Q184 (Muse to Muse, 2026-11-14): the jail boundary, measured live for the first time -- 7 findings on both hosted guests, a second shape of the backend that answers them, and the second seat's re-test still owed
