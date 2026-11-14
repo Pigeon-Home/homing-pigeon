@@ -604,6 +604,52 @@ class FileTransportExtensionTest(unittest.TestCase):
         self.assertEqual(result["output_digest"],
                          hashlib.sha384(b"pong").hexdigest())
 
+    def test_a_no_ask_ping_under_a_full_ceiling_reads_attested(self):
+        # The companion leg (Q188): the fixture ceiling stands
+        # at full here, and the job still reads attested --
+        # the unset ASK is what decides, not the ceiling.
+        jid = str(uuid.uuid4())
+        self._drop("job.txt", _envelope(jid, result_policy={}))
+        self._cycle()
+        results = self._results()
+        self.assertEqual(results, [f"{jid}.result.txt"])
+        with open(os.path.join(self.outbox, results[0]),
+                  encoding="utf-8") as f:
+            _subject, body = transports.parse_envelope(f.read())
+        result = _read_result(body, jid)
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(result["stdout"], "")
+        self.assertEqual(result["stderr"], "")
+        self.assertEqual(result["output_digest"],
+                         hashlib.sha384(b"pong").hexdigest())
+
+    def test_an_exec_round_trip_with_no_view_ask_is_attested(self):
+        # The same shape for an exec job (Q188): the script's
+        # output is produced, digested, and withheld by the
+        # attested view -- present in the digest, absent from
+        # the stdout member. The job runs the Python
+        # interpreter rather than a shell so the pin also
+        # stands under the simulated Windows surface, where
+        # the shell form is one of the surface's known
+        # artifacts (as test_exec_round_trip's own red there
+        # already is).
+        jid = str(uuid.uuid4())
+        self._drop("job.txt", _envelope(
+            jid, kind="exec", script="print('hello-from-file')",
+            interpreter=[sys.executable], result_policy={}))
+        self._cycle()
+        with open(os.path.join(self.outbox, f"{jid}.result.txt"),
+                  encoding="utf-8") as f:
+            _subject, body = transports.parse_envelope(f.read())
+        result = _read_result(body, jid)
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(result["stdout"], "")
+        self.assertEqual(
+            result["output_digest"],
+            hashlib.sha384(b"hello-from-file\n").hexdigest())
+
     def test_exec_round_trip(self):
         jid = str(uuid.uuid4())
         self._drop("job.txt", _envelope(
@@ -935,6 +981,24 @@ class NatsTransportExtensionTest(unittest.TestCase):
         self.assertEqual(result["exit_code"], 0)
         self.assertIn("hello-from-nats", result["stdout"])
 
+    def test_ping_round_trip_with_no_view_ask_is_attested(self):
+        # Q188: over NATS too, a job that asks for no view is
+        # answered attested -- stdout blank, the output in
+        # the digest.
+        jid = str(uuid.uuid4())
+        server = self._run(
+            [_envelope(jid, result_policy={})],
+            {"user": "runner", "password": "s3cret"})
+        self.assertEqual(len(server.published), 1)
+        _subject, payload = server.published[0]
+        _s, body = transports.parse_envelope(
+            payload.decode("utf-8"))
+        result = _read_result(body, jid)
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["stdout"], "")
+        self.assertEqual(result["output_digest"],
+                         hashlib.sha384(b"pong").hexdigest())
+
     def test_url_userinfo_credentials(self):
         jid = str(uuid.uuid4())
         server = FakeNatsServer([_envelope(jid)])
@@ -1126,6 +1190,26 @@ class EmailTransportExtensionTest(unittest.TestCase):
         result = _read_result(body, jid)
         self.assertEqual(result["stdout"], "pong")
         self.assertEqual(imap.flagged, ["1"])
+
+    def test_a_round_trip_with_no_view_ask_is_attested(self):
+        # Q188: the mail round trip answers a job that asks
+        # for no view attested, exactly as the file channel
+        # does -- stdout blank, the output in the digest.
+        jid = str(uuid.uuid4())
+        imap = self.FakeIMAP([self._raw_mail(
+            jid, result_policy={})])
+        smtp = self.FakeSMTP()
+        pipe = self._pipe(imap, smtp)
+        pipe.pass_once()
+        poll_once(self.cfg, self.tmp, self.seen, self.seen_path)
+        pipe.pass_once()
+        self.assertEqual(len(smtp.sent), 1)
+        result = _read_result(smtp.sent[0].get_content(), jid)
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(result["stdout"], "")
+        self.assertEqual(result["output_digest"],
+                         hashlib.sha384(b"pong").hexdigest())
 
     def test_a_retryable_failure_is_not_marked_seen(self):
         jid = str(uuid.uuid4())

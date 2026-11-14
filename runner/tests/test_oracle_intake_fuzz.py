@@ -536,6 +536,10 @@ class RingTwoJobTest(unittest.TestCase):
             # sandbox walls that path off, so no job -- good or
             # bad -- could leave the marker this suite counts.
             "security": {"modes": {"confinement": "off"}},
+            # The ceiling stated in so many words (Q188): the
+            # ping test below asks for the full view, and an
+            # unstated ceiling reads attested since Q183.
+            "max_result_view": "full",
         }
         self.secrets = {"": SECRET}
         self.marker = os.path.join(self.tmp, "ran.txt")

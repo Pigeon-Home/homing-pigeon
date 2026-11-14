@@ -428,6 +428,10 @@ class QueryMailVerifyTest(unittest.TestCase):
             "default_timeout_sec": 300,
             "max_query_budget": 8,
             "output_retention_days": 7,
+            # The ceiling stated in so many words (Q188): the
+            # follow-up test below asks for the full view, and an
+            # unstated ceiling reads attested since Q183.
+            "max_result_view": "full",
             "workers": 1,
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
@@ -704,6 +708,11 @@ class JudgeOffPathTest(unittest.TestCase):
             "shared_secret": SECRET,
             "base_dir": tmp,
             "judge": "off",
+            # The ceiling stated, and the job below asks for the
+            # full view in so many words (Q188): this test reads
+            # the pong back, and a job that asks for no view is
+            # answered attested since Q183.
+            "max_result_view": "full",
             "workers": 1,
             # Ceiling stated at full, and the job below asks for
             # it: the judge is this test's subject, and under the

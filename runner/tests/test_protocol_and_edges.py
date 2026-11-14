@@ -281,6 +281,11 @@ class ExecutionEdgeTests(unittest.TestCase):
             "security": {"modes": {"confinement": "off",
                                    "job_user": "off",
                                    "audience": "off"}},
+            # The ceiling stated in so many words (Q188): the
+            # tests that read a result's stdout ask for the full
+            # view, and an unstated ceiling reads attested
+            # since Q183.
+            "max_result_view": "full",
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 
@@ -304,7 +309,8 @@ class ExecutionEdgeTests(unittest.TestCase):
         jid = str(uuid.uuid4())
         script = 'echo "A=$1 E=$MYE"'
         p = base_job(jid, kind="exec", script=script, interpreter=["sh"],
-                     args=["zz"], env={"MYE": "yy"})
+                     args=["zz"], env={"MYE": "yy"},
+                     result_policy={"view": "full"})
         _, smtp, _ = self.cycle([job_email(p)])
         r = read_result(smtp.sent[0])
         self.assertEqual(r["exit_code"], 0)
@@ -315,7 +321,8 @@ class ExecutionEdgeTests(unittest.TestCase):
         jid = str(uuid.uuid4())
         p = base_job(jid, kind="exec",
                      script="printf '%s' 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'",
-                     interpreter=["sh"])
+                     interpreter=["sh"],
+                     result_policy={"view": "full"})
         _, smtp, _ = self.cycle([job_email(p)])
         r = read_result(smtp.sent[0])
         self.assertTrue(r["stdout_truncated"])
@@ -849,6 +856,9 @@ class AdversarialTests(unittest.TestCase):
             "security": {"modes": {"confinement": "off",
                                    "job_user": "off",
                                    "audience": "off"}},
+            # The ceiling stated in so many words (Q188), as in
+            # ExecutionEdgeTests above.
+            "max_result_view": "full",
         }
         self.seen_path = os.path.join(self.tmp, "seen.json")
 
@@ -988,7 +998,8 @@ class AdversarialTests(unittest.TestCase):
 
     def test_decorated_subject_executes(self):
         jid = str(uuid.uuid4())
-        raw = job_email(base_job(jid, kind="ping"))
+        raw = job_email(base_job(jid, kind="ping",
+                                 result_policy={"view": "full"}))
         raw = raw.replace(b"[HOMING-PIGEON] job ",
                           b"[HOMING-PIGEON] TEST job ")
         imap, smtp, seen = self.cycle([raw])

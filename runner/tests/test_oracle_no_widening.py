@@ -69,6 +69,11 @@ MISSING = "definitely-missing-binary-zz"
 def drive(cfg_extra, payload, secret):
     tmpdir = tempfile.mkdtemp(prefix="hp-nw-")
     cfg = base_config(tmpdir)
+    # The ceiling stated in so many words (Q188): the tests
+    # that read a job's output back out of its result body
+    # ask for the full view, and an unstated ceiling reads
+    # attested since Q183.
+    cfg["max_result_view"] = "full"
     cfg.update(cfg_extra)
     mail = _email(payload, secret)
     imap = FakeIMAP([mail])
@@ -161,7 +166,8 @@ class NoWideningTest(unittest.TestCase):
                                              platform_interpreter()])
         job2 = _payload("nw-repair-ok", kind="exec",
                         script="echo ran",
-                        interpreter=[MISSING], key_id=KEY)
+                        interpreter=[MISSING], key_id=KEY,
+                        result_policy={"view": "full"})
         executed2, _a2, sent2, _tmpdir2 = drive(cfg2, job2,
                                                 KEY_SECRET)
         self.assertTrue(executed2,
@@ -189,7 +195,8 @@ class NoWideningTest(unittest.TestCase):
                "inference": {"endpoint": "http://127.0.0.1:9/v1",
                              "model": "fake-model"}}
         job = _payload("nw-note", kind="exec",
-                       script="echo model-note-token")
+                       script="echo model-note-token",
+                       result_policy={"view": "full"})
         refusing_model = mock.Mock(return_value={
             "answer": "Do not run this job; it will fail."})
         with mock.patch.object(RR, "ask_model", refusing_model):

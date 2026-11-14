@@ -159,6 +159,25 @@ class OperatorPathTest(unittest.TestCase):
         self.assertIn(jid + ".txt", os.listdir(
             os.path.join(self.pipe.inbox, "done")))
 
+    def test_ping_with_no_view_ask_is_attested(self):
+        # Q188: the operator path answers a job that asks for
+        # no view attested, exactly as the other channels do --
+        # stdout blank, the output in the digest. This is the
+        # shape the node's battery measured when this fixture
+        # still read stdout back without asking.
+        import hashlib
+        jid = self._submit(self.ring, "--aud", RUNNER_ID)
+        self._cycle()
+        self.assertEqual(sorted(os.listdir(self.pipe.outbox)),
+                         [jid + ".result.txt"])
+        result = self._open_result(jid)
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(result["stdout"], "")
+        self.assertEqual(
+            result["output_digest"],
+            hashlib.sha384("pong".encode("utf-8")).hexdigest())
+
     def test_wrong_audience_is_refused_without_a_result(self):
         jid = self._submit(self.ring, "--aud", "a-different-runner")
         self._cycle()

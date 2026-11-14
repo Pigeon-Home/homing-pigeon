@@ -65,6 +65,11 @@ def drive(cfg_extra, payload, secret, model_answer="__unset__",
     runs pass oracle_opinion_model False in cfg_extra)."""
     tmpdir = tempfile.mkdtemp(prefix="hp-alpha-")
     cfg = base_config(tmpdir)
+    # The ceiling stated in so many words (Q188): the tests
+    # that read a job's output back out of its result ask
+    # for the full view, and an unstated ceiling reads
+    # attested since Q183.
+    cfg["max_result_view"] = "full"
     cfg.update(cfg_extra)
     mail = _email(payload, secret)
     imap = FakeIMAP([mail])
@@ -205,7 +210,8 @@ class AlphabetTest(unittest.TestCase):
         # model note is blended into the member.
         payload = _payload("alpha-tier1", kind="exec",
                            script="echo repaired-token",
-                           interpreter=[MISSING])
+                           interpreter=[MISSING],
+                           result_policy={"view": "full"})
         got, _a, fake = drive(model_cfg("repair"), payload, SECRET,
                               model_answer=INSTRUCTION)
         self.assertFalse(fake.called)
@@ -260,7 +266,8 @@ class PolicyAxisTest(unittest.TestCase):
                 jid = "alpha-pol-%s" % policy_mode
                 payload = _payload(
                     jid, kind="exec", script="echo policy-token",
-                    env={"EVIL_VAR": "x"}, key_id=KEY)
+                    env={"EVIL_VAR": "x"}, key_id=KEY,
+                    result_policy={"view": "full"})
                 got, audit_g, _f = drive(
                     self._cfg(policy_mode, True), payload,
                     KEY_SECRET, model_answer=note,

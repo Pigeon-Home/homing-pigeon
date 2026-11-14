@@ -173,6 +173,32 @@ class ExecuteOnceTest(StashHarness):
         self.assertEqual(self._outbox(), [])
         self.assertTrue(os.path.isfile(R._sent_path(self.tmp, rec["skey"])))
 
+    def test_a_no_view_ask_counter_job_is_resent_attested(self):
+        # The pin beside the fix (Q188): the same counter job with
+        # no view ask is stashed and resent in the attested shape --
+        # the stdout field empty, the output carried as its digest
+        # and nothing lost. The default is Q183's, pinned by
+        # test_flag321; this is its shape through the stash.
+        import hashlib
+        jid = str(uuid.uuid4())
+        marker = os.path.join(self.tmp, "runs.txt")
+        script = 'echo run >> "%s"\necho hello' % marker
+        mail = TR.job_email(TR.job_payload(
+            jid, kind="exec", script=script, interpreter=["sh"]))
+        smtp = FlakySMTP(fail_first=1)
+        seen = {}
+        self._cycle([mail], smtp, seen)
+        self.clock.advance(120)
+        self._cycle([], smtp, seen)
+        self.assertEqual(self._runs(marker), 1)
+        self.assertEqual(len(smtp.sent), 1)
+        result = TR.verify_body(TR.result_body(smtp.sent[0]), TR.SECRET)
+        self.assertEqual(result["exit_code"], 0)
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["stdout"], "")
+        self.assertEqual(result["output_digest"],
+                         hashlib.sha384(b"hello\n").hexdigest())
+
     def test_stash_is_resent_byte_identical(self):
         jid = str(uuid.uuid4())
         mail = TR.job_email(TR.job_payload(jid))

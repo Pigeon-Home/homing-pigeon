@@ -99,6 +99,11 @@ def _cfg(base, **over):
         "max_result_view": "full",
         "base_dir": base,
         "default_timeout_sec": 30,
+        # The ceiling stated in so many words (Q188): the
+        # control tests that read a result's stdout ask for
+        # the full view, and an unstated ceiling reads
+        # attested since Q183.
+        "max_result_view": "full",
         "workers": 1,
     }
     cfg.update(over)

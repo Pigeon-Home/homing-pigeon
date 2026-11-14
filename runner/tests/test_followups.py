@@ -398,6 +398,11 @@ class JudgmentDenylistTest(unittest.TestCase):
             "shared_secret": SECRET,
             "base_dir": tmp,
             "judge": "advisory",
+            # The ceiling stated, and the job below asks for the
+            # full view in so many words (Q188): this test reads
+            # the pong back, and a job that asks for no view is
+            # answered attested since Q183.
+            "max_result_view": "full",
             "workers": 1,
             # Ceiling stated at full, and the job below asks for
             # it: the judge is this test's subject, and under the
