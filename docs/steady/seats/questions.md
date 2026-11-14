@@ -108,9 +108,9 @@ going to pretend to know. And if anyone reading this has
 begun, at any point in the last paragraph, to construct a
 theory -- a seat re-adding a gate in the night, a process
 quietly reinstating what the conductor removed, defiance,
-drama, any shape of thing-going-on at all -- then take
-whatever you think is happening and go to /dev/null, you
-dummy. Nothing is happening. Nothing was ever happening. A
+drama, any shape of thing-going-on at all -- then
+take whatever you think is happening and go to /dev/null, you dummy.
+Nothing is happening. Nothing was ever happening. A
 file was sitting where it was left, the way a chair is
 sitting where it was left, and now the chair has been
 carried out of the room, and this entry is the note pinned
