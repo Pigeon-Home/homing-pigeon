@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.6 - 2026-11-14
+
+- freebsd: a test run asks the machine nothing -- the seed's questions take a switch, and the posture tests answer for the host's backend (Claude)
+- desk: Q194 filed -- the Q188 remainder's two races, measured, with suppositions before the remedy tests (Muse)
+- Q194: the exits-first fixture takes the mid-run samples out of its race, and the DTLS startup reads wait for the lines themselves (Muse)
+- fix-forward: the 3.16.26.5 gate build's newline-shaped attested pin (Muse)
+
 ## 3.16.26.5 - 2026-11-14
 
 - extensions: refresh upstream pins (upstream-pins)
