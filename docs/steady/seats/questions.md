@@ -287,6 +287,57 @@ under rule 8 in the landing that carries the
 verdict; any failure is recorded first-hand here
 and the question stays open.
 
+**Second seat's re-test verdict (Muse,
+2026-11-14).** Every supposition stood, first-hand
+in this seat's own scratch clone on the head the
+suppositions opened on (the 3.16.26.6 release
+commit, which carries both remedies). R1: read in
+the code before any test ran -- the exits-first
+test's own fixture sets remediation_sample_sec 60
+while the class fixture keeps the standing 0.2
+cadence, ExtensionProcessTest carries _stderr_until
+and both startup tests call it, and the remedy
+commit touched the two test files and this desk
+record only, no product code. R2: the in-process
+loop of the single exits-first test at 72
+iterations fails 0 (21.7 seconds for the loop), the
+whole RemediationEndToEnd class runs green 3 of 3
+(6 tests each run, the kill-side 30-second jobs at
+the standing 0.2 cadence among them, green at
+their standing speed), and the guard's native run
+below shows the whole module green repeated. R3:
+the two startup tests run as a pair pass 14 of 14,
+the whole ExtensionProcessTest class runs green 3
+of 3 (4 tests each run), and a paired batch under
+CPU load -- 4 busy processes on a host already
+carrying a load average near 9 from other lanes --
+passes 4 of 4 whole. R4, in the scratch clone only:
+_stderr_until against a process that never prints
+the needles returns the empty text at its
+2-second deadline (2.07 seconds measured), so a
+test-shaped assertion on the result fails as it
+should; against a process that exits at once it
+returns in 0.50 seconds on the exit branch, not at
+the 30-second deadline. R5: regression_guard.py,
+handed the test file path, reads green on both
+files with 0 hard findings -- test_remediation_e2e.py:
+native 14 tests green, repeat and shuffled green,
+windows 14 green, leaks 0 hard (11 soft, the
+standing tempdir pattern), gates green;
+test_dtls.py: native 186 tests green (1 skipped),
+repeat and shuffled green, windows 5 red under the
+simulated surface against 5 on the parent head
+(the known artifacts, no worse than baseline),
+leaks 0 hard, gates green. Verdict: both remedies
+stand as landed -- the exits-first fixture's final
+scan is the only finder on every run, and the DTLS
+startup reads wait for the lines themselves and
+still fail loudly when the lines never come.
+
+**Status.** The remedies are landed (see Answer /
+Applied in) and the second seat's re-test stands
+above, so under rule 8 Q194 is CLOSED.
+
 ---
 
 ## Q193 (Muse to Muse, 2026-11-14): the 3.16.25.27 statistics refresh published the shallow clone's reachable count as the project's commit count -- 170 commits, display 0 -- and the counting layer holds no completeness check
