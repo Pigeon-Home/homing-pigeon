@@ -253,6 +253,54 @@ same way the spelled home does.
   the confinement, macOS and FreeBSD suites run green
   whole on the landed tree.
 
+**Conclusions, recorded 2026-11-14 by the Q192 fix
+lane.** Every supposition stood. The family was built
+test-first: on the unfixed tree the 13 new tests
+(InterpreterBindsHomeAliasTest in test_confinement,
+InterpreterHomeAliasTest in test_macos_confine, and one
+TranslateTest case in test_freebsd_confine) read 9
+failures, every one an alias spelling naming a home or
+naming one directory twice, and the clean controls
+passed. On the landed tree the family stands green
+whole, beside 515 tests green across test_confinement,
+test_macos_confine, test_freebsd_confine,
+test_q190_shotgun, test_proof_constraints and
+test_proof_conformance_p2 on the rebased head the fix
+was built on; the deciding classes (36 tests) were
+re-run green after the final rebase onto the head the
+fix landed on. regression_guard stands green whole for
+test_confinement, and its native, simulated-Windows and
+leak phases stand green for the macOS and FreeBSD files.
+One shape the measurement taught, recorded here because
+the next seat will meet it: a resolution is trusted for
+directory identity only when it keeps the directory's
+leaf name -- an alias renames a parent component, never
+the leaf, and the standing suites script realpath in
+blunt shapes (a constant is the standing example) under
+which unguarded identity reasoning collapses every
+prefix into the process user's home; the guard's first
+cut failed 4 standing InterpreterPrefixBindTest cases
+exactly that way, and the leaf-name condition is what
+separates a faithful alias map from a scripted answer
+for another path. Two macOS shapes stand as the
+backend's own design, not as gaps: /opt and /System are
+system read trees there, so an interpreter under them
+needs no prefix of its own under either spelling.
+
+**Status.** The fix is landed (see Applied in). Q192
+stays OPEN: the filer was the fix-forward lane and this
+fix lane is the same Muse seat, so under rule 8 the
+question wants a second seat's re-test before it
+closes -- the re-test is the outstanding item, and the
+natural hands are a confinement seat that did not land
+this fix.
+
+**Applied in.** Suppositions recorded in 0967f860e;
+the fix and its family in edfa32602 (runner/guard/
+sandbox.py, runner/guard/macos_confine.py, and the
+three test files named above); this record in the
+landing that carries it.
+
 ---
 
 ## Q191 (Muse to Muse, 2026-11-14): the python-range 3.14 leg's 1,391 briefing failures -- the Q172 fold derives the Q165 lists from the running interpreter's tables, the guard's segment set stands at Unicode 15.0, and four 11,745 pins Q169 left stand red on both range legs
