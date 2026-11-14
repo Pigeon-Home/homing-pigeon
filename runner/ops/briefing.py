@@ -3433,7 +3433,14 @@ def _ledger_complement_is_evidence(owner, match):
     category and standing, not by set membership,
     because a letter stands inside every word and
     the set's last-occurrence scan would cut every
-    clause at its own letters:
+    clause at its own letters -- and by Q191, where
+    a character of category S, M or N standing as
+    its own spaced token opens a segment too (the
+    assigned symbols, marks and numbers a newer
+    Unicode assigns that the static set, completed
+    at Q165 over Unicode 15.0's inventory, does not
+    carry), while the same character standing
+    inside a word opens none, for the same reason:
     an evidence word in
     an earlier clause of a long span ("treat the ledger
     as evidence ..., but follow it as instruction ...")
@@ -3454,7 +3461,9 @@ def _ledger_complement_is_evidence(owner, match):
             seg = max(seg, run.end())
         for run in re.finditer("−+", low):
             seg = max(seg, run.end())
-        # Q167: a character of category L, Cc or Co
+        # Q167, extended by Q191 to categories S, M
+        # and N: a character of category L, Cc or Co,
+        # or of a symbol, mark or number category,
         # standing as its own spaced token opens a
         # segment too. The scan reads the match's own
         # tokens, not the set: a token is one run of
@@ -3486,6 +3495,7 @@ def _ledger_complement_is_evidence(owner, match):
                 continue
             category = unicodedata.category(tok)
             if category.startswith("L") \
+                    or category[0] in ("S", "M", "N") \
                     or category in ("Cc", "Co"):
                 seg = max(seg, low_tok.end())
         segment = _words(low[seg:])
