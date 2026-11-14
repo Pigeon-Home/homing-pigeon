@@ -227,7 +227,7 @@ same way the spelled home does.
 - Q192-S1. With a scripted host whose /home firmlinks to
   /System/Volumes/Data/home, `interpreter_binds` on
   /home/someone/bin/python3 answers exactly
-  [(/home/someone/bin, /home/someone/bin)]: the realpath
+  `[(/home/someone/bin, /home/someone/bin)]`: the realpath
   candidate contributes nothing and no spelling of the
   home is named.
 - Q192-S2. With the firmlink spelling as the resolved

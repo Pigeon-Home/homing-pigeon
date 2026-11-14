@@ -3,6 +3,7 @@
 dangerous things."""
 import hashlib
 import io
+from datetime import datetime, timedelta, timezone
 import json
 import os
 import sys
@@ -26,7 +27,16 @@ def _write_audit(base_dir, entries):
 
 
 def _entry(feature, decision, reason, key_id="k1", detail=""):
-    return {"ts": "2026-10-15T12:00:00Z", "feature": feature,
+    # The stamp is yesterday's, computed at run time: the
+    # report's windows are relative to the wall clock (14d and
+    # 30d in these tests), so a fixture entry pinned to a
+    # calendar date ages out of the window on schedule -- the
+    # fixed 2026-10-15 stamp these entries used to carry left
+    # the 30d window on 2026-11-14 and the suite went red on
+    # every leg the same morning.
+    ts = (datetime.now(timezone.utc) - timedelta(days=1)).strftime(
+        "%Y-%m-%dT%H:%M:%SZ")
+    return {"ts": ts, "feature": feature,
             "decision": decision, "reason": reason, "key_id": key_id,
             "job_id": "j1", "detail": detail}
 

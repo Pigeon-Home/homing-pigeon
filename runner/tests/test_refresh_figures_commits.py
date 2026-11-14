@@ -280,6 +280,15 @@ _BOOKEND_NAMES = [
     "UPPER", "num123", "--both--", "..dots..",
 ]
 for _idx, _name in enumerate(_BOOKEND_NAMES):
+    if os.name == "nt" and _name == "..dots..":
+        # A name ending in dots is not a name Windows holds
+        # as spelled: the filesystem strips the trailing
+        # dots, so the directory made and the directory the
+        # fixture then writes into are two different paths
+        # and the build fails before the counting is ever
+        # reached. The shape stays in the corpus on the
+        # POSIX legs, where the name is a name.
+        continue
     setattr(BookendedPathTest, "test_whole_%02d" % _idx,
             (lambda n: lambda self: self._whole(n))(_name))
 for _idx, _name in enumerate(["-lead", ";both;", "--both--"]):
