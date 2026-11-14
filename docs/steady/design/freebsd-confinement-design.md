@@ -15,7 +15,8 @@ backend's probe before it writes the seed — was added to this
 page on 2026-11-14, at the owner's direction, and built the
 same day (`runner/ops/install.py`, `runner/ops/setup.py`).
 The job user that seed names where it leaves the jail on was
-added and built the same day, at the owner's direction.
+added and built the same day, at the owner's direction, and
+so was the account the installer makes for it.
 
 Confinement is the software suite's own, platform by
 platform. The protocol documents do not specify it — a
@@ -334,40 +335,61 @@ start and names why.
 A jail that goes on with no job user leaves one thing open:
 the job is root's uid, and reads what root owns in the trees
 it is shown (Privilege, above). So a seed that leaves the
-jail on names a job user as well.
+jail on names a job user as well, and the installer makes the
+account it names.
 
-Where the probe passed, the config's `job_user` mode stands
-at `enforce`, and the config names no job user, the seed asks
+**The account.** `pigeon-jobs`, made with `pw useradd` when
+the machine has no account of that name: no password, no
+login shell (`/usr/sbin/nologin`), no home directory
+(`/nonexistent`), and a group of its own. Nothing else runs
+as it, so nothing else on the machine owns a job's files or
+can reach them as their owner. That is the reason it is not
+`nobody`, an account any number of things may share. An
+account of that name already on the machine is used as it
+stands and is not changed.
+
+**The trial.** Where the probe passed, the config's
+`job_user` mode stands at `enforce`, and the config names no
+job user, the seed finds or makes the account and then asks
 the machine a second question. It runs a throwaway job as
-`nobody` inside a jail built as a job's is built under that
-config, with one tree more shown in it: a directory holding a
-file only root may read. The job must report `nobody`'s uid,
-write its work mount, and be refused the file — the three
-things a named job user is for.
+that account inside a jail built as a job's is built under
+the config, with one tree more shown in it: a directory
+holding a file only root may read. The job must report the
+account's uid, write its work mount, and be refused the file
+— the three things a named job user is for.
 
 - The trial passes: `security.job_user` is written into the
-  config, naming `nobody`. From the first start every job
-  goes in at the jail door as that user and reads what that
-  user can read. The installer says so, and the lines it
-  prints for a job's jail are the ones for the config as it
-  now stands.
-- The trial does not pass: no user is named. The reason is
-  printed, and the line says what a job with no job user
-  reads.
+  config, naming the account. From the first start every job
+  goes in at the jail door as that account and reads what it
+  can read. The installer says so, and the lines it prints
+  for a job's jail are the ones for the config as it now
+  stands.
+- The account cannot be made, or its trial does not pass:
+  `nobody` stands in. The same trial is run as `nobody`, and
+  where that passes `nobody` is named. The lines say what
+  became of the account and why, and an account the seed
+  made and could not use is removed again.
+- No trial passes: no user is named. The reason is printed,
+  and the line says what a job with no job user reads.
 
-`nobody` is in every FreeBSD base system's user database and
-owns nothing a job should read. A user made for the jobs
-alone is better, and an operator who names one keeps it: a
-config that already names a job user is not asked about, and
-neither is one whose `job_user` mode the operator has stated
-at `audit` or `off`.
+**Who makes it.** Only the installer changes the machine.
+The setup wizard writes a config and nothing else, so its
+seed makes no account: it names `pigeon-jobs` where the
+account already stands and `nobody` where it does not, and
+says the installer makes the account. Removing the runner
+leaves the account in place, as removing a package leaves the
+users it made; `pw userdel pigeon-jobs` removes it.
+
+A config that already names a job user keeps it and is not
+asked about, and neither is one whose `job_user` mode the
+operator has stated at `audit` or `off`.
 
 The rest is the mode's rule. The question is put only to the
 machine being seeded, only where the first question was put
 and passed, and — on a later run of the installer — only
 where no user is named yet. An ordinary user's install names
-none: with no jail there is no door, and the demote needs
-root as the jail does.
+none and makes no account: with no jail there is no door, and
+the demote needs root as the jail does.
 
 ## The release, and what stands behind it
 
@@ -419,7 +441,7 @@ runner's jobs are never touched.
 | Interpreter outside the trees | Its prefix, read-only, recorded | The same rule, the same record |
 | Runner gone | The sandbox's command is killed | The jail is removed: every process ends |
 | Startup probe | Starts the sandbox once | Builds a jail and reads the boundary from inside |
-| A fresh install | `enforce`; the startup gate decides | `enforce` where the installer's probe passes, with `nobody` named as the job user; `audit`, stated with the reason, where it does not |
+| A fresh install | `enforce`; the startup gate decides | `enforce` where the installer's probe passes, with an account of the jobs' own made and named as the job user; `audit`, stated with the reason, where it does not |
 
 The Linux column is bwrap as this project starts it
 (`DEFAULT_FLAGS` in `runner/guard/sandbox.py`) and
@@ -440,9 +462,10 @@ root, so a job with no job user is root's uid too.
   holds no privilege and is still the owner of what root
   owns: it reads a root-only file in any tree the jail shows
   it (above, under Privilege). A job user is the remedy. A
-  fresh install whose jail goes on names `nobody`; a config
-  seeded before that, or one whose trial did not pass, names
-  none until its operator does.
+  fresh install whose jail goes on makes an account for the
+  jobs and names it; a config seeded before that, or one
+  whose trials did not pass, names none until its operator
+  does.
 - Home directories inside `/usr`. A host that keeps them in
   the `/usr` filesystem — `/usr/home` on UFS, the layout
   before FreeBSD 14.0 — shows them read-only with the rest of
@@ -693,3 +716,32 @@ mount, no jail, no skeleton directory, no rctl rule.
 | The seed, a second time | Asked the first question again, ran no trial, changed nothing |
 
 The project's own node has not run the seed's live tests.
+
+### The account the installer makes
+
+Suppositions, recorded 2026-11-14 before the first hosted run
+of it:
+
+22. On a guest with no such account, the installer's seed
+    makes `pigeon-jobs` — no password, a login shell that
+    lets no one in, no home directory, a group of its own —
+    runs the trial as it, and names it.
+23. A runner started on that config runs its first job as
+    that account's uid, confined, and the job is refused a
+    root-only file in a tree it is shown.
+24. A second run finds the account named, makes nothing and
+    changes nothing; and a fresh config seeded where the
+    account already stands uses it as it is.
+25. The wizard's seed makes no account: without the account
+    it names `nobody`, and with it `pigeon-jobs`.
+26. Where the account cannot be made, `nobody` is named and
+    the line says why.
+27. An account the seed made and could not use is removed
+    again, and `nobody` stands in.
+28. Apart from the account, the seed leaves nothing on the
+    host.
+
+The tests that make an account run only on a guest that is
+thrown away afterwards. On any other host, the project's own
+node among them, they skip, and the tests that run there
+name a user without making one.

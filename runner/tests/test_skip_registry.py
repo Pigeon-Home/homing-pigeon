@@ -246,6 +246,14 @@ REGISTERED = {
         "the freebsd-confinement workflow's 14.5 and 15.0 "
         "guests, and the fleet FreeBSD node; everywhere else "
         "the stub and the injection seams are the subject",
+    "making an account is tested on a disposable FreeBSD guest":
+        "test_freebsd_confine's tests of the account the installer "
+        "makes for jobs add a user to the host's own database, so "
+        "they run only where the host is thrown away afterwards: "
+        "the freebsd-confinement workflow's guests, whose run step "
+        "says so (HP_LIVE_ACCOUNTS=1); on the fleet FreeBSD node "
+        "and everywhere else the account's logic is tested "
+        "against a scripted user database",
     "the jail backend's host calls are POSIX":
         "test_freebsd_confine's two tests of the real host object "
         "(a POSIX shell line for the reaper, a command and a "

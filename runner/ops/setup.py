@@ -190,7 +190,7 @@ def _blank_config() -> dict:
 
 
 def seed_platform_modes(cfg: dict, platform=None, probe=None,
-                        asked=None, trial=None) -> dict:
+                        asked=None, trial=None, account=None) -> dict:
     """State the platform gates in a config the wizard just seeded.
 
     The installer states them on its fresh-install path (install.py's
@@ -209,13 +209,16 @@ def seed_platform_modes(cfg: dict, platform=None, probe=None,
     startup gate's question (install.py's fresh_platform_modes),
     and where it passes confinement is not stated down and a
     job user is named for the jail's jobs where the config
-    names none (install.py's fresh_job_user). `probe` and
-    `trial` are the tests' doors, as they are there. `asked`,
-    when a list is handed in, receives what the machine was
-    asked and answered -- (answer, user, door): the probe's
-    answer, the job user named or None, and the door trial's
-    answer or None -- so the caller can say what was decided
-    and why.
+    names none (install.py's fresh_job_user). This seed writes
+    a config and nothing else, so it makes no account: it
+    names the jobs' own account where the machine already has
+    it, and the shared user where it does not. `probe`, `trial`
+    and `account` are the tests' doors, as they are there.
+    `asked`, when a list is handed in, receives what the
+    machine was asked and answered -- (answer, user, door): the
+    probe's answer, the job user named or None, and the record
+    of the second question or None -- so the caller can say
+    what was decided and why.
     """
     if _platform_modes is None or not isinstance(cfg, dict):
         return {}
@@ -224,7 +227,8 @@ def seed_platform_modes(cfg: dict, platform=None, probe=None,
         modes, answer = _fresh_platform_modes(cfg, platform, probe)
         door = None
         if _fresh_job_user is not None:
-            user, door = _fresh_job_user(cfg, answer, platform, trial)
+            user, door = _fresh_job_user(cfg, answer, platform, trial,
+                                         account, make=False)
         if answer is not None and asked is not None:
             asked.append((answer, user, door))
     else:

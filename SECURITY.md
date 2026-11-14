@@ -617,9 +617,11 @@ start when written on a host without it. A fresh FreeBSD
 install asks this backend's probe before it writes its
 config: the mode stays at `enforce` where the probe passes,
 and is stated at `audit`, with the reason printed, where it
-does not. Where it passes the install also names `nobody` as
-the job user, after a trial job as that user has run inside
-a jail on that machine. A
+does not. Where it passes the install also makes an account
+for the jobs alone, `pigeon-jobs`, and names it as the job
+user, after a trial job as that account has run inside a
+jail on that machine; `nobody` stands in where the account
+cannot be had. A
 platform with no backend (macOS today) refuses to start at
 `enforce`. The platform pages are
 `docs/steady/security/windows.md` and

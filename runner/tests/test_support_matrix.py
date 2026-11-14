@@ -172,8 +172,10 @@ class SupportMatrixTest(unittest.TestCase):
         self.assertIn("until `security.job_user` names a user", row)
         # What a fresh install does about it, and what an
         # earlier one does not.
-        self.assertIn("A fresh install whose probe passes names "
-                      "`nobody`", row)
+        self.assertIn("A fresh install whose probe passes makes an "
+                      "account for the jobs alone (`pigeon-jobs`",
+                      row)
+        self.assertIn("`nobody` stands in on the same trial", row)
         self.assertIn("an install seeded before that names none",
                       row)
         self.assertIn("there is no Capsicum", row)

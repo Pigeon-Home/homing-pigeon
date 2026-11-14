@@ -18,7 +18,9 @@ name: freebsd-confinement
 # runner itself, what a job can and cannot do in there, read
 # from the job's own report, and the mode a fresh install
 # states on that guest -- asked as root, as an ordinary user,
-# and by the installer's own file.
+# and by the installer's own file -- with the account the
+# installer makes for jobs made, used and removed in the
+# guest's own user database.
 #
 # RACCT: the kernel's resource accounting is a boot tunable
 # (kern.racct.enable), off as shipped, and a per-jail rctl rule
@@ -130,13 +132,18 @@ jobs:
             fi
             echo "== the backend's test module, as root"
             rc=0
-            /usr/local/bin/python3 -m unittest runner.tests.test_freebsd_confine -v > /tmp/freebsd-confinement.log 2>&1 || rc=$?
+            # This guest is thrown away when the job ends, so the
+            # tests that make an account in its user database --
+            # the one the installer makes for jobs -- run here,
+            # and here alone.
+            HP_LIVE_ACCOUNTS=1 /usr/local/bin/python3 -m unittest runner.tests.test_freebsd_confine -v > /tmp/freebsd-confinement.log 2>&1 || rc=$?
             cat /tmp/freebsd-confinement.log
             echo "== what the run left on the guest"
             mount -p | grep hp-jail || echo "no jail mounts"
             jls name | grep '^hp' || echo "no jails"
             ls -d /tmp/hp-jail-* 2>/dev/null || echo "no skeleton directories"
             rctl 2>/dev/null | grep 'jail:hp' || echo "no rctl rules"
+            pw usershow -n pigeon-jobs 2>/dev/null || echo "no jobs account"
             cp /tmp/freebsd-confinement.log "$GITHUB_WORKSPACE"/ 2>/dev/null || true
             [ "$rc" -eq 0 ] || echo "::error title=freebsd-confinement::the live tests exited $rc; the failing tests are named in this log and the log is in the artifact"
             # The verdict travels as a file and the script exits 0,

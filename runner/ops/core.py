@@ -51,8 +51,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 67,693 lines,
-61,350 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 67,851 lines,
+61,497 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -495,6 +495,16 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # 212 lines, runner/guard/freebsd_confine.py by 27
 # and runner/ops/setup.py by 13, the whole set
 # re-measured over the current tree.
+# Re-measured again the same day after the FreeBSD
+# installer took to making the account its seed
+# names (found or made with pw(8), tried inside a
+# jail, removed again where it could not be used,
+# the shared user standing in where the account
+# cannot be had), growing runner/ops/install.py by
+# 144 lines and runner/ops/setup.py by 4, the
+# whole set re-measured over the current tree,
+# which also carries the briefing's spaced-token
+# rule (runner/ops/briefing.py by 10 lines).
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 136 since
@@ -508,13 +518,13 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 139
 AS_ASSEMBLED_ZIP_BYTES = 874676
-AS_ASSEMBLED_LINES = 67693
-AS_ASSEMBLED_NONBLANK_LINES = 61350
+AS_ASSEMBLED_LINES = 67851
+AS_ASSEMBLED_NONBLANK_LINES = 61497
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 23128,
+    "runner/ops": 23286,
     "runner/tools": 10056,
     "runner/wire": 9033,
     "runner/runner.py": 7180,

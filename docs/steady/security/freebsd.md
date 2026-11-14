@@ -153,9 +153,10 @@ Have one named. The jail cannot be made without root, so a
 job with no job user is root's uid inside it — without
 privilege, and still the owner of what root owns (below,
 under what this does not provide). A fresh install whose
-jail goes on names `nobody` for that reason (below, under the
-mode a FreeBSD config states); a user made for the jobs
-alone is better, and a config that names one keeps it.
+jail goes on makes an account for the jobs alone,
+`pigeon-jobs`, and names it for that reason (below, under
+the mode a FreeBSD config states); a config that names a
+user of its own keeps it.
 
 ### Startup, and after a job
 
@@ -208,9 +209,9 @@ its mounts and its skeleton. Three things stand behind that:
   job is the runner's ordinary user and reads what that user
   reads. With `security.job_user` naming a user, the job
   reads only what that user can. A fresh install whose jail
-  goes on names `nobody`; an install seeded before that, or
-  one whose trial job did not pass, names none until its
-  operator does.
+  goes on makes an account for the jobs and names it; an
+  install seeded before that, or one whose trial jobs did
+  not pass, names none until its operator does.
 - **Home directories inside `/usr`.** A host that keeps them
   in the `/usr` filesystem — `/usr/home` on UFS, the layout
   before FreeBSD 14.0 — shows them to a job, read-only, with
@@ -292,9 +293,10 @@ of it is removed.
 
   ```
   platform: security.modes.confinement left at enforce in /root/.homing-pigeon/config.json (the FreeBSD jail backend's probe, asked on this machine as this user, passed; the startup gate asks it again at every start)
-  platform: security.job_user names nobody in /root/.homing-pigeon/config.json (a trial job as nobody inside a jail on this machine passed; a jailed job with no job user is root's uid and reads what root owns in the trees it is shown)
+  platform: account pigeon-jobs made for the jail's jobs (pw useradd: no password, no login shell, no home directory)
+  platform: security.job_user names pigeon-jobs in /root/.homing-pigeon/config.json (a trial job as pigeon-jobs inside a jail on this machine passed; a jailed job with no job user is root's uid and reads what root owns in the trees it is shown)
   platform: FreeBSD jail backend: freebsd: jail + no_network + spawn_resource_limits
-  platform: a job goes in as nobody at the jail door (security.job_user) and reads what that user can read
+  platform: a job goes in as pigeon-jobs at the jail door (security.job_user) and reads what that user can read
   platform: RACCT is not enabled on this host, so the jail-wide rctl ceilings are not written (kern.racct.enable=1 in /boot/loader.conf and a reboot engage them)
   ```
 
@@ -336,30 +338,52 @@ FreeBSD as it does on Linux.
 
 ### The job user a fresh install names
 
-Where the probe passed, the seed asks the machine one thing
-more before it writes: it runs a throwaway job as `nobody`
-inside a jail, with a file only root may read in a tree the
-jail shows it. The job must report `nobody`'s uid, write its
-work mount, and be refused the file.
+Where the probe passed, the installer makes an account for
+the jobs and names it. The account is `pigeon-jobs`, made
+with `pw useradd` when the machine has none of that name: no
+password, no login shell, no home directory, a group of its
+own. Nothing else runs as it, so nothing else on the machine
+owns a job's files. An account of that name already there is
+used as it stands.
+
+Before the name is written the seed asks the machine one
+thing more: it runs a throwaway job as that account inside a
+jail, with a file only root may read in a tree the jail shows
+it. The job must report the account's uid, write its work
+mount, and be refused the file.
 
 - **Where that trial passes, `security.job_user` names
-  `nobody`** in the config. Every job goes in at the jail
-  door as that user from the first start, and reads what
-  that user can read — not what root owns.
-- **Where it does not pass, no user is named.** The line
-  that says so carries the reason, and says what a job with
-  no job user reads.
+  `pigeon-jobs`** in the config. Every job goes in at the
+  jail door as that account from the first start, and reads
+  what it can read — not what root owns.
+- **Where the account cannot be made, or its trial does not
+  pass, `nobody` stands in**: the same trial is run as
+  `nobody`, and where that passes `nobody` is named. The
+  lines say what became of the account and why. An account
+  the installer made and could not use is removed again.
+  `nobody` closes the same gap, but it is an account other
+  things may share, and whatever else runs as it owns a
+  job's files too.
+- **Where no trial passes, no user is named.** The line that
+  says so carries the reason, and says what a job with no
+  job user reads.
+
+Only the installer makes the account. The setup wizard writes
+a config and nothing else: its seed names `pigeon-jobs` where
+the account already stands and `nobody` where it does not,
+and says the installer makes the account.
 
 A config that already names a job user keeps it and is not
 asked about; neither is one whose `job_user` mode is stated
 at `audit` or `off`. A later run of the installer names a
 user only where none is named yet. An ordinary user's
-install names none: there is no jail to go into, and the
-demote needs root as the jail does.
+install names none and makes no account: there is no jail to
+go into, and the demote needs root as the jail does.
 
-`nobody` is in every FreeBSD base system and owns nothing a
-job should read. A user made for the jobs alone is better:
-create one, and write its name under `security.job_user`.
+Removing the runner leaves the account in place, as removing
+a package leaves the users it made, because files a job left
+are still owned by it. `pw userdel -n pigeon-jobs` removes
+it.
 
 ## The first backend's field test
 

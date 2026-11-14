@@ -187,9 +187,14 @@ class CoreListTest(unittest.TestCase):
         # the seed took to naming a job user where it leaves
         # the jail on grew runner/ops/install.py by 212
         # lines, runner/guard/freebsd_confine.py by 27 and
-        # runner/ops/setup.py by 13.
-        self.assertEqual(67693, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(61350, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner/ops/setup.py by 13, and again the same day
+        # after the installer took to making the account
+        # that seed names grew runner/ops/install.py by 144
+        # lines and runner/ops/setup.py by 4, over a tree
+        # that also carries the briefing's spaced-token rule
+        # (runner/ops/briefing.py by 10 lines).
+        self.assertEqual(67851, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(61497, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

@@ -410,12 +410,30 @@ _DOOR_LINES = ("FreeBSD jail backend: freebsd: jail + no_network + "
                "RACCT is not enabled on this host")
 
 
+def _door_lines(user):
+    """The report's lines for a config that names `user`, on a
+    host without RACCT."""
+    return (_DOOR_LINES[0],
+            _DOOR_LINES[1].replace("nobody", user),
+            _DOOR_LINES[2])
+
+
+def _door_record(user="nobody", problem=None, notes=(), lines=None):
+    """The record fresh_job_user hands back for one decision."""
+    if lines is None:
+        lines = () if problem is not None else _door_lines(user)
+    return {"tried": user, "problem": problem, "lines": lines,
+            "notes": list(notes)}
+
+
 class _Trial:
     """A scripted answer to the seed's second question -- the
     throwaway job as the job user -- and what it was asked
-    with."""
+    with. `problem` is one reason for every user, or a map of
+    user to reason; a user with none passes, and the lines it
+    hands back are the report's for that user."""
 
-    def __init__(self, problem=None, lines=_DOOR_LINES, error=None):
+    def __init__(self, problem=None, lines=None, error=None):
         self.problem, self.lines, self.error = problem, lines, error
         self.asked = []
 
@@ -425,9 +443,32 @@ class _Trial:
         self.asked.append((json.loads(json.dumps(cfg)), user))
         if self.error is not None:
             raise self.error
-        if self.problem is not None:
-            return (self.problem, ())
-        return (None, self.lines)
+        problem = self.problem
+        if isinstance(problem, dict):
+            problem = problem.get(user)
+        if problem is not None:
+            return (problem, ())
+        return (None, self.lines if self.lines is not None
+                else _door_lines(user))
+
+    def users(self):
+        return [user for _cfg, user in self.asked]
+
+
+class _Account:
+    """A scripted answer to "the account for jobs": what
+    freebsd_job_account would hand back, and how often it was
+    asked."""
+
+    def __init__(self, user="pigeon-jobs", made=False, why=None,
+                 error=None):
+        self.answer, self.error, self.calls = (user, made, why), error, 0
+
+    def __call__(self):
+        self.calls += 1
+        if self.error is not None:
+            raise self.error
+        return self.answer
 
 
 class SeedTest(unittest.TestCase):
@@ -435,11 +476,12 @@ class SeedTest(unittest.TestCase):
     answer where it is asked, the stated map where it is not."""
 
     def _apply(self, path, platform="freebsd14", probe=None,
-               trial=None):
+               trial=None, account=None):
         out = io.StringIO()
         with redirect_stdout(out):
             applied = INS.apply_platform_modes(
-                path, platform, probe=probe, trial=trial)
+                path, platform, probe=probe, trial=trial,
+                account=account)
         return applied, out.getvalue()
 
     # --- the map, where nothing is asked -----------------------
@@ -717,7 +759,7 @@ class SeedTest(unittest.TestCase):
             path = _seeded_config(d, confinement=block)
             self._apply(path, probe=_Probe(), trial=trial)
         cfg, user = trial.asked[0]
-        self.assertEqual(user, INS.FREEBSD_SEED_JOB_USER)
+        self.assertEqual(user, INS.FREEBSD_SHARED_JOB_USER)
         self.assertEqual(cfg["security"]["confinement"], block)
         self.assertNotIn("job_user", cfg["security"])
 
@@ -787,14 +829,51 @@ class SeedTest(unittest.TestCase):
         self.assertNotIn("security.job_user names", out)
 
     def test_a_freebsd_host_is_asked_through_the_door_trial(self):
+        # On the machine itself the trial and the account are the
+        # real ones, and who makes the account is the caller's
+        # word: the installer says make, a seed that only writes
+        # a config does not.
         cfg = {"security": {"modes": {"confinement": "enforce"}}}
-        trial = _Trial()
-        with mock.patch.object(INS, "_HOST_PLATFORM", "freebsd14"), \
-                mock.patch.object(INS, "freebsd_job_user_trial", trial):
-            user, door = INS.fresh_job_user(cfg, (None, _PASS_LINES))
-        self.assertEqual(user, "nobody")
-        self.assertEqual(door, (None, _DOOR_LINES))
-        self.assertEqual(trial.asked, [(cfg, "nobody")])
+        for make in (True, False):
+            trial = _Trial()
+            asked_to_make = []
+
+            def _account(name=INS.FREEBSD_JOB_ACCOUNT, make=False):
+                asked_to_make.append(make)
+                if make:
+                    return name, True, None
+                return None, False, None
+            with mock.patch.object(INS, "_HOST_PLATFORM",
+                                   "freebsd14"), \
+                    mock.patch.object(INS, "freebsd_job_user_trial",
+                                      trial), \
+                    mock.patch.object(INS, "freebsd_job_account",
+                                      _account):
+                user, door = INS.fresh_job_user(
+                    cfg, (None, _PASS_LINES), make=make)
+            self.assertEqual(asked_to_make, [make])
+            want = "pigeon-jobs" if make else "nobody"
+            self.assertEqual(user, want)
+            self.assertEqual(trial.users(), [want])
+            self.assertEqual(door["tried"], want)
+            self.assertIsNone(door["problem"])
+            self.assertEqual(door["lines"], _door_lines(want))
+        # The installer is the caller that says make; the wizard's
+        # seed is the one that does not.
+        seen = []
+
+        def _fresh(cfg, asked, platform=None, trial=None,
+                   account=None, make=False):
+            seen.append(make)
+            return None, None
+        with mock.patch.object(INS, "fresh_job_user", _fresh), \
+                tempfile.TemporaryDirectory() as d:
+            self._apply(_seeded_config(d), probe=_Probe())
+        with mock.patch.object(SU, "_fresh_job_user", _fresh):
+            SU.seed_platform_modes(
+                {"security": {"modes": {"confinement": "enforce"}}},
+                "freebsd14", probe=_Probe())
+        self.assertEqual(seen, [True, False])
 
     def test_a_missing_config_takes_the_job_user_too(self):
         with tempfile.TemporaryDirectory() as d:
@@ -844,6 +923,317 @@ class SeedTest(unittest.TestCase):
             INS._seed_config_with({"security": "odd"},
                                   job_user="nobody"),
             {"security": {"job_user": {"user": "nobody"}}})
+
+    # --- the account the installer makes -----------------------
+
+    def _decide(self, account, trial=None, cfg=None):
+        trial = trial if trial is not None else _Trial()
+        cfg = cfg if cfg is not None else {
+            "security": {"modes": {"confinement": "enforce"}}}
+        removed = []
+
+        def _remove(name):
+            removed.append(name)
+            return self.removal
+        with mock.patch.object(INS, "freebsd_remove_job_account",
+                               _remove):
+            user, door = INS.fresh_job_user(
+                cfg, (None, _PASS_LINES), "freebsd14", trial, account)
+        return user, door, trial, removed
+
+    removal = True
+
+    def test_an_account_that_stands_is_named(self):
+        account = _Account()
+        user, door, trial, removed = self._decide(account)
+        self.assertEqual(user, "pigeon-jobs")
+        self.assertEqual(door, _door_record("pigeon-jobs"))
+        self.assertEqual(trial.users(), ["pigeon-jobs"])
+        self.assertEqual((account.calls, removed), (1, []))
+
+    def test_an_account_the_seed_made_says_so(self):
+        user, door, _trial, removed = self._decide(
+            _Account(made=True))
+        self.assertEqual(user, "pigeon-jobs")
+        self.assertEqual(door["notes"], [
+            "account pigeon-jobs made for the jail's jobs (pw "
+            "useradd: no password, no login shell, no home "
+            "directory)"])
+        self.assertEqual(removed, [])
+
+    def test_where_the_account_cannot_be_made_nobody_stands_in(self):
+        why = "pw useradd exited 1: /etc is read-only"
+        user, door, trial, removed = self._decide(
+            _Account(user=None, why=why))
+        self.assertEqual(user, "nobody")
+        self.assertEqual(trial.users(), ["nobody"])
+        self.assertEqual(door["notes"], [
+            "account pigeon-jobs could not be made (%s)" % why,
+            "nobody stands in"])
+        self.assertEqual(door["lines"], _door_lines("nobody"))
+        self.assertEqual(removed, [])
+        # A maker that cannot answer is the same case.
+        user, door, _trial, _removed = self._decide(
+            _Account(error=OSError("no pw")))
+        self.assertEqual(user, "nobody")
+        self.assertEqual(door["notes"][0],
+                         "account pigeon-jobs could not be made "
+                         "(no pw)")
+
+    def test_where_no_account_is_made_nobody_stands_in(self):
+        # A seed that only writes a config: the account is not on
+        # the machine and is not this seed's to make.
+        user, door, trial, _removed = self._decide(
+            _Account(user=None))
+        self.assertEqual(user, "nobody")
+        self.assertEqual(trial.users(), ["nobody"])
+        self.assertEqual(door["notes"], [
+            "account pigeon-jobs is not on this machine (the "
+            "installer makes it)", "nobody stands in"])
+
+    def test_an_account_made_and_not_usable_is_removed_again(self):
+        trial = _Trial(problem={"pigeon-jobs": "jexec: no such user"})
+        user, door, trial, removed = self._decide(
+            _Account(made=True), trial)
+        self.assertEqual(user, "nobody")
+        self.assertEqual(trial.users(), ["pigeon-jobs", "nobody"])
+        self.assertEqual(removed, ["pigeon-jobs"])
+        self.assertEqual(door["notes"], [
+            "account pigeon-jobs made for the jail's jobs (pw "
+            "useradd: no password, no login shell, no home "
+            "directory)",
+            "a trial job as pigeon-jobs inside a jail on this "
+            "machine did not pass: jexec: no such user",
+            "account pigeon-jobs removed again",
+            "nobody stands in"])
+        # One that will not go is said, with the command.
+        self.removal = False
+        _user, door, _trial, _removed = self._decide(
+            _Account(made=True),
+            _Trial(problem={"pigeon-jobs": "no"}))
+        self.assertEqual(
+            door["notes"][2],
+            "account pigeon-jobs could not be removed again (pw "
+            "userdel -n pigeon-jobs removes it)")
+
+    def test_an_account_that_was_there_is_never_removed(self):
+        trial = _Trial(problem={"pigeon-jobs": "uid 0"})
+        user, door, trial, removed = self._decide(_Account(), trial)
+        self.assertEqual(user, "nobody")
+        self.assertEqual(removed, [])
+        self.assertEqual(door["notes"], [
+            "a trial job as pigeon-jobs inside a jail on this "
+            "machine did not pass: uid 0", "nobody stands in"])
+
+    def test_where_no_trial_passes_no_one_is_named(self):
+        trial = _Trial(problem="jail: gone")
+        user, door, trial, removed = self._decide(
+            _Account(made=True), trial)
+        self.assertIsNone(user)
+        self.assertEqual(removed, ["pigeon-jobs"])
+        self.assertEqual((door["tried"], door["problem"],
+                          door["lines"]),
+                         ("nobody", "jail: gone", ()))
+        with tempfile.TemporaryDirectory() as d:
+            path = _seeded_config(d)
+            with mock.patch.object(INS, "freebsd_remove_job_account",
+                                   return_value=True):
+                applied, out = self._apply(
+                    path, probe=_Probe(),
+                    trial=_Trial(problem="jail: gone"),
+                    account=_Account(made=True))
+            security = self._security_in(path)
+        self.assertEqual(applied, {})
+        self.assertNotIn("job_user", security)
+        lines = out.splitlines()
+        self.assertIn("left at enforce", lines[0])
+        self.assertEqual(lines[1:5], [
+            "platform: account pigeon-jobs made for the jail's jobs "
+            "(pw useradd: no password, no login shell, no home "
+            "directory)",
+            "platform: a trial job as pigeon-jobs inside a jail on "
+            "this machine did not pass: jail: gone",
+            "platform: account pigeon-jobs removed again",
+            "platform: nobody stands in"])
+        self.assertIn("security.job_user left unnamed in %s (a "
+                      "trial job as nobody inside a jail on this "
+                      "machine did not pass: jail: gone" % path,
+                      lines[5])
+        self.assertEqual(lines[6:],
+                         ["platform: " + t for t in _PASS_LINES])
+
+    def test_the_installer_writes_the_account_it_made(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = _seeded_config(d)
+            with open(path, encoding="utf-8") as fh:
+                before = json.load(fh)
+            account = _Account(made=True)
+            applied, out = self._apply(path, probe=_Probe(),
+                                       trial=_Trial(), account=account)
+            with open(path, encoding="utf-8") as fh:
+                after = json.load(fh)
+            # A later run finds the name written and asks nothing.
+            later = _Account(made=True)
+            self._apply(path, probe=_Probe(), trial=_Trial(),
+                        account=later)
+        self.assertEqual(applied, {})
+        self.assertEqual(after["security"]["job_user"],
+                         {"user": "pigeon-jobs"})
+        del after["security"]["job_user"]
+        self.assertEqual(after, before)
+        lines = out.splitlines()
+        self.assertIn("left at enforce", lines[0])
+        self.assertEqual(
+            lines[1], "platform: account pigeon-jobs made for the "
+            "jail's jobs (pw useradd: no password, no login shell, "
+            "no home directory)")
+        self.assertIn("security.job_user names pigeon-jobs in %s (a "
+                      "trial job as pigeon-jobs inside a jail on "
+                      "this machine passed" % path, lines[2])
+        self.assertEqual(
+            lines[3:],
+            ["platform: " + t for t in _door_lines("pigeon-jobs")])
+        self.assertEqual((account.calls, later.calls), (1, 0))
+
+    def test_no_account_is_looked_for_where_nothing_is_asked(self):
+        # The operator's own user, a mode stated down, a jail that
+        # is not on: the account is not found, made or removed.
+        cases = (
+            ({"security": {"job_user": {"user": "mine"}}},
+             (None, _PASS_LINES)),
+            ({"security": {"modes": {"job_user": "audit"}}},
+             (None, _PASS_LINES)),
+            ({"security": {}}, (_ROOT_REASON, ())),
+            ({"security": {}}, None),
+        )
+        for cfg, asked in cases:
+            account = _Account(made=True)
+            user, door = INS.fresh_job_user(
+                cfg, asked, "freebsd14", _Trial(), account)
+            self.assertEqual((user, door, account.calls),
+                             (None, None, 0), (cfg, asked))
+
+    # --- finding and making the account ------------------------
+
+    def _pw(self, exists=(), results=()):
+        """Script the user database and pw(8): `exists` answers
+        each lookup in turn (the last one repeats), `results`
+        each pw command."""
+        state = {"lookups": list(exists) or [False],
+                 "results": list(results), "ran": []}
+
+        def _ids(name):
+            found = state["lookups"][0]
+            if len(state["lookups"]) > 1:
+                state["lookups"].pop(0)
+            if not found:
+                raise KeyError(name)
+            return (1001, 1001)
+
+        def _run(args):
+            state["ran"].append(list(args))
+            return state["results"].pop(0) if state["results"] \
+                else (0, "")
+        return state, mock.patch.object(INS, "_user_ids", _ids), \
+            mock.patch.object(INS, "_run_pw", _run)
+
+    def test_an_account_already_there_is_used_as_it_stands(self):
+        for make in (True, False):
+            state, ids, run = self._pw(exists=[True])
+            with ids, run:
+                self.assertEqual(
+                    INS.freebsd_job_account(make=make),
+                    ("pigeon-jobs", False, None))
+            self.assertEqual(state["ran"], [])
+
+    def test_no_account_is_made_unless_asked(self):
+        state, ids, run = self._pw(exists=[False])
+        with ids, run:
+            self.assertEqual(INS.freebsd_job_account(),
+                             (None, False, None))
+        self.assertEqual(state["ran"], [])
+
+    def test_the_account_is_made_with_nothing_to_log_in_with(self):
+        state, ids, run = self._pw(exists=[False, True])
+        with ids, run:
+            self.assertEqual(INS.freebsd_job_account(make=True),
+                             ("pigeon-jobs", True, None))
+        # No password, a shell that lets no one in, a home that
+        # is not there and is not made (no -m), and no group
+        # named: pw makes the account one of its own.
+        self.assertEqual(state["ran"], [[
+            "useradd", "-n", "pigeon-jobs",
+            "-c", "homing-pigeon jobs", "-d", "/nonexistent",
+            "-s", "/usr/sbin/nologin", "-w", "no"]])
+        self.assertNotIn("-m", state["ran"][0])
+        self.assertNotIn("-g", state["ran"][0])
+        self.assertNotIn("-G", state["ran"][0])
+
+    def test_a_pw_that_fails_is_a_reason(self):
+        cases = (
+            ((65, "pw: user 'x' disappeared"),
+             "pw useradd exited 65: pw: user 'x' disappeared"),
+            ((127, "/usr/sbin/pw could not be run: [Errno 2] no"),
+             "/usr/sbin/pw could not be run: [Errno 2] no"),
+        )
+        for result, why in cases:
+            state, ids, run = self._pw(exists=[False],
+                                       results=[result])
+            with ids, run:
+                self.assertEqual(
+                    INS.freebsd_job_account(make=True),
+                    (None, False, why))
+        # pw says done and the account is not there.
+        state, ids, run = self._pw(exists=[False, False])
+        with ids, run:
+            user, made, why = INS.freebsd_job_account(make=True)
+        self.assertEqual((user, made), (None, False))
+        self.assertIn("not in the user database", why)
+
+    def test_removing_the_account_is_judged_by_the_database(self):
+        state, ids, run = self._pw(exists=[False])
+        with ids, run:
+            self.assertTrue(INS.freebsd_remove_job_account("hp-x"))
+        self.assertEqual(state["ran"], [["userdel", "-n", "hp-x"]])
+        state, ids, run = self._pw(exists=[True])
+        with ids, run:
+            self.assertFalse(INS.freebsd_remove_job_account("hp-x"))
+
+    def test_pw_is_run_by_its_path_and_answers_or_says_why(self):
+        calls = []
+
+        def _run(argv, **kw):
+            calls.append((argv, kw))
+            return types.SimpleNamespace(returncode=3,
+                                         stderr=b"pw: no\n")
+        with mock.patch.object(INS.subprocess, "run", _run):
+            self.assertEqual(INS._run_pw(["usershow", "x"]),
+                             (3, "pw: no"))
+        self.assertEqual(calls[0][0], ["/usr/sbin/pw", "usershow", "x"])
+        self.assertEqual(calls[0][1]["stdin"], subprocess.DEVNULL)
+        with mock.patch.object(INS.subprocess, "run",
+                               side_effect=OSError("no such file")):
+            code, said = INS._run_pw(["usershow", "x"])
+        self.assertEqual(code, 127)
+        self.assertEqual(said, "/usr/sbin/pw could not be run: "
+                               "no such file")
+
+    def test_uninstall_says_the_account_stays(self):
+        done = types.SimpleNamespace(returncode=0, stdout="")
+        for there in (True, False):
+            state, ids, run = self._pw(exists=[there])
+            out = io.StringIO()
+            with ids, run, redirect_stdout(out), \
+                    mock.patch.object(INS.subprocess, "run",
+                                      return_value=done):
+                INS.uninstall_freebsd()
+            said = out.getvalue()
+            self.assertEqual(
+                "the jobs account pigeon-jobs is left in place; "
+                "`pw userdel -n pigeon-jobs` removes it" in said,
+                there)
+            # Uninstall removes no account.
+            self.assertEqual(state["ran"], [])
 
     # --- the door trial itself ---------------------------------
 
@@ -1040,7 +1430,7 @@ class SeedTest(unittest.TestCase):
         self.assertEqual(cfg["security"]["modes"], {
             "confinement": "enforce", "job_user": "enforce"})
         self.assertEqual(answers, [(
-            (None, _PASS_LINES), "nobody", (None, _DOOR_LINES))])
+            (None, _PASS_LINES), "nobody", _door_record("nobody"))])
         # A trial that does not pass names no one, and its reason
         # rides back.
         cfg = {"security": {"modes": {"confinement": "enforce"}}}
@@ -1050,7 +1440,15 @@ class SeedTest(unittest.TestCase):
             trial=_Trial(problem="no door"))
         self.assertNotIn("job_user", cfg["security"])
         self.assertEqual(answers, [(
-            (None, _PASS_LINES), None, ("no door", ()))])
+            (None, _PASS_LINES), None,
+            _door_record("nobody", problem="no door"))])
+        # The account, where one is handed in: found and named.
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        SU.seed_platform_modes(
+            cfg, "freebsd14", probe=_Probe(), trial=_Trial(),
+            account=_Account())
+        self.assertEqual(cfg["security"]["job_user"],
+                         {"user": "pigeon-jobs"})
 
     def _fresh_wizard(self, statement, job_user=(None, None)):
         with tempfile.TemporaryDirectory() as d:
@@ -1085,13 +1483,23 @@ class SeedTest(unittest.TestCase):
     def test_the_wizard_says_who_the_jobs_go_in_as(self):
         security, out, path = self._fresh_wizard(
             ({}, (None, _PASS_LINES)),
-            job_user=("nobody", (None, _DOOR_LINES)))
+            job_user=("nobody", _door_record("nobody", notes=[
+                "account pigeon-jobs is not on this machine (the "
+                "installer makes it)", "nobody stands in"])))
         self.assertEqual(security["modes"]["confinement"], "enforce")
         self.assertEqual(security["job_user"], {"user": "nobody"})
         self.assertIn("security.job_user names nobody in %s" % path,
                       out)
         self.assertIn("platform: " + _DOOR_LINES[1], out)
         self.assertNotIn("no_superuser", out)
+        # What became of the account is said before the name.
+        lines = [ln for ln in out.splitlines()
+                 if ln.startswith("platform: ")]
+        self.assertEqual(lines[1:3], [
+            "platform: account pigeon-jobs is not on this machine "
+            "(the installer makes it)",
+            "platform: nobody stands in"])
+        self.assertIn("security.job_user names nobody", lines[3])
 
     def test_the_wizard_says_why_the_jail_is_stated_down(self):
         security, out, path = self._fresh_wizard(
@@ -2932,22 +3340,28 @@ class PostureTest(_FakeHostCase):
 
     def test_the_platform_page_shows_the_seed_s_lines_as_printed(self):
         # The operator's page quotes what a fresh install prints
-        # where the probe and the trial job pass on a host
-        # without RACCT: the seed's own two lines, and the
-        # report's lines for the config with the job user named
-        # beneath them.
+        # where the probe passes, the account is made and its
+        # trial job passes, on a host without RACCT: the seed's
+        # own lines, and the report's lines for the config with
+        # the account named beneath them. The lines are the
+        # ones the seed itself decides with a scripted machine.
         page = os.path.join(_REPO, "docs", "steady", "security",
                             "freebsd.md")
         with open(page, encoding="utf-8") as fh:
             text = fh.read()
         answer = (None, tuple(t for _level, t in self.lines()))
-        named = {"security": {"job_user": {
-            "user": INS.FREEBSD_SEED_JOB_USER}}}
-        door = (None, tuple(t for _level, t in self.lines(named)))
+
+        def _trial(cfg, user):
+            named = {"security": {"job_user": {"user": user}}}
+            return None, tuple(
+                t for _level, t in self.lines(named))
+        user, door = INS.fresh_job_user(
+            {}, answer, "freebsd14", _trial,
+            lambda: (INS.FREEBSD_JOB_ACCOUNT, True, None))
+        self.assertEqual(user, "pigeon-jobs")
         printed = INS.seed_kept_lines(
-            answer, "/root/.homing-pigeon/config.json",
-            INS.FREEBSD_SEED_JOB_USER, door)
-        self.assertEqual(len(printed), 5)
+            answer, "/root/.homing-pigeon/config.json", user, door)
+        self.assertEqual(len(printed), 6)
         for line in printed:
             self.assertIn("\n  " + line + "\n", text)
 
@@ -3859,18 +4273,26 @@ class LiveRunnerTest(unittest.TestCase):
         self.assertIn("--unshare-pid", problem)
 
 
-@unittest.skipUnless(
-    FC.IS_FREEBSD_BACKEND and os.geteuid() == 0,
-    "run on FreeBSD as root")
-class LiveSeedTest(unittest.TestCase):
-    """What a fresh install states, on a real kernel: the seed
-    asks the real probe the startup gate's question, runs the
-    real trial job as the job user, and writes what the machine
-    answers -- as root, as an ordinary user, for a config that
-    asks more than the host holds, for a config that names its
-    own job user, by the installer's file path, and through the
-    wizard -- and a runner started on the seeded config runs
-    its first job confined, as that user."""
+# Making an account is tested only on a guest that is thrown
+# away afterwards: the freebsd-confinement workflow says so in
+# its run step. On any other FreeBSD host -- the fleet node
+# among them -- the live seed tests name a user without making
+# one, and nothing is added to the machine's user database.
+_DISPOSABLE_GUEST = os.environ.get("HP_LIVE_ACCOUNTS") == "1"
+
+
+def _account_ids(name="pigeon-jobs"):
+    """(uid, gid) of the jobs account on this host, or None."""
+    try:
+        return INS._user_ids(name)
+    except KeyError:
+        return None
+
+
+class _LiveSeed(unittest.TestCase):
+    """What the live seed classes share: a folder, what the
+    host held before, and the seed, the config and a runner's
+    first job read back."""
 
     def setUp(self):
         self.folder = tempfile.mkdtemp(prefix="hp-live-seed-")
@@ -3894,10 +4316,10 @@ class LiveSeedTest(unittest.TestCase):
         self.assertEqual(self._doors() - self.doors, set(),
                          "a door trial's folder left behind")
 
-    def _seed(self, path):
+    def _seed(self, path, **doors):
         out = io.StringIO()
         with redirect_stdout(out):
-            applied = INS.apply_platform_modes(path)
+            applied = INS.apply_platform_modes(path, **doors)
         return applied, out.getvalue()
 
     @staticmethod
@@ -3905,65 +4327,36 @@ class LiveSeedTest(unittest.TestCase):
         with open(path, encoding="utf-8") as fh:
             return json.load(fh)
 
-    def _names_nobody(self, path, out, before):
-        """The seed left the jail on and named the job user: one
-        block added to the file and nothing else changed, and
-        the lines say what was decided and what a job's jail
+    def _names(self, user, path, out, before):
+        """The seed left the jail on and named `user`: one block
+        added to the file and nothing else changed, and the
+        lines say what was decided and what a job's jail
         carries now."""
         after = self._config(path)
         self.assertEqual(after["security"]["modes"]["confinement"],
                          "enforce")
         self.assertEqual(after["security"]["job_user"],
-                         {"user": "nobody"})
+                         {"user": user})
         del after["security"]["job_user"]
         self.assertEqual(after, before)
         self.assertIn("security.modes.confinement left at enforce "
                       "in %s" % path, out)
-        self.assertIn("security.job_user names nobody in %s (a "
-                      "trial job as nobody inside a jail on this "
-                      "machine passed" % path, out)
+        self.assertIn("security.job_user names %s in %s (a trial "
+                      "job as %s inside a jail on this machine "
+                      "passed" % (user, path, user), out)
         # The controls a job's jail carries on this host under
         # the config as it now stands: no no_superuser, because
         # the job is not uid 0 any more.
         self.assertIn("platform: FreeBSD jail backend: freebsd: "
                       "jail + no_network + ", out)
         self.assertNotIn("no_superuser", out)
-        self.assertIn("platform: a job goes in as nobody at the "
-                      "jail door", out)
+        self.assertIn("platform: a job goes in as %s at the jail "
+                      "door" % user, out)
         self.assertNotIn("stated as audit", out)
 
-    def test_as_root_the_seed_leaves_the_jail_on_and_names_nobody(self):
-        path = _seeded_config(self.folder)
-        before = self._config(path)
-        applied, out = self._seed(path)
-        self.assertEqual(applied, {}, out)
-        self._names_nobody(path, out, before)
-        self.assertEqual("rctl_resource_limits" in out,
-                         _racct_live(), out)
-        self.assertEqual("kern.racct.enable=1" in out,
-                         not _racct_live(), out)
-        # A later run over the same config asks the first
-        # question again, finds a job user named, and changes
-        # nothing.
-        with open(path, "rb") as fh:
-            seeded = fh.read()
-        applied, out = self._seed(path)
-        with open(path, "rb") as fh:
-            again = fh.read()
-        self.assertEqual(applied, {}, out)
-        self.assertEqual(again, seeded)
-        self.assertIn("left at enforce", out)
-        self.assertNotIn("security.job_user names", out)
-        self.assertIn("platform: a job goes in as nobody at the "
-                      "jail door", out)
-        self._nothing_left()
-
-    def test_a_runner_on_the_seeded_config_runs_its_job_as_nobody(self):
-        import pwd
-        from runner.guard import security as S
-        nobody = pwd.getpwnam("nobody")
-        # A tree the operator shows every job, with a file only
-        # root may read in it.
+    def _shown_tree(self):
+        """A tree an operator shows every job: one file only
+        root may read in it, one all may read."""
         shown = os.path.join(self.folder, "shown")
         os.mkdir(shown)
         os.chmod(shown, 0o755)
@@ -3974,18 +4367,16 @@ class LiveSeedTest(unittest.TestCase):
         with open(os.path.join(shown, "for-all.txt"), "w") as fh:
             fh.write("FOR-ALL-DATA\n")
         os.chmod(os.path.join(shown, "for-all.txt"), 0o644)
-        path = _seeded_config(self.folder, confinement={
-            "extra_ro_binds": [[shown, "/shown"]]})
-        applied, out = self._seed(path)
-        self.assertEqual(applied, {}, out)
-        seeded = self._config(path)
-        self.assertEqual(seeded["security"]["job_user"],
-                         {"user": "nobody"})
+        return shown
+
+    def _first_job(self, security):
+        """A runner of its own on the security block the seed
+        left: its startup gate, its first job, and the records
+        that job wrote."""
+        from runner.guard import security as S
         base = os.path.join(self.folder, "base")
         os.mkdir(base)
-        # The security block exactly as the seed left it, on a
-        # runner of its own.
-        cfg = {"base_dir": base, "security": seeded["security"]}
+        cfg = {"base_dir": base, "security": security}
         self.assertIsNone(rr._confinement_startup_problem(cfg))
         job = {"v": 1, "type": "job", "job_id": "fbsd-seeded",
                "issued_at": "2026-11-14T12:00:00Z", "kind": "exec",
@@ -4011,16 +4402,6 @@ class LiveSeedTest(unittest.TestCase):
                    "    print('root-only: refused')\n"),
                "outputs": ["out.txt"]}
         result = rr.execute_job(cfg, job, base)
-        self.assertEqual(result["exit_code"], 0, result)
-        said = result["stdout"]
-        self.assertIn("uid: %d" % nobody.pw_uid, said)
-        self.assertIn("cwd: /work", said)
-        self.assertIn("root: blocked", said)
-        self.assertIn("shown: blocked", said)
-        self.assertIn("for-all: FOR-ALL-DATA", said)
-        self.assertIn("root-only: refused", said)
-        self.assertNotIn("ROOT-ONLY-DATA", said)
-        self.assertEqual(len(result["outputs"]), 1, result)
         rows = []
         with open(os.path.join(base, S.AUDIT_FILE),
                   encoding="utf-8") as fh:
@@ -4029,18 +4410,112 @@ class LiveSeedTest(unittest.TestCase):
                     rows.append(json.loads(line))
                 except ValueError:
                     pass
+        return result, rows
+
+    def _job_ran_as(self, uid, result, rows, out):
+        """The runner's first job ran confined as `uid`, read
+        what all may read, and was refused what only root may;
+        the records name what the seed printed."""
+        self.assertEqual(result["exit_code"], 0, result)
+        said = result["stdout"]
+        self.assertIn("uid: %d" % uid, said)
+        self.assertIn("cwd: /work", said)
+        self.assertIn("root: blocked", said)
+        self.assertIn("shown: blocked", said)
+        self.assertIn("for-all: FOR-ALL-DATA", said)
+        self.assertIn("root-only: refused", said)
+        self.assertNotIn("ROOT-ONLY-DATA", said)
+        self.assertEqual(len(result["outputs"]), 1, result)
         confined = [r for r in rows
                     if r.get("feature") == "confinement"
                     and r.get("decision") == "confined"]
         self.assertEqual(len(confined), 1, rows)
         reason = confined[0].get("reason", "<none>")
         self.assertNotIn("no_superuser", reason)
-        # The record carries the names the seed printed, and the
-        # job_user record names the demote.
         self.assertIn("platform: FreeBSD jail backend: " + reason, out)
         self.assertTrue(any(
             r.get("feature") == "job_user"
             and r.get("decision") == "run_as" for r in rows), rows)
+
+
+@unittest.skipUnless(
+    FC.IS_FREEBSD_BACKEND and os.geteuid() == 0,
+    "run on FreeBSD as root")
+class LiveSeedTest(_LiveSeed):
+    """What a fresh install states, on a real kernel: the seed
+    asks the real probe the startup gate's question, runs the
+    real trial job as the job user, and writes what the machine
+    answers -- as root, as an ordinary user, for a config that
+    asks more than the host holds, for a config that names its
+    own job user, by the installer's file path, and through the
+    wizard -- and a runner started on the seeded config runs
+    its first job confined, as that user.
+
+    No account is made here. The seed is handed the finder --
+    the account where the host already has it, the shared user
+    where it does not -- so these run on any FreeBSD host and
+    add nothing to its user database. LiveAccountTest is where
+    the installer's own maker runs.
+    """
+
+    @staticmethod
+    def _find():
+        return INS.freebsd_job_account(make=False)
+
+    @staticmethod
+    def _user():
+        """Who the finder's seed names on this host."""
+        return "pigeon-jobs" if _account_ids() else "nobody"
+
+    def test_as_root_the_seed_leaves_the_jail_on_and_names_a_user(self):
+        user = self._user()
+        accounts = _account_ids()
+        path = _seeded_config(self.folder)
+        before = self._config(path)
+        applied, out = self._seed(path, account=self._find)
+        self.assertEqual(applied, {}, out)
+        self._names(user, path, out, before)
+        self.assertEqual("rctl_resource_limits" in out,
+                         _racct_live(), out)
+        self.assertEqual("kern.racct.enable=1" in out,
+                         not _racct_live(), out)
+        self.assertNotIn("made for the jail's jobs", out)
+        if user == "nobody":
+            self.assertIn("platform: account pigeon-jobs is not on "
+                          "this machine (the installer makes it)",
+                          out)
+            self.assertIn("platform: nobody stands in", out)
+        # A later run over the same config asks the first
+        # question again, finds a job user named, and changes
+        # nothing.
+        with open(path, "rb") as fh:
+            seeded = fh.read()
+        applied, out = self._seed(path, account=self._find)
+        with open(path, "rb") as fh:
+            again = fh.read()
+        self.assertEqual(applied, {}, out)
+        self.assertEqual(again, seeded)
+        self.assertIn("left at enforce", out)
+        self.assertNotIn("security.job_user names", out)
+        self.assertIn("platform: a job goes in as %s at the jail "
+                      "door" % user, out)
+        # The finder made nothing.
+        self.assertEqual(_account_ids(), accounts)
+        self._nothing_left()
+
+    def test_a_runner_on_the_seeded_config_runs_its_job_as_that_user(self):
+        import pwd
+        user = self._user()
+        shown = self._shown_tree()
+        path = _seeded_config(self.folder, confinement={
+            "extra_ro_binds": [[shown, "/shown"]]})
+        applied, out = self._seed(path, account=self._find)
+        self.assertEqual(applied, {}, out)
+        seeded = self._config(path)
+        self.assertEqual(seeded["security"]["job_user"],
+                         {"user": user})
+        result, rows = self._first_job(seeded["security"])
+        self._job_ran_as(pwd.getpwnam(user).pw_uid, result, rows, out)
         self._nothing_left()
 
     def test_the_door_trial_on_this_machine(self):
@@ -4071,7 +4546,10 @@ class LiveSeedTest(unittest.TestCase):
             json.dump(cfg, fh)
         with open(path, "rb") as fh:
             before = fh.read()
-        applied, out = self._seed(path)
+
+        def _never():
+            raise AssertionError("the account was looked for")
+        applied, out = self._seed(path, account=_never)
         with open(path, "rb") as fh:
             after = fh.read()
         self.assertEqual(applied, {}, out)
@@ -4087,7 +4565,10 @@ class LiveSeedTest(unittest.TestCase):
         path = _seeded_config(self.folder, modes={"job_user": "off"})
         with open(path, "rb") as fh:
             before = fh.read()
-        applied, out = self._seed(path)
+
+        def _never():
+            raise AssertionError("the account was looked for")
+        applied, out = self._seed(path, account=_never)
         with open(path, "rb") as fh:
             after = fh.read()
         self.assertEqual(applied, {}, out)
@@ -4100,6 +4581,7 @@ class LiveSeedTest(unittest.TestCase):
     def test_an_ordinary_user_s_seed_states_audit_and_names_root(self):
         import pwd
         nobody = pwd.getpwnam("nobody")
+        accounts = _account_ids()
         path = _seeded_config(self.folder)
         os.chown(self.folder, nobody.pw_uid, nobody.pw_gid)
         os.chown(path, nobody.pw_uid, nobody.pw_gid)
@@ -4116,7 +4598,9 @@ class LiveSeedTest(unittest.TestCase):
         read_end, write_end = os.pipe()
         pid = os.fork()
         if pid == 0:
-            # The child: an ordinary user from here to its exit.
+            # The child: an ordinary user from here to its exit,
+            # and the installer's seed with nothing handed in --
+            # its own probe, its own trial, its own maker.
             code = 1
             try:
                 os.close(read_end)
@@ -4171,7 +4655,8 @@ class LiveSeedTest(unittest.TestCase):
         modes = said["security"]["modes"]
         self.assertEqual(modes["confinement"], "audit")
         self.assertEqual(modes["job_user"], "enforce")
-        # No jail, so no job user: a demote needs root too.
+        # No jail, so no job user and no account: a demote needs
+        # root too.
         self.assertNotIn("job_user", said["security"])
         self.assertIn("security.modes.confinement stated as audit "
                       "in %s" % path, said["out"])
@@ -4179,16 +4664,18 @@ class LiveSeedTest(unittest.TestCase):
                       said["out"])
         self.assertNotIn("left at enforce", said["out"])
         self.assertNotIn("security.job_user names", said["out"])
+        self.assertNotIn("account pigeon-jobs", said["out"])
+        self.assertEqual(_account_ids(), accounts)
         self._nothing_left()
 
     def test_named_ceilings_are_seeded_by_what_the_host_holds(self):
         path = _seeded_config(
             self.folder, confinement={"freebsd": {"job_processes": 64}})
         before = self._config(path)
-        applied, out = self._seed(path)
+        applied, out = self._seed(path, account=self._find)
         if _racct_live():
             self.assertEqual(applied, {}, out)
-            self._names_nobody(path, out, before)
+            self._names(self._user(), path, out, before)
             self.assertIn("rctl_resource_limits", out)
         else:
             self.assertEqual(applied, {"confinement": "audit"}, out)
@@ -4208,7 +4695,9 @@ class LiveSeedTest(unittest.TestCase):
             "import json, runpy, sys\n"
             "ns = runpy.run_path(sys.argv[1], "
             "run_name='hp_install_by_path')\n"
-            "applied = ns['apply_platform_modes'](sys.argv[2])\n"
+            "applied = ns['apply_platform_modes'](\n"
+            "    sys.argv[2],\n"
+            "    account=lambda: ns['freebsd_job_account'](make=False))\n"
             "print(json.dumps({'applied': applied, 'pulled_in': "
             "sorted(m for m in sys.modules if m.split('.')[0] "
             "in ('runner', 'ops', 'guard'))}))\n")
@@ -4222,10 +4711,12 @@ class LiveSeedTest(unittest.TestCase):
         lines = text.splitlines()
         said = json.loads(lines[-1])
         self.assertEqual(said, {"applied": {}, "pulled_in": []}, text)
-        self._names_nobody(path, text, before)
+        self._names(self._user(), path, text, before)
         self._nothing_left()
 
     def test_the_wizard_s_seed_asks_the_same_machine(self):
+        user = self._user()
+        accounts = _account_ids()
         cfg = {"security": {"modes": {
             "confinement": "enforce", "job_user": "enforce"}}}
         answers = []
@@ -4233,16 +4724,221 @@ class LiveSeedTest(unittest.TestCase):
         self.assertEqual(stated, {})
         self.assertEqual(cfg["security"]["modes"]["confinement"],
                          "enforce")
-        self.assertEqual(cfg["security"]["job_user"],
-                         {"user": "nobody"})
-        ((answer, user, door),) = answers
+        self.assertEqual(cfg["security"]["job_user"], {"user": user})
+        ((answer, named, door),) = answers
         self.assertIsNone(answer[0])
-        self.assertEqual(user, "nobody")
-        self.assertIsNone(door[0])
-        self.assertTrue(door[1][0].startswith(
+        self.assertEqual(named, user)
+        self.assertIsNone(door["problem"])
+        self.assertTrue(door["lines"][0].startswith(
             "FreeBSD jail backend: freebsd: jail + no_network"),
             answers)
-        self.assertNotIn("no_superuser", door[1][0])
+        self.assertNotIn("no_superuser", door["lines"][0])
+        # The wizard's seed writes a config and nothing else.
+        self.assertEqual(_account_ids(), accounts)
+        self._nothing_left()
+
+
+@unittest.skipUnless(
+    FC.IS_FREEBSD_BACKEND and os.geteuid() == 0 and _DISPOSABLE_GUEST,
+    "making an account is tested on a disposable FreeBSD guest")
+class LiveAccountTest(_LiveSeed):
+    """The account the installer makes for jobs, on a real
+    kernel and a real user database -- on a guest that is
+    thrown away afterwards, and nowhere else. The installer's
+    seed runs here with nothing handed in: its own probe, its
+    own maker, its own trial."""
+
+    def setUp(self):
+        super().setUp()
+        # Each test starts with no such account and leaves none.
+        self._clear()
+        self.addCleanup(self._clear)
+
+    @staticmethod
+    def _clear():
+        if _account_ids() is not None:
+            INS.freebsd_remove_job_account("pigeon-jobs")
+
+    def _made_line(self):
+        return ("platform: account pigeon-jobs made for the jail's "
+                "jobs (pw useradd: no password, no login shell, no "
+                "home directory)")
+
+    def test_the_installer_makes_the_account_and_names_it(self):
+        import grp
+        import pwd
+        self.assertIsNone(_account_ids())
+        path = _seeded_config(self.folder)
+        before = self._config(path)
+        applied, out = self._seed(path)
+        self.assertEqual(applied, {}, out)
+        self._names("pigeon-jobs", path, out, before)
+        self.assertIn(self._made_line(), out)
+        # The account as it was made: nothing to log in with, no
+        # home, a group of its own with no one else in it.
+        entry = pwd.getpwnam("pigeon-jobs")
+        self.assertNotEqual(entry.pw_uid, 0)
+        self.assertEqual(entry.pw_shell, "/usr/sbin/nologin")
+        self.assertEqual(entry.pw_dir, "/nonexistent")
+        self.assertFalse(os.path.exists("/nonexistent"))
+        # A password field no hash can match.
+        self.assertTrue(entry.pw_passwd.startswith("*"),
+                        entry.pw_passwd)
+        self.assertEqual(entry.pw_gecos, "homing-pigeon jobs")
+        group = grp.getgrgid(entry.pw_gid)
+        self.assertEqual(group.gr_name, "pigeon-jobs")
+        self.assertEqual(group.gr_mem, [])
+        self.assertEqual(
+            [g.gr_name for g in grp.getgrall()
+             if "pigeon-jobs" in g.gr_mem], [])
+        # A later run finds the name written: no trial, no pw,
+        # nothing changed.
+        with open(path, "rb") as fh:
+            seeded = fh.read()
+        applied, out = self._seed(path)
+        with open(path, "rb") as fh:
+            self.assertEqual(fh.read(), seeded)
+        self.assertEqual(applied, {}, out)
+        self.assertNotIn("made for the jail's jobs", out)
+        self.assertNotIn("security.job_user names", out)
+        self.assertEqual(pwd.getpwnam("pigeon-jobs").pw_uid,
+                         entry.pw_uid)
+        # A fresh config on a machine where the account stands
+        # uses it as it is.
+        other = os.path.join(self.folder, "other")
+        os.mkdir(other)
+        path2 = _seeded_config(other)
+        before2 = self._config(path2)
+        applied, out = self._seed(path2)
+        self.assertEqual(applied, {}, out)
+        self._names("pigeon-jobs", path2, out, before2)
+        self.assertNotIn("made for the jail's jobs", out)
+        self.assertEqual(pwd.getpwnam("pigeon-jobs").pw_uid,
+                         entry.pw_uid)
+        self._nothing_left()
+
+    def test_a_runner_on_the_seeded_config_runs_its_job_as_the_account(self):
+        shown = self._shown_tree()
+        path = _seeded_config(self.folder, confinement={
+            "extra_ro_binds": [[shown, "/shown"]]})
+        applied, out = self._seed(path)
+        self.assertEqual(applied, {}, out)
+        seeded = self._config(path)
+        self.assertEqual(seeded["security"]["job_user"],
+                         {"user": "pigeon-jobs"})
+        uid, _gid = _account_ids()
+        result, rows = self._first_job(seeded["security"])
+        self._job_ran_as(uid, result, rows, out)
+        self._nothing_left()
+
+    def test_the_wizard_s_seed_makes_no_account(self):
+        # Without the account the wizard's seed names the shared
+        # user and makes nothing; with it, it names the account.
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        answers = []
+        SU.seed_platform_modes(cfg, asked=answers)
+        self.assertEqual(cfg["security"]["job_user"],
+                         {"user": "nobody"})
+        self.assertEqual(answers[0][2]["notes"], [
+            "account pigeon-jobs is not on this machine (the "
+            "installer makes it)", "nobody stands in"])
+        self.assertIsNone(_account_ids())
+        self.assertEqual(INS.freebsd_job_account(make=True),
+                         ("pigeon-jobs", True, None))
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        answers = []
+        SU.seed_platform_modes(cfg, asked=answers)
+        self.assertEqual(cfg["security"]["job_user"],
+                         {"user": "pigeon-jobs"})
+        self.assertEqual(answers[0][2]["notes"], [])
+        self._nothing_left()
+
+    def test_an_account_made_and_not_usable_is_removed_again(self):
+        # The real maker and the real trial, with the trial
+        # refusing the account alone: the account is made,
+        # cannot be used, and is gone again; the shared user
+        # stands in on its own real trial.
+        def _trial(cfg, user):
+            if user == "pigeon-jobs":
+                return ("scripted: this account is not to pass", ())
+            return INS.freebsd_job_user_trial(cfg, user)
+        path = _seeded_config(self.folder)
+        before = self._config(path)
+        applied, out = self._seed(
+            path, trial=_trial,
+            account=lambda: INS.freebsd_job_account(make=True))
+        self.assertEqual(applied, {}, out)
+        self._names("nobody", path, out, before)
+        lines = out.splitlines()
+        self.assertEqual(lines[1:5], [
+            self._made_line(),
+            "platform: a trial job as pigeon-jobs inside a jail on "
+            "this machine did not pass: scripted: this account is "
+            "not to pass",
+            "platform: account pigeon-jobs removed again",
+            "platform: nobody stands in"])
+        self.assertIsNone(_account_ids())
+        self._nothing_left()
+
+    def test_where_the_account_cannot_be_made_nobody_stands_in(self):
+        path = _seeded_config(self.folder)
+        before = self._config(path)
+        why = "pw useradd exited 1: scripted"
+        applied, out = self._seed(
+            path, trial=INS.freebsd_job_user_trial,
+            account=lambda: (None, False, why))
+        self.assertEqual(applied, {}, out)
+        self._names("nobody", path, out, before)
+        self.assertIn("platform: account pigeon-jobs could not be "
+                      "made (%s)" % why, out)
+        self.assertIn("platform: nobody stands in", out)
+        self.assertIsNone(_account_ids())
+        self._nothing_left()
+
+    def test_the_installer_started_by_path_makes_the_account_too(self):
+        path = _seeded_config(self.folder)
+        before = self._config(path)
+        driver = (
+            "import json, runpy, sys\n"
+            "ns = runpy.run_path(sys.argv[1], "
+            "run_name='hp_install_by_path')\n"
+            "applied = ns['apply_platform_modes'](sys.argv[2])\n"
+            "print(json.dumps({'applied': applied, 'pulled_in': "
+            "sorted(m for m in sys.modules if m.split('.')[0] "
+            "in ('runner', 'ops', 'guard'))}))\n")
+        done = subprocess.run(
+            [sys.executable, "-I", "-c", driver, _INSTALL_PY, path],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=300, cwd=self.folder)
+        text = done.stdout.decode("utf-8", "replace")
+        self.assertEqual(done.returncode, 0,
+                         done.stderr.decode("utf-8", "replace"))
+        said = json.loads(text.splitlines()[-1])
+        self.assertEqual(said, {"applied": {}, "pulled_in": []}, text)
+        self._names("pigeon-jobs", path, text, before)
+        self.assertIn(self._made_line(), text)
+        self.assertIsNotNone(_account_ids())
+        self._nothing_left()
+
+    def test_an_account_already_there_is_not_changed(self):
+        import pwd
+        # An account of the name, made another way: a real shell
+        # and a comment of its own. The seed uses it as it
+        # stands.
+        code, said = INS._run_pw([
+            "useradd", "-n", "pigeon-jobs", "-c", "made by hand",
+            "-d", "/nonexistent", "-s", "/bin/sh", "-w", "no"])
+        self.assertEqual(code, 0, said)
+        before_entry = pwd.getpwnam("pigeon-jobs")
+        path = _seeded_config(self.folder)
+        before = self._config(path)
+        applied, out = self._seed(path)
+        self.assertEqual(applied, {}, out)
+        self._names("pigeon-jobs", path, out, before)
+        self.assertNotIn("made for the jail's jobs", out)
+        after_entry = pwd.getpwnam("pigeon-jobs")
+        self.assertEqual(tuple(after_entry), tuple(before_entry))
+        self.assertEqual(after_entry.pw_gecos, "made by hand")
         self._nothing_left()
 
 

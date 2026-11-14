@@ -1634,6 +1634,15 @@ def uninstall_freebsd():
              if "homing-pigeon" not in line]
     subprocess.run(["crontab", "-"], input="\n".join(lines) + "\n", text=True,
                    check=True)
+    # The account the installer made for jobs stays, as a
+    # removed package's users stay: files a job left are still
+    # owned by it. Said, with the command that removes it.
+    try:
+        _user_ids(FREEBSD_JOB_ACCOUNT)
+    except KeyError:
+        return
+    print(f"note: the jobs account {FREEBSD_JOB_ACCOUNT} is left in "
+          f"place; `pw userdel -n {FREEBSD_JOB_ACCOUNT}` removes it")
 
 
 
@@ -2419,14 +2428,23 @@ _HOST_PLATFORM = sys.platform
 FREEBSD_PROBE_ASKED = ("the FreeBSD jail backend's probe, asked on "
                        "this machine as this user,")
 
-# The user a fresh FreeBSD config names for its jobs once the
-# seed has left the jail on. The jail cannot be made without
-# root, so a job with no job user is root's uid inside it --
-# without privilege, and still the reader of what root owns in
-# the trees the jail shows. Every base system's user database
-# has this user, and it owns nothing a job should read.
-FREEBSD_SEED_JOB_USER = "nobody"
+# The job user a fresh FreeBSD config names once the seed has
+# left the jail on. The jail cannot be made without root, so a
+# job with no job user is root's uid inside it -- without
+# privilege, and still the reader of what root owns in the
+# trees the jail shows. The installer makes an account for the
+# jobs alone and names that: nothing else runs as it, so
+# nothing else on the machine owns a job's files.
+FREEBSD_JOB_ACCOUNT = "pigeon-jobs"
+FREEBSD_JOB_ACCOUNT_COMMENT = "homing-pigeon jobs"
+FREEBSD_JOB_ACCOUNT_SHAPE = ("no password, no login shell, no home "
+                             "directory")
+# The user that stands in where the account cannot be had: in
+# every base system's user database, and the owner of nothing a
+# job should read -- but shared with whatever else runs as it.
+FREEBSD_SHARED_JOB_USER = "nobody"
 FREEBSD_DOOR_ASKED = "a trial job as %s inside a jail on this machine"
+PW_BIN = "/usr/sbin/pw"
 FREEBSD_NO_JOB_USER = ("a jailed job with no job user is root's uid "
                        "and reads what root owns in the trees it is "
                        "shown")
@@ -2593,7 +2611,69 @@ def _posix_chown(path, uid, gid) -> None:
     chown(path, uid, gid)
 
 
-def freebsd_job_user_trial(cfg, user=FREEBSD_SEED_JOB_USER):
+def _run_pw(args):
+    """One pw(8) command's (exit code, stderr text); 127 and the
+    reason when it cannot be run at all."""
+    try:
+        done = subprocess.run(
+            [PW_BIN] + list(args), stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+    except (OSError, subprocess.SubprocessError) as e:
+        return 127, "%s could not be run: %s" % (PW_BIN, e)
+    return done.returncode, done.stderr.decode(
+        "utf-8", "replace").strip()[:200]
+
+
+def freebsd_job_account(name=FREEBSD_JOB_ACCOUNT, make=False):
+    """The account for jobs on this machine: found, or made
+    where `make` says so.
+
+    Returns (user, made, why). `user` is the account's name
+    when it stands in this machine's user database, else None.
+    `made` is True when this call made it. `why` is the reason
+    it could not be made, when it was to be and was not.
+
+    An account already there is used as it stands and is never
+    changed. One made here is made with pw(8): no password
+    (`-w no`), a login shell that lets no one in, a home that
+    does not exist and is not created, and -- pw's own default
+    with no group named -- a group of its own.
+    """
+    try:
+        _user_ids(name)
+        return name, False, None
+    except KeyError:
+        pass
+    if not make:
+        return None, False, None
+    code, said = _run_pw([
+        "useradd", "-n", name, "-c", FREEBSD_JOB_ACCOUNT_COMMENT,
+        "-d", "/nonexistent", "-s", "/usr/sbin/nologin", "-w", "no"])
+    if code != 0:
+        return None, False, (
+            said if code == 127
+            else "pw useradd exited %d: %s" % (code, said))
+    try:
+        _user_ids(name)
+    except KeyError:
+        return None, False, ("pw useradd answered and the account "
+                             "is not in the user database")
+    return name, True, None
+
+
+def freebsd_remove_job_account(name) -> bool:
+    """Remove an account the seed made in this run and could not
+    use; True when it is gone. Never called for an account that
+    was already on the machine."""
+    _run_pw(["userdel", "-n", name])
+    try:
+        _user_ids(name)
+    except KeyError:
+        return True
+    return False
+
+
+def freebsd_job_user_trial(cfg, user=FREEBSD_SHARED_JOB_USER):
     """Run one throwaway job as `user` inside a jail on this machine.
 
     The seed's second question, asked only after the first has
@@ -2725,28 +2805,51 @@ def fresh_platform_modes(cfg, platform=None, probe=None):
     return modes, (str(problem), ())
 
 
-def fresh_job_user(cfg, asked, platform=None, trial=None):
+def _ask_door(trial, cfg, user):
+    """One door trial's (problem, lines); a trial that cannot
+    answer is a reason, never a pass."""
+    try:
+        problem, lines = trial(cfg, user)
+    except Exception as e:
+        return (str(e) or type(e).__name__), ()
+    if problem is None:
+        return None, tuple(lines)
+    return str(problem), ()
+
+
+def fresh_job_user(cfg, asked, platform=None, trial=None,
+                   account=None, make=False):
     """The job user a fresh config takes once the seed has left
     its jail on.
 
     Returns (user, door). `user` is the name to write under
     security.job_user, or None. `door` is None when the machine
-    was not asked this second question, and otherwise its
-    answer, (problem, lines), in freebsd_seed_probe's shape.
+    was not asked this second question, and otherwise a record
+    of it: `tried`, the user the last trial ran as; `problem`,
+    None or that trial's reason; `lines`, the posture report's
+    lines for the config with the user named; and `notes`, what
+    became of the account, in order, for the operator.
 
     The question is put only where the first one was put and
     passed (`asked`), the job_user mode stands at enforce, and
     the config names no job user: a jail that goes on with none
-    leaves a job root's uid, and a throwaway job as
-    FREEBSD_SEED_JOB_USER is run inside a jail on this machine
-    (freebsd_job_user_trial) to show that naming that user
-    closes it here. Where the trial passes the user is named;
-    where it does not, none is, and the reason rides back in
-    `door`. A config that names a job user in any shape, or
-    states the job_user mode below enforce, is the operator's
-    and is not asked about. `trial` is the tests' door, as
+    leaves a job root's uid. The account for jobs is found, or
+    made where `make` says so (freebsd_job_account), and a
+    throwaway job is run as it inside a jail on this machine
+    (freebsd_job_user_trial) to show that naming it closes the
+    gap here. Where that passes the account is named. Where the
+    account cannot be had, or its trial does not pass,
+    FREEBSD_SHARED_JOB_USER stands in on the same trial; an
+    account this call made and could not use is removed again.
+    Where no trial passes no user is named, and the last reason
+    rides back in `door`.
+
+    A config that names a job user in any shape, or states the
+    job_user mode below enforce, is the operator's and is not
+    asked about. `trial` and `account` are the tests' doors, as
     `probe` is: with a platform named, or off a FreeBSD host,
-    nothing is asked unless one is handed in.
+    nothing is asked unless a trial is handed in, and no
+    account is looked for unless one is handed in with it.
     """
     if asked is None or asked[0] is not None:
         return None, None
@@ -2760,13 +2863,45 @@ def fresh_job_user(cfg, asked, platform=None, trial=None):
                 or not _HOST_PLATFORM.startswith("freebsd"):
             return None, None
         trial = freebsd_job_user_trial
-    try:
-        problem, lines = trial(cfg, FREEBSD_SEED_JOB_USER)
-    except Exception as e:
-        problem, lines = (str(e) or type(e).__name__), ()
-    if problem is None:
-        return FREEBSD_SEED_JOB_USER, (None, tuple(lines))
-    return None, (str(problem), ())
+        if account is None:
+            def account():
+                return freebsd_job_account(make=make)
+    notes = []
+    if account is not None:
+        try:
+            name, made, why = account()
+        except Exception as e:
+            name, made, why = None, False, (str(e) or type(e).__name__)
+        if name is not None:
+            if made:
+                notes.append("account %s made for the jail's jobs "
+                             "(pw useradd: %s)"
+                             % (name, FREEBSD_JOB_ACCOUNT_SHAPE))
+            problem, lines = _ask_door(trial, cfg, name)
+            if problem is None:
+                return name, {"tried": name, "problem": None,
+                              "lines": lines, "notes": notes}
+            notes.append("%s did not pass: %s"
+                         % (FREEBSD_DOOR_ASKED % name, problem))
+            if made:
+                gone = freebsd_remove_job_account(name)
+                notes.append(
+                    "account %s removed again" % name if gone
+                    else "account %s could not be removed again "
+                         "(pw userdel -n %s removes it)"
+                         % (name, name))
+        elif why is not None:
+            notes.append("account %s could not be made (%s)"
+                         % (FREEBSD_JOB_ACCOUNT, why))
+        else:
+            notes.append("account %s is not on this machine (the "
+                         "installer makes it)" % FREEBSD_JOB_ACCOUNT)
+        notes.append("%s stands in" % FREEBSD_SHARED_JOB_USER)
+    user = FREEBSD_SHARED_JOB_USER
+    problem, lines = _ask_door(trial, cfg, user)
+    door = {"tried": user, "problem": problem, "lines": lines,
+            "notes": notes}
+    return (user if problem is None else None), door
 
 
 def seed_kept_lines(asked, cfg_path, user=None, door=None) -> list:
@@ -2774,9 +2909,10 @@ def seed_kept_lines(asked, cfg_path, user=None, door=None) -> list:
     confinement at enforce; empty when it did not.
 
     The line that says so, then what was decided about the job
-    user where that was asked -- named, or left unnamed with
-    the reason -- then the posture report's lines for the
-    config as it now stands."""
+    user where that was asked -- what became of the account,
+    then the user named, or left unnamed with the reason --
+    then the posture report's lines for the config as it now
+    stands."""
     if asked is None or asked[0] is not None:
         return []
     lines = [f"platform: security.modes.confinement left at "
@@ -2784,20 +2920,23 @@ def seed_kept_lines(asked, cfg_path, user=None, door=None) -> list:
              f"passed; the startup gate asks it again at every "
              f"start)"]
     shown = asked[1]
+    if door is not None:
+        lines.extend("platform: " + note for note in door["notes"])
     if user is not None:
         lines.append(
             f"platform: security.job_user names {user} in "
             f"{cfg_path} ({FREEBSD_DOOR_ASKED % user} passed; "
             f"{FREEBSD_NO_JOB_USER})")
         if door is not None:
-            shown = door[1]
-    elif door is not None and door[0] is not None:
+            shown = door["lines"]
+    elif door is not None and door["problem"] is not None:
         lines.append(
             f"platform: security.job_user left unnamed in "
             f"{cfg_path} "
-            f"({FREEBSD_DOOR_ASKED % FREEBSD_SEED_JOB_USER} did "
-            f"not pass: {door[0]}; {FREEBSD_NO_JOB_USER} -- name "
-            f"a user of the job's own under security.job_user)")
+            f"({FREEBSD_DOOR_ASKED % door['tried']} did not "
+            f"pass: {door['problem']}; {FREEBSD_NO_JOB_USER} -- "
+            f"name a user of the job's own under "
+            f"security.job_user)")
     lines.extend("platform: " + text for text in shown)
     return lines
 
@@ -2812,7 +2951,8 @@ def seed_reason(asked, feature, default) -> str:
 
 
 def apply_platform_modes(cfg_path: str, platform=None,
-                         probe=None, trial=None) -> dict:
+                         probe=None, trial=None,
+                         account=None) -> dict:
     """State fresh_platform_modes() in a fresh install's config.json.
 
     Only a mode the config currently states at enforce moves --
@@ -2840,7 +2980,10 @@ def apply_platform_modes(cfg_path: str, platform=None,
     states audit carries the probe's reason. Where the jail
     stays on and the config names no job user, one is named
     too (see fresh_job_user), and that is written whether or
-    not a mode moved. `probe` and `trial` are the tests' doors.
+    not a mode moved. This is the one caller that makes the
+    account it names: an installer changes the machine it
+    installs on, and a seed that only writes a config does
+    not. `probe`, `trial` and `account` are the tests' doors.
     """
     plat = platform if platform is not None else sys.platform
     if not platform_modes(plat):
@@ -2852,7 +2995,8 @@ def apply_platform_modes(cfg_path: str, platform=None,
     if not isinstance(cfg, dict):
         return {}
     modes, asked = fresh_platform_modes(cfg, platform, probe)
-    user, door = fresh_job_user(cfg, asked, platform, trial)
+    user, door = fresh_job_user(cfg, asked, platform, trial,
+                                account, make=True)
     for line in seed_kept_lines(asked, cfg_path, user, door):
         print(line)
     sec = cfg.get("security") if isinstance(cfg.get("security"), dict) \
