@@ -236,6 +236,50 @@ def _is_user_home(path):
             and parts[1] in ("home", "Users") and bool(parts[2]))
 
 
+def _realpath_or_self(path):
+    """os.path.realpath, answering the path itself when the
+    resolution cannot be taken (a scripted host, an error)."""
+    try:
+        real = os.path.realpath(path)
+    except (OSError, ValueError):
+        return path
+    return real if isinstance(real, str) and real else path
+
+
+def _is_user_home_dir(path):
+    """True when the directory `path` names is a user home,
+    under any spelling of it (Q192) -- the mirror of the
+    Linux sandbox's directory test: the spelled test on the
+    path and on its realpath, a home-shaped tail
+    (</...>/home/<name> or </...>/Users/<name>, the firmlink
+    shape), and directory identity with the process user's
+    own home."""
+    if not isinstance(path, str) or not path:
+        return False
+    if _is_user_home(path):
+        return True
+    real = _realpath_or_self(path)
+    # A resolution is trusted for identity only when it keeps
+    # the directory's own name: an alias renames a parent
+    # component (a firmlink, a linked /home), never the leaf.
+    # A resolution that renames the leaf is a scripted host
+    # answering for another path entirely, and judges nothing.
+    real_ok = (real == path
+               or os.path.basename(real) == os.path.basename(path))
+    if real_ok and real != path and _is_user_home(real):
+        return True
+    for cand in ((path, real) if real_ok else (path,)):
+        parts = cand.split("/")
+        if (len(parts) >= 4 and parts[-2] in ("home", "Users")
+                and bool(parts[-1])):
+            return True
+    own = os.path.expanduser("~")
+    if (own.startswith("/") and real_ok and real == path
+            and real == _realpath_or_self(own)):
+        return True
+    return False
+
+
 def _install_prefix(path):
     """The directory a profile must let a job read so `path`
     can run: its grandparent when the parent is `bin`
@@ -253,10 +297,10 @@ def _install_prefix(path):
     if os.path.basename(parent) == "bin":
         grand = os.path.dirname(parent)
         if grand.count("/") >= 2 and grand != "/" \
-                and not _is_user_home(grand):
+                and not _is_user_home_dir(grand):
             return grand
     if parent.count("/") >= 2:
-        if _is_user_home(parent):
+        if _is_user_home_dir(parent):
             return None
         return parent
     return None
@@ -291,9 +335,24 @@ def interpreter_read_paths(interpreter):
             raise RuntimeError(
                 "cannot resolve interpreter %r for the profile"
                 % interpreter)
+    candidates = [resolved, _realpath_or_self(resolved)]
+    # The homes either candidate names, by directory (Q192),
+    # as in sandbox.interpreter_binds.
+    home_dirs = set()
+    for cand in candidates:
+        if not cand.startswith("/"):
+            continue
+        parent = os.path.dirname(cand)
+        for anc in (parent, os.path.dirname(parent)):
+            if _is_user_home_dir(anc):
+                home_dirs.add(anc)
+                anc_real = _realpath_or_self(anc)
+                if os.path.basename(anc_real) == os.path.basename(anc):
+                    home_dirs.add(anc_real)
     out = []
     seen = set()
-    for cand in (resolved, os.path.realpath(resolved)):
+    seen_dirs = set()
+    for cand in candidates:
         if not cand.startswith("/"):
             continue
         if any(cand == t or cand.startswith(t + "/")
@@ -305,7 +364,15 @@ def interpreter_read_paths(interpreter):
         if any(prefix == t or prefix.startswith(t + "/")
                for t in SYSTEM_READ_PATHS):
             continue
+        prefix_dir = _realpath_or_self(prefix)
+        if os.path.basename(prefix_dir) != os.path.basename(prefix):
+            prefix_dir = prefix
+        if _is_user_home_dir(prefix) or prefix_dir in home_dirs:
+            continue
+        if prefix_dir in seen_dirs:
+            continue
         seen.add(prefix)
+        seen_dirs.add(prefix_dir)
         out.append(prefix)
     return out
 

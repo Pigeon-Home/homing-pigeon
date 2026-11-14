@@ -1893,6 +1893,21 @@ class TranslateTest(unittest.TestCase):
             which=self.which)
         self.assertEqual(prefixes, ["/home/someone/bin"])
 
+    def test_a_home_under_an_alias_spelling_is_never_mounted(self):
+        # Q192: the jail backend shares sandbox.interpreter_binds,
+        # so a host whose /home links elsewhere (the Darwin
+        # firmlink shape, scripted here) mounts the bin
+        # directory alone -- the alias candidate names no home.
+        def _real(path, *args, **kwargs):
+            if path == "/home" or path.startswith("/home/"):
+                return "/System/Volumes/Data/home" + path[len("/home"):]
+            return path
+        with mock.patch.object(FC._sandbox.os.path, "realpath", _real):
+            _out, prefixes = FC.translate_argv(
+                ["/home/someone/bin/python3"], None, self.st,
+                which=self.which)
+        self.assertEqual(prefixes, ["/home/someone/bin"])
+
     def test_what_is_not_a_command_is_refused(self):
         for argv in ((), [], None, "sh", ["sh", 3], [b"sh"]):
             with self.subTest(argv=argv):

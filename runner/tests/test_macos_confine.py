@@ -325,6 +325,83 @@ class ProfileWriterFieldTest(unittest.TestCase):
         self.assertNotIn("(allow network", profile)
 
 
+def _mc_prefix_link(mapping):
+    """A scripted realpath for the macOS mirror: the longest
+    mapped prefix is replaced, the rest resolves to itself."""
+    def _real(path, *args, **kwargs):
+        best = ""
+        for src in mapping:
+            if (path == src or path.startswith(src + "/")) \
+                    and len(src) > len(best):
+                best = src
+        if best:
+            return mapping[best] + path[len(best):]
+        return path
+    return _real
+
+
+class InterpreterHomeAliasTest(unittest.TestCase):
+    """Q192, macOS mirror: interpreter_read_paths carries the
+    same two-candidate rule as sandbox.interpreter_binds, so
+    the never-name-a-home floor is judged by directory there
+    too -- a firmlinked /home must not name the home whole
+    under its /System/Volumes/Data spelling, and one
+    directory under two spellings is named once."""
+
+    FIRMLINK = {"/home": "/System/Volumes/Data/home",
+                "/Users": "/System/Volumes/Data/Users"}
+
+    def test_firmlink_realpath_candidate_names_no_home(self):
+        with mock.patch.object(MC.os.path, "realpath",
+                               _mc_prefix_link(self.FIRMLINK)):
+            self.assertEqual(
+                MC.interpreter_read_paths("/home/someone/bin/python3"),
+                ["/home/someone/bin"])
+            self.assertEqual(
+                MC.interpreter_read_paths("/Users/alice/bin/python3"),
+                ["/Users/alice/bin"])
+
+    def test_firmlink_spelling_as_resolved_falls_back_to_bin(self):
+        with mock.patch.object(MC.os.path, "realpath",
+                               _mc_prefix_link(self.FIRMLINK)):
+            self.assertEqual(
+                MC._install_prefix(
+                    "/System/Volumes/Data/home/someone/bin/python3"),
+                "/System/Volumes/Data/home/someone/bin")
+            # The read-paths answer names no home either:
+            # /System is one of the system trees the profile
+            # already lets a job read, so the firmlink
+            # spelling needs no prefix of its own.
+            self.assertEqual(
+                MC.interpreter_read_paths(
+                    "/System/Volumes/Data/home/someone/bin/python3"),
+                [])
+
+    def test_symlinked_home_with_no_home_component_in_its_name(self):
+        link = _mc_prefix_link({"/home": "/mnt/disk/users"})
+        with mock.patch.object(MC.os.path, "realpath", link):
+            self.assertEqual(
+                MC.interpreter_read_paths("/home/someone/bin/python3"),
+                ["/home/someone/bin"])
+
+    def test_aliased_non_home_prefix_is_named_once(self):
+        # A tree outside the system read paths (/opt is one
+        # of them on this backend, so it cannot show the
+        # shape): one directory, two spellings, one name.
+        link = _mc_prefix_link({"/srv/tools": "/data/tools"})
+        with mock.patch.object(MC.os.path, "realpath", link):
+            self.assertEqual(
+                MC.interpreter_read_paths("/srv/tools/x64/bin/python3"),
+                ["/srv/tools/x64"])
+
+    def test_clean_control_stands(self):
+        with mock.patch.object(MC.os.path, "realpath",
+                               _mc_prefix_link(self.FIRMLINK)):
+            self.assertEqual(
+                MC.interpreter_read_paths("/srv/hp-python/bin/python3"),
+                ["/srv/hp-python"])
+
+
 class ShimFieldTest(unittest.TestCase):
     """build_shim_argv, one field at a time."""
 

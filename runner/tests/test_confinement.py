@@ -1073,6 +1073,128 @@ class InstallPrefixHomeTest(unittest.TestCase):
                          "/snap/bin")
 
 
+def _prefix_link(mapping):
+    """A scripted realpath: the longest mapped prefix of the
+    path is replaced, everything else resolves to itself --
+    the shape the translate tests script their own host in."""
+    def _real(path, *args, **kwargs):
+        best = ""
+        for src in mapping:
+            if (path == src or path.startswith(src + "/")) \
+                    and len(src) > len(best):
+                best = src
+        if best:
+            return mapping[best] + path[len(best):]
+        return path
+    return _real
+
+
+class InterpreterBindsHomeAliasTest(unittest.TestCase):
+    """Q192: the never-mount-a-home floor judges the
+    directory, not its spelling. interpreter_binds considers
+    the resolved path and its realpath; where a tree is a
+    link (Darwin's /home firmlink, a Linux /home symlink),
+    the realpath candidate reaches the same home under an
+    alias spelling the spelled guard does not know, and the
+    home was named whole as a mount prefix. Option 1 on the
+    desk: drop a candidate whose prefix's realpath is a user
+    home, and deduplicate prefixes by the directory they
+    name. Suppositions Q192-S1 to S5 stand on the desk
+    (docs/steady/seats/questions.md), recorded before this
+    family was built."""
+
+    FIRMLINK = {"/home": "/System/Volumes/Data/home",
+                "/Users": "/System/Volumes/Data/Users"}
+
+    def test_firmlink_realpath_candidate_names_no_home(self):
+        # Q192-S1.
+        with mock.patch.object(SB.os.path, "realpath",
+                               _prefix_link(self.FIRMLINK)):
+            self.assertEqual(
+                SB.interpreter_binds("/home/someone/bin/python3"),
+                [("/home/someone/bin", "/home/someone/bin")])
+            self.assertEqual(
+                SB.interpreter_binds("/Users/alice/bin/python3"),
+                [("/Users/alice/bin", "/Users/alice/bin")])
+
+    def test_firmlink_spelling_as_resolved_falls_back_to_bin(self):
+        # Q192-S2: the alias spelling is the resolved path
+        # itself; the prefix rule falls back to the bin
+        # directory, exactly as the spelled home does.
+        with mock.patch.object(SB.os.path, "realpath",
+                               _prefix_link(self.FIRMLINK)):
+            self.assertEqual(
+                SB._install_prefix(
+                    "/System/Volumes/Data/home/someone/bin/python3"),
+                "/System/Volumes/Data/home/someone/bin")
+            self.assertEqual(
+                SB._install_prefix(
+                    "/System/Volumes/Data/Users/alice/bin/python3"),
+                "/System/Volumes/Data/Users/alice/bin")
+            self.assertEqual(
+                SB.interpreter_binds(
+                    "/System/Volumes/Data/home/someone/bin/python3"),
+                [("/System/Volumes/Data/home/someone/bin",
+                  "/System/Volumes/Data/home/someone/bin")])
+
+    def test_symlinked_home_with_no_home_component_in_its_name(self):
+        # Q192-S3: /home links to a tree whose name carries
+        # no home component at all; directory identity
+        # against the home the resolved candidate names is
+        # what drops the alias candidate.
+        link = _prefix_link({"/home": "/mnt/disk/users"})
+        with mock.patch.object(SB.os.path, "realpath", link):
+            self.assertEqual(
+                SB.interpreter_binds("/home/someone/bin/python3"),
+                [("/home/someone/bin", "/home/someone/bin")])
+
+    def test_own_home_reached_under_an_alias_spelling(self):
+        # The process user's own home, aliased: its realpath
+        # is the home's realpath, whatever either is spelled.
+        link = _prefix_link({"/home/pigeon": "/mnt/disk/pigeon"})
+        with mock.patch.object(SB.os.path, "realpath", link), \
+                mock.patch.object(SB.os.path, "expanduser",
+                                  return_value="/home/pigeon"):
+            self.assertEqual(
+                SB._install_prefix("/mnt/disk/pigeon/bin/python3"),
+                "/mnt/disk/pigeon/bin")
+
+    def test_venv_two_genuinely_different_directories_stand(self):
+        # Q192-S4: the venv case is untouched -- two real
+        # directories, both bound, in first-seen order.
+        def _real(path, *args, **kwargs):
+            if path == "/home/u/proj/.venv/bin/python3":
+                return "/opt/py311/bin/python3"
+            return path
+        with mock.patch.object(SB.os.path, "realpath", _real):
+            self.assertEqual(
+                SB.interpreter_binds("/home/u/proj/.venv/bin/python3"),
+                [("/home/u/proj/.venv", "/home/u/proj/.venv"),
+                 ("/opt/py311", "/opt/py311")])
+
+    def test_aliased_non_home_prefix_is_named_once(self):
+        # Q192-S4, second half: one directory under two
+        # spellings is one widening, named under the
+        # resolved spelling.
+        link = _prefix_link({"/opt": "/srv/opt"})
+        with mock.patch.object(SB.os.path, "realpath", link):
+            self.assertEqual(
+                SB.interpreter_binds("/opt/x64/bin/python3"),
+                [("/opt/x64", "/opt/x64")])
+
+    def test_clean_controls_stand_under_a_scripted_host(self):
+        # Q192-S5.
+        with mock.patch.object(SB.os.path, "realpath",
+                               _prefix_link(self.FIRMLINK)):
+            self.assertEqual(SB.interpreter_binds("/usr/bin/python3"), [])
+            self.assertEqual(
+                SB.interpreter_binds("/opt/x64/bin/python3"),
+                [("/opt/x64", "/opt/x64")])
+            self.assertEqual(
+                SB.interpreter_binds("/snap/bin/python3"),
+                [("/snap/bin", "/snap/bin")])
+
+
 class InterpreterBindsNullByteTest(unittest.TestCase):
     """Q190: a generated path carrying an embedded NUL
     reached interpreter_binds, whose os.path.realpath

@@ -236,6 +236,52 @@ def _is_user_home(path):
             and parts[1] in ("home", "Users") and bool(parts[2]))
 
 
+def _realpath_or_self(path):
+    """os.path.realpath, answering the path itself when the
+    resolution cannot be taken (a scripted host, an error)."""
+    try:
+        real = os.path.realpath(path)
+    except (OSError, ValueError):
+        return path
+    return real if isinstance(real, str) and real else path
+
+
+def _is_user_home_dir(path):
+    """True when the directory `path` names is a user home,
+    under any spelling of it (Q192). _is_user_home judges a
+    spelling; this judges the directory: the spelled test on
+    the path and on its realpath, a home-shaped tail
+    (</...>/home/<name> or </...>/Users/<name> -- a firmlink
+    or a symlinked tree puts a prefix in front of the home's
+    own spelling), and directory identity with the process
+    user's own home, whose realpath an alias may hide behind
+    a name with no home component in it."""
+    if not isinstance(path, str) or not path:
+        return False
+    if _is_user_home(path):
+        return True
+    real = _realpath_or_self(path)
+    # A resolution is trusted for identity only when it keeps
+    # the directory's own name: an alias renames a parent
+    # component (a firmlink, a linked /home), never the leaf.
+    # A resolution that renames the leaf is a scripted host
+    # answering for another path entirely, and judges nothing.
+    real_ok = (real == path
+               or os.path.basename(real) == os.path.basename(path))
+    if real_ok and real != path and _is_user_home(real):
+        return True
+    for cand in ((path, real) if real_ok else (path,)):
+        parts = cand.split("/")
+        if (len(parts) >= 4 and parts[-2] in ("home", "Users")
+                and bool(parts[-1])):
+            return True
+    own = os.path.expanduser("~")
+    if (own.startswith("/") and real_ok and real == path
+            and real == _realpath_or_self(own)):
+        return True
+    return False
+
+
 def _install_prefix(path):
     """The directory to bind so `path` can run: its grandparent when
     the parent is `bin` (…/x64/bin/python3 -> …/x64, bringing lib/
@@ -249,6 +295,9 @@ def _install_prefix(path):
     user home directory either (Q-new-25): a bin grandparent that
     is a home directory (/home/<user>/bin/python3) falls back to
     the bin directory itself, so the whole home is never bound.
+    The home is judged by directory, not spelling (Q192): a
+    grandparent that names a home under an alias -- a firmlink
+    or a symlinked /home -- falls back the same way.
     A path carrying a NUL is no path at all: it gets no
     prefix, the same skip interpreter_binds gives it whole
     (Q190 family)."""
@@ -258,10 +307,10 @@ def _install_prefix(path):
     if os.path.basename(parent) == "bin":
         grand = os.path.dirname(parent)
         if grand.count("/") >= 2 and grand != "/" \
-                and not _is_user_home(grand):
+                and not _is_user_home_dir(grand):
             return grand
     if parent.count("/") >= 2:
-        if _is_user_home(parent):
+        if _is_user_home_dir(parent):
             return None
         return parent
     return None
@@ -290,15 +339,48 @@ def interpreter_binds(resolved, extra_ro_binds=(),
         # relative path answers no binds) covers it -- answer
         # no binds instead of crashing the caller (Q190).
         return out
-    for cand in (resolved, os.path.realpath(resolved)):
-        if not isinstance(cand, str) or not cand.startswith("/"):
+    candidates = []
+    if isinstance(resolved, str):
+        candidates = [resolved, _realpath_or_self(resolved)]
+    # The homes either candidate names, by directory (Q192):
+    # an ancestor of one spelling that the spelled test knows
+    # as a home condemns the same directory under every other
+    # spelling, including one with no home component in it.
+    home_dirs = set()
+    for cand in candidates:
+        if not cand.startswith("/"):
+            continue
+        parent = os.path.dirname(cand)
+        for anc in (parent, os.path.dirname(parent)):
+            if _is_user_home_dir(anc):
+                home_dirs.add(anc)
+                anc_real = _realpath_or_self(anc)
+                if os.path.basename(anc_real) == os.path.basename(anc):
+                    home_dirs.add(anc_real)
+    seen_dirs = set()
+    for cand in candidates:
+        if not cand.startswith("/"):
             continue
         if _under(cand, visible):
             continue
         prefix = _install_prefix(cand)
         if prefix is None or prefix in seen or _under(prefix, visible):
             continue
+        # Option 1 on the desk (Q192): a candidate whose
+        # prefix names a user home -- by its realpath, or by
+        # identity with a home the other candidate named --
+        # is dropped, never bound.
+        prefix_dir = _realpath_or_self(prefix)
+        if os.path.basename(prefix_dir) != os.path.basename(prefix):
+            prefix_dir = prefix
+        if _is_user_home_dir(prefix) or prefix_dir in home_dirs:
+            continue
+        if prefix_dir in seen_dirs:
+            # One directory under two spellings is one
+            # widening; the first spelling taken stands.
+            continue
         seen.add(prefix)
+        seen_dirs.add(prefix_dir)
         out.append((prefix, prefix))
     return out
 
