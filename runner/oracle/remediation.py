@@ -492,7 +492,15 @@ def sample_tree_windows(root_pid):
 # One fork per sample is the price; the storm this exists to catch
 # makes the fork slower, not impossible (Q38, 2026-10-25).
 
-_PS_ARGS = ("ps", "-axo", "pid=,ppid=,rss=,time=")
+# The format list carries no "=" header overrides (Q182): the
+# GNU/macOS shape "pid=,ppid=,rss=,time=" reads as ONE column
+# under FreeBSD ps(1)'s -o grammar, where an equals sign is
+# allowed only on the last keyword and its string spans the
+# rest of the argument -- FreeBSD printed a lone pid column,
+# _ps_table read an empty table, and the sampler saw the root
+# alone there. The plain list prints a header line on every
+# ps; _ps_table's integer parse skips it like a bad row.
+_PS_ARGS = ("ps", "-axo", "pid,ppid,rss,time")
 
 
 def _ps_available():

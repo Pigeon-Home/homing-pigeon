@@ -128,6 +128,90 @@ class DispatchTest(unittest.TestCase):
         self.assertEqual(calls, ["windows", "posix", "ps", "ps"])
 
 
+def _freebsd_parsefmt(fmt):
+    """FreeBSD ps's parsefmt (bin/ps/keyword.c), transliterated.
+
+    An item whose first separator-or-equals character is an
+    equals sign specifies a column header, may contain embedded
+    separator characters and is always the last item: the whole
+    rest of the argument becomes that one keyword's header.
+    Returns [(keyword, header_or_None)].
+    """
+    seps = ", \t"
+    cols = []
+    rest = fmt
+    while rest:
+        i = next((j for j, c in enumerate(rest)
+                  if c == "=" or c in seps), len(rest))
+        if i >= len(rest) or rest[i] != "=":
+            token = None
+            while rest is not None:
+                j = next((k for k, c in enumerate(rest)
+                          if c in seps), len(rest))
+                token, rest = rest[:j], (
+                    rest[j + 1:] if j < len(rest) else None)
+                if token:
+                    break
+            if not token:
+                break
+            cols.append((token, None))
+        else:
+            keyword, header = rest.split("=", 1)
+            cols.append((keyword, header))
+            rest = None
+    return cols
+
+
+class PsArgsShapeTest(unittest.TestCase):
+    """Q182: the sampler's ps invocation under each ps grammar."""
+
+    OLD = "pid=,ppid=,rss=,time="
+
+    def test_the_args_carry_no_equals_sign(self):
+        self.assertNotIn("=", R._PS_ARGS[2])
+        self.assertEqual(R._PS_ARGS[:2], ("ps", "-axo"))
+
+    def test_freebsd_grammar_reads_the_old_shape_as_one_column(self):
+        self.assertEqual(_freebsd_parsefmt(self.OLD),
+                         [("pid", ",ppid=,rss=,time=")])
+        # The space-separated twin collapses the same way.
+        self.assertEqual(
+            len(_freebsd_parsefmt("pid= ppid= rss= time=")), 1)
+
+    def test_freebsd_grammar_reads_the_landed_shape_as_four(self):
+        self.assertEqual(
+            [kw for kw, _hdr in _freebsd_parsefmt(R._PS_ARGS[2])],
+            ["pid", "ppid", "rss", "time"])
+
+    def test_a_header_bearing_table_parses(self):
+        # The plain list prints a header line; the parser skips
+        # it like a bad row and reads the rows under it.
+        table = R._ps_table(_fake_ps(
+            "  PID  PPID   RSS      TIME\n"
+            "  100     1  2048   0:00.10\n"
+            "  101   100  4096   0:00.20\n"))
+        self.assertEqual(sorted(table), [100, 101])
+        self.assertEqual(table[101], (100, 4096 * 1024, 0.2))
+        sample = R.sample_tree_ps(100, _fake_ps(
+            "  PID  PPID   RSS      TIME\n"
+            "  100     1  2048   0:00.10\n"
+            "  101   100  4096   0:00.20\n"))
+        self.assertEqual(sorted(sample), [100, 101])
+
+    def test_one_column_output_is_an_empty_table(self):
+        # What FreeBSD printed for the old shape: a header of
+        # the rest-of-argument string, then one pid per line.
+        # Fewer than 4 fields per line reads as no table, and
+        # the sample is the root alone -- the Q182 failure mode.
+        out = (",ppid=,rss=,time=\n"
+               "                  1\n"
+               "                100\n"
+               "                101\n")
+        self.assertEqual(R._ps_table(_fake_ps(out)), {})
+        self.assertEqual(R.sample_tree_ps(100, _fake_ps(out)),
+                         {100: (0.0, None)})
+
+
 @unittest.skipUnless(os.name == "posix" and shutil.which("ps"),
                      "ps and a POSIX shell")
 class LivePsTest(unittest.TestCase):

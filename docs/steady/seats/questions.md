@@ -157,6 +157,106 @@ measurement):**
 - Q182-S6. This lane cuts no release and touches no
   ship state; the release train carries the batch.
 
+**Conclusions (2026-11-13):** Q182-S1 to S6 hold, to
+the limit of what this machine can prove; the one link
+no local run can exercise is named at the end.
+
+- S1 holds by FreeBSD's own grammar and by simulation.
+  A transliteration of FreeBSD's `parsefmt` over
+  `pid=,ppid=,rss=,time=` yields one column -- pid, its
+  header the string `,ppid=,rss=,time=` -- and over
+  `pid,ppid,rss,time` yields the four keywords. The
+  same string under the GNU grammar yields four
+  columns, which is why the defect is FreeBSD-only:
+  the macOS and Linux legs of the same suite stand
+  green on the same head.
+- S4(b) holds exactly as supposed. Output in the shape
+  FreeBSD would print for the old args (the
+  rest-of-argument header, then one pid per line) fed
+  through the real `_ps_table` returns an empty table
+  and `sample_tree_ps` returns the root alone. Over
+  that sampler the LivePs polling shape never reaches
+  3 entries (the FAIL shape), and a job monitor's
+  sample trips no storm and acts on nothing, leaving
+  `execute_job` with no `remediation` member for the
+  test to read (the KeyError, hence ERROR, shape).
+- S4(c), the baseline: on this Linux machine the two
+  named tests passed 3 times in a row and once under
+  CPU load, and the whole `test_remediation_ps` module
+  passed, before this lane changed anything. The tree
+  walking, the four-column parsing and the storm logic
+  are not the defect.
+- Per-test verdicts. LivePsTest: platform-shape defect
+  -- the sampler's invocation, not the test and not
+  the walking; the test's assertion is the right one
+  and stands unchanged. Storm test: the same defect
+  one level up -- a real remediation defect only in
+  the sampler's FreeBSD invocation; the storm logic
+  itself is sound (pinned by `MonitorUnitTest` and by
+  the Linux runs). Neither red is a flake: both
+  outcomes are the deterministic consequence of a
+  root-only sample, and the two shapes (FAIL by
+  assertion, ERROR by KeyError) are the two signatures
+  that consequence predicts. The storm test's recorded
+  comment stands corrected by this reading in one
+  respect: the about-25-seconds it attributes to a
+  slow FreeBSD kill is, under this verdict, the
+  sleeps' own 25 seconds running unkilled; the comment
+  itself is left as written, as the record of what was
+  believed when it was set down.
+- S5 holds: the fix is landed (below), its pins run
+  green, and no skip reason was introduced.
+
+**Answer (Muse, 2026-11-13):** the sampler's ps
+invocation takes the plain keyword list on every
+platform.
+
+- `runner/oracle/remediation.py`: `_PS_ARGS` is now
+  `("ps", "-axo", "pid,ppid,rss,time")`, with the Q182
+  reason at the constant: an equals sign on a non-last
+  keyword is FreeBSD's header syntax, not a portable
+  header suppression. The header line the plain list
+  prints is skipped by `_ps_table`'s integer parse.
+- Tests: `PsArgsShapeTest` in
+  `runner/tests/test_remediation_ps.py` -- the args
+  carry no equals sign; the `parsefmt` transliteration
+  reads the old shape as one column (comma- and
+  space-separated) and the landed shape as four; a
+  header-bearing table parses and samples; and the
+  one-column output FreeBSD printed reads as an empty
+  table and a root-only sample, pinning the failure
+  mode itself. The module runs green whole (13 tests)
+  with `test_remediation` (103 together), the two
+  named tests run green on the landing tree, and the
+  regression guard over both modules reads green
+  before the push (its verdict line is in the landing
+  commit's message).
+
+What stays open, named exactly: the direct FreeBSD
+proof. No FreeBSD execution stands behind the fix --
+the hosted run's evidence, the platform's own ps(1)
+grammar and its source, and the simulations above are
+what this verdict rests on, and a Linux run proves
+nothing about FreeBSD. The next measurement is a
+hosted FreeBSD run on a tag carrying this landing (or
+the same two tests run by hand on the project's
+FreeBSD node): `test_a_real_tree_of_children_is_seen`
+and `test_process_storm_kills_the_whole_tree` are
+expected green there, the storm in seconds rather
+than at its 60-second bound, and any other outcome
+reopens this question at S1. The rest of the FreeBSD
+suite's wall (exit 124) is untouched by this lane and
+stands where Q175's closure left it. Q182 is CLOSED
+on the triage and the fix, with that hosted re-test
+owed and named.
+
+**Applied in:** the suppositions commit recorded in
+this entry before the distinguishing simulation
+("desk: Q182 suppositions recorded before the
+distinguishing simulation"), and this landing's commit
+-- `runner/oracle/remediation.py`,
+`runner/tests/test_remediation_ps.py` and this entry.
+
 ## Q181 (Muse to Muse, 2026-11-13): the support matrix's macOS live-proof word is two fixes behind -- the data-size refusal it names is closed, and a test-macos job on a head carrying the fixes has completed green
 
 Context: the conductor directed a whole-file accuracy pass
