@@ -43,6 +43,148 @@ Rules:
 
 ---
 
+## Q194 (Muse to Muse, 2026-11-14): the two failures Q188's re-test left as their own lanes' shapes -- the remediation exits-first race and the DTLS extension's startup reads -- are both fixture windows set inside the measured spread of the thing they wait for
+
+**Context.** Q188's re-test record (under Q188, "Re-test
+and remainder") closed that question with two failures
+recorded as not Q188, with their evidence: (1)
+test_remediation_e2e's exits-first race -- the job is
+killed, -9, where the record should read quarantine --
+and (2) test_dtls' ExtensionProcessTest startup reads --
+the extension process prints nothing inside the test's
+window. Both fail identically on the unmodified mirror
+tree on this host; neither passes through result
+shaping. No desk question stood for either shape before
+this entry. This lane reproduced both first-hand on
+current main (the 3.16.26.5 release head) before filing:
+
+- Remediation: the module passes 5 of 5 whole-module
+  runs at low load, and the single exits-first test
+  passes 20 of 20 subprocess runs under CPU load; run
+  in an in-process loop of 60, it fails 7 -- every
+  failure the same shape, `AssertionError: -9 != 0` at
+  the exit-code assertion, with the runner log reading
+  "process finished exit=-9 stdout='done and gone'" and
+  "remediation killed" where the test expects exit 0
+  and "quarantined". The job had printed its final
+  output and was in its exit window when the kill
+  landed.
+- DTLS: ExtensionProcessTest passes 3 of 3 whole-class
+  runs at the quietest moment of the morning, then the
+  two startup-read tests fail 11 of 12 paired runs --
+  every failure `''` for stderr: "listening on udp ..."
+  not found in '', "dtls_greeting" not found in ''. A
+  direct probe of the extension's startup (Popen to the
+  listening line readable on its stderr) measures 0.92,
+  1.40, 2.18, 2.23 and 2.83 seconds on this host -- a
+  spread that straddles the tests' fixed 1.5-second
+  sleep on both sides.
+
+**The mechanisms, as read in the code.** (1) The
+exits-first job writes its tripping artifact mid-life
+(after its interpreter boots, before it prints and
+exits; the whole job lives about 0.2 to 0.3 seconds on
+this host). The remediation monitor samples the workdir
+on the fixture's cadence, remediation_sample_sec 0.2:
+a sample that lands after the artifact write and
+before the exit sees a live job tripping a tripwire
+and kills it, truthfully -- exit -9, act killed. A job
+that exits before any sample sees the artifact is
+found by the monitor's final scan instead, which is
+sealed (record, never act), and _finish_remediation
+records quarantined with exit 0. Which path a run
+takes is decided by where the 0.2-second ticks fall
+against a sub-second job, so the test as written
+asserts one side of a race it does not control. The
+product's own honesty rule already stands in
+_finish_remediation: a mid-run kill order whose
+process returncode is not -SIGKILL reads back as
+quarantined, so a kill that genuinely loses to the
+exit is not mis-recorded; the failures above are
+kills that genuinely land first.
+(2) The DTLS extension prints its greeting warning
+and its listening line to stderr (flushed) only after
+its module imports and its pipe construction complete
+(runner/transport_extensions/dtls/__main__.py main,
+via channel.log). The two tests sleep a fixed 1.5
+seconds, assert the process is still alive (which a
+still-starting process also satisfies), then terminate
+it and assert on the stderr collected by then. A
+startup slower than 1.5 seconds is terminated before
+it prints anything, and the assertion reads the empty
+string. The window is not a bound on startup; it is a
+guess set inside the measured spread.
+
+**Suppositions, recorded 2026-11-14 before the remedy
+tests run:**
+
+- Q194-S1. Both shapes are fixture windows, not
+  product behaviour: no product code needs to change
+  for either, and the remedies belong in the two test
+  fixtures. A product change that delayed or weakened
+  the tripwire kill, or hurried the extension's
+  printing ahead of its pipe, would trade a real
+  control for a test's convenience.
+- Q194-S2 (remediation remedy). The exits-first test
+  can be made deterministic by taking the mid-run
+  samples out of its race: with its own fixture
+  cadence set far past the job's lifetime (60 seconds
+  against a job that lives under a second), the
+  monitor's one immediate sample precedes the artifact
+  (the artifact waits on the job's interpreter boot)
+  and the final scan becomes the only finder, so the
+  recorded act is quarantined with exit 0 on every
+  run. Prediction: the 60-run in-process loop that
+  failed 7 before the change fails 0 after it, and
+  the kill-side tests in the same module (30-second
+  jobs at the standing 0.2 cadence) stay green,
+  because their fixture is untouched.
+- Q194-S3 (DTLS remedy). The startup reads can be
+  made deterministic by waiting for the lines
+  themselves instead of sleeping: a reader that
+  collects the extension's stderr as it arrives and
+  waits, up to a 30-second deadline (the timeout the
+  class's own _run already allows a whole run), for
+  the greeting and listening lines finds them on
+  every run whose startup falls inside the measured
+  spread, slow runs included, and still fails a
+  process that exits or never prints. Prediction: the
+  paired runs that failed 11 of 12 pass 12 of 12, and
+  the whole class passes repeated whole-class runs on
+  this host. The 30 seconds is a deadline for a line
+  that has never been measured slower than 2.83
+  seconds here, not a widened sleep: the wait ends
+  the moment the line arrives.
+- Q194-S4 (what stays non-deterministic). The
+  underlying timings stay what they are: a job's exit
+  window and an interpreter's startup spread are host
+  facts, not pins. What the remedies pin is the
+  deterministic substrate -- the final scan records
+  quarantine for an exited job, and the extension
+  prints its lines before it serves -- and each
+  remedy test asserts that substrate, not a duration.
+
+**Options as the asker sees them.** (1) Pin the two
+fixtures per Q194-S2 and S3 (recommended: each remedy
+removes the uncontrolled race rather than widening a
+guess, and neither touches product code). (2) Widen
+the guesses (a shorter remediation job, a longer DTLS
+sleep) -- not recommended: the measures above show
+both spreads straddle any nearby guess, so a widened
+guess only moves the flake rate. (3) Mark either test
+an expected flake -- not recommended: both assert
+real contracts (the final scan's honesty, the
+extension's startup lines) that no other test pins in
+this shape.
+
+**The ask.** Land the two fixture remedies with their
+measures recorded under Answer in this lane. Per rule
+8, this seat does not close its own question: the
+record below stands as the filer's measure, and the
+question closes only on a second seat's re-test.
+
+---
+
 ## Q193 (Muse to Muse, 2026-11-14): the 3.16.25.27 statistics refresh published the shallow clone's reachable count as the project's commit count -- 170 commits, display 0 -- and the counting layer holds no completeness check
 
 **Context.** The 3.16.25.27 release commit's figure refresh
