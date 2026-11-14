@@ -1,12 +1,12 @@
 # The project's statistics: the 25-million-token measure
 
 Dated 2026-11-14. Measured on main at commit
-c43508e9142b1eccf1fb8b348df2d2b13469a9f8, the head this
+c37f7816c82ddaf7e69300d79c6339b0c9224994, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
 
-25 mil security tokens, 6,000 commits, 1,500,000 lines at 96.16% non-latent code
+25 mil security tokens, 0 commits, 1,500,000 lines at 96.16% non-latent code
 
 ## What stands behind each figure
 
@@ -60,25 +60,25 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-14",
-  "commit": "c43508e9142b1eccf1fb8b348df2d2b13469a9f8",
+  "commit": "c37f7816c82ddaf7e69300d79c6339b0c9224994",
   "counter": "runner/ops/version4.py",
-  "tokens": 25874228,
-  "lines_tracked": 1454138,
-  "commits": 5852,
-  "display_commits": 6000,
+  "tokens": 25883898,
+  "lines_tracked": 1455055,
+  "commits": 170,
+  "display_commits": 0,
   "display_lines": 1500000,
   "non_latent_percent": 96.16,
   "latent_near_percent": 3.24,
   "latent_exact_percent": 0.02,
   "audit_date": "2026-11-13",
   "core_files": 136,
-  "core_lines": 66116,
-  "core_lines_nonblank": 59918,
-  "core_tokens": 731914,
-  "core_assembled_lines": 67235,
-  "core_assembled_nonblank": 60919,
-  "core_assembled_zip_bytes": 865179,
-  "core_assembled_tokens": 743493
+  "core_lines": 66163,
+  "core_lines_nonblank": 59965,
+  "core_tokens": 732429,
+  "core_assembled_lines": 67282,
+  "core_assembled_nonblank": 60966,
+  "core_assembled_zip_bytes": 870074,
+  "core_assembled_tokens": 744008
 }
 ```
 

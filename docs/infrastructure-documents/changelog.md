@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.25.27 - 2026-11-14
+
+- Fix-forward from 3.16.25.26's failed build: the fixtures the attested default left blanked are reconciled -- ceilings stated, the full view asked, send_dtls learns --view, and a no-ask round trip pins the attested shape (Q188) (Muse)
+- FreeBSD: what a jailed job reads is stated and tested; a fresh install asks the jail's probe -- enforce where it passes, audit with the reason where it does not (Claude)
+- grep: the query worker's start carries its own allowance, the match deadline stands (Q186) (Muse)
+- guard: interpreter_binds answers no binds for a NUL-carrying path (Q190) and its shotgun family stands; the stamp enforcement test is out and is not to come back (Q189) (Muse)
+
 ## 3.16.25.26 - 2026-11-14
 
 - FreeBSD: a hosted live proof for the jail backend, and the boundary tests it runs (Claude)

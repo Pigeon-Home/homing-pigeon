@@ -71,12 +71,12 @@ backend (runner/guard/macos_confine.py) joined the
 canonical list and its wiring grew runner/ops,
 runner/guard and the runner proper,
 the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->67,235<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->60,919<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->865,179<!--/hp-fig-->-byte zip, and the project's own estimator
-counts it at <!--hp-fig:core_assembled_tokens-->743,493<!--/hp-fig--> tokens; the Gemini figure above still
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->67,282<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->60,966<!--/hp-fig--> non-blank)
+and a <!--hp-fig:core_assembled_zip_bytes-->870,074<!--/hp-fig-->-byte zip, and the project's own estimator
+counts it at <!--hp-fig:core_assembled_tokens-->744,008<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical <!--hp-fig:core_files-->136<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->731,914<!--/hp-fig-->
-tokens across <!--hp-fig:core_lines-->66,116<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->59,918<!--/hp-fig--> non-blank); the 2 token
+estimator counts the canonical <!--hp-fig:core_files-->136<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->732,429<!--/hp-fig-->
+tokens across <!--hp-fig:core_lines-->66,163<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->59,965<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -92,7 +92,7 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 7,180 lines; the core around it is
-60,055. The set as assembled, part by part (re-measured
+60,102. The set as assembled, part by part (re-measured
 2026-11-14):
 
 - runner/ops: 22,903 lines
@@ -101,8 +101,8 @@ The runner proper is 7,180 lines; the core around it is
 - runner/runner.py: 7,180
 - runner/oracle: 5,063
 - runner/transport_extensions: 2,775
-- runner/guard: 6,439
-- runner/cloud: 2,049
+- runner/guard: 6,474
+- runner/cloud: 2,061
 - runner/hosting: 1,704
 - runner/__init__.py: 23
 - runner/_version.py: 10
