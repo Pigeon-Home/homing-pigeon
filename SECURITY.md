@@ -610,7 +610,11 @@ every platform:
 else; the four numbers are the per-process ceiling, the size
 of `/tmp`, and the two jail-wide ceilings, which need RACCT
 (`kern.racct.enable=1` in `/boot/loader.conf`) and refuse the
-start when written on a host without it. A
+start when written on a host without it. A fresh FreeBSD
+install asks this backend's probe before it writes its
+config: the mode stays at `enforce` where the probe passes,
+and is stated at `audit`, with the reason printed, where it
+does not. A
 platform with no backend (macOS today) refuses to start at
 `enforce`. The platform pages are
 `docs/steady/security/windows.md` and

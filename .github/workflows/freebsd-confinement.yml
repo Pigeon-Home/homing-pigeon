@@ -15,8 +15,10 @@ name: freebsd-confinement
 # as root, the backend's own test module runs whole -- the
 # seams, the logic against the fake host, then the live
 # classes: the probe, a job inside its jail, a job through the
-# runner itself, and what a job can and cannot do in there,
-# read from the job's own report.
+# runner itself, what a job can and cannot do in there, read
+# from the job's own report, and the mode a fresh install
+# states on that guest -- asked as root, as an ordinary user,
+# and by the installer's own file.
 #
 # RACCT: the kernel's resource accounting is a boot tunable
 # (kern.racct.enable), off as shipped, and a per-jail rctl rule

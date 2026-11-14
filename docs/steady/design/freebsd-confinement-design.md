@@ -10,6 +10,11 @@ differently from what this text supposed, the difference is
 written in "Suppositions and conclusions" at the end, in the
 open.
 
+The mode a fresh install states — the installer asking this
+backend's probe before it writes the seed — was added to this
+page on 2026-11-14, at the owner's direction, and built the
+same day (`runner/ops/install.py`, `runner/ops/setup.py`).
+
 Confinement is the software suite's own, platform by
 platform. The protocol documents do not specify it — a
 submitter must not assume a sandbox on the far side — so
@@ -256,6 +261,61 @@ checks — root, the base tools, the host trees — run every
 time. A particular job's spawn still builds its own jail, and
 its failure refuses that job.
 
+## The mode a fresh install states
+
+On Linux a fresh install leaves `security.modes.confinement`
+at `enforce`, and the startup gate decides at every start. On
+FreeBSD the seed stated the mode at `audit` without asking the
+machine: the seed was written blind, and `enforce` written
+blind risks a first start that refuses. The seed now asks.
+
+When the installer seeds a fresh config on a FreeBSD host —
+and when the setup wizard seeds one for a runner started with
+no config — it asks the backend the startup gate's own
+question, with the config it is about to leave on disk: the
+probe above, a throwaway jail built and the boundary read from
+inside it.
+
+- The probe passes: the mode stays at `enforce`. Nothing is
+  written for it, as on Linux. The installer says so and
+  prints what a job's jail carries on that host. From the
+  first start every job runs inside a jail, and the startup
+  gate asks again at every start.
+- The probe does not pass: the mode is stated at `audit` in
+  the file, and the reason is printed in the backend's own
+  words. The operator answers the reason and sets the mode to
+  `enforce`, and the startup gate then verifies it.
+
+Four rules bound it:
+
+- It asks as whoever runs the installer. The service the
+  installer writes is a cron `@reboot` entry in that same
+  user's crontab, so the runner starts as the identity the
+  probe ran as. Run as root, the probe can pass. Run as an
+  ordinary user it cannot — the backend needs root — and the
+  seed states `audit` and says that.
+- It asks about the config as written. A config that came in
+  with the install and asks for a loopback, a bind or a
+  ceiling is probed with them, and a setting the host cannot
+  hold is the reason printed.
+- It moves only a mode that stands at `enforce`. A mode the
+  config states at `audit` or `off` is the operator's: it
+  stays, and the machine is not asked. On FreeBSD the
+  installer takes one path for a first install and for a
+  later run over the same config, so the rule holds for both:
+  an install that stands at `audit` stays there until its
+  operator sets `enforce`, and a config at `enforce` is asked
+  again — it stays where the probe passes, and is stated at
+  `audit`, with the reason, where it no longer does.
+- It is asked only of the machine the seed is written on. A
+  caller that names FreeBSD from another host gets the stated
+  seed, `audit`, and nothing is built.
+
+What a passing probe leaves open is what Linux leaves open: a
+machine that changes between the install and a later start.
+The startup gate answers that in both places — it refuses the
+start and names why.
+
 ## The release, and what stands behind it
 
 The process object owns the teardown: the jail's rctl rules,
@@ -305,6 +365,7 @@ runner's jobs are never touched.
 | Interpreter outside the trees | Its prefix, read-only, recorded | The same rule, the same record |
 | Runner gone | The sandbox's command is killed | The jail is removed: every process ends |
 | Startup probe | Starts the sandbox once | Builds a jail and reads the boundary from inside |
+| A fresh install | `enforce`; the startup gate decides | `enforce` where the installer's probe passes; `audit`, stated with the reason, where it does not |
 
 The Linux column is bwrap as this project starts it
 (`DEFAULT_FLAGS` in `runner/guard/sandbox.py`) and
@@ -346,9 +407,10 @@ this design cannot have: it confines without root.
   RACCT off — and runs the same module as root in each, the
   live classes included: the boundary read from inside a job,
   the jail-wide rules, the loopback, the binds, the
-  interpreter's prefix, a runner killed outright, and jobs
-  through the runner itself, with and without a job user.
-  Weekly and on dispatch.
+  interpreter's prefix, a runner killed outright, jobs
+  through the runner itself, with and without a job user, and
+  the mode a fresh install states on that guest. Weekly and
+  on dispatch.
 - The posture report (`--posture`) names, on a FreeBSD host,
   the controls a job's jail would carry there and what would
   refuse the start, without building a jail.
@@ -448,3 +510,28 @@ One thing the run measured that this page had not supposed:
 the whole module — every live job among its tests — took
 under 8 seconds in a guest, so a jail of this shape costs a
 job a fraction of a second to build and remove.
+
+### The seed
+
+Suppositions, recorded 2026-11-14 before the first hosted run
+of the seed:
+
+10. On a host where the backend engages, the seed, asked as
+    root, leaves the mode at `enforce`, writes nothing for
+    it, and names the controls a job's jail carries there; a
+    runner started on that config passes the startup gate,
+    and its first job is confined and recorded with those
+    names.
+11. Asked by an ordinary user on the same host, the seed
+    states `audit`, and the reason printed names root.
+12. A config that asks for the jail-wide ceilings by number
+    is seeded at `enforce` on a host with RACCT enabled, and
+    at `audit`, naming RACCT, on a host without it.
+13. The installer started by its file's path from a source
+    tree reaches the backend, and the seed it writes is the
+    one the packaged installer writes.
+14. The seed's probe leaves nothing on the host: no mount, no
+    directory, no jail, no rule.
+15. A second run over the same config changes nothing: a
+    config the seed left at `enforce` is asked again and
+    stays, and a config at `audit` is not asked.

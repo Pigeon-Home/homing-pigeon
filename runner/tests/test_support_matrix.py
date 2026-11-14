@@ -173,6 +173,18 @@ class SupportMatrixTest(unittest.TestCase):
                       "this shape", row)
         self.assertIn("the suite itself is not green", row)
 
+    def test_the_freebsd_row_states_what_a_fresh_install_does(self):
+        # The seed asks the probe: enforce where it passes, audit
+        # with the reason where it does not -- and the row keeps
+        # the common reason beside the claim.
+        row = _row("FreeBSD")
+        self.assertIn("A fresh install asks the same probe", row)
+        self.assertIn("stays at `enforce` where the probe passes",
+                      row)
+        self.assertIn("stated at `audit`, with the reason printed",
+                      row)
+        self.assertIn("an ordinary user's install", row)
+
     def test_the_stale_macos_sentences_are_absent(self):
         # The matrix once named the launcher shim's data-size
         # refusal as the live word on the spawn limits and the

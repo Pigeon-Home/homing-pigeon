@@ -225,18 +225,59 @@ shape.
 
 ## The mode a FreeBSD config states
 
-A fresh FreeBSD install writes `security.modes.confinement`
-into `config.json` at `audit`, stated in the file. The reason
-is the Windows one: the installer and the setup wizard write
-the seed without running the backend probe on that machine,
-and stating `enforce` sight-unseen risks a first-start refusal
-on a machine where the jail cannot engage (the backend needs
-root, `jail(8)`, and `mount_nullfs`). The operator steps the
-mode up to `enforce` deliberately, and the startup gate then
-verifies the probe on that machine. At `audit`, jobs run
-unconfined and the audit log records what the mode would have
-done. `job_user` is not stated down: the POSIX demote engages
-on FreeBSD as it does on Linux.
+A fresh FreeBSD install asks the machine before it writes
+`security.modes.confinement`. The installer — and the setup
+wizard, when it seeds a config for a runner started with
+none — asks the jail backend the startup gate's own question,
+with the config it is about to leave on disk: a throwaway
+jail is built, the boundary is read from inside it, and all
+of it is removed.
+
+- **Where the probe passes, the mode stays at `enforce`.**
+  Nothing is written for it. The installer says so, and
+  prints what a job's jail carries on that host:
+
+  ```
+  platform: security.modes.confinement left at enforce in /root/.homing-pigeon/config.json (the FreeBSD jail backend's probe, asked on this machine as this user, passed; the startup gate asks it again at every start)
+  platform: FreeBSD jail backend: freebsd: jail + no_network + no_superuser + spawn_resource_limits
+  platform: RACCT is not enabled on this host, so the jail-wide rctl ceilings are not written (kern.racct.enable=1 in /boot/loader.conf and a reboot engage them)
+  ```
+
+  From the first start every job runs inside a jail, and the
+  startup gate asks the probe again at every start.
+- **Where it does not pass, the mode is stated at `audit`**
+  in the file, and the line that says so carries the reason
+  in the backend's own words. At `audit`, jobs run unconfined
+  and the audit log records what the mode would have done.
+  Answer the reason, set the mode to `enforce`, and the
+  startup gate verifies it at the next start.
+
+The probe asks as whoever runs the installer, and the service
+the installer writes — a cron `@reboot` entry — belongs to
+that same user, so the runner starts as the identity the
+probe ran as. The common reason is therefore the first one:
+an install run by an ordinary user states `audit` and says
+that creating a jail needs root. Run the installer as root to
+have the jail on from the first start.
+
+Three more rules:
+
+- A config that comes in with the install is probed as
+  written. Ask for a loopback on a kernel without VIMAGE, or
+  for a jail-wide ceiling on a host without RACCT, and that
+  is the reason printed.
+- A mode the config already states at `audit` or `off` stays
+  there, and the machine is not asked. That holds for a later
+  run of the installer too: an install that stands at
+  `audit` — every FreeBSD install made before 2026-11-14 —
+  stays there until its operator sets `enforce`.
+- A later run of the installer over a config at `enforce`
+  asks again. The mode stays where the probe passes, and is
+  stated at `audit`, with the reason, where it no longer
+  does.
+
+`job_user` is not stated down: the POSIX demote engages on
+FreeBSD as it does on Linux.
 
 ## The first backend's field test
 

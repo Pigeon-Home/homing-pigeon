@@ -98,7 +98,7 @@ under `enforce`.
 A fresh macOS install writes `security.modes.confinement`
 into `config.json` at `audit`, stated in the file — the same
 statement it made before this backend existed, kept for the
-same reason the Windows and FreeBSD seeds keep theirs: the
+same reason the Windows seed keeps its own: the
 installer and the setup wizard write the seed without
 running the backend probe on that machine, and stating
 `enforce` sight-unseen risks a first-start refusal on a

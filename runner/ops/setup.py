@@ -42,14 +42,24 @@ try:
     from runner.ops.install import _looks_like_placeholder as _placeholder
     from runner.ops.install import _looks_patterned as _patterned
     from runner.ops.install import platform_modes as _platform_modes
+    from runner.ops.install import (
+        fresh_platform_modes as _fresh_platform_modes,
+        seed_kept_lines as _seed_kept_lines,
+        seed_reason as _seed_reason)
 except ImportError:
     try:
         from ops.install import _looks_like_placeholder as _placeholder
         from ops.install import _looks_patterned as _patterned
         from ops.install import platform_modes as _platform_modes
+        from ops.install import (
+            fresh_platform_modes as _fresh_platform_modes,
+            seed_kept_lines as _seed_kept_lines,
+            seed_reason as _seed_reason)
     except ImportError:
         _placeholder = _patterned = None
         _platform_modes = None
+        _fresh_platform_modes = None
+        _seed_kept_lines = _seed_reason = None
 
 
 def is_tty() -> bool:
@@ -177,7 +187,8 @@ def _blank_config() -> dict:
     return cfg
 
 
-def seed_platform_modes(cfg: dict, platform=None) -> dict:
+def seed_platform_modes(cfg: dict, platform=None, probe=None,
+                        asked=None) -> dict:
     """State the platform gates in a config the wizard just seeded.
 
     The installer states them on its fresh-install path (install.py's
@@ -190,10 +201,24 @@ def seed_platform_modes(cfg: dict, platform=None) -> dict:
     the wizard is merely completing is never rewritten by this: the
     caller applies it only to a config that came from _blank_config.
     Returns the modes actually stated.
+
+    The same statement includes the one that asks the machine:
+    on a FreeBSD host the jail backend's probe is asked the
+    startup gate's question (install.py's fresh_platform_modes),
+    and where it passes confinement is not stated down. `probe`
+    is the tests' door, as it is there. `asked`, when a list is
+    handed in, receives the machine's answer -- (problem,
+    lines) -- if it was asked, so the caller can say what was
+    decided and why.
     """
     if _platform_modes is None or not isinstance(cfg, dict):
         return {}
-    modes = _platform_modes(platform)
+    if _fresh_platform_modes is not None:
+        modes, answer = _fresh_platform_modes(cfg, platform, probe)
+        if answer is not None and asked is not None:
+            asked.append(answer)
+    else:
+        modes = _platform_modes(platform)
     if not modes:
         return {}
     sec = cfg.get("security") if isinstance(cfg.get("security"), dict) \
@@ -377,11 +402,23 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
         # at audit, in the file and out loud here, rather than left
         # at the seed's enforce to refuse the first start. A config
         # that already existed keeps the owner's stated modes.
-        for feature, mode in seed_platform_modes(cfg).items():
+        # On FreeBSD the statement is the machine's answer: the
+        # jail backend's probe is asked here, and a pass leaves
+        # confinement at enforce and says so.
+        answers = []
+        stated = seed_platform_modes(cfg, asked=answers)
+        answer = answers[0] if answers else None
+        if _seed_kept_lines is not None:
+            for line in _seed_kept_lines(answer, cfg_path):
+                print(line)
+        for feature, mode in stated.items():
+            why = f"{feature} cannot engage on {sys.platform}"
+            if _seed_reason is not None:
+                why = _seed_reason(answer, feature, why)
             print(f"platform: security.modes.{feature} stated as "
-                  f"{mode} in {cfg_path} ({feature} cannot engage on "
-                  f"{sys.platform}; the mode is stated in the file "
-                  f"rather than left to refuse the first start)")
+                  f"{mode} in {cfg_path} ({why}; the mode is "
+                  f"stated in the file rather than left to refuse "
+                  f"the first start)")
     _write_config(cfg_path, cfg)
     print(f"\nwrote {cfg_path} (owner read/write only)")
     print("Give the shared secret above to your cloud SI so it can sign jobs.")

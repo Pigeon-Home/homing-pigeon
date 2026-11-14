@@ -278,9 +278,12 @@ of thing:
   defaults to `enforce`, and at `enforce` the startup gate
   probes the platform's backend and refuses to start when it
   cannot engage (macOS has no backend yet, and refuses). A
-  fresh install on Windows or FreeBSD states the mode at
-  `audit` in the seeded config, for the operator to step up
-  deliberately. A job whose confinement cannot engage at
+  fresh install on Windows states the mode at `audit` in the
+  seeded config, for the operator to step up deliberately. A
+  fresh install on FreeBSD asks the jail backend's probe on
+  that machine: where it passes the mode stays at `enforce`,
+  and where it does not the mode is stated at `audit` with
+  the reason. A job whose confinement cannot engage at
   `enforce` is refused, never run weaker. See SECURITY.md
   and docs/support-matrix.md.
 

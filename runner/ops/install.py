@@ -2369,25 +2369,30 @@ def platform_modes(platform=None):
     Confinement's full form is a Linux sandbox (bwrap), and the
     job_user demote is a POSIX setuid. Windows has backends for
     both (confinement: Job Object + restricted token + low
-    integrity; job_user: the Job Object ceiling), and FreeBSD
-    has a confinement backend (jail + no network + spawn
-    resource limits), and macOS has a confinement backend
-    (Seatbelt profile + no network + spawn resource limits),
-    but the
-    installer writes the seed without running the backend probe
-    on the target machine, and stating enforce sight-unseen
-    risks a first-start refusal on a machine where a control
-    cannot engage -- so a fresh Windows install states both at
-    audit, a fresh FreeBSD install states confinement at audit,
-    a fresh macOS install states confinement at audit,
-    in the file, in the open, and the operator steps a
-    mode up to enforce deliberately, with the startup gate then
-    verifying the probe on that machine. On other non-Linux
-    platforms confinement has no backend and states audit for
-    the original reason: without the statement the first start
-    is a refusal the owner must edit their way out of. An empty
-    map on Linux, where both mechanisms can engage and the
-    startup gates decide.
+    integrity; job_user: the Job Object ceiling), and macOS has
+    a confinement backend (Seatbelt profile + no network + spawn
+    resource limits), but the installer writes those seeds
+    without running the backend probe on the target machine,
+    and stating enforce sight-unseen risks a first-start
+    refusal on a machine where a control cannot engage -- so a
+    fresh Windows install states both at audit and a fresh
+    macOS install states confinement at audit, in the file, in
+    the open, and the operator steps a mode up to enforce
+    deliberately, with the startup gate then verifying the
+    probe on that machine.
+
+    FreeBSD has a confinement backend as well (a per-job jail),
+    and its seed is the one that asks the machine. This map is
+    FreeBSD's answer where the machine has not been asked, or
+    has answered no: confinement at audit.
+    fresh_platform_modes() below does the asking, and leaves
+    the mode at enforce where the backend's probe passes.
+
+    On other non-Linux platforms confinement has no backend and
+    states audit for the original reason: without the statement
+    the first start is a refusal the owner must edit their way
+    out of. An empty map on Linux, where both mechanisms can
+    engage and the startup gates decide.
     """
     if platform is None:
         platform = sys.platform
@@ -2400,15 +2405,219 @@ def platform_modes(platform=None):
     return {}
 
 
-def apply_platform_modes(cfg_path: str, platform=None) -> dict:
-    """State platform_modes() in a fresh install's config.json.
+# The platform this process started on, read once at import. The
+# FreeBSD seed asks the machine a question, and it is asked only
+# of a machine that is FreeBSD: a caller that names FreeBSD on
+# another host -- a test, a report -- gets the stated seed, and
+# the jail backend is never imported from here on that host,
+# where a first import would bind to the name it was handed
+# instead of to the host.
+_HOST_PLATFORM = sys.platform
+
+# What a seed says about the machine's answer, in one place for
+# the installer and the setup wizard.
+FREEBSD_PROBE_ASKED = ("the FreeBSD jail backend's probe, asked on "
+                       "this machine as this user,")
+
+
+# The names the by-path load below puts in sys.modules, and the
+# mark it leaves on the package it made, so the release takes
+# out its own and never a `guard` something else imported.
+_BY_PATH_NAMES = ("guard.freebsd_confine", "guard.sandbox", "guard")
+_BY_PATH_MARK = "_loaded_by_path_for_the_seed"
+
+
+def _import_freebsd_confine():
+    """runner/guard/freebsd_confine.py, or None when it cannot be had.
+
+    The package (`runner.guard`), then the install layout
+    (`guard` beside `ops`), then this script started by path
+    from a source tree. The backend imports its sibling
+    (`guard.sandbox`) by one of the first two names, and the
+    sibling reaches back for the backend the same way, so the
+    by-path case loads the tree's `guard` directory as the
+    package `guard`: nothing goes on the import path, so
+    nothing else in the tree -- the runner itself least of
+    all -- becomes importable by accident, and
+    _release_freebsd_confine() unloads what was loaded once
+    the question has been asked. Never from a frozen
+    installer: none is built for FreeBSD, and `runner.guard`
+    there would pull in the whole runner.
+    """
+    if getattr(sys, "_MEIPASS", None):
+        return None
+    try:
+        from runner.guard import freebsd_confine
+        return freebsd_confine
+    except ImportError:
+        pass
+    try:
+        from guard import freebsd_confine  # type: ignore
+        return freebsd_confine
+    except ImportError:
+        pass
+    import importlib
+    import importlib.util
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    folder = os.path.join(here, "guard")
+    init = os.path.join(folder, "__init__.py")
+    if not os.path.isfile(init) or not os.path.isfile(
+            os.path.join(folder, "freebsd_confine.py")):
+        return None
+    spec = importlib.util.spec_from_file_location(
+        "guard", init, submodule_search_locations=[folder])
+    if spec is None or spec.loader is None:
+        return None
+    package = importlib.util.module_from_spec(spec)
+    setattr(package, _BY_PATH_MARK, True)
+    sys.modules["guard"] = package
+    try:
+        spec.loader.exec_module(package)
+        return importlib.import_module("guard.freebsd_confine")
+    except ImportError:
+        _release_freebsd_confine()
+        return None
+
+
+def _release_freebsd_confine() -> None:
+    """Unload what the by-path case of _import_freebsd_confine
+    loaded, and only that: the process is left as it was found."""
+    package = sys.modules.get("guard")
+    if package is not None and getattr(package, _BY_PATH_MARK, False):
+        for name in _BY_PATH_NAMES:
+            sys.modules.pop(name, None)
+
+
+def freebsd_seed_probe(cfg):
+    """Ask this machine's jail backend the startup gate's question.
+
+    Returns (problem, lines). `problem` is None when the backend
+    engages here under this config -- the probe built its
+    throwaway jail and the trial inside it read the boundary --
+    and otherwise the reason, in the backend's own words.
+    `lines` are the posture report's lines for this host under
+    this config: the controls a job's jail carries here, and
+    the RACCT tunable where the jail-wide ceilings are not
+    engaged. Empty when the backend does not engage.
+
+    A backend that cannot be reached or cannot answer has not
+    shown it can engage: every failure is a reason, never a
+    pass.
+    """
+    try:
+        backend = _import_freebsd_confine()
+        if backend is None or not getattr(
+                backend, "IS_FREEBSD_BACKEND", False):
+            return ("the jail backend (runner/guard/"
+                    "freebsd_confine.py) could not be loaded on "
+                    "this machine", ())
+        try:
+            problem = backend.freebsd_confinement_problem(cfg)
+        except Exception as e:
+            return ("the jail backend could not answer: %s"
+                    % (str(e) or type(e).__name__), ())
+        if problem is not None:
+            return (str(problem), ())
+        try:
+            lines = tuple(text for _level, text
+                          in backend.posture_lines(cfg))
+        except Exception:
+            lines = ()
+        return (None, lines)
+    except Exception as e:
+        return ("the jail backend could not be asked: %s"
+                % (str(e) or type(e).__name__), ())
+    finally:
+        _release_freebsd_confine()
+
+
+def _stated_modes(cfg) -> dict:
+    sec = cfg.get("security") if isinstance(cfg, dict) else None
+    modes = sec.get("modes") if isinstance(sec, dict) else None
+    return modes if isinstance(modes, dict) else {}
+
+
+def fresh_platform_modes(cfg, platform=None, probe=None):
+    """platform_modes(), as a fresh config on this machine takes it.
+
+    Returns (modes, asked). `modes` is the map to state over a
+    mode the config still has at enforce. `asked` is None when
+    the machine was not asked anything, and otherwise the
+    answer, (problem, lines), in freebsd_seed_probe's shape.
+
+    One platform's map is asked of the machine. A fresh FreeBSD
+    config whose confinement is still at enforce is put to the
+    jail backend's probe -- the startup gate's own question,
+    with this config -- and where the probe passes confinement
+    is left out of the map: the mode stays at enforce, as on
+    Linux, and the startup gate decides at every start. Where
+    it does not pass the map states audit, and the reason rides
+    back in `asked`.
+
+    The machine is asked only when it is the one being seeded:
+    `platform` left None on a host that is FreeBSD. A platform
+    named by the caller is a question about that platform, not
+    about this machine, and gets the stated map -- unless the
+    caller hands in a `probe` of its own, which is then the one
+    asked. A mode the config already states below enforce is
+    the operator's word: it stays, and nothing is asked.
+    """
+    plat = sys.platform if platform is None else platform
+    modes = dict(platform_modes(plat))
+    if not plat.startswith("freebsd") or "confinement" not in modes:
+        return modes, None
+    if _stated_modes(cfg).get("confinement", "enforce") != "enforce":
+        return modes, None
+    if probe is None and platform is None \
+            and _HOST_PLATFORM.startswith("freebsd"):
+        probe = freebsd_seed_probe
+    if probe is None:
+        return modes, None
+    try:
+        problem, lines = probe(cfg)
+    except Exception as e:
+        problem, lines = (str(e) or type(e).__name__), ()
+    if problem is None:
+        del modes["confinement"]
+        return modes, (None, tuple(lines))
+    return modes, (str(problem), ())
+
+
+def seed_kept_lines(asked, cfg_path) -> list:
+    """What a seed prints when the machine's answer left
+    confinement at enforce; empty when it did not."""
+    if asked is None or asked[0] is not None:
+        return []
+    lines = [f"platform: security.modes.confinement left at "
+             f"enforce in {cfg_path} ({FREEBSD_PROBE_ASKED} "
+             f"passed; the startup gate asks it again at every "
+             f"start)"]
+    lines.extend("platform: " + text for text in asked[1])
+    return lines
+
+
+def seed_reason(asked, feature, default) -> str:
+    """Why a seed states `feature` down: the machine's answer
+    where it was asked about that feature, else `default`."""
+    if feature == "confinement" and asked is not None \
+            and asked[0] is not None:
+        return f"{FREEBSD_PROBE_ASKED} did not pass: {asked[0]}"
+    return default
+
+
+def apply_platform_modes(cfg_path: str, platform=None,
+                         probe=None) -> dict:
+    """State fresh_platform_modes() in a fresh install's config.json.
 
     Only a mode the config currently states at enforce moves --
     that is the seed's value (or a profile's); a mode already
     stated at audit or off is the owner's word and stays. Returns
-    the modes actually written. Fresh installs only: the caller
-    is _setup_fresh_config, so an upgrade's config is never
-    rewritten by this.
+    the modes actually written. The caller is
+    _setup_fresh_config: on the one-home layout that is a fresh
+    install only, and on the per-user layout (Linux, macOS,
+    FreeBSD) it is every run of the installer, where the same
+    rule is what keeps a later run from touching a mode the
+    owner has stated down.
 
     A config that does not exist yet is seeded from empty: the
     earlier seed steps normally write config.json first, but a
@@ -2416,9 +2625,17 @@ def apply_platform_modes(cfg_path: str, platform=None) -> dict:
     statement, in the file the write below creates, instead of
     dying on the missing file. Any other read failure -- a
     symlink, unreadable JSON -- raises exactly as before.
+
+    On FreeBSD the statement is the machine's answer (see
+    fresh_platform_modes): where the jail backend's probe
+    passes, confinement stays at enforce, nothing is written
+    for it, and the line printed says so and names what a job's
+    jail carries on this host; where it does not, the line that
+    states audit carries the probe's reason. `probe` is the
+    tests' door.
     """
-    modes = platform_modes(platform)
-    if not modes:
+    plat = platform if platform is not None else sys.platform
+    if not platform_modes(plat):
         return {}
     try:
         cfg = _read_config(cfg_path)
@@ -2426,6 +2643,9 @@ def apply_platform_modes(cfg_path: str, platform=None) -> dict:
         cfg = {}
     if not isinstance(cfg, dict):
         return {}
+    modes, asked = fresh_platform_modes(cfg, platform, probe)
+    for line in seed_kept_lines(asked, cfg_path):
+        print(line)
     sec = cfg.get("security") if isinstance(cfg.get("security"), dict) \
         else {}
     cur = sec.get("modes") if isinstance(sec.get("modes"), dict) else {}
@@ -2441,12 +2661,13 @@ def apply_platform_modes(cfg_path: str, platform=None) -> dict:
     sec["modes"] = new_modes
     cfg["security"] = sec
     _write_json(cfg_path, cfg)
-    plat = platform if platform is not None else sys.platform
     for feature, mode in applied.items():
+        why = seed_reason(asked, feature,
+                          f"the platform seed for {plat}")
         print(f"platform: security.modes.{feature} stated as "
-              f"{mode} in {cfg_path} (the platform seed for "
-              f"{plat}; the mode is stated in the file rather "
-              f"than left to refuse the first start)")
+              f"{mode} in {cfg_path} ({why}; the mode is stated "
+              f"in the file rather than left to refuse the first "
+              f"start)")
     return applied
 
 

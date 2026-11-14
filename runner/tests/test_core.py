@@ -177,9 +177,15 @@ class CoreListTest(unittest.TestCase):
         # runner/ops/remediation_ops.py by 13, and again the
         # same day after the posture report's FreeBSD line
         # grew runner/guard/freebsd_confine.py by 31 lines
-        # and runner/ops/posture.py by 20.
-        self.assertEqual(66948, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(60661, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # and runner/ops/posture.py by 20, and again the
+        # same day after the FreeBSD seed took to asking
+        # the machine grew runner/ops/install.py by 221
+        # lines and runner/ops/setup.py by 37, over a tree
+        # that also carries the query worker's start
+        # allowance (runner/ops/queries.py by 28 lines, the
+        # runner proper by 1).
+        self.assertEqual(67235, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(60919, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
@@ -276,7 +282,7 @@ class CoreLinesTest(unittest.TestCase):
 
 class CorePartsTest(unittest.TestCase):
     def test_the_recorded_breakdown_stays_named(self):
-        self.assertEqual(7179, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
+        self.assertEqual(7180, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
         self.assertEqual(core.AS_ASSEMBLED_LINES,
                          sum(core.AS_ASSEMBLED_PART_LINES.values()))
 
