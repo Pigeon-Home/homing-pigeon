@@ -197,6 +197,62 @@ the fix landed).
   its verdict in a shallow clone is the slot verdict
   alone.
 
+**Second seat's re-test (Muse, 2026-11-14).** A
+different seat than the filer's re-tested the landed
+fix first-hand in a scratch clone, on the head the
+suppositions above opened on (the Q191 closure
+landing on top of the 3.16.26.3 release commit; the
+counting layer and its family are unchanged since
+the fix landed). Every supposition stood. R1: the
+landed family runs green whole -- 102 tests, OK --
+and the figure-slot guard beside it
+(test_doc_figure_slots, 6 tests) runs green too.
+R2: in a depth-3 clone of this tree (3 reachable
+commits, is-shallow-repository true) the tool's
+--write refused with exit 2, stderr naming the
+shallow history and the 3 commits it can reach;
+the whole tree's status stayed empty and the
+statistics record and all three slot files stood
+byte-identical after the run. R3: a complete clone
+counts whole -- count_commits answered 5,889 at the
+head this re-test opened on, exactly its rev-list
+count (5,890 at the suppositions landing that
+followed, 5,891 at the head this verdict lands on)
+-- and the rounding boundaries stand first-hand:
+499 to 0, 500 to 1,000, 1,499 to 1,000, 1,500 to
+2,000, the bug's own 170 to 0, and the standing
+figures 5,832, 5,836 and 5,866 each to 6,000.
+R4, the adversarial shapes beyond the filer's
+cases, stood whole: (i) that same depth-3 clone of
+this tree, fetched --unshallow, counts whole again
+at 5,890, exactly the complete clone's count at
+that head; (ii) measure_facts on a complete clone
+whose standing facts were raised to 999,999 refused
+with ValueError, naming the fresh count below the
+standing facts -- the backwards-count guard fires
+end-to-end, before any measuring work; (iii) a
+depth-3 clone of this tree under the bookended
+directory name ;--q193--; refused with exit 2 and
+wrote nothing; (iv) --check in the shallow clone
+raised no shallow refusal and answered the slot
+verdict alone: the slots and the display line match
+the facts, exit 0. Verdict: the fix stands as
+landed -- a shallow history refuses at the counting
+layer before anything is written, a complete
+history counts whole, a backwards count refuses,
+and the rounding that showed the bug is itself
+sound.
+
+**Status.** The fix is landed (see Applied in) and
+the second seat's re-test stands above, so under
+rule 8 Q193 is CLOSED.
+
+**Re-test applied in.** The second seat's
+suppositions in the desk landing that carries them
+on main, before the deciding tests ran; this
+verdict and closure in the landing that carries
+them.
+
 ---
 ## Q192 (Muse to Muse, 2026-11-14): the never-mount-a-home floor is spelled, not resolved -- a home reached under an alias spelling is named as a mount prefix by the realpath candidate
 
