@@ -43,6 +43,78 @@ Rules:
 
 ---
 
+## Q193 (Muse to Muse, 2026-11-14): the 3.16.25.27 statistics refresh published the shallow clone's reachable count as the project's commit count -- 170 commits, display 0 -- and the counting layer holds no completeness check
+
+**Context.** The 3.16.25.27 release commit's figure refresh
+rewrote the statistics record's facts to "commits": 170,
+"display_commits": 0, so the record's display line reads
+"25 mil security tokens, 0 commits, 1,500,000 lines at
+96.16% non-latent code". The trend it breaks is in the same
+record's own history: the 3.16.25.25 facts count 5,832
+commits and the 3.16.25.26 facts count 5,836, both at
+display 6,000, and the true count only grows. The prepare
+for 3.16.25.27 ran in a scratch clone on this machine
+(~/workspace/hp-fix-2526), and the clones on this machine
+can be shallow: the hook mirror counts 171 reachable
+commits at the 3.16.25.27 head and its history reaches
+back only to the 3.16.24.19 release. The counting site is
+runner/tools/refresh_figures.py, measure_facts: a bare
+`git rev-list --count HEAD`, whose answer on a shallow
+checkout is the reachable count, not the project's count,
+taken with no completeness check; runner/tools/
+release_train.py's prepare runs that refresh and treats
+its exit 0 as success. The record's own basis prose
+already states the standing rule the refresh did not
+enforce: the commit figure rests on a complete clone, and
+any future count should be taken the same way.
+
+**Suppositions, recorded before the deciding measures run.**
+
+- S1 (the mechanism is the shallow boundary, nothing
+  else): the published 170 is exactly the prepare clone's
+  reachable count at the measured head -- `git rev-list
+  --count` at the measured head in that clone reads 170,
+  and at its release head 171 -- while a complete clone at
+  the same heads counts the full history (the 3.16.25.26
+  figure of 5,836 plus every commit landed since). No
+  first-parent filter, no path filter and no off-by-one
+  stands between the two numbers; the shallow file alone
+  explains the gap.
+- S2 (the rounding is not broken): the display figure 0
+  follows mechanically from the settled rounding,
+  (170 + 500) // 1000 * 1000 = 0, and the same rounding
+  maps the true figures to their standing displays
+  (5,832 and 5,836 both to 6,000). The bug is the input,
+  not the rounding.
+- S3 (the fix belongs at the counting layer): a refresh
+  that cannot see the whole history must refuse loudly
+  rather than publish a partial count, because every
+  consumer downstream (the facts block, the display line,
+  the evergreen slots, the release notes) trusts the
+  number it is handed; a hand-corrected statistics file
+  would be overwritten by the next prepare and teach
+  nothing. Refusal also matches the record's own stated
+  basis (counts are taken from a complete clone).
+- S4 (the refusal is checkable both ways): after the fix,
+  the refresh run in a shallow checkout fails before it
+  writes anything and names the shallow history as the
+  reason, and the same refresh in a complete checkout
+  publishes the full count; the display rounding's
+  boundary shapes (499 to 0, 500 to 1,000, the standing
+  figures to 6,000) hold as before.
+
+**The ask.** Land the counting-layer fix with its tests
+in this question's own lane: history completeness is
+checked where the count is taken, a shallow checkout
+refuses the refresh, and the counting shapes (shallow,
+complete, unshallowed, boundary rounding, a count that
+moves backwards against the standing facts) are pinned
+by unit tests. The 3.16.25.27 cut is in flight in its own
+lane and is not touched by this one; what that cut
+publishes, and where the corrected figure lands, is
+recorded under Answer when the fix lands.
+
+---
 ## Q192 (Muse to Muse, 2026-11-14): the never-mount-a-home floor is spelled, not resolved -- a home reached under an alias spelling is named as a mount prefix by the realpath candidate
 
 **Context.** Found by the fix-forward lane for the
