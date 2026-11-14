@@ -361,21 +361,30 @@ class SecondCutRunTest(unittest.TestCase):
     VERSION = "3.16.25.5"
     SHA = "e0c08446" + "0" * 32
 
-    def _cut(self, cut_runs, tag_on=None, steps=None):
+    def _cut(self, cut_runs, tag_on=None, steps=None, tag_before=None):
         """cmd_cut over stubbed seams. `cut_runs` is the cut-release
         runs the record lists after the dispatch, newest first;
         `tag_on` the commit the tag stands on once asked a second
-        time (the first asking, before the dispatch, finds none)."""
-        asked = {"tag": 0, "dispatched": False}
+        time (the first asking, before the dispatch, finds none
+        unless `tag_before` names the commit a tag already stands
+        on then -- '' for a tag whose commit cannot be read).
+        What the cut went on to do is left on the test: `asked`
+        (the dispatch among it) and `watched` (each tag build it
+        turned to)."""
+        asked = self.asked = {"tag": 0, "dispatched": False}
+        watched = self.watched = []
 
         def fake_api(path, method="GET", body=None, raw=False):
             if path.startswith("/git/ref/tags/"):
                 asked["tag"] += 1
-                if not asked["dispatched"] or tag_on is None:
+                if not asked["dispatched"]:
+                    return None if tag_before is None else {"object": {"type": "tag", "sha": "b" * 40}}
+                if tag_on is None:
                     return None
                 return {"object": {"type": "tag", "sha": "a" * 40}}
             if path.startswith("/git/tags/"):
-                return {"object": {"type": "commit", "sha": tag_on}}
+                commit = tag_on if asked["dispatched"] else tag_before
+                return {"object": {"type": "commit", "sha": commit}} if commit else None
             if "cut-release.yml/dispatches" in path:
                 asked["dispatched"] = True
                 return {}
@@ -395,7 +404,7 @@ class SecondCutRunTest(unittest.TestCase):
                 mock.patch.object(rt, "carriers", lambda root=None: {"pyproject.toml": self.VERSION}), \
                 mock.patch.object(rt, "_git", lambda *a, **k: self.SHA), \
                 mock.patch.object(rt, "api", fake_api), \
-                mock.patch.object(rt, "watch_tag_build", lambda version, limit: 0), \
+                mock.patch.object(rt, "watch_tag_build", lambda version, limit: watched.append((version, limit)) or 0), \
                 mock.patch.object(rt, "gate_verdict", lambda sha, version=None: ("green", "run 1: green")), \
                 mock.patch.object(rt.cut_gate, "need", lambda sha, version, api=None: (set(), "the legs")), \
                 mock.patch.object(rt, "_wait", self._one_asking), \
@@ -452,6 +461,43 @@ class SecondCutRunTest(unittest.TestCase):
         self.assertEqual(str(cm.exception), "the cut")
         with self.assertRaises(self.StillWaiting):
             self._cut([])
+
+    def test_a_tag_already_on_the_commit_is_the_cut_made_and_nothing_is_dispatched(self):
+        # 3.16.26.3, 2026-11-14: a cut this train did not start
+        # placed the tag while the train waited on the build, 23
+        # seconds after the suites read green. The release was
+        # going out; the train turns to its tag build.
+        rc, out = self._cut([], tag_before=self.SHA)
+        self.assertEqual(rc, 0)
+        self.assertIn("v3.16.25.5 already stands on e0c08446: a cut this train did not start placed it; "
+                      "watching its tag build", out)
+        self.assertFalse(self.asked["dispatched"])
+        self.assertEqual(self.watched, [(self.VERSION, 5)])
+        self.assertNotIn("cut-release dispatched", out)
+        self.assertNotIn("tagged v", out)
+
+    def test_a_tag_of_that_name_on_another_commit_still_asks_for_a_new_version(self):
+        with self.assertRaises(RuntimeError) as cm:
+            self._cut([], tag_before="f" * 40)
+        self.assertEqual(str(cm.exception), "tag v3.16.25.5 already exists on ffffffff; prepare a new version")
+        self.assertFalse(self.asked["dispatched"])
+        self.assertEqual(self.watched, [])
+        # a tag whose commit cannot be read is no cut of this commit either
+        with self.assertRaises(RuntimeError) as cm:
+            self._cut([], tag_before="")
+        self.assertEqual(str(cm.exception), "tag v3.16.25.5 already exists; prepare a new version")
+        self.assertFalse(self.asked["dispatched"])
+        self.assertEqual(self.watched, [])
+
+    def test_the_cut_that_places_its_own_tag_reads_the_tag_once_before_the_dispatch(self):
+        # the ordinary cut is as it was: no tag before, one dispatch, one watch
+        rc, out = self._cut([self._run(8, "success")])
+        self.assertEqual(rc, 0)
+        self.assertTrue(self.asked["dispatched"])
+        self.assertEqual(self.asked["tag"], 1)
+        self.assertEqual(self.watched, [(self.VERSION, 5)])
+        self.assertIn("cut-release dispatched on e0c08446", out)
+        self.assertIn("tagged v3.16.25.5", out)
 
     def test_the_tag_is_read_through_to_its_commit(self):
         def api(path, *a, **k):
@@ -759,6 +805,41 @@ class RunRetryTest(unittest.TestCase):
         self.assertEqual(calls[3], ("cut", "sha2"))
         self.assertIn("Re-cut of 3.16.21.4, which never published", calls[2][1][-1])
         self.assertIn("preparing the next version at the head", out.getvalue())
+
+    def test_run_takes_a_tag_already_on_its_commit_as_the_cut_and_prepares_nothing_more(self):
+        # the whole run over the same seams as a cut: the release
+        # commit is prepared once, the tag another cut placed on it
+        # is found after the build, and the run ends on the tag
+        # build's verdict
+        prepared, watched, dispatched = [], [], []
+        sha = "196ca228" + "0" * 32
+
+        def api(path, method="GET", body=None, raw=False):
+            if path == "/git/ref/tags/v3.16.26.3":
+                return {"object": {"type": "tag", "sha": "b" * 40}}
+            if path == "/git/tags/" + "b" * 40:
+                return {"object": {"type": "commit", "sha": sha}}
+            if "dispatches" in path:
+                dispatched.append(path)
+                return {}
+            raise AssertionError(path)
+        args = mock.Mock(note=["Fix: a thing"], no_retry=False, watch=False, sha=None, version=None, limit=7)
+        with mock.patch.object(rt, "cmd_prepare", lambda a: prepared.append(1) or sha), \
+                mock.patch.object(rt, "latent_warning", lambda *a, **k: ""), \
+                mock.patch.object(rt, "red_main_warning", lambda *a, **k: ""), \
+                mock.patch.object(rt, "carriers", lambda root=None: {"pyproject.toml": "3.16.26.3"}), \
+                mock.patch.object(rt, "_git", lambda *a, **k: sha), \
+                mock.patch.object(rt, "api", api), \
+                mock.patch.object(rt, "watch_tag_build", lambda version, limit: watched.append((version, limit)) or 0), \
+                mock.patch.object(rt, "gate_verdict", lambda s, version=None: ("green", "run 1: 10 gate jobs green")), \
+                mock.patch.object(rt.cut_gate, "need", lambda s, version, api=None: (set(), "the suites too")), \
+                mock.patch.object(rt, "_wait", lambda label, probe, interval, limit: probe()), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            self.assertEqual(rt.cmd_run(args), 0)
+        self.assertEqual(prepared, [1])
+        self.assertEqual(dispatched, [])
+        self.assertEqual(watched, [("3.16.26.3", 7)])
+        self.assertIn("v3.16.26.3 already stands on 196ca228", out.getvalue())
 
     def test_any_other_refusal_and_no_retry_are_reported_as_they_stand(self):
         def cut(args, sha=None):

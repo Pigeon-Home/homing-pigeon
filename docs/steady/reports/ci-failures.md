@@ -1862,3 +1862,30 @@ now: one success is the cut, and failure is every run of the
 cycle having failed. A refusal alone is still the cut made when
 the tag stands on the commit being cut (a run started elsewhere
 placed it first); a tag of that name on another commit is not.
+
+### 3.16.26.3: the tag stood before the train asked (14 Nov 2026)
+
+3.16.26.3 was prepared on a main the gate read green and carried
+runner code since v3.16.26.2 (`runner/ops/briefing.py`,
+`runner/ops/install.py`, `runner/ops/setup.py`), so the cut waited
+for the suites on the release commit beside the legs. Legs green
+at 1.7 minutes, the suites at 12.8 (the Linux suite and both
+Windows parts), tag at 13.5, release at 15.8, the last mirror at
+18.0 (build 43599649871, tag build 43600783656). The cycle before
+it, 3.16.26.2, reads 37.1 minutes to its release and 38.3 to its
+last mirror on the same clock.
+
+One cut-release run stands on the release commit, 43600754117,
+dispatched 23 seconds after the suites read green; the train that
+prepared the release did not start it. That train's wait on the
+build ended a moment later. It found the tag standing, read a tag
+of that name as a version already released, and stopped with
+"prepare a new version" while the release was going out. The tag
+build was watched to its mirrors by hand (`cut --watch --version
+3.16.26.3`); nothing was prepared or published twice.
+
+The train asks which commit a standing tag is on now. On the
+commit being cut, the cut is made, whoever placed the tag, and the
+train turns to the tag build and its mirrors without a dispatch of
+its own. A tag of that name on another commit, or one whose commit
+cannot be read, still stops the cut and asks for a new version.

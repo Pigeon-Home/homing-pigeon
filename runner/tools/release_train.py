@@ -731,8 +731,22 @@ def cmd_cut(args, sha=None):
             raise RuntimeError("the build is red: " + detail)
         return None
     _say(_wait("the build", probe, 45, args.limit))
-    if api("/git/ref/tags/v%s" % version) and api("/git/ref/tags/v%s" % version).get("object"):
-        raise RuntimeError("tag v%s already exists; prepare a new version" % version)
+    if (api("/git/ref/tags/v%s" % version) or {}).get("object"):
+        placed = tag_commit(version)
+        if placed == sha:
+            # A cut this train did not start placed the tag on this
+            # very commit while the train waited on the build
+            # (3.16.26.3, 2026-11-14: dispatched 23 seconds after
+            # the suites read green, before this train's next
+            # asking): the cut is made, and what is left is the tag
+            # build and its mirrors. Stopping here with "prepare a
+            # new version" would send a second release after one
+            # that is already going out.
+            _say("v%s already stands on %s: a cut this train did not start placed it; watching its tag build"
+                 % (version, sha[:8]))
+            return watch_tag_build(version, args.limit)
+        raise RuntimeError("tag v%s already exists%s; prepare a new version"
+                           % (version, " on %s" % placed[:8] if placed else ""))
     before = {r["id"] for r in (api("/actions/workflows/cut-release.yml/runs?per_page=10") or {}).get("workflow_runs", [])}
     res = api("/actions/workflows/cut-release.yml/dispatches", "POST", {"ref": "main", "inputs": {"sha": sha}})
     if res is None:
