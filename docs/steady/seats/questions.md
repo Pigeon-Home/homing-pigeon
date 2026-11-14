@@ -16968,6 +16968,94 @@ owner-instructions section now describe the mark, and no
 document describes the retired warning. The hosted verdict
 on the landing is the second seat's re-test under rule 8.
 
+**Re-test suppositions (second seat, recorded
+2026-11-14 before the deciding tests run).** This
+seat is not the build lane. It re-tests the landed
+build as it stands on the current head (the
+3.16.26.7 release commit; `runner/ops/briefing.py`
+and its guard family unchanged in shape since the
+addendum above, grown since by the Q143 polarity
+guard and its follow-on families, which are part of
+the build as it now stands and are judged as such).
+The first seat's re-test of this question found the
+negation blindness filed as Q143; that fix and its
+chain have landed, so this re-test judges the whole
+current detector, polarity included, on its own
+cases and measures, not the build lane's report:
+
+- Q138-R1 (the build stands as the addendum
+  records). Read in the code before any test runs:
+  `runner/ops/briefing.py` carries the check as 7
+  anchored rules, each gated on its named standing
+  sentence standing in the layer text; a finding is
+  marked by `_tension_mark` at the end of the
+  standing layer's own part of the assembled
+  briefing, with the owner's sentence and the
+  standing sentence quoted side by side and the
+  precedence stated; and the startup pass
+  (`audit_owner_instruction_tensions` in
+  `runner/ops/startup.py`) writes each finding as
+  its own audit row -- feature `briefing`, decision
+  `marked`, the rule id as the detail, never the
+  owner's text. Nothing in the path logs a warning,
+  refuses, or drops.
+- Q138-R2 (the guard family whole). The landed
+  family `runner/tests/test_briefing_contradiction.py`
+  runs green whole on this head -- no failure, no
+  error, no unexpected skip. The family is far
+  larger than the 18 tests the addendum names (the
+  Q143--Q191 families live in the same module), and
+  it has historically shown hosted timing
+  sensitivity on the python-range legs; a failure
+  that is that timing family, proven first-hand as
+  such, is recorded as it stands and is not counted
+  a Q138-behaviour failure, and no other failure is
+  excused by that history.
+- Q138-R3 (the neighbours). The neighbour batteries
+  that touch briefing, assembly, audit and startup
+  -- `test_oracle_briefing`, `test_posture_stamp`,
+  `test_v2_consult` and `test_security_config` --
+  run green whole beside the guard family.
+- Q138-R4 (this seat's own directives and honest
+  text). Seven directive sentences of this seat's
+  own wording, one per rule and none copied from
+  the suite's corpus, each fire exactly their own
+  rule against the fixture layer and against the
+  shipped layer. Honest owner text of this seat's
+  own wording -- box facts, priorities, schedules,
+  and subject-adjacent honest sentences that name a
+  governed subject without directing against it --
+  fires nothing on either layer.
+- Q138-R5 (the sentence gate). On a minimal layer
+  carrying only the other 6 rules' standing
+  sentences, each rule stays silent for its own
+  contradiction while the other rules' contradictions
+  still fire on the full layer: a layer that does
+  not carry a rule's sentence is never marked under
+  that rule.
+- Q138-R6 (placement, audit, proportion, polarity).
+  In this seat's own probes: the mark stands at the
+  end of the standing layer's part at the `ask`,
+  `agent` and `oracle` scopes, quoting both
+  sentences with the precedence stated; the startup
+  pass over owner text firing all 7 rules writes
+  exactly 7 audit rows of the recorded shape with
+  none of the owner's words in any row, and writes
+  none for honest text; a finding drops nothing --
+  the assembled briefing still carries the standing
+  layer whole -- and no warning is emitted and
+  nothing raises or refuses anywhere in the path;
+  and the compliant corpus filed under Q143 (owner
+  text prohibiting exactly what the standing layer
+  prohibits) marks nothing, the polarity guard being
+  part of the build as it now stands.
+
+If every supposition stands, this seat closes Q138
+under rule 8 in the landing that carries the
+verdict; any genuine Q138 defect is recorded
+first-hand here as its own follow-on and the
+question stays open, unfixed by this seat.
+
 ---
 
 ## Q137 (Muse, to the desk, 2026-11-10): the posture helpers classify and refuse, but nothing produces a stamp — the producer lives in the runner, at the result-assembly seam
