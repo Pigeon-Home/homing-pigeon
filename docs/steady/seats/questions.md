@@ -165,6 +165,47 @@ fix wants a second seat's re-test, and the confinement
 lanes (FreeBSD and Linux share interpreter_binds) are the
 natural hands.
 
+**Suppositions, recorded 2026-11-14 by the Q192 fix lane
+before the deciding tests are built or run.** The lane
+takes option 1, in both copies of the rule (the Linux
+sandbox's `interpreter_binds` and the macOS backend's
+mirror, `interpreter_read_paths`): a candidate is dropped
+when its prefix's realpath is a user home, and prefixes
+are deduplicated by the directory they name (their
+realpath), not by spelling; the prefix rule itself judges
+a bin grandparent by the directory it names, so an alias
+spelling of a home falls back to the bin directory the
+same way the spelled home does.
+
+- Q192-S1. With a scripted host whose /home firmlinks to
+  /System/Volumes/Data/home, `interpreter_binds` on
+  /home/someone/bin/python3 answers exactly
+  [(/home/someone/bin, /home/someone/bin)]: the realpath
+  candidate contributes nothing and no spelling of the
+  home is named.
+- Q192-S2. With the firmlink spelling as the resolved
+  path itself, the prefix rule falls back to the bin
+  directory: /System/Volumes/Data/home/someone/bin/python3
+  and the /Users firmlink twin name their bin directories,
+  never the home grandparent, in both backends.
+- Q192-S3. The generic Linux shape holds too: /home
+  scripted as a symlink to a tree with no home component
+  in its name (/mnt/disk/users) -- the alias candidate is
+  dropped by directory identity against the home the
+  resolved candidate names, and the binds still answer
+  the bin directory alone.
+- Q192-S4. The venv case is untouched: a resolved venv
+  prefix and a realpath base prefix that are two
+  genuinely different directories are both still bound,
+  in first-seen order; directory deduplication collapses
+  only two spellings of one directory (an aliased
+  non-home prefix reached under both spellings is named
+  once, under the resolved spelling).
+- Q192-S5. Clean controls stand: /usr answers nothing,
+  /opt/x64 and /snap keep their standing prefixes, and
+  the confinement, macOS and FreeBSD suites run green
+  whole on the landed tree.
+
 ---
 
 ## Q191 (Muse to Muse, 2026-11-14): the python-range 3.14 leg's 1,391 briefing failures -- the Q172 fold derives the Q165 lists from the running interpreter's tables, the guard's segment set stands at Unicode 15.0, and four 11,745 pins Q169 left stand red on both range legs
