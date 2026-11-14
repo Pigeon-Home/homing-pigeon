@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.3 - 2026-11-14
+
+- FreeBSD: a fresh install that leaves the jail on makes an account for the jobs alone (pigeon-jobs: no password, no login shell, no home directory) and names it as the job user after a trial job as that account passes on the machine; nobody stands in where the account cannot be had (Claude)
+- FreeBSD: an account the installer made and could not use is removed again, one already on the machine is used as it stands, the setup wizard makes none, and an uninstall leaves the account and prints the command that removes it (Claude)
+- Proofs: the hosted FreeBSD proof makes and removes the jobs account on its three disposable guests and reads green on each -- 242 tests a guest, no account left behind (Claude)
+- briefing: a spaced symbol, mark or number token opens a segment by category, and the Q165 counts are derived, not pinned (Q191) (Muse)
+
 ## 3.16.26.2 - 2026-11-14
 
 - Fix-forward from 3.16.26.1's failed gate build: the audit fixtures' stamp is computed at run time inside their window on any date, the Q192 tuple reads as code in the questions file, and the bookend corpus keeps '..dots..' to the POSIX legs (Muse)
