@@ -1073,5 +1073,42 @@ class InstallPrefixHomeTest(unittest.TestCase):
                          "/snap/bin")
 
 
+class InterpreterBindsNullByteTest(unittest.TestCase):
+    """Q190: a generated path carrying an embedded NUL
+    reached interpreter_binds, whose os.path.realpath
+    raised ValueError ('embedded null byte') where the
+    function's own convention -- a relative path answers
+    no binds -- is to skip cleanly. Through the FreeBSD
+    backend the helper is handed a job's own argv[0], so
+    the shape was reachable, not theoretical. A path no
+    filesystem can hold now answers no binds, at every
+    bookend position and run length.
+    """
+
+    def test_null_byte_paths_answer_no_binds(self):
+        for path in ("/usr/bin/py\x00thon3", "\x00/usr/bin/python3",
+                     "/usr/bin/python3\x00", "/opt/x64/bin/py\x00",
+                     "py\x00thon3", "\x00", "/\x00"):
+            self.assertEqual(SB.interpreter_binds(path, []), [],
+                             path)
+
+    def test_null_byte_runs_at_the_bookends_answer_no_binds(self):
+        for count in (1, 2, 10):
+            run = "\x00" * count
+            for path in (run + "/usr/bin/python3",
+                         "/usr/bin/python3" + run,
+                         run + "/usr/bin/python3" + run,
+                         "/usr/bin/py" + run + "thon3"):
+                self.assertEqual(SB.interpreter_binds(path, []), [],
+                                 path)
+
+    def test_clean_paths_still_answer_their_binds(self):
+        self.assertEqual(SB.interpreter_binds("/usr/bin/python3", []),
+                         [])
+        self.assertEqual(
+            SB.interpreter_binds("/opt/x64/bin/python3", []),
+            [("/opt/x64", "/opt/x64")])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

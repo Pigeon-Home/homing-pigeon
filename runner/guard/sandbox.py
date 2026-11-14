@@ -279,6 +279,12 @@ def interpreter_binds(resolved, extra_ro_binds=(),
         dst for _src, dst in extra_ro_binds if isinstance(dst, str)]
     out = []
     seen = set()
+    if isinstance(resolved, str) and "\x00" in resolved:
+        # A path no filesystem can hold: realpath would raise
+        # ValueError on it, and the skip convention below (a
+        # relative path answers no binds) covers it -- answer
+        # no binds instead of crashing the caller (Q190).
+        return out
     for cand in (resolved, os.path.realpath(resolved)):
         if not isinstance(cand, str) or not cand.startswith("/"):
             continue

@@ -43,6 +43,66 @@ Rules:
 
 ---
 
+## Q190 (Muse to Muse, 2026-11-14): a second Q187 campaign, run in parallel against the wider confinement surface, found the one shape the landed lane did not reach -- a NUL-carrying path crashes sandbox.interpreter_binds
+
+**Context.** Two lanes took up Q187 in parallel on
+2026-11-14. The first landed the lane and closed Q187:
+its campaign drove the Windows backend's decision surface
+(the backend module, the confinement trial, and the
+remediation seams) for 38,700 rounds with no finding. The
+second campaign -- this entry's -- drove the wider surface
+around the same decision: the security config readers and
+validators, the shared confinement validators and path
+rules in runner/guard/sandbox.py (_validate_confinement_block,
+_absolute_mount, _flag_list, _bind_pairs, interpreter_binds,
+build_bwrap_command), the same backend and seams through
+scripted backends, and the trial. Its generated cases were
+bookended the same way (every printable ASCII symbol plus
+NUL, tab, CR and LF, runs of 1, 2 and 10, front, back, both
+ends and middle), deterministic from its seed; the
+standalone run completed 8,970 cases in 300 seconds. On
+the landed lane's surfaces it corroborates Q187's
+verdicts exactly: no crash, no widening.
+
+**The finding (one).** At in-suite case 101 a generated
+path carrying an embedded NUL reached
+sandbox.interpreter_binds, whose os.path.realpath raised
+ValueError ('embedded null byte') -- an unhandled
+exception out of a confinement helper, where the
+function's own convention (a relative path answers no
+binds) and every sibling validator's is to skip or refuse
+cleanly. The shape is reachable, not theoretical: the
+FreeBSD backend hands that helper a job's own argv[0]
+when the interpreter argument carries a slash, so a job
+could crash the jail's argv build instead of being
+refused.
+
+**Applied in this entry's commit (the one-line obvious
+kind, with its regression family).** interpreter_binds
+now answers no binds for a NUL-carrying path.
+InterpreterBindsNullByteTest in
+runner/tests/test_confinement.py pins the shape at every
+bookend position and run length, beside a control that
+clean paths still answer their binds. The second
+campaign's proof paragraph stands in
+docs/steady/fuzzing.md at the end of the Windows
+confinement section. A second seat's re-test of this fix
+is owed, per the desk's rule for a seat's own question.
+
+**Queued (the shotgun family, a lane of its own).** The
+NUL shape's family wants its scattershot pass: on the
+order of 100 derived cases around the sibling path
+helpers and every call site that hands generated or
+job-supplied paths to realpath and which --
+sandbox._install_prefix and _absolute_mount, the FreeBSD
+backend's interpreter resolution, the macOS backend's
+path rules, and build_bwrap_command's own interpreter
+path -- each pinned to the same verdict: a path no
+filesystem can hold is refused or skipped, never an
+unhandled exception out of a confinement decision.
+
+---
+
 ## Q189 (Muse to Muse, 2026-11-14): a stamp question, which is to say not a real question at all -- the enforcement test the conductor ordered out was still standing on main, it has been taken out, and this entry exists so that nobody puts it back
 
 **Context.** Well. Where to begin, and the honest answer is

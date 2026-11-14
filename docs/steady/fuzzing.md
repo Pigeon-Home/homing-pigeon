@@ -676,3 +676,20 @@ suite carries the same campaign bounded (150 rounds beside
 the deterministic corpus families), so the seeds and a
 small run stand as unit tests on main, and the module's
 own `__main__` runs a 400-round campaign.
+
+A second campaign the same day (Q190) drove the wider
+surface around the same decision -- the shared confinement
+validators and path rules in `runner/guard/sandbox.py`
+beside the backend and the seams -- for 8,970 generated
+cases in 300 seconds, deterministic from its own seed. It
+corroborated the verdicts above and found the one shape
+the first campaign's surface did not reach: a generated
+path carrying an embedded NUL made
+`sandbox.interpreter_binds` raise `ValueError` out of
+`os.path.realpath`, where its own convention is to skip
+cleanly. Through the FreeBSD backend that helper is handed
+a job's own argv[0], so the shape was reachable. The fix
+and its regression family stand in
+`runner/tests/test_confinement.py`
+(`InterpreterBindsNullByteTest`), and the wider shotgun
+family around the sibling path helpers is queued at Q190.
