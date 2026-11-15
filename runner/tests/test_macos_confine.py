@@ -2832,12 +2832,18 @@ class PagesTest(unittest.TestCase):
         self.assertIn("43761537586", design)
         self.assertIn("| None | 28 of 36 |", design)
         self.assertEqual(design.count("| 36 of 36 |"), 5)
-        # The setting's example opens the one service the
-        # probe's trial asks by name, on both pages.
-        example = '"mach_services": ["%s"]' % MC.PASTEBOARD_SERVICE
+        # The setting's example names no real service, and is
+        # a name the backend takes; the pasteboard, the one
+        # service the probe's trial asks, is named on both
+        # pages as launchd knows it.
+        example = "com.example.service"
+        self.assertEqual(MC.validate_service_name(example), example)
         operator = self._page("docs", "steady", "security", "macos.md")
         for page in (design, operator):
-            self.assertIn(example, page)
+            self.assertIn('"mach_services": ["%s"]' % example, page)
+            self.assertIn("`%s`" % MC.PASTEBOARD_SERVICE, page)
+            self.assertNotIn('"mach_services": ["%s"]'
+                             % MC.PASTEBOARD_SERVICE, page)
         self.assertIn("At most %d are named" % MC.MAX_MACH_SERVICES,
                       design)
         self.assertIn("Up to %d can be named" % MC.MAX_MACH_SERVICES,
@@ -3661,17 +3667,18 @@ class LiveServicesTest(unittest.TestCase):
         self.assertEqual(rc, 0, err)
         self.assertEqual(out.split(), [
             entry.pw_name, grp.getgrgid(entry.pw_gid).gr_name])
-        # The groups a user is in, by name: a reading, printed
-        # beside the same question asked outside a job.
+        # The groups a user is in, by name: the same inside a
+        # job as outside one.
         outside = subprocess.run(
             ["/usr/bin/id", "-Gn"], stdout=subprocess.PIPE,
             timeout=60).stdout.decode().split()
         rc, out, err = self._job(["/usr/bin/id", "-Gn"])
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(sorted(out.split()), sorted(outside))
+        self.assertTrue(outside)
         print("services: id -Gn names %d groups inside a job and "
-              "%d outside: %s (exit %s)"
-              % (len(out.split()), len(outside),
-                 "the same" if sorted(out.split()) == sorted(outside)
-                 else "not the same", rc), flush=True)
+              "%d outside" % (len(out.split()), len(outside)),
+              flush=True)
 
     def test_without_the_user_database_a_user_is_a_number(self):
         # Why the profile names it: under the same profile
@@ -3877,14 +3884,41 @@ class LiveServicesTest(unittest.TestCase):
                    "macos.mach_services); the pasteboard is among "
                    "them, so the clipboard is not refused"))
 
-    def test_a_job_under_such_a_config_reads_a_mark(self):
-        # The pasteboard's one name is all the system's reader
-        # asks for: the mark comes back, and the probe's trial
+    def test_a_name_the_config_names_reaches_launchd(self):
+        # A name no service has, asked for from inside a job:
+        # refused by the sandbox where the config does not
+        # name it, and passed on to launchd where it does --
+        # whose answer is then the one a process in no job
+        # gets, that there is no such service.
+        name = "hp.no.such.service"
+        cfg = {"security": {"confinement": {"macos": {
+            "mach_services": [name]}}}}
+        outside = self._looked_up_outside(name)
+        self.assertNotIn(outside, (0, None, self.NOT_PRIVILEGED))
+        rc, out, err = self._job(
+            [sys.executable, "-c", self._LOOKUP, name])
+        self.assertEqual(self._kr(out), self.NOT_PRIVILEGED, out + err)
+        rc, out, err = self._job(
+            [sys.executable, "-c", self._LOOKUP, name], cfg=cfg)
+        self.assertEqual(self._kr(out), outside, out + err)
+
+    def test_a_job_under_such_a_config_is_answered_by_the_reader(self):
+        # Under a config that names the pasteboard the system's
+        # reader is answered: it ends 0, and the probe's trial
         # under that config records the clipboard as open.
+        # What it prints is a reading. On both hosted Macs the
+        # pasteboard's one name, beside the user database, got
+        # the reader an answer with nothing in it: the mark
+        # came back only with every service open.
         mark = self._a_mark_on_the_clipboard()
         rc, out, err = self._job([MC.PASTEBOARD_READER],
                                  cfg=self.NAMES_THE_PASTEBOARD)
-        self.assertEqual((rc, out), (0, mark), err)
+        self.assertEqual(rc, 0, err)
+        print("services: with the pasteboard named, the system's "
+              "reader ends 0 and %s"
+              % ("returns the mark" if mark in out
+                 else "prints %d bytes, the mark not among them"
+                 % len(out)), flush=True)
         self.assertIsNone(
             MC.macos_confinement_problem(self.NAMES_THE_PASTEBOARD))
         self.assertIs(

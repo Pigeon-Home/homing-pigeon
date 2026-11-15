@@ -112,21 +112,28 @@ If a job of yours does need a service, name it:
 ```json
 "confinement": {
   "macos": {
-    "mach_services": ["com.apple.pasteboard.1"]
+    "mach_services": ["com.example.service"]
   }
 }
 ```
 
-That example gives the clipboard back to every job. A named
-service answers a job as it answers any program of your
-session, so name one only for jobs you would trust with it.
-Up to 64 can be named; a name is letters, digits, dots,
-underscores, hyphens and at signs. The posture report
+A named service answers a job as it answers any program of
+your session, so name one only for jobs you would trust
+with it. Up to 64 can be named; a name is letters, digits,
+dots, underscores, hyphens and at signs. The posture report
 (`--posture`) lists what the config names and says whether
 the pasteboard is among them, and each job's audit record
 names them too.
 
-The system log says which service a refused program asked
+One name may not be enough for a program that asks for
+several. Naming the pasteboard (`com.apple.pasteboard.1`)
+on the two hosted Macs got a job's `pbpaste` an answer with
+nothing in it; what you copied came back only with every
+service open. A config that names the pasteboard is still
+one in which the clipboard is not refused, and the posture
+report says so.
+
+The system log says which services a refused program asked
 for. As an administrator:
 
 ```

@@ -218,7 +218,7 @@ build's own supposition, below.
 ```json
 "confinement": {
   "macos": {
-    "mach_services": ["com.apple.pasteboard.1"]
+    "mach_services": ["com.example.service"]
   }
 }
 ```
@@ -235,6 +235,16 @@ error and a refusal to start.
 The audit record's detail names the services a job's launch
 carried by the operator's word, and the posture report
 names them and says whether the pasteboard is among them.
+
+A named service is looked up as it is by any program of the
+session, and no more is promised of it. The pasteboard
+(`com.apple.pasteboard.1`) shows why. Named beside the user
+database on both hosted Macs, it answered a job's lookup,
+and the system's reader ended 0 — and printed nothing: the
+mark on the clipboard came back only with every service
+open. What a service does for a caller that reaches it and
+nothing else of the session is the service's own matter;
+the system log names what else a program asked for.
 
 ### What the probe asks
 
