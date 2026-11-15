@@ -167,6 +167,66 @@ before the remedy was applied):**
   second seat's re-test (owed above) is the
   natural place for it on a faster seat.
 
+**Re-test suppositions (second seat, recorded
+2026-11-14 before the deciding tests run).** This
+seat is not the filer. It re-tests in its own
+scratch clone on the current head -- the fix
+landing itself, at the hour this record opens --
+on its own cases and measures, not the fix
+lane's:
+
+- Q196-R1 (the fix stands as recorded, read in
+  the diff first). The fix landing, read against
+  its parent, touches only `pyproject.toml` and
+  this desk entry: in `pyproject.toml` exactly
+  one line gained, `runner/tests/test_setup_canoe.py`
+  in sorted position, and nothing else outside
+  the desk record. Read in the diff before any
+  test runs.
+- Q196-R2 (the mutation tool's check). The
+  mutation tool's own check on the current head
+  passes, reading the selection is the derivation
+  (370 modules).
+- Q196-R3 (the deciding pair, and the check is
+  not vacuous). `test_core` and
+  `test_mutation_oracle` together run green whole
+  on the current head. In this seat's scratch
+  clone only, removing the one added line makes
+  the recorded-selection pin fail again, naming
+  that same module: the pin holds the line, not
+  nothing.
+- Q196-R4 (the first failure's remedy stands).
+  The canonical breakdown recorded in
+  `runner/ops/core.py` matches a live measure
+  of the core on the current head -- the
+  breakdown the FreeBSD landing re-recorded
+  still holds on the tree the fix stands on.
+- Q196-R5 (the guard verdict owed from S4). The
+  regression guard handed
+  `runner/tests/test_mutation_oracle.py` (the
+  test file path) runs to a verdict on the
+  current head inside a generous bound. If this
+  host again produces no verdict inside the
+  bound, that is recorded honestly with the
+  bound used, not claimed green, and closure is
+  weighed on the remaining evidence as this
+  desk's prior re-tests have done.
+- Q196-R6 (the hosted build for the fix). The
+  hosted build for the fix landing, read job by
+  job, is recorded as it stands at read time.
+  If it is still queued or running at that
+  time, that is said plainly; it is not waited
+  on and not claimed.
+
+If every supposition stands, this seat closes
+Q196 under rule 8 in the landing that carries
+the verdict; any genuine failure is recorded
+first-hand here and the question stays open.
+For R5, a no-verdict on time alone, with no
+failure read, is weighed as the fix lane's S4
+record already frames it, against R1 to R4 and
+R6 standing whole.
+
 **Status.** The remedy is landed (the one-line
 commit carrying these conclusions). The first
 failure in the Context -- the core breakdown --
