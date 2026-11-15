@@ -1,0 +1,272 @@
+name: macos-confinement
+
+# The macOS confinement backend's live proof
+# (runner/guard/macos_confine.py). There is no Mac in the
+# project's own fleet, so the hosted Macs are the field: one
+# Apple silicon leg and one Intel leg, the two machines the
+# release freezes its macOS binaries on.
+#
+# On each, the backend's own test module runs whole, twice --
+# as the runner's ordinary user, which is how a macOS install
+# runs (a launchd agent of the user's own), and as root, where
+# a job user can be applied at the spawn door. Then the leg
+# freezes the two release binaries with the build workflow's
+# own commands, read out of build.yml so the two cannot drift,
+# and puts the frozen runner and the frozen installer to the
+# same questions: whether confinement engages from the
+# binaries a release ships, and what mode a fresh install
+# states on this Mac.
+#
+# The first step prints what the host is, and what the tests
+# cannot say for themselves: how large a bare process's
+# address map already is here (the kernel holds a data-size
+# limit against the whole map, so that size is the floor under
+# every memory ceiling), which language runtimes still start
+# under a ceiling set a given distance above that floor, and
+# what the profile lets a job reach besides files -- a
+# set-user-ID program, a signal to a process outside, the
+# host's process list, the clipboard, a job handed to launchd.
+#
+# A signal on the backend, not a gate on a release: weekly and
+# on dispatch, never on the release path.
+on:
+  schedule:
+    - cron: "23 10 * * 4"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  # One run per ref at a time, and the one that is going
+  # finishes: its verdict is the point.
+  group: macos-confinement-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  confinement:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+            build_job: build-macos
+          - os: macos-15-intel
+            arch: x86_64
+            build_job: build-macos-x86_64
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+      - name: the host
+        run: |
+          set +e
+          echo "== the host"
+          sw_vers
+          echo "machine: $(uname -m)  leg: ${{ matrix.arch }}"
+          echo "hw.ncpu=$(sysctl -n hw.ncpu) hw.memsize=$(sysctl -n hw.memsize) hw.nperflevels=$(sysctl -n hw.nperflevels 2>/dev/null || echo unreadable)"
+          id
+          python -c "import sys; print('python', sys.version.split()[0], sys.executable)"
+          ls -l /bin/sh /bin/bash /bin/dash /bin/zsh /private/var/select/sh /usr/bin/sandbox-exec /usr/sbin/taskpolicy /bin/ps 2>&1
+          echo "== the limits a process starts with here (soft, then hard)"
+          ulimit -S -a
+          ulimit -H -a
+          echo "== a bare process's address map (ps: vsz and rss in KiB)"
+          /bin/sh -c 'ps -o vsz=,rss=,comm= -p $$'
+          /bin/bash -c 'ps -o vsz=,rss=,comm= -p $$'
+          python -c "import os, subprocess; print(subprocess.run(['ps', '-o', 'vsz=,rss=,comm=', '-p', str(os.getpid())], capture_output=True, text=True).stdout.strip())"
+          # The smallest data-size limit the kernel accepts from a
+          # started process: each try is made in a subshell, so a
+          # refusal ends the subshell and the asking shell keeps
+          # the limits it had.
+          FLOOR='want=${1:-524288}
+          if (ulimit -S -d "$want") 2>/dev/null; then echo "no floor above $want KiB"; exit 0; fi
+          lo=$want
+          while :; do
+            hi=$((lo * 2))
+            if (ulimit -S -d "$hi") 2>/dev/null; then break; fi
+            lo=$hi
+            if [ "$lo" -ge 4503599627370496 ]; then echo "nothing accepted up to 2^62 bytes"; exit 1; fi
+          done
+          while [ $((hi - lo)) -gt 1024 ]; do
+            mid=$((lo + (hi - lo) / 2))
+            if (ulimit -S -d "$mid") 2>/dev/null; then hi=$mid; else lo=$mid; fi
+          done
+          echo "floor $hi KiB = $((hi / 1048576)) GiB + $(((hi % 1048576) / 1024)) MiB"'
+          echo "== the data-size floor, shell by shell"
+          for shell in /bin/sh /bin/bash /bin/dash /bin/zsh; do
+            printf '%s: ' "$shell"; "$shell" -c "$FLOOR" floor 524288; echo "  (exit $?)"
+          done
+          echo "== the data-size floor, read by a python process"
+          python - <<'PY'
+          import os, resource
+          def accepted(value):
+              pid = os.fork()
+              if pid == 0:
+                  try:
+                      hard = resource.getrlimit(resource.RLIMIT_DATA)[1]
+                      resource.setrlimit(resource.RLIMIT_DATA, (value, hard))
+                      os._exit(0)
+                  except Exception:
+                      os._exit(1)
+              return os.waitpid(pid, 0)[1] == 0
+          lo = 512 << 20
+          if accepted(lo):
+              print("no floor above 512 MiB")
+          else:
+              hi = lo * 2
+              while not accepted(hi) and hi < 2 ** 62:
+                  lo, hi = hi, hi * 2
+              while hi - lo > (1 << 20):
+                  mid = (lo + hi) // 2
+                  if accepted(mid):
+                      hi = mid
+                  else:
+                      lo = mid
+              print("floor %d KiB = %d GiB + %d MiB" % (hi >> 10, hi >> 30, (hi >> 20) % 1024))
+          PY
+          # A ceiling a given distance above the floor, set soft
+          # and hard, and then a command under it.
+          HOLD='want=$1; shift
+          lim=$want
+          if ! (ulimit -S -d "$want") 2>/dev/null; then
+            lo=$want
+            while :; do
+              hi=$((lo * 2))
+              if (ulimit -S -d "$hi") 2>/dev/null; then break; fi
+              lo=$hi
+              if [ "$lo" -ge 4503599627370496 ]; then echo "hold: nothing accepted"; exit 96; fi
+            done
+            while [ $((hi - lo)) -gt 1024 ]; do
+              mid=$((lo + (hi - lo) / 2))
+              if (ulimit -S -d "$mid") 2>/dev/null; then hi=$mid; else lo=$mid; fi
+            done
+            lim=$((hi + want))
+          fi
+          ulimit -S -d "$lim" || { echo "hold: soft limit $lim refused"; exit 97; }
+          ulimit -H -d "$lim" || { echo "hold: hard limit $lim refused"; exit 98; }
+          exec "$@"'
+          GROW='import resource
+          print("job reads soft, hard (KiB):", [x >> 10 for x in resource.getrlimit(resource.RLIMIT_DATA)])
+          for mb in (64, 256, 400, 480, 600, 700, 1024):
+              try:
+                  a = bytearray(mb << 20)
+                  a[::4096] = b"1" * len(a[::4096])
+                  del a
+                  print(mb, "MiB ok")
+              except MemoryError:
+                  print(mb, "MiB refused")'
+          echo "== a python job under a ceiling 512 MiB above the floor"
+          /bin/sh -c "$HOLD" hold 524288 python -c "$GROW"; echo "  (exit $?)"
+          echo "== can the job lift it"
+          /bin/sh -c "$HOLD" hold 524288 /bin/sh -c 'echo "soft $(ulimit -S -d) hard $(ulimit -H -d)"; (ulimit -S -d unlimited) 2>/dev/null && echo RAISED-SOFT; (ulimit -H -d unlimited) 2>/dev/null && echo RAISED-HARD; echo END'; echo "  (exit $?)"
+          echo "== which runtimes still start, by the distance above the floor"
+          for want in 524288 2097152 8388608; do
+            echo "-- $((want / 1024)) MiB above the floor"
+            for cmd in "/bin/sh -c true" "python -c pass" "node -e 0" "ruby -e 0" "perl -e 0" "java -version" "go version" "git --version"; do
+              # shellcheck disable=SC2086
+              /bin/sh -c "$HOLD" hold "$want" $cmd > /dev/null 2>&1; echo "   $cmd: exit $?"
+            done
+          done
+          echo "== what the profile lets a job reach besides files"
+          work="$RUNNER_TEMP/hp-facts-work"; mkdir -p "$work"
+          profile="$(python -c 'import os, sys; from runner.guard import macos_confine as MC; sys.stdout.write(MC.build_profile(os.path.realpath(sys.argv[1]), interpreter=sys.executable))' "$work")"
+          echo "$profile" | sed 's/^/   | /' | cut -c1-240
+          sb() { ( cd "$work" && /usr/bin/sandbox-exec -p "$profile" "$@" ); }
+          sb /bin/sh -c 'echo "a shell under the profile: ok"'; echo "   (exit $?)"
+          sb /bin/sh -c "$HOLD" hold 524288 python -c "$GROW"; echo "   the ceiling under the profile (exit $?)"
+          sb /bin/ps -o pid= -p 1 2>&1 | head -n 2; echo "   a set-user-ID program, /bin/ps (exit ${PIPESTATUS[0]})"
+          sb /bin/sh -c "kill -0 $$ 2>&1 && echo SIGNAL-REACHED-OUTSIDE"; echo "   a signal to a process outside (exit $?)"
+          sb python -c 'import ctypes; libc = ctypes.CDLL(None); n = libc.proc_listallpids(None, 0); print("proc_listallpids ->", n); buf = ctypes.create_string_buffer(4096); r = libc.proc_pidpath(1, buf, 4096); print("proc_pidpath(1) ->", r, buf.value.decode())'; echo "   the host process list (exit $?)"
+          printf 'HP-CLIPBOARD-MARK' | pbcopy 2>&1; echo "   pbcopy outside the profile (exit $?)"
+          sb /usr/bin/perl -e 'alarm shift; exec @ARGV' 20 /usr/bin/pbpaste 2>&1 | head -c 200; echo; echo "   the clipboard, pbpaste (exit ${PIPESTATUS[0]})"
+          rm -f "$RUNNER_TEMP/hp-facts-escaped"
+          sb /usr/bin/perl -e 'alarm shift; exec @ARGV' 20 /bin/launchctl submit -l hp.facts.escape -- /usr/bin/touch "$RUNNER_TEMP/hp-facts-escaped" 2>&1 | head -n 3; echo "   a job handed to launchd (exit ${PIPESTATUS[0]})"
+          python -c "import time; time.sleep(3)"
+          if [ -e "$RUNNER_TEMP/hp-facts-escaped" ]; then echo "   LAUNCHD-RAN-IT-OUTSIDE"; else echo "   launchd ran nothing"; fi
+          /bin/launchctl remove hp.facts.escape > /dev/null 2>&1
+          sb /usr/bin/perl -e 'alarm shift; exec @ARGV' 20 /usr/bin/osascript -e 'tell application "System Events" to get name of first process' 2>&1 | head -c 200; echo; echo "   an Apple event, osascript (exit ${PIPESTATUS[0]})"
+          sb /bin/ls "$HOME" 2>&1 | head -n 2; echo "   the home directory (exit ${PIPESTATUS[0]})"
+          sb /usr/sbin/taskpolicy -c background /bin/sh -c 'echo "a child under a background clamp: ok"' 2>&1; echo "   taskpolicy under the profile (exit $?)"
+          exit 0
+      - name: the backend's test module, as the runner's user
+        run: |
+          set -o pipefail
+          python -m unittest runner.tests.test_macos_confine -v 2>&1 | tee macos-confinement-user.log
+      - name: the same module, as root
+        if: always()
+        run: |
+          set -o pipefail
+          sudo env "PATH=$PATH" PYTHONDONTWRITEBYTECODE=1 python -m unittest runner.tests.test_macos_confine -v 2>&1 | tee macos-confinement-root.log
+      - name: freeze the release binaries, as the build freezes them
+        if: always()
+        run: |
+          set -euo pipefail
+          pip install -c .github/requirements-ci.txt pyinstaller
+          # The two freeze commands of this leg's build job, read
+          # out of build.yml: what is frozen here is what a
+          # release freezes.
+          python - "${{ matrix.build_job }}" > freeze.sh <<'PY'
+          import re, sys
+          text = open(".github/workflows/build.yml", encoding="utf-8").read()
+          block = re.search(r"(?ms)^  %s:\n(.*?)(?=^  [a-z0-9_-]+:\n|\Z)" % re.escape(sys.argv[1]), text).group(1)
+          runs = re.findall(r"(?m)^\s+- run: (pyinstaller .*)$", block)
+          assert len(runs) == 2, runs
+          print("set -e")
+          print("\n".join(runs))
+          PY
+          sh freeze.sh > freeze.log 2>&1 || { tail -n 40 freeze.log; exit 1; }
+          ls -l dist/homing-pigeon dist/install
+          ./dist/homing-pigeon --version
+          ./dist/install --version
+      - name: the frozen runner, with confinement at enforce
+        if: always()
+        run: |
+          set +e
+          root="$RUNNER_TEMP/hp-frozen"; mkdir -p "$root/state"
+          python - "$root/config.json" "$root/state" <<'PY'
+          import json, sys
+          json.dump({
+              "mailbox_user": "pigeon-test@example.com",
+              "mailbox_password": "not-a-real-mailbox-password",
+              "shared_secret": "9f2c7ab1e84d3065c1a7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d",
+              "imap_host": "127.0.0.1", "imap_port": 1,
+              "smtp_host": "127.0.0.1", "smtp_port": 1,
+              "base_dir": sys.argv[2],
+              "security": {"modes": {"confinement": "enforce",
+                                     "job_user": "off",
+                                     "audience": "off"}},
+          }, open(sys.argv[1], "w"))
+          PY
+          ./dist/homing-pigeon --config "$root/config.json" --once --dry-run > "$root/start.log" 2>&1
+          rc=$?
+          tail -n 25 "$root/start.log" | cut -c1-400
+          echo "frozen runner at enforce: exit $rc"
+          exit 0
+      - name: the frozen installer, on a home of its own
+        if: always()
+        run: |
+          set +e
+          home="$RUNNER_TEMP/hp-home"; mkdir -p "$home"
+          HOME="$home" ./dist/install --dir "$home/.homing-pigeon" --no-inference --no-collector --dry-run > "$home/install.log" 2>&1
+          rc=$?
+          grep -a -n "platform:\|confinement\|installed:\|error\|Traceback" "$home/install.log" | cut -c1-500 | head -n 40
+          echo "frozen installer: exit $rc"
+          python -c "import json, sys; cfg = json.load(open(sys.argv[1])); print('security in the written config:', json.dumps(cfg.get('security')))" "$home/.homing-pigeon/config.json"
+          HOME="$home" ./dist/install --dir "$home/.homing-pigeon" --uninstall > "$home/uninstall.log" 2>&1
+          echo "uninstall: exit $?"
+          exit 0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: macos-confinement-${{ matrix.arch }}
+          path: |
+            macos-confinement-user.log
+            macos-confinement-root.log
+          if-no-files-found: warn
