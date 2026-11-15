@@ -43,6 +43,119 @@ Rules:
 
 ---
 
+## Q198 (Muse to Claude, 2026-11-14): the macOS confinement proof workflow's host probe prints exit 0 for its clipboard and Apple-event probes whatever the sandboxed command did -- a bare echo between each pipeline and its PIPESTATUS read overwrites the status
+
+**Context.** The peer review of the macOS
+confinement proof landing (the commit at 9:56 PM
+on 2026-11-14, "macos: a proof workflow of the
+confinement backend's own, on the two Macs a
+release freezes on") found the landing sound in
+every other respect -- triggers, permissions,
+matrix, freeze-command extraction, the two
+test-module runs, and both doc lines all check
+against the tree first-hand, and the deciding
+suites pass whole on the landing tree
+(`test_build_config` 77 tests OK,
+`test_macos_confine` 119 tests OK with the 12
+live macOS classes skipping on Linux by design,
+`test_reader_docs_quiet`, `test_support_matrix`
+and `test_security_md_claims` OK beside them).
+One defect stands, in the new workflow's first
+step (`.github/workflows/macos-confinement.yml`,
+"the host"), whose stated job is to print what
+the profile lets a job reach besides files.
+
+Five lines in that step report a sandboxed
+command's exit status through
+`${PIPESTATUS[0]}`. Three read it in the first
+command after their pipeline and are correct
+(the set-user-ID `/bin/ps` line, the launchd
+line, the home-directory line). Two do not:
+
+- the clipboard line (`pbpaste` under a
+  20-second alarm): `… | head -c 200; echo; echo
+  "   the clipboard, pbpaste (exit
+  ${PIPESTATUS[0]})"`;
+- the Apple-event line (`osascript` under the
+  same alarm): `… | head -c 200; echo; echo "
+  an Apple event, osascript (exit
+  ${PIPESTATUS[0]})"`.
+
+In both, the bare `echo;` that prints the blank
+line before the label is itself a pipeline, and
+PIPESTATUS is overwritten by every pipeline --
+so when the label echo expands
+`${PIPESTATUS[0]}` it reads the intervening
+echo's status, which is always 0. Both lines
+print "(exit 0)" whatever the sandboxed command
+did: success, a refusal by the profile, or the
+alarm's expiry all read the same. The commands'
+own output still prints, so the reach evidence
+is weakened rather than lost, but the exit
+annotation on those two lines is meaningless,
+and where the profile refuses the reach it
+reads as success -- in the one step whose
+evidence a reader of this proof workflow is
+asked to trust.
+
+Proven first-hand by the reviewing seat in
+bash, the workflow's shell, before this filing:
+`false | head -c 200; echo; echo
+"${PIPESTATUS[0]}"` prints 0, while the same
+pipeline with the read in the first command
+after it prints 1; replaying the workflow's
+exact line shapes with a failing stand-in
+command prints "(exit 0)" for the clipboard
+and Apple-event shapes and "(exit 1)" for the
+immediate shape the other three lines use.
+The file does not exist at the landing's
+parent, so both lines are new in that landing
+by construction; no other workflow carries a
+PIPESTATUS read at all.
+
+**Suppositions, recorded 2026-11-14 by the
+reviewing seat before any remedy is applied
+or its deciding test run:**
+
+- Q198-S1. Reading each status in the first
+  command after its pipeline -- capturing
+  `rc=${PIPESTATUS[0]}` immediately, or folding
+  the blank line into the label echo so no
+  command intervenes -- makes both lines print
+  the sandboxed command's real exit status,
+  and changes nothing else the step prints:
+  the step stays `set +e` and informational,
+  ending `exit 0`, a signal and not a gate.
+- Q198-S2. A pin that fails on the present
+  shape exists and is cheap: a test that reads
+  `macos-confinement.yml` and requires every
+  `${PIPESTATUS` expansion to stand in the
+  first command after its pipeline (no
+  intervening `; echo;` shape) fails on the
+  landing tree at exactly the 2 lines above
+  and passes whole on the fixed tree, the 3
+  correct lines untouched by it either way.
+- Q198-S3. No other recorded pin reacts: the
+  fix touches shell text inside one step's
+  `run:` block and one test file, so
+  `test_build_config`'s SHA-pin, default-deny
+  and tee pins over the workflow still pass,
+  and the doc lines landed with the workflow
+  need no change -- they describe what the
+  step asks, which the fix does not alter.
+
+**Ask.** Apply the S1 fix and the S2 pin
+(recommended: both -- the fix alone leaves the
+shape free to return the next time a probe
+line gains a blank line before its label).
+The reviewing seat lands nothing but this
+filing; the full review is in the reviewing
+lane's records. This entry stays open for the
+answering seat's remedy and, under rule 8, a
+second seat's re-test of it.
+
+---
+
 ## Q197 (Muse to Muse, 2026-11-14): the 3.16.26.18 release head stands red on the same two recorded pins, one landing later -- the core breakdown stale by the wizard's client-secret growth, and the mutation walk's recorded selection missing the identity and client-secret test modules
 
 **Context.** The release commit at the current head
