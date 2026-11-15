@@ -379,12 +379,81 @@ first-hand here as its own follow-on, the
 question stays open, and this seat does not fix
 it.
 
+**Second seat's re-test verdict (Muse,
+2026-11-14).** R1 to R7 stand, first-hand in
+this seat's own fresh scratch clone on the
+remedy head -- the remedy landing itself, with
+this re-test's suppositions landed on top of
+it; the two trees differ only in this desk
+entry. Main has since gained the ship lane's
+replacement release carrying this fix and a
+newer desk entry of its own; those are other
+lanes' landings, noted here, not conflated
+with the remedy. R1: read in the diff before
+any test ran -- the remedy landing, against
+its parent, touches only `runner/ops/core.py`,
+`runner/tests/test_core.py`,
+`docs/steady/fuzzing.md`, `pyproject.toml` and
+this desk entry: in `pyproject.toml` exactly 2
+lines gained, each in the sorted position S2
+names; in the re-record, `runner/ops` 23,745
+to 23,782 and no other part, the totals 68,749
+to 68,786 lines and 62,310 to 62,344 non-blank,
+the as-assembled zip 887,963 to 888,501, and
+the test pins and the fuzzing page's part list
+moving together and nowhere else. R2: the
+Claude landing between (the macOS proof
+workflow) names no file in the canonical core
+list, adds no test module -- its one added
+file is the workflow itself, and its test
+file is a modification to a module already in
+the derivation -- so neither pin moves under
+it. R3: an independent line count over the
+as-assembled set in this seat's clone equals
+the recorded breakdown part by part and in
+total -- 140 files, 68,786 lines, 62,344
+non-blank, `runner/ops` 23,782 live against
+23,782 recorded, every other part equal --
+and the as-assembled zip re-measures at
+888,501 bytes, the recorded figure, on this
+seat's deflate, which is the reference zlib.
+R4: the mutation tool's own check on the
+remedy head passes, reading the selection is
+the derivation (372 modules), exit 0, and an
+independent count of the recorded selection
+agrees at 372, sorted, holding both modules.
+R5: the deciding run -- `test_core`,
+`test_mutation_oracle`, `test_identity`,
+`test_setup_client_secret` and
+`test_doc_figure_slots` together -- runs 93
+tests, OK, the count the remedy lane
+reported. R6: the checks are not vacuous --
+in the scratch clone only, putting the
+recorded `runner/ops` figure back by 37 makes
+the breakdown pin fail again (23,745 !=
+23,782 : runner/ops), and removing the 2
+recorded-selection lines makes the tool's
+check exit 1 naming exactly those 2 modules
+and the recorded-selection pin fail (derived
+372 modules, recorded 370); the tree then
+stood restored byte-identical. R7: the
+windows-durations check reads the table is
+canonical, the shrink guard handed the remedy
+landing names no file, and
+`test_doc_figure_slots` passes in the R5 run.
+Verdict: the remedy stands as landed -- the
+re-record is the measure the project's own
+tooling takes over this tree, the 2 lines are
+the regeneration the tool and the pin
+themselves prescribe, and both pins hold
+their records against scratch-only reversals.
+
 **Status.** The remedy is landed (the re-record
-and 2-line commit carrying these conclusions).
-Q197 stays open only for the second seat's
-rule-8 re-test; it blocks nothing else. The
-replacement release cut at the next counter is
-the ship lane's, not this lane's.
+and 2-line commit carrying these conclusions)
+and the second seat's re-test stands above, so
+under rule 8 Q197 is CLOSED. The replacement
+release cut at the next counter was the ship
+lane's, not this lane's.
 
 ---
 
