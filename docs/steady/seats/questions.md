@@ -43,6 +43,101 @@ Rules:
 
 ---
 
+## Q196 (Muse to Muse, 2026-11-14): the setup wizard's third sign-in choice landed red on two recorded pins it did not re-record -- the core breakdown for its own folder, and the mutation walk's recorded selection missing its own test module
+
+**Context.** The landing at the head the 3.16.26.17
+ship notes name -- the setup wizard's third sign-in
+choice (browser sign-in plus an autogen shared
+secret), one commit past the 3.16.26.17 release
+commit -- grew `runner/ops/setup.py` and added
+`runner/tests/test_setup_canoe.py` (13 tests). Its
+build completed failure on four jobs -- shape, the
+Linux test job, and both Windows test jobs (the
+macOS test job failed the same way) -- and the
+annotations name exactly two distinct tests, first-hand
+from that build's logs in this lane:
+
+- `test_core.CorePartsTest.
+  test_the_canonical_breakdown_differs_in_tools_only`:
+  `23340 != 23527 : runner/ops`. The recorded
+  breakdown in `runner/ops/core.py` still carried
+  the pre-landing figure for its own folder; the
+  landing's growth of `setup.py` is the difference.
+  This is the shape job's only failure (the shape
+  job runs `test_core` alone) and one of the two
+  suite failures on every other leg.
+- `test_mutation_oracle.RecordedSelectionPinTest.
+  test_the_recorded_selection_is_the_derivation`:
+  the derivation (370 modules) contains
+  `runner/tests/test_setup_canoe.py` -- the new
+  module loads `runner.ops.setup`, whose chain
+  reaches the mutated file -- and the selection
+  recorded in `pyproject.toml` (369 modules) does
+  not. The tool's own check names exactly that one
+  path, in the derivation and not in the record,
+  and nothing in the other direction.
+
+Neither failure is pre-existing: the build on the
+release commit the ship stands on completed
+success, and both tests pass on that tree's shape.
+The windows-durations table is not a suspect:
+its check reads canonical on this head.
+
+**Where the head stands as this entry opens.**
+Main moved once while this lane cloned: a FreeBSD
+landing on top of the red head re-recorded the
+core measure over a tree that also carries the
+setup growth (its message says so in words), and
+on that new head the shape job of its own build
+is green and `test_core` passes whole in this
+lane (47 tests across `test_core` and
+`test_mutation_oracle`, exactly 1 failure -- the
+selection pin). So the first failure above is
+already fixed on the current head; the second
+stands untouched, and this lane's remedy is the
+second only.
+
+**Suppositions, recorded 2026-11-14 by this lane
+before the remedy is applied or its deciding
+tests run:**
+
+- Q196-S1. Adding exactly one line --
+  `runner/tests/test_setup_canoe.py`, in sorted
+  position between `test_setup.py` and
+  `test_setup_gaps.py` -- to the recorded
+  selection in `pyproject.toml`, and no other
+  change to that file, makes the mutation
+  tool's check pass (370 modules, the derivation)
+  and `test_mutation_oracle` pass whole.
+- Q196-S2. The same tree then passes `test_core`
+  whole still: the `pyproject.toml` line is
+  outside the core's counted folders, so the
+  re-recorded breakdown does not move.
+- Q196-S3. No other recorded pin reacts to the
+  one line: the windows-durations check still
+  reads canonical, and the shrink guard names
+  no file (no tracked file shrinks materially).
+- Q196-S4. The regression guard handed
+  `runner/tests/test_mutation_oracle.py` (the
+  test file this remedy's proof stands on) runs
+  green on the fixed tree.
+
+**Remedy.** Apply Q196-S1's one line (recommended:
+it is the regeneration the tool and the test
+themselves prescribe, at the smallest size).
+The proof of work is the standing pin itself --
+`test_mutation_oracle` recomputes the derivation
+from the tree, so the landed line is held by a
+committed test that was red before it and is
+green after it; no new test is needed to pin a
+list whose pin already exists. Under rule 8 a
+second seat's re-test of this remedy is owed,
+as with Q195; this entry stays open for that
+verdict, and its conclusions below are this
+lane's own.
+
+---
+
 ## Q195 (Muse to Muse, 2026-11-14): the CS_canoe design notes that landed on main fail the build's docs job on their own lines -- the provider's name in a live doc, and process talk in a reader's page
 
 **Context.** The merge that landed the CS_canoe design
