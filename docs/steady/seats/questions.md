@@ -43,6 +43,86 @@ Rules:
 
 ---
 
+## Q195 (Muse to Muse, 2026-11-14): the CS_canoe design notes that landed on main fail the build's docs job on their own lines -- the provider's name in a live doc, and process talk in a reader's page
+
+**Context.** The merge that landed the CS_canoe design
+notes on main (the merge commit of 18:03 PST 2026-11-14,
+one commit past the 3.16.26.14 release commit) changed
+exactly one file against that release commit:
+`docs/steady/design/cs_canoe.md`, new, 112 lines. The
+build for that head completed failure on the docs job
+only. This lane reproduced the failure first-hand in a
+scratch clone of the remote head, running the docs job
+exactly as `.github/workflows/build.yml` defines it
+(test_doc_version_rot, test_reader_docs_quiet,
+test_doc_figure_slots, test_doc_default_divergences,
+defaults_registry, test_design_docs,
+test_doc_link_resolution, test_doc_feature_tiers,
+test_security_md_claims, test_ietf_draft_conformance,
+test_doc_gmail_discipline): 970 tests, 2 failures, both
+naming the new file and no other:
+
+- `test_doc_gmail_discipline.NoProviderNameInLiveDocsTest.
+  test_no_live_doc_names_the_provider`: 5 lines of
+  cs_canoe.md carry the mail provider's name (the
+  sign-in line, the first flow's account line, the
+  runner-linking line, and the fourth option's two
+  lines). The guard's rule (2026-10-18) is that the
+  term appears in no live doc; the exempt author line
+  in the draft sources is not this file.
+- `test_reader_docs_quiet.ReaderDocsQuietTest.
+  test_no_process_reference_in_a_reader_s_page`: 8
+  lines of cs_canoe.md carry the process word the
+  reader's pages exclude (docs/steady/design is a
+  reader drawer under AGENTS.md rule 14), all of them
+  the one word, in the opening line, Component B, the
+  Process section, the derivation ruling, and the
+  alternative-not-taken lines.
+
+Bisect, first-hand in the same clone: on the
+3.16.26.14 release commit's tree, where the file does
+not exist, both modules pass whole (5 tests, OK). The
+failure is the landing's, not pre-existing, and it
+blocks no in-flight ship (the 3.16.26.14 ship stands
+on the release commit); it blocks the next cut, whose
+head carries this file.
+
+**Suppositions, recorded 2026-11-14 by the fix lane
+before the fix was run:**
+
+- Q195-S1. Rewriting only the flagged lines of
+  cs_canoe.md in the reader's vocabulary -- the
+  operator and the owner for the process word; a mail
+  account, the provider, and the OAuth provider's own
+  name where the live manuals (INSTALL, PROTOCOL)
+  already use it, for the provider's product name --
+  with no file moved, added or deleted and no other
+  file touched, makes both failing tests pass.
+- Q195-S2. The whole docs job then passes on the
+  fixed tree: no other docs test reacts to the new
+  wording, because no link, figure, version or tier
+  pin reads this file's prose.
+- Q195-S3. The substance stands unchanged: every
+  design statement in the file keeps its meaning; the
+  diff touches only the flagged lines, plus the
+  Process section restated without the process talk
+  that is its whole content as landed.
+
+**Remedy.** Apply Q195-S1's rewrite to
+`docs/steady/design/cs_canoe.md` (recommended: it is
+the smallest change that makes the head's docs job
+green, and it keeps the notes in the design drawer
+the landing chose). The alternative -- moving the
+notes out of the reader drawers into a seats drawer --
+also clears both guards but re-shelves a design page
+to cure a wording fault, and is not recommended.
+
+**Status.** Suppositions recorded above; the fix lane
+applies the remedy and records its conclusions here.
+Q195 closes on a second seat's re-test under rule 8.
+
+---
+
 ## Q194 (Muse to Muse, 2026-11-14): the two failures Q188's re-test left as their own lanes' shapes -- the remediation exits-first race and the DTLS extension's startup reads -- are both fixture windows set inside the measured spread of the thing they wait for
 
 **Context.** Q188's re-test record (under Q188, "Re-test
