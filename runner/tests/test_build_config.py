@@ -1500,3 +1500,75 @@ class FreeBSDWorkflowEvidenceTest(unittest.TestCase):
         self.assertLess(live.index("actions/upload-artifact"),
                         live.index(
                             "the FreeBSD verdict, restored on the host"))
+
+
+class FreeBSDSuiteWallClockTest(unittest.TestCase):
+    """freebsd.yml runs the whole suite inside its VM under
+    suite_wall_clock.py. The clock is a hang-catcher, not a size
+    budget, so its minutes must cover the suite on a slow guest
+    with headroom. The measure that moved it from 30 to 45
+    (2026-11-15): of the fourteen runs from the workflow's first
+    artifact (the v3.16.25.8 tag run of 2026-11-13) to that day,
+    seven finished, in 1,360 to 1,683 seconds -- the same 12,860
+    tests in 1,360 seconds on one run and 1,666 on the next --
+    and seven were stopped at the 1,800-second wall, each in the
+    last third of the suite. The wall stood inside the spread of
+    the guest's own pace, and a slow guest read as a red suite.
+    These pins hold the budget to that arithmetic, not to the
+    number it started at."""
+
+    # unittest's own seconds on the seven runs that finished, in
+    # run order; the last is the suite's first green run there
+    # (run 43612998944, 13,294 tests).
+    FINISHED = (1359.754, 1666.113, 1557.592, 1629.478,
+                1513.758, 1620.409, 1683.059)
+    OLD_WALL = 1800
+    # The stopped run that had got least far (run 43435133025)
+    # had passed the resources tests by its page's skip tally:
+    # 76.8 percent of that tag's suite by test count, the one
+    # measure of place a stopped run's page gives.
+    LEAST_FAR = 0.768
+
+    def _live(self):
+        return _uncommented(_workflow_text("freebsd.yml"))
+
+    def _budget(self):
+        found = re.findall(
+            r"suite_wall_clock\.py --minutes (\d+) -- "
+            r"discover -s runner/tests -t \. -v", self._live())
+        self.assertEqual(len(found), 1,
+                         "freebsd.yml runs the suite under one "
+                         "clock, once: %r" % (found,))
+        return int(found[0])
+
+    def test_the_whole_suite_runs_under_the_one_clock(self):
+        # No second unittest run stands beside the clocked one:
+        # the sh-parser proof names its one module.
+        live = self._live()
+        self._budget()
+        self.assertEqual(live.count("discover -s runner/tests"), 1)
+
+    def test_the_budget_is_the_measured_one(self):
+        self.assertEqual(self._budget(), 45)
+
+    def test_the_old_wall_stood_inside_the_spread(self):
+        # Every run that finished did so under the old wall, the
+        # slowest with under two minutes to spare, and the same
+        # suite's time moved by more than a fifth between runs.
+        self.assertLess(max(self.FINISHED), self.OLD_WALL)
+        self.assertLess(self.OLD_WALL - max(self.FINISHED), 120)
+        self.assertGreater(max(self.FINISHED) / min(self.FINISHED),
+                           1.2)
+
+    def test_the_budget_covers_a_slow_guest_with_headroom(self):
+        # A guest that kept the pace of the run that had got
+        # least far needs the old wall over the part it had
+        # passed. The budget clears that need by a tenth and the
+        # old wall by half, and stays a hang-catcher: a looping
+        # test is still named within the hour.
+        slow_need = self.OLD_WALL / self.LEAST_FAR
+        self.assertGreater(slow_need, self.OLD_WALL)
+        budget = self._budget() * 60
+        self.assertGreaterEqual(budget, 1.1 * slow_need)
+        self.assertGreaterEqual(budget, 1.5 * self.OLD_WALL)
+        self.assertLessEqual(budget, 3600)

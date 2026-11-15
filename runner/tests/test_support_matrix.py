@@ -11,6 +11,7 @@ out of runner/guard/security.py, and the modes default is read
 out of effective_modes, not copied from the document.
 """
 import os
+import re
 import unittest
 
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -170,8 +171,9 @@ class SupportMatrixTest(unittest.TestCase):
     def test_the_freebsd_row_keeps_its_honesty_lines(self):
         # What the jail is not stays on the row beside what it
         # is: it needs root, it is not Capsicum, the jail-wide
-        # ceilings need RACCT, and the node has run its live
-        # classes but not the battery.
+        # ceilings need RACCT, the node has run its live classes
+        # but not the battery, and the hosted suite, green on the
+        # record, is a signal no release waits for.
         row = _row("FreeBSD")
         self.assertIn("The backend needs root", row)
         # What root's uid still reads, and what closes it.
@@ -192,7 +194,62 @@ class SupportMatrixTest(unittest.TestCase):
         self.assertIn("refuses when it cannot engage", row)
         self.assertIn("the full battery has not been run against "
                       "this shape", row)
-        self.assertIn("the suite itself is not green", row)
+        self.assertIn("The workflow is a signal, not a gate: it "
+                      "runs after a release is out, and no release "
+                      "waits for it", row)
+
+    def test_the_freebsd_row_states_the_suite_s_hosted_record(self):
+        # The suite's first whole green run on a hosted FreeBSD
+        # guest, by its run, and what the 30-minute clock did to
+        # the runs around it.
+        row = _row("FreeBSD")
+        self.assertIn(
+            "The suite first ran whole and green there on the "
+            "v3.16.26.6 tag (run 43612998944, 2026-11-14)", row)
+        self.assertIn("13,294 tests, 167 skipped by name and none "
+                      "red, in 1,683 seconds", row)
+        self.assertIn(
+            "seven finished, in 1,360 to 1,683 seconds, and seven "
+            "were stopped at 1,800, each in the last third of the "
+            "suite", row)
+
+    def test_the_freebsd_row_names_the_clock_the_workflow_runs(self):
+        # The row's minutes are the workflow's own: the number
+        # is read out of freebsd.yml, not copied from the page.
+        with open(os.path.join(REPO, ".github", "workflows",
+                               "freebsd.yml"),
+                  encoding="utf-8") as fh:
+            live = "\n".join(
+                ln for ln in fh.read().splitlines()
+                if not ln.lstrip().startswith("#"))
+        found = re.findall(
+            r"suite_wall_clock\.py --minutes (\d+) ", live)
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("the clock is %s minutes" % found[0],
+                      _row("FreeBSD"))
+
+    def test_the_stale_freebsd_suite_sentences_are_absent(self):
+        # The matrix once said no hosted run of the FreeBSD
+        # suite had completed green. One has, and those
+        # sentences may not return.
+        flat = _flat()
+        for stale in ("the suite itself is not green",
+                      "no hosted run has completed green",
+                      "No green hosted FreeBSD suite run",
+                      "so there is no release guarantee yet"):
+            self.assertNotIn(stale, flat)
+
+    def test_no_release_waits_for_a_freebsd_run(self):
+        # The list of what is not yet true keeps the other half:
+        # the hosted FreeBSD runs gate nothing.
+        flat = _flat()
+        self.assertIn("No release waits for a FreeBSD run", flat)
+        self.assertIn(
+            "a release can go out with that suite red or stopped "
+            "at its clock", flat)
+        self.assertIn(
+            "one was green, six finished red and seven were "
+            "stopped at the 30-minute clock it then had", flat)
 
     def test_the_freebsd_row_states_what_a_fresh_install_does(self):
         # The seed asks the probe: enforce where it passes, audit

@@ -5,15 +5,29 @@ name: freebsd
 # 2026-10-25). GitHub has no FreeBSD runner, so a VM boots inside a
 # Linux runner (vmactions/freebsd-vm, pinned by SHA); the boot costs
 # minutes and the action is not as steady as a native runner, so
-# this runs weekly, on dispatch, and when this file changes, never
-# on the release path. A signal, not a gate.
+# this runs weekly, on dispatch, and after a tag whose tree changed
+# under runner/ (the tag build dispatches it), never on the release
+# path. A signal, not a gate.
 #
 # Inside the VM: the suite as an ordinary user (the runner is not
 # root in service), then the roster as root with a real second user
-# (the privilege drop, M8, on a third POSIX kernel). Confinement is
-# bwrap and falls open here by the 2026-10-15 rule; a jail would be
-# FreeBSD's cage (docs/infrastructure-documents/security/security-gaps.md) and is not in
-# scope until the owner says so.
+# (the privilege drop, M8, on a third POSIX kernel). Confinement on
+# FreeBSD is the per-job jail (runner/guard/freebsd_confine.py), and
+# a jail needs root: the suite's ordinary user cannot make one, so
+# the backend's live tests skip here by name and run as root in
+# freebsd-confinement.yml.
+#
+# The suite's clock is 45 minutes (2026-11-15). The suite first ran
+# whole and green here on 2026-11-14 (run 43612998944: 13,294 tests
+# in 1,683 seconds, under the 1,800 the clock then gave it). Of the
+# fourteen runs from the workflow's first artifact (the v3.16.25.8
+# tag run of 2026-11-13) to 2026-11-15, seven finished, in 1,360 to
+# 1,683 seconds, and seven were stopped at 1,800 seconds, each in
+# the last third of the suite: the clock stood inside the spread of
+# the guest's own pace, where a slow guest read as a red suite. It
+# is a hang-catcher that names the test it stops
+# (runner/tools/suite_wall_clock.py), not a size budget and not a
+# job timer.
 on:
   schedule:
     - cron: "23 7 * * 2"
@@ -146,7 +160,7 @@ jobs:
             echo "== the suite, as the runner user"
             mkdir -p /home/runner/tmp && chown runner /home/runner/tmp
             rc=0
-            su -l runner -c "export TMPDIR=/home/runner/tmp; cd '$GITHUB_WORKSPACE' && $PY runner/tools/suite_wall_clock.py --minutes 30 -- discover -s runner/tests -t . -v --durations 25" > /tmp/suite-freebsd.log 2>&1 || rc=$?
+            su -l runner -c "export TMPDIR=/home/runner/tmp; cd '$GITHUB_WORKSPACE' && $PY runner/tools/suite_wall_clock.py --minutes 45 -- discover -s runner/tests -t . -v --durations 25" > /tmp/suite-freebsd.log 2>&1 || rc=$?
             tail -n 40 /tmp/suite-freebsd.log
             "$PY" runner/tools/skip_guard.py /tmp/suite-freebsd.log --annotate || true
             # The failing tests named in this step's own log (Q175):

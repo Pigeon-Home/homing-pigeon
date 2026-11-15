@@ -932,7 +932,12 @@ before the change (run 43601192519) 13,260 tests ran and six
 were red, all six these. On its run after the change (run
 43607347206) none of them is named red. That run was ended
 by its 30-minute clock before the suite's end, so it is not
-a whole green run of the suite.
+a whole green run of the suite. The next one was: on the
+first tag to carry the change (run 43612998944, the same
+day) the suite ran whole, 13,294 tests with 167 skipped by
+name, and none was red, the suite's first green run on a
+hosted FreeBSD guest. Its clock is 45 minutes from
+2026-11-15.
 
 ### The job user's process ceiling
 

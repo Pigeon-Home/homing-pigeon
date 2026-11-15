@@ -1889,3 +1889,57 @@ commit being cut, the cut is made, whoever placed the tag, and the
 train turns to the tag build and its mirrors without a dispatch of
 its own. A tag of that name on another commit, or one whose commit
 cannot be read, still stops the cut and asks for a new version.
+
+### The FreeBSD suite's clock stood inside the guest's spread (15 Nov 2026)
+
+The freebsd workflow runs the whole suite as an ordinary user
+inside a FreeBSD VM on a hosted Linux runner, under the suite wall
+clock (`runner/tools/suite_wall_clock.py`), which gave it 30
+minutes. From the run that gave the workflow its first artifact to
+the run on the v3.16.26.13 tag there are fourteen runs:
+
+| Run | Ref | Day | The suite | Tests | Seconds | Reds |
+|---|---|---|---|---|---|---|
+| 43405943903 | v3.16.25.8 | 13 Nov | stopped at the clock | | | 2 named before the stop |
+| 43435133025 | v3.16.25.11 | 13 Nov | stopped at the clock | | | 2 named before the stop |
+| 43446927608 | v3.16.25.12 | 13 Nov | finished | 12,860 | 1,360 | 2 |
+| 43458908513 | v3.16.25.13 | 13 Nov | finished | 12,860 | 1,666 | 2 |
+| 43475003158 | v3.16.25.14 | 13 Nov | finished | 12,871 | 1,558 | 2 |
+| 43533603497 | v3.16.25.18 | 14 Nov | stopped at the clock | | | 2 named before the stop |
+| 43552224104 | v3.16.25.19 | 14 Nov | finished | 12,873 | 1,629 | 2 |
+| 43554937323 | v3.16.25.20 | 14 Nov | stopped at the clock | | | none named |
+| 43598846638 | v3.16.26.2 | 14 Nov | stopped at the clock | | | 5 named before the stop |
+| 43601192519 | v3.16.26.3 | 14 Nov | finished | 13,260 | 1,514 | 6 |
+| 43604255266 | v3.16.26.4 | 14 Nov | finished | 13,264 | 1,620 | 6 |
+| 43607347206 | main | 14 Nov | stopped at the clock | | | none named |
+| 43612998944 | v3.16.26.6 | 14 Nov | finished | 13,294 | 1,683 | none: the suite's first green run there |
+| 43658572312 | v3.16.26.13 | 15 Nov | stopped at the clock | | | none named |
+
+Seven finished, in 1,360 to 1,683 seconds, and seven were stopped
+at 1,800. The pace is the guest's, not the suite's: the same 12,860
+tests took 1,360 seconds on one tag and 1,666 on the next, with
+only the extension pins and the release carriers between the two.
+
+Nothing on a stopped run's page says hang. Each page carries the
+skip tally the suite had reached, and by it every stopped run had
+passed the resources tests, 77 percent of the suite by test count;
+six had passed the service-watch tests (84 percent), and two of
+those were in or past the queue transport's (88 percent and on).
+The test in flight is known for two of the seven: one of the queue
+transport's on the first run, and the soak's thirty cycles on the
+v3.16.26.2 run. They are two different tests, and neither is among
+the 25 slowest of the green run. At the pace of the run that had
+got least far, the whole suite needs about 2,340 seconds.
+
+The clock is 45 minutes from 15 Nov (`.github/workflows/freebsd.yml`;
+the number is pinned to this record in
+`runner/tests/test_build_config.py`): half again the wall the seven
+outran, and about 15 percent above the slowest pace seen. It stays
+a hang-catcher. A test that loops is still named within the hour.
+
+What a stopped page does not carry is the test in flight. The
+clock's report names it at the head of a thread dump longer than
+the forty lines of the suite log the step prints, so the name is in
+the artifact and not on the page. On the v3.16.26.2 run the test in
+flight held the process's error stream captured, and the report
+went with the capture. Neither is changed here.

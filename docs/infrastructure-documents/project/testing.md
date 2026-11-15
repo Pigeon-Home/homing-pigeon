@@ -65,24 +65,33 @@ The runner ships for Linux (x86_64, ARM64, the Pi light build),
 macOS (Apple Silicon and Intel) and Windows, and installs on
 FreeBSD from the sdist. Every platform that ships is tested on a
 real kernel of that platform; the table is what each one proves
-and how often. The FreeBSD leg is the one without a green run
-yet: its VM step has failed on every run so far, so its row is
-the proof it is built to give, not one given. A dedicated node
-running FreeBSD 14.5-RELEASE has since stood up in the
-project's own fleet (2026-11-10) to give the leg a real kernel
-of its own. The runner is installed on that node, and a first
-local proof job has passed there end to end through the
-installed config — a clock job, verdict `pass` — but the node
-is not polling a mailbox yet (its config's mailbox fields are
-still the installer's placeholders), and the leg's first green
-run — the suite and the roster on that kernel — is still owed.
+and how often. The FreeBSD leg was the last to give a green
+run: no run of it was green until 2026-11-14, when the suite ran
+whole and green there for the first time (run 43612998944, on
+the v3.16.26.6 tag: 13,294 tests as an ordinary user, 167
+skipped by name, none red, and the roster at 23 of 23 as root).
+It is a signal, not a gate: it runs after a release is out, and
+no release waits for it. Its wall clock is 45 minutes from
+2026-11-15. Under the 30 it had, seven of the fourteen runs from
+its first artifact (2026-11-13) to that day were stopped at the
+clock, each in the last third of the suite, while the seven
+that finished took 1,360 to 1,683 seconds: the clock stood
+inside the spread of the guest's own pace. A dedicated node
+running FreeBSD 14.5-RELEASE stands in the project's own fleet
+(stood up 2026-11-10) to give the platform a real kernel of its
+own. The runner is installed on that node, and a first local
+proof job has passed there end to end through the installed
+config — a clock job, verdict `pass` — but the node is not
+polling a mailbox yet (its config's mailbox fields are still
+the installer's placeholders), and a run of the suite and the
+roster on that kernel is still owed.
 
 | Platform | Suite | Switch proofs (the roster) | Built binaries | When |
 |---|---|---|---|---|
 | Linux (ubuntu-latest) | `test` job, in-process under the wall clock | `linux` leg (bwrap) and `root` leg (a second user): every control | smoked | suite and binaries on every push to main and every tag; the switch proofs on a push that touches `runner/**`, SECURITY.md, the hardening templates or `switch-proofs.yml`, and nightly, never on a tag |
 | Windows (windows-latest) | `build-windows` job, the suite sharded by the duration table (`runner/tools/windows_durations.py`) into balanced shards | `windows` leg: the platform-neutral controls | smoked | as Linux |
 | macOS (macos-15) | `test-macos` job, the suite run 3 ways in parallel (`--jobs 3`) | `macos` leg and `macos-root` leg (a second user): the POSIX controls, the drop included | smoked (both macOS builds) | as Linux |
-| FreeBSD 15 (a VM inside a Linux runner) | as an ordinary user, under the wall clock | as root with a second user: the POSIX controls | not built (sdist install) | weekly, on dispatch, and when `freebsd.yml` changes; no green run yet |
+| FreeBSD 15 (a VM inside a Linux runner) | as an ordinary user, under a 45-minute wall clock | as root with a second user: the POSIX controls | not built (sdist install) | weekly, on dispatch, and after a tag whose tree changed under `runner/`; first green run 2026-11-14 |
 | FreeBSD 14.5 and 15.0, as root (VMs inside Linux runners, `freebsd-confinement.yml`) | the jail backend's own module, live classes included: RACCT enabled in two guests, off in a third | — | not built | weekly and on dispatch; first green run 2026-11-14 |
 
 A test run is not an install. The suite drives the installer and
