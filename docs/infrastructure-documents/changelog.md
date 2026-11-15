@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.24 - 2026-11-15
+
+- docs: the Pigeon Home privacy policy page for the hosted sign-in service lands -- the public privacy policy page the hosted sign-in verification needs
+
 ## 3.16.26.23 - 2026-11-15
 
 - macOS: the proof workflow measures what a job's programs ask the session's services for -- a new step runs some forty likely job programs under the backend profile with its Mach rule replaced (all services, none, then log-refused rounds until nothing new is asked), prints what works and what a job reaches under each list, never adds session service names, and takes a dispatch input list to try; the support matrix's proof row says so
