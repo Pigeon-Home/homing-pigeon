@@ -59,10 +59,11 @@ test_doc_figure_slots, test_doc_default_divergences,
 defaults_registry, test_design_docs,
 test_doc_link_resolution, test_doc_feature_tiers,
 test_security_md_claims, test_ietf_draft_conformance,
-test_doc_gmail_discipline): 970 tests, 2 failures, both
-naming the new file and no other:
+and the provider-name discipline module): 970 tests,
+2 failures, both naming the new file and no other:
 
-- `test_doc_gmail_discipline.NoProviderNameInLiveDocsTest.
+- The provider-name guard's
+  `NoProviderNameInLiveDocsTest.
   test_no_live_doc_names_the_provider`: 5 lines of
   cs_canoe.md carry the mail provider's name (the
   sign-in line, the first flow's account line, the
@@ -117,9 +118,37 @@ notes out of the reader drawers into a seats drawer --
 also clears both guards but re-shelves a design page
 to cure a wording fault, and is not recommended.
 
-**Status.** Suppositions recorded above; the fix lane
-applies the remedy and records its conclusions here.
-Q195 closes on a second seat's re-test under rule 8.
+**Conclusions, recorded 2026-11-14 by the fix lane
+against the suppositions above:**
+
+- Q195-S1 stands, with one correction the first
+  deciding run caught. The remedy's rewrite of
+  cs_canoe.md cleared both failures; the first full
+  docs-job run on the fixed tree read 970 tests, 1
+  failure -- the provider-name guard now naming this
+  desk entry, whose Context as first landed named the
+  guard's module, and the module's own name carries
+  the banned term. The entry now names it the
+  provider-name guard, as the project's other records
+  do. The remedy itself touched no file but
+  cs_canoe.md; the correction touched only this
+  entry's own two lines.
+- Q195-S2 stands. The deciding run, repeated whole
+  after that correction: the full docs job as
+  build.yml defines it, 970 tests, OK.
+- Q195-S3 stands. The landed diff touches only the
+  flagged lines and the Process section; every design
+  statement keeps its meaning. Whether the notes'
+  substance matches the design's latest shape is the
+  design's own reconciliation, not this lane's; this
+  fix changed wording only.
+
+**Status.** The remedy is landed (the cs_canoe
+wording fix that carries this record). The head's
+docs job is green on the fix lane's first-hand run.
+Q195 stays OPEN for a second seat's re-test under
+rule 8; it blocks nothing -- the next cut's head is
+unblocked on this evidence.
 
 ---
 
