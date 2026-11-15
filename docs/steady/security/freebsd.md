@@ -439,7 +439,12 @@ and the runner's own cores were what they had been after
 every job. The first of the two runs read red on three older
 tests that had not expected the cores in a job's notes; the
 second read green and left nothing on any guest. A host with
-one core has not been run: the hosted guests have four.
+one core has not been run: the hosted guests have four. A
+runner kept to two of a guest's four cores was run there next
+(run 43675959619). A job in a jail that runner left unpinned
+took all four cores for the asking; the same runner's jobs
+through the backend were held to its two, and under the
+default to one of them.
 
 ## The mode a FreeBSD config states
 

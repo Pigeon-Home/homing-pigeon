@@ -1181,3 +1181,20 @@ runner kept to some of its host's cores:
     2 cores`.
 54. Under the default that runner's job has one core, the
     higher of the two, and is refused the rest.
+
+Conclusions, from the hosted run of 2026-11-15 (run
+43675959619, the same three guests). All four held on all
+three, on the first run.
+
+| What was asked | What happened |
+|---|---|
+| A process started under `cpuset(1)` on cores 0 and 1 of a guest's four | Read cores 0 and 1 as its own, and all four as the cores it stood under |
+| A job in a jail that process made and did not pin | Started on cores 0 and 1, asked for all four, and had them |
+| The same runner's job through the backend, with `job_cpus` at 64 | Started on cores 0 and 1, was refused all four, and had 0 and 1 afterwards. Its record named `cpuset_cpu_limit`, and its detail read `job pinned to cpus 0,1: the runner's own 2 cores` |
+| That runner's job under the default | Had core 1, and was refused the rest |
+
+The second row is the kernel's own answer, and the reason for
+the rule: a jail is no narrower than the cores its maker
+stands under. 331 tests as root in each guest, and no jail
+mount, jail, skeleton directory, rctl rule or jobs account
+afterwards.
