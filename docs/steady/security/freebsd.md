@@ -350,6 +350,18 @@ report's tests, run as an ordinary user, read clean, while
 the report itself warned that user that creating a jail
 needs root.
 
+The job user's process ceiling was read from inside a job on
+the same three guests (2026-11-15, run 43656341793). Under a
+ceiling of 24 a job that went in as a job user held 24
+processes and was refused the next fork, with RACCT enabled
+and without it. It could not raise the limit. A second job
+of the same account, in a jail of its own, was refused nine
+sooner while the first held nine. A job with no job user
+started forty children with no limit set. On the two guests
+with RACCT the lower of the jail's rule and the account's
+ceiling was the one a job met. An account the installer made
+held exactly its number.
+
 ## The mode a FreeBSD config states
 
 A fresh FreeBSD install asks the machine before it writes

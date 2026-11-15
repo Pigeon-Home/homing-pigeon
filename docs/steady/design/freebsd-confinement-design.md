@@ -969,3 +969,33 @@ of the ceiling:
     account goes with it, and each guest ends with no jail,
     no mount, no skeleton directory, no rule and no jobs
     account.
+
+Conclusions, from the ceiling's two hosted runs (run
+43655777234 of 2026-11-14 and run 43656341793 of 2026-11-15,
+FreeBSD 14.5-RELEASE and 15.0-RELEASE with RACCT enabled, and
+14.5-RELEASE without). Seven of the eight held on all three
+guests on the first run. The eighth held on the second, after
+a change the first run asked for.
+
+| What was asked | What happened |
+|---|---|
+| A job as a job user, under a ceiling of 24 | Read 24 as its soft and its hard limit, started twenty-three children, and was refused the next fork with EAGAIN — on the guest without RACCT too, where the record named no rctl rule |
+| The same job, raising its limit | Refused three ways. Below the ceiling it lowered its limit to 10 and put it back |
+| A second job, with a first holding nine processes in another jail | Started fourteen children, not twenty-three: one count across the two jails |
+| A job with no job user | Started forty children; no limit had been set on it |
+| The jail's rule beside the account's ceiling, on the two guests with RACCT | Under a rule of 12 the job stopped below 12. Under a rule of 48 it stopped at the account's 24 |
+| An account the installer made, held to 24 | Held exactly 24. The installer's trial job read 256 back, and the installer's lines stated it |
+| A config that cannot have its ceiling | The startup probe refused it by name, both ways. At `kern.maxprocperuid` exactly, the door set the limit |
+| What was left | Nothing, on the second run |
+
+Supposition 40 was the one the first run did not bear out as
+written. With the first of the two jobs ended and its jail
+removed, the account still held one process: that job's own
+first process, ended and not yet collected, because the test
+had ended the job without collecting it as a runner does. An
+ended process is still its user's until its parent collects
+it, and those are the processes this ceiling counts. The
+release collects the job's first process itself now, once the
+jail is gone, and the second run read all eight true: 284
+tests as root in each guest, and no jail mount, jail,
+skeleton directory, rctl rule or jobs account afterwards.
