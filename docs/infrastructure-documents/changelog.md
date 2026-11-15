@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.21 - 2026-11-15
+
+- Fix: Q198 -- the macOS proof workflow's clipboard and Apple-event probes read their pipeline's real exit status; a pin holds the PIPESTATUS shape
+- Setup: CS_canoe option 3 -- the Homing Pigeon client secret is baked in, option 3 opens the browser with no secret prompt
+- macOS: the confinement launcher is the system shell -- a release's binaries engage, the memory ceiling is one a job meets, and a fresh install asks the probe; the launcher's two hosted runs on the record
+- Docs: Q198 second seat's re-test -- R1 to R5 stand; Q198 closed under rule 8
+
 ## 3.16.26.20 - 2026-11-15
 
 - Setup: CS_canoe option 3 — browser sign-in plus an autogen shared secret; the wizard asks once, hidden, for the OAuth client secret the exchange requires
