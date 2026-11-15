@@ -240,7 +240,7 @@ record:
 job pinned to cpus 1,2,3: 3 of the runner's 4 cores
 ```
 
-Four things to know about it:
+Five things to know about it:
 
 - **`job_cpus` is a number of cores.** It is the most cores a
   job may run on, cut from the top of the runner's own. Write
@@ -249,6 +249,13 @@ Four things to know about it:
   number at or above the cores the runner has pins nothing,
   and the record names no limit. A number larger than any
   host you run is the setting that means "all of them".
+- **A runner you keep to some cores keeps its jobs to them.**
+  Start the runner under `cpuset(1)` on some of the host's
+  cores and its jobs' jails are pinned to those cores even
+  when none is held back, and the record names the limit. A
+  jail stands under all the host's cores otherwise, and a job
+  could move to the others. A job never runs on a core its
+  runner may not.
 - **Jobs that run at once share the set.** Every job of the
   runner is pinned to the same cores; the limit is not per
   job, and it is not a share of time. Within its cores a job

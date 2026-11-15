@@ -206,9 +206,13 @@ class CoreListTest(unittest.TestCase):
         # grew runner/tools/regression_guard.py by 7 lines,
         # and again that day after a job's jail took to being
         # pinned to a set of cores grew
-        # runner/guard/freebsd_confine.py by 191 lines.
-        self.assertEqual(68246, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(61864, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner/guard/freebsd_confine.py by 191 lines, and
+        # by 41 more when a runner kept to some of its cores
+        # took to pinning its jobs' jails to its own, over a
+        # tree that also carries the setup wizard's third
+        # sign-in choice (runner/ops/setup.py by 187 lines).
+        self.assertEqual(68474, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(62072, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

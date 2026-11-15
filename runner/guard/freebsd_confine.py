@@ -74,7 +74,11 @@ The controls, and what each one is:
   it on every FreeBSD, so this limit needs no RACCT and no
   reboot. Where no core is held back -- a runner with one core
   to run on, a number at or above the cores the runner has --
-  nothing is pinned and the control is not named.
+  nothing is pinned and the control is not named, unless the
+  runner is itself kept to some of the cores it stands under.
+  A jail stands under all of them, so there the jail is pinned
+  to the runner's own cores, and a job cannot move to the
+  others.
 - spawn_resource_limits. The job's command runs under limits(1)
   with the virtual-memory and data-size limits both set to the
   per-process ceiling (512 MiB unless the config says
@@ -724,15 +728,26 @@ def _runner_cpus(host):
     return _cpus_in(out) if rc == 0 else None
 
 
+def _root_cpus(host):
+    """The cores of the root set this runner stands under, or
+    None when the host will not say. A jail the runner makes
+    stands under those cores and not under the runner's own:
+    unless it is pinned, a process inside it may move to any
+    of them."""
+    rc, out, _err = _quiet(
+        host, [CPUSET_BIN, "-g", "-r", "-p", str(host.pid())])
+    return _cpus_in(out) if rc == 0 else None
+
+
 def job_cpu_plan(host, st):
     """The cores a job's jail is pinned to on this host.
 
     Returns (cpus, total, why). `cpus` is the cores the jail is
-    pinned to, lowest first, or None when no core is held back
-    from a job. `total` is how many cores the runner itself may
-    run on, or None when the host will not say. `why` says, in
-    the report's words, why no core is held back; None when
-    one is.
+    pinned to, lowest first, or None when it is not pinned.
+    `total` is how many cores the runner itself may run on, or
+    None when the host will not say. `why` says, in the
+    report's words, why no core is held back from a job; None
+    when one is.
 
     The set is cut from the runner's own: all but one of its
     cores unless the config names a number, and always the
@@ -740,16 +755,21 @@ def job_cpu_plan(host, st):
     job that spins on every core it has still leaves that one
     to the runner that must end it, and to the host.
 
-    A number at or above the cores the runner has asks for
-    nothing the host does not already hold -- the job cannot
-    run on more cores than there are -- so nothing is pinned
-    and no control is named. The default adapts the same way
-    on a runner with one core, and where the host will not say
-    which cores the runner has. A number the operator wrote
-    must engage or refuse: it raises RuntimeError where the
-    cores cannot be read. A set that is planned and cannot be
-    pinned refuses the job, or the start, when the jail is
-    built (_pin_cpus).
+    A number at or above the cores the runner has holds no
+    core back, and neither does the default on a runner with
+    one core. Then the jail is pinned only where it has to be:
+    on a runner that is itself kept to some of the cores it
+    stands under. A jail stands under all of those, so a job
+    in an unpinned one starts on the runner's cores and may
+    move to the rest; pinned to the runner's own cores, it may
+    not. Where the runner may run on every core it stands
+    under, nothing is pinned and no control is named.
+
+    The default adapts where the host will not say which cores
+    the runner has: nothing is pinned. A number the operator
+    wrote must engage or refuse: it raises RuntimeError there.
+    A set that is planned and cannot be pinned refuses the
+    job, or the start, when the jail is built (_pin_cpus).
     """
     named = st["job_cpus"]
     setting = "security.confinement.freebsd.job_cpus"
@@ -768,14 +788,18 @@ def job_cpu_plan(host, st):
             "(%s -g)" % CPUSET_BIN)
     total = len(cpus)
     want = max(1, total - 1) if named is None else named
-    if want >= total:
-        if named is None:
-            return None, total, "this runner has one core to run on"
-        return None, total, (
-            "%s (%d) is not below the %d core%s this runner may "
-            "run on" % (setting, named, total,
-                        "" if total == 1 else "s"))
-    return cpus[-want:], total, None
+    if want < total:
+        return cpus[-want:], total, None
+    if named is None:
+        why = "this runner has one core to run on"
+    else:
+        why = ("%s (%d) is not below the %d core%s this runner may "
+               "run on" % (setting, named, total,
+                           "" if total == 1 else "s"))
+    under = _root_cpus(host)
+    if under is not None and set(under) - set(cpus):
+        return cpus, total, why
+    return None, total, why
 
 
 def _cpu_list(cpus):
@@ -1127,13 +1151,14 @@ def _engage_loopback(host, name, keep_superuser):
     return None
 
 
-def _pin_cpus(host, name, cpus):
+def _pin_cpus(host, name, cpus, held_back=True):
     """Pin the jail to its cores; None or the problem.
 
     cpuset(1) sets the mask of the jail's own cpuset, the root
     of every set a process inside it can ever hold. It is
     given the jail by its id, read back from the jail just
-    made."""
+    made. Where the pin holds a core back from the job, the
+    problem names the setting that starts a job without it."""
     rc, out, err = _quiet(host, [JLS_BIN, "-j", name, "jid"])
     jid = out.strip()
     if rc != 0 or not jid.isdigit():
@@ -1143,12 +1168,15 @@ def _pin_cpus(host, name, cpus):
     rc, _out, err = _quiet(
         host, [CPUSET_BIN, "-l", listed, "-j", jid])
     if rc != 0:
-        return ("the jail could not be pinned to cpus %s (cpuset "
-                "-l %s -j %s, exit %d): %s. "
-                "security.confinement.freebsd.job_cpus at the "
-                "number of cores this runner has, or above it, "
-                "starts a job with no core held back"
-                % (listed, listed, jid, rc, err.strip()[:200]))
+        problem = ("the jail could not be pinned to cpus %s (cpuset "
+                   "-l %s -j %s, exit %d): %s"
+                   % (listed, listed, jid, rc, err.strip()[:200]))
+        if held_back:
+            problem += (". security.confinement.freebsd.job_cpus at "
+                        "the number of cores this runner has, or "
+                        "above it, starts a job with no core held "
+                        "back")
+        return problem
     return None
 
 
@@ -1163,7 +1191,7 @@ def _apply_rctl(host, name, st):
 
 
 def _build_jail(host, st, name, workdir, user, rctl, prefixes=(),
-                cpus=None):
+                cpus=None, held_back=True):
     """Skeleton, mounts, jail, cores, loopback and rules for
     one jail.
 
@@ -1188,7 +1216,7 @@ def _build_jail(host, st, name, workdir, user, rctl, prefixes=(),
                 host, name, root, st["loopback"],
                 superuser=(user is not None or st["loopback"]))
         if problem is None and cpus:
-            problem = _pin_cpus(host, name, cpus)
+            problem = _pin_cpus(host, name, cpus, held_back)
         if problem is None and st["loopback"]:
             problem = _engage_loopback(
                 host, name, keep_superuser=user is not None)
@@ -1235,7 +1263,8 @@ def _trial(host, st, timeout=15, user=None):
     applied = []
     try:
         base, _root, applied = _build_jail(
-            host, st, name, None, None, rctl, cpus=cpus)
+            host, st, name, None, None, rctl, cpus=cpus,
+            held_back=cores[2] is None)
     except RuntimeError as e:
         return str(e)
     except (OSError, subprocess.SubprocessError) as e:
@@ -1416,11 +1445,18 @@ def posture_lines(cfg=None, host=None):
             "(limits -u at the jail door; no RACCT needed)"
             % (user, job_user_ceiling(host, st, user))))
     cpus, total, why = cores
-    if cpus:
+    if cpus and why is None:
         lines.append((
             "OK", "a job's jail is pinned to cpus %s: %d of the %d "
             "cores this runner may run on (cpuset on the jail; no "
             "RACCT needed)" % (_cpu_list(cpus), len(cpus), total)))
+    elif cpus:
+        lines.append((
+            "OK", "%s, so no core is held back from a job; its jail "
+            "is pinned to cpus %s, the runner's own, because this "
+            "runner may not run on every core it stands under "
+            "(cpuset on the jail; no RACCT needed)"
+            % (why, _cpu_list(cpus))))
     else:
         lines.append((
             "OK", "%s, so no core is held back from a job" % why))
@@ -1597,7 +1633,7 @@ def _spawn(argv, cwd=None, env=None, user=None, memory_bytes=None,
     if problem is not None:
         raise RuntimeError(problem)
     controls, rctl, cores = _plan(host, st, user)
-    cpus, total, _why = cores
+    cpus, total, why = cores
     ceiling = job_user_ceiling(host, st, user)
     notes = []
     inner_argv, prefixes = translate_argv(
@@ -1605,12 +1641,17 @@ def _spawn(argv, cwd=None, env=None, user=None, memory_bytes=None,
     if ceiling is not None:
         notes.append("job user %s held to %d processes"
                      % (user, ceiling))
-    if cpus:
+    if cpus and why is None:
         notes.append("job pinned to cpus %s: %d of the runner's %d "
                      "cores" % (_cpu_list(cpus), len(cpus), total))
+    elif cpus:
+        notes.append("job pinned to cpus %s: the runner's own %d "
+                     "core%s" % (_cpu_list(cpus), total,
+                                 "" if total == 1 else "s"))
     name = jail_name("job", host.pid())
     base, _root, applied = _build_jail(
-        host, st, name, cwd, user, rctl, prefixes, cpus=cpus)
+        host, st, name, cwd, user, rctl, prefixes, cpus=cpus,
+        held_back=why is None)
     reaper = None
     try:
         reaper = _start_reaper(host, name)

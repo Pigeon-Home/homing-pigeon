@@ -306,10 +306,23 @@ cannot be pinned refuses too — the job, or the start when it
 is the probe's jail — and the refusal names the setting that
 starts a job with no core held back.
 
+One runner's jobs are pinned though no core is held back from
+them. A jail stands under the cores its maker stands under,
+not under the maker's own. A runner that its operator has
+kept to some of the host's cores, with `cpuset(1)` or by its
+service, makes jails that may run on all of them: a job
+inside starts on the runner's cores and may move to the rest
+for the asking. So where no core is held back and the runner
+may not run on every core it stands under, the job's jail is
+pinned to the runner's own cores, and the record names the
+limit. A job never runs on a core its runner may not.
+
 The record names the limit where it was applied:
 `cpuset_cpu_limit`, after the jail's rctl rules and before
 the spawn's limits. The job's audit record carries the cores
 in its detail: `job pinned to cpus 1,2,3: 3 of the runner's 4
+cores`, or, for the jobs of a runner kept to two cores with
+none held back, `job pinned to cpus 0,1: the runner's own 2
 cores`.
 
 ## Network
@@ -596,7 +609,7 @@ runner's jobs are never touched.
 | Set-user-ID programs | Not honoured (no new privileges) | Not honoured (`nosuid` mounts) |
 | Memory ceiling, per process | None | 512 MiB, not the job's to raise |
 | Ceilings on the whole job | None | The job user's processes, on every host; each jail's processes and address space, where RACCT is enabled |
-| Cores a job runs on | Every core the runner may run on | All but one of them, the lowest never a job's, on a runner with more than one; not the job's to widen |
+| Cores a job runs on | Not limited by the sandbox | All but one of the runner's, the lowest never a job's, on a runner with more than one; never a core the runner may not run on; not the job's to widen |
 | Operator binds, work mount | Yes | Yes, the same keys |
 | Interpreter outside the trees | Its prefix, read-only, recorded | The same rule, the same record |
 | Runner gone | The sandbox's command is killed | The jail is removed: every process ends |
@@ -653,7 +666,8 @@ root, so a job with no job user is root's uid too.
   cores a job may run flat out until its timeout. Jobs that
   run at once are pinned to the same set and share it. A
   runner with one core to run on holds none back, and neither
-  does one whose host will not say which cores it has.
+  does one whose host will not say which cores it has; on
+  that last host a job's jail is not pinned at all.
 - The device ruleset is the host's: the backend asks for the
   jail ruleset and the probe refuses a host that has not
   loaded it, but it does not define one.
@@ -1149,3 +1163,21 @@ rule or jobs account afterwards.
 Not run on a kernel: a host with one core, a host whose
 `cpuset` will not say which cores the runner has, and a jail
 that cannot be pinned. Those three are the fake host's.
+
+Suppositions, recorded 2026-11-15 before the hosted run of a
+runner kept to some of its host's cores:
+
+51. A process started under `cpuset(1)` on two of a guest's
+    four cores reads those two as its own, and all four as
+    the cores of the root set it stands under.
+52. A jail that process makes and does not pin stands under
+    all four. A job inside starts on the runner's two cores,
+    asks for all four, and has them.
+53. The same runner's job through the backend, with
+    `job_cpus` at 64 so that no core is held back, starts on
+    the runner's two cores, is refused all four, and has the
+    two afterwards. Its record names `cpuset_cpu_limit` and
+    its detail reads `job pinned to cpus 0,1: the runner's own
+    2 cores`.
+54. Under the default that runner's job has one core, the
+    higher of the two, and is refused the rest.
