@@ -290,6 +290,26 @@ REGISTERED = {
         "macOS host (the CI macos-15 and macos-15-intel legs), "
         "where a real Seatbelt profile can engage; everywhere "
         "else the stub and the injection seams are the subject",
+    "no bash on this host: the control needs the shell that "
+    "takes functions from its environment":
+        "test_macos_confine's control for the launcher shim's "
+        "privileged mode shows bash calling a function from its "
+        "environment in the builtin's place; it runs wherever "
+        "bash is installed -- the ubuntu and macOS legs -- and "
+        "a host with no bash has no shell that takes one",
+    "changing to the job user is root's: run in the "
+    "macos-confinement workflow's root step":
+        "test_macos_confine's live test of a job started as the "
+        "job user needs a spawn that may change users; it runs "
+        "in the macos-confinement workflow's root step on both "
+        "hosted Macs, and the same class's refusal for an "
+        "ordinary runner is exercised in the ordinary-user step",
+    "root may start a job as any user: run in the "
+    "macos-confinement workflow's ordinary-user step":
+        "test_macos_confine's live refusal of a job user handed "
+        "to a runner that is not root runs as the ordinary user "
+        "the macOS legs run as; as root the change succeeds and "
+        "the root step's own test is the subject",
     "the profile names POSIX real paths; Windows realpath "
     "yields a drive path and symlinks need a privilege":
         "test_macos_confine's sandbox-argv field tests name "

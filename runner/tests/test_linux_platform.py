@@ -289,9 +289,16 @@ class PostureLinuxTest(unittest.TestCase):
         warn, _, detail = check("linux", None)
         self.assertEqual(warn, "WARN")
         self.assertIn("not installed", detail)
-        other, _, detail = check("darwin", "/usr/bin/bwrap")
+        other, _, detail = check("win32", "/usr/bin/bwrap")
         self.assertEqual(other, "OK")
         self.assertIn("not applicable", detail)
+        # A Mac asks a backend of its own, whatever bwrap is on
+        # the path; on a host that is not one, that backend is
+        # a stub and says it cannot engage.
+        with mock.patch("runner.ops.posture._macos_confinement_lines",
+                        return_value=[("OK", "macOS backend: m")]):
+            mac, _, detail = check("darwin", "/usr/bin/bwrap")
+        self.assertEqual((mac, detail), ("OK", "macOS backend: m"))
 
     def test_unit_hardening_directives(self):
         with tempfile.TemporaryDirectory() as d:

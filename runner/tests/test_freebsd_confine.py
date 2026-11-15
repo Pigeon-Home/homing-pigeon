@@ -558,11 +558,13 @@ class SeedTest(unittest.TestCase):
         self.assertEqual(asked, (None, _PASS_LINES))
 
     def test_other_platforms_are_never_asked(self):
+        # Linux has no map to ask about and Windows states its
+        # own; macOS asks a backend of its own, whose seed is
+        # tested beside it (test_macos_confine).
         probe = _Probe()
         cfg = {"security": {"modes": {"confinement": "enforce"}}}
         for platform, want in (
                 ("linux", {}),
-                ("darwin", {"confinement": "audit"}),
                 ("win32", {"confinement": "audit",
                            "job_user": "audit"})):
             modes, asked = INS.fresh_platform_modes(cfg, platform,
@@ -570,6 +572,20 @@ class SeedTest(unittest.TestCase):
             self.assertEqual(modes, want, platform)
             self.assertIsNone(asked, platform)
         self.assertEqual(probe.asked, [])
+
+    def test_macos_s_answer_never_names_the_jail_or_its_job_user(self):
+        probe = _Probe()
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        modes, asked = INS.fresh_platform_modes(cfg, "darwin", probe)
+        self.assertEqual(modes, {})
+        self.assertEqual(asked.asked, INS.MACOS_PROBE_ASKED)
+        self.assertNotEqual(asked.asked, INS.FREEBSD_PROBE_ASKED)
+        lines = INS.seed_kept_lines(asked, "/x/config.json")
+        self.assertNotIn("jail", lines[0])
+        self.assertEqual(
+            INS.fresh_job_user(cfg, asked, "darwin",
+                               trial=lambda c, u: (None, ())),
+            (None, None))
 
     # --- the installer's seed ----------------------------------
 
@@ -4834,9 +4850,19 @@ class PostureTest(_FakeHostCase):
             P._check_confinement_backend(results)
         self.assertEqual(results[0][0], "WARN")
         self.assertIn("module gone", results[0][2])
-        # Elsewhere the backend is not asked.
+        # Elsewhere the jail backend is not asked: a Mac asks
+        # the backend of its own, and Windows has no line of
+        # this kind.
         results = []
         with mock.patch.object(P.sys, "platform", "darwin"), \
+                mock.patch.object(P, "_freebsd_confinement_lines",
+                                  _boom), \
+                mock.patch.object(P, "_macos_confinement_lines",
+                                  lambda cfg: [("OK", "macOS: m")]):
+            P._check_confinement_backend(results, cfg)
+        self.assertEqual(results, [("OK", "confinement", "macOS: m")])
+        results = []
+        with mock.patch.object(P.sys, "platform", "win32"), \
                 mock.patch.object(P, "_freebsd_confinement_lines",
                                   _boom):
             P._check_confinement_backend(results, cfg)

@@ -54,8 +54,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 68,784 lines,
-62,341 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 69,280 lines,
+62,791 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -555,6 +555,24 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # predated and the 3.16.26.18 figures refresh left
 # unrecorded (Q197); the whole set re-measured
 # over the current tree.
+# Re-measured again on 2026-11-15 after the macOS
+# backend's launcher became the system shell (so a
+# runner frozen into one file engages), its memory
+# ceiling the requested distance above the floor the
+# kernel holds a data-size limit to, set soft and
+# hard, its probe's trial a shell program that reads
+# the boundary from inside, and its settings and
+# posture lines its own, growing
+# runner/guard/macos_confine.py by 341 lines and
+# runner/guard/sandbox.py by 7; and after the
+# installer and the setup wizard took to asking that
+# backend's probe on the Mac they seed, growing
+# runner/ops/install.py by 121 lines,
+# runner/ops/posture.py by 19,
+# runner/ops/remediation_ops.py by 7 and
+# runner/ops/setup.py by 1; the whole set
+# re-measured over the current tree
+# (the macOS launcher landing).
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 137 since
@@ -568,19 +586,19 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 140
 AS_ASSEMBLED_ZIP_BYTES = 888518
-AS_ASSEMBLED_LINES = 68784
-AS_ASSEMBLED_NONBLANK_LINES = 62341
+AS_ASSEMBLED_LINES = 69280
+AS_ASSEMBLED_NONBLANK_LINES = 62791
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 23780,
+    "runner/ops": 23928,
     "runner/tools": 10063,
     "runner/wire": 9047,
     "runner/runner.py": 7205,
     "runner/oracle": 5063,
     "runner/transport_extensions": 2775,
-    "runner/guard": 7034,
+    "runner/guard": 7382,
     "runner/cloud": 2080,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,

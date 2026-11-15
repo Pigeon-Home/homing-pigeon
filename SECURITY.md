@@ -633,11 +633,42 @@ does not. Where it passes the install also makes an account
 for the jobs alone, `pigeon-jobs`, and names it as the job
 user, after a trial job as that account has run inside a
 jail on that machine; `nobody` stands in where the account
-cannot be had. A
-platform with no backend (macOS today) refuses to start at
-`enforce`. The platform pages are
-`docs/steady/security/windows.md` and
-`docs/steady/security/freebsd.md`; the guarantee each
+cannot be had.
+
+On macOS the backend is a Seatbelt profile made for each
+job and applied by `sandbox-exec`: the system trees and the
+job interpreter's own readable, the job's work directory the
+only tree that takes a write, and no network at all. A
+launcher — the system shell — then sets a ceiling on each
+job process's address map, 512 MiB above the size a bare
+process starts at on that Mac, soft and hard, so the job
+cannot raise it. The audit record names
+`macos: seatbelt_profile + no_network + spawn_resource_limits`.
+It needs no root, and a release's macOS binaries engage it
+as a runner started from source does. It does not keep a
+job from the session's services — the clipboard can be read
+from inside a job — and it holds no ceiling on a job as a
+whole. `extra_ro_binds`, `work_mount` and `extra_flags` name
+mounts and bwrap arguments and are not read on macOS. Its
+one setting is a block of its own, checked on every
+platform:
+
+```json
+"confinement": {
+  "macos": {
+    "process_memory_bytes": 536870912
+  }
+}
+```
+
+A fresh macOS install asks this backend's probe before it
+writes its config: the mode stays at `enforce` where the
+probe passes, and is stated at `audit`, with the reason
+printed, where it does not. A platform whose backend cannot
+engage refuses to start at `enforce`. The platform pages are
+`docs/steady/security/windows.md`,
+`docs/steady/security/freebsd.md` and
+`docs/steady/security/macos.md`; the guarantee each
 platform carries stands in `docs/support-matrix.md`.
 
 ### Running jobs as another user

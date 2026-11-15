@@ -20,14 +20,20 @@ control the backend does not apply (there is no jail, no
 namespace and no App Sandbox entitlement in this backend),
 and every failure lands in the refuse direction.
 """
+import io
+import json
 import os
 import random
+import shutil
+import stat
 import string
 import subprocess
 import sys
 import tempfile
+import time
 import types
 import unittest
+from contextlib import redirect_stdout
 from unittest import mock
 
 _REPO = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -37,8 +43,10 @@ if _REPO not in sys.path:
 
 import runner.runner as rr
 from runner.guard import macos_confine as MC
+from runner.guard import sandbox as SB
 from runner.ops import remediation_ops as REM
 from runner.ops import install as INS
+from runner.ops import posture as POST
 from runner.ops import setup as SU
 
 
@@ -57,7 +65,7 @@ def _sec(mode, sink):
     return sec
 
 
-def _backend(problem=None, apply_error=None):
+def _backend(problem=None, apply_error=None, notes=()):
     backend = types.SimpleNamespace()
 
     def _probe(cfg=None, timeout=15):
@@ -71,17 +79,18 @@ def _backend(problem=None, apply_error=None):
     backend.STATUS_CONFINEMENT = MC.STATUS_CONFINEMENT
     backend.spawned = []
 
-    def _spawn(argv, cwd=None, env=None, user=None):
+    def _spawn(argv, cwd=None, env=None, user=None, cfg=None):
         if apply_error is not None:
             raise apply_error
         proc = types.SimpleNamespace(
             pid=31337, returncode=None,
             confinement_status=backend.STATUS_CONFINEMENT,
+            confinement_notes=list(notes),
             closed=False)
         proc.close = lambda: setattr(proc, "closed", True)
         backend.spawned.append(
             {"argv": argv, "cwd": cwd, "env": env, "user": user,
-             "proc": proc})
+             "cfg": cfg, "proc": proc})
         return proc
 
     backend.spawn_confined_process = _spawn
@@ -403,457 +412,608 @@ class InterpreterHomeAliasTest(unittest.TestCase):
 
 
 class ShimFieldTest(unittest.TestCase):
-    """build_shim_argv, one field at a time."""
+    """build_shim_argv, one field at a time, and the shim's text."""
 
     def test_the_argv_shape_is_fixed(self):
         out = MC.build_shim_argv(["/bin/echo", "hi"])
-        self.assertEqual(out[0], sys.executable)
-        self.assertEqual(out[1], "-c")
-        self.assertEqual(out[2], MC.LIMIT_SHIM_SOURCE)
-        self.assertEqual(out[5:], ["/bin/echo", "hi"])
+        self.assertEqual(
+            out, ["/bin/sh", "-p", "-c", MC.LIMIT_SHIM_TEXT,
+                  "hp-shim", str(512 * 1024), "/bin/echo", "hi"])
+
+    def test_the_shim_runs_on_the_system_shell_and_no_interpreter(self):
+        # A runner frozen into one file has no interpreter to
+        # lend a shim: the frozen runner's own trial, on both
+        # hosted Macs, died loading its Python library under
+        # the profile (the macos-confinement run of
+        # 2026-11-15). The shim is the system's own shell.
+        out = MC.build_shim_argv(["/bin/true"])
+        self.assertEqual(MC.SHELL_BIN, "/bin/sh")
+        self.assertNotIn(sys.executable, out)
+        self.assertNotIn("import ", MC.LIMIT_SHIM_TEXT)
+
+    def test_the_shell_takes_nothing_from_the_environment(self):
+        # -p: no function and no option list from the
+        # environment, which is the submitter's.
+        self.assertEqual(MC.SHELL_PRIVILEGED, "-p")
+        self.assertEqual(MC.build_shim_argv(["/bin/true"])[1], "-p")
 
     def test_memory_field_defaults_to_the_named_ceiling(self):
         out = MC.build_shim_argv(["/bin/true"])
-        self.assertEqual(out[3], str(512 * 1024 * 1024))
+        self.assertEqual(out[5], str(512 * 1024))
         self.assertEqual(MC.DEFAULT_PROCESS_MEMORY_BYTES,
                          512 * 1024 * 1024)
 
-    def test_memory_field_carries_the_given_ceiling(self):
-        out = MC.build_shim_argv(["/bin/true"], memory_bytes=1024)
-        self.assertEqual(out[3], "1024")
+    def test_memory_field_is_handed_over_in_kibibytes_rounded_up(self):
+        for given, want in ((1, "1"), (1024, "1"), (1025, "2"),
+                            (2048, "2"), (3 * 1024 ** 3, str(3 * 1024 ** 2))):
+            out = MC.build_shim_argv(["/bin/true"], memory_bytes=given)
+            self.assertEqual(out[5], want, given)
+            self.assertGreaterEqual(int(out[5]) * 1024, given)
 
     def test_memory_field_rejects_a_non_ceiling(self):
         for bad in (0, -1, True, False, "512", 1.5, None):
             with self.assertRaises(RuntimeError, msg=repr(bad)):
                 MC.build_shim_argv(["/bin/true"], memory_bytes=bad)
 
-    def test_user_field_defaults_to_the_no_user_mark(self):
-        self.assertEqual(MC.build_shim_argv(["/bin/true"])[4], "-")
-
-    def test_user_field_carries_the_named_user(self):
-        out = MC.build_shim_argv(["/bin/true"], user="nobody")
-        self.assertEqual(out[4], "nobody")
-
-    def test_user_field_rejects_an_unnamable_user(self):
-        for bad in ("", "a:b", "a\nb", "a\rb", "a\x00b", 123):
-            with self.assertRaises(RuntimeError, msg=repr(bad)):
-                MC.build_shim_argv(["/bin/true"], user=bad)
-
     def test_command_field_must_be_a_nonempty_string_list(self):
         for bad in ([], (), "ls", ["/bin/true", 1], [""], None):
             with self.assertRaises(RuntimeError, msg=repr(bad)):
                 MC.build_shim_argv(bad)
 
-    def test_the_shim_source_sets_limits_then_execs(self):
-        src = MC.LIMIT_SHIM_SOURCE
-        self.assertIn("RLIMIT_DATA", src)
-        self.assertIn("setrlimit", src)
-        self.assertIn("os.execvp(argv[0], argv)", src)
-        # The limits are set before the exec, in source order.
-        self.assertLess(src.index("setrlimit"), src.index("os.execvp"))
+    def test_the_shim_text_sets_both_limits_then_execs(self):
+        text = MC.LIMIT_SHIM_TEXT
+        soft = 'ulimit -S -d "$lim"'
+        hard = 'ulimit -H -d "$lim"'
+        self.assertIn(soft, text)
+        self.assertIn(hard, text)
+        self.assertTrue(text.endswith('exec "$@"\n'))
+        # The soft limit first and the hard limit onto it, both
+        # before the exec, in source order.
+        self.assertLess(text.rindex(soft), text.rindex(hard))
+        self.assertLess(text.rindex(hard), text.index('exec "$@"'))
 
     def test_the_shim_names_a_limit_it_cannot_set(self):
         # Supposition R3-S3 (docs/steady/security/macos.md):
         # a shim that cannot set its limit refuses the job
         # -- that fail-closed shape stands -- but it refuses
         # by name, on stderr, so the refusal's text is what
-        # a verdict carries, not a bare exception no
-        # assertion captured (the round-2 shim-alone leg
-        # failed at exit 1 with its cause nowhere in the
-        # log). The setrlimit call is wrapped, the marker
-        # names the failure, and the shim exits before the
-        # exec it guards.
-        src = MC.LIMIT_SHIM_SOURCE
-        self.assertIn(
-            "hp-shim: could not set the data-size limit", src)
-        self.assertIn("sys.exit(1)", src)
-        self.assertLess(src.index("hp-shim: could not set"),
-                        src.index("os.execvp"))
-
-    @unittest.skipUnless(os.name == "posix", "POSIX only")
-    def test_the_shim_refuses_by_name_when_run(self):
-        # The named refusal, executed through a scripted
-        # resource seam that refuses every attempt with
-        # the live verdict's own error text: the shim
-        # climbs its whole ladder, then exits 1 carrying
-        # its marker on stderr, having never exec'd the
-        # command it guards (the driven command would
-        # print a line of its own if it ever ran). The
-        # fifth fix's ladder is clamped to its named
-        # maximum, so the old shape of this test -- a
-        # ceiling too large for the platform's limit
-        # type (2**100) failing the raw setrlimit call --
-        # no longer refuses on its own; the seam is what
-        # makes the refusal deterministic on every host.
-        driver = (
-            "import resource, sys\n"
-            "def refuse(r, pair):\n"
-            "    raise ValueError('current limit exceeds "
-            "maximum limit')\n"
-            "resource.setrlimit = refuse\n"
-            "sys.argv = ['-c', str(512 * 1024 * 1024), '-', "
-            "sys.executable, '-c', "
-            "\"print('SHIM-RAN-THE-JOB')\"]\n"
-            "exec(compile(%r, 'hp-shim', 'exec'))\n"
-        ) % (MC.LIMIT_SHIM_SOURCE,)
-        done = subprocess.run(
-            [sys.executable, "-c", driver],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=30)
-        self.assertEqual(done.returncode, 1)
-        self.assertIn(
-            b"hp-shim: could not set the data-size limit",
-            done.stderr)
-        self.assertNotIn(b"SHIM-RAN-THE-JOB", done.stdout)
+        # a verdict carries. Every refusal carries the mark
+        # and leaves before the exec it guards.
+        text = MC.LIMIT_SHIM_TEXT
+        mark = "hp-shim: could not set the data-size limit"
+        self.assertEqual(text.count(mark), 3)
+        self.assertEqual(text.count("exit 1"), 3)
+        self.assertLess(text.rindex(mark), text.index('exec "$@"'))
 
     def test_the_shim_never_sets_an_address_space_limit(self):
         # Supposition S1 (docs/steady/security/macos.md): a
-        # 512 MiB RLIMIT_AS is below the address space every
-        # macOS process maps at startup (the loader, the dyld
-        # shared cache, the system libraries), so the shim's
+        # 512 MiB address-space limit is below the address
+        # space every macOS process maps at startup, so the
         # exec'd interpreter aborted at -6 before any job code
         # in the first live run. The data-size limit is the
         # ceiling this backend applies; the address-space
         # limit must not come back.
-        self.assertNotIn("RLIMIT_AS", MC.LIMIT_SHIM_SOURCE)
-        self.assertNotIn("RLIMIT_VMEM", MC.LIMIT_SHIM_SOURCE)
+        for line in MC.LIMIT_SHIM_TEXT.splitlines():
+            if "ulimit" in line:
+                self.assertIn(" -d", line, line)
+                self.assertNotIn(" -v", line, line)
+
+    def test_the_shim_names_no_command_but_the_shell_s_own(self):
+        # Nothing on the job's PATH runs before the job does:
+        # the text holds no path and no word that is not a
+        # shell keyword, a builtin or its own variable.
+        text = MC.LIMIT_SHIM_TEXT.replace("2>/dev/null", "") \
+            .replace("(hi - lo) / 2", "")
+        self.assertNotIn("/", text)
+        known = {
+            "want", "shift", "cap", "hard", "ulimit", "case", "in",
+            "esac", "unlimited", "echo", "exit", "lim", "if", "then",
+            "fi", "lo", "hi", "mid", "while", "do", "done", "break",
+            "else", "exec", "gt", "ge", "H", "S", "d", "hp", "shim",
+            "could", "not", "set", "the", "data", "size", "limit",
+            "be", "read", "kernel", "accepts", "no", "value", "up",
+            "to", "KiB", "was", "refused"}
+        import re
+        words = set(re.findall(r"[A-Za-z_]+", text))
+        self.assertEqual(words - known, set())
+
+    def test_every_try_is_made_in_a_subshell(self):
+        # A refusal ends the subshell, never the shim, and a
+        # try that is accepted leaves the shim's own limits
+        # where they were: only the last two lines set them.
+        text = MC.LIMIT_SHIM_TEXT
+        self.assertEqual(text.count("(ulimit -S -d "), 3)
+        self.assertEqual(
+            text.count("ulimit -S -d "), text.count("(ulimit -S -d ") + 1)
 
 
-class DataLimitAttemptsTest(unittest.TestCase):
-    """data_limit_attempts and the shim's limit computation.
+class DataLimitPlanTest(unittest.TestCase):
+    """data_limit_plan: the limit the shim applies, as a rule.
 
-    The fourth live verdict (docs/steady/security/
-    macos.md): every shim-carrying live point failed on
-    the shim's named refusal -- `hp-shim: could not set
-    the data-size limit: current limit exceeds maximum
-    limit` -- while the 2 profile-alone points passed.
-    Suppositions R4-S1 (the kernel refuses a data-size
-    limit below the process's current usage) and R4-S2
-    (the old pair (limit, limit) moved the hard limit)
-    name the computation this class pins: the hard
-    limit never moves, the soft request is clamped to
-    it, and a refusal is answered by a bounded ladder
-    of doublings. The pure rule is pinned per field and
-    by a fuzz family; the shim's execution of the same
-    rule is pinned under a lowered inherited hard limit
-    (the R4-S2 shape, real on any POSIX host) and under
-    a scripted resource seam carrying a current-usage
-    floor (the R4-S1 shape, which no Linux kernel
-    reproduces with the real resource module).
-
-    The fifth live verdict (the 3.16.20.10 tag build,
-    dated 2026-11-11 in docs/steady/security/macos.md)
-    answered the fourth fix: the ladder's 32 GiB cap
-    stood below the CI host's floor and every value up
-    to it was refused, and the executed substrate's
-    own real-module staging was refused on that host
-    before the shim ever ran. Suppositions R5-S1 to
-    R5-S3 name this round's computation: for an
-    unlimited inherited hard limit the ladder climbs
-    by doubling to 2**62, the largest power-of-two
-    finite value below the platform's unlimited
-    sentinel; the executed substrate stages through
-    the scripted resource seam deterministically on
-    every host (a fake getrlimit reporting the staged
-    inherited pair, a fake setrlimit enforcing the
-    floor and the soft-at-or-below-hard rule, and a
-    scripted exec reporting the applied pair the job
-    runs under), with the real-module lowered-hard
-    shape kept only where the host allows the staging
-    and a staging refusal named as the floor refusing
-    the staging, not the shim failing.
+    Darwin holds a data-size limit against a process's whole
+    address map and refuses a value below the map's current
+    size (supposition R4-S1 in docs/steady/security/macos.md).
+    The doubling ladder the fourth and fifth fixes built
+    climbed past that floor and stopped at the first power of
+    two above it: 512 GiB on the hosted Apple silicon Mac,
+    whose bare process stands at 391.7 GiB, and 64 GiB on the
+    Intel one, at 32.5 GiB -- room for a job to grow by 120
+    GiB and by 31 GiB. This rule finds the floor to within a
+    mebibyte and applies the floor plus the request.
     """
 
-    MIB = 1024 * 1024
+    MIB = 1024
+    REQUEST = 512 * 1024
+    # The floors /bin/sh read on the two hosted Macs, in KiB
+    # (the macos-confinement run of 2026-11-15).
+    APPLE_SILICON = 410732544
+    INTEL = 34128896
 
-    def test_an_unlimited_hard_limit_ladders_to_the_cap(self):
-        # P1 for the fifth fix: the request and its
-        # doublings up to the named maximum, 2**62 --
-        # 34 values for the 512 MiB ceiling (2**29
-        # through 2**62), strictly increasing, the
-        # last exactly the maximum.
-        attempts = MC.data_limit_attempts(512 * self.MIB, -1)
-        self.assertEqual(len(attempts), 34)
-        self.assertEqual(attempts[:3], (512 * self.MIB,
-                                        1024 * self.MIB,
-                                        2048 * self.MIB))
-        self.assertEqual(attempts[-1], 2 ** 62)
-        self.assertTrue(
-            all(a < b for a, b in zip(attempts, attempts[1:])))
-        self.assertEqual(MC.DATA_LIMIT_LADDER_MAX, 2 ** 62)
+    @staticmethod
+    def _kernel(floor, hard=None, asked=None):
+        def accepts(value):
+            if asked is not None:
+                asked.append(value)
+            return value >= floor and (hard is None or value <= hard)
+        return accepts
 
-    def test_a_request_above_the_maximum_is_clamped_to_it(self):
+    def test_a_host_with_no_floor_takes_the_request_itself(self):
         self.assertEqual(
-            MC.data_limit_attempts(2 ** 63, -1), (2 ** 62,))
+            MC.data_limit_plan(self.REQUEST, self._kernel(0)),
+            (self.REQUEST, None))
         self.assertEqual(
-            MC.data_limit_attempts(2 ** 62, -1), (2 ** 62,))
+            MC.data_limit_plan(self.REQUEST, self._kernel(self.REQUEST)),
+            (self.REQUEST, None))
 
-    def test_a_larger_hard_limit_leaves_the_request_alone(self):
+    def test_the_limit_is_the_floor_plus_the_request(self):
+        for floor in (self.APPLE_SILICON, self.INTEL,
+                      self.REQUEST + 1, 3 * self.REQUEST):
+            limit, found = MC.data_limit_plan(
+                self.REQUEST, self._kernel(floor))
+            self.assertEqual(limit, found + self.REQUEST, floor)
+            self.assertGreaterEqual(found, floor)
+            self.assertLessEqual(found - floor, MC.DATA_FLOOR_STEP_KIB)
+
+    def test_the_hosted_floors_leave_the_request_and_not_a_doubling(self):
+        # What the doubling ladder left a job on those hosts,
+        # beside what this rule leaves it.
+        for floor, doubling in ((self.APPLE_SILICON, 2 ** 29),
+                                (self.INTEL, 2 ** 26)):
+            limit, found = MC.data_limit_plan(
+                self.REQUEST, self._kernel(floor))
+            self.assertGreater(doubling, floor)
+            self.assertGreater(doubling - floor, 30 * 1024 * 1024)
+            self.assertLessEqual(limit - floor,
+                                 self.REQUEST + MC.DATA_FLOOR_STEP_KIB)
+
+    def test_a_finite_hard_limit_is_never_asked_past(self):
+        asked = []
+        hard = self.INTEL + 100 * self.MIB
+        limit, found = MC.data_limit_plan(
+            self.REQUEST, self._kernel(self.INTEL, hard, asked), hard)
+        self.assertEqual(limit, hard)
+        self.assertLessEqual(max(asked), hard)
+        self.assertGreaterEqual(found, self.INTEL)
+
+    def test_a_request_above_a_finite_hard_limit_is_clamped_to_it(self):
+        hard = 256 * self.MIB
         self.assertEqual(
-            MC.data_limit_attempts(512 * self.MIB, 4096 * self.MIB),
-            (512 * self.MIB, 1024 * self.MIB, 2048 * self.MIB,
-             4096 * self.MIB))
+            MC.data_limit_plan(self.REQUEST, self._kernel(0, hard), hard),
+            (hard, None))
 
-    def test_an_equal_hard_limit_is_the_single_attempt(self):
-        self.assertEqual(
-            MC.data_limit_attempts(512 * self.MIB, 512 * self.MIB),
-            (512 * self.MIB,))
+    def test_a_floor_above_the_hard_limit_is_a_refusal(self):
+        hard = self.INTEL - 1
+        with self.assertRaises(RuntimeError) as caught:
+            MC.data_limit_plan(
+                self.REQUEST, self._kernel(self.INTEL, hard), hard)
+        self.assertIn("accepts no data-size limit", str(caught.exception))
+        self.assertIn(str(hard), str(caught.exception))
 
-    def test_a_smaller_hard_limit_clamps_the_request_to_it(self):
-        # The R4-S2 shape: the request may never exceed
-        # the allowable maximum the process inherited,
-        # and there is nothing above it to ladder to.
-        self.assertEqual(
-            MC.data_limit_attempts(512 * self.MIB, 256 * self.MIB),
-            (256 * self.MIB,))
+    def test_a_floor_above_the_cap_is_a_refusal(self):
+        with self.assertRaises(RuntimeError):
+            MC.data_limit_plan(
+                self.REQUEST, self._kernel(MC.DATA_LIMIT_CAP_KIB + 1))
 
-    def test_a_zero_hard_limit_is_the_single_attempt_zero(self):
-        self.assertEqual(MC.data_limit_attempts(512 * self.MIB, 0),
-                         (0,))
+    def test_the_cap_is_the_largest_power_of_two_below_the_sentinel(self):
+        self.assertEqual(MC.DATA_LIMIT_CAP_KIB * 1024, 2 ** 62)
+        self.assertLess(2 ** 62, 2 ** 63 - 1)
+        limit, found = MC.data_limit_plan(
+            self.REQUEST, self._kernel(MC.DATA_LIMIT_CAP_KIB))
+        self.assertEqual((limit, found),
+                         (MC.DATA_LIMIT_CAP_KIB, MC.DATA_LIMIT_CAP_KIB))
 
-    def test_a_non_power_of_two_request_caps_by_doubling(self):
-        self.assertEqual(MC.data_limit_attempts(100, 1000),
-                         (100, 200, 400, 800, 1000))
-        # The last doubling overshoots the named maximum
-        # and is clamped to it exactly.
-        self.assertEqual(
-            MC.data_limit_attempts(3 * 2 ** 60, -1),
-            (3 * 2 ** 60, 2 ** 62))
+    def test_the_questions_asked_are_bounded(self):
+        asked = []
+        MC.data_limit_plan(1, self._kernel(MC.DATA_LIMIT_CAP_KIB, None,
+                                           asked))
+        # 52 doublings from one kibibyte, then the halvings of
+        # the last gap.
+        self.assertLess(len(asked), 120)
 
     def test_the_requested_field_must_be_a_positive_integer(self):
-        for bad in (0, -1, -512, True, False, "512", 1.5, None):
+        for bad in (0, -1, True, False, "512", 1.5, None):
             with self.assertRaises(RuntimeError, msg=repr(bad)):
-                MC.data_limit_attempts(bad, -1)
+                MC.data_limit_plan(bad, self._kernel(0))
 
-    def test_the_hard_field_must_be_unlimited_or_nonnegative(self):
-        for bad in (-2, -100, True, False, "inf", 1.5, None):
+    def test_the_hard_field_must_be_none_or_nonnegative(self):
+        for bad in (-1, True, "1", 1.5):
             with self.assertRaises(RuntimeError, msg=repr(bad)):
-                MC.data_limit_attempts(512 * self.MIB, bad)
+                MC.data_limit_plan(self.REQUEST, self._kernel(0), bad)
 
-    def test_random_pairs_keep_the_ladder_invariants(self):
-        rng = random.Random(20261112)
+    def test_random_hosts_keep_the_rule_s_invariants(self):
+        rng = random.Random(20261115)
         ran = 0
         for _ in range(400):
-            requested = rng.choice(
-                (1, 2, 3, 7, 100, 512 * self.MIB,
-                 rng.randrange(1, 10 ** 12)))
-            inherited = rng.choice(
-                (-1, 0, 1, requested - 1 if requested > 1 else 0,
-                 requested, requested + 1,
-                 rng.randrange(0, 10 ** 12)))
-            attempts = MC.data_limit_attempts(requested, inherited)
+            want = rng.choice((1, 1023, self.REQUEST,
+                               rng.randrange(1, 10 ** 8)))
+            floor = rng.choice((0, want, want + 1, self.INTEL,
+                                self.APPLE_SILICON,
+                                rng.randrange(0, 2 ** 45)))
+            hard = rng.choice((None, None, floor, floor + 7,
+                               floor + want + 3,
+                               rng.randrange(0, 2 ** 46)))
             ran += 1
-            cap = inherited if inherited != -1 \
-                else MC.DATA_LIMIT_LADDER_MAX
-            self.assertEqual(attempts[-1], cap, (requested, inherited))
-            self.assertTrue(
-                all(a < b for a, b in zip(attempts, attempts[1:])),
-                (requested, inherited, attempts))
-            self.assertTrue(all(a <= cap for a in attempts))
-            self.assertEqual(attempts[0], min(requested, cap))
-            if inherited == -1:
-                self.assertLessEqual(len(attempts), 63)
+            try:
+                limit, found = MC.data_limit_plan(
+                    want, self._kernel(floor, hard), hard)
+            except RuntimeError:
+                # Refused only where nothing could be accepted.
+                self.assertTrue(hard is not None and hard < floor,
+                                (want, floor, hard))
+                continue
+            cap = MC.DATA_LIMIT_CAP_KIB if hard is None else hard
+            self.assertGreaterEqual(limit, floor)
+            self.assertLessEqual(limit, cap)
+            if found is None:
+                self.assertEqual(limit, min(want, cap))
+            else:
+                self.assertGreater(floor, min(want, cap))
+                self.assertLessEqual(found - floor,
+                                     MC.DATA_FLOOR_STEP_KIB)
+                self.assertEqual(limit, min(found + want, cap))
         self.assertEqual(ran, 400)
 
-    def test_the_shim_text_carries_the_same_rule(self):
-        # The shim runs as interpreter text with no module
-        # to import, so its computation is inline text; the
-        # fragments that carry the rule are pinned here
-        # beside the pure function's own tests.
-        src = MC.LIMIT_SHIM_SOURCE
-        self.assertIn("resource.getrlimit", src)
-        self.assertIn("resource.RLIM_INFINITY", src)
-        # The pair it sets keeps the inherited hard limit:
-        # (_soft, _max), never (_soft, _soft) or (limit, limit).
-        self.assertIn("resource.setrlimit(_r, (_soft, _max))", src)
-        self.assertNotIn("(limit, limit)", src)
-        # The ladder: a refusal below the cap doubles,
-        # the cap for an unlimited hard limit is the
-        # named maximum (R5-S1), and the first attempt
-        # is clamped to the cap.
-        self.assertIn("_soft = min(_soft * 2, _cap)", src)
-        self.assertIn("2 ** 62", src)
-        self.assertIn("_soft = min(_soft, _cap)", src)
-        self.assertNotIn("limit * 64", src)
 
-    # The executed half. Each driver runs in its own
-    # process, because a hard limit lowered or a resource
-    # seam scripted there must never touch this suite's
-    # own process.
+# A kernel for the shim's text, scripted in the shim's own
+# language: a function under the builtin's name that answers
+# as a kernel with this floor and this hard limit would. The
+# job the shim execs reads what was set from its environment.
+_FAKE_KERNEL = r'''
+ulimit() {
+  case "$1 $2" in
+    "-H -d")
+      if [ $# -eq 2 ]; then echo "$T_HARD"; return 0; fi
+      if [ "$T_SOFT" != unlimited ] && [ "$3" -lt "$T_SOFT" ]; then return 1; fi
+      if [ "$T_HARD" != unlimited ] && [ "$3" -gt "$T_HARD" ]; then return 1; fi
+      T_HARD=$3; export T_HARD; return 0 ;;
+    "-S -d")
+      if [ $# -eq 2 ]; then echo "$T_SOFT"; return 0; fi
+      if [ "$3" -lt "$T_FLOOR" ]; then return 1; fi
+      if [ "$T_HARD" != unlimited ] && [ "$3" -gt "$T_HARD" ]; then return 1; fi
+      T_SOFT=$3; export T_SOFT; return 0 ;;
+  esac
+  return 2
+}
+'''
 
-    # The scripted resource seam (R5-S2): a fake
-    # getrlimit reporting the staged inherited pair, a
-    # fake setrlimit enforcing the current-usage floor
-    # and the soft-at-or-below-hard rule with the live
-    # verdict's own error text, and a scripted exec that
-    # reports the applied pair the job runs under. No
-    # real limit is ever set in the driver, so the shape
-    # is deterministic on every host -- on the CI macOS
-    # host the fourth round's real staging and its
-    # delegation to the real setrlimit were themselves
-    # refused before or inside the shim they judged.
-    _SEAM_DRIVER = (
-        "import os, resource, sys\n"
-        "floor = int(sys.argv[1])\n"
-        "staged_hard = int(sys.argv[2])\n"
-        "applied = []\n"
-        "def fake_get(r):\n"
-        "    if staged_hard >= 0:\n"
-        "        return (staged_hard, staged_hard)\n"
-        "    return (resource.RLIM_INFINITY, "
-        "resource.RLIM_INFINITY)\n"
-        "def fake_set(r, pair):\n"
-        "    soft, hard = pair\n"
-        "    if staged_hard >= 0 and soft > staged_hard:\n"
-        "        raise ValueError('current limit exceeds "
-        "maximum limit')\n"
-        "    if soft < floor:\n"
-        "        raise ValueError('current limit exceeds "
-        "maximum limit')\n"
-        "    applied.append(soft)\n"
-        "resource.getrlimit = fake_get\n"
-        "resource.setrlimit = fake_set\n"
-        "def fake_execvp(file, args):\n"
-        "    hard_out = staged_hard if staged_hard >= 0 else -1\n"
-        "    sys.stdout.write('JOB-RAN (%d, %d)\\n' "
-        "% (applied[-1], hard_out))\n"
-        "    sys.stdout.flush()\n"
-        "    os._exit(0)\n"
-        "os.execvp = fake_execvp\n"
-        "src = open(sys.argv[3], encoding='utf-8').read()\n"
-        "sys.argv = ['-c', str(512 * 1024 * 1024), '-', "
-        "sys.executable, '-c', 'job']\n"
-        "exec(compile(src, 'hp-shim', 'exec'))\n"
-    )
 
-    def _run_seam_driver(self, floor, hard=-1):
-        with tempfile.TemporaryDirectory() as tmp:
-            shim_path = os.path.join(tmp, "shim-source.txt")
-            with open(shim_path, "w", encoding="utf-8") as fh:
-                fh.write(MC.LIMIT_SHIM_SOURCE)
-            return subprocess.run(
-                [sys.executable, "-c", self._SEAM_DRIVER,
-                 str(floor), str(hard), shim_path],
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                timeout=60)
+def _shells():
+    """The shells this host can run the shim's text on: the
+    system's own, and bash in its POSIX mode where it is
+    installed -- what /bin/sh is on a Mac."""
+    shells = [[MC.SHELL_BIN, MC.SHELL_PRIVILEGED]]
+    bash = shutil.which("bash")
+    if bash:
+        shells.append([bash, "--posix", MC.SHELL_PRIVILEGED])
+    return shells
 
-    @unittest.skipUnless(os.name == "posix", "POSIX only")
-    def test_the_shim_climbs_past_a_current_usage_floor(self):
-        # R4-S1/R5-S1 executed against the scripted seam:
-        # any soft limit below a 768 MiB floor is refused
-        # with the verdict's own error text; the ladder's
-        # second attempt (1 GiB) is accepted and the job
-        # runs carrying exactly it, hard still unlimited.
-        done = self._run_seam_driver(768 * self.MIB)
-        self.assertEqual(done.returncode, 0,
-                         done.stderr.decode("utf-8", "replace"))
-        self.assertIn(b"JOB-RAN (1073741824, -1)", done.stdout)
-        self.assertNotIn(b"hp-shim", done.stderr)
 
-    @unittest.skipUnless(os.name == "posix", "POSIX only")
-    def test_the_shim_climbs_past_the_fourth_fix_cap(self):
-        # The fifth verdict's own shape, executed: a
-        # floor above the fourth fix's 32 GiB cap (here
-        # 48 GiB) refused every fourth-fix attempt; the
-        # fifth fix's ladder climbs past it and the job
-        # runs carrying the first accepted value, 64 GiB.
-        done = self._run_seam_driver(48 * 1024 * self.MIB)
-        self.assertEqual(done.returncode, 0,
-                         done.stderr.decode("utf-8", "replace"))
-        self.assertIn(b"JOB-RAN (68719476736, -1)", done.stdout)
-        self.assertNotIn(b"hp-shim", done.stderr)
+_READ_BACK = 'echo "$(ulimit -S -d) $(ulimit -H -d)"'
 
-    @unittest.skipUnless(os.name == "posix", "POSIX only")
-    def test_the_shim_refuses_when_the_floor_stands_above_the_cap(self):
-        # The cap is now the named maximum, 2**62: a
-        # floor above it leaves no allowable value and
-        # the shim refuses by name at the cap.
-        done = self._run_seam_driver(2 ** 63)
-        self.assertEqual(done.returncode, 1)
-        self.assertIn(
-            b"hp-shim: could not set the data-size limit: "
-            b"current limit exceeds maximum limit", done.stderr)
-        self.assertNotIn(b"JOB-RAN", done.stdout)
 
-    @unittest.skipUnless(os.name == "posix", "POSIX only")
-    def test_the_shim_refuses_when_the_floor_stands_above_the_hard_limit(self):
-        # A finite inherited hard limit caps the ladder at
-        # itself: a floor above it leaves no allowable
-        # value, and the spawn refuses rather than asking
-        # for a soft limit above the hard limit. Staged
-        # through the seam (R5-S2): the fourth round's
-        # driver really lowered its hard limit to stage
-        # this shape and died at that staging call on the
-        # CI host, before the shim ever ran.
-        done = self._run_seam_driver(768 * self.MIB,
-                                     hard=256 * self.MIB)
-        self.assertEqual(done.returncode, 1)
-        self.assertIn(b"hp-shim: could not set the data-size limit",
-                      done.stderr)
-        self.assertNotIn(b"JOB-RAN", done.stdout)
+@unittest.skipUnless(os.name == "posix", "POSIX only")
+class ShimRunTest(unittest.TestCase):
+    """The shim's text, run: against a scripted kernel, where
+    any floor and any hard limit can be staged on any host,
+    and against this host's own."""
 
-    @unittest.skipUnless(os.name == "posix", "POSIX only")
-    def test_the_shim_clamps_to_a_seam_reported_hard_limit(self):
-        # R4-S2 through the seam (R5-S2): the seam reports
-        # a 256 MiB inherited hard limit, the shim's first
-        # attempt is the request clamped to it, and the
-        # job runs carrying exactly (256 MiB, 256 MiB) --
-        # deterministically, on any host.
-        done = self._run_seam_driver(0, hard=256 * self.MIB)
-        self.assertEqual(done.returncode, 0,
-                         done.stderr.decode("utf-8", "replace"))
-        self.assertIn(b"JOB-RAN (268435456, 268435456)", done.stdout)
-        self.assertNotIn(b"hp-shim", done.stderr)
+    REQUEST = 512 * 1024
 
-    @unittest.skipUnless(os.name == "posix", "POSIX only")
-    def test_the_shim_clamps_to_a_lowered_inherited_hard_limit(self):
-        # R4-S2 executed with the real resource module,
-        # kept where the host allows the staging (R5-S2):
-        # a driver lowers its own hard data limit to
-        # 256 MiB, and the shim it then spawns -- which
-        # inherits that hard limit -- runs the job, whose
-        # read-back is the clamped pair (256 MiB, 256 MiB).
-        # The pre-fix shim refused here by name and the
-        # job never ran. On a host whose current-usage
-        # floor stands above 256 MiB (the CI macOS host),
-        # the driver's own staging call is refused before
-        # the shim runs: the driver names that outcome
-        # STAGING-REFUSED and exits 3, and this test
-        # records it as what it is -- the floor refusing
-        # the staging, not the shim failing -- rather
-        # than counting it as a shim failure.
-        driver = (
-            "import resource, subprocess, sys\n"
-            "cap = 256 * 1024 * 1024\n"
-            "try:\n"
-            "    resource.setrlimit(resource.RLIMIT_DATA, "
-            "(cap, cap))\n"
-            "except Exception as e:\n"
-            "    sys.stderr.write('STAGING-REFUSED: %%s\\n' "
-            "%% (e,))\n"
-            "    sys.exit(3)\n"
-            "done = subprocess.run(\n"
-            "    [sys.executable, '-c', %r,\n"
-            "     str(512 * 1024 * 1024), '-', sys.executable,\n"
-            "     '-c', 'import resource; print(\\'JOB-RAN\\', '\n"
-            "     'resource.getrlimit(resource.RLIMIT_DATA))'],\n"
-            "    stdout=subprocess.PIPE, stderr=subprocess.PIPE)\n"
-            "sys.stdout.buffer.write(done.stdout)\n"
-            "sys.stderr.buffer.write(done.stderr)\n"
-            "sys.exit(done.returncode)\n"
-        ) % (MC.LIMIT_SHIM_SOURCE,)
-        done = subprocess.run(
-            [sys.executable, "-c", driver],
+    def _scripted(self, shell, want, floor, hard=None):
+        env = {"T_FLOOR": str(floor), "T_SOFT": "unlimited",
+               "T_HARD": "unlimited" if hard is None else str(hard),
+               "PATH": "/usr/bin:/bin"}
+        return subprocess.run(
+            shell + ["-c", _FAKE_KERNEL + MC.LIMIT_SHIM_TEXT,
+                     MC.SHIM_NAME, str(want), "/bin/sh", "-c",
+                     'echo "JOB-RAN $T_SOFT $T_HARD"'],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            timeout=60)
-        if done.returncode == 3:
-            self.assertIn(b"STAGING-REFUSED", done.stderr)
-            self.assertNotIn(b"hp-shim", done.stderr)
+            env=env, timeout=60)
+
+    def _real(self, job, env=None, shell=None, memory=None):
+        argv = MC.build_shim_argv(
+            ["/bin/sh", "-c", job],
+            **({} if memory is None else {"memory_bytes": memory}))
+        if shell is not None:
+            argv = shell + argv[2:]
+        return subprocess.run(
+            argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            env=env, timeout=60)
+
+    def test_the_shim_text_carries_the_same_rule(self):
+        # The pure rule and the shell text, side by side, over
+        # hosts drawn at random: the same limit, set soft and
+        # hard, or the same refusal.
+        rng = random.Random(20261116)
+        ran = 0
+        for shell in _shells():
+            for _ in range(40):
+                want = rng.choice((1, 1023, self.REQUEST, 2097152,
+                                   rng.randrange(1, 10 ** 7)))
+                floor = rng.choice((
+                    0, 1, want, want + 1,
+                    DataLimitPlanTest.APPLE_SILICON,
+                    DataLimitPlanTest.INTEL,
+                    rng.randrange(0, 2 ** 45),
+                    MC.DATA_LIMIT_CAP_KIB,
+                    MC.DATA_LIMIT_CAP_KIB + 5))
+                hard = rng.choice((None, None, 0, want, floor,
+                                   floor + 7, floor + want + 3,
+                                   rng.randrange(0, 2 ** 46)))
+                ran += 1
+                done = self._scripted(shell, want, floor, hard)
+                try:
+                    limit, _found = MC.data_limit_plan(
+                        want, DataLimitPlanTest._kernel(floor, hard),
+                        hard)
+                except RuntimeError:
+                    self.assertEqual(done.returncode, 1,
+                                     (shell, want, floor, hard))
+                    self.assertNotIn(b"JOB-RAN", done.stdout)
+                    self.assertIn(
+                        b"hp-shim: could not set the data-size "
+                        b"limit", done.stderr)
+                    continue
+                self.assertEqual(
+                    (done.returncode, done.stdout.decode().strip()),
+                    (0, "JOB-RAN %d %d" % (limit, limit)),
+                    (shell, want, floor, hard, done.stderr))
+        self.assertGreaterEqual(ran, 40)
+
+    def test_the_shim_stands_the_request_on_the_hosted_floors(self):
+        for shell in _shells():
+            for floor in (DataLimitPlanTest.APPLE_SILICON,
+                          DataLimitPlanTest.INTEL):
+                done = self._scripted(shell, self.REQUEST, floor)
+                self.assertEqual(done.returncode, 0, done.stderr)
+                soft, hard = done.stdout.decode().split()[1:]
+                self.assertEqual(soft, hard)
+                over = int(soft) - floor - self.REQUEST
+                self.assertGreaterEqual(over, 0)
+                self.assertLessEqual(over, MC.DATA_FLOOR_STEP_KIB)
+
+    def test_the_shim_refuses_by_name_when_nothing_is_accepted(self):
+        for shell in _shells():
+            done = self._scripted(shell, self.REQUEST,
+                                  MC.DATA_LIMIT_CAP_KIB + 1)
+            self.assertEqual(done.returncode, 1)
+            self.assertIn(
+                b"hp-shim: could not set the data-size limit: the "
+                b"kernel accepts no value up to", done.stderr)
             self.assertNotIn(b"JOB-RAN", done.stdout)
-            return
-        self.assertEqual(done.returncode, 0,
-                         done.stderr.decode("utf-8", "replace"))
-        self.assertIn(b"JOB-RAN (268435456, 268435456)", done.stdout)
+
+    def test_the_shim_refuses_when_the_floor_stands_above_the_hard_limit(self):
+        for shell in _shells():
+            done = self._scripted(shell, self.REQUEST,
+                                  DataLimitPlanTest.INTEL,
+                                  hard=256 * 1024)
+            self.assertEqual(done.returncode, 1)
+            self.assertIn(b"up to 262144 KiB", done.stderr)
+            self.assertNotIn(b"JOB-RAN", done.stdout)
+
+    def test_the_shim_never_raises_a_finite_hard_limit(self):
+        for shell in _shells():
+            done = self._scripted(shell, self.REQUEST, 0,
+                                  hard=256 * 1024)
+            self.assertEqual(done.stdout.decode().strip(),
+                             "JOB-RAN 262144 262144")
+
+    def test_this_host_s_kernel_sets_both_limits(self):
+        # The real builtin and the real kernel: the request
+        # itself on a host with no floor, the floor plus the
+        # request on a host with one, and soft and hard alike
+        # either way.
+        done = self._real(_READ_BACK)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        soft, hard = done.stdout.decode().split()
+        self.assertEqual(soft, hard)
+        self.assertGreaterEqual(int(soft), self.REQUEST)
+
+    def test_the_job_cannot_raise_the_limit(self):
+        # Each try is a subshell of the job's own; the limits
+        # are read again after both. A shell may answer a
+        # request to lift the soft limit by setting it to the
+        # hard one, which is where it already stands.
+        done = self._real(
+            _READ_BACK + "; (ulimit -H -d unlimited) 2>/dev/null "
+            "&& echo RAISED-HARD; ulimit -S -d unlimited "
+            "2>/dev/null; " + _READ_BACK)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        lines = done.stdout.decode().split("\n")
+        self.assertNotIn("RAISED-HARD", lines)
+        self.assertEqual(lines[0], lines[1])
+        self.assertNotIn("unlimited", lines[1])
+
+    def test_a_function_in_the_environment_does_not_stand_in_for_ulimit(self):
+        # The submitter's environment reaches the shim's shell.
+        # bash takes functions from variables of two shapes --
+        # the one bash 4.3 and later reads, and the one the
+        # bash a Mac ships reads -- and a function named ulimit
+        # would be called in the builtin's place. In privileged
+        # mode it takes neither.
+        env = dict(os.environ)
+        env["BASH_FUNC_ulimit%%"] = "() { return 0; }"
+        env["__BASH_FUNC<ulimit>()"] = "() { return 0; }"
+        for shell in _shells():
+            done = self._real(_READ_BACK, env=env, shell=shell)
+            self.assertEqual(done.returncode, 0, (shell, done.stderr))
+            soft, hard = done.stdout.decode().split()
+            self.assertEqual(soft, hard, shell)
+            self.assertTrue(soft.isdigit(), (shell, soft))
+
+    def test_without_the_flag_bash_takes_the_function(self):
+        # The control for the test above: the same text on the
+        # same shell without -p, where the function is called
+        # and no limit is set. It is why the flag is there.
+        bash = shutil.which("bash")
+        if not bash:
+            self.skipTest("no bash on this host: the control needs "
+                          "the shell that takes functions from its "
+                          "environment")
+        env = dict(os.environ)
+        env["BASH_FUNC_ulimit%%"] = "() { return 0; }"
+        env["__BASH_FUNC<ulimit>()"] = "() { return 0; }"
+        open_done = self._real(_READ_BACK, env=env,
+                               shell=[bash, "--posix"])
+        kept_done = self._real(_READ_BACK, env=env,
+                               shell=[bash, "--posix", "-p"])
+        self.assertTrue(kept_done.stdout.decode().split()[0].isdigit())
+        # The function answered for the builtin: the shim could
+        # not read a limit through it and refused, or set none.
+        took = open_done.returncode != 0 \
+            or not open_done.stdout.decode().split()[0].isdigit()
+        self.assertTrue(took, open_done.stdout)
+
+    def test_an_option_list_in_the_environment_is_not_taken(self):
+        # SHELLOPTS=noexec would have a shell read the shim and
+        # run none of it, the job included.
+        env = dict(os.environ)
+        env["SHELLOPTS"] = "noexec"
+        for shell in _shells():
+            done = self._real("echo JOB-RAN", env=env, shell=shell)
+            self.assertIn(b"JOB-RAN", done.stdout, shell)
+
+    def test_the_environment_reaches_the_job(self):
+        env = {"PATH": "/usr/bin:/bin", "HP_T_PLAIN": "a b  c",
+               "HP_T_EMPTY": "", "HP_T_QUOTE": "it's \"x\" $HOME"}
+        done = self._real(
+            'printf "%s|%s|%s\\n" "$HP_T_PLAIN" "$HP_T_EMPTY" '
+            '"$HP_T_QUOTE"', env=env)
+        self.assertEqual(done.stdout.decode(),
+                         "a b  c||it's \"x\" $HOME\n")
+
+    def test_the_job_s_own_arguments_arrive_whole(self):
+        argv = MC.build_shim_argv(
+            ["/bin/sh", "-c", 'printf "%s|" "$@"', "job",
+             "a b", "$HOME", "*", "it's", "-n"])
+        done = subprocess.run(argv, stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE, timeout=60)
+        self.assertEqual(done.stdout.decode(), "a b|$HOME|*|it's|-n|")
+
+    def test_a_setting_s_ceiling_is_the_one_applied(self):
+        done = self._real(_READ_BACK, memory=3 * 1024 ** 3)
+        soft, hard = done.stdout.decode().split()
+        self.assertEqual(soft, hard)
+        self.assertGreaterEqual(int(soft), 3 * 1024 ** 2)
+
+    def test_a_job_that_cannot_be_found_is_the_shell_s_refusal(self):
+        done = subprocess.run(
+            MC.build_shim_argv(["/hp/no/such/program"]),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
+        self.assertNotEqual(done.returncode, 0)
+
+
+class JobUserDropTest(unittest.TestCase):
+    """job_user_drop: the spawn's own arguments for the job user."""
+
+    @staticmethod
+    def _entry(name="jobs", uid=1234, gid=4321):
+        return types.SimpleNamespace(pw_name=name, pw_uid=uid,
+                                     pw_gid=gid)
+
+    def test_no_user_changes_nothing(self):
+        self.assertEqual(MC.job_user_drop(None), {})
+
+    def test_a_named_user_is_its_uid_group_and_groups(self):
+        drop = MC.job_user_drop(
+            "jobs", lookup=lambda name: self._entry(name),
+            groups=lambda name, gid: [gid, 20, 12])
+        self.assertEqual(drop, {"user": 1234, "group": 4321,
+                                "extra_groups": [4321, 20, 12]})
+
+    def test_the_user_s_own_group_is_always_among_them(self):
+        drop = MC.job_user_drop(
+            "jobs", lookup=lambda name: self._entry(name),
+            groups=lambda name, gid: [20])
+        self.assertEqual(drop["extra_groups"], [4321, 20])
+
+    def test_sixteen_groups_at_most(self):
+        drop = MC.job_user_drop(
+            "jobs", lookup=lambda name: self._entry(name),
+            groups=lambda name, gid: [gid] + list(range(100, 140)))
+        self.assertEqual(len(drop["extra_groups"]), 16)
+        self.assertEqual(drop["extra_groups"][0], 4321)
+
+    def test_a_group_list_that_cannot_be_read_leaves_the_user_s_own(self):
+        def _groups(name, gid):
+            raise OSError("no group database")
+        drop = MC.job_user_drop(
+            "jobs", lookup=lambda name: self._entry(name),
+            groups=_groups)
+        self.assertEqual(drop["extra_groups"], [4321])
+
+    def test_a_group_id_the_call_cannot_take_is_asked_as_its_signed_twin(self):
+        # Darwin's `nobody`: group 4294967294 in the user
+        # database, -2 to getgrouplist, and -2 in its answer.
+        asked = []
+
+        def _groups(name, gid):
+            asked.append(gid)
+            if gid > 2 ** 31 - 1:
+                raise OverflowError("signed integer is greater "
+                                    "than maximum")
+            return [gid, 20]
+
+        drop = MC.job_user_drop(
+            "nobody",
+            lookup=lambda name: self._entry(name, 4294967294,
+                                            4294967294),
+            groups=_groups)
+        self.assertEqual(asked, [4294967294, -2])
+        self.assertEqual(drop, {"user": 4294967294,
+                                "group": 4294967294,
+                                "extra_groups": [4294967294, 20]})
+
+    def test_a_user_the_machine_does_not_have_is_a_refusal(self):
+        def _lookup(name):
+            raise KeyError(name)
+        with self.assertRaises(RuntimeError) as caught:
+            MC.job_user_drop("hp-no-such-user", lookup=_lookup)
+        self.assertIn("not in this machine's user database",
+                      str(caught.exception))
+
+    def test_an_unnamable_user_is_a_refusal(self):
+        for bad in ("", "a:b", "a\nb", "a\rb", "a\x00b", 123):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.job_user_drop(bad, lookup=lambda name: self._entry())
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_the_arguments_are_ones_the_spawn_takes(self):
+        # This process's own user, applied to a child of its
+        # own: no privilege is needed to change to the user one
+        # already is, and the child says who it is.
+        import pwd
+        me = pwd.getpwuid(os.getuid())
+        drop = MC.job_user_drop(me.pw_name)
+        self.assertEqual(drop["user"], os.getuid())
+        if os.getuid() != 0:
+            # setgroups is root's call; the rest is the same.
+            drop.pop("extra_groups")
+        done = subprocess.run(["/bin/sh", "-c", "id -u"],
+                              stdout=subprocess.PIPE, timeout=30,
+                              **drop)
+        self.assertEqual(done.stdout.decode().strip(),
+                         str(os.getuid()))
 
 
 class ReportedLimitTest(unittest.TestCase):
@@ -961,17 +1121,16 @@ class ReportedLimitTest(unittest.TestCase):
     def test_the_verdicts_own_shape(self):
         # P2 of the supposition, executed as a pin: the
         # triple shape the verdict carried, staged the
-        # darwin way -- the inherited hard data limit at
-        # the sentinel, the shim's ladder cap standing on
-        # the ladder the parent derives from it, and the
+        # darwin way -- a data-size limit at the shim's
+        # cap, which stands below the sentinel, and the
         # address-space soft at the sentinel. The fixed
         # shape holds on it; the old shape (== -1) does
         # not, which is the failure being fixed restated.
-        attempts = MC.data_limit_attempts(
-            MC.DEFAULT_PROCESS_MEMORY_BYTES, self.SENTINEL)
-        self.assertIn(2 ** 62, attempts)
-        limits = [2 ** 62, self.SENTINEL, self.SENTINEL]
-        self.assertIn(limits[0], attempts)
+        cap = MC.DATA_LIMIT_CAP_KIB * 1024
+        self.assertEqual(cap, 2 ** 62)
+        limits = [cap, self.SENTINEL, self.SENTINEL]
+        self.assertLess(limits[0], self.SENTINEL)
+        self.assertFalse(MC.reported_limit_is_unlimited(limits[0]))
         self.assertEqual(limits[1], self.SENTINEL)
         self.assertNotEqual(limits[2], -1)
         self.assertTrue(MC.reported_limit_is_unlimited(limits[2]))
@@ -1043,8 +1202,10 @@ class SandboxArgvFieldTest(unittest.TestCase):
         self.assertEqual(argv[0], "/usr/bin/sandbox-exec")
         self.assertEqual(argv[1], "-p")
         self.assertEqual(argv[2], profile)
-        self.assertEqual(argv[3], sys.executable)
-        self.assertEqual(argv[4], "-c")
+        self.assertEqual(argv[3:6], ["/bin/sh", "-p", "-c"])
+        self.assertEqual(argv[6], MC.LIMIT_SHIM_TEXT)
+        self.assertEqual(argv[7], "hp-shim")
+        self.assertEqual(argv[9:], ["/usr/bin/python3", "s.py"])
 
     def test_cwd_field_drives_the_profile_workdir(self):
         _argv, profile = MC.build_sandbox_argv(
@@ -1072,12 +1233,20 @@ class SandboxArgvFieldTest(unittest.TestCase):
                           if ln.startswith("(allow file-write*")][0]
             self.assertNotIn(alias, write_line)
 
-    def test_memory_and_user_fields_reach_the_shim(self):
+    def test_memory_field_reaches_the_shim(self):
         argv, _profile = MC.build_sandbox_argv(
-            ["/bin/echo"], cwd="/work/j", memory_bytes=2048,
-            user="nobody")
-        self.assertIn("2048", argv)
-        self.assertEqual(argv[argv.index("2048") + 1], "nobody")
+            ["/bin/echo"], cwd="/work/j", memory_bytes=2048 * 1024)
+        self.assertEqual(argv[8], "2048")
+        self.assertEqual(argv[9:], ["/bin/echo"])
+
+    def test_the_job_user_is_no_field_of_the_argv(self):
+        # The spawn applies the user to the whole chain; the
+        # argv carries no name for a process table to show and
+        # no step that would need to be root inside the
+        # profile.
+        with self.assertRaises(TypeError):
+            MC.build_sandbox_argv(["/bin/echo"], cwd="/work/j",
+                                  user="nobody")
 
     def test_an_unresolvable_interpreter_is_a_refusal(self):
         with self.assertRaises(RuntimeError):
@@ -1144,14 +1313,23 @@ class ProfileFuzzTest(unittest.TestCase):
         self.assertGreater(ran, 200)
         self.assertGreater(refused, 0)
 
-    def test_bookended_symbols_never_break_the_shim_user_field(self):
+    def test_bookended_symbols_never_break_the_job_user_field(self):
         ran = 0
+        asked = []
+
+        def _lookup(name):
+            asked.append(name)
+            return types.SimpleNamespace(pw_name=name, pw_uid=77,
+                                         pw_gid=78)
+
         for ch in string.punctuation + " \t\x00\r\n":
             for value in (ch + "nobody", "nobody" + ch,
                           ch * 10 + "nobody", "nobody" + ch * 10):
                 ran += 1
                 try:
-                    out = MC.build_shim_argv(["/bin/true"], user=value)
+                    out = MC.job_user_drop(
+                        value, lookup=_lookup,
+                        groups=lambda name, gid: [gid])
                 except RuntimeError:
                     self.assertTrue(
                         ":" in value
@@ -1159,7 +1337,11 @@ class ProfileFuzzTest(unittest.TestCase):
                                for c in value),
                         repr(value))
                     continue
-                self.assertEqual(out[4], value)
+                # The name reached the user database as it was
+                # given, and nothing of it reached the spawn.
+                self.assertEqual(asked[-1], value)
+                self.assertEqual(out, {"user": 77, "group": 78,
+                                       "extra_groups": [78]})
         self.assertGreater(ran, 100)
 
     def test_random_text_keeps_the_invariants(self):
@@ -1217,15 +1399,28 @@ class _FakeTrialProc:
 class ConfinementTrialProblemTest(unittest.TestCase):
     """confinement_trial_problem through scripted spawn seams."""
 
+    OK = (b"TRIAL-READ-OK\nTRIAL-WRITE-OK\n"
+          b"TRIAL-LIMIT 411256832 411256832\n")
+
     def _spawn(self, proc_factory, record):
         def _spawn(argv, cwd=None, env=None):
             record["argv"] = argv
             record["cwd"] = cwd
+            # The program, the staged file and the work
+            # directory: staged, and inside the work directory.
             record["staged_existed"] = all(
-                os.path.exists(p) for p in argv[1:])
+                os.path.exists(p) for p in argv[1:4])
             record["staged_inside_work"] = all(
                 p == cwd or p.startswith(cwd + os.sep)
-                for p in argv[1:])
+                for p in argv[1:4])
+            # The two paths the trial must be refused: beside
+            # the work directory, not inside it; one not there
+            # yet, one there with something to read.
+            record["outside_beside_work"] = all(
+                os.path.dirname(p) == os.path.dirname(cwd)
+                for p in argv[4:6])
+            record["outside_new_existed"] = os.path.exists(argv[4])
+            record["outside_kept_existed"] = os.path.exists(argv[5])
             return proc_factory(cwd)
         return _spawn
 
@@ -1233,13 +1428,113 @@ class ConfinementTrialProblemTest(unittest.TestCase):
         record = {}
         spawn = self._spawn(
             lambda work: _FakeTrialProc(
-                out=b"TRIAL-READ-OK\nTRIAL-WRITE-OK\n",
-                work=work, write_file=True), record)
+                out=self.OK, work=work, write_file=True), record)
         self.assertIsNone(MC.confinement_trial_problem(spawn))
         self.assertTrue(record["staged_existed"])
         self.assertTrue(record["staged_inside_work"])
+        self.assertTrue(record["outside_beside_work"])
+        self.assertFalse(record["outside_new_existed"])
+        self.assertTrue(record["outside_kept_existed"])
+        self.assertEqual(record["argv"][0], "/bin/sh")
+        self.assertEqual(len(record["argv"]), 6)
         root = os.path.dirname(record["cwd"])
         self.assertFalse(os.path.exists(root))
+
+    def test_a_passing_trial_hands_back_the_limit_it_read(self):
+        facts = {}
+        spawn = self._spawn(
+            lambda work: _FakeTrialProc(
+                out=self.OK, work=work, write_file=True), {})
+        self.assertIsNone(
+            MC.confinement_trial_problem(spawn, facts=facts))
+        self.assertEqual(facts, {"limit_kib": 411256832})
+
+    def test_a_write_outside_the_work_directory_is_a_problem(self):
+        spawn = self._spawn(
+            lambda work: _FakeTrialProc(
+                out=self.OK + b"TRIAL-WROTE-OUTSIDE\n", work=work,
+                write_file=True), {})
+        problem = MC.confinement_trial_problem(spawn)
+        self.assertIn("wrote a file outside its work directory",
+                      problem)
+
+    def test_a_file_left_outside_is_a_problem_whatever_was_said(self):
+        # The trial's own word is not the only evidence: a file
+        # standing where the write was to be refused convicts a
+        # trial that printed nothing about it.
+        def _factory(work):
+            with open(os.path.join(os.path.dirname(work),
+                                   "outside-write.txt"), "w") as fh:
+                fh.write("x")
+            return _FakeTrialProc(out=self.OK, work=work,
+                                  write_file=True)
+        problem = MC.confinement_trial_problem(self._spawn(_factory, {}))
+        self.assertIn("wrote a file outside its work directory",
+                      problem)
+
+    def test_a_read_outside_the_work_directory_is_a_problem(self):
+        spawn = self._spawn(
+            lambda work: _FakeTrialProc(
+                out=self.OK + b"TRIAL-READ-OUTSIDE\n", work=work,
+                write_file=True), {})
+        problem = MC.confinement_trial_problem(spawn)
+        self.assertIn("read a file outside its work directory",
+                      problem)
+
+    def test_a_trial_with_no_ceiling_of_its_own_is_a_problem(self):
+        for limit in (b"", b"TRIAL-LIMIT unlimited unlimited\n",
+                      b"TRIAL-LIMIT 524288 unlimited\n",
+                      b"TRIAL-LIMIT 524288 1048576\n"):
+            spawn = self._spawn(
+                lambda work, limit=limit: _FakeTrialProc(
+                    out=b"TRIAL-READ-OK\nTRIAL-WRITE-OK\n" + limit,
+                    work=work, write_file=True), {})
+            problem = MC.confinement_trial_problem(spawn)
+            self.assertIn("carried no data-size ceiling of its own",
+                          problem, limit)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_the_trial_program_convicts_a_spawn_that_confines_nothing(self):
+        # The real program on this host through a spawn that
+        # applies no profile and no shim: it reads and writes
+        # as a job does, and then writes outside its work
+        # directory, which is the trial's answer. A probe that
+        # passed here would pass a sandbox that did nothing.
+        def _open_spawn(argv, cwd=None, env=None):
+            inner = subprocess.Popen(
+                argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            inner.close = lambda: None
+            return inner
+        problem = MC.confinement_trial_problem(_open_spawn)
+        self.assertIn("wrote a file outside its work directory",
+                      problem)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_the_trial_program_reads_the_shim_s_limit(self):
+        # The real program under the real shim, with no
+        # profile: the staged read, the work write and the
+        # limit are all there, and the write outside is what
+        # is left to convict it -- on a host that is not a Mac
+        # the profile is the one part that cannot be had.
+        said = {}
+
+        def _shim_spawn(argv, cwd=None, env=None):
+            inner = subprocess.Popen(
+                MC.build_shim_argv(argv), cwd=cwd, env=env,
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+            out, err = inner.communicate(timeout=60)
+            said["out"] = out.decode()
+            return _FakeTrialProc(out=out, err=err,
+                                  returncode=inner.returncode)
+        problem = MC.confinement_trial_problem(_shim_spawn)
+        self.assertIn("wrote a file outside its work directory",
+                      problem)
+        soft, hard = MC._trial_limit(said["out"])
+        self.assertEqual(soft, hard)
+        self.assertTrue(soft.isdigit())
+        self.assertIn("TRIAL-READ-OUTSIDE", said["out"])
 
     def test_trial_read_failure_names_the_staged_read(self):
         record = {}
@@ -1455,6 +1750,35 @@ class ConfinementSpawnTest(unittest.TestCase):
         release()
         self.assertTrue(proc.closed)
 
+    def test_the_record_s_detail_is_what_the_launch_carried(self):
+        backend = _backend(None, notes=(
+            "memory ceiling 512 MiB above a bare process's address "
+            "map, soft and hard",
+            "job user nobody applied at the spawn door"))
+        (_proc, _release), sink = self._run(
+            _ccfg("enforce"), {"confinement": "enforce"},
+            backend=backend)
+        self.assertEqual(
+            sink[0]["kw"]["detail"],
+            "memory ceiling 512 MiB above a bare process's address "
+            "map, soft and hard; job user nobody applied at the "
+            "spawn door")
+
+    def test_a_backend_with_no_notes_records_no_detail(self):
+        (_proc, _release), sink = self._run(
+            _ccfg("enforce"), {"confinement": "enforce"},
+            backend=_backend(None))
+        self.assertEqual(sink[0]["kw"]["detail"], "")
+
+    def test_the_config_rides_to_the_spawn(self):
+        backend = _backend(None)
+        cfg = {"security": {
+            "modes": {"confinement": "enforce"},
+            "confinement": {"macos": {
+                "process_memory_bytes": 2 * 1024 ** 3}}}}
+        self._run(cfg, {"confinement": "enforce"}, backend=backend)
+        self.assertIs(backend.spawned[0]["cfg"], cfg)
+
     def test_enforce_hands_the_job_user_to_the_spawn(self):
         backend = _backend(None)
         cfg = {"security": {
@@ -1491,14 +1815,262 @@ class ConfinementSpawnTest(unittest.TestCase):
                          "macos_confinement_failed")
 
 
-class SeedShapeTest(unittest.TestCase):
-    """The seed keeps the other backends' pattern: stated, not probed."""
+class SettingsTest(unittest.TestCase):
+    """security.confinement.macos: the backend's own settings."""
+
+    def test_the_ceiling_defaults_to_512_mib(self):
+        for cfg in (None, {}, {"security": {}},
+                    {"security": {"confinement": {}}},
+                    {"security": {"confinement": {"macos": {}}}}):
+            self.assertEqual(
+                MC.confinement_settings(cfg),
+                {"process_memory_bytes": 512 * 1024 * 1024}, cfg)
+
+    def test_the_operator_s_ceiling_is_the_one_read(self):
+        cfg = {"security": {"confinement": {"macos": {
+            "process_memory_bytes": 2 * 1024 ** 3}}}}
+        self.assertEqual(
+            MC.confinement_settings(cfg)["process_memory_bytes"],
+            2 * 1024 ** 3)
+
+    def test_the_known_settings_are_exactly_these(self):
+        self.assertEqual(MC.MACOS_KEYS, ("process_memory_bytes",))
+
+    def test_a_setting_the_backend_does_not_know_is_an_error(self):
+        # A ceiling the operator misspelled is a ceiling that
+        # is not there.
+        with self.assertRaises(RuntimeError) as caught:
+            MC.validate_macos_block({"process_memory": 1})
+        self.assertIn("security.confinement.macos.process_memory is "
+                      "not a known setting", str(caught.exception))
+        self.assertIn("process_memory_bytes", str(caught.exception))
+
+    def test_a_ceiling_must_be_a_positive_integer(self):
+        for bad in (0, -1, True, False, "512", 1.5, None, [1]):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.validate_macos_block({"process_memory_bytes": bad})
+
+    def test_the_block_must_be_an_object(self):
+        for bad in ([], "x", 1, None):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.validate_macos_block(bad)
+
+    def test_a_config_is_right_or_wrong_the_same_way_on_every_host(self):
+        # The sandbox module checks the confinement block
+        # wherever a config is read, and hands this backend's
+        # part to this backend.
+        SB._validate_confinement_block(
+            {"macos": {"process_memory_bytes": 1024}})
+        with self.assertRaises(RuntimeError):
+            SB._validate_confinement_block(
+                {"macos": {"process_memory_bytes": "big"}})
+        with self.assertRaises(RuntimeError):
+            SB._validate_confinement_block({"macos": {"cores": 2}})
+
+    def test_the_other_backends_keys_are_not_this_backend_s(self):
+        cfg = {"security": {"confinement": {
+            "work_mount": "/work", "extra_ro_binds": [["/a", "/b"]],
+            "freebsd": {"job_cpus": 2}}}}
+        self.assertEqual(
+            MC.confinement_settings(cfg),
+            {"process_memory_bytes": 512 * 1024 * 1024})
+
+
+class PostureLinesTest(unittest.TestCase):
+    """posture_lines: what a job carries on this host, in words."""
+
+    APPLE = {"limit_kib": 410732544 + 524288}
+
+    @staticmethod
+    def _passes(cfg):
+        return None
+
+    def test_a_host_with_a_floor_names_the_floor(self):
+        lines = MC.posture_lines({}, probe=self._passes,
+                                 facts=self.APPLE)
+        self.assertEqual(lines, [
+            ("OK", "macOS backend: macos: seatbelt_profile + "
+                   "no_network + spawn_resource_limits"),
+            ("OK", "a job process's address map may grow 512 MiB "
+                   "past the 391.7 GiB a bare process starts at "
+                   "here; the ceiling is not the job's to raise "
+                   "(ulimit in the launcher shim, soft and hard)")])
+
+    def test_a_host_with_no_floor_names_the_ceiling_itself(self):
+        lines = MC.posture_lines({}, probe=self._passes,
+                                 facts={"limit_kib": 524288})
+        self.assertEqual(
+            lines[1][1],
+            "a job process's address map is held to 512 MiB here; "
+            "the ceiling is not the job's to raise (ulimit in the "
+            "launcher shim, soft and hard)")
+
+    def test_no_reading_names_no_number_it_did_not_read(self):
+        lines = MC.posture_lines({}, probe=self._passes, facts={})
+        self.assertEqual(
+            lines[1][1],
+            "a job process's address map may grow 512 MiB past "
+            "the size a bare process starts at; the ceiling is "
+            "not the job's to raise (ulimit in the launcher shim, "
+            "soft and hard)")
+
+    def test_the_operator_s_ceiling_is_the_one_named(self):
+        cfg = {"security": {"confinement": {"macos": {
+            "process_memory_bytes": 2 * 1024 ** 3}}}}
+        lines = MC.posture_lines(
+            cfg, probe=self._passes,
+            facts={"limit_kib": 34128896 + 2 * 1024 ** 2})
+        self.assertIn("may grow 2.0 GiB past the 32.5 GiB",
+                      lines[1][1])
+
+    def test_a_probe_that_does_not_pass_is_one_warning(self):
+        lines = MC.posture_lines(
+            {}, probe=lambda cfg: "/usr/bin/sandbox-exec is missing "
+                                  "or not executable")
+        self.assertEqual(lines, [(
+            "WARN", "macOS backend cannot engage: "
+                    "/usr/bin/sandbox-exec is missing or not "
+                    "executable; confinement in enforce mode would "
+                    "refuse to start")])
+
+    def test_a_probe_that_raises_is_a_warning_too(self):
+        def _probe(cfg):
+            raise OSError("no such host")
+        lines = MC.posture_lines({}, probe=_probe)
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(lines[0][0], "WARN")
+        self.assertIn("no such host", lines[0][1])
+
+    def test_a_malformed_block_is_a_warning_and_asks_nothing(self):
+        asked = []
+        lines = MC.posture_lines(
+            {"security": {"confinement": {"macos": {"cores": 1}}}},
+            probe=lambda cfg: asked.append(cfg))
+        self.assertEqual(asked, [])
+        self.assertEqual(lines[0][0], "WARN")
+        self.assertIn("not a known setting", lines[0][1])
+
+    def test_an_engaged_job_user_is_named(self):
+        cfg = {"security": {"job_user": {"user": "nobody"}}}
+        lines = MC.posture_lines(cfg, probe=self._passes,
+                                 facts=self.APPLE)
+        self.assertEqual(
+            lines[2],
+            ("OK", "a job is started as nobody at the spawn door "
+                   "(security.job_user) and reads what that user "
+                   "can read"))
+
+    def test_a_job_user_whose_mode_is_down_is_not(self):
+        cfg = {"security": {"modes": {"job_user": "audit"},
+                            "job_user": {"user": "nobody"}}}
+        lines = MC.posture_lines(cfg, probe=self._passes,
+                                 facts=self.APPLE)
+        self.assertEqual(len(lines), 2)
+
+    def test_the_stub_s_own_answer_is_a_warning(self):
+        if MC.IS_MACOS_BACKEND:
+            self.skipTest("the stub exists only off darwin")
+        lines = MC.posture_lines({})
+        self.assertEqual(lines[0][0], "WARN")
+        self.assertIn("macOS-only", lines[0][1])
+
+    def test_the_posture_report_carries_the_backend_s_lines(self):
+        results = []
+        said = [("OK", "macOS backend: x"), ("OK", "a ceiling")]
+        with mock.patch.object(POST.sys, "platform", "darwin"), \
+                mock.patch.object(POST, "_macos_confinement_lines",
+                                  lambda cfg: said):
+            POST._check_confinement_backend(results, {})
+        self.assertEqual(results, [
+            ("OK", "confinement", "macOS backend: x"),
+            ("OK", "confinement", "a ceiling")])
+
+    def test_a_backend_that_cannot_be_read_is_a_warning_there(self):
+        def _lines(cfg):
+            raise ImportError("no module")
+        results = []
+        with mock.patch.object(POST.sys, "platform", "darwin"), \
+                mock.patch.object(POST, "_macos_confinement_lines",
+                                  _lines):
+            POST._check_confinement_backend(results, {})
+        self.assertEqual(results[0][0], "WARN")
+        self.assertIn("could not be read", results[0][2])
+
+    def test_sizes_read_as_a_person_reads_them(self):
+        self.assertEqual(MC.human_size(524288), "512 MiB")
+        self.assertEqual(MC.human_size(1024), "1 MiB")
+        self.assertEqual(MC.human_size(1048576), "1.0 GiB")
+        self.assertEqual(MC.human_size(410732544), "391.7 GiB")
+        self.assertEqual(MC.human_size(34128896), "32.5 GiB")
+
+
+_SEED_LINES = (
+    "macOS backend: macos: seatbelt_profile + no_network + "
+    "spawn_resource_limits",
+    "a job process's address map may grow 512 MiB past the "
+    "391.7 GiB a bare process starts at here; the ceiling is not "
+    "the job's to raise (ulimit in the launcher shim, soft and "
+    "hard)")
+
+
+class _SeedProbe:
+    """A scripted answer to the seed's question, and what it
+    was asked with."""
+
+    def __init__(self, problem=None, lines=_SEED_LINES, error=None):
+        self.problem, self.lines, self.error = problem, lines, error
+        self.asked = []
+
+    def __call__(self, cfg):
+        self.asked.append(json.loads(json.dumps(cfg)))
+        if self.error is not None:
+            raise self.error
+        return self.problem, (() if self.problem else self.lines)
+
+
+def _fresh_config(folder, modes=None):
+    """A config as a fresh install leaves it in `folder`: both
+    gates at enforce, or the modes handed in."""
+    cfg = {"security": {"modes": dict(
+        modes or {"confinement": "enforce", "job_user": "enforce"})}}
+    path = os.path.join(folder, "config.json")
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(cfg, fh)
+    return path
+
+
+def _config_in(path):
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _machine_asked(word="1"):
+    """The seed's questions to the machine, switched on for one
+    test (or off, by `word`). The suite switches them off for
+    every test that does not ask for them
+    (runner/tests/__init__.py): a test run is not an install."""
+    return mock.patch.dict(os.environ, {INS.SEED_SWITCH: word})
+
+
+class SeedTest(unittest.TestCase):
+    """The mode a fresh macOS config states: the machine's answer."""
+
+    def _apply(self, path, probe=None, platform="darwin"):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            applied = INS.apply_platform_modes(path, platform,
+                                               probe=probe)
+        return applied, out.getvalue()
+
+    # --- the map, where nothing is asked -----------------------
 
     def test_platform_modes_states_confinement_audit_only(self):
         self.assertEqual(INS.platform_modes("darwin"),
                          {"confinement": "audit"})
 
-    def test_a_fresh_darwin_seed_states_confinement_audit(self):
+    def test_a_platform_only_named_is_stated_and_not_asked(self):
+        # A caller that names macOS is asking about macOS, not
+        # about this machine.
         cfg = {"security": {"modes": {
             "confinement": "enforce", "job_user": "enforce"}}}
         SU.seed_platform_modes(cfg, platform="darwin")
@@ -1508,6 +2080,284 @@ class SeedShapeTest(unittest.TestCase):
         # seed does not state it down.
         self.assertEqual(cfg["security"]["modes"]["job_user"],
                          "enforce")
+        self.assertEqual(INS.fresh_platform_modes({}, "darwin"),
+                         ({"confinement": "audit"}, None))
+
+    # --- the question ------------------------------------------
+
+    def test_a_passing_probe_leaves_confinement_at_enforce(self):
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        probe = _SeedProbe()
+        modes, asked = INS.fresh_platform_modes(cfg, "darwin", probe)
+        self.assertEqual(probe.asked, [cfg])
+        self.assertEqual(modes, {})
+        self.assertEqual(asked, (None, _SEED_LINES))
+        self.assertEqual(asked.asked, INS.MACOS_PROBE_ASKED)
+
+    def test_a_failing_probe_states_audit_and_carries_the_reason(self):
+        probe = _SeedProbe("/usr/bin/sandbox-exec is missing or "
+                           "not executable")
+        modes, asked = INS.fresh_platform_modes({}, "darwin", probe)
+        self.assertEqual(modes, {"confinement": "audit"})
+        self.assertEqual(asked[0], "/usr/bin/sandbox-exec is missing "
+                                   "or not executable")
+        self.assertEqual(asked[1], ())
+        self.assertEqual(
+            INS.seed_reason(asked, "confinement", "the default"),
+            "the macOS backend's probe, asked on this machine as "
+            "this user, did not pass: /usr/bin/sandbox-exec is "
+            "missing or not executable")
+
+    def test_a_probe_that_raises_is_a_reason_never_a_pass(self):
+        probe = _SeedProbe(error=OSError("no such tool"))
+        modes, asked = INS.fresh_platform_modes({}, "darwin", probe)
+        self.assertEqual(modes, {"confinement": "audit"})
+        self.assertIn("no such tool", asked[0])
+
+    def test_a_mode_the_operator_stated_down_is_never_asked_about(self):
+        for stated in ("audit", "off"):
+            probe = _SeedProbe()
+            cfg = {"security": {"modes": {"confinement": stated}}}
+            modes, asked = INS.fresh_platform_modes(cfg, "darwin",
+                                                    probe)
+            self.assertEqual(probe.asked, [], stated)
+            self.assertIsNone(asked, stated)
+            self.assertEqual(modes, {"confinement": "audit"})
+
+    def test_a_mac_is_asked_through_the_backend_s_own_probe(self):
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        probe = _SeedProbe()
+        with _machine_asked(), \
+                mock.patch.object(INS, "_HOST_PLATFORM", "darwin"), \
+                mock.patch.object(INS.sys, "platform", "darwin"), \
+                mock.patch.object(INS, "macos_seed_probe", probe):
+            modes, asked = INS.fresh_platform_modes(cfg)
+        self.assertEqual(probe.asked, [cfg])
+        self.assertEqual(modes, {})
+        self.assertEqual(asked.asked, INS.MACOS_PROBE_ASKED)
+
+    def test_a_test_run_is_not_an_install(self):
+        # With the switch off -- the suite's own state -- a Mac
+        # is not asked, and the seed says so.
+        probe = _SeedProbe()
+        with _machine_asked("0"), \
+                mock.patch.object(INS, "_HOST_PLATFORM", "darwin"), \
+                mock.patch.object(INS.sys, "platform", "darwin"), \
+                mock.patch.object(INS, "macos_seed_probe", probe):
+            modes, asked = INS.fresh_platform_modes({})
+        self.assertEqual(probe.asked, [])
+        self.assertEqual(modes, {"confinement": "audit"})
+        self.assertEqual(asked, (INS.SEED_NOT_ASKED, ()))
+        self.assertEqual(
+            INS.seed_reason(asked, "confinement", "the default"),
+            INS.SEED_NOT_ASKED)
+
+    def test_another_host_is_never_asked_macos_s_question(self):
+        probe = _SeedProbe()
+        with _machine_asked(), \
+                mock.patch.object(INS, "_HOST_PLATFORM", "linux"), \
+                mock.patch.object(INS, "macos_seed_probe", probe):
+            modes, asked = INS.fresh_platform_modes({}, "darwin")
+        self.assertEqual(probe.asked, [])
+        self.assertIsNone(asked)
+
+    def test_no_job_user_is_named_on_macos(self):
+        # The second question is the jail's. A macOS runner is
+        # its user's own agent: its jobs are that user's, under
+        # a profile that needs no privilege.
+        asked = INS.SeedAnswer(None, _SEED_LINES, INS.MACOS_PROBE_ASKED)
+        tried = []
+
+        def _trial(cfg, user):
+            tried.append(user)
+            return None, ()
+
+        self.assertEqual(
+            INS.fresh_job_user({}, asked, "darwin", trial=_trial,
+                               account=lambda: ("pigeon-jobs", True,
+                                                None)),
+            (None, None))
+        self.assertEqual(tried, [])
+
+    def test_a_plain_pair_still_reads_as_the_jail_s_answer(self):
+        # An answer with no words of its own is the FreeBSD
+        # probe's, as it was before this backend's seed asked.
+        self.assertEqual(INS._probe_asked((None, ())),
+                         INS.FREEBSD_PROBE_ASKED)
+        answer = INS.SeedAnswer(None, ["a"])
+        self.assertEqual(answer, (None, ("a",)))
+        self.assertEqual(answer.asked, INS.FREEBSD_PROBE_ASKED)
+
+    # --- the installer's seed ----------------------------------
+
+    def test_the_installer_leaves_enforce_and_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = _fresh_config(d)
+            with open(path, "rb") as fh:
+                before = fh.read()
+            applied, out = self._apply(path, probe=_SeedProbe())
+            with open(path, "rb") as fh:
+                after = fh.read()
+        self.assertEqual(applied, {})
+        self.assertEqual(before, after)
+        self.assertIn(
+            "platform: security.modes.confinement left at enforce in "
+            "%s (the macOS backend's probe, asked on this machine as "
+            "this user, passed; the startup gate asks it again at "
+            "every start)" % path, out)
+        for line in _SEED_LINES:
+            self.assertIn("platform: " + line, out)
+        self.assertNotIn("stated as audit", out)
+        self.assertNotIn("job_user", out)
+        self.assertNotIn("jail", out)
+
+    def test_the_installer_states_audit_with_the_probe_s_reason(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = _fresh_config(d)
+            applied, out = self._apply(
+                path, probe=_SeedProbe("a confined process could "
+                                       "not read its staged file"))
+            cfg = _config_in(path)
+        self.assertEqual(applied, {"confinement": "audit"})
+        self.assertEqual(cfg["security"]["modes"],
+                         {"confinement": "audit", "job_user": "enforce"})
+        self.assertIn(
+            "platform: security.modes.confinement stated as audit in "
+            "%s (the macOS backend's probe, asked on this machine as "
+            "this user, did not pass: a confined process could not "
+            "read its staged file; the mode is stated in the file "
+            "rather than left to refuse the first start)" % path, out)
+        self.assertNotIn("left at enforce", out)
+
+    def test_a_later_run_does_not_touch_a_mode_stated_down(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = _fresh_config(d, {"confinement": "off"})
+            probe = _SeedProbe()
+            applied, out = self._apply(path, probe=probe)
+            cfg = _config_in(path)
+        self.assertEqual(applied, {})
+        self.assertEqual(probe.asked, [])
+        self.assertEqual(cfg["security"]["modes"]["confinement"], "off")
+        self.assertEqual(out, "")
+
+    # --- the setup wizard's seed -------------------------------
+
+    def test_the_wizard_s_seed_takes_the_same_answer(self):
+        cfg = {"security": {"modes": {
+            "confinement": "enforce", "job_user": "enforce"}}}
+        answers = []
+        stated = SU.seed_platform_modes(
+            cfg, platform="darwin", probe=_SeedProbe(), asked=answers)
+        self.assertEqual(stated, {})
+        self.assertEqual(cfg["security"]["modes"]["confinement"],
+                         "enforce")
+        self.assertNotIn("job_user", cfg["security"])
+        answer, user, door = answers[0]
+        self.assertEqual(answer.asked, INS.MACOS_PROBE_ASKED)
+        self.assertIsNone(user)
+        self.assertIsNone(door)
+        lines = INS.seed_kept_lines(answer, "/x/config.json", user, door)
+        self.assertEqual(len(lines), 1 + len(_SEED_LINES))
+        self.assertIn("the macOS backend's probe", lines[0])
+
+    def test_the_wizard_states_audit_where_the_probe_does_not_pass(self):
+        cfg = {"security": {"modes": {"confinement": "enforce"}}}
+        answers = []
+        stated = SU.seed_platform_modes(
+            cfg, platform="darwin",
+            probe=_SeedProbe("sandbox-exec cannot start a confined "
+                             "process (exit 71)"), asked=answers)
+        self.assertEqual(stated, {"confinement": "audit"})
+        self.assertEqual(cfg["security"]["modes"]["confinement"],
+                         "audit")
+        self.assertIn("exit 71", answers[0][0][0])
+
+    # --- reaching the backend ----------------------------------
+
+    def test_the_seed_s_probe_refuses_where_the_backend_is_a_stub(self):
+        if MC.IS_MACOS_BACKEND:
+            self.skipTest("the stub exists only off darwin")
+        problem, lines = INS.macos_seed_probe({})
+        self.assertEqual(
+            problem, "the macOS backend (runner/guard/"
+                     "macos_confine.py) could not be loaded on this "
+                     "machine")
+        self.assertEqual(lines, ())
+
+    def test_a_backend_that_cannot_answer_is_a_reason(self):
+        backend = types.SimpleNamespace(IS_MACOS_BACKEND=True)
+
+        def _probe(cfg):
+            raise RuntimeError("the trial could not be staged")
+        backend.macos_confinement_problem = _probe
+        with mock.patch.object(INS, "_import_macos_confine",
+                               lambda: backend):
+            problem, lines = INS.macos_seed_probe({})
+        self.assertEqual(problem, "the macOS backend could not "
+                                  "answer: the trial could not be "
+                                  "staged")
+        self.assertEqual(lines, ())
+
+    def test_a_passing_backend_hands_back_its_posture_lines(self):
+        backend = types.SimpleNamespace(
+            IS_MACOS_BACKEND=True,
+            macos_confinement_problem=lambda cfg: None,
+            posture_lines=lambda cfg: [("OK", "one"), ("OK", "two")])
+        with mock.patch.object(INS, "_import_macos_confine",
+                               lambda: backend):
+            self.assertEqual(INS.macos_seed_probe({}),
+                             (None, ("one", "two")))
+
+    def test_the_backend_stands_alone(self):
+        # The frozen installer carries this one file and loads it
+        # by path: it may import nothing of the runner's.
+        with open(MC.__file__, encoding="utf-8") as fh:
+            source = fh.read()
+        for line in source.splitlines():
+            words = line.split()
+            if words[:1] in (["import"], ["from"]):
+                self.assertNotIn("runner", words[1], line)
+                self.assertNotIn("guard", words[1], line)
+        loaded = INS._load_macos_by_path(MC.__file__)
+        self.assertIsNot(loaded, MC)
+        self.assertEqual(loaded.STATUS_CONFINEMENT,
+                         MC.STATUS_CONFINEMENT)
+        self.assertEqual(loaded.LIMIT_SHIM_TEXT, MC.LIMIT_SHIM_TEXT)
+
+    def test_a_frozen_installer_loads_the_file_it_carries(self):
+        with tempfile.TemporaryDirectory() as bundle:
+            os.mkdir(os.path.join(bundle, "pigeon-guard"))
+            carried = os.path.join(bundle, "pigeon-guard",
+                                   "macos_confine.py")
+            shutil.copyfile(MC.__file__, carried)
+            with mock.patch.object(INS.sys, "_MEIPASS", bundle,
+                                   create=True):
+                loaded = INS._import_macos_confine()
+            self.assertEqual(os.path.realpath(loaded.__file__),
+                             os.path.realpath(carried))
+
+    def test_a_frozen_runner_s_wizard_finds_the_package(self):
+        # A frozen runner carries no such data file; its setup
+        # wizard finds the backend where the runner does.
+        with tempfile.TemporaryDirectory() as bundle:
+            with mock.patch.object(INS.sys, "_MEIPASS", bundle,
+                                   create=True):
+                self.assertIs(INS._import_macos_confine(), MC)
+
+    def test_the_two_macos_installers_are_frozen_with_the_file(self):
+        with open(os.path.join(_REPO, ".github", "workflows",
+                               "build.yml"), encoding="utf-8") as fh:
+            build = fh.read()
+        carried = ('--add-data "runner/guard/macos_confine.py:'
+                   'pigeon-guard"')
+        lines = [ln for ln in build.splitlines()
+                 if "pyinstaller" in ln and "--name install " in ln
+                 and carried in ln]
+        self.assertEqual(len(lines), 2)
+        for job in ("build-macos", "build-macos-x86_64"):
+            block = build.split("\n  %s:\n" % job, 1)[1]
+            block = block.split("\n  build-", 1)[0]
+            self.assertIn(carried, block, job)
 
 
 @unittest.skipUnless(MC.IS_MACOS_BACKEND, "run on macOS")
@@ -1596,33 +2446,21 @@ class LiveBackendTest(unittest.TestCase):
         # address-space limit is below the startup mappings of
         # every macOS process and aborted the exec'd
         # interpreter at -6 in the first live run (supposition
-        # S1). The applied soft value is re-pinned by the
-        # fourth fix (supposition R4-S3): it is exactly one
-        # of the values on the attempt ladder for the hard
-        # limit this test process itself inherits -- the
-        # requested ceiling when the host allows it, the
-        # inherited hard limit when that is smaller, a
-        # ladder value above the request when the kernel's
-        # current-usage floor (R4-S1) requires it -- the
-        # hard limit reads back unchanged, and the address
-        # space stays unlimited. The job reads all three
-        # back, in this order. The fifth fix (supposition
-        # R5-S3) leaves this point's text standing: it
-        # re-derives its expectation from the ladder
-        # function, so the wider ladder carries it. The
-        # spawn-limits fix (supposition R6-S1) re-pins the
-        # address-space assertion below: the old text
-        # hardcoded -1, the Linux report of unlimited,
-        # and failed on darwin with the platform's own
-        # sentinel (9223372036854775807) in hand while the
-        # address space stood unlimited. The assertion now
-        # takes the limits[1] shape -- the read-back value
-        # against the inherited value and the platform
-        # constant this same process reads -- and the
-        # classification is pinned in ReportedLimitTest.
+        # S1). The job reads three numbers back. Its data-size
+        # limit is one number, soft and hard, so it is not the
+        # job's to raise; it stands the requested ceiling above
+        # a floor that is itself above the ceiling -- the size
+        # a bare process's address map already has on this
+        # host -- and it is the limit the probe's own trial
+        # read here, to within what one shell's map differs
+        # from another's. The address space reads back exactly
+        # as this process inherits it, in the platform's own
+        # report of unlimited (supposition R6-S1).
         import resource
-        inherited_hard = resource.getrlimit(resource.RLIMIT_DATA)[1]
         inherited_as = resource.getrlimit(resource.RLIMIT_AS)[0]
+        self.assertIsNone(MC.macos_confinement_problem())
+        trial_kib = MC.trial_facts()["limit_kib"]
+        request = MC.ceiling_kib(MC.DEFAULT_PROCESS_MEMORY_BYTES) * 1024
         with tempfile.TemporaryDirectory() as work:
             proc = MC.spawn_confined_process(
                 [sys.executable, "-c",
@@ -1631,19 +2469,28 @@ class LiveBackendTest(unittest.TestCase):
                  "print(resource.getrlimit(resource.RLIMIT_DATA)[1])\n"
                  "print(resource.getrlimit(resource.RLIMIT_AS)[0])\n"],
                 cwd=work, env=dict(os.environ))
-            out, _err = proc.communicate(timeout=30)
+            out, err = proc.communicate(timeout=30)
             proc.close()
             limits = [int(x) for x in out.decode().split()]
-            self.assertEqual(len(limits), 3)
-            self.assertIn(
-                limits[0],
-                MC.data_limit_attempts(
-                    MC.DEFAULT_PROCESS_MEMORY_BYTES, inherited_hard))
-            self.assertEqual(limits[1], inherited_hard)
+            self.assertEqual(len(limits), 3, err)
+            self.assertEqual(limits[0], limits[1])
+            self.assertFalse(MC.reported_limit_is_unlimited(limits[0]))
+            floor = limits[0] - request
+            self.assertGreater(floor, request)
+            self.assertLess(abs(limits[0] // 1024 - trial_kib),
+                            64 * 1024)
             self.assertEqual(limits[2], inherited_as)
             self.assertEqual(limits[2], resource.RLIM_INFINITY)
             self.assertTrue(
                 MC.reported_limit_is_unlimited(limits[2]))
+            self.assertEqual(
+                proc.confinement_notes,
+                ["memory ceiling 512 MiB above a bare process's "
+                 "address map, soft and hard"])
+            print("limits: a job's data-size limit here is %d KiB, "
+                  "soft and hard: 512 MiB above a floor of %s"
+                  % (limits[0] // 1024,
+                     MC.human_size(floor // 1024)), flush=True)
 
     def test_a_native_binary_runs_inside_the_profile(self):
         # The full confined chain (profile, shim, limits)
@@ -1685,18 +2532,17 @@ class LiveBackendTest(unittest.TestCase):
 
     def test_the_shim_alone_lets_the_interpreter_start(self):
         # The launcher shim with no profile at all: the
-        # interpreter sets the data-size ceiling on itself
-        # and execs the job interpreter under it. One leg of
-        # the bisect (supposition R2-S3): if this aborts at
-        # -6 while the profile-only leg passes, the ceiling
-        # itself -- in force across the second exec, while
-        # the loader binds the interpreter -- is the abort's
+        # shell sets the data-size ceiling on itself and
+        # execs the job interpreter under it. One leg of
+        # the bisect (supposition R2-S3): if this aborts
+        # while the profile-only leg passes, the ceiling
+        # itself -- in force across the exec, while the
+        # loader binds the interpreter -- is the abort's
         # cause, and the profile is cleared.
         with tempfile.TemporaryDirectory() as work:
             done = subprocess.run(
-                [sys.executable, "-c", MC.LIMIT_SHIM_SOURCE,
-                 str(MC.DEFAULT_PROCESS_MEMORY_BYTES), "-",
-                 sys.executable, "-c", "print('SHIM-ONLY-OK')"],
+                MC.build_shim_argv(
+                    [sys.executable, "-c", "print('SHIM-ONLY-OK')"]),
                 cwd=work, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, timeout=30)
             self.assertEqual(
@@ -1732,66 +2578,416 @@ class LiveBackendTest(unittest.TestCase):
         # The launcher shim with no profile, driving a
         # native binary instead of the interpreter: the
         # other leg of the separation (supposition R3-S3).
-        # Under alternative (a) -- the shim's setrlimit
-        # call itself is refused on this host -- this leg
-        # fails carrying the shim's named line ("hp-shim:
-        # could not set the data-size limit"); under
-        # alternative (b) -- the limit in force across the
-        # second exec breaks the interpreter's startup --
-        # this leg passes while the shim-alone interpreter
-        # leg fails without that line.
+        # A shim whose limit is refused on this host fails
+        # here carrying its named line ("hp-shim: could not
+        # set the data-size limit"); a limit that breaks the
+        # interpreter's startup passes here while the
+        # shim-alone interpreter leg fails without that line.
         with tempfile.TemporaryDirectory() as work:
             done = subprocess.run(
-                [sys.executable, "-c", MC.LIMIT_SHIM_SOURCE,
-                 str(MC.DEFAULT_PROCESS_MEMORY_BYTES), "-",
-                 "/usr/bin/true"],
+                MC.build_shim_argv(["/usr/bin/true"]),
                 cwd=work, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, timeout=30)
             self.assertEqual(
                 done.returncode, 0,
                 done.stderr.decode("utf-8", "replace"))
 
-    def test_the_memory_ceiling_refuses_a_700mb_job(self):
-        # The data-size ceiling is a real ceiling, not a
-        # read-back: a job that tries to allocate and touch
-        # 256 MiB past its own applied limit -- 768 MiB
-        # against the 512 MiB request on a host that
-        # applies it exactly, which is the shape this point
-        # was first written with -- does not complete the
-        # allocation. The size is read from the job's own
-        # limit (re-pinned by the fourth fix, supposition
-        # R4-S3), because the applied value is the ladder's,
-        # not always the requested one. Re-pinned again by
-        # the fifth fix (supposition R5-S3): when the
-        # applied ladder value stands far above the request
-        # -- the fifth fix's host, whose floor the wider
-        # ladder climbs past -- the over-limit allocation
-        # is stopped by whichever reaches it first, the
-        # applied limit (a MemoryError) or the host's own
-        # memory pressure killing the process mid-touch
-        # (a death by signal, a negative return code).
-        # The invariant this point exists to hold is the
-        # non-completion: the job does not print its
-        # completion marker, does not exit 0, and its
-        # refusal is one of those two ceiling shapes.
+    # --- the ceiling -------------------------------------------
+
+    _GROW = ("import sys\n"
+             "n = int(sys.argv[1]) << 20\n"
+             "a = bytearray(n)\n"
+             "a[::4096] = b'1' * len(a[::4096])\n"
+             "print('MEM-DONE')\n")
+    _PY_LIMIT = ("import resource\n"
+                 "print(*resource.getrlimit(resource.RLIMIT_DATA))\n")
+
+    def _job(self, argv, work, **kw):
+        """One job under the full controls: (exit code, stdout,
+        stderr), as text."""
+        env = kw.pop("env", None)
+        proc = MC.spawn_confined_process(
+            argv, cwd=work,
+            env=dict(os.environ) if env is None else env, **kw)
+        out, err = proc.communicate(timeout=60)
+        rc = proc.returncode
+        proc.close()
+        return (rc, out.decode("utf-8", "replace"),
+                err.decode("utf-8", "replace"))
+
+    def _grows(self, work, mib, **kw):
+        """Whether a job that makes and touches one buffer of
+        `mib` mebibytes finishes; its exit code and stderr."""
+        rc, out, err = self._job(
+            [sys.executable, "-c", self._GROW, str(mib)], work, **kw)
+        return ("MEM-DONE" in out and rc == 0), rc, err
+
+    def test_the_memory_ceiling_is_a_real_ceiling(self):
+        # Each size is a job of its own, so no size inherits
+        # what an earlier one left mapped. A small buffer fits;
+        # one a half over the ceiling does not, and what
+        # refuses it is the limit -- a MemoryError in the job,
+        # never the host's memory pressure. Where the largest
+        # buffer that fits stands below 512 MiB, the difference
+        # is what the job's own interpreter maps at its start:
+        # the ceiling is on the address map, not on the data.
+        fit = refused = None
         with tempfile.TemporaryDirectory() as work:
-            proc = MC.spawn_confined_process(
+            for mib in (16, 64, 128, 256, 384, 448, 512, 768):
+                done, rc, err = self._grows(work, mib)
+                if done:
+                    fit = mib
+                    continue
+                refused = mib
+                self.assertIn("MemoryError", err,
+                              "rc=%r err=%r" % (rc, err[-300:]))
+                break
+        self.assertIsNotNone(fit, "a 16 MiB buffer did not fit")
+        self.assertIsNotNone(
+            refused, "a 768 MiB buffer fit under a 512 MiB ceiling")
+        print("memory: under the 512 MiB ceiling the largest buffer "
+              "a Python job made and touched was %d MiB; %d MiB was "
+              "refused" % (fit, refused), flush=True)
+
+    def test_the_job_cannot_raise_its_ceiling(self):
+        with tempfile.TemporaryDirectory() as work:
+            rc, out, err = self._job(
+                ["/bin/sh", "-c",
+                 _READ_BACK + "; (ulimit -H -d unlimited) 2>/dev/null "
+                 "&& echo RAISED-HARD; ulimit -S -d unlimited "
+                 "2>/dev/null; " + _READ_BACK], work)
+            self.assertEqual(rc, 0, err)
+            lines = out.split("\n")
+            self.assertNotIn("RAISED-HARD", lines)
+            self.assertEqual(lines[0], lines[1])
+            self.assertNotIn("unlimited", lines[1])
+            # And through the call itself, not a shell's builtin.
+            rc, out, err = self._job(
                 [sys.executable, "-c",
                  "import resource\n"
-                 "lim = resource.getrlimit(resource.RLIMIT_DATA)[0]\n"
-                 "n = lim + 256 * 1024 * 1024\n"
-                 "a = bytearray(n); "
-                 "a[::4096] = b'1' * ((n + 4095) // 4096); "
-                 "print('MEM-DONE')"],
-                cwd=work, env=dict(os.environ))
+                 "before = resource.getrlimit(resource.RLIMIT_DATA)\n"
+                 "for pair in ((resource.RLIM_INFINITY,) * 2,\n"
+                 "             (before[0] * 2, before[1] * 2),\n"
+                 "             (before[0] + 4096, before[1])):\n"
+                 "    try:\n"
+                 "        resource.setrlimit(resource.RLIMIT_DATA, pair)\n"
+                 "        print('RAISED', pair)\n"
+                 "    except (ValueError, OSError):\n"
+                 "        print('REFUSED')\n"
+                 "print(before == resource.getrlimit("
+                 "resource.RLIMIT_DATA))\n"], work)
+            self.assertEqual(out.split(), ["REFUSED"] * 3 + ["True"],
+                             err)
+
+    def test_an_operator_s_ceiling_is_the_one_a_job_carries(self):
+        two_gib = 2 * 1024 ** 3
+        cfg = {"security": {"confinement": {"macos": {
+            "process_memory_bytes": two_gib}}}}
+        with tempfile.TemporaryDirectory() as work:
+            _rc, small, _err = self._job(
+                [sys.executable, "-c", self._PY_LIMIT], work)
+            _rc, large, err = self._job(
+                [sys.executable, "-c", self._PY_LIMIT], work, cfg=cfg)
+            small, large = int(small.split()[0]), int(large.split()[0])
+            self.assertLess(
+                abs((large - small)
+                    - (two_gib - MC.DEFAULT_PROCESS_MEMORY_BYTES)),
+                64 * 1024 * 1024, err)
+            # A buffer the default refuses fits under it.
+            self.assertFalse(self._grows(work, 768)[0])
+            done, rc, err = self._grows(work, 768, cfg=cfg)
+            self.assertTrue(done, "rc=%r err=%r" % (rc, err[-300:]))
+
+    def test_a_function_in_the_job_s_environment_does_not_lift_it(self):
+        # The submitter's environment reaches the shim's shell,
+        # which on a Mac is bash. Neither shape of exported
+        # function replaces the shim's ulimit, and an option
+        # list there does not stop the shim running.
+        env = dict(os.environ)
+        env["BASH_FUNC_ulimit%%"] = "() { return 0; }"
+        env["__BASH_FUNC<ulimit>()"] = "() { return 0; }"
+        env["SHELLOPTS"] = "noexec"
+        with tempfile.TemporaryDirectory() as work:
+            rc, out, err = self._job(
+                [sys.executable, "-c", self._PY_LIMIT], work, env=env)
+            self.assertEqual(rc, 0, err)
+            soft, hard = (int(x) for x in out.split())
+            self.assertEqual(soft, hard)
+            self.assertFalse(MC.reported_limit_is_unlimited(soft))
+
+    def test_the_job_s_environment_arrives(self):
+        env = dict(os.environ)
+        env.update({"HP_T_PLAIN": "a b  c", "HP_T_EMPTY": "",
+                    "HP_T_QUOTE": "it's \"x\" $HOME"})
+        with tempfile.TemporaryDirectory() as work:
+            rc, out, err = self._job(
+                [sys.executable, "-c",
+                 "import os\n"
+                 "print(repr([os.environ.get(k) for k in "
+                 "('HP_T_PLAIN', 'HP_T_EMPTY', 'HP_T_QUOTE')]))\n"
+                 "print(os.environ['TMPDIR'] == os.path.join("
+                 "os.getcwd(), '.hp-tmp'))\n"], work, env=env)
+            self.assertEqual(rc, 0, err)
+            self.assertEqual(
+                out.split("\n")[0],
+                repr(["a b  c", "", "it's \"x\" $HOME"]))
+
+    # --- what the profile refuses besides files ----------------
+
+    def test_a_set_user_id_program_does_not_run(self):
+        # /bin/ps is root's by its set-user-ID bit; under the
+        # profile the kernel refuses to start it at all.
+        self.assertTrue(os.stat("/bin/ps").st_mode & stat.S_ISUID,
+                        "/bin/ps carries no set-user-ID bit here")
+        with tempfile.TemporaryDirectory() as work:
+            rc, out, err = self._job(
+                ["/bin/sh", "-c",
+                 "/bin/ps -o pid= -p 1 && echo PS-RAN; echo END"],
+                work)
+            self.assertIn("END", out)
+            self.assertNotIn("PS-RAN", out)
+            self.assertIn("Operation not permitted", err)
+
+    def test_a_signal_to_a_process_outside_is_refused(self):
+        with tempfile.TemporaryDirectory() as work:
+            rc, out, err = self._job(
+                ["/bin/sh", "-c",
+                 "kill -0 %d 2>/dev/null && echo REACHED; echo END"
+                 % os.getpid()], work)
+            self.assertIn("END", out)
+            self.assertNotIn("REACHED", out)
+
+    def test_a_job_handed_to_launchd_is_not_run(self):
+        # launchd would run the command outside the profile.
+        label = "hp.test.%s" % os.urandom(6).hex()
+        marker = os.path.join(tempfile.gettempdir(),
+                              "hp-launchd-%s.txt" % label)
+        try:
+            with tempfile.TemporaryDirectory() as work:
+                rc, out, err = self._job(
+                    ["/bin/sh", "-c",
+                     "/bin/launchctl submit -l %s -- /usr/bin/touch "
+                     "%s; echo SUBMIT-EXIT $?" % (label, marker)],
+                    work)
+            self.assertNotIn("SUBMIT-EXIT 0", out, err)
+            time.sleep(3)
+            self.assertFalse(os.path.exists(marker))
+        finally:
+            subprocess.run(["/bin/launchctl", "remove", label],
+                           stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL)
+            if os.path.exists(marker):
+                os.unlink(marker)
+
+    # --- the probe's own trial ---------------------------------
+
+    def test_the_trial_reads_the_boundary_here(self):
+        facts = {}
+        self.assertIsNone(MC.confinement_trial_problem(
+            MC.spawn_confined_process, facts=facts))
+        self.assertGreater(
+            facts["limit_kib"],
+            MC.ceiling_kib(MC.DEFAULT_PROCESS_MEMORY_BYTES))
+
+    def test_a_spawn_that_confines_nothing_does_not_pass_here(self):
+        def _open_spawn(argv, cwd=None, env=None):
+            inner = subprocess.Popen(
+                argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            inner.close = lambda: None
+            return inner
+        self.assertIn("wrote a file outside its work directory",
+                      MC.confinement_trial_problem(_open_spawn))
+
+    def test_a_missing_shell_or_tool_refuses_before_anything_runs(self):
+        for name in ("SANDBOX_EXEC_BIN", "SHELL_BIN"):
+            with mock.patch.object(MC, name, "/hp/no/such/tool"):
+                self.assertEqual(
+                    MC.macos_confinement_problem(),
+                    "/hp/no/such/tool is missing or not executable")
+                with self.assertRaises(RuntimeError), \
+                        tempfile.TemporaryDirectory() as work:
+                    MC.spawn_confined_process(["/usr/bin/true"],
+                                              cwd=work)
+
+    def test_a_malformed_block_refuses_at_the_gate_and_the_spawn(self):
+        cfg = {"security": {"confinement": {"macos": {"cores": 2}}}}
+        self.assertIn("not a known setting",
+                      MC.macos_confinement_problem(cfg))
+        with self.assertRaises(RuntimeError), \
+                tempfile.TemporaryDirectory() as work:
+            MC.spawn_confined_process(["/usr/bin/true"], cwd=work,
+                                      cfg=cfg)
+
+    def test_the_posture_report_names_this_host_s_floor(self):
+        results = []
+        POST._check_confinement_backend(results, {})
+        self.assertEqual(
+            results[0],
+            ("OK", "confinement",
+             "macOS backend: " + MC.STATUS_CONFINEMENT))
+        self.assertRegex(
+            results[1][2],
+            r"^a job process's address map may grow 512 MiB past "
+            r"the \d+\.\d GiB a bare process starts at here; the "
+            r"ceiling is not the job's to raise")
+        self.assertEqual(len(results), 2)
+        print("posture: " + results[1][2], flush=True)
+
+
+@unittest.skipUnless(MC.IS_MACOS_BACKEND, "run on macOS")
+class LiveSeedTest(unittest.TestCase):
+    """The mode a fresh install states on this Mac."""
+
+    CFG = {"security": {"modes": {"confinement": "enforce",
+                                  "job_user": "enforce"}}}
+
+    def test_this_mac_s_answer_leaves_confinement_at_enforce(self):
+        cfg = json.loads(json.dumps(self.CFG))
+        with _machine_asked():
+            modes, asked = INS.fresh_platform_modes(cfg)
+        self.assertEqual(modes, {})
+        self.assertIsNone(asked[0])
+        self.assertEqual(asked.asked, INS.MACOS_PROBE_ASKED)
+        self.assertEqual(asked[1][0],
+                         "macOS backend: " + MC.STATUS_CONFINEMENT)
+        self.assertIn("a bare process starts at here", asked[1][1])
+        self.assertEqual(
+            INS.fresh_job_user(cfg, asked), (None, None))
+
+    def test_a_test_run_asks_nothing_of_this_mac(self):
+        # The suite's own state (runner/tests/__init__.py).
+        self.assertFalse(INS.seed_asks_the_machine())
+        modes, asked = INS.fresh_platform_modes(
+            json.loads(json.dumps(self.CFG)))
+        self.assertEqual(modes, {"confinement": "audit"})
+        self.assertEqual(asked, (INS.SEED_NOT_ASKED, ()))
+
+    def test_the_installer_s_own_file_is_left_at_enforce(self):
+        out = io.StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            path = _fresh_config(d)
+            with open(path, "rb") as fh:
+                before = fh.read()
+            with _machine_asked(), redirect_stdout(out):
+                applied = INS.apply_platform_modes(path)
+            with open(path, "rb") as fh:
+                after = fh.read()
+        said = out.getvalue()
+        self.assertEqual(applied, {})
+        self.assertEqual(before, after)
+        self.assertIn("security.modes.confinement left at enforce "
+                      "in %s (the macOS backend's probe, asked on "
+                      "this machine as this user, passed" % path, said)
+        self.assertIn("platform: macOS backend: "
+                      + MC.STATUS_CONFINEMENT, said)
+        self.assertNotIn("stated as audit", said)
+        print("seed: " + said.strip().split("\n")[-1], flush=True)
+
+    def test_the_wizard_s_seed_is_the_same_answer(self):
+        cfg = json.loads(json.dumps(self.CFG))
+        answers = []
+        with _machine_asked():
+            stated = SU.seed_platform_modes(cfg, asked=answers)
+        self.assertEqual(stated, {})
+        self.assertEqual(cfg, self.CFG)
+        self.assertIsNone(answers[0][0][0])
+        self.assertEqual(answers[0][1:], (None, None))
+
+    def test_a_backend_that_cannot_engage_states_audit_with_why(self):
+        out = io.StringIO()
+        with tempfile.TemporaryDirectory() as d:
+            path = _fresh_config(d)
+            with _machine_asked(), redirect_stdout(out), \
+                    mock.patch.object(MC, "SANDBOX_EXEC_BIN",
+                                      "/hp/no/such/sandbox-exec"):
+                applied = INS.apply_platform_modes(path)
+            cfg = _config_in(path)
+        self.assertEqual(applied, {"confinement": "audit"})
+        self.assertEqual(cfg["security"]["modes"]["confinement"],
+                         "audit")
+        self.assertIn(
+            "stated as audit in %s (the macOS backend's probe, "
+            "asked on this machine as this user, did not pass: "
+            "/hp/no/such/sandbox-exec is missing or not executable"
+            % path, out.getvalue())
+
+
+@unittest.skipUnless(MC.IS_MACOS_BACKEND, "run on macOS")
+class LiveJobUserTest(unittest.TestCase):
+    """The job user at the spawn door, on a Mac."""
+
+    USER = "nobody"
+
+    def test_a_job_user_is_applied_to_the_whole_chain(self):
+        if os.geteuid() != 0:
+            self.skipTest("changing to the job user is root's: run "
+                          "in the macos-confinement workflow's "
+                          "root step")
+        import pwd
+        entry = pwd.getpwnam(self.USER)
+        # Under /private/tmp, which any user may pass through:
+        # root's own temporary directory is closed to the job
+        # user, as a runner's state directory is not.
+        work = tempfile.mkdtemp(prefix="hp-job-user-",
+                                dir="/private/tmp")
+        try:
+            os.chown(work, entry.pw_uid, entry.pw_gid)
+            proc = MC.spawn_confined_process(
+                ["/bin/sh", "-c",
+                 "id -u; : > made.txt && echo WORK-OK; "
+                 ": > \"$TMPDIR/t\" && echo TMP-OK; " + _READ_BACK],
+                cwd=work, env=dict(os.environ), user=self.USER)
             out, err = proc.communicate(timeout=60)
-            rc = proc.returncode
             proc.close()
-            self.assertNotEqual(rc, 0)
-            self.assertNotIn(b"MEM-DONE", out)
-            self.assertTrue(
-                b"MemoryError" in err or (rc is not None and rc < 0),
-                "rc=%r err=%r" % (rc, err))
+            words = out.decode().split()
+            self.assertEqual(words[0], str(entry.pw_uid), err)
+            self.assertIn("WORK-OK", words)
+            self.assertIn("TMP-OK", words)
+            self.assertEqual(words[-2], words[-1])
+            self.assertTrue(words[-1].isdigit())
+            self.assertEqual(
+                os.stat(os.path.join(work, "made.txt")).st_uid,
+                entry.pw_uid)
+            self.assertEqual(
+                proc.confinement_notes[-1],
+                "job user nobody applied at the spawn door")
+            # Nothing in the chain was root inside the profile:
+            # a file root alone may read stays unread.
+            kept = os.path.join(work, "root-only.txt")
+            with open(kept, "w") as fh:
+                fh.write("ROOT-ONLY")
+            os.chmod(kept, 0o600)
+            proc = MC.spawn_confined_process(
+                ["/bin/sh", "-c",
+                 "/bin/cat root-only.txt 2>/dev/null; echo END"],
+                cwd=work, env=dict(os.environ), user=self.USER)
+            out, err = proc.communicate(timeout=60)
+            proc.close()
+            self.assertNotIn(b"ROOT-ONLY", out)
+            self.assertIn(b"END", out)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+
+    def test_an_ordinary_runner_cannot_start_a_job_as_another(self):
+        if os.geteuid() == 0:
+            self.skipTest("root may start a job as any user: run in "
+                          "the macos-confinement workflow's "
+                          "ordinary-user step")
+        with tempfile.TemporaryDirectory() as work:
+            with self.assertRaises(RuntimeError) as caught:
+                MC.spawn_confined_process(
+                    ["/usr/bin/true"], cwd=work, user=self.USER)
+        self.assertIn("could not be started", str(caught.exception))
+
+    def test_a_user_this_mac_does_not_have_is_a_refusal(self):
+        with tempfile.TemporaryDirectory() as work:
+            with self.assertRaises(RuntimeError) as caught:
+                MC.spawn_confined_process(
+                    ["/usr/bin/true"], cwd=work,
+                    user="hp-no-such-user-zz9")
+        self.assertIn("not in this machine's user database",
+                      str(caught.exception))
 
 
 if __name__ == "__main__":

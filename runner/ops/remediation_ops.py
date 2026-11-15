@@ -661,9 +661,10 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
     token exists. On darwin at enforce the same shape comes
     from the macOS backend (runner/guard/macos_confine.py):
     sandbox-exec applies the per-job Seatbelt profile to the
-    launcher shim, which sets the spawn limits (and drops to
-    the handed-over user, at the spawn door, the same reason)
-    before it execs the job. A backend that cannot engage
+    launcher shim, which sets the spawn limits before it execs
+    the job; the handed-over user is applied by the spawn
+    itself, to the whole chain, at the spawn door (the same
+    reason). A backend that cannot engage
     refuses the job here, after the fallback record: under
     enforce a job never falls through to an unconfined spawn.
     The success record names exactly the controls applied, in
@@ -722,7 +723,9 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
             if spawn is None:
                 raise RuntimeError(
                     "macos confinement backend has no confined spawn")
-            proc = spawn(argv, cwd=cwd, env=env, user=user)
+            # The config rides to the spawn: the backend's own
+            # settings are read from it there.
+            proc = spawn(argv, cwd=cwd, env=env, user=user, cfg=cfg)
         except Exception as e:
             _audit_mac("fallback", "macos_confinement_failed", e)
             raise _runner().JobRejected(
@@ -732,7 +735,11 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
         status = getattr(proc, "confinement_status", None) \
             or getattr(backend, "STATUS_CONFINEMENT", None) \
             or "macos: seatbelt_profile + no_network + spawn_resource_limits"
-        _audit_mac("confined", status)
+        # The detail says what this job's launch carried beyond
+        # the status string: the ceiling, and the job user where
+        # one was applied.
+        notes = getattr(proc, "confinement_notes", None) or []
+        _audit_mac("confined", status, "; ".join(notes))
 
         def _release_mac():
             try:

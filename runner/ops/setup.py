@@ -253,10 +253,11 @@ def seed_platform_modes(cfg: dict, platform=None, probe=None,
 
     The same statement includes the one that asks the machine:
     on a FreeBSD host the jail backend's probe is asked the
-    startup gate's question (install.py's fresh_platform_modes),
-    and where it passes confinement is not stated down and a
-    job user is named for the jail's jobs where the config
-    names none (install.py's fresh_job_user). This seed writes
+    startup gate's question, and on a macOS host the macOS
+    backend's (install.py's fresh_platform_modes), and where
+    it passes confinement is not stated down. On FreeBSD a
+    job user is named for the jail's jobs as well, where the
+    config names none (install.py's fresh_job_user). This seed writes
     a config and nothing else, so it makes no account: it
     names the jobs' own account where the machine already has
     it, and the shared user where it does not. `probe`, `trial`
@@ -617,10 +618,10 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
         # at audit, in the file and out loud here, rather than left
         # at the seed's enforce to refuse the first start. A config
         # that already existed keeps the owner's stated modes.
-        # On FreeBSD the statement is the machine's answer: the
-        # jail backend's probe is asked here, and a pass leaves
-        # confinement at enforce, names a job user for the
-        # jail's jobs, and says so.
+        # On FreeBSD and on macOS the statement is the machine's
+        # answer: the backend's probe is asked here, and a pass
+        # leaves confinement at enforce and says so; on FreeBSD
+        # it names a job user for the jail's jobs as well.
         answers = []
         stated = seed_platform_modes(cfg, asked=answers)
         answer, user, door = answers[0] if answers \

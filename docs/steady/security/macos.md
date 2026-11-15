@@ -10,8 +10,8 @@ for: confinement.
 There is no bwrap on macOS, and there is no jail or namespace
 to build on: the macOS confinement backend is a Seatbelt
 profile, applied per job by `sandbox-exec`, plus a small
-launcher shim that applies the spawn resource limits. What it
-applies, at `enforce`, is named exactly in every audit and
+launcher shim that sets a ceiling on the job's memory. What
+it applies, at `enforce`, is named exactly in every audit and
 startup record:
 
 ```
@@ -25,38 +25,73 @@ prefix, lets it read and write only inside its own work
 directory, and names no network allow rule at all — the
 deny-by-default base is the network denial, and the profile
 states a `(deny network*)` line beside it so the record of
-the profile says what it does. The memory ceiling is applied
-at spawn: the job's command runs under a small launcher shim
-(the runner's own interpreter, a few lines) that sets the
-data-size resource limit with `setrlimit` and then `exec`s
-the job's command, the macOS shape of the FreeBSD backend's
-`limits(1)` step, which macOS has no equivalent of. The
-limit it applies is computed from the limits the shim
-inherits: the requested ceiling is 512 MiB per process,
-the inherited hard limit is kept exactly as it stands and
-the soft request is clamped to it, and a kernel that
-refuses the request because the process's current usage
-already exceeds it — Darwin enforces this limit over the
-process's whole VM map, whose startup size can exceed
-512 MiB — is answered by a bounded ladder of larger
-requests, so the applied limit is the strongest the host
-accepts at or above the requested ceiling, and a spawn
-for which no ladder value is accepted is refused, never
-run under a weaker limit. Only the data-size limit is
-set, never the virtual-memory (address-space) limit: the
-address space a macOS process maps at startup already
-exceeds 512 MiB, and a 512 MiB address-space ceiling made
-every confined spawn abort before its first line of job
-code in the backend's first live run — the fix for that
-failure, and its suppositions and conclusions, stand at
-the end of this page. `sandbox-exec` wraps the
-shim, so the profile is in force before the shim's first
-line runs, and the job never runs a line unconfined. The
-profile is generated per job and passed to `sandbox-exec`
+the profile says what it does. `sandbox-exec` wraps the
+launcher, so the profile is in force before the launcher's
+first line runs, and the job never runs a line unconfined.
+The profile is generated per job and passed to `sandbox-exec`
 as an argument; it is never written to a file.
 
-What this does not provide, plainly:
+A release's macOS binaries engage it as a runner started from
+source does: nothing in the chain is the runner's own
+interpreter.
 
+### The memory ceiling
+
+The launcher is the system shell (`/bin/sh`, in its
+privileged mode, which takes no function and no option list
+from a job's environment). It sets the data-size limit with
+the shell's own `ulimit`, soft and hard, and then becomes the
+job's command.
+
+Three things to know about the ceiling:
+
+- It is a distance, not a size. macOS holds this limit
+  against a process's whole address map, and a bare process's
+  map is already large: 391.7 GiB on the hosted Apple silicon
+  Mac, 32.5 GiB on the Intel one. The launcher finds that
+  floor and sets the limit the ceiling above it. The ceiling
+  is how far a job process's map may grow.
+- It is 512 MiB unless you name another:
+
+  ```json
+  "confinement": {
+    "macos": {
+      "process_memory_bytes": 2147483648
+    }
+  }
+  ```
+
+  A language runtime that reserves address space at its start
+  needs the reservation to fit. On the two hosted Macs `sh`,
+  `python`, `perl` and `git` start under 512 MiB; `node`
+  needs 2 GiB, and so does `ruby` on Apple silicon; `java`
+  needs 8 GiB.
+- It is not the job's to raise, and it is each process's own:
+  there is no ceiling on a job's processes taken together,
+  and none on processor time or cores.
+
+The posture report (`--posture`) says the ceiling and the
+floor it stands on for the Mac it runs on.
+
+Only the data-size limit is set, never the virtual-memory
+(address-space) limit: the address space a macOS process maps
+at startup already exceeds 512 MiB, and a 512 MiB
+address-space ceiling made every confined spawn abort before
+its first line of job code in the backend's first live run —
+the fix for that failure, and its suppositions and
+conclusions, stand at the end of this page.
+
+### What this does not provide, plainly
+
+- A job can reach the session's services. The profile lets a
+  job talk to the system's services, and the clipboard is one
+  of them: text copied outside a job was read from inside one
+  on both hosted Macs. A job has no network to send it over;
+  its output goes back to whoever submitted it. Do not run a
+  runner under `enforce` in a session whose clipboard holds
+  what a submitter must not see.
+- A job can list the host's processes. It cannot signal them.
+- A job can learn that a path exists. It cannot read it.
 - App Sandbox is not used. App Sandbox is an entitlement a
   bundled application opts itself into; this runner starts
   arbitrary job interpreters that carry no entitlement, so
@@ -69,13 +104,14 @@ What this does not provide, plainly:
   confined jobs can read any path their token can read),
   and it is not the FreeBSD jail's separate root — the job
   sees the host's path layout, and the profile, not a
-  mount table, is what refuses it.
+  mount table, is what refuses it. `work_mount` and
+  `extra_ro_binds` name mounts, and name nothing here.
 - The memory ceiling is a per-process resource limit applied
-  at spawn (`setrlimit` in the launcher shim), not a
-  Seatbelt rule: Seatbelt has no resource-limit operation,
-  which is why the shim exists. The record names
-  `spawn_resource_limits` for exactly that reason, the same
-  naming the FreeBSD backend uses for its `limits(1)` step.
+  at spawn (`ulimit` in the launcher), not a Seatbelt rule:
+  Seatbelt has no resource-limit operation, which is why the
+  launcher exists. The record names `spawn_resource_limits`
+  for exactly that reason, the same naming the FreeBSD
+  backend uses for its `limits(1)` step.
 - Seatbelt is Apple's supported mechanism for this shape
   through `sandbox-exec`, and it is also a mechanism Apple
   has marked deprecated as a command-line tool while still
@@ -84,30 +120,65 @@ What this does not provide, plainly:
   startup and refuses when it cannot engage, so a macOS
   release that removes it fails closed here, not open.
 
-At `enforce` the startup gate probes the backend — the tool
-present, a generated profile that parses, and a trial spawn
-under the full controls that reads a staged file inside its
-work directory and writes its output there — and refuses to
-start when the probe fails, naming why. A job whose own
-confined spawn cannot be created is refused at job time the
-same way; there is no path on which a job runs unconfined
-under `enforce`.
+### The probe
+
+At `enforce` the startup gate probes the backend — the tools
+present, a generated profile that parses, and a trial under
+the full controls. The trial reads a staged file inside its
+work directory and writes its output there, is refused a
+write and a read beside that directory, and says it carries
+a ceiling of its own. The gate refuses to start when the
+probe fails, naming why. A job whose own confined spawn
+cannot be created is refused at job time the same way; there
+is no path on which a job runs unconfined under `enforce`.
+
+### A job user
+
+A macOS install runs as your own launchd agent, and a job is
+your user's, kept from your files by the profile. If you run
+the runner as root and name a job user
+(`security.job_user`), the job is started as that user:
+`sandbox-exec`, the launcher and the job alike.
 
 ## The mode a macOS config states
 
-A fresh macOS install writes `security.modes.confinement`
-into `config.json` at `audit`, stated in the file — the same
-statement it made before this backend existed, kept for the
-same reason the Windows seed keeps its own: the
-installer and the setup wizard write the seed without
-running the backend probe on that machine, and stating
-`enforce` sight-unseen risks a first-start refusal on a
-machine where the profile cannot engage. The operator steps
-the mode up to `enforce` deliberately, and the startup gate
-then verifies the probe on that machine. At `audit`, jobs
-run unconfined and the audit log records what the mode would
-have done. `job_user` is not stated down: the POSIX demote
-engages on macOS as it does on Linux.
+A fresh macOS install asks the backend's probe on the Mac it
+is installing on, and so does the setup wizard.
+
+- Where the probe passes, `security.modes.confinement` stays
+  at `enforce`. The installer says so, and prints what a job
+  carries on that Mac:
+
+  ```
+  platform: security.modes.confinement left at enforce in <config> (the macOS backend's probe, asked on this machine as this user, passed; the startup gate asks it again at every start)
+  platform: macOS backend: macos: seatbelt_profile + no_network + spawn_resource_limits
+  platform: a job process's address map may grow 512 MiB past the 391.7 GiB a bare process starts at here; the ceiling is not the job's to raise (ulimit in the launcher shim, soft and hard)
+  ```
+
+- Where it does not pass, the mode is stated at `audit` in
+  the file, with the probe's reason printed. At `audit`, jobs
+  run unconfined and the audit log records what the mode
+  would have done.
+- A mode you have already stated below `enforce` stays as
+  you stated it.
+
+`job_user` is not stated down: the POSIX demote engages on
+macOS as it does on Linux. No job user is named for you.
+
+The design, the measurements behind it and what the hosted
+Macs answered stand in
+`docs/steady/design/macos-confinement-design.md`.
+
+## The first backend's record
+
+The sections from here to the end of this page are the
+record of the backend as it was first built, from
+2026-11-11, kept as they were written: its suppositions, the
+live verdicts against them, and the five rounds of fixes to
+its memory limit. The launcher they describe was the
+runner's own interpreter, and the limit it set was the first
+doubling of 512 MiB the kernel accepted; both changed on
+2026-11-15, and the design page above says to what and why.
 
 ## Supposition, recorded before the build
 

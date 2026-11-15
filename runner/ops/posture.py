@@ -169,6 +169,15 @@ def _freebsd_confinement_lines(cfg):
     return freebsd_confine.posture_lines(cfg)
 
 
+def _macos_confinement_lines(cfg):
+    """The macOS backend's own account of this host."""
+    try:
+        from runner.guard import macos_confine
+    except ImportError:
+        from guard import macos_confine  # type: ignore
+    return macos_confine.posture_lines(cfg)
+
+
 def _check_confinement_backend(results, cfg=None):
     if sys.platform.startswith("linux"):
         if shutil.which("bwrap"):
@@ -185,6 +194,16 @@ def _check_confinement_backend(results, cfg=None):
             lines = _freebsd_confinement_lines(cfg)
         except Exception as e:
             lines = [("WARN", "FreeBSD jail backend could not be "
+                      "read: %s" % e)]
+        for level, text in lines:
+            results.append((level, "confinement", text))
+    elif sys.platform == "darwin":
+        # The Seatbelt backend asks its own probe and says what
+        # a job carries here, or what would refuse the start.
+        try:
+            lines = _macos_confinement_lines(cfg)
+        except Exception as e:
+            lines = [("WARN", "macOS backend could not be "
                       "read: %s" % e)]
         for level, text in lines:
             results.append((level, "confinement", text))

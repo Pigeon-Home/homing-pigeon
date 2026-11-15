@@ -2378,24 +2378,23 @@ def platform_modes(platform=None):
     Confinement's full form is a Linux sandbox (bwrap), and the
     job_user demote is a POSIX setuid. Windows has backends for
     both (confinement: Job Object + restricted token + low
-    integrity; job_user: the Job Object ceiling), and macOS has
-    a confinement backend (Seatbelt profile + no network + spawn
-    resource limits), but the installer writes those seeds
-    without running the backend probe on the target machine,
-    and stating enforce sight-unseen risks a first-start
-    refusal on a machine where a control cannot engage -- so a
-    fresh Windows install states both at audit and a fresh
-    macOS install states confinement at audit, in the file, in
-    the open, and the operator steps a mode up to enforce
-    deliberately, with the startup gate then verifying the
-    probe on that machine.
+    integrity; job_user: the Job Object ceiling), but the
+    installer writes that seed without running the backend
+    probe on the target machine, and stating enforce
+    sight-unseen risks a first-start refusal on a machine where
+    a control cannot engage -- so a fresh Windows install
+    states both at audit, in the file, in the open, and the
+    operator steps a mode up to enforce deliberately, with the
+    startup gate then verifying the probe on that machine.
 
-    FreeBSD has a confinement backend as well (a per-job jail),
-    and its seed is the one that asks the machine. This map is
-    FreeBSD's answer where the machine has not been asked, or
-    has answered no: confinement at audit.
-    fresh_platform_modes() below does the asking, and leaves
-    the mode at enforce where the backend's probe passes.
+    FreeBSD and macOS have confinement backends as well (a
+    per-job jail; a per-job Seatbelt profile with spawn
+    resource limits), and their seeds are the ones that ask
+    the machine. This map is their answer where the machine
+    has not been asked, or has answered no: confinement at
+    audit. fresh_platform_modes() below does the asking, and
+    leaves the mode at enforce where the backend's probe
+    passes.
 
     On other non-Linux platforms confinement has no backend and
     states audit for the original reason: without the statement
@@ -2415,18 +2414,36 @@ def platform_modes(platform=None):
 
 
 # The platform this process started on, read once at import. The
-# FreeBSD seed asks the machine a question, and it is asked only
-# of a machine that is FreeBSD: a caller that names FreeBSD on
-# another host -- a test, a report -- gets the stated seed, and
-# the jail backend is never imported from here on that host,
-# where a first import would bind to the name it was handed
-# instead of to the host.
+# FreeBSD seed and the macOS seed ask the machine a question, and
+# it is asked only of a machine that is that platform: a caller
+# that names FreeBSD or macOS on another host -- a test, a
+# report -- gets the stated seed, and the backend is never
+# imported from here on that host, where a first import would
+# bind to the name it was handed instead of to the host.
 _HOST_PLATFORM = sys.platform
 
 # What a seed says about the machine's answer, in one place for
 # the installer and the setup wizard.
 FREEBSD_PROBE_ASKED = ("the FreeBSD jail backend's probe, asked on "
                        "this machine as this user,")
+MACOS_PROBE_ASKED = ("the macOS backend's probe, asked on this "
+                     "machine as this user,")
+
+
+class SeedAnswer(tuple):
+    """What the machine answered a seed: (problem, lines), as a
+    plain pair reads, and `asked`, the words for which backend's
+    probe was put to it. A plain pair -- a test's, an older
+    caller's -- reads as the FreeBSD probe's answer."""
+
+    def __new__(cls, problem, lines, asked=FREEBSD_PROBE_ASKED):
+        self = super().__new__(cls, (problem, tuple(lines)))
+        self.asked = asked
+        return self
+
+
+def _probe_asked(answer) -> str:
+    return getattr(answer, "asked", FREEBSD_PROBE_ASKED)
 
 # The switch that keeps the seed's questions off the machine.
 # The probe builds a jail, the door trial runs a job in one and
@@ -2595,6 +2612,94 @@ def freebsd_seed_probe(cfg):
                 % (str(e) or type(e).__name__), ())
     finally:
         _release_freebsd_confine()
+
+
+def _import_macos_confine():
+    """runner/guard/macos_confine.py, or None when it cannot be had.
+
+    The module stands alone -- it imports nothing of the
+    runner's -- so it loads by path wherever its file is. The
+    frozen installer first: it carries the file as data
+    (`--add-data runner/guard/macos_confine.py`), for the reason
+    it carries atomicio.py that way. Then the package
+    (`runner.guard`, which is also what a frozen runner's setup
+    wizard finds), the install layout (`guard` beside `ops`),
+    and this script started by path from a source tree.
+    """
+    frozen = getattr(sys, "_MEIPASS", None)
+    if frozen:
+        cand = os.path.join(frozen, "pigeon-guard", "macos_confine.py")
+        if os.path.isfile(cand):
+            return _load_macos_by_path(cand)
+    try:
+        from runner.guard import macos_confine
+        return macos_confine
+    except ImportError:
+        pass
+    try:
+        from guard import macos_confine  # type: ignore
+        return macos_confine
+    except ImportError:
+        pass
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cand = os.path.join(here, "guard", "macos_confine.py")
+    if not os.path.isfile(cand):
+        return None
+    return _load_macos_by_path(cand)
+
+
+def _load_macos_by_path(path):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "hp_macos_confine", path)
+    if spec is None or spec.loader is None:
+        return None
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def macos_seed_probe(cfg):
+    """Ask this machine's macOS backend the startup gate's question.
+
+    Returns (problem, lines) in freebsd_seed_probe's shape.
+    `problem` is None when the backend engages here under this
+    config -- a trial process under the profile and the
+    launcher shim read its staged file, wrote its work
+    directory, was refused a write and a read outside it, and
+    carried a data-size ceiling of its own -- and otherwise the
+    reason, in the backend's own words. `lines` are the posture
+    report's lines for this host under this config. Empty when
+    the backend does not engage.
+
+    The trial needs no privilege and changes nothing on the
+    machine but a temporary directory it removes. A backend
+    that cannot be reached or cannot answer has not shown it
+    can engage: every failure is a reason, never a pass.
+    """
+    try:
+        backend = _import_macos_confine()
+        if backend is None or not getattr(
+                backend, "IS_MACOS_BACKEND", False):
+            return ("the macOS backend (runner/guard/"
+                    "macos_confine.py) could not be loaded on "
+                    "this machine", ())
+        try:
+            problem = backend.macos_confinement_problem(cfg)
+        except Exception as e:
+            return ("the macOS backend could not answer: %s"
+                    % (str(e) or type(e).__name__), ())
+        if problem is not None:
+            return (str(problem), ())
+        try:
+            lines = tuple(text for _level, text
+                          in backend.posture_lines(cfg))
+        except Exception:
+            lines = ()
+        return (None, lines)
+    except Exception as e:
+        return ("the macOS backend could not be asked: %s"
+                % (str(e) or type(e).__name__), ())
 
 
 def _seed_config_with(cfg, bind=None, job_user=None) -> dict:
@@ -2811,37 +2916,47 @@ def fresh_platform_modes(cfg, platform=None, probe=None):
     the machine was not asked anything, and otherwise the
     answer, (problem, lines), in freebsd_seed_probe's shape.
 
-    One platform's map is asked of the machine. A fresh FreeBSD
-    config whose confinement is still at enforce is put to the
-    jail backend's probe -- the startup gate's own question,
+    Two platforms' maps are asked of the machine. A fresh
+    FreeBSD config whose confinement is still at enforce is put
+    to the jail backend's probe, and a fresh macOS config to
+    the macOS backend's -- the startup gate's own question,
     with this config -- and where the probe passes confinement
     is left out of the map: the mode stays at enforce, as on
     Linux, and the startup gate decides at every start. Where
     it does not pass the map states audit, and the reason rides
-    back in `asked`.
+    back in `asked`, which also carries the words for which
+    backend was asked (SeedAnswer).
 
     The machine is asked only when it is the one being seeded:
-    `platform` left None on a host that is FreeBSD. A platform
-    named by the caller is a question about that platform, not
-    about this machine, and gets the stated map -- unless the
-    caller hands in a `probe` of its own, which is then the one
-    asked. A mode the config already states below enforce is
-    the operator's word: it stays, and nothing is asked. Where
-    the environment switches the questions off (SEED_SWITCH)
-    the machine is not asked either: the map states audit and
-    `asked` carries SEED_NOT_ASKED as the reason.
+    `platform` left None on a host that is that platform. A
+    platform named by the caller is a question about that
+    platform, not about this machine, and gets the stated map
+    -- unless the caller hands in a `probe` of its own, which
+    is then the one asked. A mode the config already states
+    below enforce is the operator's word: it stays, and nothing
+    is asked. Where the environment switches the questions off
+    (SEED_SWITCH) the machine is not asked either: the map
+    states audit and `asked` carries SEED_NOT_ASKED as the
+    reason.
     """
     plat = sys.platform if platform is None else platform
     modes = dict(platform_modes(plat))
-    if not plat.startswith("freebsd") or "confinement" not in modes:
+    if plat.startswith("freebsd"):
+        own, said = freebsd_seed_probe, FREEBSD_PROBE_ASKED
+        on_host = _HOST_PLATFORM.startswith("freebsd")
+    elif plat == "darwin":
+        own, said = macos_seed_probe, MACOS_PROBE_ASKED
+        on_host = _HOST_PLATFORM == "darwin"
+    else:
+        return modes, None
+    if "confinement" not in modes:
         return modes, None
     if _stated_modes(cfg).get("confinement", "enforce") != "enforce":
         return modes, None
-    if probe is None and platform is None \
-            and _HOST_PLATFORM.startswith("freebsd"):
+    if probe is None and platform is None and on_host:
         if not seed_asks_the_machine():
-            return modes, (SEED_NOT_ASKED, ())
-        probe = freebsd_seed_probe
+            return modes, SeedAnswer(SEED_NOT_ASKED, (), said)
+        probe = own
     if probe is None:
         return modes, None
     try:
@@ -2850,8 +2965,8 @@ def fresh_platform_modes(cfg, platform=None, probe=None):
         problem, lines = (str(e) or type(e).__name__), ()
     if problem is None:
         del modes["confinement"]
-        return modes, (None, tuple(lines))
-    return modes, (str(problem), ())
+        return modes, SeedAnswer(None, lines, said)
+    return modes, SeedAnswer(str(problem), (), said)
 
 
 def _ask_door(trial, cfg, user):
@@ -2903,6 +3018,12 @@ def fresh_job_user(cfg, asked, platform=None, trial=None,
     with it.
     """
     if asked is None or asked[0] is not None:
+        return None, None
+    if _probe_asked(asked) != FREEBSD_PROBE_ASKED:
+        # The second question is the jail's: a jail is made by
+        # root, so a job with no job user is root's uid. A macOS
+        # runner is its user's own agent and its jobs are that
+        # user's, under a profile that needs no privilege.
         return None, None
     sec = cfg.get("security") if isinstance(cfg, dict) else None
     if isinstance(sec, dict) and "job_user" in sec:
@@ -2968,7 +3089,7 @@ def seed_kept_lines(asked, cfg_path, user=None, door=None) -> list:
     if asked is None or asked[0] is not None:
         return []
     lines = [f"platform: security.modes.confinement left at "
-             f"enforce in {cfg_path} ({FREEBSD_PROBE_ASKED} "
+             f"enforce in {cfg_path} ({_probe_asked(asked)} "
              f"passed; the startup gate asks it again at every "
              f"start)"]
     shown = asked[1]
@@ -3000,7 +3121,7 @@ def seed_reason(asked, feature, default) -> str:
             and asked[0] is not None:
         if asked[0] == SEED_NOT_ASKED:
             return SEED_NOT_ASKED
-        return f"{FREEBSD_PROBE_ASKED} did not pass: {asked[0]}"
+        return f"{_probe_asked(asked)} did not pass: {asked[0]}"
     return default
 
 
@@ -3026,15 +3147,15 @@ def apply_platform_modes(cfg_path: str, platform=None,
     dying on the missing file. Any other read failure -- a
     symlink, unreadable JSON -- raises exactly as before.
 
-    On FreeBSD the statement is the machine's answer (see
-    fresh_platform_modes): where the jail backend's probe
-    passes, confinement stays at enforce, nothing is written
-    for it, and the line printed says so and names what a job's
-    jail carries on this host; where it does not, the line that
-    states audit carries the probe's reason. Where the jail
-    stays on and the config names no job user, one is named
-    too (see fresh_job_user), and that is written whether or
-    not a mode moved. This is the one caller that makes the
+    On FreeBSD and on macOS the statement is the machine's
+    answer (see fresh_platform_modes): where the backend's
+    probe passes, confinement stays at enforce, nothing is
+    written for it, and the line printed says so and names what
+    a job carries on this host; where it does not, the line
+    that states audit carries the probe's reason. Where a
+    FreeBSD jail stays on and the config names no job user, one
+    is named too (see fresh_job_user), and that is written
+    whether or not a mode moved. This is the one caller that makes the
     account it names: an installer changes the machine it
     installs on, and a seed that only writes a config does
     not. `probe`, `trial` and `account` are the tests' doors.

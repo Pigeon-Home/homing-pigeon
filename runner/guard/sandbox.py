@@ -198,6 +198,13 @@ def _validate_confinement_block(block):
         except ImportError:
             from guard import freebsd_confine as _freebsd  # type: ignore
         _freebsd.validate_freebsd_block(block["freebsd"])
+    # The macOS backend's settings, the same way.
+    if "macos" in block:
+        try:
+            from runner.guard import macos_confine as _macos
+        except ImportError:
+            from guard import macos_confine as _macos  # type: ignore
+        _macos.validate_macos_block(block["macos"])
     return True
 
 

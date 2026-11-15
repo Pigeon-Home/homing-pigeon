@@ -302,14 +302,41 @@ class SupportMatrixTest(unittest.TestCase):
         self.assertNotIn(
             "Live proof of the macOS spawn memory ceiling", flat)
 
-    def test_the_corrected_macos_word_is_present(self):
+    def test_the_macos_row_says_what_the_backend_does(self):
+        # The row's words against the code they describe: the
+        # ceiling's default and its one setting, the launcher,
+        # the seed that asks, and the two things the profile
+        # leaves a job able to reach.
+        from runner.guard import macos_confine as MC
         flat = _flat()
+        self.assertEqual(MC.DEFAULT_PROCESS_MEMORY_BYTES,
+                         512 * 1024 * 1024)
+        self.assertIn("512 MiB above the size a bare process "
+                      "starts at on that Mac", flat)
+        self.assertEqual(MC.MACOS_KEYS, ("process_memory_bytes",))
         self.assertIn(
+            "`security.confinement.macos.process_memory_bytes`", flat)
+        self.assertEqual(MC.SHELL_BIN, "/bin/sh")
+        self.assertIn("launcher shim, the system shell", flat)
+        self.assertIn("set soft and hard, so it is not the job's "
+                      "to raise", flat)
+        self.assertIn("frozen macOS binaries engage it", flat)
+        self.assertIn("A fresh install asks the same probe on the "
+                      "Mac it installs on", flat)
+        self.assertIn("the clipboard was read from inside a job",
+                      flat)
+        self.assertIn("no ceiling on a job as a whole", flat)
+
+    def test_the_macos_proof_workflow_is_the_one_named(self):
+        flat = _flat()
+        self.assertIn("(macos-confinement)", flat)
+        self.assertTrue(os.path.isfile(os.path.join(
+            REPO, ".github", "workflows", "macos-confinement.yml")))
+        # The doubling ladder's own sentences are the first
+        # backend's, and its record stands on the macOS page.
+        self.assertNotIn(
             "The data-size refusal that once stood as the live "
             "word on the spawn limits is closed", flat)
-        self.assertIn(
-            "the build on the 3.16.25.8 release head of "
-            "2026-11-13 completed green", flat)
 
     def test_the_audit_chain_claim_matches_the_code(self):
         # The matrix states the audit log is tamper-evident; the

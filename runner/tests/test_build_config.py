@@ -847,30 +847,53 @@ class PipelineLessonsTest(unittest.TestCase):
             out.append("".join(buf))
             return out
 
-        checked = 0
+        def misread(line):
+            """None when the line reads PIPESTATUS in the first
+            command after a pipeline, else why it does not."""
+            parts = commands(line)
+            if "|" not in parts[0]:
+                return "no pipeline before the read"
+            for part in parts[1:]:
+                if "${PIPESTATUS" in part:
+                    return None if part is parts[1] \
+                        else "a command stands between"
+            return None
+
+        # The step that carried the five reads was rewritten on
+        # 2026-11-15 and asks its probes through the backend's
+        # own spawn: the workflows now read no PIPESTATUS at
+        # all. The rule stays, and is checked on the shapes it
+        # was written for -- the filed one, which it convicts,
+        # and the two that read true -- so it is not vacuous on
+        # a tree that reads none.
+        filed = ("sb /usr/bin/perl -e 'alarm shift; exec @ARGV' 20 "
+                 "/usr/bin/pbpaste 2>&1 | head -c 200; echo; echo "
+                 '"   the clipboard, pbpaste (exit '
+                 '${PIPESTATUS[0]})"')
+        first = ('sb /bin/ps -o pid= -p 1 2>&1 | head -n 2; echo '
+                 '"   a set-user-ID program, /bin/ps (exit '
+                 '${PIPESTATUS[0]})"')
+        captured = ("sb /usr/bin/perl -e 'alarm shift; exec @ARGV' "
+                    "20 /usr/bin/pbpaste 2>&1 | head -c 200; "
+                    "rc=${PIPESTATUS[0]}; echo; echo "
+                    '"   the clipboard, pbpaste (exit $rc)"')
+        self.assertEqual(misread(filed), "a command stands between")
+        self.assertIsNone(misread(first))
+        self.assertIsNone(misread(captured))
+        self.assertEqual(
+            misread('echo "${PIPESTATUS[0]}"'),
+            "no pipeline before the read")
+
         offenders = []
         for name in self.ALL:
             for lineno, line in enumerate(
                     _workflow_text(name).splitlines(), 1):
                 if "${PIPESTATUS" not in line:
                     continue
-                parts = commands(line)
-                self.assertIn(
-                    "|", parts[0],
-                    "%s:%d reads PIPESTATUS with no pipeline "
-                    "before it: %s" % (name, lineno, line.strip()))
-                for part in parts[1:]:
-                    if "${PIPESTATUS" in part:
-                        checked += 1
-                        if part is not parts[1]:
-                            offenders.append(
-                                "%s:%d: %s" % (name, lineno,
-                                               line.strip()))
-                        break
-        self.assertGreaterEqual(
-            checked, 5,
-            "the PIPESTATUS scan found too little to pin: %d"
-            % checked)
+                why = misread(line)
+                if why is not None:
+                    offenders.append("%s:%d (%s): %s" % (
+                        name, lineno, why, line.strip()))
         self.assertEqual(
             offenders, [],
             "PIPESTATUS read after an intervening command "

@@ -96,19 +96,21 @@ roster on that kernel is still owed.
 | Linux (ubuntu-latest) | `test` job, in-process under the wall clock | `linux` leg (bwrap) and `root` leg (a second user): every control | smoked | suite and binaries on every push to main and every tag; the switch proofs on a push that touches `runner/**`, SECURITY.md, the hardening templates or `switch-proofs.yml`, and nightly, never on a tag |
 | Windows (windows-latest) | `build-windows` job, the suite sharded by the duration table (`runner/tools/windows_durations.py`) into balanced shards | `windows` leg: the platform-neutral controls | smoked | as Linux |
 | macOS (macos-15) | `test-macos` job, the suite run 3 ways in parallel (`--jobs 3`) | `macos` leg and `macos-root` leg (a second user): the POSIX controls, the drop included | smoked (both macOS builds) | as Linux |
-| macOS on Apple silicon and Intel (macos-15 and macos-15-intel, `macos-confinement.yml`) | the Seatbelt backend's own module, live classes included, as the ordinary user and again as root | — | frozen on the leg with the build's own commands, then asked whether confinement engages from them | weekly and on dispatch |
+| macOS on Apple silicon and Intel (macos-15 and macos-15-intel, `macos-confinement.yml`) | the Seatbelt backend's own module, live classes included, as the ordinary user and again as root | — | frozen on the leg with the build's own commands; the frozen runner must start at `enforce` and run a job confined, and the frozen installer must leave `enforce` in the config it writes | weekly and on dispatch |
 | FreeBSD 15 (a VM inside a Linux runner) | as an ordinary user, under a 45-minute wall clock | as root with a second user: the POSIX controls | not built (sdist install) | weekly, on dispatch, and after a tag whose tree changed under `runner/`; first green run 2026-11-14 |
 | FreeBSD 14.5 and 15.0, as root (VMs inside Linux runners, `freebsd-confinement.yml`) | the jail backend's own module, live classes included: RACCT enabled in two guests, off in a third | — | not built | weekly and on dispatch; first green run 2026-11-14 |
 
 A test run is not an install. The suite drives the installer and
 the setup wizard on whatever host it runs on, and on FreeBSD their
 seed puts questions to the machine: a jail built for the probe, a
-trial job run in one, an account made for the jobs. The test
+trial job run in one, an account made for the jobs. On macOS it
+puts one: a trial job run under a profile. The test
 package (`runner/tests/__init__.py`) switches those questions off
 for the run by setting `HP_SEED_ASKS_MACHINE=0` in the environment,
 where every copy of the installer a test loads and every process a
 test starts reads the same word; the tests of the questions
-themselves (`runner/tests/test_freebsd_confine.py`) switch them on
+themselves (`runner/tests/test_freebsd_confine.py`,
+`runner/tests/test_macos_confine.py`) switch them on
 by name. The package is imported when the suite is run by module
 name or by discovery from the repository root (`-s runner/tests
 -t .`). A test module started by its file path does not import

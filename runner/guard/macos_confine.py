@@ -29,48 +29,55 @@ own tool (/usr/bin/sandbox-exec). One seam uses this module:
   explicit (deny network*) line beside the deny-by-default
   base, so a confined job has no network, loopback included.
   The memory ceiling is applied at spawn by a small launcher
-  shim: sandbox-exec first runs the runner's own interpreter
-  on the shim text in this module, which sets the data-size
-  resource limit with setrlimit -- the requested value is
-  DEFAULT_PROCESS_MEMORY_BYTES (512 MiB), computed against
-  the limits the shim inherits by data_limit_attempts below:
-  the inherited hard limit is kept exactly as it stands,
-  the soft request is clamped to it, and a kernel that
-  refuses the request because the process's current usage
-  already exceeds it (the Darwin current-usage floor,
-  supposition R4-S1 in docs/steady/security/macos.md) is
-  answered by the bounded ladder of larger attempts --
-  up to the inherited hard limit when it is finite, and
-  up to 2**62 when it is not, that being the largest
-  power-of-two finite value below the platform's
-  unlimited sentinel (supposition R5-S1, the fifth fix:
-  the CI host's floor stood above the fourth fix's
-  32 GiB ladder cap and refused every value up to it) --
-  so the applied limit is the strongest the host accepts
-  at or above the request and never a weaker one. The shim
-  then drops to the job user when the job_user
-  seam hands one over (the POSIX preexec demote cannot ride
-  a spawn that replaces process creation, so the demote
-  happens in the shim, at the spawn door -- the FreeBSD
-  backend's jexec -u shape), and then execs the job's
-  command. Only the data-size limit is set, never the
-  virtual-memory (address-space) limit: on macOS the
-  address space a process maps at startup -- the dynamic
-  loader, the dyld shared cache, the system libraries --
-  already exceeds 512 MiB, so a 512 MiB RLIMIT_AS made
-  every exec'd interpreter abort (SIGABRT, exit -6) before
-  its first line of job code, which is the shape of the
-  first live failure (build run 43089173541, recorded in
-  docs/steady/security/macos.md, supposition S1). The
-  data-size limit is the ceiling macOS enforces on a
-  process's VM map, and it is the one this backend
-  has applied since that fix. The profile is in force before
-  the shim's first line runs (sandbox-exec applies it to the
-  process it starts), so there is no race in which the job
-  runs unconfined; the process object owns nothing to tear
-  down beyond the wrapped process itself, because the profile
-  is passed to sandbox-exec as an argument, never written to
-  a file.
+  shim: sandbox-exec first runs the system shell (/bin/sh, in
+  its privileged mode, which takes no function and no option
+  list from the environment) on the shim text in this module.
+  The shim sets the data-size resource limit with the shell's
+  own ulimit and then execs the job's command. Darwin holds
+  that limit against a process's whole address map, and a
+  bare process's map is already large -- about 391.7 GiB on
+  the hosted Apple silicon Mac and 32.5 GiB on the hosted
+  Intel one, read on both on 2026-11-15
+  (docs/steady/design/macos-confinement-design.md) -- so the
+  kernel refuses a limit below that size from a started
+  process. The shim therefore finds the floor first, the
+  smallest value the kernel accepts from it, asking in
+  subshells so that a refusal ends the subshell and never
+  the shim: the request itself, then doublings up to the
+  first value accepted, then halvings of the gap down to
+  one mebibyte. The limit it applies is the floor plus the
+  requested ceiling -- 512 MiB unless the operator names
+  another under
+  security.confinement.macos.process_memory_bytes -- so the
+  ceiling is the distance a job process's map may grow past
+  the size a bare process starts at; on a host with no floor
+  above the request the limit is the request itself. An
+  inherited hard limit is never raised: a value above it is
+  clamped to it, and a host whose floor stands above it
+  refuses the job by name. The soft and the hard limit are
+  both set, so the ceiling is not the job's to raise. Only
+  the data-size limit is set, never the virtual-memory
+  (address-space) limit: a 512 MiB RLIMIT_AS made every
+  exec'd interpreter abort (SIGABRT, exit -6) before its
+  first line of job code, which is the shape of the first
+  live failure (build run 43089173541, recorded in
+  docs/steady/security/macos.md, supposition S1). The job
+  user, when the job_user seam hands one over, is applied
+  by the spawn itself, between the fork and the exec of
+  sandbox-exec, so the whole chain -- sandbox-exec, the
+  shim, the job -- runs as that user (the POSIX preexec
+  demote cannot ride a spawn that replaces process
+  creation, so the demote happens at the spawn door -- the
+  FreeBSD backend's jexec -u shape). Nothing in the chain is
+  the runner's own interpreter, so a runner frozen into one
+  file, which is what a release's macOS archives carry,
+  engages exactly as a runner started from source does. The
+  profile is in force before the shim's first line runs
+  (sandbox-exec applies it to the process it starts), so
+  there is no race in which the job runs unconfined; the
+  process object owns nothing to tear down beyond the
+  wrapped process itself, because the profile is passed to
+  sandbox-exec as an argument, never written to a file.
 
 What this is NOT, stated plainly wherever it is recorded:
 
@@ -87,10 +94,14 @@ What this is NOT, stated plainly wherever it is recorded:
   jail's separate root: the job sees the host's path layout,
   and the profile, not a mount table, is what refuses it.
 - The memory ceiling is a per-process resource limit applied
-  at spawn (setrlimit in the launcher shim), not a Seatbelt
+  at spawn (ulimit in the launcher shim), not a Seatbelt
   rule. Seatbelt has no resource-limit operation, which is
   why the shim exists; the audit record names
   spawn_resource_limits and never a Seatbelt memory control.
+  It is a ceiling on the size of a process's address map,
+  not on the memory it touches, and it is each process's
+  own: there is no ceiling on a job's processes taken
+  together.
 - sandbox-exec is a tool Apple has marked deprecated while
   still shipping it and still building App Sandbox on the
   same profile language. The startup probe, not an
@@ -140,8 +151,9 @@ import threading
 # applied as the data-size resource limit at spawn (never the
 # virtual-memory limit -- see the module docstring for the
 # startup abort a virtual-memory ceiling causes on macOS).
-# A named constant, mirroring the Windows and FreeBSD
-# backends' ceiling; not a config knob yet.
+# The default, mirroring the Windows and FreeBSD backends'
+# ceiling; security.confinement.macos.process_memory_bytes
+# names another.
 DEFAULT_PROCESS_MEMORY_BYTES = 512 * 1024 * 1024
 
 # The confinement controls, named exactly. Every audit and
@@ -486,92 +498,102 @@ def build_profile(workdir, interpreter=None, read_paths=()):
 # The launcher shim (platform-neutral, pure)
 # ----------------------------------------------------------------
 
-# The shim's text. sandbox-exec starts the runner's own
-# interpreter on it (through -c, so no shim file exists to
-# stage); it sets the spawn resource limit, drops to the job
-# user when one is named (argument 2, "-" when none), and
-# execs the job's command (arguments 3 onward). A limit it
-# cannot set, or a user it cannot drop to, ends the shim
-# before the exec -- the job is refused, never run weaker.
-# The one limit it sets is RLIMIT_DATA: a RLIMIT_AS at this
-# ceiling is below the address space every macOS process
-# maps at startup, and the exec'd interpreter aborts in
-# the loader before job code (supposition S1 in
-# docs/steady/security/macos.md).
-# The pair it asks for is computed from the limits it
-# inherits, by the same rule data_limit_attempts states:
-# the inherited hard limit is kept exactly as it stands
-# (never raised, never lowered -- supposition R4-S2), the
-# soft request is the requested ceiling clamped to that
-# hard limit, and a refusal of that request is answered
-# by doubling the soft request up to the ladder's cap
-# (the hard limit when it is finite, 2**62 when it is
-# not -- the largest power-of-two finite value below
-# the platform's unlimited sentinel, supposition
-# R5-S1), because a kernel may refuse a
-# data-size limit below the process's current usage
-# (the Darwin current-usage floor, supposition R4-S1).
-# The first attempt the kernel accepts is the limit the
-# job carries; if none is accepted, the shim refuses by
-# name, exactly as it did before the ladder.
-LIMIT_SHIM_SOURCE = (
-    "import os, sys\n"
-    "limit = int(sys.argv[1])\n"
-    "user = sys.argv[2]\n"
-    "argv = sys.argv[3:]\n"
-    "import resource\n"
-    "for _name in ('RLIMIT_DATA',):\n"
-    "    _r = getattr(resource, _name, None)\n"
-    "    if _r is not None:\n"
-    "        try:\n"
-    "            _cur, _max = resource.getrlimit(_r)\n"
-    "        except Exception as _e:\n"
-    "            sys.stderr.write('hp-shim: could not set the "
-    "data-size limit: %s\\n' % (_e,))\n"
-    "            sys.exit(1)\n"
-    "        _soft = limit if _max == resource.RLIM_INFINITY "
-    "or limit <= _max else _max\n"
-    "        _cap = _max if _max != resource.RLIM_INFINITY "
-    "else 2 ** 62\n"
-    "        _soft = min(_soft, _cap)\n"
-    "        while True:\n"
-    "            try:\n"
-    "                resource.setrlimit(_r, (_soft, _max))\n"
-    "                break\n"
-    "            except Exception as _e:\n"
-    "                if _soft >= _cap:\n"
-    "                    sys.stderr.write('hp-shim: could not "
-    "set the data-size limit: %s\\n' % (_e,))\n"
-    "                    sys.exit(1)\n"
-    "                _soft = min(_soft * 2, _cap)\n"
-    "if user != '-':\n"
-    "    import pwd\n"
-    "    _pw = pwd.getpwnam(user)\n"
-    "    os.setgid(_pw.pw_gid)\n"
-    "    try:\n"
-    "        os.initgroups(_pw.pw_name, _pw.pw_gid)\n"
-    "    except OSError:\n"
-    "        os.setgroups([_pw.pw_gid])\n"
-    "    os.setuid(_pw.pw_uid)\n"
-    "os.execvp(argv[0], argv)\n"
-)
+# The shim's text. sandbox-exec starts the system shell on it
+# (through -c, so no shim file exists to stage); it sets the
+# data-size limit, soft and hard, and execs the job's command
+# (arguments 2 onward; argument 1 is the requested ceiling in
+# kibibytes, the unit ulimit -d speaks). A limit it cannot
+# set ends the shim before the exec -- the job is refused,
+# never run weaker. The one limit it sets is the data-size
+# limit: an address-space limit at this ceiling is below the
+# address space every macOS process maps at startup, and the
+# exec'd interpreter aborts in the loader before job code
+# (supposition S1 in docs/steady/security/macos.md).
+#
+# The value it asks for is computed against what the kernel
+# accepts, by the rule data_limit_plan states: Darwin holds
+# this limit against the process's whole address map and
+# refuses a value below the map's current size (the
+# current-usage floor, supposition R4-S1), so the shim finds
+# the floor -- the request first, then doublings up to the
+# first value accepted, then halvings of the gap down to
+# DATA_FLOOR_STEP_KIB -- and applies the floor plus the
+# request. Every try is made in a subshell: a refusal ends
+# the subshell, and the shim keeps the limits it had. The
+# cap on what it asks for is the inherited hard limit when
+# that is finite, which is never raised (supposition R4-S2),
+# and DATA_LIMIT_CAP_KIB when it is not. The soft limit is
+# set first and the hard limit lowered onto it, so the job
+# cannot raise either.
+#
+# The text is plain POSIX shell with nothing a shell could
+# split or glob: every expansion is quoted or arithmetic.
+# It names no command but the shell's own builtins, so
+# nothing on the job's PATH runs before the job does.
+SHELL_BIN = "/bin/sh"
+# The shell's privileged mode. /bin/sh on macOS is bash
+# unless the machine's owner selects dash or zsh; bash takes
+# shell functions and an option list (SHELLOPTS) from its
+# environment, and a job's environment is the submitter's,
+# so without this flag a variable there could stand a
+# function of its own under the name `ulimit`. In privileged
+# mode bash takes neither; dash and zsh take neither in any
+# mode, and accept the flag.
+SHELL_PRIVILEGED = "-p"
+# The name the shim's process carries as $0, and the mark its
+# refusals begin with.
+SHIM_NAME = "hp-shim"
+KIB = 1024
+# The largest value asked for when the inherited hard limit
+# is unlimited: 2**62 bytes, the largest power of two below
+# the platform's unlimited sentinel (2**63 - 1 on Darwin).
+DATA_LIMIT_CAP_KIB = 2 ** 52
+# How closely the floor is found: one mebibyte.
+DATA_FLOOR_STEP_KIB = 1024
 
-
-# The ladder's cap when the inherited hard limit is
-# unlimited: the largest power-of-two finite value
-# below the platform's unlimited sentinel (2**63 - 1
-# on Darwin), so the bound is set by the platform's
-# own arithmetic, not by a multiple of the request.
-# The fourth fix capped the ladder at 64 times the
-# request (32 GiB for the 512 MiB ceiling) and the CI
-# host's current-usage floor stood above that cap and
-# refused every value up to it (supposition R5-S1 in
-# docs/steady/security/macos.md). A host whose kernel
-# refuses every value up to this cap refuses the job
-# -- fail-closed, and, as the fifth round's record
-# states in advance, the data-size mechanism itself
-# then stands convicted rather than its bound.
-DATA_LIMIT_LADDER_MAX = 2 ** 62
+LIMIT_SHIM_TEXT = (
+    'want=$1\n'
+    'shift\n'
+    'cap=%(cap)d\n'
+    'hard=$(ulimit -H -d) || hard=\n'
+    'case $hard in\n'
+    '  unlimited) ;;\n'
+    "  ''|*[!0-9]*)\n"
+    '    echo "hp-shim: could not set the data-size limit: '
+    'the hard limit could not be read" >&2\n'
+    '    exit 1 ;;\n'
+    '  *) cap=$hard ;;\n'
+    'esac\n'
+    'lim=$want\n'
+    'if [ "$lim" -gt "$cap" ]; then lim=$cap; fi\n'
+    'if ! (ulimit -S -d "$lim") 2>/dev/null; then\n'
+    '  lo=$lim\n'
+    '  while :; do\n'
+    '    if [ "$lo" -ge "$cap" ]; then\n'
+    '      echo "hp-shim: could not set the data-size limit: '
+    'the kernel accepts no value up to $cap KiB" >&2\n'
+    '      exit 1\n'
+    '    fi\n'
+    '    hi=$((lo * 2))\n'
+    '    if [ "$hi" -gt "$cap" ]; then hi=$cap; fi\n'
+    '    if (ulimit -S -d "$hi") 2>/dev/null; then break; fi\n'
+    '    lo=$hi\n'
+    '  done\n'
+    '  while [ $((hi - lo)) -gt %(step)d ]; do\n'
+    '    mid=$((lo + (hi - lo) / 2))\n'
+    '    if (ulimit -S -d "$mid") 2>/dev/null; then hi=$mid; '
+    'else lo=$mid; fi\n'
+    '  done\n'
+    '  lim=$((hi + want))\n'
+    '  if [ "$lim" -gt "$cap" ]; then lim=$cap; fi\n'
+    'fi\n'
+    'if ! ulimit -S -d "$lim" || ! ulimit -H -d "$lim"; then\n'
+    '  echo "hp-shim: could not set the data-size limit: '
+    '$lim KiB was refused" >&2\n'
+    '  exit 1\n'
+    'fi\n'
+    'exec "$@"\n'
+) % {"cap": DATA_LIMIT_CAP_KIB, "step": DATA_FLOOR_STEP_KIB}
 
 
 # The reports of an unlimited limit. Python's resource
@@ -582,8 +604,8 @@ DATA_LIMIT_LADDER_MAX = 2 ** 62
 # ships for -- -1 on Linux, where the platform's
 # unlimited sentinel reaches Python as -1, and
 # 2 ** 63 - 1 (INT64_MAX) on Darwin, whose unlimited
-# sentinel is that value (the ladder comment above
-# records the same sentinel from the other side).
+# sentinel is that value (the shim's cap stands just
+# below the same sentinel).
 # A read-back assertion that names only one report
 # fails on the other platform while the fact it pins
 # stands: the spawn-limits live point hardcoded -1
@@ -622,93 +644,168 @@ def reported_limit_is_unlimited(value):
     return value in UNLIMITED_LIMIT_REPORTS
 
 
-def data_limit_attempts(requested, inherited_hard):
-    """The soft data-size limits the shim asks for, in order.
+def data_limit_plan(requested_kib, accepts, inherited_hard_kib=None):
+    """(limit, floor) in KiB: the data-size limit the shim
+    applies, and the floor it found under it.
 
-    The deterministic substrate of the shim's limit
-    computation (the shim text carries the same rule
-    inline, because the shim runs as interpreter text
-    with no module to import). Fields, one by one:
+    The deterministic substrate of the shim's computation (the
+    shim text carries the same rule inline, because it runs as
+    shell text with no module to import). Fields, one by one:
 
-    - requested: the ceiling the backend means to apply
-      (a positive integer; a boolean is not a ceiling).
-    - inherited_hard: the hard data-size limit the
-      shim's process inherits, as getrlimit reports it:
-      -1 for RLIM_INFINITY (unlimited), else a
-      non-negative integer.
+    - requested_kib: the ceiling the backend means to apply,
+      in kibibytes (a positive integer; a boolean is not a
+      ceiling).
+    - accepts: the kernel's answer -- accepts(value) is True
+      when a started process may set `value` KiB as its soft
+      data-size limit. The shim asks in a subshell; a test
+      scripts the answer.
+    - inherited_hard_kib: the hard data-size limit the shim's
+      process inherits, in kibibytes, or None when it is
+      unlimited.
 
-    The rule, stated whole: the hard limit is never
-    moved, so no attempt pairs a soft value with a hard
-    value other than the inherited one, and the first
-    attempt is the requested ceiling clamped to the
-    inherited hard limit when that limit is finite and
-    smaller, and clamped to the ladder's maximum when
-    the hard limit is unlimited and the request stands
-    above it. Each later attempt doubles the one
-    before, up to the cap: the inherited hard limit
-    when it is finite (no soft value above it may ever
-    be asked for), else DATA_LIMIT_LADDER_MAX (2**62,
-    the largest power-of-two finite value below the
-    platform's unlimited sentinel). The attempts are
-    strictly increasing, none exceeds the cap, and the
-    last is the cap itself -- for an unlimited hard
-    limit and the 512 MiB ceiling there are 34 (the
-    request at 2**29 and its doublings to 2**62), and
-    never more than 63 for any request.
-    Raises RuntimeError on a field that is not what it
-    is named.
+    The rule, stated whole. The cap is the inherited hard
+    limit when it is finite -- no value above it is ever
+    asked for, so the hard limit is never raised -- and
+    DATA_LIMIT_CAP_KIB when it is not. The first value asked
+    is the request, clamped to the cap; where the kernel
+    accepts it, that is the limit and there is no floor
+    (None). Where it does not, the value asked is doubled,
+    clamped to the cap, until one is accepted; the gap
+    between the last value refused and the first accepted is
+    then halved until it is DATA_FLOOR_STEP_KIB or less, and
+    its upper end is the floor: the smallest value the
+    kernel accepts, to within that step. The limit is the
+    floor plus the request, clamped to the cap. Raises
+    RuntimeError when the kernel accepts no value up to the
+    cap, and on a field that is not what it is named.
     """
-    if isinstance(requested, bool) \
-            or not isinstance(requested, int) or requested <= 0:
+    if isinstance(requested_kib, bool) \
+            or not isinstance(requested_kib, int) or requested_kib <= 0:
         raise RuntimeError(
             "the requested data-size ceiling must be a "
             "positive integer")
-    if isinstance(inherited_hard, bool) \
-            or not isinstance(inherited_hard, int) \
-            or inherited_hard < -1:
+    if inherited_hard_kib is not None and (
+            isinstance(inherited_hard_kib, bool)
+            or not isinstance(inherited_hard_kib, int)
+            or inherited_hard_kib < 0):
         raise RuntimeError(
-            "the inherited hard data limit must be -1 "
+            "the inherited hard data limit must be None "
             "(unlimited) or a non-negative integer")
-    if inherited_hard == -1:
-        first = min(requested, DATA_LIMIT_LADDER_MAX)
-        cap = DATA_LIMIT_LADDER_MAX
-    else:
-        first = min(requested, inherited_hard)
-        cap = inherited_hard
-    attempts = [first]
-    while attempts[-1] < cap:
-        attempts.append(min(attempts[-1] * 2, cap))
-    return tuple(attempts)
+    cap = DATA_LIMIT_CAP_KIB if inherited_hard_kib is None \
+        else inherited_hard_kib
+    limit = min(requested_kib, cap)
+    if accepts(limit):
+        return limit, None
+    low = limit
+    while True:
+        if low >= cap:
+            raise RuntimeError(
+                "the kernel accepts no data-size limit up to "
+                "%d KiB" % cap)
+        high = min(low * 2, cap)
+        if accepts(high):
+            break
+        low = high
+    while high - low > DATA_FLOOR_STEP_KIB:
+        middle = low + (high - low) // 2
+        if accepts(middle):
+            high = middle
+        else:
+            low = middle
+    return min(high + requested_kib, cap), high
 
 
-def build_shim_argv(argv, memory_bytes=DEFAULT_PROCESS_MEMORY_BYTES,
-                    user=None):
-    """The launcher shim's argv: [interpreter, -c, source,
-    memory, user-or-"-", *argv].
-
-    Each field is validated on its own: the command a
-    non-empty list of strings, the ceiling a positive integer
-    (a boolean is not a ceiling), the user None or a non-empty
-    string carrying nothing a process table cannot name.
-    """
-    if not isinstance(argv, (list, tuple)) or not argv \
-            or not all(isinstance(a, str) and a for a in argv):
-        raise RuntimeError(
-            "confined spawn needs a non-empty list of strings")
+def ceiling_kib(memory_bytes):
+    """A ceiling in bytes as the kibibytes the shim is handed:
+    rounded up, so the limit asked for is never below the
+    ceiling named. Raises RuntimeError on a value that is not
+    a ceiling (a boolean is not one)."""
     if isinstance(memory_bytes, bool) \
             or not isinstance(memory_bytes, int) \
             or memory_bytes <= 0:
         raise RuntimeError(
             "the spawn memory ceiling must be a positive integer")
-    if user is not None:
-        if not isinstance(user, str) or not user \
-                or ":" in user \
-                or any(ord(ch) < 0x20 or ord(ch) == 0x7f for ch in user):
-            raise RuntimeError(
-                "the job user for the shim must be a plain user name")
-    return [sys.executable, "-c", LIMIT_SHIM_SOURCE,
-            str(int(memory_bytes)), user if user else "-",
-            *argv]
+    return (memory_bytes + KIB - 1) // KIB
+
+
+def build_shim_argv(argv, memory_bytes=DEFAULT_PROCESS_MEMORY_BYTES):
+    """The launcher shim's argv: [shell, -p, -c, text, name,
+    ceiling in KiB, *argv].
+
+    Each field is validated on its own: the command a
+    non-empty list of strings, the ceiling a positive integer
+    (a boolean is not a ceiling). The shell is the system's
+    own and the text is this module's; neither is a field.
+    """
+    if not isinstance(argv, (list, tuple)) or not argv \
+            or not all(isinstance(a, str) and a for a in argv):
+        raise RuntimeError(
+            "confined spawn needs a non-empty list of strings")
+    return [SHELL_BIN, SHELL_PRIVILEGED, "-c", LIMIT_SHIM_TEXT,
+            SHIM_NAME, str(ceiling_kib(memory_bytes)), *argv]
+
+
+def job_user_drop(user, lookup=None, groups=None):
+    """The spawn's own arguments that apply the job user, or
+    none of them when no user is handed over.
+
+    Returns the keyword arguments subprocess.Popen takes to
+    change the child's user between its fork and its exec:
+    `user` (the uid), `group` (the user's own group) and
+    `extra_groups` (the groups the user database gives it, 16
+    at most, which is what the platform's setgroups takes).
+    The user is a plain name carrying nothing a process table
+    cannot name; one that is not in the user database is a
+    refusal, never a spawn as the runner's own user. `lookup`
+    and `groups` are the tests' doors to the user database.
+    """
+    if user is None:
+        return {}
+    if not isinstance(user, str) or not user \
+            or ":" in user \
+            or any(ord(ch) < 0x20 or ord(ch) == 0x7f for ch in user):
+        raise RuntimeError(
+            "the job user for the spawn must be a plain user name")
+    if lookup is None:
+        import pwd
+        lookup = pwd.getpwnam
+    try:
+        entry = lookup(user)
+    except KeyError:
+        raise RuntimeError(
+            "the job user %s is not in this machine's user "
+            "database" % user)
+    if groups is None:
+        groups = getattr(os, "getgrouplist", None)
+    extra = _group_ids(groups, entry.pw_name, entry.pw_gid)
+    if entry.pw_gid not in extra:
+        extra.insert(0, entry.pw_gid)
+    return {"user": entry.pw_uid, "group": entry.pw_gid,
+            "extra_groups": extra[:16]}
+
+
+def _group_ids(groups, name, gid):
+    """The group ids the user database gives `name`, as the
+    unsigned numbers a spawn takes; the user's own group alone
+    when the list cannot be read.
+
+    Darwin's getgrouplist speaks signed 32-bit ids where the
+    rest of the platform speaks unsigned ones: the group of
+    `nobody` is 4294967294 in the user database and -2 to that
+    call, in both directions. An id too large for the call is
+    handed over as its signed twin, and a negative id that
+    comes back is read as its unsigned one.
+    """
+    if groups is None:
+        return [gid]
+    try:
+        try:
+            found = groups(name, gid)
+        except OverflowError:
+            found = groups(name, gid - 2 ** 32)
+        return [g + 2 ** 32 if g < 0 else g for g in found]
+    except (OSError, OverflowError, ValueError, TypeError):
+        return [gid]
 
 
 def _profile_realpath(path):
@@ -738,7 +835,7 @@ def _profile_realpath(path):
 
 def build_sandbox_argv(argv, cwd=None, env=None,
                        memory_bytes=DEFAULT_PROCESS_MEMORY_BYTES,
-                       user=None, read_paths=()):
+                       read_paths=()):
     """(the full sandbox-exec argv, the profile text) for a job.
 
     argv is the job's command in host paths; cwd is its work
@@ -747,7 +844,9 @@ def build_sandbox_argv(argv, cwd=None, env=None,
     launcher shim carrying the job's command. `env` is accepted
     for symmetry with the other backends' builders and does
     not enter the argv -- the spawn passes it to the process,
-    as the other backends' spawns do.
+    as the other backends' spawns do. The job user is not a
+    field here either: the spawn applies it to the whole
+    chain (job_user_drop).
 
     The profile names the work directory's real path, not
     the path as handed over: Seatbelt matches the canonical
@@ -765,8 +864,148 @@ def build_sandbox_argv(argv, cwd=None, env=None,
     profile = build_profile(_profile_realpath(cwd),
                             interpreter=argv[0] if argv else None,
                             read_paths=read_paths)
-    shim = build_shim_argv(argv, memory_bytes=memory_bytes, user=user)
+    shim = build_shim_argv(argv, memory_bytes=memory_bytes)
     return [SANDBOX_EXEC_BIN, "-p", profile, *shim], profile
+
+
+# ----------------------------------------------------------------
+# The settings (platform-neutral, pure)
+# ----------------------------------------------------------------
+
+# The backend's own settings, under security.confinement.macos.
+MACOS_KEYS = ("process_memory_bytes",)
+
+
+def validate_macos_block(block):
+    """Raise RuntimeError on a malformed security.confinement.
+    macos block. A setting this backend does not know is an
+    error: a ceiling the operator misspelled is a ceiling that
+    is not there."""
+    if not isinstance(block, dict):
+        raise RuntimeError(
+            "config error: security.confinement.macos must be "
+            "an object")
+    for key in block:
+        if key not in MACOS_KEYS:
+            raise RuntimeError(
+                "config error: security.confinement.macos.%s is "
+                "not a known setting (known: %s)"
+                % (key, ", ".join(MACOS_KEYS)))
+    for key in MACOS_KEYS:
+        if key not in block:
+            continue
+        value = block[key]
+        if isinstance(value, bool) or not isinstance(value, int) \
+                or value < 1:
+            raise RuntimeError(
+                "config error: security.confinement.macos.%s must "
+                "be a positive integer (got %r)" % (key, value))
+    return True
+
+
+def confinement_settings(cfg):
+    """The settings a job's launch is built from, read out of
+    the config: the macos block of security.confinement, under
+    this module's rules. Raises RuntimeError on a malformed
+    block. The keys the Linux sandbox and the FreeBSD jail
+    share (work_mount, extra_ro_binds, extra_flags) name
+    mounts and bwrap arguments; there is no mount here, and
+    this backend reads none of them."""
+    sec = cfg.get("security") if isinstance(cfg, dict) else None
+    conf = sec.get("confinement") if isinstance(sec, dict) else None
+    conf = conf if isinstance(conf, dict) else {}
+    block = conf.get("macos", {})
+    validate_macos_block(block)
+    return {
+        "process_memory_bytes": block.get(
+            "process_memory_bytes", DEFAULT_PROCESS_MEMORY_BYTES),
+    }
+
+
+def _engaged_job_user(cfg):
+    """The user a job is started as under this config, or
+    None: security.job_user's user, when the job_user mode
+    stands at enforce (its unset reading). The report's own
+    reading of the shape -- it never raises."""
+    sec = cfg.get("security") if isinstance(cfg, dict) else None
+    if not isinstance(sec, dict):
+        return None
+    modes = sec.get("modes", {})
+    if not isinstance(modes, dict) \
+            or modes.get("job_user", "enforce") != "enforce":
+        return None
+    block = sec.get("job_user")
+    user = block.get("user") if isinstance(block, dict) else None
+    return user if isinstance(user, str) and user else None
+
+
+def human_size(kib):
+    """A size in kibibytes as a person reads it: whole
+    mebibytes below a gibibyte, tenths of a gibibyte above."""
+    if kib >= 1024 * 1024:
+        return "%.1f GiB" % (kib / (1024.0 * 1024.0))
+    return "%d MiB" % (kib // 1024)
+
+
+def memory_line(memory_bytes, limit_kib=None):
+    """The one sentence that says what the memory ceiling is
+    on this host: the ceiling asked for, and, where the trial
+    read the limit a job carries, the floor it stands on."""
+    want = ceiling_kib(memory_bytes)
+    held = ("the ceiling is not the job's to raise (ulimit in "
+            "the launcher shim, soft and hard)")
+    if limit_kib is None:
+        return ("a job process's address map may grow %s past "
+                "the size a bare process starts at; %s"
+                % (human_size(want), held))
+    if limit_kib > want:
+        return ("a job process's address map may grow %s past "
+                "the %s a bare process starts at here; %s"
+                % (human_size(want), human_size(limit_kib - want),
+                   held))
+    return ("a job process's address map is held to %s here; %s"
+            % (human_size(want), held))
+
+
+def posture_lines(cfg=None, probe=None, facts=None):
+    """(level, text) lines for the posture report: what a job
+    carries on this host under this config.
+
+    Unlike the FreeBSD backend's report, this one asks the
+    probe itself: the trial needs no privilege, builds
+    nothing on the host but a temporary directory it removes,
+    and its verdict is kept for the life of the process, so
+    the report says what the startup gate would say. A WARN
+    is something the gate refuses on at enforce. `probe` and
+    `facts` are the tests' doors: the probe to ask, and what
+    its trial read (the limit a job carries, in kibibytes).
+    """
+    refuse = "; confinement in enforce mode would refuse to start"
+    try:
+        st = confinement_settings(cfg)
+    except RuntimeError as e:
+        return [("WARN", "macOS backend cannot engage: %s%s"
+                 % (e, refuse))]
+    ask = macos_confinement_problem if probe is None else probe
+    try:
+        problem = ask(cfg)
+    except Exception as e:
+        problem = str(e) or type(e).__name__
+    if problem is not None:
+        return [("WARN", "macOS backend cannot engage: %s%s"
+                 % (problem, refuse))]
+    if facts is None:
+        facts = trial_facts(st["process_memory_bytes"])
+    lines = [("OK", "macOS backend: %s" % STATUS_CONFINEMENT)]
+    lines.append(("OK", memory_line(st["process_memory_bytes"],
+                                    facts.get("limit_kib"))))
+    user = _engaged_job_user(cfg)
+    if user is not None:
+        lines.append((
+            "OK", "a job is started as %s at the spawn door "
+            "(security.job_user) and reads what that user can "
+            "read" % user))
+    return lines
 
 
 # ----------------------------------------------------------------
@@ -774,19 +1013,31 @@ def build_sandbox_argv(argv, cwd=None, env=None,
 # ----------------------------------------------------------------
 
 _TRIAL_MARKER = "hp-confinement-trial"
+_TRIAL_OUTSIDE = "hp-confinement-outside"
 
 # The trial program is staged inside the work directory, the
-# shape of a real job: the confined process reads the staged
-# data file it is handed and writes its output beside it.
+# shape of a real job, and run by the system shell: the
+# confined process reads the staged data file it is handed
+# and writes its output beside it, then tries the two things
+# the profile is there to refuse -- a write and a read
+# outside the work directory -- and says what data-size limit
+# it carries. Shell text, so the trial is the same whether
+# the runner is a source tree's or a frozen binary.
 _TRIAL_PROGRAM = (
-    "import os, sys\n"
-    "data = open(sys.argv[1], encoding='utf-8').read()\n"
-    "assert 'hp-confinement-trial' in data, 'marker missing'\n"
-    "print('TRIAL-READ-OK', flush=True)\n"
-    "out = os.path.join(sys.argv[2], 'trial-out.txt')\n"
-    "with open(out, 'w', encoding='utf-8') as fh:\n"
-    "    fh.write(data)\n"
-    "print('TRIAL-WRITE-OK', flush=True)\n"
+    'data=$(/bin/cat "$1") || exit 1\n'
+    'case $data in\n'
+    '  *hp-confinement-trial*) ;;\n'
+    '  *) echo "marker missing" >&2; exit 1 ;;\n'
+    'esac\n'
+    'echo TRIAL-READ-OK\n'
+    'printf "%s\\n" "$data" > "$2/trial-out.txt" || exit 1\n'
+    'echo TRIAL-WRITE-OK\n'
+    '(: > "$3") 2>/dev/null && echo TRIAL-WROTE-OUTSIDE\n'
+    'seen=$(/bin/cat "$4" 2>/dev/null)\n'
+    'case $seen in\n'
+    '  *hp-confinement-outside*) echo TRIAL-READ-OUTSIDE ;;\n'
+    'esac\n'
+    'echo "TRIAL-LIMIT $(ulimit -S -d) $(ulimit -H -d)"\n'
 )
 
 
@@ -796,24 +1047,40 @@ def _trial_tail(text):
     return lines[-1][:200] if lines else "no output"
 
 
-def confinement_trial_problem(spawn, timeout=60):
+def _trial_limit(text):
+    """(soft, hard) as the trial printed them, or None."""
+    for line in text.splitlines():
+        words = line.split()
+        if len(words) == 3 and words[0] == "TRIAL-LIMIT":
+            return words[1], words[2]
+    return None
+
+
+def confinement_trial_problem(spawn, timeout=60, facts=None):
     """None when a confined process can work here, else why not.
 
     `spawn` is a confined-spawn callable with the backend's
     signature -- spawn(argv, cwd=..., env=...) returning a
     process object with communicate(timeout), kill(), close()
     and returncode. The trial stages a data file and a program
-    inside a fresh work directory under the temp tree, spawns
-    the program confined with that directory as its cwd, and
-    names the stage that failed: the spawn itself, the staged
-    read, or the work-directory write. The temp tree is
-    removed either way. A host whose confined processes cannot
-    read what is staged for them answers a problem here, at
-    startup, instead of failing every job. The orchestration
-    is platform-neutral, so the suite exercises it through
-    scripted spawn seams on any host; on a real macOS host the
-    backend's macos_confinement_problem wires it to
-    spawn_confined_process and caches the verdict.
+    inside a fresh work directory under the temp tree, and a
+    second file beside that directory, outside it. It spawns
+    the program confined with the work directory as its cwd,
+    and names the stage that failed: the spawn itself, the
+    staged read, the work-directory write, a write or a read
+    outside the work directory that the profile let through,
+    or a job that carries no data-size ceiling of its own.
+    The temp tree is removed either way. A host whose confined
+    processes cannot read what is staged for them, or are not
+    confined, answers a problem here, at startup, instead of
+    failing every job or running one unconfined. The
+    orchestration is platform-neutral, so the suite exercises
+    it through scripted spawn seams on any host; on a real
+    macOS host the backend's macos_confinement_problem wires
+    it to spawn_confined_process and caches the verdict.
+    `facts`, when a dict is handed in, receives what a passing
+    trial read: `limit_kib`, the data-size limit the confined
+    process carried.
     """
     tmp = None
     try:
@@ -823,10 +1090,15 @@ def confinement_trial_problem(spawn, timeout=60):
         staged = os.path.join(work, "trial-staged.txt")
         with open(staged, "w", encoding="utf-8") as fh:
             fh.write(_TRIAL_MARKER + "\n")
-        program = os.path.join(work, "trial_program.py")
+        program = os.path.join(work, "trial_program.sh")
         with open(program, "w", encoding="utf-8") as fh:
             fh.write(_TRIAL_PROGRAM)
-        argv = [sys.executable, program, staged, work]
+        outside_new = os.path.join(tmp, "outside-write.txt")
+        outside_kept = os.path.join(tmp, "outside-kept.txt")
+        with open(outside_kept, "w", encoding="utf-8") as fh:
+            fh.write(_TRIAL_OUTSIDE + "\n")
+        argv = [SHELL_BIN, program, staged, work,
+                outside_new, outside_kept]
         try:
             proc = spawn(argv, cwd=work, env=dict(os.environ))
         except Exception as e:
@@ -859,10 +1131,28 @@ def confinement_trial_problem(spawn, timeout=60):
                         "(exit %s: %s)"
                         % (proc.returncode,
                            _trial_tail(err_text or out_text)))
+            if "TRIAL-WROTE-OUTSIDE" in out_text \
+                    or os.path.exists(outside_new):
+                return ("a confined process wrote a file outside "
+                        "its work directory: the profile did not "
+                        "hold")
+            if "TRIAL-READ-OUTSIDE" in out_text:
+                return ("a confined process read a file outside "
+                        "its work directory: the profile did not "
+                        "hold")
+            limit = _trial_limit(out_text)
+            if limit is None or not limit[0].isdigit() \
+                    or limit[0] != limit[1]:
+                return ("a confined process carried no data-size "
+                        "ceiling of its own (soft %s, hard %s): "
+                        "the launcher shim did not hold"
+                        % (limit or ("unread", "unread")))
             if proc.returncode not in (0, None):
                 return ("the confined trial process exited %s "
                         "after reading and writing (%s)"
                         % (proc.returncode, _trial_tail(err_text)))
+            if facts is not None:
+                facts["limit_kib"] = int(limit[0])
             return None
         finally:
             try:
@@ -874,6 +1164,22 @@ def confinement_trial_problem(spawn, timeout=60):
     finally:
         if tmp is not None:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+# What each passing trial read, by the ceiling it was run
+# under: the limit a job carries on this host. The posture
+# report words the memory ceiling from it.
+_trial_lock = threading.Lock()
+_trial_verdicts = {}
+
+
+def trial_facts(memory_bytes=DEFAULT_PROCESS_MEMORY_BYTES):
+    """What the trial run under `memory_bytes` read, or {}
+    when none has passed in this process."""
+    with _trial_lock:
+        verdict = _trial_verdicts.get(memory_bytes)
+    return dict(verdict[1]) if verdict is not None \
+        and verdict[0] is None else {}
 
 
 # ----------------------------------------------------------------
@@ -905,15 +1211,15 @@ else:
     def _basic_problem():
         """Why the backend cannot engage at all here, or None.
 
-        The tool itself, and the interpreter the shim runs on.
-        The full trial is macos_confinement_problem's; this is
+        The tool itself, and the shell the shim runs on. The
+        full trial is macos_confinement_problem's; this is
         the cheap half the spawn also checks, so a spawn on a
-        host that lost the tool refuses instead of
+        host that lost either refuses instead of
         half-engaging.
         """
-        if not (os.path.isfile(SANDBOX_EXEC_BIN)
-                and os.access(SANDBOX_EXEC_BIN, os.X_OK)):
-            return "%s is missing or not executable" % SANDBOX_EXEC_BIN
+        for tool in (SANDBOX_EXEC_BIN, SHELL_BIN):
+            if not (os.path.isfile(tool) and os.access(tool, os.X_OK)):
+                return "%s is missing or not executable" % tool
         return None
 
     def macos_startup_problem(cfg=None, timeout=15):
@@ -921,13 +1227,17 @@ else:
         process on this host, else why not.
 
         This is a necessary condition, not a sufficient one: it
-        proves the tool is present and a generated profile
-        parses and starts. A confined process that starts but
-        cannot work is the trial's subject, in
-        macos_confinement_problem; a particular job's spawn
-        still makes its own profile, and its failure refuses
-        that job then.
+        proves the config's macos block reads, the tools are
+        present and a generated profile parses and starts. A
+        confined process that starts but cannot work is the
+        trial's subject, in macos_confinement_problem; a
+        particular job's spawn still makes its own profile,
+        and its failure refuses that job then.
         """
+        try:
+            confinement_settings(cfg)
+        except RuntimeError as e:
+            return str(e)
         problem = _basic_problem()
         if problem is not None:
             return problem
@@ -947,30 +1257,37 @@ else:
                     proc.returncode, ": " + detail[:200] if detail else "")
         return None
 
-    _trial_lock = threading.Lock()
-    _trial_verdict = []
-
     def macos_confinement_problem(cfg=None, timeout=15):
         """None when the confinement controls can engage here.
 
         Stronger than the startup probe: the tool must start a
         confined process, AND a trial process under the full
         controls (the generated profile, the launcher shim, the
-        spawn limits) must read its staged file and write its
-        work directory, through confinement_trial_problem. The
-        verdict is cached for the life of the process -- the
-        per-job gate consults this probe, and the trial's cost
-        (one confined spawn) is paid once per runner start, not
-        once per job.
+        ceiling this config names) must read its staged file,
+        write its work directory, be refused a write and a
+        read outside it, and carry a data-size ceiling of its
+        own, through confinement_trial_problem. The verdict is
+        kept for the life of the process, one per ceiling --
+        the per-job gate consults this probe, and the trial's
+        cost (one confined spawn) is paid once per runner
+        start, not once per job.
         """
         problem = macos_startup_problem(cfg, timeout=timeout)
         if problem is not None:
             return problem
+        memory = confinement_settings(cfg)["process_memory_bytes"]
+
+        def _spawn(argv, cwd=None, env=None):
+            return spawn_confined_process(
+                argv, cwd=cwd, env=env, memory_bytes=memory)
+
         with _trial_lock:
-            if not _trial_verdict:
-                _trial_verdict.append(
-                    confinement_trial_problem(spawn_confined_process))
-            return _trial_verdict[0]
+            if memory not in _trial_verdicts:
+                facts = {}
+                _trial_verdicts[memory] = (
+                    confinement_trial_problem(_spawn, facts=facts),
+                    facts)
+            return _trial_verdicts[memory][0]
 
     class MacOSConfinedProcess:
         """The Popen subset exec.py drives, for a confined spawn.
@@ -984,14 +1301,18 @@ else:
         release: the profile rode in as an argument, so there
         is nothing on disk to remove; close only drops the
         wrapper's reference once the process has exited.
+        .confinement_notes is what this job's launch carried
+        beyond the status string, for the audit record's
+        detail.
         """
 
-        def __init__(self, argv, inner):
+        def __init__(self, argv, inner, notes=()):
             self.args = argv
             self.pid = inner.pid
             self._inner = inner
             self.returncode = None
             self.confinement_status = STATUS_CONFINEMENT
+            self.confinement_notes = list(notes)
             self._closed = False
 
         def communicate(self, timeout=None):
@@ -1015,7 +1336,7 @@ else:
             self._closed = True
 
     def spawn_confined_process(argv, cwd=None, env=None, user=None,
-                               memory_bytes=DEFAULT_PROCESS_MEMORY_BYTES):
+                               memory_bytes=None, cfg=None):
         """Create a job process under every confinement control.
 
         argv is the full command (interpreter, script, args) in
@@ -1023,30 +1344,50 @@ else:
         profile's one writable tree. The per-job temp directory
         is made inside it and TMPDIR pointed at it. sandbox-exec
         applies the generated profile to the launcher shim,
-        which sets the spawn resource limits (and drops to
-        `user` when the job_user seam hands one over) before it
-        execs the job's command, and a MacOSConfinedProcess is
-        returned whose .confinement_status is
-        STATUS_CONFINEMENT. Raises RuntimeError when any control
-        could not be applied -- there is no unconfined fallback
-        to fall through to.
+        which sets the data-size ceiling -- `memory_bytes`, or
+        the one `cfg` names, or the default -- before it execs
+        the job's command; `user`, when the job_user seam hands
+        one over, is applied to the whole chain between the
+        fork and the exec of sandbox-exec. A
+        MacOSConfinedProcess is returned whose
+        .confinement_status is STATUS_CONFINEMENT. Raises
+        RuntimeError when any control could not be applied --
+        there is no unconfined fallback to fall through to.
         """
         problem = _basic_problem()
         if problem is not None:
             raise RuntimeError(problem)
+        if memory_bytes is None:
+            memory_bytes = confinement_settings(cfg)[
+                "process_memory_bytes"]
         if cwd is None:
             cwd = os.getcwd()
         sandbox_argv, _profile = build_sandbox_argv(
-            argv, cwd=cwd, memory_bytes=memory_bytes, user=user)
+            argv, cwd=cwd, memory_bytes=memory_bytes)
+        drop = job_user_drop(user)
+        notes = ["memory ceiling %s above a bare process's address "
+                 "map, soft and hard"
+                 % human_size(ceiling_kib(memory_bytes))]
+        if drop:
+            notes.append("job user %s applied at the spawn door"
+                         % user)
         env2 = dict(env) if env is not None else dict(os.environ)
         try:
             job_tmp = os.path.join(cwd, JOB_TMP_NAME)
             os.makedirs(job_tmp, exist_ok=True)
             env2["TMPDIR"] = job_tmp
+            if drop:
+                # The directory was just made by the runner; the
+                # job that is to use it is the job user's.
+                os.chown(job_tmp, drop["user"], drop["group"])
         except OSError:
             pass
-        inner = subprocess.Popen(
-            sandbox_argv, stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            cwd=cwd, env=env2, start_new_session=True)
-        return MacOSConfinedProcess(list(argv), inner)
+        try:
+            inner = subprocess.Popen(
+                sandbox_argv, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                cwd=cwd, env=env2, start_new_session=True, **drop)
+        except (OSError, subprocess.SubprocessError) as e:
+            raise RuntimeError(
+                "the confined spawn could not be started: %s" % e)
+        return MacOSConfinedProcess(list(argv), inner, notes)
