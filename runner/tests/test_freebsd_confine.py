@@ -2061,9 +2061,12 @@ class FakeProcess:
         self.killed = True
 
     def wait(self, timeout=None):
+        # As Popen's: a process already collected keeps its
+        # answer.
         self.waited = True
-        self.returncode = 0
-        return 0
+        if self.returncode is None:
+            self.returncode = 0
+        return self.returncode
 
 
 class FakeHost:
@@ -3235,6 +3238,53 @@ class SpawnTest(_FakeHostCase):
         calls = len(self.host.calls)
         proc.close()
         self.assertEqual(len(self.host.calls), calls)
+
+
+    def test_the_release_collects_the_job_s_first_process(self):
+        # An ended job nobody collected is still one of its
+        # account's processes, and those are counted. The
+        # release collects it -- after the jail has gone, which
+        # is what ended it.
+        proc = self.spawn(user="pigeon-jobs")
+        self.assertFalse(proc._inner.waited)
+        self.assertIsNone(proc.returncode)
+        seen = []
+        real = proc._inner.wait
+
+        def _wait(timeout=None):
+            seen.append((dict(self.host.jails), timeout))
+            return real(timeout=timeout)
+        proc._inner.wait = _wait
+        proc.close()
+        self.assertEqual(seen, [({}, 2)])
+        self.assertTrue(proc._inner.waited)
+        self.assertEqual(proc.returncode, 0)
+        # A job the caller collected keeps the answer it had.
+        proc = self.spawn()
+        proc.communicate(timeout=5)
+        proc._inner.returncode = 7
+        proc.close()
+        self.assertEqual(proc.returncode, 7)
+
+    def test_a_first_process_that_will_not_end_does_not_hold_the_release(self):
+        for error in (subprocess.TimeoutExpired("jexec", 2),
+                      OSError("no child processes"),
+                      ValueError("odd")):
+            with self.subTest(error=error):
+                proc = self.spawn()
+
+                def _hang(timeout=None, error=error):
+                    raise error
+                proc._inner.wait = _hang
+                proc.close()
+                self.assertIsNone(proc.returncode)
+                self.assertEqual(self.host.jails, {})
+                self.assertEqual(self.host.table, [])
+                self.assertEqual(self.skeletons(), [])
+                # Released once: a second release is nothing.
+                calls = len(self.host.calls)
+                proc.close()
+                self.assertEqual(len(self.host.calls), calls)
 
 
 class ReaperTest(_FakeHostCase):
@@ -4756,7 +4806,14 @@ class LiveControlsTest(unittest.TestCase):
             self.assertTrue(FC._JAIL_NAME.match(first_jail), first_jail)
             self.assertIsNone(first.poll())
         finally:
+            # The first job is ended and collected, as a runner
+            # collects every job: until it is, its first process
+            # is still one of the account's, ended or not.
             first.kill()
+            try:
+                first.communicate(timeout=30)
+            except (OSError, subprocess.SubprocessError):
+                pass
             first.close()
         self.assertEqual(_processes_settle("nobody", before), before)
 

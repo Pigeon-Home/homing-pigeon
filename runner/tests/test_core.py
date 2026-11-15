@@ -198,9 +198,11 @@ class CoreListTest(unittest.TestCase):
         # runner/ops/install.py by 33 lines, and once more
         # after the job user's process ceiling grew
         # runner/guard/freebsd_confine.py by 131 lines and
-        # runner/ops/install.py by 21.
-        self.assertEqual(68036, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(61670, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # runner/ops/install.py by 21, and the release's
+        # collecting of the job's first process grew the
+        # backend by 12 more.
+        self.assertEqual(68048, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(61682, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

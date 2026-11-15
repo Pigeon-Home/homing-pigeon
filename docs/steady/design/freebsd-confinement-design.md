@@ -228,6 +228,12 @@ ceiling on `pigeon-jobs` is the jobs' to the last process. A
 runner with several workers shares the one ceiling among the
 jobs it runs at once, and `job_user_processes` raises it.
 
+An ended process is still counted until its parent collects
+it. A job's first process is the runner's own child, so the
+release collects it, once the jail is gone, if nothing has
+by then: a job that is released holds none of its account's
+processes.
+
 A job with no job user gets no such ceiling. It is uid 0, and
 uid 0's count is the host's own root processes: a limit there
 would be the host's as much as the job's. For that job the

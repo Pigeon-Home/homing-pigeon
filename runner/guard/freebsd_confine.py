@@ -1378,7 +1378,11 @@ class FreeBSDConfinedProcess:
     def close(self):
         """The release: remove the jail (which ends anything
         still inside it) and its rules, unmount the skeleton,
-        delete it."""
+        delete it, and collect the job's first process if the
+        caller has not. An ended process is still one of its
+        user's until its parent collects it, and a job user's
+        processes are counted: a job that is released holds
+        none of them."""
         if self._closed:
             return
         self._closed = True
@@ -1387,6 +1391,14 @@ class FreeBSDConfinedProcess:
         _teardown(self._host, self._name, self._base, self._applied,
                   self._rules)
         self._name = None
+        try:
+            self._inner.wait(timeout=2)
+        except Exception:
+            # Not ended inside the wait (a jail that would not
+            # go), or not this object's to wait for: the release
+            # has done what it can, and the sweep has the rest.
+            return
+        self.returncode = self._inner.returncode
 
 
 def _spawn(argv, cwd=None, env=None, user=None, memory_bytes=None,
