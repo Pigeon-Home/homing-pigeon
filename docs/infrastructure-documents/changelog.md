@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.14 - 2026-11-15
+
+- guard: the leak run starts a test module through its package, as the suite does (Claude)
+- freebsd: the hosted suite's clock is 45 minutes; its first green run on the record (Claude)
+
 ## 3.16.26.13 - 2026-11-15
 
 - freebsd: a job user's processes take a ceiling that needs no RACCT -- limits -u at the jail door, 256 by default (Claude)
