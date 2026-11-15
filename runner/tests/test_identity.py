@@ -45,8 +45,22 @@ S6. A plain checkout's identity still prints the full platform
     and Python lines, with the stamp and checksum reading
     "unknown".
 
-Conclusions (recorded after the deciding runs): see the
-companion commit; the runs are named in the desk record.
+Conclusions (recorded after the deciding runs, 2026-11-15):
+S1 held -- all 4 CLIs print the full block, live-smoked at each
+entry point as well as tested here. S2 held -- CRITICAL printed
+with the budget exhausted, reached the log file, and consumed
+no budget. S3 held. S4 held -- the identity block is the
+startup block's first line, ahead of the standing "starting"
+line, and names a patched stamp and checksum. S5 held -- the
+written checksum matched a hand recompute of the manifest,
+survived restamping the real tree under a second commit
+unchanged, and moved when a covered file changed. S6 held.
+The regression guard over this file reads green. One shape
+changed on the way in: the identity module lives in
+runner/ops/ -- the layout rule keeps the top of runner/ to the
+entry script and the 2 data carriers -- and it is registered
+in the canonical core list, whose recorded figures were
+re-measured in the same landing.
 """
 import argparse
 import hashlib
