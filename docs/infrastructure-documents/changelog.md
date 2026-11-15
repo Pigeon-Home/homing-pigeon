@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.17 - 2026-11-15
+
+- FreeBSD: a job's jail is pinned to a set of cores — cpuset on the jail, all but one of the runner's, no RACCT needed
+- FreeBSD: three live tests of a job's notes take the cores' note where the host pins
+
 ## 3.16.26.16 - 2026-11-15
 
 - Docs: Q195 second seat's re-test — every supposition stood; Q195 closed under rule 8
