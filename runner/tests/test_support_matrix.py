@@ -330,6 +330,8 @@ class SupportMatrixTest(unittest.TestCase):
     def test_the_macos_proof_workflow_is_the_one_named(self):
         flat = _flat()
         self.assertIn("(macos-confinement)", flat)
+        self.assertIn("completed green on both Macs the same day "
+                      "(run 43688324966)", flat)
         self.assertTrue(os.path.isfile(os.path.join(
             REPO, ".github", "workflows", "macos-confinement.yml")))
         # The doubling ladder's own sentences are the first

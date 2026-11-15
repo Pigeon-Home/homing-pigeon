@@ -63,9 +63,11 @@ Three things to know about the ceiling:
 
   A language runtime that reserves address space at its start
   needs the reservation to fit. On the two hosted Macs `sh`,
-  `python`, `perl` and `git` start under 512 MiB; `node`
-  needs 2 GiB, and so does `ruby` on Apple silicon; `java`
-  needs 8 GiB.
+  `python`, `ruby`, `perl` and `git` start under 512 MiB;
+  `node` needs 2 GiB; `java` needs 8 GiB. What is left for a
+  job's own data is the ceiling less what its program maps
+  at its start: under 512 MiB a Python job made a buffer of
+  256 MiB every time, and of 512 MiB some of the time.
 - It is not the job's to raise, and it is each process's own:
   there is no ceiling on a job's processes taken together,
   and none on processor time or cores. One job can raise it:

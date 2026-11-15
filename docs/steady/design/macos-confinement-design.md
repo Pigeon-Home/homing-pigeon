@@ -188,19 +188,23 @@ It is a ceiling on the address map, not on memory touched,
 and it is each process's own. A program that reserves
 address space it never uses — a language runtime's heap
 reservation is the common case — needs the reservation to
-fit. Read on the two hosted Macs before the build, by the
-distance above the floor:
+fit. Read on the two hosted Macs through the launcher itself,
+by the ceiling, the same on both in both of its hosted runs:
 
 | | 512 MiB | 2 GiB | 8 GiB |
 |---|---|---|---|
-| `sh`, `python`, `perl`, `git` | start | start | start |
-| `ruby` | starts on Intel, not on Apple silicon | starts | starts |
+| `sh`, `python`, `ruby`, `perl`, `git` | start | start | start |
 | `node` | does not start | starts | starts |
 | `java` | does not start | does not start | starts |
 
-An operator whose jobs run such a runtime names a larger
-ceiling. What a job has for its own data is the ceiling less
-what its own program maps at its start.
+A runtime near the line starts or not by a few mebibytes:
+in the measurement taken before the build, `ruby` did not
+start at 512 MiB on Apple silicon. An operator whose jobs
+run such a runtime names a larger ceiling. What a job has
+for its own data is the ceiling less what its own program
+maps at its start: the largest buffer a Python job made and
+touched under 512 MiB was between 256 MiB and 512 MiB on
+Apple silicon, reading by reading, and 512 MiB on Intel.
 
 There is no ceiling on a job's processes taken together,
 and none on processor time or cores: macOS gives an
@@ -351,9 +355,9 @@ path layout, and the names in it.
   job was read from inside one on both hosted Macs. A job
   has no network to send it over; its output goes back to
   whoever submitted it.
-- It does not hide the host's processes. A job listed 520
-  of them on one Mac and 463 on the other. It cannot signal
-  them.
+- It does not hide the host's processes. A job listed
+  between 431 and 520 of them on one Mac and about 460 on
+  the other. It cannot signal them.
 - It does not hide that a path exists. Metadata is readable
   everywhere; contents are not.
 - It holds no ceiling on a job as a whole, on processor
@@ -432,3 +436,72 @@ hosted Macs are expected to answer; each is judged by the
     shell launcher: a spawn inside the profile, an escape
     write and an escape read refused, no network, a native
     binary, the profile alone and the launcher alone.
+
+### Conclusions
+
+Two hosted runs judged the build, both on 2026-11-15. The
+first (43687676740, on the landing) answered eleven of the
+thirteen as supposed and two differently. The second
+(43688324966, on the commit that took those answers) is
+green on both Macs: the backend's 214 tests as the ordinary
+user and again as root, and the frozen runner's and the
+frozen installer's own checks.
+
+1. Held. The probe passes on both Macs as both users.
+2. Held, though not to the mebibyte. A job's limit read
+   411,256,832 KiB on Apple silicon and 34,654,208 KiB on
+   Intel, soft and hard: 512 MiB above floors of 391.7 GiB
+   and 32.5 GiB, as in the first run. From one process to
+   the next, and from one user to the other, the floor
+   moved by up to 7 MiB.
+3. Held for a job that is not root, and not for one that
+   is. As the ordinary user the raise was refused, through
+   the shell and through the call itself. As root with no
+   job user, a job's subshell raised its hard limit for the
+   asking: root may, under a profile as anywhere. The pages
+   now say so, and the posture report says of such a runner
+   that the ceiling is set, not that it holds.
+4. Held as to the ceiling being met: a 16 MiB buffer fit
+   and a 768 MiB one was refused every time, by a
+   `MemoryError`. The largest that fit was not always below
+   512 MiB: 256, 384, 384 and 512 MiB in four readings on
+   Apple silicon, and 512 MiB in each on Intel, where the
+   interpreter's own map starts smaller than the shell's.
+5. Held. A 2 GiB ceiling moved the limit by 1.5 GiB and
+   admitted the 768 MiB buffer.
+6. Held on the bash a Mac ships. A job whose environment
+   carried a function named `ulimit` in both shapes, and an
+   option list that stops a shell running, read a limit set
+   soft and hard. The same environment did reach a job that
+   was itself a shell, which called the function: the
+   hazard is real there, and the flag is what closes it for
+   the launcher.
+7. Held after one change. The user database's group list
+   for `nobody` on those Macs carries -1, which a spawn
+   refuses by name; the list now leaves it out. The job
+   then said it was `nobody`, wrote its work directory and
+   its temporary directory, did not read a file only root
+   may read, and could not raise its ceiling.
+8. Held, after the same change: the refusal is the job's,
+   by name.
+9. Held on both Macs as both users.
+10. Held.
+11. Held. The frozen runner started at `enforce` on both
+    Macs; the job through it exited 0, and no file landed
+    outside its work directory. Its record reads `confined`,
+    `macos: seatbelt_profile + no_network +
+    spawn_resource_limits`, with the detail "memory ceiling
+    512 MiB above a bare process's address map, soft and
+    hard". The record stands in the audit log under the
+    state directory's work tree, where a job run by that
+    door keeps it.
+12. Held. On both Macs the frozen installer printed that
+    `security.modes.confinement` was left at `enforce`, with
+    the backend's two lines for that Mac, and the config it
+    wrote states `enforce`.
+13. Held. Every live point of the first backend passes
+    under the shell launcher.
+
+The two reaches named under "What it does not do" were read
+again in both runs: a job listed the host's processes, and
+read from the clipboard a mark put there outside it.

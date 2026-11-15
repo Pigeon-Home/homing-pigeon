@@ -2422,6 +2422,74 @@ class SeedTest(unittest.TestCase):
             self.assertIn(carried, block, job)
 
 
+class PagesTest(unittest.TestCase):
+    """The pages say what the code does, in the code's words."""
+
+    @staticmethod
+    def _page(*parts):
+        with open(os.path.join(_REPO, *parts), encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_the_pages_carry_the_setting_and_the_controls(self):
+        for parts in (("docs", "steady", "design",
+                       "macos-confinement-design.md"),
+                      ("docs", "steady", "security", "macos.md"),
+                      ("SECURITY.md",)):
+            page = self._page(*parts)
+            self.assertIn(MC.STATUS_CONFINEMENT, page, parts)
+            for key in MC.MACOS_KEYS:
+                self.assertIn('"%s"' % key, page, (parts, key))
+            self.assertIn('"macos": {', page, parts)
+
+    def test_the_design_page_shows_the_launcher_as_it_is_started(self):
+        page = self._page("docs", "steady", "design",
+                          "macos-confinement-design.md")
+        argv = MC.build_sandbox_argv(["/bin/echo"], cwd="/work/j")[0]
+        self.assertEqual(
+            argv[:2] + argv[3:6] + argv[7:8],
+            ["/usr/bin/sandbox-exec", "-p", "/bin/sh", "-p", "-c",
+             "hp-shim"])
+        self.assertIn("/usr/bin/sandbox-exec -p <profile> /bin/sh -p "
+                      "-c <text> hp-shim <KiB> <the job's command>",
+                      page)
+
+    def test_the_operator_s_page_prints_the_installer_s_own_lines(self):
+        # The sample on the page is what the installer prints on
+        # the hosted Apple silicon Mac, built here from the same
+        # functions with that Mac's floor.
+        floor = DataLimitPlanTest.APPLE_SILICON
+        lines = MC.posture_lines(
+            {}, probe=lambda cfg: None,
+            facts={"limit_kib": floor + 512 * 1024}, root=False)
+        answer = INS.SeedAnswer(None, [text for _level, text in lines],
+                                INS.MACOS_PROBE_ASKED)
+        page = self._page("docs", "steady", "security", "macos.md")
+        printed = INS.seed_kept_lines(answer, "<config>")
+        self.assertEqual(len(printed), 3)
+        for line in printed:
+            self.assertIn("  " + line + "\n", page)
+
+    def test_the_default_ceiling_on_the_pages_is_the_code_s(self):
+        self.assertEqual(MC.DEFAULT_PROCESS_MEMORY_BYTES, 536870912)
+        for parts in (("docs", "steady", "design",
+                       "macos-confinement-design.md"),
+                      ("SECURITY.md",)):
+            self.assertIn('"process_memory_bytes": 536870912',
+                          self._page(*parts), parts)
+
+    def test_the_hosted_runs_are_the_ones_on_the_record(self):
+        page = self._page("docs", "steady", "design",
+                          "macos-confinement-design.md")
+        for run in ("43683198505", "43687676740", "43688324966"):
+            self.assertIn(run, page)
+        # Thirteen suppositions, and a conclusion against each.
+        tail = page.split("## Suppositions and conclusions", 1)[1]
+        supposed, concluded = tail.split("### Conclusions", 1)
+        for n in range(1, 14):
+            self.assertIn("\n%d. " % n, supposed, n)
+            self.assertIn("\n%d. " % n, concluded, n)
+
+
 @unittest.skipUnless(MC.IS_MACOS_BACKEND, "run on macOS")
 class LiveBackendTest(unittest.TestCase):
     """The real backend, on a macOS host (the CI legs)."""
