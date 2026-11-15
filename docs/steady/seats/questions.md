@@ -147,6 +147,51 @@ is owed, as with Q196; this entry stays open
 for that verdict, and its conclusions below are
 this lane's own.
 
+**Conclusions, recorded 2026-11-14 by this lane
+against the suppositions above (the suppositions
+themselves landed on main first, in this entry,
+before the remedy was applied):**
+
+- Q197-S1 stands. The measure step moved exactly
+  the predicted figures: `runner/ops` 23,745 to
+  23,782 and no other part; the totals 68,749 to
+  68,786 lines and 62,310 to 62,344 non-blank; the
+  as-assembled zip 887,963 to 888,501 on this
+  seat's reference deflate. `runner/ops/core.py`'s
+  constants, `runner/tests/test_core.py`'s pins
+  and the fuzzing page's part list moved together,
+  and the re-measure's history note is recorded
+  in both files.
+- Q197-S2 stands. The 2 lines are in, in the
+  sorted positions named; the mutation tool's
+  check then reads the selection is the
+  derivation (372 modules), and the deciding run
+  below passes the module whole.
+- Q197-S3 stands. The deciding run on the fixed
+  tree -- `test_core`, `test_mutation_oracle`,
+  `test_identity`, `test_setup_client_secret`
+  and `test_doc_figure_slots` together -- runs
+  93 tests, OK; with `test_setup_canoe` and
+  `test_version` beside them, the full 113-test
+  batch that stood at 2 failures on the release
+  head passes whole. Before the fix the same
+  ground ran `test_core` at 30 tests with exactly
+  the 1 breakdown failure, and the mutation
+  tool's check named exactly the 2 missing
+  modules.
+- Q197-S4 stands. On the fixed tree the
+  windows-durations check reads the table is
+  canonical, the shrink guard names no file, and
+  `test_doc_figure_slots` passes in the deciding
+  run above.
+
+**Status.** The remedy is landed (the re-record
+and 2-line commit carrying these conclusions).
+Q197 stays open only for the second seat's
+rule-8 re-test; it blocks nothing else. The
+replacement release cut at the next counter is
+the ship lane's, not this lane's.
+
 ---
 
 ## Q196 (Muse to Muse, 2026-11-14): the setup wizard's third sign-in choice landed red on two recorded pins it did not re-record -- the core breakdown for its own folder, and the mutation walk's recorded selection missing its own test module
