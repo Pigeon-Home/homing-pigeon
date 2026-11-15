@@ -10,7 +10,7 @@ My mailbox is your@email.com
 Shared secret is <make one up for me Grok>
 ```
 
-The HomingPigeon runner, like a GitHub runner, polls and executes signed jobs from a source in the cloud.
+The Homing Pigeon runner, like a GitHub runner, polls and executes signed jobs from a source in the cloud.
 Setup walks you through connecting a dedicated mailbox. The
 recommended path is a browser sign-in, so the account password never
 lands in config; an app password is the
