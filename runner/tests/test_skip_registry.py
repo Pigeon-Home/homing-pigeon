@@ -269,6 +269,12 @@ REGISTERED = {
         "test_freebsd_confine's live private-loopback tests need "
         "a kernel with VIMAGE, which GENERIC carries; they run "
         "in the freebsd-confinement workflow's guests",
+    "this host has one core: none can be held back from a job":
+        "test_freebsd_confine's live tests of the cores a job's "
+        "jail is pinned to need a host with two cores or more; "
+        "the freebsd-confinement workflow's guests have every "
+        "core of their runner, and the workflow fails by name "
+        "when a guest has fewer than two, so they run there",
     "the stub exists only off darwin":
         "test_macos_confine's stub tests are exercised on every "
         "host that is not macOS, where the Seatbelt backend is "

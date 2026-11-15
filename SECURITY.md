@@ -585,11 +585,13 @@ and a bounded `/tmp` the only two trees that take a write,
 no network at all, every mount `nosuid`, root inside the
 jail holding no privilege, and a 512 MiB per-process
 ceiling the job cannot raise; on a host with RACCT enabled,
-rctl rules also hold the jail as a whole. A job with no job
-user is still the owner of what root owns, and reads a
-root-only file in a tree the jail shows it; a job user
-(below) closes that, and brings a ceiling on its own
-processes that needs no RACCT. The audit record
+rctl rules also hold the jail as a whole, and on a host with
+more than one core the jail is pinned to all but one of the
+cores the runner may run on, which the job cannot widen. A
+job with no job user is still the owner of what root owns,
+and reads a root-only file in a tree the jail shows it; a
+job user (below) closes that, and brings a ceiling on its
+own processes that needs no RACCT. The audit record
 names the controls a job's jail carried, from the floor
 `freebsd: jail + no_network + spawn_resource_limits` up.
 `extra_ro_binds` and `work_mount` above mean the same on
@@ -606,7 +608,8 @@ every platform:
     "tmp_bytes": 536870912,
     "job_memory_bytes": 2147483648,
     "job_processes": 256,
-    "job_user_processes": 256
+    "job_user_processes": 256,
+    "job_cpus": 3
   }
 }
 ```
@@ -618,8 +621,12 @@ RACCT (`kern.racct.enable=1` in `/boot/loader.conf`) and
 refuse the start when written on a host without it. The
 fifth is the most processes the job user may hold across
 the host: it applies to a job that goes in as a job user,
-is set at the jail door, and needs no RACCT. A fresh FreeBSD
-install asks this backend's probe before it writes its
+is set at the jail door, and needs no RACCT. The sixth is
+the most cores a job may run on, cut from the top of the
+runner's own: all but one unless it is written, nothing
+pinned at the runner's own count or above it, and no RACCT
+needed for it either. A fresh FreeBSD install asks this
+backend's probe before it writes its
 config: the mode stays at `enforce` where the probe passes,
 and is stated at `audit`, with the reason printed, where it
 does not. Where it passes the install also makes an account

@@ -163,10 +163,18 @@ class SupportMatrixTest(unittest.TestCase):
             "processes of that user across the host, by a limit "
             "set at the jail door that needs no RACCT"
             % FC.DEFAULT_JOB_USER_PROCESSES, row)
+        # The cores a job runs on, and that this limit asks
+        # nothing of the host either.
+        self.assertIn(
+            "On a host with more than one core the jail is pinned "
+            "to all but one of the cores the runner may run on, "
+            "the lowest-numbered never a job's, by a cpuset the "
+            "job cannot widen that needs no RACCT either", row)
         self.assertIn('"%s"' % FC.STATUS_CONFINEMENT, row)
         for name in ("no_superuser", "rctl_resource_limits",
-                     "private_loopback"):
+                     "cpuset_cpu_limit", "private_loopback"):
             self.assertIn(name, FC.CONTROL_ORDER)
+        self.assertIn("job_cpus", FC.FREEBSD_KEYS)
 
     def test_the_freebsd_row_keeps_its_honesty_lines(self):
         # What the jail is not stays on the row beside what it
@@ -191,6 +199,10 @@ class SupportMatrixTest(unittest.TestCase):
         self.assertIn("named only where RACCT is enabled", row)
         self.assertIn("a job with no job user has no ceiling on its "
                       "processes there", row)
+        self.assertIn("the limit on cores is a set of cores, not a "
+                      "share of time, shared by the jobs that run at "
+                      "once, and a host with one core holds none "
+                      "back", row)
         self.assertIn("refuses when it cannot engage", row)
         self.assertIn("the full battery has not been run against "
                       "this shape", row)

@@ -4,8 +4,8 @@
 No external dependencies; stdlib only, driving the base system's
 own tools (/usr/sbin/jail, /usr/sbin/jexec, /usr/sbin/jls,
 /sbin/mount, /sbin/umount, /usr/bin/limits, /usr/bin/rctl,
-/sbin/sysctl, /sbin/ifconfig, /bin/sh). One seam uses this
-module:
+/usr/bin/cpuset, /sbin/sysctl, /sbin/ifconfig, /bin/sh). One
+seam uses this module:
 
 - confinement: a job process is executed inside a freshly
   created jail(8), and every audit and startup record names
@@ -59,6 +59,22 @@ The controls, and what each one is:
   the config says otherwise). On a host without RACCT the rules
   cannot deny anything, so they are not written and the control
   is not named.
+- cpuset_cpu_limit. The jail is pinned to a set of cores with
+  cpuset(1), before the job's first process exists: every
+  process of the job runs on those cores and on no others. The
+  set is all but one of the cores the runner itself may run
+  on, the highest-numbered ones, unless the config names a
+  number (security.confinement.freebsd.job_cpus); the
+  lowest-numbered core is never a job's, so a job that spins
+  on every core it has leaves one to the runner that must end
+  it and to the host. The set is the jail's root cpuset, and a
+  process inside a jail cannot change that: the job may narrow
+  the cores it uses and widen them again as far as the set,
+  and no further, whoever it runs as. The kernel schedules by
+  it on every FreeBSD, so this limit needs no RACCT and no
+  reboot. Where no core is held back -- a runner with one core
+  to run on, a number at or above the cores the runner has --
+  nothing is pinned and the control is not named.
 - spawn_resource_limits. The job's command runs under limits(1)
   with the virtual-memory and data-size limits both set to the
   per-process ceiling (512 MiB unless the config says
@@ -113,6 +129,10 @@ What this is NOT, stated plainly wherever it is recorded:
   the account's, not one job's: jobs of the account that run
   at once share it, and it counts processes, not the threads
   inside one.
+- The CPU limit is a set of cores, not a share of time. A job
+  may run every core of its set flat out for as long as its
+  timeout lets it, and every job of the runner that runs at
+  once is pinned to the same set.
 - Memory a job holds outside a process's address space -- a
   POSIX shared-memory object it never maps -- is bounded by
   neither ceiling. The /tmp bound closes the largest such door.
@@ -123,10 +143,12 @@ The startup probe proves the controls on the host before any
 job runs: a throwaway skeleton, its mounts, a throwaway jail
 with the same parameters a job's would have, and a trial
 process inside it that writes its work mount, tries to write
-the jail root, tries an act that needs privilege, and reports
-what devices it can see. A trial that lands a write outside the
-two trees, keeps a privilege, or sees the host's devices is a
-refusal by name. The verdict of a passing trial is kept for the
+the jail root, tries an act that needs privilege, reports what
+devices it can see, and reads the cores it may run on. A trial
+that lands a write outside the two trees, keeps a privilege,
+sees the host's devices, or reads a set of cores other than the
+one its jail was pinned to is a refusal by name. The verdict of
+a passing trial is kept for the
 life of the process, for the settings it was run with; a
 particular job's spawn still makes its own jail, and its
 failure refuses that job then.
@@ -176,7 +198,7 @@ CONFINEMENT_CONTROLS = ("jail", "no_network", "spawn_resource_limits")
 # names them.
 CONTROL_ORDER = ("jail", "no_network", "private_loopback",
                  "no_superuser", "rctl_resource_limits",
-                 "spawn_resource_limits")
+                 "cpuset_cpu_limit", "spawn_resource_limits")
 
 # Where the job's work directory is mounted inside the jail
 # unless security.confinement.work_mount says otherwise.
@@ -189,6 +211,7 @@ LIMITS_BIN = "/usr/bin/limits"
 MOUNT_BIN = "/sbin/mount"
 UMOUNT_BIN = "/sbin/umount"
 RCTL_BIN = "/usr/bin/rctl"
+CPUSET_BIN = "/usr/bin/cpuset"
 SYSCTL_BIN = "/sbin/sysctl"
 IFCONFIG_BIN = "/sbin/ifconfig"
 SH_BIN = "/bin/sh"
@@ -224,7 +247,7 @@ _RESERVED_TOP = ("usr", "bin", "lib", "libexec", "sbin", "etc",
 # The settings security.confinement.freebsd may carry.
 FREEBSD_KEYS = ("loopback", "process_memory_bytes", "tmp_bytes",
                 "job_memory_bytes", "job_processes",
-                "job_user_processes")
+                "job_user_processes", "job_cpus")
 _FREEBSD_NUMBERS = FREEBSD_KEYS[1:]
 
 # The reaper: one line of sh on the read end of a pipe. The word
@@ -248,6 +271,8 @@ TRIAL_SCRIPT = (
     "/usr/sbin/chown 65534 . 2> /dev/null && echo PRIVILEGED; "
     "[ -c /dev/null ] && echo NULL-OK; "
     "[ -e /dev/mem ] && echo DEVICES-EXPOSED; "
+    "echo CPUS $(/usr/bin/cpuset -g -p $$ 2> /dev/null "
+    "| /usr/bin/head -n 1); "
     "echo END")
 
 
@@ -363,6 +388,10 @@ def confinement_settings(cfg):
         # in as a job user and nothing is asked of one that does
         # not. A number means the operator asked for the ceiling.
         "job_user_processes": block.get("job_user_processes"),
+        # None once more: the default holds one core back where
+        # the runner has more than one. A number is the most
+        # cores the operator lets a job run on.
+        "job_cpus": block.get("job_cpus"),
     }
 
 
@@ -668,6 +697,93 @@ def job_user_ceiling(host, st, user=None):
     return named
 
 
+def _cpus_in(text):
+    """The core numbers cpuset(1) names in what it printed for
+    -g ("pid 866 mask: 0, 1, 2, 3"), lowest first, or None when
+    it named none. The line about the memory domain carries a
+    mask of its own and is not read."""
+    for line in text.splitlines():
+        head, found, tail = line.partition("mask:")
+        if not found or "domain" in head:
+            continue
+        cpus = set()
+        for word in tail.replace(",", " ").split():
+            first, dash, last = word.partition("-")
+            if not first.isdigit() or (dash and not last.isdigit()):
+                return None
+            cpus.update(range(int(first), int(last or first) + 1))
+        return sorted(cpus) or None
+    return None
+
+
+def _runner_cpus(host):
+    """The cores this runner may run on, lowest first, or None
+    when the host will not say."""
+    rc, out, _err = _quiet(
+        host, [CPUSET_BIN, "-g", "-p", str(host.pid())])
+    return _cpus_in(out) if rc == 0 else None
+
+
+def job_cpu_plan(host, st):
+    """The cores a job's jail is pinned to on this host.
+
+    Returns (cpus, total, why). `cpus` is the cores the jail is
+    pinned to, lowest first, or None when no core is held back
+    from a job. `total` is how many cores the runner itself may
+    run on, or None when the host will not say. `why` says, in
+    the report's words, why no core is held back; None when
+    one is.
+
+    The set is cut from the runner's own: all but one of its
+    cores unless the config names a number, and always the
+    highest-numbered ones, so the lowest is never a job's. A
+    job that spins on every core it has still leaves that one
+    to the runner that must end it, and to the host.
+
+    A number at or above the cores the runner has asks for
+    nothing the host does not already hold -- the job cannot
+    run on more cores than there are -- so nothing is pinned
+    and no control is named. The default adapts the same way
+    on a runner with one core, and where the host will not say
+    which cores the runner has. A number the operator wrote
+    must engage or refuse: it raises RuntimeError where the
+    cores cannot be read. A set that is planned and cannot be
+    pinned refuses the job, or the start, when the jail is
+    built (_pin_cpus).
+    """
+    named = st["job_cpus"]
+    setting = "security.confinement.freebsd.job_cpus"
+    cpus = _runner_cpus(host)
+    if cpus is None:
+        if named is not None:
+            raise RuntimeError(
+                "%s (%d) is a ceiling on the cores a job may run "
+                "on, and the cores this runner may run on could "
+                "not be read (%s -g): the job's jail could not "
+                "be pinned. Remove the setting, or see why %s "
+                "does not answer"
+                % (setting, named, CPUSET_BIN, CPUSET_BIN))
+        return None, None, (
+            "the cores this runner may run on could not be read "
+            "(%s -g)" % CPUSET_BIN)
+    total = len(cpus)
+    want = max(1, total - 1) if named is None else named
+    if want >= total:
+        if named is None:
+            return None, total, "this runner has one core to run on"
+        return None, total, (
+            "%s (%d) is not below the %d core%s this runner may "
+            "run on" % (setting, named, total,
+                        "" if total == 1 else "s"))
+    return cpus[-want:], total, None
+
+
+def _cpu_list(cpus):
+    """The cores as cpuset(1) takes them and a record shows
+    them: the numbers, joined by commas."""
+    return ",".join(str(cpu) for cpu in cpus)
+
+
 def _basic_problem(host, st=None):
     """Why the backend cannot engage at all here, or None.
 
@@ -694,12 +810,23 @@ def _basic_problem(host, st=None):
 
 def controls_for(host, st, user=None):
     """(controls, rctl) for a job on this host: the names the
-    record will carry and whether the rctl rules are written.
+    record will carry and whether the rctl rules are written
+    (the first two answers of _plan)."""
+    return _plan(host, st, user)[:2]
+
+
+def _plan(host, st, user=None):
+    """(controls, rctl, cores) for a job on this host: the
+    names the record will carry, whether the rctl rules are
+    written, and the cores the jail is pinned to with how many
+    the runner has and why none is held back (job_cpu_plan's
+    answer).
 
     Raises RuntimeError when the config asks for a control this
     host cannot hold. A default adapts to the host -- the rctl
     ceilings are written where RACCT is enabled and not named
-    where it is not -- but a setting the operator wrote must
+    where it is not, and a core is held back where the runner
+    has more than one -- but a setting the operator wrote must
     engage or refuse. The job user's process ceiling is one of
     the spawn's resource limits and adds no name; its own rule
     (job_user_ceiling) is asked here, so a config that cannot
@@ -733,8 +860,11 @@ def controls_for(host, st, user=None):
             "rule, and RACCT is not enabled on this host "
             "(kern.racct.enable is not 1): set kern.racct.enable=1 "
             "in /boot/loader.conf and reboot, or remove the setting")
+    cores = job_cpu_plan(host, st)
+    if cores[0]:
+        controls.append("cpuset_cpu_limit")
     controls.append("spawn_resource_limits")
-    return controls, racct
+    return controls, racct, cores
 
 
 def _make_skeleton(host, st, points=()):
@@ -997,6 +1127,31 @@ def _engage_loopback(host, name, keep_superuser):
     return None
 
 
+def _pin_cpus(host, name, cpus):
+    """Pin the jail to its cores; None or the problem.
+
+    cpuset(1) sets the mask of the jail's own cpuset, the root
+    of every set a process inside it can ever hold. It is
+    given the jail by its id, read back from the jail just
+    made."""
+    rc, out, err = _quiet(host, [JLS_BIN, "-j", name, "jid"])
+    jid = out.strip()
+    if rc != 0 or not jid.isdigit():
+        return "the jail's id could not be read (jls exit %d): " \
+            "%s" % (rc, (err.strip() or out.strip())[:200])
+    listed = _cpu_list(cpus)
+    rc, _out, err = _quiet(
+        host, [CPUSET_BIN, "-l", listed, "-j", jid])
+    if rc != 0:
+        return ("the jail could not be pinned to cpus %s (cpuset "
+                "-l %s -j %s, exit %d): %s. "
+                "security.confinement.freebsd.job_cpus at the "
+                "number of cores this runner has, or above it, "
+                "starts a job with no core held back"
+                % (listed, listed, jid, rc, err.strip()[:200]))
+    return None
+
+
 def _apply_rctl(host, name, st):
     """Write the jail-wide rules; None or the problem."""
     for rule in rctl_rules(name, st):
@@ -1007,12 +1162,16 @@ def _apply_rctl(host, name, st):
     return None
 
 
-def _build_jail(host, st, name, workdir, user, rctl, prefixes=()):
-    """Skeleton, mounts, jail, loopback and rules for one jail.
+def _build_jail(host, st, name, workdir, user, rctl, prefixes=(),
+                cpus=None):
+    """Skeleton, mounts, jail, cores, loopback and rules for
+    one jail.
 
     Returns (base, root, applied). On any failure everything
     made so far is torn down and RuntimeError carries the
-    problem: there is no half-built jail to run a job in.
+    problem: there is no half-built jail to run a job in. The
+    jail is pinned to its cores as soon as it stands, so
+    nothing that ever runs inside it runs anywhere else.
     """
     base = None
     applied = []
@@ -1028,6 +1187,8 @@ def _build_jail(host, st, name, workdir, user, rctl, prefixes=()):
             problem = _create_jail(
                 host, name, root, st["loopback"],
                 superuser=(user is not None or st["loopback"]))
+        if problem is None and cpus:
+            problem = _pin_cpus(host, name, cpus)
         if problem is None and st["loopback"]:
             problem = _engage_loopback(
                 host, name, keep_superuser=user is not None)
@@ -1062,17 +1223,19 @@ def _trial(host, st, timeout=15, user=None):
     what the config asks of the controls is asked for the jobs
     it will run: a ceiling on the job user's processes is
     refused here where no job user is engaged, and passes where
-    one is."""
+    one is. The jail is pinned to the cores a job's would be,
+    and the trial reads them from inside."""
     try:
-        _controls, rctl = controls_for(host, st, user=user)
+        _controls, rctl, cores = _plan(host, st, user=user)
     except RuntimeError as e:
         return str(e)
+    cpus = cores[0]
     name = jail_name("probe", host.pid())
     base = None
     applied = []
     try:
         base, _root, applied = _build_jail(
-            host, st, name, None, None, rctl)
+            host, st, name, None, None, rctl, cpus=cpus)
     except RuntimeError as e:
         return str(e)
     except (OSError, subprocess.SubprocessError) as e:
@@ -1100,6 +1263,18 @@ def _trial(host, st, timeout=15, user=None):
                     "devfs ruleset 4 (devfsrules_jail) is not loaded "
                     "on this host (see devfs_load_rulesets in "
                     "rc.conf)")
+        if cpus:
+            inside = None
+            for line in out.splitlines():
+                if line.startswith("CPUS "):
+                    inside = _cpus_in(line)
+            if inside != list(cpus):
+                return ("the trial jail was pinned to cpus %s and "
+                        "the trial inside it read %s: the jail's "
+                        "cpuset did not engage" % (
+                            _cpu_list(cpus),
+                            "cpus " + _cpu_list(inside)
+                            if inside else "no set of cores"))
         if st["loopback"]:
             lrc, lout, _lerr = _quiet(
                 host, [JEXEC_BIN, name, IFCONFIG_BIN, "lo0"])
@@ -1214,7 +1389,8 @@ def posture_lines(cfg=None, host=None):
     ones such a job's jail carries -- no_superuser is not among
     them, the demote at the door is -- and a line says who the
     job goes in as, and another how many processes that user is
-    held to.
+    held to. One line more says which cores a job's jail is
+    pinned to, or why no core is held back from a job.
     """
     host = host or _HOST
     refuse = "; confinement in enforce mode would refuse to start"
@@ -1224,7 +1400,7 @@ def posture_lines(cfg=None, host=None):
         problem = _basic_problem(host, st)
         if problem is not None:
             raise RuntimeError(problem)
-        controls, rctl = controls_for(host, st, user)
+        controls, rctl, cores = _plan(host, st, user)
     except RuntimeError as e:
         return [("WARN", "FreeBSD jail backend cannot engage: %s%s"
                  % (e, refuse))]
@@ -1239,6 +1415,15 @@ def posture_lines(cfg=None, host=None):
             "OK", "%s is held to %d processes across this host "
             "(limits -u at the jail door; no RACCT needed)"
             % (user, job_user_ceiling(host, st, user))))
+    cpus, total, why = cores
+    if cpus:
+        lines.append((
+            "OK", "a job's jail is pinned to cpus %s: %d of the %d "
+            "cores this runner may run on (cpuset on the jail; no "
+            "RACCT needed)" % (_cpu_list(cpus), len(cpus), total)))
+    else:
+        lines.append((
+            "OK", "%s, so no core is held back from a job" % why))
     if not rctl:
         lines.append((
             "OK", "RACCT is not enabled on this host, so the "
@@ -1337,9 +1522,10 @@ class FreeBSDConfinedProcess:
     release: it tears the jail down once the process has
     exited. .confinement_status names exactly the controls
     this job's jail carried, and .confinement_notes any
-    read-only mount added for the job's interpreter and, for
-    a job that went in as a job user, the number of processes
-    that user was held to.
+    read-only mount added for the job's interpreter, for a
+    job that went in as a job user the number of processes
+    that user was held to, and the cores the job's jail was
+    pinned to where it was.
     """
 
     def __init__(self, argv, inner, host, name, base, applied,
@@ -1410,7 +1596,8 @@ def _spawn(argv, cwd=None, env=None, user=None, memory_bytes=None,
     problem = _basic_problem(host, st)
     if problem is not None:
         raise RuntimeError(problem)
-    controls, rctl = controls_for(host, st, user)
+    controls, rctl, cores = _plan(host, st, user)
+    cpus, total, _why = cores
     ceiling = job_user_ceiling(host, st, user)
     notes = []
     inner_argv, prefixes = translate_argv(
@@ -1418,9 +1605,12 @@ def _spawn(argv, cwd=None, env=None, user=None, memory_bytes=None,
     if ceiling is not None:
         notes.append("job user %s held to %d processes"
                      % (user, ceiling))
+    if cpus:
+        notes.append("job pinned to cpus %s: %d of the runner's %d "
+                     "cores" % (_cpu_list(cpus), len(cpus), total))
     name = jail_name("job", host.pid())
     base, _root, applied = _build_jail(
-        host, st, name, cwd, user, rctl, prefixes)
+        host, st, name, cwd, user, rctl, prefixes, cpus=cpus)
     reaper = None
     try:
         reaper = _start_reaper(host, name)
@@ -1527,10 +1717,11 @@ else:
         argv is the full command (interpreter, script, args) in
         host paths; cwd is the job's work directory, mounted at
         the work mount inside the jail. The jail is created
-        first, the job is started inside it under the spawn
-        resource limits via jexec (as `user` when the job_user
-        seam hands one over, and then held to that user's
-        process ceiling as well), and a FreeBSDConfinedProcess is
+        first and pinned to its cores where one is held back,
+        the job is started inside it under the spawn resource
+        limits via jexec (as `user` when the job_user seam
+        hands one over, and then held to that user's process
+        ceiling as well), and a FreeBSDConfinedProcess is
         returned whose .confinement_status names the controls
         applied. Raises RuntimeError when any control could not
         be applied -- there is no unconfined fallback to fall

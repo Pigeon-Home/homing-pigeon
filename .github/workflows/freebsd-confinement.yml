@@ -38,6 +38,13 @@ name: freebsd-confinement
 # the backend engages, and names no rctl control, on a host
 # that cannot hold one.
 #
+# Cores: a job's jail is pinned to all but one of the cores the
+# runner has, and the tests of that need a guest with two or
+# more. The action gives a guest every core of its runner; the
+# run reads the count back and fails by name on a guest with
+# one, for the reason above -- those tests would skip there,
+# and a skip is not the proof this workflow is for.
+#
 # A signal on the backend, not a gate on a release: weekly and
 # on dispatch, never on the release path.
 on:
@@ -121,9 +128,15 @@ jobs:
             racct="$(sysctl -n kern.racct.enable 2>/dev/null || echo unreadable)"
             vimage="$(sysctl -n kern.features.vimage 2>/dev/null || echo 0)"
             echo "kern.racct.enable=$racct kern.features.vimage=$vimage"
+            ncpu="$(sysctl -n hw.ncpu 2>/dev/null || echo 0)"
+            echo "hw.ncpu=$ncpu"
+            cpuset -g -p $$ || true
             /usr/local/bin/python3 -c "import sys; print('python', sys.version.split()[0])"
             want="${{ matrix.racct }}"
             frc=0
+            if [ "$ncpu" -lt 2 ]; then
+              frc=1; echo "::error title=freebsd-confinement::the guest has $ncpu core(s): the tests of the cores a job's jail is pinned to would skip, and this leg does not read green on a skip"
+            fi
             if [ "$want" = "on" ] && [ "$racct" != "1" ]; then
               frc=1; echo "::error title=freebsd-confinement::RACCT is not enabled in the guest (kern.racct.enable=$racct): the rctl tests would skip, and this leg does not read green on a skip"
             fi
@@ -167,5 +180,5 @@ jobs:
             exit 1
           fi
           read -r rc frc < freebsd-confinement-verdict.txt
-          echo "freebsd-confinement verdict: tests=$rc racct=$frc"
+          echo "freebsd-confinement verdict: tests=$rc guest=$frc"
           [ "$rc" = "0" ] && [ "$frc" = "0" ]

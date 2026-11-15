@@ -18,11 +18,11 @@ freebsd: jail + no_network + spawn_resource_limits
 ```
 
 A record that says more names a control that was applied to
-that job. On a host with RACCT enabled, a job with no job user
-reads:
+that job. On a host with RACCT enabled and more than one core,
+a job with no job user reads:
 
 ```
-freebsd: jail + no_network + no_superuser + rctl_resource_limits + spawn_resource_limits
+freebsd: jail + no_network + no_superuser + rctl_resource_limits + cpuset_cpu_limit + spawn_resource_limits
 ```
 
 The design of record is
@@ -69,6 +69,13 @@ is what an operator needs from it.
   counts each user's processes and refuses the fork that
   would pass the limit, so this one needs no RACCT and no
   reboot (below, under the job user).
+- **A limit on its cores** (`cpuset_cpu_limit`), on every
+  host with more than one: the job's jail is pinned to all but
+  one of the cores the runner may run on, and the job cannot
+  widen that. The lowest-numbered core is never a job's, so a
+  job that spins on every core it has leaves one to the
+  runner and the host. It needs no RACCT and no reboot either
+  (below, under the job's cores).
 
 The jail exists before the job's first process starts (the job
 is started inside it with `jexec(8)`), so the job never runs a
@@ -96,7 +103,8 @@ without RACCT refuses the start and names the tunable.
 One ceiling on processes does not wait for RACCT: the job
 user's (below, under the job user). On a host as FreeBSD
 ships, a job that goes in as a job user is still held to a
-number of processes.
+number of processes. The limit on a job's cores does not wait
+for it either.
 
 ### Settings
 
@@ -112,7 +120,8 @@ All optional, under `security.confinement`:
     "tmp_bytes": 536870912,
     "job_memory_bytes": 2147483648,
     "job_processes": 256,
-    "job_user_processes": 256
+    "job_user_processes": 256,
+    "job_cpus": 3
   }
 }
 ```
@@ -132,10 +141,12 @@ All optional, under `security.confinement`:
   nothing else — the host's 127.0.0.1 is another stack. The
   record names `private_loopback` in place of `no_network`.
   It needs a kernel with VIMAGE, which GENERIC carries.
-- The five numbers are the ceilings above.
+- The six numbers are the ceilings above.
   `job_user_processes` is the one that applies only to a job
-  that goes in as a job user. A setting the backend does not
-  know is a config error, on every platform.
+  that goes in as a job user, and `job_cpus` is the most
+  cores a job may run on (below, under the job's cores). A
+  setting the backend does not know is a config error, on
+  every platform.
 
 ### The interpreter
 
@@ -205,6 +216,47 @@ Three things to know about it:
   only ceiling on processes is the jail's rule, on a host
   with RACCT enabled.
 
+### The job's cores
+
+A job's jail is pinned to a set of cores before anything runs
+in it (`cpuset -l <cores> -j <jail>`), and every process of
+the job runs on those cores and on no others. The set is all
+but one of the cores the runner itself may run on, the
+highest-numbered ones: on a host with four cores, a job runs
+on cores 1, 2 and 3. Core 0 is never a job's. A job that
+spins on every core it has, or forks until it does, leaves
+that core to the runner, which is what has to notice the job's
+timeout and end it, and to you.
+
+The job cannot widen the set. It may narrow the cores it uses
+and widen them again as far as its jail's set; past that the
+kernel refuses it, as uid 0 inside the jail and as a job user
+alike. The kernel schedules by a jail's cores on every
+FreeBSD, so the limit needs no RACCT and no reboot.
+`--posture` states the cores, and so does each job's audit
+record:
+
+```
+job pinned to cpus 1,2,3: 3 of the runner's 4 cores
+```
+
+Four things to know about it:
+
+- **`job_cpus` is a number of cores.** It is the most cores a
+  job may run on, cut from the top of the runner's own. Write
+  `1` and a job has one core, the highest.
+- **To let jobs have every core, name the count or more.** A
+  number at or above the cores the runner has pins nothing,
+  and the record names no limit. A number larger than any
+  host you run is the setting that means "all of them".
+- **Jobs that run at once share the set.** Every job of the
+  runner is pinned to the same cores; the limit is not per
+  job, and it is not a share of time. Within its cores a job
+  may run flat out until its timeout.
+- **One core holds none back.** A runner with one core to
+  run on has nothing to keep from a job, and the record names
+  no limit there. `--posture` says so.
+
 ### Startup, and after a job
 
 At `enforce` the startup gate probes the backend and refuses
@@ -212,19 +264,20 @@ to start when the probe fails, naming why. The probe builds
 one: a throwaway skeleton and its mounts, a throwaway jail
 with a job's parameters, and a trial process inside it that
 writes its work mount and `/tmp`, tries to write the jail
-root, tries an act that needs privilege, and looks at `/dev`.
-A trial that lands a write on the root, keeps a privilege, or
-sees the host's devices is a refusal by name; so is a config
-that asks for a control the host cannot hold. A job whose own
-jail cannot be built is refused at job time the same way.
-There is no path on which a job runs unconfined under
-`enforce`.
+root, tries an act that needs privilege, looks at `/dev`, and
+reads the cores it may run on. A trial that lands a write on
+the root, keeps a privilege, sees the host's devices, or reads
+cores other than the ones its jail was pinned to is a refusal
+by name; so is a config that asks for a control the host
+cannot hold. A job whose own jail cannot be built is refused
+at job time the same way. There is no path on which a job
+runs unconfined under `enforce`.
 
 `--posture` on a FreeBSD host prints the same answer without
 building anything: the controls a job's jail would carry
-there, the RACCT tunable when the jail-wide ceilings are not
-engaged, and a warning for anything the startup gate would
-refuse on.
+there, the cores it would be pinned to, the RACCT tunable when
+the jail-wide ceilings are not engaged, and a warning for
+anything the startup gate would refuse on.
 
 When a job ends the backend removes its rctl rules, its jail,
 its mounts and its skeleton. Three things stand behind that:
@@ -278,7 +331,10 @@ its mounts and its skeleton. Three things stand behind that:
   `/tmp` bound closes the largest such door.
 - **Disk.** The work directory is on the host's disk and is
   not bounded here. Keep jobs' outputs inside it.
-- **No CPU ceiling.**
+- **Not a share of processor time.** The limit on cores is a
+  set of cores. A job may run every core of its set flat out
+  until its timeout, jobs that run at once share the one set,
+  and a host with one core holds none back.
 
 ### What stands behind this page
 
@@ -381,9 +437,10 @@ of it is removed.
   platform: security.modes.confinement left at enforce in /root/.homing-pigeon/config.json (the FreeBSD jail backend's probe, asked on this machine as this user, passed; the startup gate asks it again at every start)
   platform: account pigeon-jobs made for the jail's jobs (pw useradd: no password, no login shell, no home directory)
   platform: security.job_user names pigeon-jobs in /root/.homing-pigeon/config.json (a trial job as pigeon-jobs inside a jail on this machine passed; a jailed job with no job user is root's uid and reads what root owns in the trees it is shown)
-  platform: FreeBSD jail backend: freebsd: jail + no_network + spawn_resource_limits
+  platform: FreeBSD jail backend: freebsd: jail + no_network + cpuset_cpu_limit + spawn_resource_limits
   platform: a job goes in as pigeon-jobs at the jail door (security.job_user) and reads what that user can read
   platform: pigeon-jobs is held to 256 processes across this host (limits -u at the jail door; no RACCT needed)
+  platform: a job's jail is pinned to cpus 1,2,3: 3 of the 4 cores this runner may run on (cpuset on the jail; no RACCT needed)
   platform: RACCT is not enabled on this host, so the jail-wide rctl ceilings are not written (kern.racct.enable=1 in /boot/loader.conf and a reboot engage them)
   ```
 

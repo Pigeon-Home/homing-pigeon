@@ -27,9 +27,10 @@ probe on every platform and the real one where the kernel is.
 
 The honesty pins matter most: no audit record may name a
 control that was not applied to that job (the rctl rules are
-named only where RACCT can hold them, and there is no Capsicum
-in this backend), and every failure lands in the refuse
-direction.
+named only where RACCT can hold them, the cpuset limit only
+where a core is held back from the job, and there is no
+Capsicum in this backend), and every failure lands in the
+refuse direction.
 """
 import contextlib
 import io
@@ -2079,7 +2080,12 @@ class FakeHost:
     same state: a jail that kept the super-user reports the
     privilege, a root that was not mounted read-only reports
     the write, a /dev without the jail ruleset reports the
-    host's devices.
+    host's devices, and the cores it reads are the ones its
+    jail was pinned to, or the runner's own where it was not.
+
+    The runner has one core to run on unless a test gives it
+    more (cpus), so a job's cores are held back only where a
+    test asks.
     """
 
     def __init__(self, folder, racct=False, vimage=True, euid=0,
@@ -2107,6 +2113,14 @@ class FakeHost:
         self.popen_error = None
         # kern.maxprocperuid; None is a host that will not say.
         self.per_user = 5547
+        # The cores the runner may run on; None is a host whose
+        # cpuset will not say.
+        self.cpus = [0]
+        self.next_jid = 11
+        # What a trial inside a jail reads as its cores, when a
+        # test says the pin did not take.
+        self.trial_cpus = None
+        self.pinned_at_start = []
 
     # -- the facts ------------------------------------------
     def euid(self):
@@ -2182,7 +2196,9 @@ class FakeHost:
                 self.jails[params["name"]] = {
                     "path": params["path"], "params": argv[2:],
                     "suser": "allow.nosuser" not in argv,
-                    "lo": False}
+                    "lo": False, "jid": self.next_jid,
+                    "cpus": None}
+                self.next_jid += 1
                 return (0, "", "")
             if argv[1] == "-m":
                 if "allow.nosuser" in argv:
@@ -2195,7 +2211,9 @@ class FakeHost:
                 return (1, "", 'jail: jail "%s" not found' % argv[2])
         if tool == FC.JLS_BIN:
             if argv[1] == "-j":
-                return (0 if argv[2] in self.jails else 1, "", "")
+                if argv[2] not in self.jails:
+                    return (1, "", 'jls: jail "%s" not found' % argv[2])
+                return (0, "%d\n" % self.jails[argv[2]]["jid"], "")
             if argv[1] == "name":
                 return (0, "".join(n + "\n" for n in self.jails), "")
             if argv[1] == "path":
@@ -2225,6 +2243,21 @@ class FakeHost:
                 if self.per_user is None:
                     return (1, "", "sysctl: unknown oid")
                 return (0, "%s\n" % self.per_user, "")
+        if tool == FC.CPUSET_BIN:
+            if argv[1:3] == ["-g", "-p"]:
+                if self.cpus is None:
+                    return (1, "", "cpuset: getaffinity: "
+                            "Operation not permitted")
+                return (0, self._mask("pid %s" % argv[3], self.cpus),
+                        "")
+            if argv[1] == "-l" and argv[3] == "-j":
+                for jail in self.jails.values():
+                    if str(jail["jid"]) == argv[4]:
+                        jail["cpus"] = [int(c)
+                                        for c in argv[2].split(",")]
+                        return (0, "", "")
+                return (1, "", "cpuset: jail %s: No such process"
+                        % argv[4])
         if tool == FC.JEXEC_BIN:
             name = [a for a in argv[1:] if a in self.jails]
             jail = self.jails[name[0]] if name else None
@@ -2257,8 +2290,17 @@ class FakeHost:
         words.append("NULL-OK")
         if "ruleset=4" not in rows.get(root + "/dev", ("", ""))[1]:
             words.append("DEVICES-EXPOSED")
+        inside = self.trial_cpus or jail["cpus"] or self.cpus
+        words.append("CPUS " + self._mask("pid 77", inside).split(
+            "\n")[0] if inside else "CPUS")
         words.append("END")
         return "\n".join(words) + "\n"
+
+    @staticmethod
+    def _mask(who, cpus):
+        """cpuset -g, as FreeBSD prints it."""
+        return ("%s mask: %s\n%s domain policy: first-touch mask: "
+                "0\n" % (who, ", ".join(str(c) for c in cpus), who))
 
     def popen(self, argv, **kwargs):
         argv = list(argv)
@@ -2269,6 +2311,11 @@ class FakeHost:
         if self.popen_error is not None and argv[0] == FC.JEXEC_BIN:
             raise self.popen_error
         self.popens.append((argv, kwargs))
+        if argv[0] == FC.JEXEC_BIN:
+            # The cores the jail stood pinned to as the job's
+            # first process was started inside it.
+            (name,) = [a for a in argv if a in self.jails]
+            self.pinned_at_start.append(self.jails[name]["cpus"])
         if argv[0] == FC.SH_BIN and FC.REAPER_SCRIPT in argv:
             # The backend closes its copy of the read end; keep
             # one, to read what the release wrote.
@@ -2345,6 +2392,7 @@ class SettingsTest(unittest.TestCase):
         self.assertIsNone(st["job_memory_bytes"])
         self.assertIsNone(st["job_processes"])
         self.assertIsNone(st["job_user_processes"])
+        self.assertIsNone(st["job_cpus"])
         for cfg in (None, [], {"security": None},
                     {"security": {"confinement": None}}):
             self.assertEqual(FC.confinement_settings(cfg), st, cfg)
@@ -2353,14 +2401,16 @@ class SettingsTest(unittest.TestCase):
         st = FC.confinement_settings(_fcfg(
             loopback=True, process_memory_bytes=1 << 30,
             tmp_bytes=1 << 20, job_memory_bytes=1 << 31,
-            job_processes=32, job_user_processes=48))
+            job_processes=32, job_user_processes=48, job_cpus=3))
         self.assertIs(st["loopback"], True)
         self.assertEqual(st["process_memory_bytes"], 1 << 30)
         self.assertEqual(st["tmp_bytes"], 1 << 20)
         self.assertEqual(st["job_memory_bytes"], 1 << 31)
         self.assertEqual(st["job_processes"], 32)
         self.assertEqual(st["job_user_processes"], 48)
-        self.assertEqual(FC.FREEBSD_KEYS[-1], "job_user_processes")
+        self.assertEqual(st["job_cpus"], 3)
+        self.assertEqual(FC.FREEBSD_KEYS[-2:],
+                         ("job_user_processes", "job_cpus"))
 
     def test_a_malformed_freebsd_block_is_a_config_error(self):
         bad = ([], "x", 3,
@@ -2374,7 +2424,11 @@ class SettingsTest(unittest.TestCase):
                {"job_user_processes": "256"},
                {"job_user_processes": True},
                {"job_user_processes": 25.5},
-               {"job_user_proceses": 256})
+               {"job_user_proceses": 256},
+               {"job_cpus": 0}, {"job_cpus": -1},
+               {"job_cpus": "2"}, {"job_cpus": True},
+               {"job_cpus": 1.5}, {"job_cpus": None},
+               {"job_cpu": 2})
         for block in bad:
             with self.subTest(block=block):
                 with self.assertRaises(RuntimeError) as caught:
@@ -2403,6 +2457,30 @@ class SettingsTest(unittest.TestCase):
         self.assertIn(
             "security.confinement.freebsd.job_user_processes must "
             "be a positive integer", str(caught.exception))
+        S.validate_security_config(_fcfg(job_cpus=1))
+        with self.assertRaises(RuntimeError) as caught:
+            S.validate_security_config(_fcfg(job_cpus=0))
+        self.assertIn(
+            "security.confinement.freebsd.job_cpus must be a "
+            "positive integer", str(caught.exception))
+
+    def test_the_pages_carry_the_settings_and_the_control(self):
+        # Every setting of the block is in the design page's
+        # and the operator's page's own example, and both name
+        # the control a pinned jail's record carries.
+        for name in ("design/freebsd-confinement-design.md",
+                     "security/freebsd.md"):
+            with open(os.path.join(_REPO, "docs", "steady", name),
+                      encoding="utf-8") as fh:
+                page = fh.read()
+            for key in FC.FREEBSD_KEYS:
+                self.assertIn('"%s": ' % key, page, (name, key))
+            self.assertIn("`cpuset_cpu_limit`", page, name)
+        with open(os.path.join(_REPO, "SECURITY.md"),
+                  encoding="utf-8") as fh:
+            page = fh.read()
+        for key in FC.FREEBSD_KEYS:
+            self.assertIn('"%s": ' % key, page, key)
 
     def test_bwrap_flags_are_refused_by_name(self):
         cfg = {"security": {"confinement": {
@@ -2478,6 +2556,22 @@ class StatusTest(unittest.TestCase):
             FC.confinement_status(
                 ["jail", "private_loopback", "spawn_resource_limits"]),
             "freebsd: jail + private_loopback + spawn_resource_limits")
+        # The jail-wide limits stand together, the kernel's
+        # rules first, before the limits of the spawn.
+        self.assertEqual(
+            FC.confinement_status(
+                ["cpuset_cpu_limit", "spawn_resource_limits",
+                 "rctl_resource_limits", "no_superuser",
+                 "no_network", "jail"]),
+            "freebsd: jail + no_network + no_superuser + "
+            "rctl_resource_limits + cpuset_cpu_limit + "
+            "spawn_resource_limits")
+        self.assertEqual(
+            FC.confinement_status(
+                ["jail", "no_network", "cpuset_cpu_limit",
+                 "spawn_resource_limits"]),
+            "freebsd: jail + no_network + cpuset_cpu_limit + "
+            "spawn_resource_limits")
 
     def test_a_name_the_backend_does_not_know_is_an_error(self):
         with self.assertRaises(RuntimeError):
@@ -2891,6 +2985,458 @@ class CeilingTest(_FakeHostCase):
             with self.assertRaises(RuntimeError) as caught:
                 FC.job_user_process_ceiling({}, "nobody")
             self.assertIn("FreeBSD-only", str(caught.exception))
+
+
+class CoresTest(_FakeHostCase):
+    """The cores a job's jail is pinned to: which ones, when
+    none is held back, and the number that cannot be had."""
+
+    def plan(self, cfg=None):
+        return FC.job_cpu_plan(self.host, FC.confinement_settings(cfg))
+
+    def test_a_runner_with_four_cores_holds_one_back(self):
+        self.host.cpus = [0, 1, 2, 3]
+        self.assertEqual(self.plan(), ([1, 2, 3], 4, None))
+        # RACCT has no part in it.
+        self.host.racct = True
+        self.assertEqual(self.plan(), ([1, 2, 3], 4, None))
+        self.assertEqual(self.host.ran(FC.RCTL_BIN), [])
+
+    def test_the_runner_s_cores_are_read_for_its_own_process(self):
+        self.host.cpus = [0, 1]
+        self.plan()
+        self.assertEqual(
+            self.host.ran(FC.CPUSET_BIN),
+            [[FC.CPUSET_BIN, "-g", "-p", "4242"]])
+
+    def test_the_lowest_core_is_never_a_job_s(self):
+        # Whatever the runner's own set is, and whatever number
+        # below it the config names: the cores are cut from the
+        # top, so the lowest stays with the runner and the host.
+        for cpus in ([0, 1], [0, 1, 2, 3], [2, 3, 6, 7],
+                     list(range(16)), [5, 9]):
+            self.host.cpus = cpus
+            with self.subTest(cpus=cpus):
+                got, total, why = self.plan()
+                self.assertEqual(got, cpus[1:])
+                self.assertEqual(total, len(cpus))
+                self.assertIsNone(why)
+                for named in range(1, len(cpus)):
+                    got, _total, _why = self.plan(_fcfg(job_cpus=named))
+                    self.assertEqual(got, cpus[-named:])
+                    self.assertNotIn(cpus[0], got)
+
+    def test_the_number_is_the_config_s(self):
+        self.host.cpus = [0, 1, 2, 3]
+        self.assertEqual(self.plan(_fcfg(job_cpus=1)), ([3], 4, None))
+        self.assertEqual(self.plan(_fcfg(job_cpus=2)),
+                         ([2, 3], 4, None))
+        self.assertEqual(self.plan(_fcfg(job_cpus=3)),
+                         ([1, 2, 3], 4, None))
+
+    def test_a_number_at_or_above_the_runner_s_own_holds_none_back(self):
+        # A job cannot run on more cores than there are: the
+        # ceiling the operator wrote holds with nothing pinned.
+        self.host.cpus = [0, 1, 2, 3]
+        self.assertEqual(self.plan(_fcfg(job_cpus=4)), (
+            None, 4, "security.confinement.freebsd.job_cpus (4) is "
+            "not below the 4 cores this runner may run on"))
+        self.assertEqual(self.plan(_fcfg(job_cpus=64)), (
+            None, 4, "security.confinement.freebsd.job_cpus (64) is "
+            "not below the 4 cores this runner may run on"))
+        self.host.cpus = [0]
+        self.assertEqual(self.plan(_fcfg(job_cpus=1)), (
+            None, 1, "security.confinement.freebsd.job_cpus (1) is "
+            "not below the 1 core this runner may run on"))
+
+    def test_a_runner_with_one_core_holds_none_back(self):
+        self.assertEqual(self.plan(), (
+            None, 1, "this runner has one core to run on"))
+        # One question of the host, and no more.
+        self.assertEqual(len(self.host.calls), 1)
+
+    def test_a_host_that_will_not_say_holds_none_back_by_default(self):
+        why = ("the cores this runner may run on could not be read "
+               "(/usr/bin/cpuset -g)")
+        self.host.cpus = None
+        self.assertEqual(self.plan(), (None, None, why))
+        self.host.cpus = [0, 1, 2, 3]
+        for said in ("", "cpuset: who?\n", "pid 4242 mask:\n",
+                     "pid 4242 mask: 0, x\n", "pid 4242 mask: 3-\n",
+                     "pid 4242 domain policy: first-touch mask: 0\n"):
+            with self.subTest(said=said):
+                self.host.refuse = {(FC.CPUSET_BIN, "-g"): (0, said, "")}
+                self.assertEqual(self.plan(), (None, None, why))
+        self.host.refuse = {(FC.CPUSET_BIN, "-g"): (
+            0, "pid 4242 mask: 0, 1, 2, 3\n", "")}
+        self.assertEqual(self.plan(), ([1, 2, 3], 4, None))
+        self.host.missing.add(FC.CPUSET_BIN)
+        self.host.refuse = {(FC.CPUSET_BIN, "-g"): (
+            -1, "", "No such file or directory")}
+        self.assertEqual(self.plan(), (None, None, why))
+
+    def test_a_number_the_operator_wrote_must_engage_or_refuse(self):
+        self.host.cpus = None
+        with self.assertRaises(RuntimeError) as caught:
+            self.plan(_fcfg(job_cpus=2))
+        text = str(caught.exception)
+        self.assertIn(
+            "security.confinement.freebsd.job_cpus (2) is a ceiling "
+            "on the cores a job may run on, and the cores this "
+            "runner may run on could not be read (/usr/bin/cpuset "
+            "-g): the job's jail could not be pinned", text)
+        self.assertIn("Remove the setting", text)
+        # Whatever the number: where the cores cannot be read
+        # there is no knowing that it asks for nothing.
+        with self.assertRaises(RuntimeError):
+            self.plan(_fcfg(job_cpus=64))
+
+    def test_the_reader_takes_what_cpuset_prints(self):
+        self.assertEqual(FC._cpus_in(
+            "pid 866 mask: 0, 1, 2, 3\n"
+            "pid 866 domain policy: first-touch mask: 0\n"),
+            [0, 1, 2, 3])
+        self.assertEqual(FC._cpus_in("CPUS pid 5 mask: 3"), [3])
+        self.assertEqual(FC._cpus_in("jail 11 mask: 2-4, 7"),
+                         [2, 3, 4, 7])
+        self.assertEqual(FC._cpus_in("pid 5 mask: 3, 1, 2"), [1, 2, 3])
+        for said in ("", "CPUS", "pid 5 mask:", "pid 5 mask: one",
+                     "pid 5 domain policy: first-touch mask: 0"):
+            self.assertIsNone(FC._cpus_in(said), said)
+        self.assertEqual(FC._cpu_list([1, 2, 3]), "1,2,3")
+        self.assertEqual(FC._cpu_list([7]), "7")
+
+    def test_the_controls_name_the_limit_where_a_core_is_held_back(self):
+        st = FC.confinement_settings({})
+        controls, _rctl = FC.controls_for(self.host, st)
+        self.assertNotIn("cpuset_cpu_limit", controls)
+        self.host.cpus = [0, 1, 2, 3]
+        controls, rctl = FC.controls_for(self.host, st)
+        self.assertEqual(controls, [
+            "jail", "no_network", "no_superuser", "cpuset_cpu_limit",
+            "spawn_resource_limits"])
+        self.assertFalse(rctl)
+        controls, _rctl = FC.controls_for(self.host, st, "pigeon-jobs")
+        self.assertEqual(controls, [
+            "jail", "no_network", "cpuset_cpu_limit",
+            "spawn_resource_limits"])
+        self.host.racct = True
+        controls, rctl = FC.controls_for(self.host, st)
+        self.assertEqual(FC.confinement_status(controls), (
+            "freebsd: jail + no_network + no_superuser + "
+            "rctl_resource_limits + cpuset_cpu_limit + "
+            "spawn_resource_limits"))
+        self.assertTrue(rctl)
+        # A number that holds nothing back names nothing.
+        controls, _rctl = FC.controls_for(
+            self.host, FC.confinement_settings(_fcfg(job_cpus=4)))
+        self.assertNotIn("cpuset_cpu_limit", controls)
+
+    def test_the_plan_carries_the_cores_beside_the_names(self):
+        self.host.cpus = [0, 1, 2, 3]
+        st = FC.confinement_settings(_fcfg(job_cpus=2))
+        controls, rctl, cores = FC._plan(self.host, st)
+        self.assertEqual(cores, ([2, 3], 4, None))
+        self.assertEqual((controls, rctl),
+                         FC.controls_for(self.host, st))
+
+    def test_the_controls_refuse_what_the_plan_refuses(self):
+        self.host.cpus = None
+        st = FC.confinement_settings(_fcfg(job_cpus=1))
+        with self.assertRaises(RuntimeError) as caught:
+            FC.controls_for(self.host, st)
+        self.assertIn("could not be read", str(caught.exception))
+
+    # -- one job's jail ----------------------------------------
+
+    def test_a_job_s_jail_is_pinned_before_its_first_process(self):
+        self.host.cpus = [0, 1, 2, 3]
+        proc = self.spawn()
+        self.assertEqual(
+            proc.confinement_status,
+            "freebsd: jail + no_network + no_superuser + "
+            "cpuset_cpu_limit + spawn_resource_limits")
+        self.assertEqual(
+            proc.confinement_notes,
+            ["job pinned to cpus 1,2,3: 3 of the runner's 4 cores"])
+        (name, jail), = self.host.jails.items()
+        self.assertEqual(jail["cpus"], [1, 2, 3])
+        # The jail is given to cpuset(1) by its id, read back
+        # from the jail just made ...
+        (pin,) = self.host.ran(FC.CPUSET_BIN, "-l")
+        self.assertEqual(pin, [FC.CPUSET_BIN, "-l", "1,2,3", "-j",
+                               str(jail["jid"])])
+        calls = self.host.calls
+        made = calls.index(self.host.ran(FC.JAIL_BIN, "-c")[0])
+        read = calls.index([FC.JLS_BIN, "-j", name, "jid"])
+        self.assertLess(made, read)
+        self.assertLess(read, calls.index(pin))
+        # ... and it stood pinned when the job's first process
+        # was started inside it.
+        self.assertEqual(self.host.pinned_at_start, [[1, 2, 3]])
+        # The job's own command is what it was.
+        self.assertEqual(
+            self.job_command(),
+            [FC.JEXEC_BIN, "-d", "/work", name, FC.LIMITS_BIN,
+             "-v", "536870912", "-d", "536870912",
+             "/bin/sh", "-c", "true"])
+        proc.close()
+        self.assertEqual(self.host.jails, {})
+        self.assertEqual(self.host.table, [])
+        self.assertEqual(self.skeletons(), [])
+
+    def test_the_number_in_the_config_pins_that_many(self):
+        self.host.cpus = [0, 1, 2, 3]
+        proc = self.spawn(cfg=_fcfg(job_cpus=1))
+        self.assertEqual(
+            proc.confinement_notes,
+            ["job pinned to cpus 3: 1 of the runner's 4 cores"])
+        self.assertEqual(self.host.pinned_at_start, [[3]])
+        self.assertIn("cpuset_cpu_limit", proc.confinement_status)
+        # At the runner's own count nothing is pinned or named.
+        proc = self.spawn(cfg=_fcfg(job_cpus=4))
+        self.assertEqual(proc.confinement_notes, [])
+        self.assertEqual(self.host.pinned_at_start, [[3], None])
+        self.assertNotIn("cpuset_cpu_limit", proc.confinement_status)
+        self.assertEqual(len(self.host.ran(FC.CPUSET_BIN, "-l")), 1)
+
+    def test_a_job_user_s_job_is_pinned_too(self):
+        self.host.cpus = [0, 1, 2, 3]
+        proc = self.spawn(user="pigeon-jobs")
+        self.assertEqual(
+            proc.confinement_status,
+            "freebsd: jail + no_network + cpuset_cpu_limit + "
+            "spawn_resource_limits")
+        self.assertEqual(
+            proc.confinement_notes,
+            ["job user pigeon-jobs held to 256 processes",
+             "job pinned to cpus 1,2,3: 3 of the runner's 4 cores"])
+        self.assertEqual(self.host.pinned_at_start, [[1, 2, 3]])
+        self.assertIn("-u", self.job_command())
+
+    def test_the_jail_s_rules_stand_beside_its_cores(self):
+        self.host.cpus = [0, 1, 2, 3]
+        self.host.racct = True
+        proc = self.spawn()
+        self.assertEqual(
+            proc.confinement_status,
+            "freebsd: jail + no_network + no_superuser + "
+            "rctl_resource_limits + cpuset_cpu_limit + "
+            "spawn_resource_limits")
+        self.assertEqual(len(self.host.rules), 2)
+        self.assertEqual(self.host.pinned_at_start, [[1, 2, 3]])
+
+    def test_a_loopback_is_brought_up_inside_the_pinned_jail(self):
+        # Nothing that ever runs in the jail runs on another
+        # core: the pin stands before the loopback's own command.
+        self.host.cpus = [0, 1, 2, 3]
+        proc = self.spawn(cfg=_fcfg(loopback=True))
+        self.assertIn("private_loopback", proc.confinement_status)
+        self.assertIn("cpuset_cpu_limit", proc.confinement_status)
+        calls = self.host.calls
+        (pin,) = self.host.ran(FC.CPUSET_BIN, "-l")
+        (up,) = self.host.ran(FC.JEXEC_BIN, FC.IFCONFIG_BIN, "up")
+        self.assertLess(calls.index(pin), calls.index(up))
+
+    def test_one_core_pins_nothing(self):
+        proc = self.spawn()
+        self.assertEqual(self.host.ran(FC.CPUSET_BIN, "-l"), [])
+        self.assertEqual(self.host.ran(FC.JLS_BIN, "jid"), [])
+        self.assertEqual(self.host.pinned_at_start, [None])
+        self.assertEqual(proc.confinement_notes, [])
+
+    def test_a_pin_that_fails_refuses_the_job_and_leaves_nothing(self):
+        self.host.cpus = [0, 1, 2, 3]
+        self.host.refuse = {(FC.CPUSET_BIN, "-l"): (
+            1, "", "cpuset: setaffinity: Operation not permitted")}
+        with self.assertRaises(RuntimeError) as caught:
+            self.spawn()
+        self.assertEqual(
+            str(caught.exception),
+            "the jail could not be pinned to cpus 1,2,3 (cpuset -l "
+            "1,2,3 -j 11, exit 1): cpuset: setaffinity: Operation "
+            "not permitted. security.confinement.freebsd.job_cpus "
+            "at the number of cores this runner has, or above it, "
+            "starts a job with no core held back")
+        # No half-pinned jail to run a job in: nothing was
+        # started, and nothing is left.
+        self.assertEqual(self.host.popens, [])
+        self.assertEqual(self.host.jails, {})
+        self.assertEqual(self.host.table, [])
+        self.assertEqual(self.skeletons(), [])
+
+    def test_a_jail_whose_id_cannot_be_read_refuses_the_job(self):
+        self.host.cpus = [0, 1, 2, 3]
+        for answer, shown in (
+                ((0, "", ""), "(jls exit 0): "),
+                ((0, "eleven\n", ""), "(jls exit 0): eleven"),
+                ((1, "", "jls: jail not found"),
+                 "(jls exit 1): jls: jail not found")):
+            with self.subTest(answer=answer):
+                self.host.refuse_if = [(
+                    lambda argv: argv[0] == FC.JLS_BIN
+                    and argv[-1] == "jid" and bool(self.host.jails),
+                    answer)]
+                with self.assertRaises(RuntimeError) as caught:
+                    self.spawn()
+                self.assertEqual(
+                    str(caught.exception),
+                    "the jail's id could not be read " + shown)
+                self.assertEqual(self.host.ran(FC.CPUSET_BIN, "-l"), [])
+                self.assertEqual(self.host.popens, [])
+                self.host.refuse_if = []
+                # (The jail the failed build made is gone: the
+                # teardown asked for it by name.)
+                self.assertEqual(self.host.jails, {})
+                self.assertEqual(self.host.table, [])
+                self.assertEqual(self.skeletons(), [])
+
+    # -- the probe ---------------------------------------------
+
+    def probe(self, cfg=None, cached=False):
+        return FC._startup_problem(cfg, host=self.host, cached=cached)
+
+    def test_the_trial_jail_is_pinned_and_reads_its_cores_inside(self):
+        self.assertIn("echo CPUS $(/usr/bin/cpuset -g -p $$ ",
+                      FC.TRIAL_SCRIPT)
+        self.host.cpus = [0, 1, 2, 3]
+        self.assertIsNone(self.probe())
+        (pin,) = self.host.ran(FC.CPUSET_BIN, "-l")
+        self.assertEqual(pin[:4], [FC.CPUSET_BIN, "-l", "1,2,3", "-j"])
+        # The pin stood before the trial ran in the jail.
+        calls = self.host.calls
+        (trial,) = self.host.ran(FC.JEXEC_BIN, FC.SH_BIN)
+        self.assertLess(calls.index(pin), calls.index(trial))
+        self.assertEqual(self.host.jails, {})
+        self.assertEqual(self.host.table, [])
+        self.assertEqual(self.skeletons(), [])
+        # Another number is another trial, with its own cores.
+        self.assertIsNone(self.probe(_fcfg(job_cpus=1), cached=True))
+        self.assertIsNone(self.probe(_fcfg(job_cpus=1), cached=True))
+        pins = self.host.ran(FC.CPUSET_BIN, "-l")
+        self.assertEqual([p[2] for p in pins], ["1,2,3", "3"])
+
+    def test_a_trial_that_reads_other_cores_is_a_refusal_by_name(self):
+        self.host.cpus = [0, 1, 2, 3]
+        self.host.trial_cpus = [0, 1, 2, 3]
+        self.assertEqual(
+            self.probe(),
+            "the trial jail was pinned to cpus 1,2,3 and the trial "
+            "inside it read cpus 0,1,2,3: the jail's cpuset did not "
+            "engage")
+        self.assertEqual(self.host.jails, {})
+        self.assertEqual(self.host.table, [])
+        self.assertEqual(self.skeletons(), [])
+        # A trial that could not read its cores at all.
+        self.host.trial_cpus = None
+        self.host.trial_out = ("trial\nWORK-OK\nTMP-OK\nNULL-OK\n"
+                               "CPUS\nEND\n")
+        self.assertEqual(
+            self.probe(),
+            "the trial jail was pinned to cpus 1,2,3 and the trial "
+            "inside it read no set of cores: the jail's cpuset did "
+            "not engage")
+        self.host.trial_out = "trial\nWORK-OK\nTMP-OK\nNULL-OK\nEND\n"
+        self.assertIn("read no set of cores", self.probe())
+        # A verdict that did not pass is not kept.
+        self.host.trial_out = None
+        self.assertIsNone(self.probe(cached=True))
+
+    def test_a_trial_with_nothing_pinned_is_not_asked_its_cores(self):
+        # One core: the trial's line about its cores is read
+        # past, whatever it says.
+        self.host.trial_out = ("trial\nWORK-OK\nTMP-OK\nNULL-OK\n"
+                               "CPUS\nEND\n")
+        self.assertIsNone(self.probe())
+        self.assertEqual(self.host.ran(FC.CPUSET_BIN, "-l"), [])
+
+    def test_a_number_that_cannot_engage_is_refused_with_nothing_built(self):
+        self.host.cpus = None
+        problem = self.probe(_fcfg(job_cpus=2))
+        self.assertIn("could not be read (/usr/bin/cpuset -g)", problem)
+        self.assertEqual(self.host.ran(FC.JAIL_BIN, "-c"), [])
+        self.assertEqual(self.skeletons(), [])
+        # The default on the same host starts, with no core
+        # held back.
+        self.assertIsNone(self.probe())
+        self.assertEqual(self.host.ran(FC.CPUSET_BIN, "-l"), [])
+
+    def test_a_pin_the_trial_jail_refuses_is_the_probe_s_refusal(self):
+        self.host.cpus = [0, 1, 2, 3]
+        self.host.refuse = {(FC.CPUSET_BIN, "-l"): (
+            1, "", "cpuset: setaffinity: Resource deadlock avoided")}
+        problem = self.probe()
+        self.assertIn("the jail could not be pinned to cpus 1,2,3 "
+                      "(cpuset -l 1,2,3 -j", problem)
+        self.assertIn("Resource deadlock avoided", problem)
+        # The refusal says how to start with no core held back,
+        # and a config that says so starts.
+        self.assertIn("job_cpus at the number of cores this runner "
+                      "has, or above it", problem)
+        self.assertIsNone(self.probe(_fcfg(job_cpus=4)))
+        self.assertEqual(self.host.jails, {})
+        self.assertEqual(self.host.table, [])
+        self.assertEqual(self.skeletons(), [])
+
+    # -- the report --------------------------------------------
+
+    def lines(self, cfg=None):
+        return FC.posture_lines(cfg, host=self.host)
+
+    def test_the_report_says_which_cores_a_job_s_jail_is_pinned_to(self):
+        self.host.cpus = [0, 1, 2, 3]
+        lines = self.lines()
+        self.assertEqual(lines[0], (
+            "OK", "FreeBSD jail backend: freebsd: jail + no_network "
+            "+ no_superuser + cpuset_cpu_limit + "
+            "spawn_resource_limits"))
+        self.assertEqual(lines[1], (
+            "OK", "a job's jail is pinned to cpus 1,2,3: 3 of the 4 "
+            "cores this runner may run on (cpuset on the jail; no "
+            "RACCT needed)"))
+        self.assertIn("kern.racct.enable=1", lines[2][1])
+        self.assertEqual(len(lines), 3)
+        lines = self.lines(_fcfg(job_cpus=2))
+        self.assertEqual(lines[1], (
+            "OK", "a job's jail is pinned to cpus 2,3: 2 of the 4 "
+            "cores this runner may run on (cpuset on the jail; no "
+            "RACCT needed)"))
+        # Beneath the job user's lines, where one is named.
+        cfg = {"security": {"job_user": {"user": "pigeon-jobs"}}}
+        lines = self.lines(cfg)
+        self.assertEqual(lines[0], (
+            "OK", "FreeBSD jail backend: freebsd: jail + no_network "
+            "+ cpuset_cpu_limit + spawn_resource_limits"))
+        self.assertIn("is held to 256 processes", lines[2][1])
+        self.assertIn("is pinned to cpus 1,2,3", lines[3][1])
+        self.assertEqual(len(lines), 5)
+        # Nothing was built or pinned to say so.
+        self.assertEqual(self.host.ran(FC.JAIL_BIN), [])
+        self.assertEqual(self.host.ran(FC.CPUSET_BIN, "-l"), [])
+
+    def test_the_report_says_why_no_core_is_held_back(self):
+        self.host.cpus = [0, 1, 2, 3]
+        cases = [
+            (_fcfg(job_cpus=4),
+             "security.confinement.freebsd.job_cpus (4) is not below "
+             "the 4 cores this runner may run on, so no core is held "
+             "back from a job")]
+        for cfg, want in cases:
+            lines = self.lines(cfg)
+            self.assertEqual(lines[1], ("OK", want))
+            self.assertNotIn("cpuset_cpu_limit", lines[0][1])
+        self.host.cpus = None
+        self.assertEqual(self.lines()[1], (
+            "OK", "the cores this runner may run on could not be read "
+            "(/usr/bin/cpuset -g), so no core is held back from a "
+            "job"))
+
+    def test_a_number_that_would_refuse_the_start_is_a_warning(self):
+        self.host.cpus = None
+        ((level, text),) = self.lines(_fcfg(job_cpus=2))
+        self.assertEqual(level, "WARN")
+        self.assertIn("could not be read", text)
+        self.assertIn("would refuse to start", text)
 
 
 class SpawnTest(_FakeHostCase):
@@ -3953,10 +4499,16 @@ class PostureTest(_FakeHostCase):
         self.assertEqual(lines[0], (
             "OK", "FreeBSD jail backend: freebsd: jail + no_network "
             "+ no_superuser + spawn_resource_limits"))
+        # One core to run on: the report says no core is held
+        # back from a job, and why.
+        self.assertEqual(lines[1], (
+            "OK", "this runner has one core to run on, so no core "
+            "is held back from a job"))
         # Without RACCT the report says how to get the rules.
-        self.assertEqual(lines[1][0], "OK")
-        self.assertIn("kern.racct.enable=1", lines[1][1])
-        self.assertIn("/boot/loader.conf", lines[1][1])
+        self.assertEqual(lines[2][0], "OK")
+        self.assertIn("kern.racct.enable=1", lines[2][1])
+        self.assertIn("/boot/loader.conf", lines[2][1])
+        self.assertEqual(len(lines), 3)
         # Nothing was built to say so.
         self.assertEqual(self.host.ran(FC.JAIL_BIN), [])
         self.assertEqual(self.host.ran(FC.MOUNT_BIN), [])
@@ -3967,7 +4519,9 @@ class PostureTest(_FakeHostCase):
         self.assertEqual(self.lines(), [(
             "OK", "FreeBSD jail backend: freebsd: jail + no_network "
             "+ no_superuser + rctl_resource_limits + "
-            "spawn_resource_limits")])
+            "spawn_resource_limits"), (
+            "OK", "this runner has one core to run on, so no core "
+            "is held back from a job")])
 
     def test_a_named_job_user_is_who_the_report_says_goes_in(self):
         # With a job user engaged the record carries no
@@ -3988,15 +4542,16 @@ class PostureTest(_FakeHostCase):
                       "host (limits -u at the jail door; no RACCT "
                       "needed)")
         self.assertEqual(lines[2], held)
-        self.assertIn("kern.racct.enable=1", lines[3][1])
-        self.assertEqual(len(lines), 4)
+        self.assertIn("no core is held back", lines[3][1])
+        self.assertIn("kern.racct.enable=1", lines[4][1])
+        self.assertEqual(len(lines), 5)
         self.host.racct = True
         lines = self.lines(cfg)
         self.assertEqual(lines[0], (
             "OK", "FreeBSD jail backend: freebsd: jail + no_network "
             "+ rctl_resource_limits + spawn_resource_limits"))
         self.assertEqual(lines[2], held)
-        self.assertEqual(len(lines), 3)
+        self.assertEqual(len(lines), 4)
 
     def test_the_report_states_the_ceiling_the_config_sets(self):
         cfg = _fcfg(job_user_processes=24)
@@ -4072,6 +4627,9 @@ class PostureTest(_FakeHostCase):
                             "freebsd.md")
         with open(page, encoding="utf-8") as fh:
             text = fh.read()
+        # The page's host has four cores, so its lines show a
+        # job's jail pinned to three of them.
+        self.host.cpus = [0, 1, 2, 3]
         answer = (None, tuple(t for _level, t in self.lines()))
 
         def _trial(cfg, user):
@@ -4084,11 +4642,19 @@ class PostureTest(_FakeHostCase):
         self.assertEqual(user, "pigeon-jobs")
         printed = INS.seed_kept_lines(
             answer, "/root/.homing-pigeon/config.json", user, door)
-        self.assertEqual(len(printed), 7)
+        self.assertEqual(len(printed), 8)
         self.assertIn(
             "platform: pigeon-jobs is held to 256 processes across "
             "this host (limits -u at the jail door; no RACCT needed)",
             printed)
+        self.assertIn(
+            "platform: FreeBSD jail backend: freebsd: jail + "
+            "no_network + cpuset_cpu_limit + spawn_resource_limits",
+            printed)
+        self.assertIn(
+            "platform: a job's jail is pinned to cpus 1,2,3: 3 of "
+            "the 4 cores this runner may run on (cpuset on the "
+            "jail; no RACCT needed)", printed)
         for line in printed:
             self.assertIn("\n  " + line + "\n", text)
 
@@ -4639,6 +5205,8 @@ class LiveControlsTest(unittest.TestCase):
         want = ["jail", "no_network", "no_superuser"]
         if _racct_live():
             want.append("rctl_resource_limits")
+        if len(_cores_live()) > 1:
+            want.append("cpuset_cpu_limit")
         want.append("spawn_resource_limits")
         self.assertEqual(proc.confinement_status,
                          "freebsd: " + " + ".join(want))
@@ -5134,6 +5702,286 @@ class LiveControlsTest(unittest.TestCase):
         self.assertIn(b"STILL-HERE", out, err)
 
 
+def _cores_live():
+    """The cores this process may run on -- the runner's own,
+    to the backend -- lowest first; an empty list on a host
+    that will not say."""
+    return FC._runner_cpus(FC._HOST) or []
+
+
+# A job that says which cores its own process may run on.
+_SAY_CORES = "/usr/bin/cpuset -g -p $$"
+
+# A job that starts so many children, each of which spins for
+# so many seconds by the clock, and says how long that took and
+# how much processor time the children used between them.
+_SPIN = (
+    "import os, resource, sys, time\n"
+    "count, seconds = int(sys.argv[1]), float(sys.argv[2])\n"
+    "began = time.time()\n"
+    "kids = []\n"
+    "for i in range(count):\n"
+    "    pid = os.fork()\n"
+    "    if pid == 0:\n"
+    "        until = time.time() + seconds\n"
+    "        while time.time() < until:\n"
+    "            pass\n"
+    "        os._exit(0)\n"
+    "    kids.append(pid)\n"
+    "for k in kids:\n"
+    "    os.waitpid(k, 0)\n"
+    "wall = time.time() - began\n"
+    "used = resource.getrusage(resource.RUSAGE_CHILDREN)\n"
+    "print('WALL %.3f' % wall)\n"
+    "print('CPU %.3f' % (used.ru_utime + used.ru_stime))\n")
+
+
+def _spun(out):
+    """What a _SPIN job said: (seconds by the clock, seconds
+    of processor time its children used)."""
+    words = out.decode("utf-8", "replace").split()
+    return (float(words[words.index("WALL") + 1]),
+            float(words[words.index("CPU") + 1]))
+
+
+@unittest.skipUnless(
+    FC.IS_FREEBSD_BACKEND and os.geteuid() == 0,
+    "run on FreeBSD as root")
+class LiveCoresTest(unittest.TestCase):
+    """The cores a job's jail is pinned to, on a real kernel:
+    which ones a job reads from inside, that it cannot widen
+    them whoever it runs as, that a job spinning on every core
+    it has uses its set's worth of processor and no more, and
+    that the runner's own cores are left as they were."""
+
+    def setUp(self):
+        self.runner = _cores_live()
+        self.before = _leftovers()
+
+    def tearDown(self):
+        # The runner itself is never pinned by what it pins.
+        self.assertEqual(_cores_live(), self.runner)
+        after = _leftovers()
+        for what in ("mounts", "dirs", "jails", "rules"):
+            self.assertEqual(after[what] - self.before[what], set(),
+                             "%s left behind" % what)
+
+    def _more_than_one(self):
+        if len(self.runner) < 2:
+            self.skipTest("this host has one core: none can be "
+                          "held back from a job")
+
+    def _job(self, argv, cfg=None, user=None, timeout=120):
+        work = tempfile.mkdtemp(prefix="hp-live-")
+        self.addCleanup(shutil.rmtree, work, True)
+        os.chmod(work, 0o755)
+        if user is not None:
+            import pwd
+            rec = pwd.getpwnam(user)
+            os.chown(work, rec.pw_uid, rec.pw_gid)
+        proc = FC.spawn_confined_process(
+            list(argv), cwd=work, env={}, user=user, cfg=cfg)
+        try:
+            out, err = proc.communicate(timeout=timeout)
+        finally:
+            proc.close()
+        return proc, out, err
+
+    def _says(self, cfg=None, user=None):
+        """(the cores a job under this config reads as its
+        own, the job's process object)."""
+        proc, out, err = self._job(
+            ["/bin/sh", "-c", _SAY_CORES], cfg=cfg, user=user)
+        cores = FC._cpus_in(out.decode("utf-8", "replace"))
+        self.assertIsNotNone(cores, (out, err))
+        return cores, proc
+
+    def test_the_runner_s_own_cores_are_read(self):
+        # On any host: the backend reads this process's cores,
+        # and the kernel's own count is not below them.
+        self.assertTrue(self.runner)
+        rc, out = _host_says(FC.SYSCTL_BIN, "-n", "hw.ncpu")
+        self.assertEqual(rc, 0)
+        self.assertLessEqual(len(self.runner), int(out.strip()))
+        self.assertEqual(self.runner, sorted(set(self.runner)))
+
+    def test_a_job_runs_on_all_but_the_runner_s_lowest_core(self):
+        self._more_than_one()
+        want = self.runner[1:]
+        cores, proc = self._says()
+        self.assertEqual(cores, want)
+        self.assertNotIn(self.runner[0], cores)
+        self.assertIn("cpuset_cpu_limit", proc.confinement_status)
+        self.assertIn(
+            "job pinned to cpus %s: %d of the runner's %d cores"
+            % (FC._cpu_list(want), len(want), len(self.runner)),
+            proc.confinement_notes)
+
+    def test_the_number_is_the_config_s(self):
+        self._more_than_one()
+        for named in range(1, len(self.runner)):
+            with self.subTest(named=named):
+                cfg = {"security": {"confinement": {"freebsd": {
+                    "job_cpus": named}}}}
+                cores, proc = self._says(cfg)
+                self.assertEqual(cores, self.runner[-named:])
+                self.assertIn("cpuset_cpu_limit",
+                              proc.confinement_status)
+
+    def test_a_number_at_the_runner_s_own_count_holds_none_back(self):
+        # On a host with one core too: nothing is pinned, the
+        # job reads the runner's own cores, and the record
+        # names no limit.
+        for named in (len(self.runner), len(self.runner) + 60):
+            with self.subTest(named=named):
+                cfg = {"security": {"confinement": {"freebsd": {
+                    "job_cpus": named}}}}
+                cores, proc = self._says(cfg)
+                self.assertEqual(cores, self.runner)
+                self.assertNotIn("cpuset_cpu_limit",
+                                 proc.confinement_status)
+                self.assertEqual(
+                    [n for n in proc.confinement_notes
+                     if "pinned" in n], [])
+
+    def test_a_job_user_s_job_is_pinned_too(self):
+        self._more_than_one()
+        cores, proc = self._says(user="nobody")
+        self.assertEqual(cores, self.runner[1:])
+        self.assertIn("cpuset_cpu_limit", proc.confinement_status)
+        self.assertNotIn("no_superuser", proc.confinement_status)
+
+    def _widening(self, user):
+        """A job that narrows its cores, puts them back, and
+        then tries three ways to have more than its jail was
+        given; what it read after each."""
+        mine = self.runner[1:]
+        every = FC._cpu_list(self.runner)
+        script = (
+            "say() { /usr/bin/cpuset -g -p $$ | /usr/bin/head -n 1; }\n"
+            "echo BEFORE $(say)\n"
+            "/usr/bin/cpuset -l %(one)s -p $$ && echo NARROWED\n"
+            "echo NARROW $(say)\n"
+            "/usr/bin/cpuset -l %(mine)s -p $$ && echo RESTORED\n"
+            "echo BACK $(say)\n"
+            "/usr/bin/cpuset -l %(every)s -p $$ 2> /dev/null "
+            "&& echo WIDENED-ITSELF\n"
+            "/usr/bin/cpuset -c -l %(every)s -p $$ 2> /dev/null "
+            "&& echo WIDENED-ITS-SET\n"
+            "/usr/bin/cpuset -C -l %(every)s -p $$ 2> /dev/null "
+            "&& echo WIDENED-A-NEW-SET\n"
+            "echo AFTER $(say)\n"
+            "/bin/sh -c '/usr/bin/cpuset -g -p $$ "
+            "| /usr/bin/head -n 1' | /usr/bin/sed 's/^/CHILD /'\n"
+            "echo END\n" % {"one": mine[-1],
+                            "mine": FC._cpu_list(mine),
+                            "every": every})
+        _proc, out, err = self._job(["/bin/sh", "-c", script],
+                                    user=user)
+        text = out.decode("utf-8", "replace")
+        read = {}
+        for line in text.splitlines():
+            word = line.split(" ", 1)[0]
+            if word in ("BEFORE", "NARROW", "BACK", "AFTER", "CHILD"):
+                read[word] = FC._cpus_in(line)
+        return text, read, err
+
+    def _held(self, user):
+        self._more_than_one()
+        mine = self.runner[1:]
+        text, read, err = self._widening(user)
+        self.assertIn("END", text.split(), (text, err))
+        # Below the set, the cores are the job's own to move.
+        self.assertEqual(read.get("BEFORE"), mine, (text, err))
+        self.assertIn("NARROWED", text.split(), (text, err))
+        self.assertEqual(read.get("NARROW"), mine[-1:], (text, err))
+        self.assertIn("RESTORED", text.split(), (text, err))
+        self.assertEqual(read.get("BACK"), mine, (text, err))
+        # Past it, nothing moves: not the job's own cores, not
+        # the set it stands in, not a set it makes for itself.
+        for word in ("WIDENED-ITSELF", "WIDENED-ITS-SET",
+                     "WIDENED-A-NEW-SET"):
+            self.assertNotIn(word, text.split(), (text, err))
+        self.assertEqual(read.get("AFTER"), mine, (text, err))
+        self.assertNotIn(self.runner[0], read.get("AFTER") or [])
+        # And a process the job starts afterwards has the same.
+        self.assertEqual(read.get("CHILD"), mine, (text, err))
+
+    def test_a_job_cannot_widen_its_cores(self):
+        self._held(None)
+
+    def test_a_job_user_cannot_widen_its_cores_either(self):
+        self._held("nobody")
+
+    def test_a_job_that_spins_on_every_core_gets_its_set_s_worth(self):
+        self._more_than_one()
+        spinners = 2 * len(self.runner)
+        one = {"security": {"confinement": {"freebsd": {
+            "job_cpus": 1}}}}
+        _proc, out, err = self._job(
+            [_LIVE_PYTHON, "-c", _SPIN, str(spinners), "3"], cfg=one)
+        wall, used = _spun(out)
+        # One core's worth of processor, however many spin: the
+        # children cannot have used more seconds than one core
+        # had to give while they ran.
+        self.assertGreater(wall, 2.9, (out, err))
+        self.assertLessEqual(used, wall * 1.1 + 0.25, (out, err))
+        self.assertGreater(used, wall * 0.5, (out, err))
+        # The same job with no core held back uses more than
+        # one core's worth: the pin is what held it.
+        free = {"security": {"confinement": {"freebsd": {
+            "job_cpus": len(self.runner)}}}}
+        _proc, out2, err2 = self._job(
+            [_LIVE_PYTHON, "-c", _SPIN, str(spinners), "3"], cfg=free)
+        wall2, used2 = _spun(out2)
+        self.assertGreater(used2, wall2 * 1.3, (out2, err2))
+        self.assertGreater(used2, used * 1.3, (out, out2))
+        sys.stderr.write(
+            "cores: %d spinning for 3 s on %d cores: pinned to "
+            "one, %.2f s of processor in %.2f s; none held back, "
+            "%.2f s in %.2f s ... "
+            % (spinners, len(self.runner), used, wall, used2, wall2))
+
+    def test_jobs_at_once_are_pinned_to_the_one_set(self):
+        self._more_than_one()
+        work = tempfile.mkdtemp(prefix="hp-live-")
+        self.addCleanup(shutil.rmtree, work, True)
+        os.chmod(work, 0o755)
+        first = FC.spawn_confined_process(
+            ["/bin/sh", "-c", _SAY_CORES + "; sleep 20"],
+            cwd=work, env={})
+        try:
+            cores, _proc = self._says()
+        finally:
+            first.kill()
+            out, _err = first.communicate(timeout=30)
+            first.close()
+        self.assertEqual(cores, self.runner[1:])
+        self.assertEqual(FC._cpus_in(out.decode("utf-8", "replace")),
+                         self.runner[1:])
+
+    def test_the_probe_pins_its_trial_and_passes(self):
+        # The trial jail is pinned as a job's would be and the
+        # trial reads its cores from inside: a pass is the
+        # kernel agreeing with the plan.
+        self.assertIsNone(FC.freebsd_startup_problem({}))
+        if len(self.runner) > 1:
+            one = {"security": {"confinement": {"freebsd": {
+                "job_cpus": 1}}}}
+            self.assertIsNone(FC.freebsd_startup_problem(one))
+        lines = [text for _level, text in FC.posture_lines({})]
+        if len(self.runner) > 1:
+            self.assertIn(
+                "a job's jail is pinned to cpus %s: %d of the %d "
+                "cores this runner may run on (cpuset on the jail; "
+                "no RACCT needed)" % (
+                    FC._cpu_list(self.runner[1:]),
+                    len(self.runner) - 1, len(self.runner)), lines)
+        else:
+            self.assertIn("this runner has one core to run on, so "
+                          "no core is held back from a job", lines)
+
+
 @unittest.skipUnless(
     FC.IS_FREEBSD_BACKEND and os.geteuid() == 0,
     "run on FreeBSD as root")
@@ -5212,6 +6060,17 @@ class LiveRunnerTest(unittest.TestCase):
         self.assertTrue(reason.startswith(
             "freebsd: jail + no_network + no_superuser"), reason)
         self.assertTrue(reason.endswith("spawn_resource_limits"), reason)
+        # Where the runner has more than one core, the record
+        # names the limit and its detail says which cores.
+        cores = _cores_live()
+        if len(cores) > 1:
+            self.assertIn("cpuset_cpu_limit", reason)
+            self.assertIn(
+                "job pinned to cpus %s: %d of the runner's %d cores"
+                % (FC._cpu_list(cores[1:]), len(cores) - 1,
+                   len(cores)), rows[0].get("detail", ""), rows[0])
+        else:
+            self.assertNotIn("cpuset_cpu_limit", reason)
         after = _leftovers()
         for what in ("mounts", "dirs", "jails", "rules"):
             self.assertEqual(after[what] - before[what], set(),

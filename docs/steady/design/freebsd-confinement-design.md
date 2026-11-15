@@ -16,7 +16,9 @@ page on 2026-11-14, at the owner's direction, and built the
 same day (`runner/ops/install.py`, `runner/ops/setup.py`).
 The job user that seed names where it leaves the jail on was
 added and built the same day, at the owner's direction, and
-so was the account the installer makes for it.
+so was the account the installer makes for it. The cores a
+job's jail is pinned to were added and built on 2026-11-15,
+at the owner's direction.
 
 Confinement is the software suite's own, platform by
 platform. The protocol documents do not specify it — a
@@ -96,6 +98,7 @@ first, second and last rows:
 | `private_loopback` | The jail has a network stack of its own (vnet) whose only interface is its own `lo0`, up at 127.0.0.1 | When `security.confinement.freebsd.loopback` is true |
 | `no_superuser` | The jail is created with `allow.nosuser`: uid 0 inside it holds no privilege | When no job user is handed to the spawn |
 | `rctl_resource_limits` | rctl rules hold the jail as a whole: a ceiling on its processes and on the address space of all of them together | On a host with RACCT enabled |
+| `cpuset_cpu_limit` | The jail is pinned to a set of cores with `cpuset(1)`: every process of the job runs on those cores and on no others | Where a core is held back from the job: a runner with more than one core, unless the config lets a job have them all |
 | `spawn_resource_limits` | The job's command runs under `limits(1)` with the virtual-memory and data-size limits at the per-process ceiling | Always |
 
 ## The jail's shape
@@ -192,15 +195,16 @@ are what keep that user from coming back as root.
 | Processes in the jail | 256 | rctl `maxproc`, where RACCT is enabled | `job_processes` |
 | Address space of every process in the jail together | 2 GiB | rctl `vmemoryuse`, where RACCT is enabled | `job_memory_bytes` |
 | Processes of the job user, across the host | 256 | `limits(1)` at the jail door, under a job user; the job cannot raise it | `job_user_processes` |
+| Cores the job runs on | All but one of the runner's | `cpuset(1)` on the jail, before the job's first process; the job cannot widen it | `job_cpus` |
 
 RACCT is a boot tunable (`kern.racct.enable=1` in
 `/boot/loader.conf`), off as FreeBSD ships. Where it is off
 an rctl rule can deny nothing, so the two jail-wide rules are
 not written and `rctl_resource_limits` is not named. That is
-the one place a default adapts to the host. A setting the
-operator wrote does not adapt: `job_processes` or
-`job_memory_bytes` in the config on a host without RACCT
-refuses the start and says which tunable to set.
+a default adapting to the host. A setting the operator wrote
+does not adapt: `job_processes` or `job_memory_bytes` in the
+config on a host without RACCT refuses the start and says
+which tunable to set.
 
 The per-process ceiling is a resource limit, not a kernel
 rule. It holds because the job has no privilege to raise it.
@@ -253,6 +257,61 @@ spawn's resource limits (`spawn_resource_limits`), and the
 job's audit record carries the number in its detail: `job
 user pigeon-jobs held to 256 processes`.
 
+### The job's cores
+
+A job's jail is pinned to a set of cores, and that asks
+nothing of the host either. Every jail has a cpuset of its
+own, the root of every set a process inside it can hold, and
+the kernel schedules a jail's processes on its cores and on
+no others, on every FreeBSD. So as soon as a job's jail
+stands, before anything runs in it, `cpuset(1)` sets the
+jail's cores (`cpuset -l <cores> -j <jail id>`). RACCT has no
+part in it: the limit holds on a host as FreeBSD ships, with
+no tunable and no reboot.
+
+The set is cut from the cores the runner itself may run on:
+all but one of them unless the config says otherwise
+(`job_cpus`), and always the highest-numbered ones. The
+lowest-numbered core is never a job's. A job that spins on
+every core it has, or starts a process for each and spins
+them all, uses the cores of its set and leaves that one to
+the runner, which is what must notice the job's timeout and
+end it, and to the host. On a runner with four cores a job
+runs on cores 1, 2 and 3.
+
+The job cannot change the set. A process inside a jail may
+narrow the cores it runs on and widen them again as far as
+its jail's cpuset, and the kernel refuses a process inside a
+jail any change to that jail's own cpuset, whatever the
+process's uid. So the limit holds for a job with no job user
+as it does for one that has gone through the door.
+
+It is a set of cores, not a share of time. Within its set a
+job may run every core flat out for as long as its timeout
+lets it. Every job of the runner is pinned to the same set,
+so jobs that run at once share those cores; `job_cpus` does
+not give each job cores of its own.
+
+`job_cpus` is the most cores a job may run on. A number at or
+above the cores the runner has asks for nothing the host does
+not already hold, since a job cannot run on more cores than
+there are: nothing is pinned and the record names no limit.
+That is also how an operator lets jobs have every core. The
+default adapts the same way. A runner with one core to run on
+has none to hold back, and where the host will not say which
+cores the runner has, none is held back and the posture
+report says so. A number the operator wrote on a host that
+will not say refuses the start. A set that is planned and
+cannot be pinned refuses too — the job, or the start when it
+is the probe's jail — and the refusal names the setting that
+starts a job with no core held back.
+
+The record names the limit where it was applied:
+`cpuset_cpu_limit`, after the jail's rctl rules and before
+the spawn's limits. The job's audit record carries the cores
+in its detail: `job pinned to cpus 1,2,3: 3 of the runner's 4
+cores`.
+
 ## Network
 
 None by default, loopback included: the jail has no IPv4 and
@@ -284,7 +343,8 @@ Under `security.confinement`, all optional:
     "tmp_bytes": 536870912,
     "job_memory_bytes": 2147483648,
     "job_processes": 256,
-    "job_user_processes": 256
+    "job_user_processes": 256,
+    "job_cpus": 3
   }
 }
 ```
@@ -316,11 +376,14 @@ write the two trees, that lands a write on the root, that
 keeps a privilege, or that sees the host's devices (the jail
 ruleset not loaded) is a refusal by name. Where the config
 asks for a loopback the address is read back; where RACCT is
-enabled the rules are. A ceiling on the job user's processes
-is asked for the job user the config engages: the probe's own
-jail is the one a job with no job user gets, and a config
-that names the ceiling and engages no job user is refused
-before anything is built.
+enabled the rules are. Where a core is held back the trial's
+jail is pinned as a job's would be, and the trial reads the
+cores it may run on from inside: a set other than the one its
+jail was pinned to is a refusal by name. A ceiling on the job
+user's processes is asked for the job user the config
+engages: the probe's own jail is the one a job with no job
+user gets, and a config that names the ceiling and engages no
+job user is refused before anything is built.
 
 A passing verdict is kept for the life of the runner process,
 for the settings it was run with, so the per-job gate does not
@@ -533,6 +596,7 @@ runner's jobs are never touched.
 | Set-user-ID programs | Not honoured (no new privileges) | Not honoured (`nosuid` mounts) |
 | Memory ceiling, per process | None | 512 MiB, not the job's to raise |
 | Ceilings on the whole job | None | The job user's processes, on every host; each jail's processes and address space, where RACCT is enabled |
+| Cores a job runs on | Every core the runner may run on | All but one of them, the lowest never a job's, on a runner with more than one; not the job's to widen |
 | Operator binds, work mount | Yes | Yes, the same keys |
 | Interpreter outside the trees | Its prefix, read-only, recorded | The same rule, the same record |
 | Runner gone | The sandbox's command is killed | The jail is removed: every process ends |
@@ -585,7 +649,11 @@ root, so a job with no job user is root's uid too.
   ceiling. The `/tmp` bound closes the largest such door.
 - The work directory is on the host's disk and is not bounded
   here.
-- No CPU ceiling.
+- The limit on cores is a set, not a share of time: within its
+  cores a job may run flat out until its timeout. Jobs that
+  run at once are pinned to the same set and share it. A
+  runner with one core to run on holds none back, and neither
+  does one whose host will not say which cores it has.
 - The device ruleset is the host's: the backend asks for the
   jail ruleset and the probe refuses a host that has not
   loaded it, but it does not define one.
@@ -606,11 +674,12 @@ root, so a job with no job user is root's uid too.
   RACCT off — and runs the same module as root in each, the
   live classes included: the boundary read from inside a job,
   the jail-wide rules, the job user's process ceiling with
-  RACCT and without, the loopback, the binds, the
-  interpreter's prefix, a runner killed outright, jobs
-  through the runner itself, with and without a job user, and
-  the mode a fresh install states on that guest. Weekly and
-  on dispatch.
+  RACCT and without, the cores a job reads as its own, cannot
+  widen and uses when it spins on all of them, the loopback,
+  the binds, the interpreter's prefix, a runner killed
+  outright, jobs through the runner itself, with and without
+  a job user, and the mode a fresh install states on that
+  guest. Weekly and on dispatch.
 - The posture report (`--posture`) names, on a FreeBSD host,
   the controls a job's jail would carry there and what would
   refuse the start, without building a jail.
@@ -1007,3 +1076,43 @@ release collects the job's first process itself now, once the
 jail is gone, and the second run read all eight true: 284
 tests as root in each guest, and no jail mount, jail,
 skeleton directory, rctl rule or jobs account afterwards.
+
+### The job's cores
+
+Suppositions, recorded 2026-11-15 before the first hosted run
+of the pin:
+
+41. Each guest has more than one core, and the test process —
+    the runner, to the backend, as root on the host — reads
+    every one of them as its own.
+42. A job under the default reads as its cores all of the
+    runner's but the lowest. The record names
+    `cpuset_cpu_limit` and its detail carries the cores. On
+    the guest without RACCT too, where the record names no
+    rctl rule.
+43. Under `job_cpus` of 1, and of each number up to one below
+    the runner's own count, a job reads that many cores, the
+    highest-numbered. At the runner's own count, and above
+    it, a job reads the runner's cores and the record names no
+    limit.
+44. A job narrows its cores to one of its set and puts them
+    back. Asked for every core the runner has, three ways —
+    its own process's cores, the set it stands in, a set it
+    makes for itself — it is refused each time and reads its
+    set unchanged afterwards. As uid 0 inside the jail, and as
+    `nobody`.
+45. A process the job starts after that has the job's set.
+46. A job pinned to one core that spins twice as many
+    processes as the guest has cores, for three seconds by
+    the clock, uses about three seconds of processor in all:
+    one core's worth. The same job with no core held back
+    uses more than 1.3 times as much.
+47. Two jobs at once read the one set.
+48. A job that goes in as a job user is pinned as any other.
+49. The startup probe passes with its trial jail pinned: the
+    trial reads from inside the cores its jail was given.
+    Through the runner itself the job's audit record names
+    the limit and carries the cores in its detail.
+50. The runner's own cores are what they were after every job,
+    and nothing is left: no jail, no mount, no skeleton
+    directory, no rule and no jobs account.

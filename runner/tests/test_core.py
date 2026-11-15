@@ -203,9 +203,12 @@ class CoreListTest(unittest.TestCase):
         # backend by 12 more, and again on
         # 2026-11-15 after the regression guard's leak run
         # took to starting a module through the test package
-        # grew runner/tools/regression_guard.py by 7 lines.
-        self.assertEqual(68055, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(61689, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # grew runner/tools/regression_guard.py by 7 lines,
+        # and again that day after a job's jail took to being
+        # pinned to a set of cores grew
+        # runner/guard/freebsd_confine.py by 191 lines.
+        self.assertEqual(68246, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(61864, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
