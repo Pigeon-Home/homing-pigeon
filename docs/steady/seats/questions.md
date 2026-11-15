@@ -143,6 +143,61 @@ against the suppositions above:**
   design's own reconciliation, not this lane's; this
   fix changed wording only.
 
+**Re-test suppositions (second seat, recorded
+2026-11-14 before the deciding tests run).** This
+seat is not the filer. It re-tests in its own
+scratch clone on the current head -- the fix
+landing, with two owner README updates standing on
+top of it at the hour this record opens -- on its
+own cases and measures, not the fix lane's:
+
+- Q195-R1 (the fix stands as recorded, read in the
+  code first). The fix landing touched only
+  cs_canoe.md and this desk entry, wording only: no
+  file moved, added or deleted, and no design
+  statement changed its meaning. Read in the diff
+  before any test runs.
+- Q195-R2 (the whole docs job on the current
+  head). The full docs job exactly as build.yml
+  defines it -- the same 11 modules the fix lane
+  ran -- passes whole on the current head, this
+  re-test's own suppositions landing included in
+  the tree it reads: the head's two README updates
+  and this entry's added lines introduce no new
+  failure in any module.
+- Q195-R3 (the provider term, every casing and
+  bookend). A case-insensitive scan for the banned
+  term over every live doc at the current head
+  finds no hit outside the one exempt author line
+  in the draft sources -- not in cs_canoe.md, and
+  not in this desk entry. In this seat's scratch
+  clone only, the same term planted in cs_canoe.md
+  in upper, lower and mixed case, and bookended
+  with symbols at the front and the back, is caught
+  by the guard on every planting: the scan is not
+  vacuous and no casing slips it.
+- Q195-R4 (the reader's page, every barred shape).
+  cs_canoe.md at the current head carries no hit
+  for any shape the reader-docs-quiet guard bars --
+  a question number, the conductor word, a seat or
+  desk phrase, the campaign word standing alone.
+  In the scratch clone only, each barred shape
+  planted in turn in a copy of the page is caught
+  by the guard: the page is quiet because its lines
+  are clean, not because the guard sleeps.
+- Q195-R5 (no other live doc regressed). The two
+  guards' own scans at the current head name no
+  file beyond the ones already cleared: the
+  provider-name scan names no live doc at all, and
+  the reader scan names no reader's page. Any other
+  failure in the docs job would stand against R2
+  and be recorded here first-hand, not waved past.
+
+If every supposition stands, this seat closes Q195
+under rule 8 in the landing that carries the
+verdict; any failure is recorded first-hand here
+and the question stays open.
+
 **Status.** The remedy is landed (the cs_canoe
 wording fix that carries this record). The head's
 docs job is green on the fix lane's first-hand run.
