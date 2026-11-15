@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.15 - 2026-11-15
+
+- docs: CS_canoe design notes land on main — the hosted service, first flow and runner linking; the secret is generated locally, the third login option, big-small; the fourth option: Gmail login, Cloudflare transport (Muse)
+- docs: Q195 — the CS_canoe landing fails the docs job on its own lines; suppositions recorded before the fix, then the reader's-vocabulary rewrite and conclusions (Muse)
+- README updates (DRU)
+- docs: Q195 re-test suppositions — second seat, recorded before the deciding tests (Muse)
+- freebsd: the first two runs under the 45-minute clock on the record — one suite in 1,969 seconds and one in 1,178 (Claude)
+
 ## 3.16.26.14 - 2026-11-15
 
 - guard: the leak run starts a test module through its package, as the suite does (Claude)
