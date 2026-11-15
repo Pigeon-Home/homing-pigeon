@@ -232,8 +232,14 @@ class CoreListTest(unittest.TestCase):
         # the landing, by 30 lines more of
         # runner/guard/macos_confine.py (the hosted run's
         # two answers).
-        self.assertEqual(69310, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(62819, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # And when the profile came to name the services
+        # of the session a job may look up, by 161 lines
+        # of runner/guard/macos_confine.py, 1 of
+        # runner/ops/install.py and 1 of
+        # runner/ops/remediation_ops.py (the session's
+        # services).
+        self.assertEqual(69473, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(62974, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

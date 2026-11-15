@@ -304,18 +304,21 @@ class SupportMatrixTest(unittest.TestCase):
 
     def test_the_macos_row_says_what_the_backend_does(self):
         # The row's words against the code they describe: the
-        # ceiling's default and its one setting, the launcher,
-        # the seed that asks, and the two things the profile
-        # leaves a job able to reach.
+        # ceiling's default and its setting, the launcher, the
+        # services of the session a job may look up, the seed
+        # that asks, and what the profile leaves a job able to
+        # reach.
         from runner.guard import macos_confine as MC
         flat = _flat()
         self.assertEqual(MC.DEFAULT_PROCESS_MEMORY_BYTES,
                          512 * 1024 * 1024)
         self.assertIn("512 MiB above the size a bare process "
                       "starts at on that Mac", flat)
-        self.assertEqual(MC.MACOS_KEYS, ("process_memory_bytes",))
-        self.assertIn(
-            "`security.confinement.macos.process_memory_bytes`", flat)
+        self.assertEqual(MC.MACOS_KEYS,
+                         ("process_memory_bytes", "mach_services"))
+        for key in MC.MACOS_KEYS:
+            self.assertIn("`security.confinement.macos.%s`" % key,
+                          flat)
         self.assertEqual(MC.SHELL_BIN, "/bin/sh")
         self.assertIn("launcher shim, the system shell", flat)
         self.assertIn("set soft and hard, so it is not the job's "
@@ -323,8 +326,21 @@ class SupportMatrixTest(unittest.TestCase):
         self.assertIn("frozen macOS binaries engage it", flat)
         self.assertIn("A fresh install asks the same probe on the "
                       "Mac it installs on", flat)
-        self.assertIn("the clipboard was read from inside a job",
-                      flat)
+        self.assertIn("of the session's services the user database "
+                      "alone", flat)
+        self.assertIn("the clipboard is refused to a job, to a read "
+                      "and to a write", flat)
+        self.assertNotIn("the clipboard was read from inside a job",
+                         flat)
+        self.assertNotIn("can reach the session's services", flat)
+        self.assertEqual(
+            [ln for ln in MC.build_profile("/work/j").splitlines()
+             if "mach" in ln],
+            ['(allow mach-lookup (global-name "com.apple.system.'
+             'opendirectoryd.libinfo") (global-name "com.apple.'
+             'system.opendirectoryd.membership"))'])
+        self.assertIn("a job can list the host's processes and read "
+                      "the hardware's properties", flat)
         self.assertIn("no ceiling on a job as a whole", flat)
 
     def test_the_macos_proof_workflow_is_the_one_named(self):

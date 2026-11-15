@@ -2666,9 +2666,10 @@ def macos_seed_probe(cfg):
     `problem` is None when the backend engages here under this
     config -- a trial process under the profile and the
     launcher shim read its staged file, wrote its work
-    directory, was refused a write and a read outside it, and
-    carried a data-size ceiling of its own -- and otherwise the
-    reason, in the backend's own words. `lines` are the posture
+    directory, was refused a write and a read outside it,
+    carried a data-size ceiling of its own and was refused the
+    clipboard -- and otherwise the reason, in the backend's
+    own words. `lines` are the posture
     report's lines for this host under this config. Empty when
     the backend does not engage.
 

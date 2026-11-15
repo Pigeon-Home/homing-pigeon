@@ -322,6 +322,22 @@ REGISTERED = {
         "to a runner that is not root runs as the ordinary user "
         "the macOS legs run as; as root the change succeeds and "
         "the root step's own test is the subject",
+    "no pasteboard answers this session: the control needs "
+    "one":
+        "test_macos_confine's live clipboard tests ask the "
+        "session's pasteboard outside a job first, and one that "
+        "is not answered there has nothing to compare a job's "
+        "refusal with; they run in the macos-confinement "
+        "workflow on both hosted Macs, whose ordinary-user step "
+        "fails when any of them is skipped",
+    "writes this session's clipboard: run in the "
+    "macos-confinement workflow":
+        "test_macos_confine's live tests that put a mark on the "
+        "clipboard run only where they are asked for by "
+        "HP_LIVE_CLIPBOARD=1, which the macos-confinement "
+        "workflow sets on both hosted Macs; on a Mac where a "
+        "person's clipboard is they are skipped, and the tests "
+        "that only ask the pasteboard still run",
     "the profile names POSIX real paths; Windows realpath "
     "yields a drive path and symlinks need a privilege":
         "test_macos_confine's sandbox-argv field tests name "

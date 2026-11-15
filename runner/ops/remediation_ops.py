@@ -736,8 +736,9 @@ def _confinement_spawn(cfg, base_dir, job_id, argv, cwd, env,
             or getattr(backend, "STATUS_CONFINEMENT", None) \
             or "macos: seatbelt_profile + no_network + spawn_resource_limits"
         # The detail says what this job's launch carried beyond
-        # the status string: the ceiling, and the job user where
-        # one was applied.
+        # the status string: the ceiling, the services the
+        # config names where it names any, and the job user
+        # where one was applied.
         notes = getattr(proc, "confinement_notes", None) or []
         _audit_mac("confined", status, "; ".join(notes))
 

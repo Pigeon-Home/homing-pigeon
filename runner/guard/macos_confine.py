@@ -28,6 +28,16 @@ own tool (/usr/bin/sandbox-exec). One seam uses this module:
   names no network allow rule at all -- with an
   explicit (deny network*) line beside the deny-by-default
   base, so a confined job has no network, loopback included.
+  Of the session's services it names two, the user
+  database's (SESSION_SERVICES), and lets a job look up
+  those and whatever the operator names under
+  security.confinement.macos.mach_services, and no other:
+  the pasteboard is refused, so a job reads and writes no
+  clipboard, and so are the window server, launch services,
+  and the keychain's and the network configuration's
+  daemons. No other Mach operation is allowed at all: a job
+  registers no service name and is handed no task or host
+  port.
   The memory ceiling is applied at spawn by a small launcher
   shim: sandbox-exec first runs the system shell (/bin/sh, in
   its privileged mode, which takes no function and no option
@@ -105,6 +115,10 @@ What this is NOT, stated plainly wherever it is recorded:
   not on the memory it touches, and it is each process's
   own: there is no ceiling on a job's processes taken
   together.
+- It does not hide the host's processes from a job, or the
+  machine's hardware properties, its serial number among
+  them: the profile's default denial does not reach either
+  (read on both hosted Macs).
 - sandbox-exec is a tool Apple has marked deprecated while
   still shipping it and still building App Sandbox on the
   same profile language. The startup probe, not an
@@ -144,6 +158,7 @@ spawn consult the platform.
 """
 import os
 import posixpath
+import re
 import shutil
 import subprocess
 import sys
@@ -423,7 +438,70 @@ def _with_canonical_twins(paths):
     return out
 
 
-def build_profile(workdir, interpreter=None, read_paths=()):
+# The services of the session a job may look up, by the names
+# launchd knows them by: the user database, which is how a
+# process learns who a user is and which groups it is in
+# (id, ls -l, and getpwuid in every language runtime). Read
+# on the two hosted Macs on 2026-11-15 (the macos-confinement
+# run 43761537586): with no service named, the programs a job
+# is likely to be all ran, and the ones that ask who a user
+# is got a number for a name or stopped; with the user
+# database named, every one behaved as it does with every
+# service open. The database also answers to an older third
+# name, which no program asked for: two are named. Every
+# other service is refused: the pasteboard, the window
+# server, launch services, the keychain's and the network
+# configuration's daemons among them.
+SESSION_SERVICES = (
+    "com.apple.system.opendirectoryd.libinfo",
+    "com.apple.system.opendirectoryd.membership",
+)
+# The pasteboard's name. The probe's trial must be refused
+# the clipboard, unless the operator has named this service.
+PASTEBOARD_SERVICE = "com.apple.pasteboard.1"
+PASTEBOARD_READER = "/usr/bin/pbpaste"
+# How many services an operator may name.
+MAX_MACH_SERVICES = 64
+# A service name as launchd takes one: letters, digits, dots,
+# underscores, hyphens and the at sign, starting with a
+# letter or a digit. Nothing a profile's syntax could read
+# as its own.
+_SERVICE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._@-]{0,254}\Z")
+
+
+def validate_service_name(name):
+    """Raise RuntimeError unless `name` is a plain service name."""
+    if not isinstance(name, str) or not _SERVICE_NAME.match(name):
+        raise RuntimeError(
+            "a service name must be 1 to 255 letters, digits, "
+            "dots, underscores, hyphens or at signs, starting "
+            "with a letter or a digit (got %r)" % (name,))
+    return name
+
+
+def session_services(extra=()):
+    """The services a profile lets a job look up: the
+    backend's own, then the operator's, each once and each
+    validated. Raises RuntimeError on a name that is not one,
+    and on more than MAX_MACH_SERVICES of the operator's."""
+    if isinstance(extra, (str, bytes)) \
+            or not isinstance(extra, (list, tuple)):
+        raise RuntimeError("the operator's services must be a list "
+                           "of service names")
+    if len(extra) > MAX_MACH_SERVICES:
+        raise RuntimeError(
+            "at most %d services may be named (got %d)"
+            % (MAX_MACH_SERVICES, len(extra)))
+    names = list(SESSION_SERVICES)
+    for name in extra:
+        validate_service_name(name)
+        if name not in names:
+            names.append(name)
+    return tuple(names)
+
+
+def build_profile(workdir, interpreter=None, read_paths=(),
+                  mach_services=()):
     """The Seatbelt profile text for one job, deterministically.
 
     Fields, one by one:
@@ -433,10 +511,17 @@ def build_profile(workdir, interpreter=None, read_paths=()):
       path); its install prefix joins the readable trees.
     - read_paths: extra trees the job may read (operator-named
       input trees), each validated the same way.
+    - mach_services: services of the session a job may look
+      up beyond the backend's own (operator-named), each a
+      plain service name.
 
-    The shape never varies: deny-by-default; process, sysctl,
-    mach and IPC services a job interpreter needs to start and
-    run; reads (with execution mapping) for the system trees,
+    The shape never varies: deny-by-default; the process,
+    sysctl and IPC operations a job interpreter needs to
+    start and run; a lookup of the session's services the
+    profile names (SESSION_SERVICES, then the operator's) and
+    of no other -- and no other Mach operation at all: no
+    name registered, no task or host port asked for; reads
+    (with execution mapping) for the system trees,
     the interpreter prefix and the extra read paths; the root
     directory's own listing (file-read-data on the literal
     "/", never a subpath grant -- a process reads that
@@ -462,6 +547,8 @@ def build_profile(workdir, interpreter=None, read_paths=()):
     that expresses them.
     """
     _validate_profile_path(workdir, "workdir")
+    lookups = " ".join("(global-name %s)" % _sb_quote(name)
+                       for name in session_services(mach_services))
     reads = list(SYSTEM_READ_PATHS)
     if interpreter is not None:
         reads.extend(interpreter_read_paths(interpreter))
@@ -481,7 +568,7 @@ def build_profile(workdir, interpreter=None, read_paths=()):
         "(deny default)",
         "(allow process*)",
         "(allow sysctl-read)",
-        "(allow mach*)",
+        "(allow mach-lookup %s)" % lookups,
         "(allow ipc*)",
         "(allow signal (target self))",
         "(allow pseudo-tty)",
@@ -841,7 +928,7 @@ def _profile_realpath(path):
 
 def build_sandbox_argv(argv, cwd=None, env=None,
                        memory_bytes=DEFAULT_PROCESS_MEMORY_BYTES,
-                       read_paths=()):
+                       read_paths=(), mach_services=()):
     """(the full sandbox-exec argv, the profile text) for a job.
 
     argv is the job's command in host paths; cwd is its work
@@ -869,7 +956,8 @@ def build_sandbox_argv(argv, cwd=None, env=None,
         cwd = os.getcwd()
     profile = build_profile(_profile_realpath(cwd),
                             interpreter=argv[0] if argv else None,
-                            read_paths=read_paths)
+                            read_paths=read_paths,
+                            mach_services=mach_services)
     shim = build_shim_argv(argv, memory_bytes=memory_bytes)
     return [SANDBOX_EXEC_BIN, "-p", profile, *shim], profile
 
@@ -879,7 +967,7 @@ def build_sandbox_argv(argv, cwd=None, env=None,
 # ----------------------------------------------------------------
 
 # The backend's own settings, under security.confinement.macos.
-MACOS_KEYS = ("process_memory_bytes",)
+MACOS_KEYS = ("process_memory_bytes", "mach_services")
 
 
 def validate_macos_block(block):
@@ -897,15 +985,21 @@ def validate_macos_block(block):
                 "config error: security.confinement.macos.%s is "
                 "not a known setting (known: %s)"
                 % (key, ", ".join(MACOS_KEYS)))
-    for key in MACOS_KEYS:
-        if key not in block:
-            continue
-        value = block[key]
+    if "process_memory_bytes" in block:
+        value = block["process_memory_bytes"]
         if isinstance(value, bool) or not isinstance(value, int) \
                 or value < 1:
             raise RuntimeError(
-                "config error: security.confinement.macos.%s must "
-                "be a positive integer (got %r)" % (key, value))
+                "config error: security.confinement.macos."
+                "process_memory_bytes must be a positive integer "
+                "(got %r)" % (value,))
+    if "mach_services" in block:
+        try:
+            session_services(block["mach_services"])
+        except RuntimeError as e:
+            raise RuntimeError(
+                "config error: security.confinement.macos."
+                "mach_services: %s" % e)
     return True
 
 
@@ -922,9 +1016,12 @@ def confinement_settings(cfg):
     conf = conf if isinstance(conf, dict) else {}
     block = conf.get("macos", {})
     validate_macos_block(block)
+    extra = session_services(block.get("mach_services", ()))
     return {
         "process_memory_bytes": block.get(
             "process_memory_bytes", DEFAULT_PROCESS_MEMORY_BYTES),
+        # The operator's own, in the order named, each once.
+        "mach_services": extra[len(SESSION_SERVICES):],
     }
 
 
@@ -978,6 +1075,26 @@ def memory_line(memory_bytes, limit_kib=None, job_is_root=False):
             % (human_size(want), held))
 
 
+def services_line(mach_services=()):
+    """The one sentence that says which of the session's
+    services a job may look up, and where that leaves the
+    clipboard: refused with the backend's own list; with an
+    operator's, a matter of whether the pasteboard is on it
+    -- the one service the probe's trial asks by name."""
+    extra = session_services(mach_services)[len(SESSION_SERVICES):]
+    if not extra:
+        return ("a job may ask the user database who a user is, "
+                "and no other of the session's services: the "
+                "clipboard is refused")
+    return ("a job may ask the user database who a user is, and "
+            "the services this config names: %s (security."
+            "confinement.macos.mach_services); the pasteboard is "
+            "%s" % (", ".join(extra),
+                    "among them, so the clipboard is not refused"
+                    if PASTEBOARD_SERVICE in extra
+                    else "not among them"))
+
+
 def _runner_is_root():
     geteuid = getattr(os, "geteuid", None)
     return geteuid is not None and geteuid() == 0
@@ -1015,7 +1132,8 @@ def posture_lines(cfg=None, probe=None, facts=None, root=None):
         return [("WARN", "macOS backend cannot engage: %s%s"
                  % (problem, refuse))]
     if facts is None:
-        facts = trial_facts(st["process_memory_bytes"])
+        facts = trial_facts(st["process_memory_bytes"],
+                            st["mach_services"])
     if root is None:
         root = _runner_is_root()
     user = _engaged_job_user(cfg)
@@ -1024,6 +1142,7 @@ def posture_lines(cfg=None, probe=None, facts=None, root=None):
     lines.append(("OK", memory_line(st["process_memory_bytes"],
                                     facts.get("limit_kib"),
                                     job_is_root)))
+    lines.append(("OK", services_line(st["mach_services"])))
     if user is not None:
         lines.append((
             "OK", "a job is started as %s at the spawn door "
@@ -1049,9 +1168,12 @@ _TRIAL_OUTSIDE = "hp-confinement-outside"
 # confined process reads the staged data file it is handed
 # and writes its output beside it, then tries the two things
 # the profile is there to refuse -- a write and a read
-# outside the work directory -- and says what data-size limit
-# it carries. Shell text, so the trial is the same whether
-# the runner is a source tree's or a frozen binary.
+# outside the work directory -- says what data-size limit it
+# carries, and asks the pasteboard for the clipboard, which
+# it reads nothing of and whose answer is the fact: the
+# system's own reader succeeds only where the service can be
+# looked up. Shell text, so the trial is the same whether the
+# runner is a source tree's or a frozen binary.
 _TRIAL_PROGRAM = (
     'data=$(/bin/cat "$1") || exit 1\n'
     'case $data in\n'
@@ -1067,6 +1189,10 @@ _TRIAL_PROGRAM = (
     '  *hp-confinement-outside*) echo TRIAL-READ-OUTSIDE ;;\n'
     'esac\n'
     'echo "TRIAL-LIMIT $(ulimit -S -d) $(ulimit -H -d)"\n'
+    'if [ -x ' + PASTEBOARD_READER + ' ] && ' + PASTEBOARD_READER
+    + ' > /dev/null 2>&1; then\n'
+    '  echo TRIAL-CLIPBOARD-OPEN\n'
+    'fi\n'
 )
 
 
@@ -1085,7 +1211,8 @@ def _trial_limit(text):
     return None
 
 
-def confinement_trial_problem(spawn, timeout=60, facts=None):
+def confinement_trial_problem(spawn, timeout=60, facts=None,
+                              clipboard_closed=True):
     """None when a confined process can work here, else why not.
 
     `spawn` is a confined-spawn callable with the backend's
@@ -1098,7 +1225,10 @@ def confinement_trial_problem(spawn, timeout=60, facts=None):
     and names the stage that failed: the spawn itself, the
     staged read, the work-directory write, a write or a read
     outside the work directory that the profile let through,
-    or a job that carries no data-size ceiling of its own.
+    a job that carries no data-size ceiling of its own, or a
+    job the pasteboard answered -- unless `clipboard_closed`
+    is False, which is a config that names the pasteboard
+    among its services.
     The temp tree is removed either way. A host whose confined
     processes cannot read what is staged for them, or are not
     confined, answers a problem here, at startup, instead of
@@ -1109,7 +1239,8 @@ def confinement_trial_problem(spawn, timeout=60, facts=None):
     it to spawn_confined_process and caches the verdict.
     `facts`, when a dict is handed in, receives what a passing
     trial read: `limit_kib`, the data-size limit the confined
-    process carried.
+    process carried, and `clipboard_open`, whether the
+    pasteboard answered it.
     """
     tmp = None
     try:
@@ -1176,12 +1307,18 @@ def confinement_trial_problem(spawn, timeout=60, facts=None):
                         "ceiling of its own (soft %s, hard %s): "
                         "the launcher shim did not hold"
                         % (limit or ("unread", "unread")))
+            clipboard_open = "TRIAL-CLIPBOARD-OPEN" in out_text
+            if clipboard_open and clipboard_closed:
+                return ("a confined process was answered by the "
+                        "pasteboard, a service the profile does "
+                        "not name: the profile did not hold")
             if proc.returncode not in (0, None):
                 return ("the confined trial process exited %s "
                         "after reading and writing (%s)"
                         % (proc.returncode, _trial_tail(err_text)))
             if facts is not None:
                 facts["limit_kib"] = int(limit[0])
+                facts["clipboard_open"] = clipboard_open
             return None
         finally:
             try:
@@ -1195,18 +1332,21 @@ def confinement_trial_problem(spawn, timeout=60, facts=None):
             shutil.rmtree(tmp, ignore_errors=True)
 
 
-# What each passing trial read, by the ceiling it was run
-# under: the limit a job carries on this host. The posture
-# report words the memory ceiling from it.
+# What each passing trial read, by the ceiling and the
+# services it was run under: the limit a job carries on this
+# host. The posture report words the memory ceiling from it.
 _trial_lock = threading.Lock()
 _trial_verdicts = {}
 
 
-def trial_facts(memory_bytes=DEFAULT_PROCESS_MEMORY_BYTES):
-    """What the trial run under `memory_bytes` read, or {}
-    when none has passed in this process."""
+def trial_facts(memory_bytes=DEFAULT_PROCESS_MEMORY_BYTES,
+                mach_services=()):
+    """What the trial run under `memory_bytes` and the
+    operator's `mach_services` read, or {} when none has
+    passed in this process."""
     with _trial_lock:
-        verdict = _trial_verdicts.get(memory_bytes)
+        verdict = _trial_verdicts.get(
+            (memory_bytes, tuple(mach_services)))
     return dict(verdict[1]) if verdict is not None \
         and verdict[0] is None else {}
 
@@ -1294,29 +1434,37 @@ else:
         controls (the generated profile, the launcher shim, the
         ceiling this config names) must read its staged file,
         write its work directory, be refused a write and a
-        read outside it, and carry a data-size ceiling of its
-        own, through confinement_trial_problem. The verdict is
-        kept for the life of the process, one per ceiling --
-        the per-job gate consults this probe, and the trial's
-        cost (one confined spawn) is paid once per runner
-        start, not once per job.
+        read outside it, carry a data-size ceiling of its own
+        and be refused the clipboard, through
+        confinement_trial_problem. The verdict is kept for
+        the life of the process, one per ceiling and list of
+        services -- the per-job gate consults this probe, and
+        the trial's cost (one confined spawn) is paid once
+        per runner start, not once per job.
         """
         problem = macos_startup_problem(cfg, timeout=timeout)
         if problem is not None:
             return problem
-        memory = confinement_settings(cfg)["process_memory_bytes"]
+        st = confinement_settings(cfg)
+        memory, services = st["process_memory_bytes"], \
+            st["mach_services"]
 
         def _spawn(argv, cwd=None, env=None):
             return spawn_confined_process(
-                argv, cwd=cwd, env=env, memory_bytes=memory)
+                argv, cwd=cwd, env=env, memory_bytes=memory,
+                mach_services=services)
 
+        key = (memory, services)
         with _trial_lock:
-            if memory not in _trial_verdicts:
+            if key not in _trial_verdicts:
                 facts = {}
-                _trial_verdicts[memory] = (
-                    confinement_trial_problem(_spawn, facts=facts),
+                _trial_verdicts[key] = (
+                    confinement_trial_problem(
+                        _spawn, facts=facts,
+                        clipboard_closed=PASTEBOARD_SERVICE
+                        not in services),
                     facts)
-            return _trial_verdicts[memory][0]
+            return _trial_verdicts[key][0]
 
     class MacOSConfinedProcess:
         """The Popen subset exec.py drives, for a confined spawn.
@@ -1365,7 +1513,8 @@ else:
             self._closed = True
 
     def spawn_confined_process(argv, cwd=None, env=None, user=None,
-                               memory_bytes=None, cfg=None):
+                               memory_bytes=None, cfg=None,
+                               mach_services=None):
         """Create a job process under every confinement control.
 
         argv is the full command (interpreter, script, args) in
@@ -1375,7 +1524,10 @@ else:
         applies the generated profile to the launcher shim,
         which sets the data-size ceiling -- `memory_bytes`, or
         the one `cfg` names, or the default -- before it execs
-        the job's command; `user`, when the job_user seam hands
+        the job's command; the profile names the services of
+        the session the job may look up -- the backend's own,
+        and `mach_services`, or the ones `cfg` names; `user`,
+        when the job_user seam hands
         one over, is applied to the whole chain between the
         fork and the exec of sandbox-exec. A
         MacOSConfinedProcess is returned whose
@@ -1386,17 +1538,26 @@ else:
         problem = _basic_problem()
         if problem is not None:
             raise RuntimeError(problem)
-        if memory_bytes is None:
-            memory_bytes = confinement_settings(cfg)[
-                "process_memory_bytes"]
+        if memory_bytes is None or mach_services is None:
+            st = confinement_settings(cfg)
+            if memory_bytes is None:
+                memory_bytes = st["process_memory_bytes"]
+            if mach_services is None:
+                mach_services = st["mach_services"]
         if cwd is None:
             cwd = os.getcwd()
         sandbox_argv, _profile = build_sandbox_argv(
-            argv, cwd=cwd, memory_bytes=memory_bytes)
+            argv, cwd=cwd, memory_bytes=memory_bytes,
+            mach_services=mach_services)
         drop = job_user_drop(user)
         notes = ["memory ceiling %s above a bare process's address "
                  "map, soft and hard"
                  % human_size(ceiling_kib(memory_bytes))]
+        named = session_services(
+            mach_services)[len(SESSION_SERVICES):]
+        if named:
+            notes.append("services the config names: %s"
+                         % ", ".join(named))
         if drop:
             notes.append("job user %s applied at the spawn door"
                          % user)

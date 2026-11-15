@@ -647,21 +647,26 @@ a runner run as root with no job user named. The audit
 record names
 `macos: seatbelt_profile + no_network + spawn_resource_limits`.
 It needs no root, and a release's macOS binaries engage it
-as a runner started from source does. It does not keep a
-job from the session's services — the clipboard can be read
-from inside a job — and it holds no ceiling on a job as a
-whole. `extra_ro_binds`, `work_mount` and `extra_flags` name
+as a runner started from source does. Of the session's
+services a job may ask the user database who a user is, and
+no other: the clipboard is refused, to a read and to a
+write. It holds no ceiling on a job as a whole.
+`extra_ro_binds`, `work_mount` and `extra_flags` name
 mounts and bwrap arguments and are not read on macOS. Its
-one setting is a block of its own, checked on every
-platform:
+settings are a block of its own, checked on every platform:
 
 ```json
 "confinement": {
   "macos": {
-    "process_memory_bytes": 536870912
+    "process_memory_bytes": 536870912,
+    "mach_services": []
   }
 }
 ```
+
+`mach_services` names services of the session a job may
+look up beyond the user database. A config that leaves it
+out names none.
 
 A fresh macOS install asks this backend's probe before it
 writes its config: the mode stays at `enforce` where the

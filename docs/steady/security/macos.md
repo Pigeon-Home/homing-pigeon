@@ -25,7 +25,9 @@ prefix, lets it read and write only inside its own work
 directory, and names no network allow rule at all — the
 deny-by-default base is the network denial, and the profile
 states a `(deny network*)` line beside it so the record of
-the profile says what it does. `sandbox-exec` wraps the
+the profile says what it does. Of your session's services
+it lets the job ask the user database who a user is, and no
+other. `sandbox-exec` wraps the
 launcher, so the profile is in force before the launcher's
 first line runs, and the job never runs a line unconfined.
 The profile is generated per job and passed to `sandbox-exec`
@@ -85,16 +87,58 @@ its first line of job code in the backend's first live run —
 the fix for that failure, and its suppositions and
 conclusions, stand at the end of this page.
 
+### The session's services
+
+A Mac's programs reach its services by name: the pasteboard,
+the window server, launch services, the keychain, the
+network configuration, the user database. A job is answered
+by one of them, the user database, which is how a program
+learns who a user is and which groups it is in. Every other
+is refused.
+
+So a job cannot read your clipboard, and cannot put anything
+on it. It cannot list your keychains, read the network
+configuration or list the disks, and it cannot register a
+service name of its own for another program to find.
+
+Most jobs need nothing more. On the two hosted Macs,
+thirty-six programs a job is likely to be — the shell's
+tools, Python, Perl, Ruby, Node, `curl`, `openssl`, `zip`,
+`tar` and others — behaved under this list as they do with
+every service open.
+
+If a job of yours does need a service, name it:
+
+```json
+"confinement": {
+  "macos": {
+    "mach_services": ["com.apple.pasteboard.1"]
+  }
+}
+```
+
+That example gives the clipboard back to every job. A named
+service answers a job as it answers any program of your
+session, so name one only for jobs you would trust with it.
+Up to 64 can be named; a name is letters, digits, dots,
+underscores, hyphens and at signs. The posture report
+(`--posture`) lists what the config names and says whether
+the pasteboard is among them, and each job's audit record
+names them too.
+
+The system log says which service a refused program asked
+for. As an administrator:
+
+```
+sudo log show --last 5m --style compact --predicate 'eventMessage CONTAINS "deny" AND eventMessage CONTAINS "mach-lookup"'
+```
+
 ### What this does not provide, plainly
 
-- A job can reach the session's services. The profile lets a
-  job talk to the system's services, and the clipboard is one
-  of them: text copied outside a job was read from inside one
-  on both hosted Macs. A job has no network to send it over;
-  its output goes back to whoever submitted it. Do not run a
-  runner under `enforce` in a session whose clipboard holds
-  what a submitter must not see.
 - A job can list the host's processes. It cannot signal them.
+- A job can read the hardware's properties, the Mac's serial
+  number among them. They are not one of the session's
+  services, and the profile does not refuse them.
 - A job can learn that a path exists. It cannot read it.
 - App Sandbox is not used. App Sandbox is an entitlement a
   bundled application opts itself into; this runner starts
@@ -130,8 +174,9 @@ At `enforce` the startup gate probes the backend — the tools
 present, a generated profile that parses, and a trial under
 the full controls. The trial reads a staged file inside its
 work directory and writes its output there, is refused a
-write and a read beside that directory, and says it carries
-a ceiling of its own. The gate refuses to start when the
+write and a read beside that directory, says it carries a
+ceiling of its own, and is refused the clipboard — unless
+your config names the pasteboard. The gate refuses to start when the
 probe fails, naming why. A job whose own confined spawn
 cannot be created is refused at job time the same way; there
 is no path on which a job runs unconfined under `enforce`.
@@ -159,6 +204,7 @@ is installing on, and so does the setup wizard.
   platform: security.modes.confinement left at enforce in <config> (the macOS backend's probe, asked on this machine as this user, passed; the startup gate asks it again at every start)
   platform: macOS backend: macos: seatbelt_profile + no_network + spawn_resource_limits
   platform: a job process's address map may grow 512 MiB past the 391.7 GiB a bare process starts at here; the ceiling is not the job's to raise (ulimit in the launcher shim, soft and hard)
+  platform: a job may ask the user database who a user is, and no other of the session's services: the clipboard is refused
   ```
 
 - Where it does not pass, the mode is stated at `audit` in
@@ -182,9 +228,11 @@ record of the backend as it was first built, from
 2026-11-11, kept as they were written: its suppositions, the
 live verdicts against them, and the five rounds of fixes to
 its memory limit. The launcher they describe was the
-runner's own interpreter, and the limit it set was the first
-doubling of 512 MiB the kernel accepted; both changed on
-2026-11-15, and the design page above says to what and why.
+runner's own interpreter, the limit it set was the first
+doubling of 512 MiB the kernel accepted, and its profile let
+a job look up any of the session's services; all three
+changed on 2026-11-15, and the design page above says to
+what and why.
 
 ## Supposition, recorded before the build
 

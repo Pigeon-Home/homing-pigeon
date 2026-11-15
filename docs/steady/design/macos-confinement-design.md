@@ -10,6 +10,12 @@ differently from what this text supposed, the difference is
 written in "Suppositions and conclusions" at the end, in the
 open.
 
+One rule of the profile was specified after the rest, the
+same day and at the owner's direction: which of the
+session's services a job may look up. It is "The session's
+services" below, with its own measurements, suppositions
+and conclusions.
+
 Confinement is the software suite's own, platform by
 platform. The protocol documents do not specify it — a
 submitter must not assume a sandbox on the far side — so
@@ -70,6 +76,9 @@ was built (the `macos-confinement` workflow's first run,
    directory refused, and a ceiling in force.
 5. What a job can still reach is written down, with the run
    that read it.
+6. A job is not answered by the session's services. It may
+   ask the user database who a user is, and nothing else
+   there: the clipboard is not a job's to read or to write.
 
 ## The controls
 
@@ -81,18 +90,19 @@ macos: seatbelt_profile + no_network + spawn_resource_limits
 
 | Control | What it is | Needs |
 |---|---|---|
-| `seatbelt_profile` | A profile made for the job and applied by `sandbox-exec` before the job's first instruction: deny by default; the system trees and the job interpreter's own readable; the work directory the one tree that takes a write | `/usr/bin/sandbox-exec` |
+| `seatbelt_profile` | A profile made for the job and applied by `sandbox-exec` before the job's first instruction: deny by default; the system trees and the job interpreter's own readable; the work directory the one tree that takes a write; the user database the one service of the session that answers | `/usr/bin/sandbox-exec` |
 | `no_network` | The profile names no network rule and states the denial: no socket leaves the job, loopback included | the profile |
 | `spawn_resource_limits` | A ceiling on each job process's address map, set soft and hard by the launcher before the job's command starts | `/bin/sh` |
 
 The record's detail says what one job's launch carried
-beyond that: the ceiling, and the job user where one was
-applied.
+beyond that: the ceiling, the services the config names
+where it names any, and the job user where one was applied.
 
 ## The profile
 
-The profile is the first backend's, unchanged by this
-design. It starts from deny-by-default and allows:
+The profile is the first backend's in every rule but one,
+the rule on the session's services. It starts from
+deny-by-default and allows:
 
 - reading and executing the system trees (`/System`, `/usr`,
   `/Library`, `/bin`, `/sbin`, `/opt`, `/etc` and the
@@ -105,11 +115,139 @@ design. It starts from deny-by-default and allows:
   a path exists, its size and times, never its contents) on
   any path, which a process needs to resolve the paths it
   is allowed;
-- starting processes, reading system settings, and talking
-  to the system's services over Mach and POSIX IPC.
+- starting processes, reading system settings, and POSIX
+  IPC;
+- a lookup of the services of the session the profile
+  names, and of no other.
 
-It denies every network operation. Two things it gives by
-that last allowance are named under "What it does not do".
+It denies every network operation. What the allowance for
+processes leaves a job able to see is named under "What it
+does not do".
+
+## The session's services
+
+A Mac's programs reach its services by name, through
+launchd: the pasteboard, the window server, launch
+services, the keychain's and the network configuration's
+daemons, and the user database among them. The first
+backend's profile let a job look up any of them, and
+register a name of its own. What that gave a job was read
+from inside one on both hosted Macs on 2026-11-15 (the
+`macos-confinement` run 43761537586), under the profile as
+it stood and under the same profile with only the user
+database named. The two Macs answered alike.
+
+| Asked from inside a job | Every service open | The user database alone |
+|---|---|---|
+| A mark put on the clipboard outside the job | Read | Not read |
+| A write to the clipboard | Landed | Did not land |
+| A lookup of the pasteboard | Answered | Refused |
+| A name registered in the session | Taken | Refused |
+| The network configuration (`scutil --dns`) | Answered | Refused |
+| The list of keychains | Answered | Refused |
+| The list of disks | Answered | Refused |
+| An application opened, a script opened | Refused | Refused |
+| A name resolved | Not resolved | Not resolved |
+| The host's process list | Listed | Listed |
+| The hardware's serial number | Read | Read |
+
+The profile now names the services a job may look up:
+
+```
+(allow mach-lookup (global-name "com.apple.system.opendirectoryd.libinfo") (global-name "com.apple.system.opendirectoryd.membership"))
+```
+
+Those two are the user database: how a process learns who a
+user is and which groups it is in. Every other service is
+refused, and so is every other Mach operation: a job
+registers no name, and asks for no task port and no host
+port. A service is named whole — no pattern and no prefix —
+so what a job may look up is a list that can be read.
+
+### What a job's programs ask for
+
+The same run read what the list costs. Thirty-six programs
+a job is likely to be were run under the profile with every
+service open, with none, and with lists between: the
+shell's own tools, `id`, `whoami`, Python, Perl, Ruby,
+Node, `git`, `cc`, `make`, `curl`, `openssl`, `sqlite3`,
+`zip`, `tar`, `osascript`, and the system's reporting
+tools.
+
+| Services named | Programs that behaved as with every service open |
+|---|---|
+| None | 28 of 36 |
+| The user database: its two names, and an older third | 36 of 36 |
+| That, and the notification centre | 36 of 36 |
+| Those, and the preferences daemons | 36 of 36 |
+| Those, and the log daemons | 36 of 36 |
+| Those, and the directory helper and the trust daemons | 36 of 36 |
+
+With none named, the eight that differed are the ones that
+ask who a user is. `id -un`, `whoami` and `ls -l` printed
+the number where the name goes; the lookup raised an error
+in Python, Ruby and Node and returned nothing in Perl; and
+`defaults` could not read a value out of a system file.
+With the user database named, all eight behaved as before.
+
+The programs did ask for more, and the system's log holds
+each refusal: the log daemon, the notification centre, the
+directory helper, the analytics daemon, the trust agent and
+the disk arbitration daemon, and for `osascript`, `curl`
+and `java`, launch services, the network configuration's
+daemon and the core services daemon. No program of the
+thirty-six behaved differently for being refused them, so
+none of them is named.
+
+Seven of the thirty-six do not work under the profile at
+all, with every service open as with the user database
+alone, and for reasons that are not services. `git`, in
+both its rows, reads a configuration file in the user's
+home, which the profile does not let it read. `cc`, `make`
+and `xcrun` look for a toolchain under `/Applications`, a
+tree the profile does not name. `java`'s launcher finds no
+runtime, and the `sqlite3` first on those Macs' path is one
+kept under the user's home.
+
+The older third name was never asked for by any of them, so
+the profile names two; that the two are enough is the
+build's own supposition, below.
+
+### A service the operator names
+
+```json
+"confinement": {
+  "macos": {
+    "mach_services": ["com.apple.pasteboard.1"]
+  }
+}
+```
+
+Where a job's work needs a service, the operator names it.
+The names are added to the backend's two; nothing takes
+those away. A name is one to 255 letters, digits, dots,
+underscores, hyphens and at signs, starting with a letter
+or a digit — what launchd takes, and nothing a profile's
+syntax could read as its own. At most 64 are named. A name
+that is not one, or a list that is not a list, is a config
+error and a refusal to start.
+
+The audit record's detail names the services a job's launch
+carried by the operator's word, and the posture report
+names them and says whether the pasteboard is among them.
+
+### What the probe asks
+
+The trial asks the pasteboard for the clipboard, with the
+system's own reader. It throws away whatever the reader
+would print — the trial takes the answer, never the
+clipboard — and a start that passes has seen the reader
+refused. Where the config names the pasteboard, the answer
+is recorded and is not a refusal: that config says a job
+may read the clipboard, and the posture report repeats it.
+A Mac with no reader, or a session with no pasteboard,
+answers nothing: there the question proves nothing, and
+there is no clipboard for a job to read.
 
 ## The launcher
 
@@ -232,12 +370,16 @@ the job. A user the Mac does not have is a refusal.
 ```json
 "confinement": {
   "macos": {
-    "process_memory_bytes": 536870912
+    "process_memory_bytes": 536870912,
+    "mach_services": []
   }
 }
 ```
 
-One setting: the ceiling, in bytes. A positive integer; a
+The ceiling, in bytes: a positive integer. And the services
+of the session a job may look up beyond the user database,
+which "The session's services" specifies; a config that
+leaves the list out names none. A
 setting the backend does not know is an error, because a
 ceiling an operator misspelled is a ceiling that is not
 there. The block is checked on every platform, so a config
@@ -252,7 +394,7 @@ reads none of them.
 
 At `enforce` the startup gate asks the backend, and a job's
 own gate asks it again; the verdict is kept for the life of
-the process, one per ceiling.
+the process, one per ceiling and list of services.
 
 1. The config's `macos` block reads.
 2. `sandbox-exec` and `/bin/sh` are there.
@@ -263,7 +405,8 @@ the process, one per ceiling.
    file beside that directory, outside it. It must read its
    staged file, write its work directory, be refused a
    write beside the directory and a read of the file there,
-   and say it carries one data-size limit, soft and hard.
+   say it carries one data-size limit, soft and hard, and
+   be refused the clipboard.
 
 Each stage that fails is named. A spawn that confines
 nothing does not pass: the trial's own program, run with no
@@ -272,8 +415,9 @@ by the file it leaves.
 
 The posture report asks the same probe — the trial needs no
 privilege and leaves nothing on the host — and says what a
-job carries here: the controls, and the ceiling with the
-floor it stands on. Where the runner is root and names no
+job carries here: the controls, the ceiling with the floor
+it stands on, and which of the session's services answer a
+job. Where the runner is root and names no
 job user, it says the ceiling is set and does not say it
 holds, and one line of advice names the remedy.
 
@@ -316,9 +460,11 @@ and a frozen installer. The `macos-confinement` workflow
 freezes both on each leg with the build workflow's own
 commands, read out of `build.yml`, and asks of them what a
 release's user meets: the runner starts at `enforce` and
-runs a job under it, and the installer, run from a staged
-copy of the archive into a home of its own, leaves
-`enforce` in the config it writes.
+runs a job under it, which is refused the clipboard — and
+is answered by it under a config that names the pasteboard
+— and the installer, run from a staged copy of the archive
+into a home of its own, leaves `enforce` in the config it
+writes.
 
 ## Beside the Linux sandbox and the FreeBSD jail
 
@@ -335,7 +481,7 @@ copy of the archive into a home of its own, leaves
 | Ceilings on the whole job | None | Processes and address space, where RACCT is enabled; the job user's processes on every host | None |
 | Cores a job runs on | Not limited | All but one of the runner's | Not limited |
 | Operator binds | Yes | Yes | No: the keys name mounts |
-| The session's services | Not reachable (no session) | Not reachable | Reachable: the clipboard was read from inside a job |
+| The session's services | Not reachable (no session) | Not reachable | The user database, and what the config names; the clipboard is refused |
 | Startup probe | Starts the sandbox once | Builds a jail and reads the boundary from inside | Runs a trial under the full controls and reads the boundary from inside |
 | A fresh install | `enforce`; the startup gate decides | `enforce` where the probe passes, with a job user made and named | `enforce` where the probe passes; `audit`, stated with the reason, where it does not |
 | A release's frozen binaries | Engage | None are built | Engage |
@@ -349,15 +495,16 @@ path layout, and the names in it.
 
 ## What it does not do
 
-- It does not keep a job from the session's services. The
-  profile lets a job look up any Mach service, and the
-  pasteboard is one: text put on the clipboard outside a
-  job was read from inside one on both hosted Macs. A job
-  has no network to send it over; its output goes back to
-  whoever submitted it.
 - It does not hide the host's processes. A job listed
   between 431 and 520 of them on one Mac and about 460 on
   the other. It cannot signal them.
+- It does not hide the hardware's properties. The I/O
+  registry is not one of the session's services, and a job
+  read from it that the Mac's serial number is there.
+- It does not vouch for a service the operator names. A
+  named service answers a job as it answers any program of
+  the session, and what it will do for one is its own
+  matter.
 - It does not hide that a path exists. Metadata is readable
   everywhere; contents are not.
 - It holds no ceiling on a job as a whole, on processor
@@ -388,6 +535,15 @@ in the whole suite's macOS job, and in the
 `macos-confinement` workflow on an Apple silicon Mac and an
 Intel Mac, as the ordinary user and as root, where the
 frozen binaries are asked as well.
+
+The session's services are asked by name from inside a job,
+and launchd's own answer is the evidence: it gives a caller
+whose sandbox does not let it ask one number, and a name
+that is merely not there another. The clipboard tests put a
+mark of their own on the session's clipboard and put back
+the text that was there, so they run where they are asked
+for — in the workflow — and are skipped on a Mac where a
+person's clipboard is.
 
 ## Suppositions and conclusions
 
@@ -502,6 +658,62 @@ frozen installer's own checks.
 13. Held. Every live point of the first backend passes
     under the shell launcher.
 
-The two reaches named under "What it does not do" were read
-again in both runs: a job listed the host's processes, and
-read from the clipboard a mark put there outside it.
+Two reaches the profile then left a job were read again in
+both runs: a job listed the host's processes, and read from
+the clipboard a mark put there outside it. The second is
+what "The session's services" closes.
+
+### The session's services: suppositions
+
+Recorded 2026-11-15, after the measuring run (43761537586)
+and before the first hosted run of the profile that names
+its services. Each is what both hosted Macs are expected to
+answer, as the ordinary user and as root, and each is
+judged by the `macos-confinement` workflow and by nothing
+else.
+
+14. A lookup of the pasteboard from inside a job is refused,
+    with the number launchd gives a caller whose sandbox
+    does not let it ask (1100). No other service the
+    profile does not name answers either: the window server,
+    launch services, the network configuration's daemon,
+    the security server, the preferences daemon, the
+    notification centre, the log daemon, the user
+    database's older name, and a name no service has.
+15. A job registers no name in the session: the same number.
+16. A mark put on the clipboard outside a job is not read
+    inside one, by the system's reader or by `osascript`,
+    and is still there afterwards; the same reader under
+    the same profile with every service open returns it. A
+    job's write to the clipboard does not land.
+17. The two names are the user database: `id -un` and a
+    Python lookup of the user and its group say inside a
+    job what they say outside it, and `id -Gn` names the
+    same groups. Under the same profile with no service
+    named, `id -un` prints the number.
+18. Each of the thirty-six programs behaves under the
+    profile as it does with every service open.
+19. The network configuration, the list of keychains and
+    the list of disks, each answered with every service
+    open, are not answered under the profile.
+20. The probe passes, and its trial was refused the
+    clipboard. The same trial through a profile that opens
+    every service is convicted by the pasteboard's answer:
+    with a mark on the clipboard, and with the clipboard
+    empty, where the reader ends 0 with nothing to print.
+21. A config that names the pasteboard is answered by it:
+    the lookup succeeds, the reader returns the mark, the
+    window server is still refused, the probe passes and
+    records the clipboard as open, and the posture report
+    and the audit detail name the service.
+22. As root the session's pasteboard answers outside a job
+    as it does for the ordinary user, so every clipboard
+    test runs there as well.
+23. Through the frozen runner, a job is refused the
+    clipboard under the config a release's user starts
+    with, and is answered under a config that names the
+    pasteboard; the posture report says the clipboard is
+    refused, and the audit detail names the service the
+    config named.
+24. The frozen installer prints, among what a job carries
+    on that Mac, that the clipboard is refused.

@@ -349,6 +349,147 @@ def _mc_prefix_link(mapping):
     return _real
 
 
+
+class SessionServicesTest(unittest.TestCase):
+    """The services of the session a profile lets a job look up."""
+
+    LIBINFO = "com.apple.system.opendirectoryd.libinfo"
+    MEMBERSHIP = "com.apple.system.opendirectoryd.membership"
+    PASTEBOARD = "com.apple.pasteboard.1"
+
+    @staticmethod
+    def _mach_lines(profile):
+        return [ln for ln in profile.splitlines() if "mach" in ln]
+
+    def test_the_backend_names_the_user_database_and_nothing_else(self):
+        # Read on both hosted Macs (the macos-confinement run
+        # 43761537586): with these two named, every program of
+        # the battery behaved as it does with every service
+        # open; with none, the ones that ask who a user is got
+        # a number for a name or stopped.
+        self.assertEqual(MC.SESSION_SERVICES,
+                         (self.LIBINFO, self.MEMBERSHIP))
+        self.assertEqual(MC.session_services(), MC.SESSION_SERVICES)
+        self.assertEqual(MC.PASTEBOARD_SERVICE, self.PASTEBOARD)
+        self.assertNotIn(MC.PASTEBOARD_SERVICE, MC.SESSION_SERVICES)
+
+    def test_the_profile_allows_a_lookup_of_those_and_no_other_mach_rule(self):
+        profile = MC.build_profile("/work/job1")
+        self.assertEqual(self._mach_lines(profile), [
+            '(allow mach-lookup (global-name "%s") (global-name "%s"))'
+            % (self.LIBINFO, self.MEMBERSHIP)])
+        # The rule that stood here let a job look up any
+        # service, register a name of its own and ask for a
+        # task port: the pasteboard answered it, and a name it
+        # registered was taken.
+        self.assertNotIn("(allow mach*)", profile)
+        self.assertNotIn("mach-register", profile)
+        self.assertNotIn("mach-priv", profile)
+        self.assertNotIn("pasteboard", profile)
+
+    def test_no_rule_names_a_service_by_pattern(self):
+        # A name, never a prefix or an expression: what a job
+        # may look up is a list that can be read.
+        profile = MC.build_profile(
+            "/work/job1", mach_services=[self.PASTEBOARD])
+        for word in ("global-name-regex", "global-name-prefix",
+                     "local-name", "xpc-service-name"):
+            self.assertNotIn(word, profile)
+        self.assertEqual(profile.count("(global-name "), 3)
+
+    def test_the_operator_s_services_follow_the_backend_s_own(self):
+        names = MC.session_services(["com.example.one",
+                                     self.PASTEBOARD])
+        self.assertEqual(names, (self.LIBINFO, self.MEMBERSHIP,
+                                 "com.example.one", self.PASTEBOARD))
+        profile = MC.build_profile("/work/job1",
+                                   mach_services=["com.example.one"])
+        self.assertEqual(self._mach_lines(profile), [
+            '(allow mach-lookup (global-name "%s") (global-name "%s") '
+            '(global-name "com.example.one"))'
+            % (self.LIBINFO, self.MEMBERSHIP)])
+
+    def test_a_service_is_named_once(self):
+        names = MC.session_services(
+            ["a.b", self.LIBINFO, "a.b", self.MEMBERSHIP])
+        self.assertEqual(names, (self.LIBINFO, self.MEMBERSHIP, "a.b"))
+
+    def test_names_launchd_takes_are_names_here(self):
+        for name in ("com.apple.pasteboard.1",
+                     "com.apple.distributed_notifications@Uv3",
+                     "com.example.my-service", "a", "0x", "A.b_c-d@e"):
+            self.assertEqual(MC.validate_service_name(name), name)
+
+    def test_what_a_profile_could_read_as_its_own_is_no_name(self):
+        for bad in ("", " ", "a b", 'a"b', "a(b", "a)b", "a\\b", "a;b",
+                    "a\nb", "a\x00b", "-a", ".a", "@a", "_a", "a*",
+                    "a/b", "a'b", "a#b", "x" * 256, None, 1, ["a"],
+                    b"a.b"):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.validate_service_name(bad)
+        self.assertEqual(MC.validate_service_name("x" * 255), "x" * 255)
+
+    def test_a_name_cannot_carry_a_rule_into_the_profile(self):
+        for bad in ('x") (allow default) (global-name "y',
+                    'x"))\n(allow network*)\n(allow mach-lookup '
+                    '(global-name "y'):
+            with self.assertRaises(RuntimeError):
+                MC.build_profile("/work/job1", mach_services=[bad])
+
+    def test_bookended_symbols_never_reach_the_profile(self):
+        ran = 0
+        for ch in string.punctuation + " \t\x00\r\n":
+            for value in (ch + "com.example.s", "com.example.s" + ch,
+                          "com.exa" + ch + "mple.s"):
+                ran += 1
+                try:
+                    profile = MC.build_profile(
+                        "/work/job1", mach_services=[value])
+                except RuntimeError:
+                    self.assertFalse(
+                        ch in "._@-" and not value.startswith(ch),
+                        repr(value))
+                    continue
+                self.assertIn(ch, "._@-")
+                self.assertIn('(global-name "%s")' % value, profile)
+                self.assertEqual(profile.count("(allow "),
+                                 MC.build_profile("/work/job1")
+                                 .count("(allow "))
+        self.assertGreater(ran, 100)
+
+    def test_the_operator_s_list_must_be_a_list(self):
+        for bad in ("com.example.one", b"x", None, 1, {"a": 1},
+                    {"a.b"}):
+            with self.assertRaises(RuntimeError, msg=repr(bad)):
+                MC.session_services(bad)
+
+    def test_the_operator_may_name_sixty_four(self):
+        self.assertEqual(MC.MAX_MACH_SERVICES, 64)
+        many = ["com.example.s%d" % n for n in range(64)]
+        self.assertEqual(len(MC.session_services(many)), 66)
+        with self.assertRaises(RuntimeError) as caught:
+            MC.session_services(many + ["com.example.more"])
+        self.assertIn("at most 64", str(caught.exception))
+
+    def test_the_sandbox_argv_carries_the_operator_s_names(self):
+        _argv, profile = MC.build_sandbox_argv(
+            ["/bin/echo"], cwd="/work/j",
+            mach_services=["com.example.one"])
+        self.assertIn('(global-name "com.example.one")', profile)
+        _argv, profile = MC.build_sandbox_argv(["/bin/echo"],
+                                               cwd="/work/j")
+        self.assertNotIn("com.example.one", profile)
+
+    def test_the_trial_asks_the_pasteboard_with_the_system_s_reader(self):
+        self.assertEqual(MC.PASTEBOARD_READER, "/usr/bin/pbpaste")
+        self.assertIn(
+            "if [ -x /usr/bin/pbpaste ] && /usr/bin/pbpaste "
+            "> /dev/null 2>&1; then\n  echo TRIAL-CLIPBOARD-OPEN\nfi\n",
+            MC._TRIAL_PROGRAM)
+        # What the reader prints is thrown away: the trial takes
+        # the answer, never the clipboard.
+        self.assertEqual(MC._TRIAL_PROGRAM.count("pbpaste"), 2)
+
 class InterpreterHomeAliasTest(unittest.TestCase):
     """Q192, macOS mirror: interpreter_read_paths carries the
     same two-candidate rule as sandbox.interpreter_binds, so
@@ -1472,7 +1613,30 @@ class ConfinementTrialProblemTest(unittest.TestCase):
                 out=self.OK, work=work, write_file=True), {})
         self.assertIsNone(
             MC.confinement_trial_problem(spawn, facts=facts))
-        self.assertEqual(facts, {"limit_kib": 411256832})
+        self.assertEqual(facts, {"limit_kib": 411256832,
+                                 "clipboard_open": False})
+
+    def test_a_trial_the_pasteboard_answered_is_a_problem(self):
+        spawn = self._spawn(
+            lambda work: _FakeTrialProc(
+                out=self.OK + b"TRIAL-CLIPBOARD-OPEN\n", work=work,
+                write_file=True), {})
+        problem = MC.confinement_trial_problem(spawn)
+        self.assertEqual(
+            problem, "a confined process was answered by the "
+                     "pasteboard, a service the profile does not "
+                     "name: the profile did not hold")
+
+    def test_a_config_that_names_the_pasteboard_is_not_refused_for_it(self):
+        facts = {}
+        spawn = self._spawn(
+            lambda work: _FakeTrialProc(
+                out=self.OK + b"TRIAL-CLIPBOARD-OPEN\n", work=work,
+                write_file=True), {})
+        self.assertIsNone(MC.confinement_trial_problem(
+            spawn, facts=facts, clipboard_closed=False))
+        self.assertEqual(facts, {"limit_kib": 411256832,
+                                 "clipboard_open": True})
 
     def test_a_write_outside_the_work_directory_is_a_problem(self):
         spawn = self._spawn(
@@ -1560,6 +1724,97 @@ class ConfinementTrialProblemTest(unittest.TestCase):
         self.assertEqual(soft, hard)
         self.assertTrue(soft.isdigit())
         self.assertIn("TRIAL-READ-OUTSIDE", said["out"])
+
+    def _run_program(self, text):
+        """The program's text run by the system shell, with no
+        profile and no shim: (process, work directory)."""
+        tmp = tempfile.mkdtemp(prefix="hp-trial-program-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        work = os.path.join(tmp, "work")
+        os.makedirs(work)
+        staged = os.path.join(work, "trial-staged.txt")
+        with open(staged, "w", encoding="utf-8") as fh:
+            fh.write(MC._TRIAL_MARKER + "\n")
+        program = os.path.join(work, "trial_program.sh")
+        with open(program, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        kept = os.path.join(tmp, "outside-kept.txt")
+        with open(kept, "w", encoding="utf-8") as fh:
+            fh.write(MC._TRIAL_OUTSIDE + "\n")
+        done = subprocess.run(
+            [MC.SHELL_BIN, program, staged, work,
+             os.path.join(tmp, "outside-write.txt"), kept],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=60)
+        return done, work
+
+    def _reader(self, exit_code):
+        """The program with a reader of this test's own in the
+        system reader's place: one that prints a clipboard and
+        ends with `exit_code`."""
+        folder = tempfile.mkdtemp(prefix="hp-trial-reader-")
+        self.addCleanup(shutil.rmtree, folder, True)
+        stub = os.path.join(folder, "reader")
+        with open(stub, "w", encoding="utf-8") as fh:
+            fh.write("#!/bin/sh\necho WHAT-THE-CLIPBOARD-HELD\n"
+                     "echo AND-ITS-COMPLAINT >&2\n"
+                     "exit %d\n" % exit_code)
+        os.chmod(stub, 0o755)
+        self.assertEqual(MC._TRIAL_PROGRAM.count(MC.PASTEBOARD_READER), 2)
+        return MC._TRIAL_PROGRAM.replace(MC.PASTEBOARD_READER, stub)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_the_trial_program_writes_what_it_read(self):
+        # The file a trial leaves in its work directory is the
+        # staged data, a line for a line: the shell's own
+        # format word reaches the shell as it is written here.
+        done, work = self._run_program(MC._TRIAL_PROGRAM)
+        self.assertEqual(done.returncode, 0, done.stderr)
+        with open(os.path.join(work, "trial-out.txt"),
+                  encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), MC._TRIAL_MARKER + "\n")
+        lines = done.stdout.decode().splitlines()
+        self.assertEqual(lines[:4], [
+            "TRIAL-READ-OK", "TRIAL-WRITE-OK", "TRIAL-WROTE-OUTSIDE",
+            "TRIAL-READ-OUTSIDE"])
+        self.assertTrue(lines[4].startswith("TRIAL-LIMIT "), lines)
+        self.assertIn('printf "%s\\n" "$data" > "$2/trial-out.txt"',
+                      MC._TRIAL_PROGRAM)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_a_reader_that_is_answered_is_reported_and_not_repeated(self):
+        done, _work = self._run_program(self._reader(0))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        said = done.stdout.decode()
+        self.assertEqual(said.splitlines()[-1], "TRIAL-CLIPBOARD-OPEN")
+        # The answer is the fact: what the reader printed goes
+        # nowhere, so a trial never carries a clipboard into a
+        # log or a report.
+        for text in (said, done.stderr.decode()):
+            self.assertNotIn("WHAT-THE-CLIPBOARD-HELD", text)
+            self.assertNotIn("AND-ITS-COMPLAINT", text)
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_a_reader_that_is_refused_is_no_report_and_no_failure(self):
+        for code in (1, 2, 134):
+            done, _work = self._run_program(self._reader(code))
+            self.assertEqual(done.returncode, 0, (code, done.stderr))
+            said = done.stdout.decode()
+            self.assertNotIn("TRIAL-CLIPBOARD-OPEN", said, code)
+            self.assertTrue(
+                said.splitlines()[-1].startswith("TRIAL-LIMIT "), code)
+            self.assertNotIn("AND-ITS-COMPLAINT", done.stderr.decode())
+
+    @unittest.skipUnless(os.name == "posix", "POSIX only")
+    def test_a_host_with_no_reader_is_no_report_and_no_failure(self):
+        gone = os.path.join(tempfile.gettempdir(),
+                            "hp-no-such-reader-%d" % os.getpid())
+        self.assertFalse(os.path.exists(gone))
+        done, _work = self._run_program(
+            MC._TRIAL_PROGRAM.replace(MC.PASTEBOARD_READER, gone))
+        self.assertEqual(done.returncode, 0, done.stderr)
+        self.assertNotIn("TRIAL-CLIPBOARD-OPEN", done.stdout.decode())
+        self.assertEqual(done.stderr, b"")
 
     def test_trial_read_failure_names_the_staged_read(self):
         record = {}
@@ -1849,7 +2104,8 @@ class SettingsTest(unittest.TestCase):
                     {"security": {"confinement": {"macos": {}}}}):
             self.assertEqual(
                 MC.confinement_settings(cfg),
-                {"process_memory_bytes": 512 * 1024 * 1024}, cfg)
+                {"process_memory_bytes": 512 * 1024 * 1024,
+                 "mach_services": ()}, cfg)
 
     def test_the_operator_s_ceiling_is_the_one_read(self):
         cfg = {"security": {"confinement": {"macos": {
@@ -1859,7 +2115,31 @@ class SettingsTest(unittest.TestCase):
             2 * 1024 ** 3)
 
     def test_the_known_settings_are_exactly_these(self):
-        self.assertEqual(MC.MACOS_KEYS, ("process_memory_bytes",))
+        self.assertEqual(MC.MACOS_KEYS,
+                         ("process_memory_bytes", "mach_services"))
+
+    def test_the_operator_s_services_are_read_once_each_in_order(self):
+        cfg = {"security": {"confinement": {"macos": {"mach_services": [
+            "com.example.two", "com.apple.pasteboard.1",
+            "com.example.two",
+            "com.apple.system.opendirectoryd.libinfo"]}}}}
+        self.assertEqual(
+            MC.confinement_settings(cfg)["mach_services"],
+            ("com.example.two", "com.apple.pasteboard.1"))
+
+    def test_a_service_list_that_is_not_one_is_an_error(self):
+        for bad in ("com.example.one", None, 1, ["a b"], [1],
+                    ["ok.name", 'x") (allow default) ("'],
+                    ["s%d" % n for n in range(65)]):
+            with self.assertRaises(RuntimeError, msg=repr(bad)) as caught:
+                MC.validate_macos_block({"mach_services": bad})
+            self.assertIn(
+                "config error: security.confinement.macos."
+                "mach_services: ", str(caught.exception))
+        self.assertTrue(MC.validate_macos_block(
+            {"mach_services": []}))
+        self.assertTrue(MC.validate_macos_block(
+            {"mach_services": ["com.apple.pasteboard.1"]}))
 
     def test_a_setting_the_backend_does_not_know_is_an_error(self):
         # A ceiling the operator misspelled is a ceiling that
@@ -1891,6 +2171,11 @@ class SettingsTest(unittest.TestCase):
                 {"macos": {"process_memory_bytes": "big"}})
         with self.assertRaises(RuntimeError):
             SB._validate_confinement_block({"macos": {"cores": 2}})
+        SB._validate_confinement_block(
+            {"macos": {"mach_services": ["com.example.one"]}})
+        with self.assertRaises(RuntimeError):
+            SB._validate_confinement_block(
+                {"macos": {"mach_services": ["not a name"]}})
 
     def test_the_other_backends_keys_are_not_this_backend_s(self):
         cfg = {"security": {"confinement": {
@@ -1898,7 +2183,8 @@ class SettingsTest(unittest.TestCase):
             "freebsd": {"job_cpus": 2}}}}
         self.assertEqual(
             MC.confinement_settings(cfg),
-            {"process_memory_bytes": 512 * 1024 * 1024})
+            {"process_memory_bytes": 512 * 1024 * 1024,
+             "mach_services": ()})
 
 
 class PostureLinesTest(unittest.TestCase):
@@ -1919,7 +2205,50 @@ class PostureLinesTest(unittest.TestCase):
             ("OK", "a job process's address map may grow 512 MiB "
                    "past the 391.7 GiB a bare process starts at "
                    "here; the ceiling is not the job's to raise "
-                   "(ulimit in the launcher shim, soft and hard)")])
+                   "(ulimit in the launcher shim, soft and hard)"),
+            ("OK", "a job may ask the user database who a user is, "
+                   "and no other of the session's services: the "
+                   "clipboard is refused")])
+
+    def test_the_operator_s_services_are_named_in_the_report(self):
+        cfg = {"security": {"confinement": {"macos": {"mach_services": [
+            "com.apple.pasteboard.1", "com.example.one"]}}}}
+        lines = MC.posture_lines(cfg, probe=self._passes,
+                                 facts=self.APPLE, root=False)
+        self.assertEqual(
+            lines[2],
+            ("OK", "a job may ask the user database who a user is, "
+                   "and the services this config names: "
+                   "com.apple.pasteboard.1, com.example.one "
+                   "(security.confinement.macos.mach_services); "
+                   "the pasteboard is among them, so the clipboard "
+                   "is not refused"))
+
+    def test_the_report_says_when_the_pasteboard_is_not_among_them(self):
+        cfg = {"security": {"confinement": {"macos": {"mach_services": [
+            "com.example.one", "com.example.one",
+            "com.apple.system.opendirectoryd.libinfo"]}}}}
+        lines = MC.posture_lines(cfg, probe=self._passes,
+                                 facts=self.APPLE, root=False)
+        self.assertEqual(
+            lines[2],
+            ("OK", "a job may ask the user database who a user is, "
+                   "and the services this config names: "
+                   "com.example.one (security.confinement.macos."
+                   "mach_services); the pasteboard is not among "
+                   "them"))
+
+    def test_the_services_line_is_the_report_s_own(self):
+        self.assertEqual(
+            MC.services_line(),
+            "a job may ask the user database who a user is, and no "
+            "other of the session's services: the clipboard is "
+            "refused")
+        # The backend's own names handed back are no operator's.
+        self.assertEqual(MC.services_line(MC.SESSION_SERVICES),
+                         MC.services_line())
+        with self.assertRaises(RuntimeError):
+            MC.services_line(["not a name"])
 
     def test_a_host_with_no_floor_names_the_ceiling_itself(self):
         lines = MC.posture_lines({}, probe=self._passes,
@@ -1981,11 +2310,11 @@ class PostureLinesTest(unittest.TestCase):
         cfg = {"security": {"job_user": {"user": "nobody"}}}
         lines = MC.posture_lines(cfg, probe=self._passes,
                                  facts=self.APPLE, root=True)
-        self.assertEqual(len(lines), 3)
+        self.assertEqual(len(lines), 4)
         self.assertIn("the ceiling is not the job's to raise",
                       lines[1][1])
         self.assertEqual(
-            lines[2],
+            lines[3],
             ("OK", "a job is started as nobody at the spawn door "
                    "(security.job_user) and reads what that user "
                    "can read"))
@@ -1995,7 +2324,7 @@ class PostureLinesTest(unittest.TestCase):
                             "job_user": {"user": "nobody"}}}
         lines = MC.posture_lines(cfg, probe=self._passes,
                                  facts=self.APPLE, root=False)
-        self.assertEqual(len(lines), 2)
+        self.assertEqual(len(lines), 3)
 
     def test_a_root_runner_with_no_job_user_is_told_so(self):
         # Root may raise a hard limit, under a profile as
@@ -2015,19 +2344,19 @@ class PostureLinesTest(unittest.TestCase):
                        "(ulimit in the launcher shim), and a job "
                        "that is root can raise it"))
             self.assertEqual(
-                lines[2],
+                lines[3],
                 ("WARN", "this runner is root and names no job "
                          "user: a job is root under the profile, "
                          "and root can raise its own ceiling (name "
                          "a user under security.job_user)"))
-            self.assertEqual(len(lines), 3)
+            self.assertEqual(len(lines), 4)
 
     def test_whether_the_runner_is_root_is_read_from_the_host(self):
         lines = MC.posture_lines({}, probe=self._passes,
                                  facts=self.APPLE)
         self.assertEqual(
-            len(lines), 3 if getattr(os, "geteuid", lambda: 1)() == 0
-            else 2)
+            len(lines), 4 if getattr(os, "geteuid", lambda: 1)() == 0
+            else 3)
 
     def test_the_stub_s_own_answer_is_a_warning(self):
         if MC.IS_MACOS_BACKEND:
@@ -2072,7 +2401,9 @@ _SEED_LINES = (
     "a job process's address map may grow 512 MiB past the "
     "391.7 GiB a bare process starts at here; the ceiling is not "
     "the job's to raise (ulimit in the launcher shim, soft and "
-    "hard)")
+    "hard)",
+    "a job may ask the user database who a user is, and no other "
+    "of the session's services: the clipboard is refused")
 
 
 class _SeedProbe:
@@ -2465,7 +2796,7 @@ class PagesTest(unittest.TestCase):
                                 INS.MACOS_PROBE_ASKED)
         page = self._page("docs", "steady", "security", "macos.md")
         printed = INS.seed_kept_lines(answer, "<config>")
-        self.assertEqual(len(printed), 3)
+        self.assertEqual(len(printed), 4)
         for line in printed:
             self.assertIn("  " + line + "\n", page)
 
@@ -2488,6 +2819,38 @@ class PagesTest(unittest.TestCase):
         for n in range(1, 14):
             self.assertIn("\n%d. " % n, supposed, n)
             self.assertIn("\n%d. " % n, concluded, n)
+
+    def test_the_services_rule_on_the_pages_is_the_profile_s(self):
+        design = self._page("docs", "steady", "design",
+                            "macos-confinement-design.md")
+        rules = [ln for ln in MC.build_profile("/work/job1").splitlines()
+                 if "mach" in ln]
+        self.assertEqual(len(rules), 1)
+        self.assertIn("\n```\n%s\n```\n" % rules[0], design)
+        # The run that measured what the list costs, and what
+        # it read: the numbers on the page are that run's.
+        self.assertIn("43761537586", design)
+        self.assertIn("| None | 28 of 36 |", design)
+        self.assertEqual(design.count("| 36 of 36 |"), 5)
+        # The setting's example opens the one service the
+        # probe's trial asks by name, on both pages.
+        example = '"mach_services": ["%s"]' % MC.PASTEBOARD_SERVICE
+        operator = self._page("docs", "steady", "security", "macos.md")
+        for page in (design, operator):
+            self.assertIn(example, page)
+        self.assertIn("At most %d are named" % MC.MAX_MACH_SERVICES,
+                      design)
+        self.assertIn("Up to %d can be named" % MC.MAX_MACH_SERVICES,
+                      operator)
+
+    def test_the_services_suppositions_stand_before_the_run(self):
+        page = self._page("docs", "steady", "design",
+                          "macos-confinement-design.md")
+        supposed = page.split(
+            "### The session's services: suppositions", 1)[1]
+        for n in range(14, 25):
+            self.assertIn("\n%d. " % n, supposed, n)
+        self.assertNotIn("\n25. ", supposed)
 
 
 @unittest.skipUnless(MC.IS_MACOS_BACKEND, "run on macOS")
@@ -2978,17 +3341,598 @@ class LiveBackendTest(unittest.TestCase):
             results[1][2],
             r"^a job process's address map may grow 512 MiB past "
             r"the \d+\.\d GiB a bare process starts at here; ")
+        self.assertEqual(
+            results[2],
+            ("OK", "confinement",
+             "a job may ask the user database who a user is, and "
+             "no other of the session's services: the clipboard "
+             "is refused"))
         if os.geteuid() == 0:
             # No job user is named here, so the jobs are root's.
             self.assertIn("a job that is root can raise it",
                           results[1][2])
-            self.assertEqual(results[2][0], "WARN")
-            self.assertEqual(len(results), 3)
+            self.assertEqual(results[3][0], "WARN")
+            self.assertEqual(len(results), 4)
         else:
             self.assertIn("the ceiling is not the job's to raise",
                           results[1][2])
-            self.assertEqual(len(results), 2)
+            self.assertEqual(len(results), 3)
         print("posture: " + results[1][2], flush=True)
+        print("posture: " + results[2][2], flush=True)
+
+
+@unittest.skipUnless(MC.IS_MACOS_BACKEND, "run on macOS")
+class LiveServicesTest(unittest.TestCase):
+    """The session's services, asked from inside a job on a
+    real Mac (the CI legs)."""
+
+    NAMES_THE_PASTEBOARD = {"security": {"confinement": {"macos": {
+        "mach_services": [MC.PASTEBOARD_SERVICE]}}}}
+    # launchd's answer to a caller its sandbox does not let
+    # ask: BOOTSTRAP_NOT_PRIVILEGED. A name that is merely
+    # not there is another number, so this one is the
+    # profile's and needs no control beside it.
+    NOT_PRIVILEGED = 1100
+    EVERY_SERVICE = "(allow mach*)\n"
+    NO_SERVICE = ""
+
+    _LOOKUP = (
+        "import ctypes, sys\n"
+        "libc = ctypes.CDLL(None)\n"
+        "bp = ctypes.c_uint.in_dll(libc, 'bootstrap_port')\n"
+        "port = ctypes.c_uint(0)\n"
+        "kr = libc.bootstrap_look_up(bp, sys.argv[1].encode(), "
+        "ctypes.byref(port))\n"
+        "print('ANSWER kr=%d' % kr)\n")
+    _REGISTER = (
+        "import ctypes, sys\n"
+        "libc = ctypes.CDLL(None)\n"
+        "bp = ctypes.c_uint.in_dll(libc, 'bootstrap_port')\n"
+        "libc.mach_reply_port.restype = ctypes.c_uint\n"
+        "port = libc.mach_reply_port()\n"
+        "kr = libc.bootstrap_register(bp, sys.argv[1].encode(), "
+        "ctypes.c_uint(port))\n"
+        "print('ANSWER kr=%d' % kr)\n")
+
+    @staticmethod
+    def _kr(text):
+        for line in text.splitlines():
+            if line.startswith("ANSWER kr="):
+                return int(line[len("ANSWER kr="):])
+        return None
+
+    def _job(self, argv, cfg=None, timeout=120):
+        """(exit code, stdout, stderr) of one job under the
+        backend's own spawn, in a work directory of its own."""
+        with tempfile.TemporaryDirectory() as work:
+            proc = MC.spawn_confined_process(
+                argv, cwd=work, env=dict(os.environ), cfg=cfg)
+            try:
+                out, err = proc.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                out, err = proc.communicate()
+            rc = proc.returncode
+            proc.close()
+        return (rc, out.decode("utf-8", "replace"),
+                err.decode("utf-8", "replace"))
+
+    def _under(self, argv, work, mach_rule=None, memory=8 << 30,
+               timeout=120):
+        """(exit code, stdout, stderr) of argv under the
+        backend's own profile and launcher -- or, with
+        `mach_rule`, under the same profile with its one Mach
+        rule replaced by that text: every service, or none."""
+        sandbox_argv, profile = MC.build_sandbox_argv(
+            argv, cwd=work, memory_bytes=memory)
+        if mach_rule is not None:
+            rules = [ln for ln in profile.splitlines()
+                     if ln.startswith("(allow mach")]
+            self.assertEqual(len(rules), 1, rules)
+            self.assertEqual(profile.count(rules[0] + "\n"), 1)
+            sandbox_argv[sandbox_argv.index(profile)] = \
+                profile.replace(rules[0] + "\n", mach_rule)
+        env = dict(os.environ)
+        tmp = os.path.join(work, MC.JOB_TMP_NAME)
+        os.makedirs(tmp, exist_ok=True)
+        env["TMPDIR"] = tmp
+        try:
+            done = subprocess.run(
+                sandbox_argv, cwd=work, env=env,
+                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return "timeout", "", ""
+        return (done.returncode,
+                done.stdout.decode("utf-8", "replace"),
+                done.stderr.decode("utf-8", "replace"))
+
+    @staticmethod
+    def _clipboard():
+        """(exit code, text) of the system's reader, asked
+        outside any job."""
+        try:
+            done = subprocess.run(
+                [MC.PASTEBOARD_READER], stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            return None, ""
+        return done.returncode, done.stdout.decode("utf-8", "replace")
+
+    @staticmethod
+    def _set_clipboard(text):
+        try:
+            subprocess.run(["/usr/bin/pbcopy"], input=text.encode(),
+                           stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            pass
+
+    def _a_pasteboard_answers(self):
+        """The control the clipboard tests stand on: outside a
+        job, the system's reader is answered. Nothing is read
+        into this test and nothing is written."""
+        if self._clipboard()[0] != 0:
+            self.skipTest("no pasteboard answers this session: the "
+                          "control needs one")
+
+    def _a_mark_on_the_clipboard(self):
+        """Put a mark of this test's own on the session's
+        clipboard, read it back as the control, and put the
+        text that was there back when the test ends."""
+        if os.environ.get("HP_LIVE_CLIPBOARD") != "1":
+            self.skipTest("writes this session's clipboard: run in "
+                          "the macos-confinement workflow")
+        self._a_pasteboard_answers()
+        self.addCleanup(self._set_clipboard, self._clipboard()[1])
+        mark = "HP-CLIPBOARD-MARK-%s" % os.urandom(6).hex()
+        self._set_clipboard(mark)
+        if self._clipboard() != (0, mark):
+            self.skipTest("no pasteboard answers this session: the "
+                          "control needs one")
+        return mark
+
+    def _trial_with_every_service(self):
+        """The probe's trial through a spawn whose profile
+        opens every service, as the profile did before it
+        named any: the trial's verdict."""
+        def _spawn(argv, cwd=None, env=None):
+            sandbox_argv, profile = MC.build_sandbox_argv(argv, cwd=cwd)
+            rules = [ln for ln in profile.splitlines()
+                     if ln.startswith("(allow mach")]
+            self.assertEqual(len(rules), 1, rules)
+            sandbox_argv[sandbox_argv.index(profile)] = \
+                profile.replace(rules[0] + "\n", self.EVERY_SERVICE)
+            env2 = dict(env or os.environ)
+            tmp = os.path.join(cwd, MC.JOB_TMP_NAME)
+            os.makedirs(tmp, exist_ok=True)
+            env2["TMPDIR"] = tmp
+            inner = subprocess.Popen(
+                sandbox_argv, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                cwd=cwd, env=env2)
+            inner.close = lambda: None
+            return inner
+        return MC.confinement_trial_problem(_spawn)
+
+    def _looked_up_outside(self, name):
+        """launchd's answer to a lookup of `name` by a process
+        of this session that is in no job: the control beside
+        the same lookup from inside one."""
+        done = subprocess.run(
+            [sys.executable, "-c", self._LOOKUP, name],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL, timeout=60)
+        return self._kr(done.stdout.decode("utf-8", "replace"))
+
+    def _refused(self, name, cfg=None):
+        """A lookup of `name` from inside a job is not
+        answered; where the same lookup is answered outside a
+        job, the answer inside is the one launchd gives a
+        caller whose sandbox does not let it ask."""
+        outside = self._looked_up_outside(name)
+        rc, out, err = self._job(
+            [sys.executable, "-c", self._LOOKUP, name], cfg=cfg)
+        self.assertEqual(rc, 0, err)
+        inside = self._kr(out)
+        print("services: a lookup of %s: %s outside a job, %s "
+              "inside" % (name, outside, inside), flush=True)
+        self.assertNotIn(inside, (0, None), name + ": " + out + err)
+        if outside == 0:
+            self.assertEqual(inside, self.NOT_PRIVILEGED, name)
+        return outside
+
+    # -- what is refused ---------------------------------------
+
+    def test_the_pasteboard_is_not_a_job_s_to_look_up(self):
+        self._refused(MC.PASTEBOARD_SERVICE)
+
+    def test_no_other_service_of_the_session_is_either(self):
+        # Names a job's programs asked for on the hosted Macs
+        # and the profile does not carry, the older name of
+        # the user database and a name no service has among
+        # them. At least the ones every session has are there
+        # to be refused.
+        answered = 0
+        for name in ("com.apple.windowserver.active",
+                     "com.apple.coreservices.launchservicesd",
+                     "com.apple.SystemConfiguration.configd",
+                     "com.apple.SecurityServer",
+                     "com.apple.cfprefsd.daemon",
+                     "com.apple.system.notification_center",
+                     "com.apple.logd",
+                     "com.apple.system.DirectoryService.libinfo_v1",
+                     "hp.no.such.service"):
+            answered += self._refused(name) == 0
+        self.assertGreater(answered, 0)
+
+    def test_a_job_registers_no_name_in_the_session(self):
+        # The rule that stood here took a name a job
+        # registered (the answer was 0 on both hosted Macs): a
+        # job could stand where a service is looked for.
+        rc, out, err = self._job(
+            [sys.executable, "-c", self._REGISTER, "hp.live.squat"])
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(self._kr(out), self.NOT_PRIVILEGED, out + err)
+        rc, out, err = self._job(
+            [sys.executable, "-c", self._REGISTER,
+             MC.SESSION_SERVICES[0]])
+        self.assertEqual(rc, 0, err)
+        self.assertNotIn(self._kr(out), (0, None), out + err)
+
+    def test_the_system_s_reader_is_refused_inside_a_job(self):
+        self._a_pasteboard_answers()
+        rc, out, err = self._job([MC.PASTEBOARD_READER])
+        self.assertNotEqual(rc, 0)
+        print("services: the system's reader inside a job: exit %s"
+              % rc, flush=True)
+
+    def test_a_mark_on_the_clipboard_is_not_read_by_a_job(self):
+        mark = self._a_mark_on_the_clipboard()
+        rc, out, err = self._job([MC.PASTEBOARD_READER])
+        self.assertNotIn(mark, out + err)
+        self.assertNotEqual(rc, 0)
+        rc, out, err = self._job(
+            ["/usr/bin/osascript", "-e", "the clipboard"])
+        self.assertNotIn(mark, out + err)
+        # The rule on the services is what refuses it: under
+        # the same profile with every service open, as the
+        # profile stood, the same reader returns the mark.
+        with tempfile.TemporaryDirectory() as work:
+            rc, out, err = self._under(
+                [MC.PASTEBOARD_READER], work, self.EVERY_SERVICE)
+        self.assertEqual((rc, out), (0, mark), err)
+        # And it is still there for the session it belongs to.
+        self.assertEqual(self._clipboard(), (0, mark))
+
+    def test_a_job_does_not_write_the_clipboard(self):
+        mark = self._a_mark_on_the_clipboard()
+        rc, out, err = self._job(
+            ["/bin/sh", "-c",
+             "printf %s HP-WRITTEN-BY-A-JOB | /usr/bin/pbcopy"])
+        self.assertEqual(self._clipboard(), (0, mark), (rc, out, err))
+
+    def test_the_other_things_a_session_answers_are_refused_too(self):
+        # Each is asked twice under the same profile and the
+        # same ceiling: with every service open, as the
+        # profile stood, and as the profile is built. One that
+        # is answered the first way is the control for its own
+        # row, and the rule on the services is the whole
+        # difference between the two.
+        rows = (
+            ("the network configuration",
+             ["/usr/sbin/scutil", "--dns"], "resolver"),
+            ("the list of keychains",
+             ["/usr/bin/security", "list-keychains"], "keychain"),
+            ("the list of disks",
+             ["/usr/sbin/diskutil", "list"], "/dev/disk"))
+        held = 0
+        for what, argv, word in rows:
+            with tempfile.TemporaryDirectory() as work:
+                opened = self._under(argv, work, self.EVERY_SERVICE)
+                named = self._under(argv, work)
+            if word not in opened[1]:
+                print("services: %s is not answered with every "
+                      "service open here (exit %s)"
+                      % (what, opened[0]), flush=True)
+                continue
+            held += 1
+            self.assertNotIn(word, named[1], what)
+            print("services: %s: answered with every service open, "
+                  "exit %s under the profile" % (what, named[0]),
+                  flush=True)
+        self.assertGreater(held, 0)
+
+    # -- what still works --------------------------------------
+
+    def test_the_user_database_answers_a_job(self):
+        import grp
+        import pwd
+        entry = pwd.getpwuid(os.geteuid())
+        rc, out, err = self._job(["/usr/bin/id", "-un"])
+        self.assertEqual((rc, out.strip()), (0, entry.pw_name), err)
+        rc, out, err = self._job(
+            [sys.executable, "-c",
+             "import grp, os, pwd\n"
+             "e = pwd.getpwuid(os.getuid())\n"
+             "print(e.pw_name)\n"
+             "print(grp.getgrgid(e.pw_gid).gr_name)\n"])
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(out.split(), [
+            entry.pw_name, grp.getgrgid(entry.pw_gid).gr_name])
+        # The groups a user is in, by name: a reading, printed
+        # beside the same question asked outside a job.
+        outside = subprocess.run(
+            ["/usr/bin/id", "-Gn"], stdout=subprocess.PIPE,
+            timeout=60).stdout.decode().split()
+        rc, out, err = self._job(["/usr/bin/id", "-Gn"])
+        print("services: id -Gn names %d groups inside a job and "
+              "%d outside: %s (exit %s)"
+              % (len(out.split()), len(outside),
+                 "the same" if sorted(out.split()) == sorted(outside)
+                 else "not the same", rc), flush=True)
+
+    def test_without_the_user_database_a_user_is_a_number(self):
+        # Why the profile names it: under the same profile
+        # with no service at all, the program that prints a
+        # user's name prints the number.
+        with tempfile.TemporaryDirectory() as work:
+            rc, out, err = self._under(
+                ["/usr/bin/id", "-un"], work, self.NO_SERVICE)
+            named = self._under(["/usr/bin/id", "-un"], work)
+        print("services: with no service named, id -un as uid %d "
+              "prints %r (exit %s)" % (os.geteuid(), out.strip(), rc),
+              flush=True)
+        import pwd
+        self.assertEqual(
+            (named[0], named[1].strip()),
+            (0, pwd.getpwuid(os.geteuid()).pw_name), named[2])
+        if os.geteuid() != 0:
+            self.assertEqual(out.strip(), str(os.geteuid()), err)
+
+    def _battery(self):
+        """(name, argv, a word its output carries when it
+        works): the programs a job is likely to be, the
+        thirty-six the measuring run read (43761537586)."""
+        import pwd
+        me = pwd.getpwuid(os.geteuid()).pw_name
+        py = sys.executable
+
+        def sh(script):
+            return ["/bin/sh", "-c", script]
+        return [
+            ("sh-tools", sh(
+                "ls -l . >/dev/null && date >/dev/null && "
+                "mktemp ./x.XXXXXX >/dev/null && "
+                "echo a | sed s/a/b/ | grep -q b && "
+                "awk 'BEGIN{print 1}' >/dev/null && echo SH-OK"),
+             "SH-OK"),
+            ("id-un", ["id", "-un"], me),
+            ("whoami", ["whoami"], me),
+            ("ls-owner", sh("ls -ld . | awk '{print $3}'"), me),
+            ("python-pwd", [py, "-c",
+                            "import os, pwd; "
+                            "print(pwd.getpwuid(os.getuid()).pw_name)"],
+             me),
+            ("python-std", [py, "-c",
+                            "import time, locale, tempfile, json, "
+                            "hashlib, subprocess, socket; "
+                            "time.localtime(); tempfile.mkstemp(); "
+                            "socket.gethostname(); "
+                            "print(subprocess.run(['/bin/echo', "
+                            "'PY-OK'], capture_output=True, "
+                            "text=True).stdout)"], "PY-OK"),
+            ("python-tz", [py, "-c",
+                           "import time; print('TZ', time.tzname[0])"],
+             "TZ"),
+            ("python-ssl", [py, "-c",
+                            "import ssl; ssl.create_default_context(); "
+                            "print('SSL-OK')"], "SSL-OK"),
+            ("pip", [py, "-m", "pip", "--version"], "pip"),
+            ("perl", ["perl", "-e",
+                      "print scalar(getpwuid($<)), qq(\\n)"], me),
+            ("ruby", ["ruby", "-e",
+                      "require 'etc'; puts Etc.getpwuid.name"], me),
+            ("node", ["node", "-e",
+                      "const os = require('os'); "
+                      "require('fs').writeFileSync('n.txt', 'x'); "
+                      "console.log(os.userInfo().username)"], me),
+            ("java", ["java", "-version"], ""),
+            ("git-named", sh("rm -rf r1 && git init -q r1 && cd r1 && "
+                             "git -c user.name=a -c user.email=a@b.c "
+                             "commit -q --allow-empty -m x && "
+                             "git log --oneline | wc -l"), "1"),
+            ("git-auto", sh("rm -rf r2 && git init -q r2 && cd r2 && "
+                            "git commit -q --allow-empty -m x && "
+                            "git log --format=%an | head -n 1"), ""),
+            ("cc", sh("printf 'int main(void){return 0;}\\n' > h.c "
+                      "&& cc h.c -o h && ./h && echo CC-OK"), "CC-OK"),
+            ("make", sh("printf 'all:\\n\\t@echo MAKE-OK\\n' "
+                        "> Makefile && make"), "MAKE-OK"),
+            ("xcrun", ["xcrun", "--find", "cc"], "cc"),
+            ("sw_vers", ["sw_vers", "-productVersion"], "."),
+            ("defaults", ["defaults", "read",
+                          "/System/Library/CoreServices/SystemVersion",
+                          "ProductVersion"], "."),
+            ("plutil", ["plutil", "-lint",
+                        "/System/Library/CoreServices/"
+                        "SystemVersion.plist"], "OK"),
+            ("curl", ["curl", "--version"], "curl"),
+            ("openssl", ["openssl", "version"], "SSL"),
+            ("sqlite3", ["sqlite3", ":memory:", "select 41+1"], "42"),
+            ("zip", sh("echo x > z.txt && zip -q z.zip z.txt && "
+                       "unzip -l z.zip >/dev/null && echo ZIP-OK"),
+             "ZIP-OK"),
+            ("tar", sh("echo x > t.txt && tar czf t.tgz t.txt && "
+                       "tar tzf t.tgz"), "t.txt"),
+            ("file", ["file", "/bin/ls"], "Mach-O"),
+            ("locale", ["locale"], "LC_"),
+            ("uname", ["uname", "-a"], "Darwin"),
+            ("hostname", ["hostname"], ""),
+            ("sysctl", ["sysctl", "-n", "hw.ncpu"], ""),
+            ("df", ["df", "-k", "."], "Filesystem"),
+            ("getconf", ["getconf", "DARWIN_USER_TEMP_DIR"], "/"),
+            ("codesign", sh("codesign -dv /bin/ls 2>&1 | head -n 1"),
+             "Executable"),
+            ("osascript", ["osascript", "-e", "return 1 + 1"], "2"),
+            ("date", ["date", "+%Z"], ""),
+        ]
+
+    def test_a_job_s_programs_behave_as_with_every_service(self):
+        # The cost of the list, read: each program of the
+        # battery under the profile as the backend writes it,
+        # and under the same profile with every service open.
+        # A program this host lacks, or one the profile stops
+        # for a reason that is not a service (a runtime kept
+        # under a tree the profile does not read), is the same
+        # in both and stays in the count.
+        def works(argv, word, rule):
+            with tempfile.TemporaryDirectory() as work:
+                rc, out, err = self._under(argv, work, rule)
+            return rc == 0 and (word in out or word in err)
+
+        named, opened = {}, {}
+        for name, argv, word in self._battery():
+            if not os.path.isabs(argv[0]) \
+                    and shutil.which(argv[0]) is None:
+                continue
+            # A difference is one that is there each time it
+            # is looked for: a program that stumbled once under
+            # one profile is run again under both.
+            for _attempt in range(3):
+                named[name] = works(argv, word, None)
+                opened[name] = works(argv, word, self.EVERY_SERVICE)
+                if named[name] == opened[name]:
+                    break
+        differ = sorted(n for n in named if named[n] != opened[n])
+        print("services: %d of %d programs behave as with every "
+              "service open; %d of them work (not: %s)"
+              % (len(named) - len(differ), len(named),
+                 sum(named.values()),
+                 " ".join(sorted(n for n in named if not named[n]))
+                 or "none"), flush=True)
+        self.assertEqual(differ, [])
+        for name in ("sh-tools", "id-un", "whoami", "ls-owner",
+                     "python-pwd", "python-std", "python-ssl",
+                     "sw_vers", "defaults", "uname"):
+            self.assertTrue(named.get(name), name)
+        self.assertEqual(len(self._battery()), 36)
+        self.assertGreater(len(named), 25)
+
+    # -- the probe ---------------------------------------------
+
+    def test_the_probe_s_trial_was_refused_the_clipboard(self):
+        self.assertIsNone(MC.macos_confinement_problem())
+        self.assertIs(MC.trial_facts()["clipboard_open"], False)
+
+    def test_the_trial_convicts_a_profile_that_opens_every_service(self):
+        # The profile as it stood before it named a service,
+        # put to the trial as it now is: the pasteboard
+        # answers, and that is the trial's verdict. A trial
+        # that passed here would pass a profile that refused
+        # the clipboard nothing.
+        self._a_pasteboard_answers()
+        self.assertEqual(
+            self._trial_with_every_service(),
+            "a confined process was answered by the pasteboard, a "
+            "service the profile does not name: the profile did "
+            "not hold")
+
+    def test_the_trial_s_question_is_not_what_the_clipboard_holds(self):
+        # An empty clipboard answers too: the reader ends 0
+        # with nothing to print, and the trial still convicts
+        # a profile that lets it ask.
+        self._a_mark_on_the_clipboard()
+        self._set_clipboard("")
+        self.assertEqual(self._clipboard(), (0, ""))
+        self.assertIn("answered by the pasteboard",
+                      self._trial_with_every_service() or "")
+        self.assertNotEqual(self._job([MC.PASTEBOARD_READER])[0], 0)
+
+    # -- the operator's setting --------------------------------
+
+    def test_a_config_that_names_the_pasteboard_is_answered_by_it(self):
+        if self._looked_up_outside(MC.PASTEBOARD_SERVICE) != 0:
+            self.skipTest("no pasteboard answers this session: the "
+                          "control needs one")
+        cfg = self.NAMES_THE_PASTEBOARD
+        rc, out, err = self._job(
+            [sys.executable, "-c", self._LOOKUP, MC.PASTEBOARD_SERVICE],
+            cfg=cfg)
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(self._kr(out), 0, out + err)
+        # The one name and no other: the window server is
+        # still not this job's to look up.
+        self._refused("com.apple.windowserver.active", cfg=cfg)
+        # The probe passes such a config, and the report says
+        # what the config did.
+        self.assertIsNone(MC.macos_confinement_problem(cfg))
+        lines = MC.posture_lines(cfg)
+        self.assertEqual(
+            lines[2],
+            ("OK", "a job may ask the user database who a user is, "
+                   "and the services this config names: "
+                   "com.apple.pasteboard.1 (security.confinement."
+                   "macos.mach_services); the pasteboard is among "
+                   "them, so the clipboard is not refused"))
+
+    def test_a_job_under_such_a_config_reads_a_mark(self):
+        # The pasteboard's one name is all the system's reader
+        # asks for: the mark comes back, and the probe's trial
+        # under that config records the clipboard as open.
+        mark = self._a_mark_on_the_clipboard()
+        rc, out, err = self._job([MC.PASTEBOARD_READER],
+                                 cfg=self.NAMES_THE_PASTEBOARD)
+        self.assertEqual((rc, out), (0, mark), err)
+        self.assertIsNone(
+            MC.macos_confinement_problem(self.NAMES_THE_PASTEBOARD))
+        self.assertIs(
+            MC.trial_facts(MC.DEFAULT_PROCESS_MEMORY_BYTES,
+                           (MC.PASTEBOARD_SERVICE,))["clipboard_open"],
+            True)
+        rc, out, err = self._job(
+            ["/bin/sh", "-c",
+             "printf %s HP-WRITTEN-BY-A-JOB | /usr/bin/pbcopy"],
+            cfg=self.NAMES_THE_PASTEBOARD)
+        print("services: with the pasteboard named, a job's write "
+              "to the clipboard %s (exit %s)"
+              % ("landed" if self._clipboard()[1]
+                 == "HP-WRITTEN-BY-A-JOB" else "did not land", rc),
+              flush=True)
+
+    def test_the_audit_note_names_the_operator_s_services(self):
+        cfg = {"security": {"confinement": {"macos": {"mach_services": [
+            "com.example.one", MC.SESSION_SERVICES[0],
+            "com.example.two", "com.example.one"]}}}}
+        with tempfile.TemporaryDirectory() as work:
+            proc = MC.spawn_confined_process(
+                ["/usr/bin/true"], cwd=work, cfg=cfg)
+            proc.communicate(timeout=30)
+            proc.close()
+        self.assertEqual(proc.returncode, 0)
+        self.assertEqual(
+            proc.confinement_notes,
+            ["memory ceiling 512 MiB above a bare process's address "
+             "map, soft and hard",
+             "services the config names: com.example.one, "
+             "com.example.two"])
+
+    def test_a_service_list_that_is_not_one_refuses_the_spawn(self):
+        for bad in (["not a name"], "com.example.one",
+                    ['x") (allow default) ("']):
+            cfg = {"security": {"confinement": {"macos": {
+                "mach_services": bad}}}}
+            self.assertIn("security.confinement.macos.mach_services",
+                          MC.macos_startup_problem(cfg))
+            with self.assertRaises(RuntimeError), \
+                    tempfile.TemporaryDirectory() as work:
+                MC.spawn_confined_process(["/usr/bin/true"], cwd=work,
+                                          cfg=cfg)
+            with self.assertRaises(RuntimeError), \
+                    tempfile.TemporaryDirectory() as work:
+                MC.spawn_confined_process(["/usr/bin/true"], cwd=work,
+                                          mach_services=bad)
 
 
 @unittest.skipUnless(MC.IS_MACOS_BACKEND, "run on macOS")
@@ -3008,6 +3952,7 @@ class LiveSeedTest(unittest.TestCase):
         self.assertEqual(asked[1][0],
                          "macOS backend: " + MC.STATUS_CONFINEMENT)
         self.assertIn("a bare process starts at here", asked[1][1])
+        self.assertEqual(asked[1][2], MC.services_line())
         self.assertEqual(
             INS.fresh_job_user(cfg, asked), (None, None))
 

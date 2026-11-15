@@ -13,28 +13,36 @@ name: macos-confinement
 # read the boundary from inside a job: the one tree that takes
 # a write, the ceiling on a process's address map and whether
 # the job can lift it, a set-user-ID program, a signal to a
-# process outside, a job handed to launchd, and the mode a
-# fresh install states on this Mac.
+# process outside, a job handed to launchd, the services of the
+# session a job may look up -- the user database, and not the
+# pasteboard: a mark put on the clipboard outside is not read
+# inside, and a job's write to it does not land -- and the mode
+# a fresh install states on this Mac.
 #
 # Then the leg freezes the two release binaries with the build
 # workflow's own commands, read out of build.yml so the two
 # cannot drift, and puts them to the questions a release's user
 # meets. The frozen runner must start with confinement at
 # enforce and run a job under it -- the job's exit code says
-# whether a write outside its work directory landed and whether
-# it carried a ceiling, and the audit log must name the
-# controls. The frozen installer, run from a staged copy of the
-# release archive into a home of its own, must leave
-# confinement at enforce in the config it writes.
+# whether a write outside its work directory landed, whether
+# it carried a ceiling and whether the pasteboard answered it,
+# and the audit log must name the controls. The same job under
+# a config that names the pasteboard must be answered, which is
+# the setting read through the release binary. The frozen
+# installer, run from a staged copy of the release archive into
+# a home of its own, must leave confinement at enforce in the
+# config it writes.
 #
 # The first step prints what the tests cannot say for
 # themselves: what the host is, how large a bare process's
 # address map already is there (the kernel holds a data-size
 # limit against the whole map, so that size is the floor under
 # every memory ceiling), which language runtimes still start
-# under a given ceiling, and the two things the profile leaves
-# a job able to reach besides files -- the host's process list
-# and the clipboard.
+# under a given ceiling, and what a job reaches besides files:
+# the host's process list and the hardware's properties, which
+# the profile leaves it, and the clipboard and the session's
+# other services, which it is refused -- each asked from inside
+# a job, with launchd's own answer printed beside it.
 #
 # A signal on the backend, not a gate on a release: weekly and
 # on dispatch, never on the release path.
@@ -42,11 +50,6 @@ on:
   schedule:
     - cron: "23 10 * * 4"
   workflow_dispatch:
-    inputs:
-      try_services:
-        description: "Mach service names to try a job's programs under, separated by spaces"
-        required: false
-        default: ""
 
 permissions: {}
 
@@ -120,13 +123,26 @@ jobs:
                       row.append("%s=%s" % (name, type(e).__name__))
               print("%5d MiB: %s" % (mib, "  ".join(row)))
 
-          print("== what the profile leaves a job able to reach besides files")
+          print("== what a job reaches besides files, and what it is refused")
+          PASTEBOARD = MC.PASTEBOARD_SERVICE
+          NAMED = {"security": {"confinement": {"macos": {"mach_services": [
+              PASTEBOARD, "hp.no.such.service"]}}}}
+          LOOKUP = (
+              "import ctypes, sys\n"
+              "libc = ctypes.CDLL(None)\n"
+              "bp = ctypes.c_uint.in_dll(libc, 'bootstrap_port')\n"
+              "port = ctypes.c_uint(0)\n"
+              "print('kr=%d' % libc.bootstrap_look_up("
+              "bp, sys.argv[1].encode(), ctypes.byref(port)))\n")
 
-          def job(argv, work):
-              proc = MC.spawn_confined_process(argv, cwd=work,
-                                               env=dict(os.environ))
+          def job(argv, work, cfg=None):
               try:
-                  out, err = proc.communicate(timeout=30)
+                  proc = MC.spawn_confined_process(
+                      argv, cwd=work, env=dict(os.environ), cfg=cfg)
+              except Exception as e:
+                  return ("no spawn", "", str(e)[-200:])
+              try:
+                  out, err = proc.communicate(timeout=60)
               except subprocess.TimeoutExpired:
                   proc.kill()
                   out, err = proc.communicate()
@@ -135,381 +151,94 @@ jobs:
                       out.decode("utf-8", "replace").strip(),
                       err.decode("utf-8", "replace").strip()[-200:])
 
+          def outside(argv, **kw):
+              try:
+                  return subprocess.run(argv, capture_output=True,
+                                        timeout=60, **kw)
+              except Exception as e:
+                  return subprocess.CompletedProcess(argv, 99, b"", str(e).encode())
+
+          def read(result, mark):
+              return "exit %s, %s" % (
+                  result[0], "READ" if mark in result[1] else "not read")
+
           with tempfile.TemporaryDirectory() as work:
-              print("the host's process list:", job(
+              print("left to a job -- the host's process list:", job(
                   [sys.executable, "-c",
                    "import ctypes\n"
                    "libc = ctypes.CDLL(None)\n"
                    "print('processes listed:', "
-                   "libc.proc_listallpids(None, 0))\n"], work))
-              subprocess.run(["/usr/bin/pbcopy"], input=b"HP-CLIPBOARD-MARK",
-                             timeout=30)
-              rc, out, err = job(["/usr/bin/pbpaste"], work)
-              print("the clipboard:", (
-                  rc, "read from inside a job" if "HP-CLIPBOARD-MARK" in out
-                  else "not read", err))
-          PY
-          exit 0
-      - name: what a job's programs ask the session's services for
-        env:
-          HP_TRY_SERVICES: ${{ inputs.try_services }}
-        run: |
-          set +e
-          python - <<'PY'
-          import ctypes, os, re, shutil, subprocess, sys, tempfile, time
-          from runner.guard import macos_confine as MC
-
-          PY = sys.executable
-          TRY = [s for s in os.environ.get("HP_TRY_SERVICES", "").replace(",", " ").split() if s]
-          TEMP = os.environ.get("RUNNER_TEMP") or tempfile.gettempdir()
-          MARK = "HP-MARK-%d" % os.getpid()
-
-
-          def profile_for(work, services=None, mach_all=False, extra=""):
-              """The backend's own profile with its Mach rule replaced."""
-              text = MC.build_profile(os.path.realpath(work), interpreter=PY)
-              assert text.count("(allow mach*)\n") == 1, "the Mach rule moved"
-              if mach_all:
-                  return text
-              rule = ""
-              if services:
-                  rule = "(allow mach-lookup\n" + "".join(
-                      '    (global-name "%s")\n' % s for s in services) + ")\n"
-              return text.replace("(allow mach*)\n", rule + extra)
-
-
-          def run(argv, profile, work, timeout=60, stdin=None):
-              """One command under a profile and the launcher: (exit, out, err)."""
-              env = dict(os.environ)
-              tmp = os.path.join(work, ".hp-tmp")
-              os.makedirs(tmp, exist_ok=True)
-              env["TMPDIR"] = tmp
-              full = [MC.SANDBOX_EXEC_BIN, "-p", profile] + MC.build_shim_argv(
-                  argv, memory_bytes=8 << 30)
-              try:
-                  done = subprocess.run(full, cwd=work, env=env, input=stdin,
-                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                        timeout=timeout)
-                  return (done.returncode,
-                          done.stdout.decode("utf-8", "replace").strip(),
-                          done.stderr.decode("utf-8", "replace").strip())
-              except subprocess.TimeoutExpired:
-                  return ("timeout", "", "")
-              except Exception as e:
-                  return (type(e).__name__, "", str(e)[:200])
-
-
-          def sh(script):
-              return ["/bin/sh", "-c", script]
-
-
-          ME = subprocess.run(["id", "-un"], capture_output=True, text=True).stdout.strip()
-
-          # name, argv, and the text its output must carry to count as working
-          FUNCTION = [
-              ("sh-tools", sh("ls -l . >/dev/null && date >/dev/null && mktemp ./x.XXXXXX >/dev/null && echo a | sed s/a/b/ | grep -q b && awk 'BEGIN{print 1}' >/dev/null && echo SH-OK"), "SH-OK"),
-              ("id-un", sh("id -un"), ME),
-              ("whoami", ["whoami"], ME),
-              ("ls-owner", sh("ls -ld . | awk '{print $3}'"), ME),
-              ("python-pwd", [PY, "-c", "import os, pwd; print(pwd.getpwuid(os.getuid()).pw_name)"], ME),
-              ("python-std", [PY, "-c", "import time, locale, tempfile, json, hashlib, subprocess, socket; time.localtime(); tempfile.mkstemp(); socket.gethostname(); print(subprocess.run(['/bin/echo', 'PY-OK'], capture_output=True, text=True).stdout)"], "PY-OK"),
-              ("python-tz", [PY, "-c", "import time; print('TZ', time.tzname[0])"], "TZ"),
-              ("python-ssl", [PY, "-c", "import ssl; ssl.create_default_context(); print('SSL-OK')"], "SSL-OK"),
-              ("pip", [PY, "-m", "pip", "--version"], "pip"),
-              ("perl", ["perl", "-e", "print scalar(getpwuid($<)), qq(\\n)"], ME),
-              ("ruby", ["ruby", "-e", "require 'etc'; puts Etc.getpwuid.name"], ME),
-              ("node", ["node", "-e", "const os = require('os'); require('fs').writeFileSync('n.txt', 'x'); console.log(os.userInfo().username)"], ME),
-              ("java", ["java", "-version"], ""),
-              ("git-named", sh("rm -rf r1 && git init -q r1 && cd r1 && git -c user.name=a -c user.email=a@b.c commit -q --allow-empty -m x && git log --oneline | wc -l"), "1"),
-              ("git-auto", sh("rm -rf r2 && git init -q r2 && cd r2 && git commit -q --allow-empty -m x && git log --format=%an | head -n 1"), ""),
-              ("cc", sh("printf 'int main(void){return 0;}\\n' > h.c && cc h.c -o h && ./h && echo CC-OK"), "CC-OK"),
-              ("make", sh("printf 'all:\\n\\t@echo MAKE-OK\\n' > Makefile && make"), "MAKE-OK"),
-              ("xcrun", ["xcrun", "--find", "cc"], "cc"),
-              ("sw_vers", ["sw_vers", "-productVersion"], "."),
-              ("defaults-sys", ["defaults", "read", "/System/Library/CoreServices/SystemVersion", "ProductVersion"], "."),
-              ("plutil", ["plutil", "-lint", "/System/Library/CoreServices/SystemVersion.plist"], "OK"),
-              ("curl-v", ["curl", "--version"], "curl"),
-              ("openssl", ["openssl", "version"], "SSL"),
-              ("sqlite3", ["sqlite3", ":memory:", "select 41+1"], "42"),
-              ("zip", sh("echo x > z.txt && zip -q z.zip z.txt && unzip -l z.zip >/dev/null && echo ZIP-OK"), "ZIP-OK"),
-              ("tar", sh("echo x > t.txt && tar czf t.tgz t.txt && tar tzf t.tgz"), "t.txt"),
-              ("file", ["file", "/bin/ls"], "Mach-O"),
-              ("locale", ["locale"], "LC_"),
-              ("uname", ["uname", "-a"], "Darwin"),
-              ("hostname", ["hostname"], ""),
-              ("sysctl", ["sysctl", "-n", "hw.ncpu"], ""),
-              ("df", ["df", "-k", "."], "Filesystem"),
-              ("getconf-tmp", ["getconf", "DARWIN_USER_TEMP_DIR"], "/"),
-              ("codesign", sh("codesign -dv /bin/ls 2>&1 | head -n 1"), "Executable"),
-              ("osascript-plain", ["osascript", "-e", "return 1 + 1"], "2"),
-              ("date-tz", ["date", "+%Z"], ""),
-          ]
-
-
-          def works(result, want):
-              rc, out, err = result
-              return rc == 0 and (want in out or want in err)
-
-
-          def function_pass(profile, work):
-              row = {}
-              for name, argv, want in FUNCTION:
-                  if shutil.which(argv[0]) is None and not os.path.isabs(argv[0]):
-                      row[name] = "absent"
-                      continue
-                  result = run(argv, profile, work)
-                  row[name] = "works" if works(result, want) else "exit %s: %s" % (
-                      result[0], (result[2] or result[1]).replace("\n", " | ")[-110:])
-              return row
-
-
-          def outside(argv, **kw):
-              try:
-                  return subprocess.run(argv, capture_output=True, text=True, timeout=60, **kw)
-              except Exception as e:
-                  return subprocess.CompletedProcess(argv, 99, "", str(e))
-
-
-          LOOKUP = (
-              "import ctypes, sys\n"
-              "libc = ctypes.CDLL(None)\n"
-              "bp = ctypes.c_uint.in_dll(libc, 'bootstrap_port')\n"
-              "port = ctypes.c_uint(0)\n"
-              "kr = libc.bootstrap_look_up(bp, sys.argv[1].encode(), ctypes.byref(port))\n"
-              "print('LOOKUP kr=%d port=%d' % (kr, port.value))\n")
-          REGISTER = (
-              "import ctypes\n"
-              "libc = ctypes.CDLL(None)\n"
-              "bp = ctypes.c_uint.in_dll(libc, 'bootstrap_port')\n"
-              "libc.mach_reply_port.restype = ctypes.c_uint\n"
-              "port = libc.mach_reply_port()\n"
-              "kr = libc.bootstrap_register(bp, b'hp.facts.squat', ctypes.c_uint(port))\n"
-              "print('REGISTER kr=%d' % kr)\n")
-          RESOLVE = (
-              "import socket\n"
-              "try:\n"
-              "    print('RESOLVED', socket.getaddrinfo('example.com', 80)[0][4][0])\n"
-              "except Exception as e:\n"
-              "    print('NOT-RESOLVED', type(e).__name__, e)\n")
-          PROCS = (
-              "import ctypes\n"
-              "libc = ctypes.CDLL(None)\n"
-              "print('PROCS', libc.proc_listallpids(None, 0))\n")
-
-
-          def reach_pass(profile, work):
-              """What a job reaches under a profile, each as a short verdict."""
-              row = {}
-              outside(["/usr/bin/pbcopy"], input=MARK)
-              rc, out, err = run(["/usr/bin/pbpaste"], profile, work, timeout=30)
-              row["clipboard-read"] = "READ" if MARK in out else "no (exit %s)" % rc
-              written = MARK + "-W"
-              run(sh("printf %s | /usr/bin/pbcopy" % written), profile, work, timeout=30)
-              row["clipboard-write"] = "WRITTEN" if outside(["/usr/bin/pbpaste"]).stdout == written else "no"
-              rc, out, err = run([PY, "-c", RESOLVE], profile, work, timeout=60)
-              row["resolve-a-name"] = out[:60] or "exit %s %s" % (rc, err[-60:])
-              rc, out, err = run(["/usr/bin/dscacheutil", "-q", "host", "-a", "name", "example.com"], profile, work, timeout=60)
-              row["dscacheutil-host"] = "RESOLVED" if "ip_address" in out else "no (exit %s)" % rc
-              rc, out, err = run([PY, "-c", LOOKUP, "com.apple.pasteboard.1"], profile, work, timeout=30)
-              row["look-up-pasteboard"] = out[:40] or "exit %s %s" % (rc, err[-60:])
-              rc, out, err = run([PY, "-c", REGISTER], profile, work, timeout=30)
-              row["register-a-name"] = out[:40] or "exit %s %s" % (rc, err[-60:])
-              rc, out, err = run([PY, "-c", PROCS], profile, work, timeout=30)
-              row["list-processes"] = out[:40] or "exit %s %s" % (rc, err[-60:])
-              outside(["/usr/bin/pkill", "-x", "Calculator"])
-              rc, out, err = run(["/usr/bin/open", "-g", "-a", "Calculator"], profile, work, timeout=60)
-              time.sleep(2)
-              row["open-an-app"] = "LAUNCHED" if outside(["/usr/bin/pgrep", "-x", "Calculator"]).returncode == 0 else "no (exit %s: %s)" % (rc, err[-70:])
-              outside(["/usr/bin/pkill", "-x", "Calculator"])
-              escape = os.path.join(TEMP, "hp-facts-open-escape")
-              if os.path.exists(escape):
-                  os.unlink(escape)
-              with open(os.path.join(work, "esc.command"), "w") as fh:
-                  fh.write("#!/bin/sh\n: > '%s'\n" % escape)
-              os.chmod(os.path.join(work, "esc.command"), 0o755)
-              rc, out, err = run(["/usr/bin/open", "-g", "./esc.command"], profile, work, timeout=60)
-              time.sleep(4)
-              row["open-a-script"] = "RAN OUTSIDE THE PROFILE" if os.path.exists(escape) else "no (exit %s: %s)" % (rc, err[-70:])
-              outside(["/usr/bin/pkill", "-x", "Terminal"])
-              outside(["/usr/bin/defaults", "write", "hp.facts.domain", "mark", MARK])
-              rc, out, err = run(["/usr/bin/defaults", "read", "hp.facts.domain", "mark"], profile, work, timeout=30)
-              row["read-a-preference"] = "READ" if MARK in out else "no (exit %s)" % rc
-              outside(["/usr/bin/defaults", "delete", "hp.facts.domain"])
-              rc, out, err = run(["/usr/sbin/scutil", "--dns"], profile, work, timeout=30)
-              row["scutil-dns"] = "ANSWERED %d bytes" % len(out) if "resolver" in out else "no (exit %s)" % rc
-              rc, out, err = run(sh("/usr/sbin/ioreg -c IOPlatformExpertDevice -d 2 | grep -c IOPlatformSerialNumber"), profile, work, timeout=30)
-              row["ioreg-serial"] = "READ" if out.strip() not in ("", "0") else "no"
-              rc, out, err = run(["/usr/bin/security", "list-keychains"], profile, work, timeout=30)
-              row["list-keychains"] = "ANSWERED" if "keychain" in out else "no (exit %s)" % rc
-              rc, out, err = run(["/usr/sbin/screencapture", "-x", "shot.png"], profile, work, timeout=30)
-              row["screencapture"] = "CAPTURED" if os.path.exists(os.path.join(work, "shot.png")) else "no (exit %s)" % rc
-              rc, out, err = run(["/usr/sbin/diskutil", "list"], profile, work, timeout=30)
-              row["diskutil-list"] = "ANSWERED" if "/dev/disk" in out else "no (exit %s)" % rc
-              rc, out, err = run(["/usr/bin/logger", MARK + "-LOG"], profile, work, timeout=30)
-              row["logger"] = "exit %s" % rc
-              return row
-
-
-          SENSITIVE = re.compile(
-              r"pasteboard|pboard|windowserver|launchservices|\.lsd\.|coreservices|tccd|"
-              r"usernot|SecurityServer|securityd|secd|keychain|distributed_notifications|"
-              r"appleevents|quarantine|dock|Finder|SystemUIServer|accountsd|cloudd|bird|"
-              r"contacts|Calendar|AddressBook|speech|audio|cmio|mediaremote|bluetooth|"
-              r"locationd|dnssd|mDNSResponder|networkd|nehelper|nesession|configd|"
-              r"SystemConfiguration|metadata|spotlight|screencapture|pbs", re.I)
-
-
-          def denials_since(t0):
-              """The Mach denials the system log holds since t0: {(operation, name): {who}}."""
-              time.sleep(2)
-              start = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t0 - 1))
-              try:
-                  log = subprocess.run(
-                      ["sudo", "-n", "log", "show", "--start", start, "--style", "compact",
-                       "--predicate", 'eventMessage CONTAINS "deny" AND eventMessage CONTAINS "mach-"'],
-                      capture_output=True, text=True, timeout=300)
-              except Exception as e:
-                  return {}, "log could not be read: %s" % e
-              found = {}
-              for line in log.stdout.splitlines():
-                  m = re.search(r"Sandbox: (.+?)\((\d+)\) deny\(\d+\) (mach-[a-z-]+) (\S+)", line)
-                  if not m:
-                      m = re.search(r"duplicate reports? for (.+?)()? deny\(\d+\) (mach-[a-z-]+) (\S+)", line)
-                  if m:
-                      found.setdefault((m.group(3), m.group(4)), set()).add(m.group(1))
-              return found, "log exit %d, %d lines, %d denials" % (
-                  log.returncode, len(log.stdout.splitlines()), len(found))
-
-
-          def show(title, row, base=None):
-              print("-- " + title)
-              for name in row:
-                  mark = "" if base is None or base.get(name) == row[name] else "   <-- differs from all services"
-                  if base is None or mark or not str(row[name]).startswith("works"):
-                      print("   %-18s %s%s" % (name, row[name], mark))
-              if base is not None:
-                  same = sum(1 for n in row if base.get(n) == row[n])
-                  print("   (%d of %d as with all services)" % (same, len(row)))
-
-
-          work = tempfile.mkdtemp(prefix="hp-services-")
-          print("== the operation names this macOS knows")
-          names = ["mach-lookup", "mach-register", "mach-bootstrap", "mach-task-name",
-                   "mach-priv-task-port", "mach-priv-host-port", "mach-per-user-lookup",
-                   "mach-cross-domain-lookup", "mach-derive-port", "mach-issue-extension",
-                   "mach-kernel-endpoint", "mach-host-special-port-set",
-                   "mach-task-special-port-set", "mach-host-exception-port-set",
-                   "syscall-unix", "syscall-mach", "process-info-pidinfo",
-                   "process-info-listpids", "process-info-setcontrol",
-                   "process-info-dirtycontrol", "process-info-rusage",
-                   "process-info-codesignature", "process-info-ledger",
-                   "process-codesigning-status-get", "lsopen", "job-creation",
-                   "appleevent-send", "user-preference-read", "user-preference-write",
-                   "distributed-notification-post", "darwin-notification-post",
-                   "nvram-get", "iokit-open", "iokit-get-properties", "system-socket",
-                   "ipc-posix-shm", "ipc-posix-sem", "ipc-sysv-shm", "signal",
-                   "process-fork", "process-exec", "pseudo-tty", "sysctl-read"]
-          known, unknown = [], []
-          for op in names:
-              done = outside([MC.SANDBOX_EXEC_BIN, "-p", "(version 1)\n(allow default)\n(deny %s)\n" % op, "/usr/bin/true"])
-              (known if done.returncode == 0 else unknown).append(op)
-          print("known:", " ".join(known))
-          print("not known:", " ".join(unknown))
-
-          print("== the services Apple's own base profiles name")
-          for name in ("system.sb", "bsd.sb"):
-              path = "/System/Library/Sandbox/Profiles/" + name
-              try:
-                  text = open(path, encoding="utf-8", errors="replace").read()
-              except OSError as e:
-                  print(name, "unreadable:", e)
-                  continue
-              found = sorted(set(re.findall(r'\((?:global|local)-name(?:-regex)? "([^"]+)"\)', text)))
-              print("%s: %d names: %s" % (name, len(found), " ".join(found)))
-              for line in text.splitlines():
-                  if re.search(r"\(allow mach-(?!lookup)|mach-bootstrap|mach-register", line):
-                      print("   %s: %s" % (name, line.strip()[:150]))
-
-          print("== with every service (the profile as it stands)")
-          base_profile = profile_for(work, mach_all=True)
-          base = function_pass(base_profile, work)
-          show("what works", base)
-          reach_base = reach_pass(base_profile, work)
-          show("what a job reaches", reach_base)
-
-          print("== with no service at all, then with what was asked for, round by round")
-          allowed = []
-          for rnd in range(6):
-              t0 = time.time()
-              row = function_pass(profile_for(work, allowed), work)
-              found, note = denials_since(t0)
-              show("round %d: %d services named" % (rnd, len(allowed)), row, base)
-              print("   log: " + note)
-              asked = {}
-              for (op, name), who in sorted(found.items()):
-                  asked.setdefault(op, []).append("%s [%s]" % (name, ",".join(sorted(who))[:60]))
-              for op, items in asked.items():
-                  print("   refused %s: %s" % (op, "; ".join(items)))
-              new = sorted({name for (op, name) in found
-                            if op == "mach-lookup" and name not in allowed and not SENSITIVE.search(name)})
-              held = sorted({name for (op, name) in found
-                             if op == "mach-lookup" and name not in allowed and SENSITIVE.search(name)})
-              if held:
-                  print("   asked for and never added: " + " ".join(held))
-              if not new:
-                  break
-              print("   added: " + " ".join(new))
-              allowed += new
-          print("the closure: %d services: %s" % (len(allowed), " ".join(allowed)))
-          show("what a job reaches under the closure", reach_pass(profile_for(work, allowed), work), reach_base)
-
-          print("== hand-picked lists")
-          info = ["com.apple.system.opendirectoryd.libinfo",
-                  "com.apple.system.opendirectoryd.membership",
-                  "com.apple.system.DirectoryService.libinfo_v1"]
-          notify = ["com.apple.system.notification_center"]
-          prefs = ["com.apple.cfprefsd.daemon", "com.apple.cfprefsd.agent"]
-          logs = ["com.apple.logd", "com.apple.diagnosticd", "com.apple.system.logger"]
-          rest = ["com.apple.bsd.dirhelper", "com.apple.trustd", "com.apple.trustd.agent"]
-          lists = [("none", []), ("user database", info),
-                   ("+ notifications", info + notify),
-                   ("+ preferences", info + notify + prefs),
-                   ("+ logging", info + notify + prefs + logs),
-                   ("+ dirhelper, trustd", info + notify + prefs + logs + rest)]
-          if TRY:
-              lists.append(("the list handed in", TRY))
-          for title, services in lists:
-              profile = profile_for(work, services)
-              show("%s (%d)" % (title, len(services)), function_pass(profile, work), base)
-          show("what a job reaches with the user database alone", reach_pass(profile_for(work, info), work), reach_base)
-          show("what a job reaches with the widest hand-picked list", reach_pass(profile_for(work, lists[5][1]), work), reach_base)
-          if TRY:
-              show("what a job reaches with the list handed in", reach_pass(profile_for(work, TRY), work), reach_base)
-
-          print("== the process rule narrowed to a job's own (a reading for later)")
-          text = profile_for(work, info)
-          if text.count("(allow process*)\n") == 1:
-              for title, rule in (
-                      ("fork, exec, and its own process information",
-                       "(allow process-fork)\n(allow process-exec*)\n(allow process-info* (target self))\n"),
-                      ("fork, exec, and process information of itself and its children",
-                       "(allow process-fork)\n(allow process-exec*)\n(allow process-info* (target self))\n(allow process-info* (target children))\n")):
-                  narrowed = text.replace("(allow process*)\n", rule)
-                  show(title, function_pass(narrowed, work), base)
-                  rc, out, err = run([PY, "-c", PROCS], narrowed, work, timeout=30)
-                  print("   list-processes: %s" % (out[:40] or "exit %s %s" % (rc, err[-80:])))
-          shutil.rmtree(work, ignore_errors=True)
+                   "libc.proc_listallpids(None, 0))\n"], work)[:2])
+              # The count of the lines that carry it, never the lines.
+              rc, out, err = job(
+                  ["/bin/sh", "-c",
+                   "/usr/sbin/ioreg -c IOPlatformExpertDevice -d 2 | "
+                   "grep -c IOPlatformSerialNumber"], work)
+              print("left to a job -- the hardware's serial number:",
+                    "READ" if out not in ("", "0") else "not read (exit %s)" % rc)
+              mark = "HP-CLIPBOARD-MARK"
+              outside(["/usr/bin/pbcopy"], input=mark.encode())
+              done = outside(["/usr/bin/pbpaste"])
+              print("the clipboard, outside a job:", read(
+                  (done.returncode, done.stdout.decode("utf-8", "replace")), mark))
+              print("the clipboard, inside a job:", read(
+                  job(["/usr/bin/pbpaste"], work), mark))
+              job(["/bin/sh", "-c",
+                   "printf %s HP-WRITTEN-BY-A-JOB | /usr/bin/pbcopy"], work)
+              print("the clipboard after a job wrote to it:",
+                    "WRITTEN" if outside(["/usr/bin/pbpaste"]).stdout
+                    == b"HP-WRITTEN-BY-A-JOB" else "as it was")
+              print("the clipboard, inside a job whose config names the pasteboard:",
+                    read(job(["/usr/bin/pbpaste"], work, NAMED), mark))
+              for name in (PASTEBOARD, "hp.no.such.service",
+                           MC.SESSION_SERVICES[0], MC.SESSION_SERVICES[1],
+                           "com.apple.system.DirectoryService.libinfo_v1"):
+                  print("a lookup of %s -- outside a job: %s; inside: %s; "
+                        "inside under a config that names the pasteboard "
+                        "and hp.no.such.service: %s" % (
+                            name,
+                            outside([sys.executable, "-c", LOOKUP, name]
+                                    ).stdout.decode().strip(),
+                            job([sys.executable, "-c", LOOKUP, name], work)[1],
+                            job([sys.executable, "-c", LOOKUP, name], work,
+                                NAMED)[1]))
+              for what, argv, word in (
+                      ("the network configuration", ["/usr/sbin/scutil", "--dns"], "resolver"),
+                      ("the list of keychains", ["/usr/bin/security", "list-keychains"], "keychain"),
+                      ("the list of disks", ["/usr/sbin/diskutil", "list"], "/dev/disk")):
+                  print("%s -- outside a job: %s; inside: %s" % (
+                      what,
+                      "answered" if word in outside(argv).stdout.decode(
+                          "utf-8", "replace") else "not answered",
+                      "ANSWERED" if word in job(argv, work)[1] else "refused"))
+              outside(["/usr/bin/pbcopy"], input=b"")
+              done = outside(["/usr/bin/pbpaste"])
+              print("the system's reader on an empty clipboard, outside a job: "
+                    "exit %s, %d bytes" % (done.returncode, len(done.stdout)))
+              print("the same inside a job: exit %s" % job(["/usr/bin/pbpaste"], work)[0])
           PY
           exit 0
       - name: the backend's test module, as the runner's user
+        env:
+          # The clipboard tests put a mark of their own on this
+          # session's clipboard: asked for here, and nowhere a
+          # person's clipboard is.
+          HP_LIVE_CLIPBOARD: "1"
         run: |
           set -o pipefail
           python -m unittest runner.tests.test_macos_confine -v 2>&1 | tee macos-confinement-user.log
+          # A clipboard test that found no pasteboard to ask
+          # proved nothing: on this leg that is a failure.
+          if grep -a -q -e "no pasteboard answers this session" -e "writes this session's clipboard" macos-confinement-user.log; then
+            echo "::error title=macos-confinement::a clipboard test did not run as the runner's user: no pasteboard answered outside a job"
+            exit 1
+          fi
       - name: the same module, as root
         if: always()
         run: |
           set -o pipefail
-          sudo env "PATH=$PATH" PYTHONDONTWRITEBYTECODE=1 python -m unittest runner.tests.test_macos_confine -v 2>&1 | tee macos-confinement-root.log
+          sudo env "PATH=$PATH" PYTHONDONTWRITEBYTECODE=1 HP_LIVE_CLIPBOARD=1 python -m unittest runner.tests.test_macos_confine -v 2>&1 | tee macos-confinement-root.log
+          echo "clipboard tests that found no pasteboard to ask as root: $(grep -a -c "no pasteboard answers this session" macos-confinement-root.log || true)"
       - name: freeze the release binaries, as the build freezes them
         if: always()
         run: |
@@ -539,7 +268,7 @@ jobs:
           python - "$root" <<'PY'
           import json, sys
           root = sys.argv[1]
-          json.dump({
+          cfg = {
               "mailbox_user": "pigeon-test@example.com",
               "mailbox_password": "not-a-real-mailbox-password",
               "shared_secret": "9f2c7ab1e84d3065c1a7b9e2f4d8065a3c8e1b7d9f2a4c6e8b1d3f5a7c9e2b4d",
@@ -549,17 +278,25 @@ jobs:
               "security": {"modes": {"confinement": "enforce",
                                      "job_user": "off",
                                      "audience": "off"}},
-          }, open(root + "/config.json", "w"))
+          }
+          json.dump(cfg, open(root + "/config.json", "w"))
+          # The same config with the pasteboard named among the
+          # services a job may look up.
+          cfg["security"]["confinement"] = {"macos": {"mach_services": [
+              "com.apple.pasteboard.1"]}}
+          json.dump(cfg, open(root + "/config-pasteboard.json", "w"))
           # The job says what it found by the code it exits with:
           # 11 its own work directory took no write, 12 a write
           # outside it landed, 13 and 14 it carries no ceiling of
-          # its own, 0 none of those.
+          # its own, 15 the pasteboard answered it, 0 none of
+          # those.
           script = (
               ': > inside.txt || exit 11\n'
               '(: > "$HP_OUTSIDE") 2>/dev/null && exit 12\n'
               's=$(ulimit -S -d); h=$(ulimit -H -d)\n'
               '[ "$s" = "$h" ] || exit 13\n'
               'case $s in unlimited|"") exit 14 ;; esac\n'
+              '/usr/bin/pbpaste > /dev/null 2>&1 && exit 15\n'
               'exit 0\n')
           json.dump({"job_id": "hp-frozen-proof", "kind": "exec",
                      "script": script,
@@ -568,6 +305,11 @@ jobs:
                     open(root + "/variant.json", "w"))
           PY
           bad=0
+          echo "== the pasteboard answers outside a job"
+          # The control under the job's clipboard reading: a
+          # mark put on the clipboard here is read back here.
+          printf %s "HP-FROZEN-MARK" | /usr/bin/pbcopy
+          if [ "$(/usr/bin/pbpaste 2>/dev/null)" = "HP-FROZEN-MARK" ]; then echo "a mark put on the clipboard is read back outside a job"; else bad=1; echo "::error title=macos-confinement::no pasteboard answered outside a job: the job's clipboard reading would prove nothing"; fi
           echo "== the frozen runner starts at enforce"
           ./dist/homing-pigeon --config "$root/config.json" --once --dry-run > "$root/start.log" 2>&1
           rc=$?
@@ -593,8 +335,23 @@ jobs:
             *'"decision": "confined"'*'macos: seatbelt_profile + no_network + spawn_resource_limits'*) ;;
             *) bad=1; echo "::error title=macos-confinement::the audit log does not record the job as confined under the macOS controls" ;;
           esac
+          echo "== the same job under a config that names the pasteboard"
+          ./dist/homing-pigeon --config "$root/config-pasteboard.json" --run-variant "$root/variant.json" > "$root/job-pasteboard.log" 2>&1
+          rc=$?
+          tail -n 4 "$root/job-pasteboard.log" | cut -c1-400
+          report="$(grep -a '"stage"' "$root/job-pasteboard.log" | tail -n 1)"
+          code="$(printf '%s' "$report" | python -c "import json, sys; r = json.loads(sys.stdin.read() or '{}'); print(r.get('stage'), r.get('exit_code'))")"
+          echo "job: exit $rc, report: $code"
+          [ "$code" = "ran 15" ] || { bad=1; echo "::error title=macos-confinement::under a config that names the pasteboard, the job through the frozen runner was not answered by it ($code)"; }
+          # No record before this job names a service: one that
+          # does is this job's, wherever its log stands.
+          line="$(find "$root/state" -name security-audit.jsonl -exec grep -a -h '"feature": "confinement"' {} + | grep -a '"decision": "confined"' | grep -a 'services the config names: com.apple.pasteboard.1' | tail -n 1)"
+          printf '%s\n' "$line" | cut -c1-500
+          [ -n "$line" ] || { bad=1; echo "::error title=macos-confinement::the audit log does not name the service the config named"; }
           echo "== the frozen runner's posture report"
-          ./dist/homing-pigeon --config "$root/config.json" --posture 2>&1 | grep -a -i "confinement" | cut -c1-300
+          ./dist/homing-pigeon --config "$root/config.json" --posture > "$root/posture.log" 2>&1
+          grep -a -i "confinement" "$root/posture.log" | cut -c1-300
+          grep -a -q "no other of the session's services: the clipboard is refused" "$root/posture.log" || { bad=1; echo "::error title=macos-confinement::the frozen runner's posture report does not say the clipboard is refused"; }
           echo "frozen runner verdict: $bad"
           exit "$bad"
       - name: the frozen installer, on a home of its own
@@ -613,6 +370,7 @@ jobs:
           echo "installer: exit $rc"
           [ "$rc" -eq 0 ] || { bad=1; echo "::error title=macos-confinement::the frozen installer exited $rc: $(tail -n 3 "$home/install.log" | tr '\n' ' ' | cut -c1-400)"; }
           grep -a -q "security.modes.confinement left at enforce" "$home/install.log" || { bad=1; echo "::error title=macos-confinement::the frozen installer did not leave confinement at enforce on this Mac"; }
+          grep -a -q "platform: a job may ask the user database who a user is, and no other of the session's services: the clipboard is refused" "$home/install.log" || { bad=1; echo "::error title=macos-confinement::the frozen installer did not say the clipboard is refused on this Mac"; }
           mode="$(python -c "import json, sys; cfg = json.load(open(sys.argv[1])); print(cfg.get('security', {}).get('modes', {}).get('confinement', 'enforce'))" "$home/.homing-pigeon/config.json" 2>&1)"
           echo "security.modes.confinement in the written config: $mode"
           [ "$mode" = "enforce" ] || { bad=1; echo "::error title=macos-confinement::the config the frozen installer wrote states confinement as $mode"; }
