@@ -108,6 +108,9 @@ ALLOWLIST = {
     (".github/workflows/docker.yml",
      AG.RULE_SECRET_IN_COMMAND):
         "the same CI fixture config literal as build.yml",
+    (".github/workflows/macos-confinement.yml",
+     AG.RULE_SECRET_IN_COMMAND):
+        "the same CI fixture config literal as build.yml",
 }
 
 
