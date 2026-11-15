@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.25 - 2026-11-15
+
+- docs: the Pigeon Home privacy policy page for the hosted sign-in service lands -- the public privacy policy page the hosted sign-in verification needs
+- tests: the provider-name discipline exempts the privacy policy's contact line, scoped to that file and the operator's own address, with pinning tests
+
 ## 3.16.26.24 - 2026-11-15
 
 - docs: the Pigeon Home privacy policy page for the hosted sign-in service lands -- the public privacy policy page the hosted sign-in verification needs
