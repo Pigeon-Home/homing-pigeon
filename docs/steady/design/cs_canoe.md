@@ -101,3 +101,12 @@ the conductor syncs back with Muse and the work is reconciled.
 - That is what makes things atomic. It is the same move as
   concurrency: the solution to concurrency is defining what an
   atomic operation is on the platform.
+
+## The fourth option, future
+
+- The first three options all ride the email inbox as the
+  transport. A fourth option, for later: log in with Gmail, then
+  authenticate to Cloudflare — and the transport becomes Cloudflare
+  (queues) instead of the inbox.
+- Same sign-in, same account; only the transport changes. The Gmail
+  identity carries over, and the pairing stays super simple.
