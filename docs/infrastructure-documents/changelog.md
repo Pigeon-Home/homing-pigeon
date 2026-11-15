@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.19 - 2026-11-15
+
+- Setup: CS_canoe option 3 — browser sign-in plus an autogen shared secret; the wizard asks once, hidden, for the OAuth client secret the exchange requires
+- Identity: the full build identity banner — full identity in --version on every CLI, CRITICAL identity opening every log, once-per-module provenance, SHA-384 tree checksum in the build stamp
+- FreeBSD: a runner kept to some of the host's cores keeps its jobs to them; the hosted runs recorded
+- macOS: a proof workflow of the confinement backend's own, on the two Macs a release freezes on
+- Fix: Q196 and Q197 — the mutation walk's recorded selection and the core breakdown re-recorded whole
+
 ## 3.16.26.18 - 2026-11-15
 
 - Setup: CS_canoe option 3 — browser sign-in plus an autogen shared secret
