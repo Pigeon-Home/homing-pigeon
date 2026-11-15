@@ -42,6 +42,11 @@ on:
   schedule:
     - cron: "23 10 * * 4"
   workflow_dispatch:
+    inputs:
+      try_services:
+        description: "Mach service names to try a job's programs under, separated by spaces"
+        required: false
+        default: ""
 
 permissions: {}
 
@@ -143,6 +148,357 @@ jobs:
               print("the clipboard:", (
                   rc, "read from inside a job" if "HP-CLIPBOARD-MARK" in out
                   else "not read", err))
+          PY
+          exit 0
+      - name: what a job's programs ask the session's services for
+        env:
+          HP_TRY_SERVICES: ${{ inputs.try_services }}
+        run: |
+          set +e
+          python - <<'PY'
+          import ctypes, os, re, shutil, subprocess, sys, tempfile, time
+          from runner.guard import macos_confine as MC
+
+          PY = sys.executable
+          TRY = [s for s in os.environ.get("HP_TRY_SERVICES", "").replace(",", " ").split() if s]
+          TEMP = os.environ.get("RUNNER_TEMP") or tempfile.gettempdir()
+          MARK = "HP-MARK-%d" % os.getpid()
+
+
+          def profile_for(work, services=None, mach_all=False, extra=""):
+              """The backend's own profile with its Mach rule replaced."""
+              text = MC.build_profile(os.path.realpath(work), interpreter=PY)
+              assert text.count("(allow mach*)\n") == 1, "the Mach rule moved"
+              if mach_all:
+                  return text
+              rule = ""
+              if services:
+                  rule = "(allow mach-lookup\n" + "".join(
+                      '    (global-name "%s")\n' % s for s in services) + ")\n"
+              return text.replace("(allow mach*)\n", rule + extra)
+
+
+          def run(argv, profile, work, timeout=60, stdin=None):
+              """One command under a profile and the launcher: (exit, out, err)."""
+              env = dict(os.environ)
+              tmp = os.path.join(work, ".hp-tmp")
+              os.makedirs(tmp, exist_ok=True)
+              env["TMPDIR"] = tmp
+              full = [MC.SANDBOX_EXEC_BIN, "-p", profile] + MC.build_shim_argv(
+                  argv, memory_bytes=8 << 30)
+              try:
+                  done = subprocess.run(full, cwd=work, env=env, input=stdin,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                        timeout=timeout)
+                  return (done.returncode,
+                          done.stdout.decode("utf-8", "replace").strip(),
+                          done.stderr.decode("utf-8", "replace").strip())
+              except subprocess.TimeoutExpired:
+                  return ("timeout", "", "")
+              except Exception as e:
+                  return (type(e).__name__, "", str(e)[:200])
+
+
+          def sh(script):
+              return ["/bin/sh", "-c", script]
+
+
+          ME = subprocess.run(["id", "-un"], capture_output=True, text=True).stdout.strip()
+
+          # name, argv, and the text its output must carry to count as working
+          FUNCTION = [
+              ("sh-tools", sh("ls -l . >/dev/null && date >/dev/null && mktemp ./x.XXXXXX >/dev/null && echo a | sed s/a/b/ | grep -q b && awk 'BEGIN{print 1}' >/dev/null && echo SH-OK"), "SH-OK"),
+              ("id-un", sh("id -un"), ME),
+              ("whoami", ["whoami"], ME),
+              ("ls-owner", sh("ls -ld . | awk '{print $3}'"), ME),
+              ("python-pwd", [PY, "-c", "import os, pwd; print(pwd.getpwuid(os.getuid()).pw_name)"], ME),
+              ("python-std", [PY, "-c", "import time, locale, tempfile, json, hashlib, subprocess, socket; time.localtime(); tempfile.mkstemp(); socket.gethostname(); print(subprocess.run(['/bin/echo', 'PY-OK'], capture_output=True, text=True).stdout)"], "PY-OK"),
+              ("python-tz", [PY, "-c", "import time; print('TZ', time.tzname[0])"], "TZ"),
+              ("python-ssl", [PY, "-c", "import ssl; ssl.create_default_context(); print('SSL-OK')"], "SSL-OK"),
+              ("pip", [PY, "-m", "pip", "--version"], "pip"),
+              ("perl", ["perl", "-e", "print scalar(getpwuid($<)), qq(\\n)"], ME),
+              ("ruby", ["ruby", "-e", "require 'etc'; puts Etc.getpwuid.name"], ME),
+              ("node", ["node", "-e", "const os = require('os'); require('fs').writeFileSync('n.txt', 'x'); console.log(os.userInfo().username)"], ME),
+              ("java", ["java", "-version"], ""),
+              ("git-named", sh("rm -rf r1 && git init -q r1 && cd r1 && git -c user.name=a -c user.email=a@b.c commit -q --allow-empty -m x && git log --oneline | wc -l"), "1"),
+              ("git-auto", sh("rm -rf r2 && git init -q r2 && cd r2 && git commit -q --allow-empty -m x && git log --format=%an | head -n 1"), ""),
+              ("cc", sh("printf 'int main(void){return 0;}\\n' > h.c && cc h.c -o h && ./h && echo CC-OK"), "CC-OK"),
+              ("make", sh("printf 'all:\\n\\t@echo MAKE-OK\\n' > Makefile && make"), "MAKE-OK"),
+              ("xcrun", ["xcrun", "--find", "cc"], "cc"),
+              ("sw_vers", ["sw_vers", "-productVersion"], "."),
+              ("defaults-sys", ["defaults", "read", "/System/Library/CoreServices/SystemVersion", "ProductVersion"], "."),
+              ("plutil", ["plutil", "-lint", "/System/Library/CoreServices/SystemVersion.plist"], "OK"),
+              ("curl-v", ["curl", "--version"], "curl"),
+              ("openssl", ["openssl", "version"], "SSL"),
+              ("sqlite3", ["sqlite3", ":memory:", "select 41+1"], "42"),
+              ("zip", sh("echo x > z.txt && zip -q z.zip z.txt && unzip -l z.zip >/dev/null && echo ZIP-OK"), "ZIP-OK"),
+              ("tar", sh("echo x > t.txt && tar czf t.tgz t.txt && tar tzf t.tgz"), "t.txt"),
+              ("file", ["file", "/bin/ls"], "Mach-O"),
+              ("locale", ["locale"], "LC_"),
+              ("uname", ["uname", "-a"], "Darwin"),
+              ("hostname", ["hostname"], ""),
+              ("sysctl", ["sysctl", "-n", "hw.ncpu"], ""),
+              ("df", ["df", "-k", "."], "Filesystem"),
+              ("getconf-tmp", ["getconf", "DARWIN_USER_TEMP_DIR"], "/"),
+              ("codesign", sh("codesign -dv /bin/ls 2>&1 | head -n 1"), "Executable"),
+              ("osascript-plain", ["osascript", "-e", "return 1 + 1"], "2"),
+              ("date-tz", ["date", "+%Z"], ""),
+          ]
+
+
+          def works(result, want):
+              rc, out, err = result
+              return rc == 0 and (want in out or want in err)
+
+
+          def function_pass(profile, work):
+              row = {}
+              for name, argv, want in FUNCTION:
+                  if shutil.which(argv[0]) is None and not os.path.isabs(argv[0]):
+                      row[name] = "absent"
+                      continue
+                  result = run(argv, profile, work)
+                  row[name] = "works" if works(result, want) else "exit %s: %s" % (
+                      result[0], (result[2] or result[1]).replace("\n", " | ")[-110:])
+              return row
+
+
+          def outside(argv, **kw):
+              try:
+                  return subprocess.run(argv, capture_output=True, text=True, timeout=60, **kw)
+              except Exception as e:
+                  return subprocess.CompletedProcess(argv, 99, "", str(e))
+
+
+          LOOKUP = (
+              "import ctypes, sys\n"
+              "libc = ctypes.CDLL(None)\n"
+              "bp = ctypes.c_uint.in_dll(libc, 'bootstrap_port')\n"
+              "port = ctypes.c_uint(0)\n"
+              "kr = libc.bootstrap_look_up(bp, sys.argv[1].encode(), ctypes.byref(port))\n"
+              "print('LOOKUP kr=%d port=%d' % (kr, port.value))\n")
+          REGISTER = (
+              "import ctypes\n"
+              "libc = ctypes.CDLL(None)\n"
+              "bp = ctypes.c_uint.in_dll(libc, 'bootstrap_port')\n"
+              "libc.mach_reply_port.restype = ctypes.c_uint\n"
+              "port = libc.mach_reply_port()\n"
+              "kr = libc.bootstrap_register(bp, b'hp.facts.squat', ctypes.c_uint(port))\n"
+              "print('REGISTER kr=%d' % kr)\n")
+          RESOLVE = (
+              "import socket\n"
+              "try:\n"
+              "    print('RESOLVED', socket.getaddrinfo('example.com', 80)[0][4][0])\n"
+              "except Exception as e:\n"
+              "    print('NOT-RESOLVED', type(e).__name__, e)\n")
+          PROCS = (
+              "import ctypes\n"
+              "libc = ctypes.CDLL(None)\n"
+              "print('PROCS', libc.proc_listallpids(None, 0))\n")
+
+
+          def reach_pass(profile, work):
+              """What a job reaches under a profile, each as a short verdict."""
+              row = {}
+              outside(["/usr/bin/pbcopy"], input=MARK)
+              rc, out, err = run(["/usr/bin/pbpaste"], profile, work, timeout=30)
+              row["clipboard-read"] = "READ" if MARK in out else "no (exit %s)" % rc
+              written = MARK + "-W"
+              run(sh("printf %s | /usr/bin/pbcopy" % written), profile, work, timeout=30)
+              row["clipboard-write"] = "WRITTEN" if outside(["/usr/bin/pbpaste"]).stdout == written else "no"
+              rc, out, err = run([PY, "-c", RESOLVE], profile, work, timeout=60)
+              row["resolve-a-name"] = out[:60] or "exit %s %s" % (rc, err[-60:])
+              rc, out, err = run(["/usr/bin/dscacheutil", "-q", "host", "-a", "name", "example.com"], profile, work, timeout=60)
+              row["dscacheutil-host"] = "RESOLVED" if "ip_address" in out else "no (exit %s)" % rc
+              rc, out, err = run([PY, "-c", LOOKUP, "com.apple.pasteboard.1"], profile, work, timeout=30)
+              row["look-up-pasteboard"] = out[:40] or "exit %s %s" % (rc, err[-60:])
+              rc, out, err = run([PY, "-c", REGISTER], profile, work, timeout=30)
+              row["register-a-name"] = out[:40] or "exit %s %s" % (rc, err[-60:])
+              rc, out, err = run([PY, "-c", PROCS], profile, work, timeout=30)
+              row["list-processes"] = out[:40] or "exit %s %s" % (rc, err[-60:])
+              outside(["/usr/bin/pkill", "-x", "Calculator"])
+              rc, out, err = run(["/usr/bin/open", "-g", "-a", "Calculator"], profile, work, timeout=60)
+              time.sleep(2)
+              row["open-an-app"] = "LAUNCHED" if outside(["/usr/bin/pgrep", "-x", "Calculator"]).returncode == 0 else "no (exit %s: %s)" % (rc, err[-70:])
+              outside(["/usr/bin/pkill", "-x", "Calculator"])
+              escape = os.path.join(TEMP, "hp-facts-open-escape")
+              if os.path.exists(escape):
+                  os.unlink(escape)
+              with open(os.path.join(work, "esc.command"), "w") as fh:
+                  fh.write("#!/bin/sh\n: > '%s'\n" % escape)
+              os.chmod(os.path.join(work, "esc.command"), 0o755)
+              rc, out, err = run(["/usr/bin/open", "-g", "./esc.command"], profile, work, timeout=60)
+              time.sleep(4)
+              row["open-a-script"] = "RAN OUTSIDE THE PROFILE" if os.path.exists(escape) else "no (exit %s: %s)" % (rc, err[-70:])
+              outside(["/usr/bin/pkill", "-x", "Terminal"])
+              outside(["/usr/bin/defaults", "write", "hp.facts.domain", "mark", MARK])
+              rc, out, err = run(["/usr/bin/defaults", "read", "hp.facts.domain", "mark"], profile, work, timeout=30)
+              row["read-a-preference"] = "READ" if MARK in out else "no (exit %s)" % rc
+              outside(["/usr/bin/defaults", "delete", "hp.facts.domain"])
+              rc, out, err = run(["/usr/sbin/scutil", "--dns"], profile, work, timeout=30)
+              row["scutil-dns"] = "ANSWERED %d bytes" % len(out) if "resolver" in out else "no (exit %s)" % rc
+              rc, out, err = run(sh("/usr/sbin/ioreg -c IOPlatformExpertDevice -d 2 | grep -c IOPlatformSerialNumber"), profile, work, timeout=30)
+              row["ioreg-serial"] = "READ" if out.strip() not in ("", "0") else "no"
+              rc, out, err = run(["/usr/bin/security", "list-keychains"], profile, work, timeout=30)
+              row["list-keychains"] = "ANSWERED" if "keychain" in out else "no (exit %s)" % rc
+              rc, out, err = run(["/usr/sbin/screencapture", "-x", "shot.png"], profile, work, timeout=30)
+              row["screencapture"] = "CAPTURED" if os.path.exists(os.path.join(work, "shot.png")) else "no (exit %s)" % rc
+              rc, out, err = run(["/usr/sbin/diskutil", "list"], profile, work, timeout=30)
+              row["diskutil-list"] = "ANSWERED" if "/dev/disk" in out else "no (exit %s)" % rc
+              rc, out, err = run(["/usr/bin/logger", MARK + "-LOG"], profile, work, timeout=30)
+              row["logger"] = "exit %s" % rc
+              return row
+
+
+          SENSITIVE = re.compile(
+              r"pasteboard|pboard|windowserver|launchservices|\.lsd\.|coreservices|tccd|"
+              r"usernot|SecurityServer|securityd|secd|keychain|distributed_notifications|"
+              r"appleevents|quarantine|dock|Finder|SystemUIServer|accountsd|cloudd|bird|"
+              r"contacts|Calendar|AddressBook|speech|audio|cmio|mediaremote|bluetooth|"
+              r"locationd|dnssd|mDNSResponder|networkd|nehelper|nesession|configd|"
+              r"SystemConfiguration|metadata|spotlight|screencapture|pbs", re.I)
+
+
+          def denials_since(t0):
+              """The Mach denials the system log holds since t0: {(operation, name): {who}}."""
+              time.sleep(2)
+              start = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t0 - 1))
+              try:
+                  log = subprocess.run(
+                      ["sudo", "-n", "log", "show", "--start", start, "--style", "compact",
+                       "--predicate", 'eventMessage CONTAINS "deny" AND eventMessage CONTAINS "mach-"'],
+                      capture_output=True, text=True, timeout=300)
+              except Exception as e:
+                  return {}, "log could not be read: %s" % e
+              found = {}
+              for line in log.stdout.splitlines():
+                  m = re.search(r"Sandbox: (.+?)\((\d+)\) deny\(\d+\) (mach-[a-z-]+) (\S+)", line)
+                  if not m:
+                      m = re.search(r"duplicate reports? for (.+?)()? deny\(\d+\) (mach-[a-z-]+) (\S+)", line)
+                  if m:
+                      found.setdefault((m.group(3), m.group(4)), set()).add(m.group(1))
+              return found, "log exit %d, %d lines, %d denials" % (
+                  log.returncode, len(log.stdout.splitlines()), len(found))
+
+
+          def show(title, row, base=None):
+              print("-- " + title)
+              for name in row:
+                  mark = "" if base is None or base.get(name) == row[name] else "   <-- differs from all services"
+                  if base is None or mark or not str(row[name]).startswith("works"):
+                      print("   %-18s %s%s" % (name, row[name], mark))
+              if base is not None:
+                  same = sum(1 for n in row if base.get(n) == row[n])
+                  print("   (%d of %d as with all services)" % (same, len(row)))
+
+
+          work = tempfile.mkdtemp(prefix="hp-services-")
+          print("== the operation names this macOS knows")
+          names = ["mach-lookup", "mach-register", "mach-bootstrap", "mach-task-name",
+                   "mach-priv-task-port", "mach-priv-host-port", "mach-per-user-lookup",
+                   "mach-cross-domain-lookup", "mach-derive-port", "mach-issue-extension",
+                   "mach-kernel-endpoint", "mach-host-special-port-set",
+                   "mach-task-special-port-set", "mach-host-exception-port-set",
+                   "syscall-unix", "syscall-mach", "process-info-pidinfo",
+                   "process-info-listpids", "process-info-setcontrol",
+                   "process-info-dirtycontrol", "process-info-rusage",
+                   "process-info-codesignature", "process-info-ledger",
+                   "process-codesigning-status-get", "lsopen", "job-creation",
+                   "appleevent-send", "user-preference-read", "user-preference-write",
+                   "distributed-notification-post", "darwin-notification-post",
+                   "nvram-get", "iokit-open", "iokit-get-properties", "system-socket",
+                   "ipc-posix-shm", "ipc-posix-sem", "ipc-sysv-shm", "signal",
+                   "process-fork", "process-exec", "pseudo-tty", "sysctl-read"]
+          known, unknown = [], []
+          for op in names:
+              done = outside([MC.SANDBOX_EXEC_BIN, "-p", "(version 1)\n(allow default)\n(deny %s)\n" % op, "/usr/bin/true"])
+              (known if done.returncode == 0 else unknown).append(op)
+          print("known:", " ".join(known))
+          print("not known:", " ".join(unknown))
+
+          print("== the services Apple's own base profiles name")
+          for name in ("system.sb", "bsd.sb"):
+              path = "/System/Library/Sandbox/Profiles/" + name
+              try:
+                  text = open(path, encoding="utf-8", errors="replace").read()
+              except OSError as e:
+                  print(name, "unreadable:", e)
+                  continue
+              found = sorted(set(re.findall(r'\((?:global|local)-name(?:-regex)? "([^"]+)"\)', text)))
+              print("%s: %d names: %s" % (name, len(found), " ".join(found)))
+              for line in text.splitlines():
+                  if re.search(r"\(allow mach-(?!lookup)|mach-bootstrap|mach-register", line):
+                      print("   %s: %s" % (name, line.strip()[:150]))
+
+          print("== with every service (the profile as it stands)")
+          base_profile = profile_for(work, mach_all=True)
+          base = function_pass(base_profile, work)
+          show("what works", base)
+          reach_base = reach_pass(base_profile, work)
+          show("what a job reaches", reach_base)
+
+          print("== with no service at all, then with what was asked for, round by round")
+          allowed = []
+          for rnd in range(6):
+              t0 = time.time()
+              row = function_pass(profile_for(work, allowed), work)
+              found, note = denials_since(t0)
+              show("round %d: %d services named" % (rnd, len(allowed)), row, base)
+              print("   log: " + note)
+              asked = {}
+              for (op, name), who in sorted(found.items()):
+                  asked.setdefault(op, []).append("%s [%s]" % (name, ",".join(sorted(who))[:60]))
+              for op, items in asked.items():
+                  print("   refused %s: %s" % (op, "; ".join(items)))
+              new = sorted({name for (op, name) in found
+                            if op == "mach-lookup" and name not in allowed and not SENSITIVE.search(name)})
+              held = sorted({name for (op, name) in found
+                             if op == "mach-lookup" and name not in allowed and SENSITIVE.search(name)})
+              if held:
+                  print("   asked for and never added: " + " ".join(held))
+              if not new:
+                  break
+              print("   added: " + " ".join(new))
+              allowed += new
+          print("the closure: %d services: %s" % (len(allowed), " ".join(allowed)))
+          show("what a job reaches under the closure", reach_pass(profile_for(work, allowed), work), reach_base)
+
+          print("== hand-picked lists")
+          info = ["com.apple.system.opendirectoryd.libinfo",
+                  "com.apple.system.opendirectoryd.membership",
+                  "com.apple.system.DirectoryService.libinfo_v1"]
+          notify = ["com.apple.system.notification_center"]
+          prefs = ["com.apple.cfprefsd.daemon", "com.apple.cfprefsd.agent"]
+          logs = ["com.apple.logd", "com.apple.diagnosticd", "com.apple.system.logger"]
+          rest = ["com.apple.bsd.dirhelper", "com.apple.trustd", "com.apple.trustd.agent"]
+          lists = [("none", []), ("user database", info),
+                   ("+ notifications", info + notify),
+                   ("+ preferences", info + notify + prefs),
+                   ("+ logging", info + notify + prefs + logs),
+                   ("+ dirhelper, trustd", info + notify + prefs + logs + rest)]
+          if TRY:
+              lists.append(("the list handed in", TRY))
+          for title, services in lists:
+              profile = profile_for(work, services)
+              show("%s (%d)" % (title, len(services)), function_pass(profile, work), base)
+          show("what a job reaches with the user database alone", reach_pass(profile_for(work, info), work), reach_base)
+          show("what a job reaches with the widest hand-picked list", reach_pass(profile_for(work, lists[5][1]), work), reach_base)
+          if TRY:
+              show("what a job reaches with the list handed in", reach_pass(profile_for(work, TRY), work), reach_base)
+
+          print("== the process rule narrowed to a job's own (a reading for later)")
+          text = profile_for(work, info)
+          if text.count("(allow process*)\n") == 1:
+              for title, rule in (
+                      ("fork, exec, and its own process information",
+                       "(allow process-fork)\n(allow process-exec*)\n(allow process-info* (target self))\n"),
+                      ("fork, exec, and process information of itself and its children",
+                       "(allow process-fork)\n(allow process-exec*)\n(allow process-info* (target self))\n(allow process-info* (target children))\n")):
+                  narrowed = text.replace("(allow process*)\n", rule)
+                  show(title, function_pass(narrowed, work), base)
+                  rc, out, err = run([PY, "-c", PROCS], narrowed, work, timeout=30)
+                  print("   list-processes: %s" % (out[:40] or "exit %s %s" % (rc, err[-80:])))
+          shutil.rmtree(work, ignore_errors=True)
           PY
           exit 0
       - name: the backend's test module, as the runner's user
