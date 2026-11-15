@@ -260,9 +260,9 @@ Five things to know about it:
   runner is pinned to the same cores; the limit is not per
   job, and it is not a share of time. Within its cores a job
   may run flat out until its timeout.
-- **One core holds none back.** A runner with one core to
-  run on has nothing to keep from a job, and the record names
-  no limit there. `--posture` says so.
+- **One core holds none back.** A host with one core has
+  nothing to keep from a job, and the record names no limit
+  there. `--posture` says so.
 
 ### Startup, and after a job
 
