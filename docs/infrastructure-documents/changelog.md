@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.13 - 2026-11-15
+
+- freebsd: a job user's processes take a ceiling that needs no RACCT -- limits -u at the jail door, 256 by default (Claude)
+- freebsd: the release collects the job's first process, so a released job holds none of its account's count (Claude)
+
 ## 3.16.26.12 - 2026-11-14
 
 - build(deps): bump pyrefly from 1.4.0 to 1.4.1 in /.github (dependabot[bot])
