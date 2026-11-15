@@ -242,7 +242,8 @@ session, and no more is promised of it. The pasteboard
 database on both hosted Macs, it answered a job's lookup,
 and the system's reader ended 0 — and printed nothing: the
 mark on the clipboard came back only with every service
-open. What a service does for a caller that reaches it and
+open, and a job's write to the clipboard did not land
+either. What a service does for a caller that reaches it and
 nothing else of the session is the service's own matter;
 the system log names what else a program asked for.
 
@@ -253,8 +254,9 @@ system's own reader. It throws away whatever the reader
 would print — the trial takes the answer, never the
 clipboard — and a start that passes has seen the reader
 refused. Where the config names the pasteboard, the answer
-is recorded and is not a refusal: that config says a job
-may read the clipboard, and the posture report repeats it.
+is recorded and is not a refusal: that config says the
+pasteboard may answer a job, and the posture report repeats
+it.
 A Mac with no reader, or a session with no pasteboard,
 answers nothing: there the question proves nothing, and
 there is no clipboard for a job to read.
@@ -727,3 +729,70 @@ else.
     config named.
 24. The frozen installer prints, among what a job carries
     on that Mac, that the clipboard is refused.
+
+### The session's services: conclusions
+
+Two hosted runs judged the profile that names its services,
+both on 2026-11-15, each on both Macs, as the ordinary user
+and as root. The first (43767805935, on the landing)
+answered ten of the eleven as supposed and one in part. The
+second (43768512227, on the commit that took that answer)
+is green: the backend's 263 tests as each user, and the
+frozen runner's and the frozen installer's own checks.
+
+14. Held. launchd answered a job's lookup of the pasteboard
+    1100, and of every other service named above the same,
+    where a process in no job was answered 0. For the name
+    no service has, a process in no job was answered 1102
+    and a job 1100: the sandbox answers before launchd
+    looks.
+15. Held: 1100 for a name of the job's own, and a name the
+    profile carries was not the job's to register either.
+16. Held. The reader ended 1 inside a job, and the mark was
+    in nothing it or `osascript` printed. The same reader
+    with every service open returned it. The mark was still
+    on the clipboard afterwards, and after a job's write.
+17. Held. The names matched, and `id -Gn` named the same
+    groups inside a job as outside: 17 and 14 of them for
+    the ordinary user on the two Macs, 23 and 22 for root.
+    With no service named, `id -un` printed 501 for the
+    ordinary user. For root it printed `root`, a name the
+    system's own password file carries, which a job may
+    read.
+18. Held: 36 of 36 on both Macs as both users. Thirty of
+    them work under the profile. The six that do not —
+    `git` in both rows, `cc`, `make`, `xcrun` and `java` —
+    do not with every service open either. `sqlite3` works
+    where the profile is built for it as the job's own
+    program, its install readable.
+19. Held: each was answered with every service open, and
+    ended 1 under the profile.
+20. Held. The trial recorded the clipboard as refused. The
+    trial through a profile that opens every service was
+    convicted by the pasteboard's answer, with a mark on
+    the clipboard and with the clipboard empty, where the
+    reader ended 0 with nothing printed.
+21. Held in part. Under a config that names the pasteboard
+    the lookup was answered 0, the window server was still
+    refused, the reader ended 0, the probe passed and
+    recorded the clipboard as open, and the report and the
+    audit detail named the service. The reader did not
+    return the mark: it printed nothing, and a job's write
+    to the clipboard did not land. The pages say what was
+    read, the report says of a named pasteboard that it
+    answers a job, and the setting's example names no real
+    service. A name the config names does reach launchd:
+    for the name no service has, a job was then answered
+    1102, as a process in no job is.
+22. Held: no clipboard test was skipped as root on either
+    Mac.
+23. Held. Through the frozen runner the job ended 0 under
+    the config a release's user starts with, and 15 under
+    the one that names the pasteboard; the report carried
+    the line, and the audit detail the name.
+24. Held on both Macs.
+
+What the profile leaves a job was read again in both runs:
+a job listed between 424 and 469 of the host's processes,
+and read from the I/O registry that the Mac's serial number
+is there.

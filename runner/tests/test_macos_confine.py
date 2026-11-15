@@ -2221,8 +2221,8 @@ class PostureLinesTest(unittest.TestCase):
                    "and the services this config names: "
                    "com.apple.pasteboard.1, com.example.one "
                    "(security.confinement.macos.mach_services); "
-                   "the pasteboard is among them, so the clipboard "
-                   "is not refused"))
+                   "the pasteboard is among them and answers a "
+                   "job"))
 
     def test_the_report_says_when_the_pasteboard_is_not_among_them(self):
         cfg = {"security": {"confinement": {"macos": {"mach_services": [
@@ -2849,14 +2849,21 @@ class PagesTest(unittest.TestCase):
         self.assertIn("Up to %d can be named" % MC.MAX_MACH_SERVICES,
                       operator)
 
-    def test_the_services_suppositions_stand_before_the_run(self):
+    def test_the_services_runs_are_the_ones_on_the_record(self):
         page = self._page("docs", "steady", "design",
                           "macos-confinement-design.md")
-        supposed = page.split(
+        for run in ("43761537586", "43767805935", "43768512227"):
+            self.assertIn(run, page)
+        # Eleven suppositions, and a conclusion against each.
+        tail = page.split(
             "### The session's services: suppositions", 1)[1]
+        supposed, concluded = tail.split(
+            "### The session's services: conclusions", 1)
         for n in range(14, 25):
             self.assertIn("\n%d. " % n, supposed, n)
-        self.assertNotIn("\n25. ", supposed)
+            self.assertIn("\n%d. " % n, concluded, n)
+        for part in (supposed, concluded):
+            self.assertNotIn("\n25. ", part)
 
 
 @unittest.skipUnless(MC.IS_MACOS_BACKEND, "run on macOS")
@@ -3882,7 +3889,7 @@ class LiveServicesTest(unittest.TestCase):
                    "and the services this config names: "
                    "com.apple.pasteboard.1 (security.confinement."
                    "macos.mach_services); the pasteboard is among "
-                   "them, so the clipboard is not refused"))
+                   "them and answers a job"))
 
     def test_a_name_the_config_names_reaches_launchd(self):
         # A name no service has, asked for from inside a job:

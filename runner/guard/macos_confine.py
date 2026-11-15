@@ -1080,7 +1080,9 @@ def services_line(mach_services=()):
     services a job may look up, and where that leaves the
     clipboard: refused with the backend's own list; with an
     operator's, a matter of whether the pasteboard is on it
-    -- the one service the probe's trial asks by name."""
+    -- the one service the probe's trial asks by name. A
+    pasteboard that is named answers a job; what it hands
+    one is its own matter (on the hosted Macs, nothing)."""
     extra = session_services(mach_services)[len(SESSION_SERVICES):]
     if not extra:
         return ("a job may ask the user database who a user is, "
@@ -1090,7 +1092,7 @@ def services_line(mach_services=()):
             "the services this config names: %s (security."
             "confinement.macos.mach_services); the pasteboard is "
             "%s" % (", ".join(extra),
-                    "among them, so the clipboard is not refused"
+                    "among them and answers a job"
                     if PASTEBOARD_SERVICE in extra
                     else "not among them"))
 

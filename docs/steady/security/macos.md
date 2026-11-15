@@ -130,7 +130,7 @@ several. Naming the pasteboard (`com.apple.pasteboard.1`)
 on the two hosted Macs got a job's `pbpaste` an answer with
 nothing in it; what you copied came back only with every
 service open. A config that names the pasteboard is still
-one in which the clipboard is not refused, and the posture
+one in which the pasteboard answers a job, and the posture
 report says so.
 
 The system log says which services a refused program asked

@@ -238,8 +238,12 @@ class CoreListTest(unittest.TestCase):
         # runner/ops/install.py and 1 of
         # runner/ops/remediation_ops.py (the session's
         # services).
-        self.assertEqual(69473, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(62974, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # Again that day, after the hosted Macs answered
+        # that landing, by 2 lines more of
+        # runner/guard/macos_confine.py (the hosted run's
+        # answer on the pasteboard).
+        self.assertEqual(69475, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(62976, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
