@@ -418,6 +418,22 @@ with RACCT the lower of the jail's rule and the account's
 ceiling was the one a job met. An account the installer made
 held exactly its number.
 
+The limit on a job's cores was read from inside a job on the
+same three guests, four cores each (2026-11-15, runs
+43672834100 and 43673558329). A job under the default read
+cores 1, 2 and 3 as its own, with RACCT enabled and without
+it. It narrowed its cores and put them back, and was refused
+all four, three ways, as uid 0 inside the jail and as a job
+user. Eight processes spinning for three seconds in a job
+pinned to one core used one core's worth of processor between
+them, 3.06 to 3.07 seconds; with no core held back the same
+job used a little over 12. Two jobs at once read the one set,
+and the runner's own cores were what they had been after
+every job. The first of the two runs read red on three older
+tests that had not expected the cores in a job's notes; the
+second read green and left nothing on any guest. A host with
+one core has not been run: the hosted guests have four.
+
 ## The mode a FreeBSD config states
 
 A fresh FreeBSD install asks the machine before it writes

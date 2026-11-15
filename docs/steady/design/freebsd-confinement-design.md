@@ -1077,7 +1077,7 @@ jail is gone, and the second run read all eight true: 284
 tests as root in each guest, and no jail mount, jail,
 skeleton directory, rctl rule or jobs account afterwards.
 
-### The job's cores
+### The limit on a job's cores
 
 Suppositions, recorded 2026-11-15 before the first hosted run
 of the pin:
@@ -1116,3 +1116,36 @@ of the pin:
 50. The runner's own cores are what they were after every job,
     and nothing is left: no jail, no mount, no skeleton
     directory, no rule and no jobs account.
+
+Conclusions, from the pin's two hosted runs (runs 43672834100
+and 43673558329 of 2026-11-15: FreeBSD 14.5-RELEASE and
+15.0-RELEASE with RACCT enabled, and 14.5-RELEASE without,
+four cores in each guest). All ten held on all three guests,
+on the first run and on the second.
+
+| What was asked | What happened |
+|---|---|
+| The cores the test process reads as its own | 0, 1, 2 and 3 on every guest: each had four cores |
+| A job under the default | Read cores 1, 2 and 3. Its record named `cpuset_cpu_limit`, and its detail read `job pinned to cpus 1,2,3: 3 of the runner's 4 cores` — on the guest without RACCT too, where the record named no rctl rule |
+| `job_cpus` of 1, of 2 and of 3 | Core 3; cores 2 and 3; cores 1, 2 and 3 |
+| `job_cpus` of 4 and of 64 | The job read all four cores, and the record named no limit |
+| A job narrowing its cores and putting them back | Narrowed to core 3 and widened again to 1, 2 and 3 |
+| The same job asking for all four cores, three ways | Refused each time: its own process's cores, the set it stood in, a set it made for itself. It read 1, 2 and 3 afterwards, and so did a process it started then. As uid 0 inside the jail, and as `nobody` |
+| Eight processes spinning for three seconds in a job pinned to one core | 3.06 or 3.07 seconds of processor on every guest, in as many seconds by the clock: one core's worth |
+| The same job with no core held back | Between 12.01 and 12.21 seconds of processor in about three by the clock: four cores' worth |
+| Two jobs at once | Read the one set |
+| A job as a job user | Read cores 1, 2 and 3. Its record named the limit and no `no_superuser` |
+| The startup probe, its trial jail pinned | Passed under the default and under `job_cpus` of 1: the trial read from inside the cores its jail was given. Through the runner itself the job's audit record named the limit and carried the cores in its detail |
+| The runner's own cores, and what was left | Cores 0 to 3 after every job. No jail, mount, skeleton directory, rule or jobs account on any guest |
+
+The first run still read red on each guest, on three live
+tests older than the pin. Each compares a job's whole list of
+notes with the notes it names, and each found one note more
+than it named: the cores'. Those three name it now where the
+host pins. The second run read green: 323 tests as root in
+each guest, and no jail mount, jail, skeleton directory, rctl
+rule or jobs account afterwards.
+
+Not run on a kernel: a host with one core, a host whose
+`cpuset` will not say which cores the runner has, and a jail
+that cannot be pinned. Those three are the fake host's.
