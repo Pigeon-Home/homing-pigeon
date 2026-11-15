@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.26 - 2026-11-15
+
+- macOS: a job is answered by the user database and no other service of its session -- the clipboard is refused to a read and to a write, a job registers no service name, and the keychain list, the network configuration and the disk list are not answered; security.confinement.macos.mach_services names more, and the probe's trial asks the pasteboard (in the tree since 3.16.26.25)
+- macOS: three hosted runs of that profile on the record -- 263 tests as the ordinary user and as root on both Macs, thirty-six likely job programs behaving as with every service open, and the frozen runner's job refused the clipboard
+
 ## 3.16.26.25 - 2026-11-15
 
 - docs: the Pigeon Home privacy policy page for the hosted sign-in service lands -- the public privacy policy page the hosted sign-in verification needs
