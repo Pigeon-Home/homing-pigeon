@@ -48,3 +48,56 @@ Two components:
 These notes live on the cs_canoe branch so the other seats can comment
 and work against them. When the design has been flushed out further,
 the conductor syncs back with Muse and the work is reconciled.
+
+## The secret is generated, not derived (later the same day)
+
+- Considered and set aside: deriving the secret by hashing one of
+  the OAuth login's ephemeral secrets. The conductor's ruling: we
+  are already running locally, so there is nothing to derive from —
+  generate a local random secret through the proper random channels
+  instead.
+- The mailbox is already there when this runs: a browser (OAuth)
+  login means the system can send and receive email through that
+  mailbox, so a generated secret can be emailed to the user by the
+  system itself.
+
+## The third login option
+
+- The login choices today are two: an app password, or a browser
+  login (OAuth, the Thunderbird shape).
+- CS_canoe adds a third: the browser login plus autogen shared
+  secret — the browser login setting with "+autogen shared secret"
+  added to it.
+- The flow at first run: the system sees there is no shared secret
+  and asks — you don't have a shared secret, do you want to generate
+  one? The usual answer is yes. The secret is generated locally, at
+  random, and emailed to the user.
+
+## The inbox is the record
+
+- The emailed secret arrives as a note: the Homing Pigeon shared
+  secret was installed on this system, with the basic facts of that
+  system — platform, hostname, IP address, memory, hard drive.
+- The inbox then holds two things at once: full remote access
+  control, configurable, and the record of what that mailbox was set
+  up for — which system, which install, which facts.
+
+## The alternative not taken, for now
+
+- A database of our own (Supabase or something of that shape) where
+  the conductor gives people a free email address and the address
+  looks up to a global shared secret. Workable, but it requires the
+  conductor to operate infrastructure.
+- The inbox flow needs none of that: the user's own inbox doubles as
+  the infrastructure the conductor would otherwise have had to hold
+  up himself.
+
+## Big, small — the design principle
+
+- The project is a million big-small solutions. Every time a small
+  problem comes up, it can be solved with the big solution; every
+  time a big problem comes up, it can be solved with two small
+  problems.
+- That is what makes things atomic. It is the same move as
+  concurrency: the solution to concurrency is defining what an
+  atomic operation is on the platform.
