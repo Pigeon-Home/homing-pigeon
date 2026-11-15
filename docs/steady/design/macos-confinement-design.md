@@ -738,7 +738,10 @@ and as root. The first (43767805935, on the landing)
 answered ten of the eleven as supposed and one in part. The
 second (43768512227, on the commit that took that answer)
 is green: the backend's 263 tests as each user, and the
-frozen runner's and the frozen installer's own checks.
+frozen runner's and the frozen installer's own checks. A
+third (43769143056), on the commit that carries these
+conclusions and the report's words for a named pasteboard,
+is green the same way.
 
 14. Held. launchd answered a job's lookup of the pasteboard
     1100, and of every other service named above the same,

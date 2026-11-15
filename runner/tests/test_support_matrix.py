@@ -350,7 +350,7 @@ class SupportMatrixTest(unittest.TestCase):
                       "(run 43688324966)", flat)
         self.assertIn("The profile that names the services a job "
                       "may look up was read there the same day "
-                      "(run 43768512227)", flat)
+                      "(runs 43768512227 and 43769143056)", flat)
         self.assertTrue(os.path.isfile(os.path.join(
             REPO, ".github", "workflows", "macos-confinement.yml")))
         # The doubling ladder's own sentences are the first

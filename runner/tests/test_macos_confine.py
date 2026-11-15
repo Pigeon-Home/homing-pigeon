@@ -2852,7 +2852,8 @@ class PagesTest(unittest.TestCase):
     def test_the_services_runs_are_the_ones_on_the_record(self):
         page = self._page("docs", "steady", "design",
                           "macos-confinement-design.md")
-        for run in ("43761537586", "43767805935", "43768512227"):
+        for run in ("43761537586", "43767805935", "43768512227",
+                    "43769143056"):
             self.assertIn(run, page)
         # Eleven suppositions, and a conclusion against each.
         tail = page.split(
