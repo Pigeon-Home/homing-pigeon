@@ -185,13 +185,13 @@ jobs:
           sb /bin/sh -c "kill -0 $$ 2>&1 && echo SIGNAL-REACHED-OUTSIDE"; echo "   a signal to a process outside (exit $?)"
           sb python -c 'import ctypes; libc = ctypes.CDLL(None); n = libc.proc_listallpids(None, 0); print("proc_listallpids ->", n); buf = ctypes.create_string_buffer(4096); r = libc.proc_pidpath(1, buf, 4096); print("proc_pidpath(1) ->", r, buf.value.decode())'; echo "   the host process list (exit $?)"
           printf 'HP-CLIPBOARD-MARK' | pbcopy 2>&1; echo "   pbcopy outside the profile (exit $?)"
-          sb /usr/bin/perl -e 'alarm shift; exec @ARGV' 20 /usr/bin/pbpaste 2>&1 | head -c 200; echo; echo "   the clipboard, pbpaste (exit ${PIPESTATUS[0]})"
+          sb /usr/bin/perl -e 'alarm shift; exec @ARGV' 20 /usr/bin/pbpaste 2>&1 | head -c 200; rc=${PIPESTATUS[0]}; echo; echo "   the clipboard, pbpaste (exit $rc)"
           rm -f "$RUNNER_TEMP/hp-facts-escaped"
           sb /usr/bin/perl -e 'alarm shift; exec @ARGV' 20 /bin/launchctl submit -l hp.facts.escape -- /usr/bin/touch "$RUNNER_TEMP/hp-facts-escaped" 2>&1 | head -n 3; echo "   a job handed to launchd (exit ${PIPESTATUS[0]})"
           python -c "import time; time.sleep(3)"
           if [ -e "$RUNNER_TEMP/hp-facts-escaped" ]; then echo "   LAUNCHD-RAN-IT-OUTSIDE"; else echo "   launchd ran nothing"; fi
           /bin/launchctl remove hp.facts.escape > /dev/null 2>&1
-          sb /usr/bin/perl -e 'alarm shift; exec @ARGV' 20 /usr/bin/osascript -e 'tell application "System Events" to get name of first process' 2>&1 | head -c 200; echo; echo "   an Apple event, osascript (exit ${PIPESTATUS[0]})"
+          sb /usr/bin/perl -e 'alarm shift; exec @ARGV' 20 /usr/bin/osascript -e 'tell application "System Events" to get name of first process' 2>&1 | head -c 200; rc=${PIPESTATUS[0]}; echo; echo "   an Apple event, osascript (exit $rc)"
           sb /bin/ls "$HOME" 2>&1 | head -n 2; echo "   the home directory (exit ${PIPESTATUS[0]})"
           sb /usr/sbin/taskpolicy -c background /bin/sh -c 'echo "a child under a background clamp: ok"' 2>&1; echo "   taskpolicy under the profile (exit $?)"
           exit 0

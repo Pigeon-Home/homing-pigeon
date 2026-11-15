@@ -817,6 +817,66 @@ class PipelineLessonsTest(unittest.TestCase):
                                   "%s pipes a test report to tee "
                                   "without 2>&1: %s" % (name, line.strip()))
 
+    def test_pipestatus_is_read_in_the_first_command_after_its_pipeline(self):
+        # Q198 (2026-11-14): PIPESTATUS is overwritten by every
+        # pipeline, so a ${PIPESTATUS[0]} expansion reads the
+        # sandboxed command's status only when it stands in the
+        # first command after that command's pipeline. The macOS
+        # confinement proof workflow's clipboard and Apple-event
+        # lines put a bare `echo;` (the blank line before the
+        # label) between the pipeline and the read, and both lines
+        # printed (exit 0) whatever the sandboxed command did.
+        # The fix captures rc=${PIPESTATUS[0]} immediately, which
+        # is the same first-command shape. Commands are split on
+        # the semicolons outside quotes: the probe lines carry a
+        # semicolon inside the perl alarm's single quotes, and
+        # that one ends no command.
+        def commands(line):
+            out, buf = [], []
+            single = double = False
+            for ch in line:
+                if ch == "'" and not double:
+                    single = not single
+                elif ch == '"' and not single:
+                    double = not double
+                if ch == ";" and not single and not double:
+                    out.append("".join(buf))
+                    buf = []
+                else:
+                    buf.append(ch)
+            out.append("".join(buf))
+            return out
+
+        checked = 0
+        offenders = []
+        for name in self.ALL:
+            for lineno, line in enumerate(
+                    _workflow_text(name).splitlines(), 1):
+                if "${PIPESTATUS" not in line:
+                    continue
+                parts = commands(line)
+                self.assertIn(
+                    "|", parts[0],
+                    "%s:%d reads PIPESTATUS with no pipeline "
+                    "before it: %s" % (name, lineno, line.strip()))
+                for part in parts[1:]:
+                    if "${PIPESTATUS" in part:
+                        checked += 1
+                        if part is not parts[1]:
+                            offenders.append(
+                                "%s:%d: %s" % (name, lineno,
+                                               line.strip()))
+                        break
+        self.assertGreaterEqual(
+            checked, 5,
+            "the PIPESTATUS scan found too little to pin: %d"
+            % checked)
+        self.assertEqual(
+            offenders, [],
+            "PIPESTATUS read after an intervening command "
+            "(its value is that command's status, not the "
+            "pipeline's):\n" + "\n".join(offenders))
+
     def test_every_portable_proof_demands_a_full_ok(self):
         # A skipped proof is green from the outside. Wherever the
         # portable proof runs, the verdict step must forbid skips and

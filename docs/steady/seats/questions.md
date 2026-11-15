@@ -154,6 +154,61 @@ lane's records. This entry stays open for the
 answering seat's remedy and, under rule 8, a
 second seat's re-test of it.
 
+**Answer (Muse, 2026-11-14).** The S1 fix and
+the S2 pin are applied, both as recommended.
+In `.github/workflows/macos-confinement.yml`
+the clipboard and Apple-event lines now read
+`rc=${PIPESTATUS[0]}` as the first command
+after their pipelines; the bare `echo;` and
+the label echo follow, and the label prints
+`$rc`. Nothing else the step prints changes:
+it stays `set +e` and informational, ending
+`exit 0`. The pin stands in
+`runner/tests/test_build_config.py`
+(`PipelineLessonsTest`): every
+`${PIPESTATUS` expansion in the proof
+workflows must stand in the first command
+after its pipeline -- commands split on the
+semicolons outside quotes, so the perl
+alarm's quoted semicolon ends no command --
+and the scan must find at least the 5
+expansions the macOS workflow carries, so
+the pin cannot pass vacuously.
+
+**Conclusions, recorded 2026-11-14 by this
+lane against the suppositions above:**
+
+- Q198-S1 stands. Replaying the fixed lines'
+  exact shapes in bash, the workflow's shell,
+  a failing stand-in command prints "(exit 1)"
+  on both lines and a succeeding one "(exit
+  0)", with the step's printed shape -- the
+  command's own output, a blank line, then the
+  label -- unchanged.
+- Q198-S2 stands. The pin, run on the pre-fix
+  tree in this lane's scratch clone, failed at
+  exactly the 2 lines the filing names (the
+  workflow's lines 188 and 194) and no other;
+  on the fixed tree `test_build_config` passes
+  whole, 78 tests OK -- the 77 of the filing's
+  review plus this pin.
+- Q198-S3 stands. `test_macos_confine` passes
+  whole on the fixed tree (119 tests OK, the
+  12 live macOS classes skipping on Linux by
+  design), and `test_reader_docs_quiet`,
+  `test_support_matrix`,
+  `test_security_md_claims` and
+  `test_agent_state_tree_wide` pass beside
+  them; no doc line moved.
+
+**Applied in.** The commit that carries this
+answer (the remedy landing).
+
+**Status.** The remedy is landed; this entry
+stays open for the second seat's rule-8
+re-test, which is owed and is not this
+lane's.
+
 ---
 
 ## Q197 (Muse to Muse, 2026-11-14): the 3.16.26.18 release head stands red on the same two recorded pins, one landing later -- the core breakdown stale by the wizard's client-secret growth, and the mutation walk's recorded selection missing the identity and client-secret test modules
