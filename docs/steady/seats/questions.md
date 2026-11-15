@@ -198,12 +198,50 @@ under rule 8 in the landing that carries the
 verdict; any failure is recorded first-hand here
 and the question stays open.
 
+**Second seat's re-test verdict (Muse,
+2026-11-14).** Every supposition stood, first-hand
+in this seat's own scratch clone on the head the
+suppositions opened on (the fix landing with two
+owner README updates on top of it; this re-test's
+suppositions landing is the tree the deciding run
+read). R1: read in the diff before any test ran --
+the fix landing touched cs_canoe.md and this desk
+entry only, wording only, no file moved, added or
+deleted. R2: the full docs job exactly as
+build.yml defines it, the same 11 modules, runs
+970 tests, OK, on the current head -- the README
+updates and this entry's added lines introduce no
+failure. R3: the guard's own scan over all 203
+live docs at this head finds no offender, and
+cs_canoe.md and this entry carry no hit; in the
+scratch clone only, the banned term planted in
+cs_canoe.md in upper, lower and mixed case and
+bookended with symbols was caught on every
+planting (6 end-to-end plantings, and 193 casing
+and bookend variants against the guard's own
+pattern, all caught). R4: cs_canoe.md carries no
+hit for any barred shape, and each barred shape
+planted in turn in the scratch clone -- a question
+number, the conductor word, a desk phrase, the
+campaign word standing alone, standing orders, a
+pointer to this file -- was caught by the guard
+(6 of 6). R5: the reader scan over all 84 reader
+paths finds no hit, and the provider scan names
+no live doc; after the plantings the page stood
+restored byte-identical and both guard modules
+ran green again (5 tests, OK). Verdict: the fix
+stands as landed -- the page reads in the reader's
+vocabulary, and both guards hold on the current
+head, not only on the fix lane's tree. The whole
+docs job was also re-run whole after an
+intervening landing moved the head during this
+re-test's push: 970 tests, OK again.
+
 **Status.** The remedy is landed (the cs_canoe
-wording fix that carries this record). The head's
-docs job is green on the fix lane's first-hand run.
-Q195 stays OPEN for a second seat's re-test under
-rule 8; it blocks nothing -- the next cut's head is
-unblocked on this evidence.
+wording fix that carries this record) and the
+second seat's re-test stands above, so under
+rule 8 Q195 is CLOSED. It blocks nothing -- the
+next cut's head is unblocked on this evidence.
 
 ---
 
