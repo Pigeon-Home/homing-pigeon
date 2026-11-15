@@ -51,8 +51,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 68,048 lines,
-61,682 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 68,055 lines,
+61,689 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -524,6 +524,13 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # tree; and by 12 lines more when the release took
 # to collecting the job's first process, so an
 # ended job holds none of its account's count.
+# Re-measured on 2026-11-15 after the regression
+# guard's leak run took to starting a module the
+# way the suite does, through the test package
+# (the package's own start stands before the first
+# snapshot, and is no test's leak), growing
+# runner/tools/regression_guard.py by 7 lines, the
+# whole set re-measured over the current tree.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 136 since
@@ -537,14 +544,14 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 139
 AS_ASSEMBLED_ZIP_BYTES = 879322
-AS_ASSEMBLED_LINES = 68048
-AS_ASSEMBLED_NONBLANK_LINES = 61682
+AS_ASSEMBLED_LINES = 68055
+AS_ASSEMBLED_NONBLANK_LINES = 61689
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
     "runner/ops": 23340,
-    "runner/tools": 10056,
+    "runner/tools": 10063,
     "runner/wire": 9033,
     "runner/runner.py": 7180,
     "runner/oracle": 5063,

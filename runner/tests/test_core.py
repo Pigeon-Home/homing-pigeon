@@ -200,9 +200,12 @@ class CoreListTest(unittest.TestCase):
         # runner/guard/freebsd_confine.py by 131 lines and
         # runner/ops/install.py by 21, and the release's
         # collecting of the job's first process grew the
-        # backend by 12 more.
-        self.assertEqual(68048, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(61682, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # backend by 12 more, and again on
+        # 2026-11-15 after the regression guard's leak run
+        # took to starting a module through the test package
+        # grew runner/tools/regression_guard.py by 7 lines.
+        self.assertEqual(68055, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(61689, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

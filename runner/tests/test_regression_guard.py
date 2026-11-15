@@ -153,6 +153,68 @@ class LeakRunTest(unittest.TestCase):
         self.assertFalse(any("test_clean" in l for l in leaks))
 
 
+class PackageStartTest(unittest.TestCase):
+    """The leak run starts a module the way the suite does: through
+    the test package. The package's own start
+    (runner/tests/__init__.py) sets a word in the environment for
+    the whole run, and the suite has it before its first test. A
+    module loaded by path has it before its first snapshot, so the
+    test that happens to import the package first is not charged
+    with the package's start."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-guard-start-")
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.path = os.path.join(self.tmp, "test_late_import_example.py")
+        with open(self.path, "w", encoding="utf-8") as fh:
+            fh.write(textwrap.dedent('''\
+                import os
+                import unittest
+
+
+                class LateImportTest(unittest.TestCase):
+                    def test_a_the_word_stands_before_the_first_test(self):
+                        self.assertEqual(
+                            os.environ.get("HP_SEED_ASKS_MACHINE"), "0")
+
+                    def test_b_the_package_first_imported_in_a_test(self):
+                        from runner.tests._compat import project_version
+                        self.assertTrue(project_version())
+
+                    def test_c_a_word_a_test_sets_is_still_a_leak(self):
+                        os.environ["HP_GUARD_START_EXAMPLE"] = "1"
+                '''))
+
+    def _leak_run(self):
+        # The child starts without the word, as a shell that has
+        # never run the suite does.
+        with mock.patch.dict(os.environ):
+            os.environ.pop("HP_SEED_ASKS_MACHINE", None)
+            return G.run_python([os.path.join("runner", "tools",
+                                              "regression_guard.py"),
+                                 "--leaks", self.path])
+
+    def test_the_package_s_start_is_no_test_s_leak(self):
+        rc, out = self._leak_run()
+        self.assertEqual(rc, 0, out)
+        leaks = [json.loads(l[5:]) for l in out.splitlines()
+                 if l.startswith("LEAK ")]
+        self.assertEqual(
+            [l["test"].rsplit(".", 1)[1] for l in leaks],
+            ["test_c_a_word_a_test_sets_is_still_a_leak"], out)
+        self.assertNotIn("HP_SEED_ASKS_MACHINE", out)
+        self.assertIn("HP_GUARD_START_EXAMPLE", leaks[0]["detail"])
+
+    def test_the_guard_loads_the_package_before_the_module(self):
+        with open(G.__file__, encoding="utf-8") as fh:
+            src = fh.read()
+        body = src[src.index("def leak_run(path):"):]
+        body = body[:body.index("\n# ----")]
+        self.assertLess(
+            body.index('importlib.import_module("runner.tests")'),
+            body.index("spec.loader.exec_module(module)"))
+
+
 class SoftLeakRunTest(unittest.TestCase):
     """Q64: the soft reports -- a tempdir and a thread left behind --
     are named by the guard with the test that left them, so a change

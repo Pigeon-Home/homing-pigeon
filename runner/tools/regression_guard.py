@@ -443,6 +443,13 @@ def leak_run(path):
         os.environ[var] = private
     tempfile.tempdir = private
     name = module_name(path)
+    # The suite reaches a test module through its package, so the
+    # package's own start (runner/tests/__init__.py) has run before
+    # the first test. A module loaded by path starts the same way
+    # here, ahead of the first snapshot: what the package sets for
+    # the whole run is not the leak of whichever test imports it
+    # first.
+    importlib.import_module("runner.tests")
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
