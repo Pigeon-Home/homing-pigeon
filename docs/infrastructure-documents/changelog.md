@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.22 - 2026-11-15
+
+- Extensions: the upstream pins refreshed -- each feed sense's upstream ref resolved to its current tip, the pinned files refetched, the drift tests green against them
+
 ## 3.16.26.21 - 2026-11-15
 
 - Fix: Q198 -- the macOS proof workflow's clipboard and Apple-event probes read their pipeline's real exit status; a pin holds the PIPESTATUS shape
