@@ -22,6 +22,15 @@ docs/ietf, in each draft's own folder since the per-draft layout). An RFC
 prints its author's address, and the conductor chose this one for the
 drafts (29-OCT 10:00PM PDT: "I think Slutsky 5544@gmail.com will be
 best." / "No space."). It names an author, not a recommended provider.
+
+The same rationale covers one more line, exempted the same narrow way
+(2026-11-15, the 3.16.26.24 gate): the Contact line of the hosted
+sign-in service's privacy policy (docs/steady/project/privacy-policy.md)
+carries the operator's own address, because a privacy policy must say
+where questions about it go. That line names the operator, not a
+recommended provider. The exemption is scoped to that file and to
+lines carrying that address: any other mention of the term in that
+file, and the address itself in any other live doc, still fails.
 """
 
 import os
@@ -36,6 +45,8 @@ def _root():
 
 _TERM = re.compile(r"gmail", re.IGNORECASE)
 _AUTHOR_LINE = 'email: "slutsky5544@gmail.com"'
+_OPERATOR_ADDRESS = "slutsky5544@gmail.com"
+_PRIVACY_POLICY_PARTS = ("docs", "steady", "project", "privacy-policy.md")
 
 
 
@@ -63,13 +74,29 @@ def _live_docs():
     return sorted(found)
 
 
+def _is_privacy_policy(path):
+    parts = tuple(p for p in path.replace("\\", "/").split("/") if p)
+    return parts[-4:] == _PRIVACY_POLICY_PARTS
+
+
+def _exempt(path, line):
+    if ("ietf" in path.split(os.sep)
+            and os.path.basename(path).startswith("draft-slutsky-")
+            and line == _AUTHOR_LINE):
+        return True
+    # The privacy policy's contact line names the operator, the same
+    # rationale as the draft author line above; scoped to that file
+    # and to lines carrying the operator's own address.
+    if _is_privacy_policy(path) and _OPERATOR_ADDRESS in line.lower():
+        return True
+    return False
+
+
 def _hits(path):
-    draft = ("ietf" in path.split(os.sep)
-             and os.path.basename(path).startswith("draft-slutsky-"))
     with open(path, encoding="utf-8") as fh:
         return [ln.strip() for ln in fh.read().splitlines()
                 if _TERM.search(ln)
-                and not (draft and ln.strip() == _AUTHOR_LINE)]
+                and not _exempt(path, ln.strip())]
 
 
 class NoProviderNameInLiveDocsTest(unittest.TestCase):
@@ -107,6 +134,85 @@ class NoProviderNameInLiveDocsTest(unittest.TestCase):
                          "live docs must not name the mail provider; "
                          "say mailbox / mail account / provider instead: "
                          "%s" % (offenders,))
+
+
+class PrivacyPolicyContactExemptionTest(unittest.TestCase):
+    """The 3.16.26.24 gate fix: the privacy policy's Contact line is
+    exempt, scoped to that file and that address -- everything else
+    the discipline ever caught, it still catches."""
+
+    def _write(self, relpath, text):
+        import tempfile
+        base = tempfile.mkdtemp()
+        path = os.path.join(base, *relpath.split("/"))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+        return path
+
+    def test_contact_line_is_exempt(self):
+        path = self._write(
+            "docs/steady/project/privacy-policy.md",
+            "**Contact.** Questions about this policy: "
+            "slutsky5544@gmail.com\n")
+        self.assertEqual([], _hits(path))
+
+    def test_contact_line_is_exempt_in_any_case(self):
+        path = self._write(
+            "docs/steady/project/privacy-policy.md",
+            "**Contact.** Questions: SLUTSKY5544@GMAIL.COM\n")
+        self.assertEqual([], _hits(path))
+
+    def test_other_mention_in_privacy_policy_still_fails(self):
+        path = self._write(
+            "docs/steady/project/privacy-policy.md",
+            "Sign in with your gmail account to continue.\n")
+        self.assertEqual(["Sign in with your gmail account to continue."],
+                         _hits(path))
+
+    def test_other_address_in_privacy_policy_still_fails(self):
+        path = self._write(
+            "docs/steady/project/privacy-policy.md",
+            "Write to someoneelse@gmail.com for help.\n")
+        self.assertEqual(["Write to someoneelse@gmail.com for help."],
+                         _hits(path))
+
+    def test_contact_line_plus_other_mention_reports_only_the_other(self):
+        path = self._write(
+            "docs/steady/project/privacy-policy.md",
+            "**Contact.** Questions about this policy: "
+            "slutsky5544@gmail.com\n"
+            "We recommend gmail for your mailbox.\n")
+        self.assertEqual(["We recommend gmail for your mailbox."],
+                         _hits(path))
+
+    def test_operator_address_in_another_live_doc_still_fails(self):
+        path = self._write(
+            "docs/steady/project/other-page.md",
+            "Reach the author at slutsky5544@gmail.com any time.\n")
+        self.assertEqual(
+            ["Reach the author at slutsky5544@gmail.com any time."],
+            _hits(path))
+
+    def test_privacy_policy_name_elsewhere_still_fails(self):
+        path = self._write(
+            "docs/other/privacy-policy.md",
+            "**Contact.** Questions: slutsky5544@gmail.com\n")
+        self.assertEqual(
+            ["**Contact.** Questions: slutsky5544@gmail.com"],
+            _hits(path))
+
+    def test_draft_author_line_still_exempt(self):
+        path = self._write(
+            "docs/ietf/draft-slutsky-example.md",
+            'email: "slutsky5544@gmail.com"\n')
+        self.assertEqual([], _hits(path))
+
+    def test_draft_other_line_still_fails(self):
+        path = self._write(
+            "docs/ietf/draft-slutsky-example.md",
+            "Use gmail to send the draft.\n")
+        self.assertEqual(["Use gmail to send the draft."], _hits(path))
 
 
 if __name__ == "__main__":
