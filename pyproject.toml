@@ -426,6 +426,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_senses_limit_overflow_again.py",
     "runner/tests/test_service_watch.py",
     "runner/tests/test_setup.py",
+    "runner/tests/test_setup_canoe.py",
     "runner/tests/test_setup_gaps.py",
     "runner/tests/test_setup_poison.py",
     "runner/tests/test_signed_body_bounds.py",

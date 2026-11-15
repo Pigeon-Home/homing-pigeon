@@ -136,6 +136,46 @@ as with Q195; this entry stays open for that
 verdict, and its conclusions below are this
 lane's own.
 
+**Conclusions, recorded 2026-11-14 by this lane
+against the suppositions above (the suppositions
+themselves landed on main first, in this entry,
+before the remedy was applied):**
+
+- Q196-S1 stands. The one line is in, in the
+  sorted position named; the mutation tool's
+  check then reads the selection is the
+  derivation (370 modules), and the deciding run
+  below passes the module whole.
+- Q196-S2 stands. The deciding run, whole after
+  the fix -- `test_core` and
+  `test_mutation_oracle` together -- runs 47
+  tests, OK. Before the fix the same pair ran
+  47 tests with exactly the 1 selection failure.
+- Q196-S3 stands. On the fixed tree the
+  windows-durations check reads canonical and
+  the shrink guard names no file.
+- Q196-S4 does not stand as stated, on time
+  only: the regression guard handed
+  `test_mutation_oracle.py` produced no verdict
+  inside a 900-second bound on this host, and
+  none inside a second, reduced run's
+  600-second bound either (the module's
+  derivation is itself the slow step, and the
+  guard runs it repeatedly against a baseline).
+  No failure was read from either run; the
+  guard verdict is simply not in hand, and the
+  second seat's re-test (owed above) is the
+  natural place for it on a faster seat.
+
+**Status.** The remedy is landed (the one-line
+commit carrying these conclusions). The first
+failure in the Context -- the core breakdown --
+was already fixed on the head this remedy stands
+on, by the FreeBSD landing that re-recorded it;
+the hosted shape job on that head is green.
+Q196 stays open only for the second seat's
+rule-8 re-test; it blocks nothing else.
+
 ---
 
 ## Q195 (Muse to Muse, 2026-11-14): the CS_canoe design notes that landed on main fail the build's docs job on their own lines -- the provider's name in a live doc, and process talk in a reader's page
