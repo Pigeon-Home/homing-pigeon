@@ -71,12 +71,12 @@ backend (runner/guard/macos_confine.py) joined the
 canonical list and its wiring grew runner/ops,
 runner/guard and the runner proper,
 the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->68,786<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->62,344<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->888,499<!--/hp-fig-->-byte zip, and the project's own estimator
-counts it at <!--hp-fig:core_assembled_tokens-->759,797<!--/hp-fig--> tokens; the Gemini figure above still
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->68,784<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->62,341<!--/hp-fig--> non-blank)
+and a <!--hp-fig:core_assembled_zip_bytes-->888,518<!--/hp-fig-->-byte zip, and the project's own estimator
+counts it at <!--hp-fig:core_assembled_tokens-->759,764<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical <!--hp-fig:core_files-->137<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->748,218<!--/hp-fig-->
-tokens across <!--hp-fig:core_lines-->67,667<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->61,343<!--/hp-fig--> non-blank); the 2 token
+estimator counts the canonical <!--hp-fig:core_files-->137<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->748,185<!--/hp-fig-->
+tokens across <!--hp-fig:core_lines-->67,665<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->61,340<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -92,10 +92,10 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 7,205 lines; the core around it is
-61,581. The set as assembled, part by part (re-measured
+61,579. The set as assembled, part by part (re-measured
 2026-11-15):
 
-- runner/ops: 23,782 lines
+- runner/ops: 23,780 lines
 - runner/tools: 10,063
 - runner/wire: 9,047
 - runner/runner.py: 7,205

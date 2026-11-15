@@ -118,6 +118,45 @@ class WizardCanoeTest(unittest.TestCase):
         self.assertNotIn("cd" * 32, text)
         self.assertIn("Install record emailed", text)
 
+    def test_option3_reaches_consent_without_any_getpass(self):
+        # The Thunderbird-style pin: between the menu and the
+        # browser there is no prompt at all — getpass is never
+        # called, and the consent runs with the baked-in client
+        # secret already in the config.
+        out, err = io.StringIO(), io.StringIO()
+        seen = []
+
+        def consent(cfg):
+            seen.append(dict(cfg))
+            return "refresh-123"
+
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, "config.json")
+            with open(path, "w") as fh:
+                json.dump({"mailbox_user": "runner@example.com"}, fh)
+            with mock.patch("builtins.input", side_effect=["3", ""]), \
+                 mock.patch("getpass.getpass") as gp, \
+                 mock.patch.object(SU, "browser_consent",
+                                   side_effect=consent), \
+                 mock.patch.object(SU, "_mailbox_probe",
+                                   return_value=None), \
+                 mock.patch.object(SU, "_email_install_record",
+                                   return_value=None), \
+                 mock.patch.object(SU.secrets, "token_hex",
+                                   side_effect=_hex), \
+                 redirect_stdout(out), redirect_stderr(err):
+                SU.run_setup_wizard(path, None)
+            with open(path) as fh:
+                written = json.load(fh)
+        gp.assert_not_called()
+        self.assertEqual(len(seen), 1)
+        self.assertEqual(seen[0]["oauth_client_secret"],
+                         SU.DEFAULT_OAUTH_CLIENT_SECRET)
+        self.assertEqual(written["oauth_client_secret"],
+                         SU.DEFAULT_OAUTH_CLIENT_SECRET)
+        self.assertNotIn(SU.DEFAULT_OAUTH_CLIENT_SECRET,
+                         out.getvalue() + err.getvalue())
+
     def test_option3_config_client_id_wins(self):
         _, written, mail, _ = self._run(
             ["3", ""], cfg={"mailbox_user": "runner@example.com",

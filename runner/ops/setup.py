@@ -100,18 +100,27 @@ EXAMPLE_PLACEHOLDERS = {
     "mailbox_password": "paste-app-password-here-in-plaintext",
 }
 
-# The Homing Pigeon Org's desktop OAuth client, baked in so the
-# option-3 sign-in never asks the owner to paste a client ID. A
-# desktop client's ID is public record (it rides in every sign-in
-# URL the browser opens); the client's secret is NOT here. It is
-# never needed to start the sign-in, but Google requires it to
-# finish the token exchange, so the wizard asks for it once,
-# hidden, before the exchange (see _ensure_oauth_client_secret).
-# A client ID already present in the config still wins over this
-# default.
+# The Homing Pigeon Org's desktop OAuth client, baked in whole —
+# ID and secret together — so the option-3 sign-in never asks the
+# owner to paste or type anything: the wizard goes directly to
+# the browser, Thunderbird-style. Thunderbird ships its own
+# desktop client exactly this way, because an installed app
+# cannot keep its client's secret from the person holding the
+# app; the secret is therefore not a credential this design
+# leans on (the mailbox's safety rests on the owner's own Google
+# sign-in and the refresh token it grants). Google still
+# requires the secret at the token exchange, so it rides here
+# beside the ID. A client ID or a client secret already present
+# in the config still wins over these defaults (see
+# _ensure_oauth_client_secret).
 DEFAULT_OAUTH_CLIENT_ID = (
     "40959958324-1q02ndgro7dr4gj8gm5gr4bi8g3f1064"
     ".apps.googleusercontent.com"
+)
+
+DEFAULT_OAUTH_CLIENT_SECRET = (
+    "GOCSPX-ntL2RE4c2I8qzlxrZz9"
+    "pRGEI3D1S"
 )
 
 INSTALL_RECORD_SUBJECT = (
@@ -651,33 +660,22 @@ def _ensure_oauth_client_secret(cfg: dict) -> None:
     """The client secret the token exchange cannot finish without.
 
     Google requires the desktop client's secret at the code
-    exchange (and at refresh), but a fresh config carries none:
-    the project's client ID is baked in above, its secret is not
-    and never will be — a secret does not ride in the tree. Ask
-    for it once, hidden, before the browser opens, and keep it
-    only in the owner's own config. An empty, whitespace-only,
-    or interrupted answer stops setup with a plain message
-    instead of Google's raw "client_secret is missing" landing
-    after a completed sign-in (the option-3 first-run failure
-    of 2026-11-14).
+    exchange (and at refresh). The wizard never asks for it: the
+    Homing Pigeon client's secret is baked in beside its ID
+    (DEFAULT_OAUTH_CLIENT_SECRET, Thunderbird-style), and this
+    step fills it in before the browser opens, so the sign-in
+    goes directly to the browser with nothing to paste or type.
+    A secret already in the config — the owner's own client, an
+    earlier run — still wins and is left exactly as it stands;
+    a missing or whitespace-only value takes the default. (The
+    first remedy for the option-3 first-run failure of
+    2026-11-14 asked once, hidden, at this seam; the conductor's
+    design carries the secret in the client instead, so there
+    is no prompt to answer and no typed value to mistype.)
     """
     if str(cfg.get("oauth_client_secret") or "").strip():
         return
-    print("Google requires the client secret to finish the sign-in;")
-    print("it is saved only in your own config file.")
-    try:
-        entered = getpass.getpass("OAuth client secret (typing hidden): ")
-    except (EOFError, KeyboardInterrupt):
-        entered = ""
-    entered = (entered or "").strip()
-    if not entered:
-        raise SystemExit(
-            "setup stopped: no client secret was entered, and Google "
-            "will not finish the sign-in without one. Run setup again "
-            "and enter the Homing Pigeon client's secret when asked "
-            "(Google Cloud Console -> APIs & Services -> Credentials), "
-            "or choose the app-password sign-in (choice 2) instead.")
-    cfg["oauth_client_secret"] = entered
+    cfg["oauth_client_secret"] = DEFAULT_OAUTH_CLIENT_SECRET
 
 
 def _browser_login_loop(cfg: dict) -> str:

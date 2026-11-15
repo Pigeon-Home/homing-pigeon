@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
 """The setup wizard and the OAuth client secret: CS_canoe option 3's
-first-run failure of 2026-11-14.
+first-run failure of 2026-11-14, and the remedy's settled shape.
 
-SUPPOSITION, recorded before the fix: on a fresh config the wizard's
-browser sign-in completes in the browser and then dies at the token
-exchange with Google's "client_secret is missing", because the
-exchange form carries a client_secret only when the config already
-holds one, and nothing in the wizard ever obtains one — the baked
-project client ID is filled in, its secret is not (and never will
-be: a secret does not ride in the tree). The tests below pin the
-remedy: before the exchange, the wizard asks for the secret once,
-hidden (getpass), with one plain sentence saying why; the entered
-value lands in the config under oauth_client_secret and so in the
-exchange form; it never appears on the console; an empty,
-whitespace-only, or interrupted answer stops setup with a plain
-message naming what is missing and what to do, not Google's raw
-error. A config that already carries a secret is never re-asked,
-and a retry after a failed sign-in does not ask twice.
+SUPPOSITION, recorded before the first fix: on a fresh config the
+wizard's browser sign-in completes in the browser and then dies at
+the token exchange with Google's "client_secret is missing",
+because the exchange form carries a client_secret only when the
+config already holds one, and nothing in the wizard ever obtains
+one. The first remedy asked for the secret once, hidden (getpass),
+before the browser opened. The conductor's design overruled that
+shape the same night: the sign-in is Thunderbird-style, so the
+Homing Pigeon desktop client's secret is baked in beside its ID
+(DEFAULT_OAUTH_CLIENT_SECRET) and the wizard never asks — the
+browser opens directly, with nothing to paste or type. The tests
+below pin the settled remedy: before the exchange the config
+carries a client secret under oauth_client_secret — its own value
+when one is set (a config override always wins), otherwise the
+baked-in default — so the exchange form carries the field;
+getpass is never called on the browser sign-in paths, not on a
+first run, not on a retry, not on a re-login; and the secret
+never appears on the console.
 
 Every exchange is mocked: no test here touches the network.
 """
@@ -98,77 +101,54 @@ class ExchangeFormTest(unittest.TestCase):
 
 
 class EnsureSecretTest(unittest.TestCase):
-    """The wizard's obtain-once step, unit by unit."""
+    """The wizard's fill-in step, unit by unit: never a prompt."""
 
-    def _ensure(self, cfg, getpass_kw):
+    def _ensure(self, cfg):
         out = io.StringIO()
-        with mock.patch("getpass.getpass", **getpass_kw) as gp, \
+        with mock.patch("getpass.getpass") as gp, \
                 redirect_stdout(out):
             SU._ensure_oauth_client_secret(cfg)
         return gp, out.getvalue()
 
-    def test_configured_secret_is_never_reasked(self):
+    def test_configured_secret_wins_and_nothing_is_asked(self):
         cfg = {"oauth_client_secret": "already-set"}
-        gp, _ = self._ensure(cfg, {"return_value": FIXTURE})
+        gp, _ = self._ensure(cfg)
         gp.assert_not_called()
         self.assertEqual(cfg["oauth_client_secret"], "already-set")
 
-    def test_prompt_stores_the_entered_secret(self):
+    def test_missing_secret_gets_the_baked_in_default(self):
         cfg = {}
-        gp, _ = self._ensure(cfg, {"return_value": FIXTURE})
-        gp.assert_called_once()
-        self.assertEqual(cfg["oauth_client_secret"], FIXTURE)
-
-    def test_surrounding_whitespace_is_stripped(self):
-        cfg = {}
-        self._ensure(cfg, {"return_value": "  " + FIXTURE + " \t"})
-        self.assertEqual(cfg["oauth_client_secret"], FIXTURE)
+        gp, _ = self._ensure(cfg)
+        gp.assert_not_called()
+        self.assertEqual(cfg["oauth_client_secret"],
+                         SU.DEFAULT_OAUTH_CLIENT_SECRET)
 
     def test_whitespace_only_config_counts_as_missing(self):
         cfg = {"oauth_client_secret": "   "}
-        gp, _ = self._ensure(cfg, {"return_value": FIXTURE})
-        gp.assert_called_once()
-        self.assertEqual(cfg["oauth_client_secret"], FIXTURE)
+        gp, _ = self._ensure(cfg)
+        gp.assert_not_called()
+        self.assertEqual(cfg["oauth_client_secret"],
+                         SU.DEFAULT_OAUTH_CLIENT_SECRET)
+
+    def test_the_default_is_a_real_secret_not_a_placeholder(self):
+        default = SU.DEFAULT_OAUTH_CLIENT_SECRET
+        self.assertTrue(default)
+        self.assertNotIn(" ", default)
+        self.assertNotIn("paste", default)
+        self.assertNotEqual(default, FIXTURE)
 
     def test_the_secret_is_never_printed(self):
-        _, text = self._ensure({}, {"return_value": FIXTURE})
-        self.assertNotIn(FIXTURE, text)
-        # The one plain sentence saying why it is asked.
-        self.assertIn("client secret", text)
-
-    def _failure(self, getpass_kw):
-        cfg = {}
-        with mock.patch("getpass.getpass", **getpass_kw), \
-                redirect_stdout(io.StringIO()):
-            with self.assertRaises(SystemExit) as caught:
-                SU._ensure_oauth_client_secret(cfg)
-        self.assertNotIn("oauth_client_secret", cfg)
-        return str(caught.exception)
-
-    def test_empty_answer_fails_plainly(self):
-        msg = self._failure({"return_value": ""})
-        self.assertIn("client secret", msg)
-        self.assertIn("choice 2", msg)  # what to do instead
-        self.assertNotIn("invalid_request", msg)
-        self.assertNotIn("HTTP 400", msg)
-
-    def test_whitespace_only_answer_fails_plainly(self):
-        msg = self._failure({"return_value": "  \t  "})
-        self.assertIn("client secret", msg)
-
-    def test_eof_fails_plainly(self):
-        msg = self._failure({"side_effect": EOFError})
-        self.assertIn("client secret", msg)
-
-    def test_interrupt_fails_plainly_not_with_a_traceback(self):
-        msg = self._failure({"side_effect": KeyboardInterrupt})
-        self.assertIn("client secret", msg)
+        _, text = self._ensure({})
+        self.assertNotIn(SU.DEFAULT_OAUTH_CLIENT_SECRET, text)
+        self.assertNotIn("typing hidden", text)
 
 
 class WizardClientSecretTest(unittest.TestCase):
-    """The whole wizard, the way the first-run failure happened."""
+    """The whole wizard, the way the first-run failure happened —
+    and the way it cannot happen now: no prompt stands between
+    the menu and the browser, on any browser sign-in path."""
 
-    def _run(self, inputs, cfg=None, consent=None, secret_answer=FIXTURE):
+    def _run(self, inputs, cfg=None, consent=None):
         out, err = io.StringIO(), io.StringIO()
         seen_cfg = []
         if consent is None:
@@ -181,8 +161,7 @@ class WizardClientSecretTest(unittest.TestCase):
                 with open(path, "w") as fh:
                     json.dump(cfg, fh)
             with mock.patch("builtins.input", side_effect=inputs), \
-                    mock.patch("getpass.getpass",
-                               return_value=secret_answer) as gp, \
+                    mock.patch("getpass.getpass") as gp, \
                     mock.patch.object(SU, "browser_consent",
                                       side_effect=consent), \
                     mock.patch.object(SU, "_mailbox_probe",
@@ -197,52 +176,39 @@ class WizardClientSecretTest(unittest.TestCase):
                     written = json.load(fh)
         return got, written, gp, seen_cfg, out.getvalue() + err.getvalue()
 
-    def test_option3_fresh_config_asks_once_and_stores(self):
+    def test_option3_fresh_config_goes_directly_to_the_browser(self):
         _, written, gp, seen_cfg, text = self._run(
             ["3", ""], cfg={"mailbox_user": "runner@example.com"})
-        gp.assert_called_once()
+        gp.assert_not_called()
         # The consent itself already saw the secret in the config,
         # so the exchange that follows it can carry the field.
-        self.assertEqual(seen_cfg[0]["oauth_client_secret"], FIXTURE)
-        self.assertEqual(written["oauth_client_secret"], FIXTURE)
+        self.assertEqual(seen_cfg[0]["oauth_client_secret"],
+                         SU.DEFAULT_OAUTH_CLIENT_SECRET)
+        self.assertEqual(written["oauth_client_secret"],
+                         SU.DEFAULT_OAUTH_CLIENT_SECRET)
         self.assertEqual(written["oauth_refresh_token"], "refresh-123")
-        self.assertNotIn(FIXTURE, text)
+        self.assertNotIn(SU.DEFAULT_OAUTH_CLIENT_SECRET, text)
 
-    def test_option1_fresh_config_asks_and_stores_too(self):
+    def test_option1_fresh_config_uses_the_default_too(self):
         _, written, gp, _, text = self._run(
             ["", "my-client-id", "y"],
             cfg={"mailbox_user": "runner@example.com"})
-        gp.assert_called_once()
+        gp.assert_not_called()
         self.assertEqual(written["oauth_client_id"], "my-client-id")
-        self.assertEqual(written["oauth_client_secret"], FIXTURE)
-        self.assertNotIn(FIXTURE, text)
+        self.assertEqual(written["oauth_client_secret"],
+                         SU.DEFAULT_OAUTH_CLIENT_SECRET)
+        self.assertNotIn(SU.DEFAULT_OAUTH_CLIENT_SECRET, text)
 
-    def test_configured_secret_skips_the_prompt(self):
+    def test_configured_secret_wins_over_the_default(self):
         cfg = {"mailbox_user": "runner@example.com",
                "oauth_client_secret": "already-set"}
-        _, written, gp, _, _ = self._run(["3", ""], cfg=cfg)
+        _, written, gp, seen_cfg, _ = self._run(["3", ""], cfg=cfg)
         gp.assert_not_called()
+        self.assertEqual(seen_cfg[0]["oauth_client_secret"],
+                         "already-set")
         self.assertEqual(written["oauth_client_secret"], "already-set")
 
-    def test_empty_secret_stops_before_any_sign_in(self):
-        consent = mock.Mock(return_value="refresh-123")
-        with tempfile.TemporaryDirectory() as d:
-            path = os.path.join(d, "config.json")
-            with mock.patch("builtins.input", side_effect=["3"]), \
-                    mock.patch("getpass.getpass", return_value=""), \
-                    mock.patch.object(SU, "browser_consent", consent), \
-                    redirect_stdout(io.StringIO()), \
-                    redirect_stderr(io.StringIO()):
-                with self.assertRaises(SystemExit) as caught:
-                    SU.run_setup_wizard(
-                        path, {"mailbox_user": "runner@example.com"})
-            self.assertFalse(os.path.exists(path))
-        consent.assert_not_called()
-        msg = str(caught.exception)
-        self.assertIn("client secret", msg)
-        self.assertNotIn("invalid_request", msg)
-
-    def test_a_retry_does_not_ask_twice(self):
+    def test_a_retry_never_asks_either(self):
         answers = [SystemExit("boom"), "refresh-123"]
 
         def consent(cfg):
@@ -254,17 +220,19 @@ class WizardClientSecretTest(unittest.TestCase):
         _, written, gp, _, _ = self._run(
             ["3", "y", ""], cfg={"mailbox_user": "runner@example.com"},
             consent=consent)
-        gp.assert_called_once()
+        gp.assert_not_called()
         self.assertEqual(written["oauth_refresh_token"], "refresh-123")
-        self.assertEqual(written["oauth_client_secret"], FIXTURE)
+        self.assertEqual(written["oauth_client_secret"],
+                         SU.DEFAULT_OAUTH_CLIENT_SECRET)
 
-    def test_relogin_without_a_secret_asks_and_stores(self):
+    def test_relogin_without_a_secret_gets_the_default(self):
         cfg = {"mailbox_user": "runner@example.com", "auth": "oauth",
                "oauth_client_id": "cid", "oauth_refresh_token": "tok",
                "shared_secret": "ab" * 32}
         _, written, gp, _, _ = self._run(["y", ""], cfg=cfg)
-        gp.assert_called_once()
-        self.assertEqual(written["oauth_client_secret"], FIXTURE)
+        gp.assert_not_called()
+        self.assertEqual(written["oauth_client_secret"],
+                         SU.DEFAULT_OAUTH_CLIENT_SECRET)
         self.assertEqual(written["oauth_refresh_token"], "refresh-123")
 
 
