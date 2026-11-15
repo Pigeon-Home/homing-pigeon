@@ -297,6 +297,18 @@ REGISTERED = {
         "environment in the builtin's place; it runs wherever "
         "bash is installed -- the ubuntu and macOS legs -- and "
         "a host with no bash has no shell that takes one",
+    "root may raise a hard limit: run as an ordinary user":
+        "test_macos_confine's tests that a job cannot raise the "
+        "launcher's ceiling hold for a job that is not root; "
+        "they run as the ordinary user of the ubuntu and macOS "
+        "legs, and the root step's own tests record that a root "
+        "job can, and that a job user under a root runner cannot",
+    "a job is root only under a runner that is: run in the "
+    "macos-confinement workflow's root step":
+        "test_macos_confine's record that a job which is root "
+        "raises its own ceiling runs in the macos-confinement "
+        "workflow's root step on both hosted Macs; as an "
+        "ordinary user the opposite test is the subject",
     "changing to the job user is root's: run in the "
     "macos-confinement workflow's root step":
         "test_macos_confine's live test of a job started as the "

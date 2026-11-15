@@ -55,7 +55,10 @@ own tool (/usr/bin/sandbox-exec). One seam uses this module:
   inherited hard limit is never raised: a value above it is
   clamped to it, and a host whose floor stands above it
   refuses the job by name. The soft and the hard limit are
-  both set, so the ceiling is not the job's to raise. Only
+  both set, so the ceiling is not the job's to raise --
+  unless the job is root, which may raise a hard limit as
+  root may anywhere: a runner that is root names a job user.
+  Only
   the data-size limit is set, never the virtual-memory
   (address-space) limit: a 512 MiB RLIMIT_AS made every
   exec'd interpreter abort (SIGABRT, exit -6) before its
@@ -794,7 +797,9 @@ def _group_ids(groups, name, gid):
     `nobody` is 4294967294 in the user database and -2 to that
     call, in both directions. An id too large for the call is
     handed over as its signed twin, and a negative id that
-    comes back is read as its unsigned one.
+    comes back is read as its unsigned one. One id no spawn
+    takes is left out: -1, which the platform reads as "no
+    group" (the hosted Macs' list for `nobody` carries it).
     """
     if groups is None:
         return [gid]
@@ -803,7 +808,8 @@ def _group_ids(groups, name, gid):
             found = groups(name, gid)
         except OverflowError:
             found = groups(name, gid - 2 ** 32)
-        return [g + 2 ** 32 if g < 0 else g for g in found]
+        found = [g + 2 ** 32 if g < 0 else g for g in found]
+        return [g for g in found if 0 <= g < 2 ** 32 - 1]
     except (OSError, OverflowError, ValueError, TypeError):
         return [gid]
 
@@ -947,13 +953,18 @@ def human_size(kib):
     return "%d MiB" % (kib // 1024)
 
 
-def memory_line(memory_bytes, limit_kib=None):
+def memory_line(memory_bytes, limit_kib=None, job_is_root=False):
     """The one sentence that says what the memory ceiling is
     on this host: the ceiling asked for, and, where the trial
-    read the limit a job carries, the floor it stands on."""
+    read the limit a job carries, the floor it stands on. A
+    job that is root may raise a hard limit, as root may
+    anywhere; the sentence says so where that is the job."""
     want = ceiling_kib(memory_bytes)
     held = ("the ceiling is not the job's to raise (ulimit in "
             "the launcher shim, soft and hard)")
+    if job_is_root:
+        held = ("it is set soft and hard (ulimit in the launcher "
+                "shim), and a job that is root can raise it")
     if limit_kib is None:
         return ("a job process's address map may grow %s past "
                 "the size a bare process starts at; %s"
@@ -967,7 +978,12 @@ def memory_line(memory_bytes, limit_kib=None):
             % (human_size(want), held))
 
 
-def posture_lines(cfg=None, probe=None, facts=None):
+def _runner_is_root():
+    geteuid = getattr(os, "geteuid", None)
+    return geteuid is not None and geteuid() == 0
+
+
+def posture_lines(cfg=None, probe=None, facts=None, root=None):
     """(level, text) lines for the posture report: what a job
     carries on this host under this config.
 
@@ -976,9 +992,13 @@ def posture_lines(cfg=None, probe=None, facts=None):
     nothing on the host but a temporary directory it removes,
     and its verdict is kept for the life of the process, so
     the report says what the startup gate would say. A WARN
-    is something the gate refuses on at enforce. `probe` and
-    `facts` are the tests' doors: the probe to ask, and what
-    its trial read (the limit a job carries, in kibibytes).
+    that the backend cannot engage is something the gate
+    refuses on at enforce. One WARN is advice and refuses
+    nothing: a runner that is root and names no job user
+    starts its jobs as root, and root may raise the ceiling.
+    `probe`, `facts` and `root` are the tests' doors: the
+    probe to ask, what its trial read (the limit a job
+    carries, in kibibytes), and whether the runner is root.
     """
     refuse = "; confinement in enforce mode would refuse to start"
     try:
@@ -996,15 +1016,24 @@ def posture_lines(cfg=None, probe=None, facts=None):
                  % (problem, refuse))]
     if facts is None:
         facts = trial_facts(st["process_memory_bytes"])
+    if root is None:
+        root = _runner_is_root()
+    user = _engaged_job_user(cfg)
+    job_is_root = bool(root) and user is None
     lines = [("OK", "macOS backend: %s" % STATUS_CONFINEMENT)]
     lines.append(("OK", memory_line(st["process_memory_bytes"],
-                                    facts.get("limit_kib"))))
-    user = _engaged_job_user(cfg)
+                                    facts.get("limit_kib"),
+                                    job_is_root)))
     if user is not None:
         lines.append((
             "OK", "a job is started as %s at the spawn door "
             "(security.job_user) and reads what that user can "
             "read" % user))
+    elif job_is_root:
+        lines.append((
+            "WARN", "this runner is root and names no job user: "
+            "a job is root under the profile, and root can raise "
+            "its own ceiling (name a user under security.job_user)"))
     return lines
 
 
@@ -1387,7 +1416,8 @@ else:
                 sandbox_argv, stdin=subprocess.DEVNULL,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 cwd=cwd, env=env2, start_new_session=True, **drop)
-        except (OSError, subprocess.SubprocessError) as e:
+        except (OSError, ValueError,
+                subprocess.SubprocessError) as e:
             raise RuntimeError(
                 "the confined spawn could not be started: %s" % e)
         return MacOSConfinedProcess(list(argv), inner, notes)

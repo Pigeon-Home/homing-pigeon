@@ -709,6 +709,12 @@ def _shells():
 
 
 _READ_BACK = 'echo "$(ulimit -S -d) $(ulimit -H -d)"'
+# The same reading by a job that is no shell: where the
+# environment carries a function under the builtin's name, a
+# job that is a shell would call the function too.
+_PY_READ_BACK = [sys.executable, "-c",
+                 "import resource\n"
+                 "print(*resource.getrlimit(resource.RLIMIT_DATA))\n"]
 
 
 @unittest.skipUnless(os.name == "posix", "POSIX only")
@@ -732,7 +738,7 @@ class ShimRunTest(unittest.TestCase):
 
     def _real(self, job, env=None, shell=None, memory=None):
         argv = MC.build_shim_argv(
-            ["/bin/sh", "-c", job],
+            ["/bin/sh", "-c", job] if isinstance(job, str) else job,
             **({} if memory is None else {"memory_bytes": memory}))
         if shell is not None:
             argv = shell + argv[2:]
@@ -834,6 +840,9 @@ class ShimRunTest(unittest.TestCase):
         # are read again after both. A shell may answer a
         # request to lift the soft limit by setting it to the
         # hard one, which is where it already stands.
+        if os.geteuid() == 0:
+            self.skipTest("root may raise a hard limit: run as an "
+                          "ordinary user")
         done = self._real(
             _READ_BACK + "; (ulimit -H -d unlimited) 2>/dev/null "
             "&& echo RAISED-HARD; ulimit -S -d unlimited "
@@ -855,11 +864,12 @@ class ShimRunTest(unittest.TestCase):
         env["BASH_FUNC_ulimit%%"] = "() { return 0; }"
         env["__BASH_FUNC<ulimit>()"] = "() { return 0; }"
         for shell in _shells():
-            done = self._real(_READ_BACK, env=env, shell=shell)
+            done = self._real(_PY_READ_BACK, env=env, shell=shell)
             self.assertEqual(done.returncode, 0, (shell, done.stderr))
-            soft, hard = done.stdout.decode().split()
+            soft, hard = (int(x) for x in done.stdout.decode().split())
             self.assertEqual(soft, hard, shell)
-            self.assertTrue(soft.isdigit(), (shell, soft))
+            self.assertFalse(MC.reported_limit_is_unlimited(soft),
+                             shell)
 
     def test_without_the_flag_bash_takes_the_function(self):
         # The control for the test above: the same text on the
@@ -873,15 +883,18 @@ class ShimRunTest(unittest.TestCase):
         env = dict(os.environ)
         env["BASH_FUNC_ulimit%%"] = "() { return 0; }"
         env["__BASH_FUNC<ulimit>()"] = "() { return 0; }"
-        open_done = self._real(_READ_BACK, env=env,
+        open_done = self._real(_PY_READ_BACK, env=env,
                                shell=[bash, "--posix"])
-        kept_done = self._real(_READ_BACK, env=env,
+        kept_done = self._real(_PY_READ_BACK, env=env,
                                shell=[bash, "--posix", "-p"])
-        self.assertTrue(kept_done.stdout.decode().split()[0].isdigit())
+        kept = [int(x) for x in kept_done.stdout.decode().split()]
+        self.assertEqual(kept[0], kept[1])
+        self.assertFalse(MC.reported_limit_is_unlimited(kept[0]))
         # The function answered for the builtin: the shim could
-        # not read a limit through it and refused, or set none.
-        took = open_done.returncode != 0 \
-            or not open_done.stdout.decode().split()[0].isdigit()
+        # not read a limit through it and refused, or the job
+        # ran with no limit set.
+        took = open_done.returncode != 0 or [
+            int(x) for x in open_done.stdout.decode().split()] != kept
         self.assertTrue(took, open_done.stdout)
 
     def test_an_option_list_in_the_environment_is_not_taken(self):
@@ -890,7 +903,8 @@ class ShimRunTest(unittest.TestCase):
         env = dict(os.environ)
         env["SHELLOPTS"] = "noexec"
         for shell in _shells():
-            done = self._real("echo JOB-RAN", env=env, shell=shell)
+            done = self._real(["/bin/echo", "JOB-RAN"], env=env,
+                              shell=shell)
             self.assertIn(b"JOB-RAN", done.stdout, shell)
 
     def test_the_environment_reaches_the_job(self):
@@ -983,6 +997,17 @@ class JobUserDropTest(unittest.TestCase):
         self.assertEqual(drop, {"user": 4294967294,
                                 "group": 4294967294,
                                 "extra_groups": [4294967294, 20]})
+
+    def test_the_one_id_no_spawn_takes_is_left_out(self):
+        # The hosted Macs' list for `nobody` carries -1, which
+        # the platform reads as "no group" and a spawn refuses
+        # by name ("invalid group id").
+        drop = MC.job_user_drop(
+            "nobody",
+            lookup=lambda name: self._entry(name, 4294967294,
+                                            4294967294),
+            groups=lambda name, gid: [-2, 12, -1, 61, 4294967295])
+        self.assertEqual(drop["extra_groups"], [4294967294, 12, 61])
 
     def test_a_user_the_machine_does_not_have_is_a_refusal(self):
         def _lookup(name):
@@ -1887,7 +1912,7 @@ class PostureLinesTest(unittest.TestCase):
 
     def test_a_host_with_a_floor_names_the_floor(self):
         lines = MC.posture_lines({}, probe=self._passes,
-                                 facts=self.APPLE)
+                                 facts=self.APPLE, root=False)
         self.assertEqual(lines, [
             ("OK", "macOS backend: macos: seatbelt_profile + "
                    "no_network + spawn_resource_limits"),
@@ -1898,7 +1923,8 @@ class PostureLinesTest(unittest.TestCase):
 
     def test_a_host_with_no_floor_names_the_ceiling_itself(self):
         lines = MC.posture_lines({}, probe=self._passes,
-                                 facts={"limit_kib": 524288})
+                                 facts={"limit_kib": 524288},
+                                 root=False)
         self.assertEqual(
             lines[1][1],
             "a job process's address map is held to 512 MiB here; "
@@ -1906,7 +1932,8 @@ class PostureLinesTest(unittest.TestCase):
             "launcher shim, soft and hard)")
 
     def test_no_reading_names_no_number_it_did_not_read(self):
-        lines = MC.posture_lines({}, probe=self._passes, facts={})
+        lines = MC.posture_lines({}, probe=self._passes, facts={},
+                                 root=False)
         self.assertEqual(
             lines[1][1],
             "a job process's address map may grow 512 MiB past "
@@ -1919,7 +1946,7 @@ class PostureLinesTest(unittest.TestCase):
             "process_memory_bytes": 2 * 1024 ** 3}}}}
         lines = MC.posture_lines(
             cfg, probe=self._passes,
-            facts={"limit_kib": 34128896 + 2 * 1024 ** 2})
+            facts={"limit_kib": 34128896 + 2 * 1024 ** 2}, root=False)
         self.assertIn("may grow 2.0 GiB past the 32.5 GiB",
                       lines[1][1])
 
@@ -1953,7 +1980,10 @@ class PostureLinesTest(unittest.TestCase):
     def test_an_engaged_job_user_is_named(self):
         cfg = {"security": {"job_user": {"user": "nobody"}}}
         lines = MC.posture_lines(cfg, probe=self._passes,
-                                 facts=self.APPLE)
+                                 facts=self.APPLE, root=True)
+        self.assertEqual(len(lines), 3)
+        self.assertIn("the ceiling is not the job's to raise",
+                      lines[1][1])
         self.assertEqual(
             lines[2],
             ("OK", "a job is started as nobody at the spawn door "
@@ -1964,8 +1994,40 @@ class PostureLinesTest(unittest.TestCase):
         cfg = {"security": {"modes": {"job_user": "audit"},
                             "job_user": {"user": "nobody"}}}
         lines = MC.posture_lines(cfg, probe=self._passes,
-                                 facts=self.APPLE)
+                                 facts=self.APPLE, root=False)
         self.assertEqual(len(lines), 2)
+
+    def test_a_root_runner_with_no_job_user_is_told_so(self):
+        # Root may raise a hard limit, under a profile as
+        # anywhere: read on both hosted Macs, where a root job's
+        # subshell lifted its own. The report says the ceiling
+        # is set and does not say it holds, and one line of
+        # advice names the remedy.
+        for cfg in ({}, {"security": {"modes": {"job_user": "audit"},
+                                      "job_user": {"user": "nobody"}}}):
+            lines = MC.posture_lines(cfg, probe=self._passes,
+                                     facts=self.APPLE, root=True)
+            self.assertEqual(
+                lines[1],
+                ("OK", "a job process's address map may grow "
+                       "512 MiB past the 391.7 GiB a bare process "
+                       "starts at here; it is set soft and hard "
+                       "(ulimit in the launcher shim), and a job "
+                       "that is root can raise it"))
+            self.assertEqual(
+                lines[2],
+                ("WARN", "this runner is root and names no job "
+                         "user: a job is root under the profile, "
+                         "and root can raise its own ceiling (name "
+                         "a user under security.job_user)"))
+            self.assertEqual(len(lines), 3)
+
+    def test_whether_the_runner_is_root_is_read_from_the_host(self):
+        lines = MC.posture_lines({}, probe=self._passes,
+                                 facts=self.APPLE)
+        self.assertEqual(
+            len(lines), 3 if getattr(os, "geteuid", lambda: 1)() == 0
+            else 2)
 
     def test_the_stub_s_own_answer_is_a_warning(self):
         if MC.IS_MACOS_BACKEND:
@@ -2649,7 +2711,25 @@ class LiveBackendTest(unittest.TestCase):
               "a Python job made and touched was %d MiB; %d MiB was "
               "refused" % (fit, refused), flush=True)
 
+    def test_a_job_that_is_root_can_raise_its_ceiling(self):
+        # What the page says of a runner that is root and names
+        # no job user, read here: the hard limit goes up for the
+        # asking, in a subshell of the job's own.
+        if os.geteuid() != 0:
+            self.skipTest("a job is root only under a runner that "
+                          "is: run in the macos-confinement "
+                          "workflow's root step")
+        with tempfile.TemporaryDirectory() as work:
+            rc, out, err = self._job(
+                ["/bin/sh", "-c",
+                 "(ulimit -H -d unlimited && ulimit -S -d unlimited "
+                 "&& " + _READ_BACK + ") 2>&1; echo END"], work)
+            self.assertIn("unlimited unlimited", out, err)
+
     def test_the_job_cannot_raise_its_ceiling(self):
+        if os.geteuid() == 0:
+            self.skipTest("root may raise a hard limit: run as an "
+                          "ordinary user")
         with tempfile.TemporaryDirectory() as work:
             rc, out, err = self._job(
                 ["/bin/sh", "-c",
@@ -2829,9 +2909,17 @@ class LiveBackendTest(unittest.TestCase):
         self.assertRegex(
             results[1][2],
             r"^a job process's address map may grow 512 MiB past "
-            r"the \d+\.\d GiB a bare process starts at here; the "
-            r"ceiling is not the job's to raise")
-        self.assertEqual(len(results), 2)
+            r"the \d+\.\d GiB a bare process starts at here; ")
+        if os.geteuid() == 0:
+            # No job user is named here, so the jobs are root's.
+            self.assertIn("a job that is root can raise it",
+                          results[1][2])
+            self.assertEqual(results[2][0], "WARN")
+            self.assertEqual(len(results), 3)
+        else:
+            self.assertIn("the ceiling is not the job's to raise",
+                          results[1][2])
+            self.assertEqual(len(results), 2)
         print("posture: " + results[1][2], flush=True)
 
 
@@ -2936,7 +3024,9 @@ class LiveJobUserTest(unittest.TestCase):
             proc = MC.spawn_confined_process(
                 ["/bin/sh", "-c",
                  "id -u; : > made.txt && echo WORK-OK; "
-                 ": > \"$TMPDIR/t\" && echo TMP-OK; " + _READ_BACK],
+                 ": > \"$TMPDIR/t\" && echo TMP-OK; "
+                 "(ulimit -H -d unlimited) 2>/dev/null "
+                 "&& echo RAISED-HARD; " + _READ_BACK],
                 cwd=work, env=dict(os.environ), user=self.USER)
             out, err = proc.communicate(timeout=60)
             proc.close()
@@ -2944,6 +3034,9 @@ class LiveJobUserTest(unittest.TestCase):
             self.assertEqual(words[0], str(entry.pw_uid), err)
             self.assertIn("WORK-OK", words)
             self.assertIn("TMP-OK", words)
+            # The runner is root; the job is not, and cannot
+            # raise what the launcher set.
+            self.assertNotIn("RAISED-HARD", words)
             self.assertEqual(words[-2], words[-1])
             self.assertTrue(words[-1].isdigit())
             self.assertEqual(

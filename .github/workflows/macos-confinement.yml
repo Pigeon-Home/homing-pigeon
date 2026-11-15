@@ -228,7 +228,10 @@ jobs:
           [ "$code" = "ran 0" ] || { bad=1; echo "::error title=macos-confinement::the job through the frozen runner did not read the boundary as confined ($code)"; }
           if [ -e "$root/outside/escaped.txt" ]; then bad=1; echo "::error title=macos-confinement::a write outside the job's work directory landed"; else echo "no file landed outside the work directory"; fi
           echo "== what the audit log says of it"
-          line="$(grep -a '"feature": "confinement"' "$root/state/security-audit.jsonl" | tail -n 1)"
+          # A job run by this door keeps its records under the
+          # state directory's own work tree: every audit log
+          # below the state directory is read.
+          line="$(find "$root/state" -name security-audit.jsonl -exec grep -a -h '"feature": "confinement"' {} + | tail -n 1)"
           printf '%s\n' "$line" | cut -c1-500
           case "$line" in
             *'"decision": "confined"'*'macos: seatbelt_profile + no_network + spawn_resource_limits'*) ;;

@@ -68,7 +68,9 @@ Three things to know about the ceiling:
   needs 8 GiB.
 - It is not the job's to raise, and it is each process's own:
   there is no ceiling on a job's processes taken together,
-  and none on processor time or cores.
+  and none on processor time or cores. One job can raise it:
+  a job that is root, which is what a job is when you run the
+  runner as root and name no job user. Name one (below).
 
 The posture report (`--posture`) says the ceiling and the
 floor it stands on for the Mac it runs on.
@@ -138,7 +140,9 @@ A macOS install runs as your own launchd agent, and a job is
 your user's, kept from your files by the profile. If you run
 the runner as root and name a job user
 (`security.job_user`), the job is started as that user:
-`sandbox-exec`, the launcher and the job alike.
+`sandbox-exec`, the launcher and the job alike. A runner
+that is root and names none starts its jobs as root, and the
+posture report says so.
 
 ## The mode a macOS config states
 

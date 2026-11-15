@@ -319,7 +319,7 @@ class SupportMatrixTest(unittest.TestCase):
         self.assertEqual(MC.SHELL_BIN, "/bin/sh")
         self.assertIn("launcher shim, the system shell", flat)
         self.assertIn("set soft and hard, so it is not the job's "
-                      "to raise", flat)
+                      "to raise unless the job is root", flat)
         self.assertIn("frozen macOS binaries engage it", flat)
         self.assertIn("A fresh install asks the same probe on the "
                       "Mac it installs on", flat)

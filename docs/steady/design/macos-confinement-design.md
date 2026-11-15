@@ -175,7 +175,9 @@ process starts at on that Mac.
 - The ceiling is 512 MiB unless the operator names another
   (`process_memory_bytes`, below).
 - The hard limit is set as well as the soft one, so the job
-  cannot raise either.
+  cannot raise either — unless the job is root. Root may
+  raise a hard limit, under a profile as anywhere. A runner
+  that is root names a job user, whose jobs are not root.
 - A hard limit the launcher inherits is never raised: a
   value above it is clamped to it, and a Mac whose floor
   stands above it refuses the job by name.
@@ -267,7 +269,9 @@ by the file it leaves.
 The posture report asks the same probe — the trial needs no
 privilege and leaves nothing on the host — and says what a
 job carries here: the controls, and the ceiling with the
-floor it stands on.
+floor it stands on. Where the runner is root and names no
+job user, it says the ceiling is set and does not say it
+holds, and one line of advice names the remedy.
 
 ## The mode a fresh install states
 
@@ -323,7 +327,7 @@ copy of the archive into a home of its own, leaves
 | Network | A loopback of its own | None; a loopback of its own by a switch | None |
 | Host's processes | Visible | Not visible | Visible; a signal to one is refused |
 | Set-user-ID programs | Not honoured | Not honoured | Refused: they do not start |
-| Memory ceiling, per process | None | 512 MiB, not the job's to raise | 512 MiB above a bare process's address map, not the job's to raise |
+| Memory ceiling, per process | None | 512 MiB, not the job's to raise | 512 MiB above a bare process's address map, not the job's to raise unless the job is root |
 | Ceilings on the whole job | None | Processes and address space, where RACCT is enabled; the job user's processes on every host | None |
 | Cores a job runs on | Not limited | All but one of the runner's | Not limited |
 | Operator binds | Yes | Yes | No: the keys name mounts |
@@ -354,6 +358,9 @@ path layout, and the names in it.
   everywhere; contents are not.
 - It holds no ceiling on a job as a whole, on processor
   time, or on cores.
+- It does not hold a job that is root to its ceiling. That
+  is a runner run as root with no job user named, which a
+  macOS install is not.
 - It makes no mount: `work_mount` and `extra_ro_binds` name
   nothing here, and a job cannot be shown a tree outside
   the system's and its own.

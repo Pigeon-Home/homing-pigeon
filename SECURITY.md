@@ -642,7 +642,9 @@ only tree that takes a write, and no network at all. A
 launcher — the system shell — then sets a ceiling on each
 job process's address map, 512 MiB above the size a bare
 process starts at on that Mac, soft and hard, so the job
-cannot raise it. The audit record names
+cannot raise it unless it is root, which a job is only under
+a runner run as root with no job user named. The audit
+record names
 `macos: seatbelt_profile + no_network + spawn_resource_limits`.
 It needs no root, and a release's macOS binaries engage it
 as a runner started from source does. It does not keep a

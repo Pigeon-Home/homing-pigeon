@@ -228,8 +228,12 @@ class CoreListTest(unittest.TestCase):
         # runner/guard/sandbox.py's 7, and by 148 in
         # runner/ops for the seed that asks that backend
         # (the macOS launcher landing).
-        self.assertEqual(69280, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(62791, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # Again that day, after the hosted Macs answered
+        # the landing, by 30 lines more of
+        # runner/guard/macos_confine.py (the hosted run's
+        # two answers).
+        self.assertEqual(69310, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(62819, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
