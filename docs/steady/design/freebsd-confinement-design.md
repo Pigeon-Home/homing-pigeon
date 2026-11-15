@@ -937,7 +937,10 @@ first tag to carry the change (run 43612998944, the same
 day) the suite ran whole, 13,294 tests with 167 skipped by
 name, and none was red, the suite's first green run on a
 hosted FreeBSD guest. Its clock is 45 minutes from
-2026-11-15.
+2026-11-15, and the first run under it (run 43663671470)
+was whole and green in 1,969 seconds, past the 1,800 the
+clock had stopped a run at. The run after it (run
+43666816253) took 1,178 seconds over the same tests.
 
 ### The job user's process ceiling
 

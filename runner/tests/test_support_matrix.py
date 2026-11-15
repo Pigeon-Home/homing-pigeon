@@ -212,6 +212,16 @@ class SupportMatrixTest(unittest.TestCase):
             "seven finished, in 1,360 to 1,683 seconds, and seven "
             "were stopped at 1,800, each in the last third of the "
             "suite", row)
+        # The first run under the 45-minute clock: one the clock
+        # before it would have stopped.
+        self.assertIn(
+            "The first run under it (run 43663671470, 2026-11-15) "
+            "was a slow one, and it finished: 13,331 tests, 174 "
+            "skipped by name and none red, in 1,969 seconds", row)
+        # And the run after it, on another guest: the same tests
+        # in three fifths of the time.
+        self.assertIn(
+            "ran the same 13,331 tests green in 1,178 seconds", row)
 
     def test_the_freebsd_row_names_the_clock_the_workflow_runs(self):
         # The row's minutes are the workflow's own: the number

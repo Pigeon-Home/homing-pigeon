@@ -76,7 +76,12 @@ no release waits for it. Its wall clock is 45 minutes from
 its first artifact (2026-11-13) to that day were stopped at the
 clock, each in the last third of the suite, while the seven
 that finished took 1,360 to 1,683 seconds: the clock stood
-inside the spread of the guest's own pace. A dedicated node
+inside the spread of the guest's own pace. The first run under
+the 45 (run 43663671470, 2026-11-15) took 1,969 seconds and was
+green, 13,331 tests with 174 skipped by name: the clock before
+it would have stopped that run. The next (run 43666816253, the
+same day) ran the same 13,331 tests green in 1,178 seconds. A
+dedicated node
 running FreeBSD 14.5-RELEASE stands in the project's own fleet
 (stood up 2026-11-10) to give the platform a real kernel of its
 own. The runner is installed on that node, and a first local

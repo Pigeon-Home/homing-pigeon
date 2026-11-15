@@ -1514,8 +1514,11 @@ class FreeBSDSuiteWallClockTest(unittest.TestCase):
     and seven were stopped at the 1,800-second wall, each in the
     last third of the suite. The wall stood inside the spread of
     the guest's own pace, and a slow guest read as a red suite.
-    These pins hold the budget to that arithmetic, not to the
-    number it started at."""
+    The first run under the 45 (run 43663671470) was such a
+    guest: 13,331 tests, green, in 1,969 seconds; the run after
+    it (run 43666816253) took 1,178 over the same tests. These
+    pins hold the budget to that arithmetic, not to the number
+    it started at."""
 
     # unittest's own seconds on the seven runs that finished, in
     # run order; the last is the suite's first green run there
@@ -1523,6 +1526,10 @@ class FreeBSDSuiteWallClockTest(unittest.TestCase):
     FINISHED = (1359.754, 1666.113, 1557.592, 1629.478,
                 1513.758, 1620.409, 1683.059)
     OLD_WALL = 1800
+    # unittest's own seconds on the first two runs under the
+    # 45-minute budget (runs 43663671470 and 43666816253): the
+    # same 13,331 tests, whole and green on both.
+    UNDER_BUDGET = (1968.857, 1178.214)
     # The stopped run that had got least far (run 43435133025)
     # had passed the resources tests by its page's skip tally:
     # 76.8 percent of that tag's suite by test count, the one
@@ -1559,6 +1566,23 @@ class FreeBSDSuiteWallClockTest(unittest.TestCase):
         self.assertLess(self.OLD_WALL - max(self.FINISHED), 120)
         self.assertGreater(max(self.FINISHED) / min(self.FINISHED),
                            1.2)
+
+    def test_a_slow_guest_finishes_under_the_budget(self):
+        # Measured, not supposed: the first run under the budget
+        # outran the old wall and finished green, with more than
+        # ten minutes of the budget to spare.
+        slow = max(self.UNDER_BUDGET)
+        self.assertGreater(slow, self.OLD_WALL)
+        self.assertGreater(slow, max(self.FINISHED))
+        budget = self._budget() * 60
+        self.assertLess(slow + 600, budget)
+
+    def test_one_suite_moves_by_half_between_two_guests(self):
+        # The pace is the guest's: the same tests, two runs forty
+        # minutes apart, and the slower took more than half again
+        # the faster's time.
+        self.assertGreater(
+            max(self.UNDER_BUDGET) / min(self.UNDER_BUDGET), 1.5)
 
     def test_the_budget_covers_a_slow_guest_with_headroom(self):
         # A guest that kept the pace of the run that had got

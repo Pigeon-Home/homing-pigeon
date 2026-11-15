@@ -1943,3 +1943,16 @@ the forty lines of the suite log the step prints, so the name is in
 the artifact and not on the page. On the v3.16.26.2 run the test in
 flight held the process's error stream captured, and the report
 went with the capture. Neither is changed here.
+
+The first run under the 45-minute clock was a slow one, and it
+finished (run 43663671470, on main, 15 Nov): 13,331 tests in 1,969
+seconds, 174 skipped by name, none red, the roster at 23 of 23 and
+the verdict `suite=0 roster=0 sh=0`. The clock before it would have
+stopped that run 169 seconds short of its verdict. It is the
+suite's second green run on a hosted FreeBSD guest, and the first
+on a guest too slow for the old clock.
+
+The second run under it was on the v3.16.26.14 tag, the release
+that carried the clock (run 43666816253, 15 Nov): the same 13,331
+tests, green, in 1,178 seconds. Two guests forty minutes apart ran
+one suite in 1,178 seconds and in 1,969.
