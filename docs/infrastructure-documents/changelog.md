@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.16 - 2026-11-15
+
+- Docs: Q195 second seat's re-test — every supposition stood; Q195 closed under rule 8
+
 ## 3.16.26.15 - 2026-11-15
 
 - docs: CS_canoe design notes land on main — the hosted service, first flow and runner linking; the secret is generated locally, the third login option, big-small; the fourth option: Gmail login, Cloudflare transport (Muse)
