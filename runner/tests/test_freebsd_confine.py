@@ -5396,7 +5396,9 @@ class LiveControlsTest(unittest.TestCase):
         self.assertEqual((started, how), (40, "UNBOUNDED"), (out, err))
         self.assertGreater(soft, 256, (out, err))
         self.assertIn("no_superuser", proc.confinement_status)
-        self.assertEqual(proc.confinement_notes, [])
+        # Nothing about its processes is in the record: only
+        # the cores its jail was pinned to, where it was.
+        self.assertEqual(proc.confinement_notes, _cores_notes())
 
     def test_the_lower_of_the_two_ceilings_is_the_one_a_job_meets(self):
         if not _racct_live():
@@ -5630,7 +5632,8 @@ class LiveControlsTest(unittest.TestCase):
         self.assertNotIn(b"WROTE-PREFIX", out, err)
         self.assertEqual(
             proc.confinement_notes,
-            ["interpreter prefix %s mounted read-only" % prefix])
+            ["interpreter prefix %s mounted read-only" % prefix]
+            + _cores_notes())
 
     def test_a_runner_that_dies_takes_its_job_with_it(self):
         # A runner of its own: a process that starts a confined
@@ -5707,6 +5710,17 @@ def _cores_live():
     to the backend -- lowest first; an empty list on a host
     that will not say."""
     return FC._runner_cpus(FC._HOST) or []
+
+
+def _cores_notes():
+    """What a job's record says of its cores on this host under
+    the default: the one note, or none on a host with one core
+    to run on."""
+    cores = _cores_live()
+    if len(cores) < 2:
+        return []
+    return ["job pinned to cpus %s: %d of the runner's %d cores"
+            % (FC._cpu_list(cores[1:]), len(cores) - 1, len(cores))]
 
 
 # A job that says which cores its own process may run on.
@@ -6706,7 +6720,8 @@ class LiveAccountTest(_LiveSeed):
         self.assertEqual(_forked(out), (24, 24, 23, "EAGAIN"),
                          (out, err))
         self.assertEqual(proc.confinement_notes,
-                         ["job user pigeon-jobs held to 24 processes"])
+                         ["job user pigeon-jobs held to 24 processes"]
+                         + _cores_notes())
         # The trial the installer runs reads the default back.
         problem, lines = INS.freebsd_job_user_trial({}, "pigeon-jobs")
         self.assertIsNone(problem)
