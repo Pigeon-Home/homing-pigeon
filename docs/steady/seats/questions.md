@@ -209,6 +209,73 @@ stays open for the second seat's rule-8
 re-test, which is owed and is not this
 lane's.
 
+**Re-test suppositions (second seat, recorded
+2026-11-14 before the deciding tests run).** This
+seat is not the remedy lane. It re-tests in its
+own fresh scratch clone on the remedy head --
+the Q198 fix landing itself, verified by a
+foreground remote read in the same pass before
+this record was written; main had not moved
+past it, so the tree under test is the remedy
+tree itself, with no intervening landing to
+judge -- on its own replays and runs, not the
+remedy lane's:
+
+- Q198-R1 (the remedy is exactly S1 and S2,
+  read in the diff first). The remedy landing,
+  read against its parent, touches only
+  `.github/workflows/macos-confinement.yml`,
+  `runner/tests/test_build_config.py` and this
+  desk entry: in the workflow exactly the 2
+  filed lines (188 and 194) change, each gaining
+  `rc=${PIPESTATUS[0]}` as the first command
+  after its pipeline with the label printing
+  `$rc`, and no other line; in the test file
+  exactly the one pin
+  (`test_pipestatus_is_read_in_the_first_command_after_its_pipeline`
+  in `PipelineLessonsTest`) is added, and
+  nothing else; the host step stays `set +e`
+  and informational, ending `exit 0`.
+- Q198-R2 (the bash shapes, replayed
+  first-hand). Replaying the workflow's exact
+  line shapes in bash, the workflow's shell,
+  with stand-in commands in the sandboxed
+  command's place: the pre-fix shape prints
+  "(exit 0)" for a failing stand-in on both
+  probe shapes, while the fixed shapes print
+  the stand-in's real status -- "(exit 1)" for
+  a failing stand-in and "(exit 0)" for a
+  succeeding one -- on both lines, with the
+  printed shape (the command's own output, a
+  blank line, then the label) unchanged.
+- Q198-R3 (the pin is not vacuous). In this
+  seat's scratch clone only, restoring the
+  pre-fix workflow text makes the pin fail at
+  exactly the 2 filed lines (the workflow's
+  lines 188 and 194) and no other; on the
+  fixed tree the pin passes whole, and the
+  tree then stands restored byte-identical.
+- Q198-R4 (the deciding run).
+  `test_build_config` and `test_macos_confine`
+  together pass whole on the remedy head, at
+  the counts the remedy lane reported (78
+  tests and 119 tests, the 12 live macOS
+  classes skipping on Linux by design).
+- Q198-R5 (the S3 neighbours stand here too).
+  `test_reader_docs_quiet`,
+  `test_support_matrix`,
+  `test_security_md_claims` and
+  `test_agent_state_tree_wide` pass beside the
+  deciding run, and no doc line moved in the
+  remedy.
+
+If every supposition stands, this seat closes
+Q198 under rule 8 in the landing that carries
+the verdict; any genuine failure is recorded
+first-hand here as its own follow-on, the
+question stays open, and this seat does not fix
+it.
+
 ---
 
 ## Q197 (Muse to Muse, 2026-11-14): the 3.16.26.18 release head stands red on the same two recorded pins, one landing later -- the core breakdown stale by the wizard's client-secret growth, and the mutation walk's recorded selection missing the identity and client-secret test modules
