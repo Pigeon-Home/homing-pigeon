@@ -72,6 +72,15 @@ def log_startup(cfg, args, base_dir):
     line. The name that matched is not logged.
     """
     R = _runner()
+    # The build identity opens the block, at CRITICAL, ahead of
+    # every other line: the full version, platform, build stamp
+    # and checksum (runner/ops/identity.py). announce_identity keeps
+    # it to once per process -- main() announces as soon as the
+    # log file is known, so in a real run this call is the no-op
+    # second; a direct caller gets the banner here.
+    _announce = getattr(R, "announce_identity", None)
+    if _announce is not None:
+        _announce()
     if (not getattr(args, "ignore_personal_documents", False)
             and _runner()._personal_docs is not None):
         try:
@@ -93,8 +102,10 @@ def log_startup(cfg, args, base_dir):
     # The build stamp (runner/_build.py, written by the build
     # tooling): when a packaged tree carries its source commit,
     # both lines name it, so a log reader can tell which code is
-    # running. A plain checkout stamps "unknown" and the lines
-    # print the version alone -- no parenthetical, no noise.
+    # running. A plain checkout stamps "unknown" and these lines
+    # print the version alone -- no parenthetical, no noise. The
+    # full identity, the stamp and checksum included either way,
+    # already opened the block above at CRITICAL.
     _build = getattr(_runner(), "__build__", "unknown")
     _suffix = f" (build {_build})" if isinstance(_build, str) \
         and _build and _build != "unknown" else ""

@@ -4064,6 +4064,31 @@ def _warn_personal_documents():
         return
 
 
+def _identity_module():
+    """runner/ops/identity.py, lazily, the way this module reaches
+    every runner module. None when it cannot be loaded."""
+    try:
+        from runner.ops import identity
+        return identity
+    except ImportError:
+        try:
+            from ops import identity
+            return identity
+        except ImportError:
+            return None
+
+
+def _full_identity(prog):
+    """The full build identity block for this entry point, or
+    None when the identity module cannot be loaded. The version
+    named is this module's own constant, its documented source
+    of truth."""
+    identity = _identity_module()
+    if identity is None:
+        return None
+    return identity.identity_text(prog, version=__version__)
+
+
 def main() -> int:
     # --help is a document here too, same hand as the runner's:
     # chapters in reading order, worked examples in the epilog.
@@ -4089,8 +4114,12 @@ def main() -> int:
             "service command, so the installed agent runs with\n"
             "exactly the flags you tested with."),
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--version", action="version",
-                    version="%(prog)s " + __version__)
+    _identity_mod = _identity_module()
+    if _identity_mod is not None:
+        ap.add_argument("--version", action=_identity_mod.VersionAction)
+    else:
+        ap.add_argument("--version", action="version",
+                        version="%(prog)s " + __version__)
     g = ap.add_argument_group(
         "where it installs",
         "The one-home layout on Windows puts binaries, config,\n"
@@ -4293,7 +4322,10 @@ def main() -> int:
             or args.ignore_personal_documents):
         _warn_personal_documents()
 
-    print(f"install {__version__}")
+    # The full build identity opens the run (runner/ops/identity.py);
+    # the bare version line stands when it cannot be loaded.
+    _block = _full_identity("install")
+    print(_block if _block is not None else f"install {__version__}")
     plat = sys.platform
     src_dir = _src_dir()
 

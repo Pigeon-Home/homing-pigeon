@@ -127,6 +127,14 @@ if not __version__:
     except Exception:
         __version__ = "unknown"
 
+try:
+    from runner.ops import identity as _identity
+except ImportError:  # run by path (python runner/cloud/send_job.py)
+    try:
+        from ops import identity as _identity  # type: ignore
+    except ImportError:
+        _identity = None
+
 
 PROTOCOL_VERSION = 1
 
@@ -1429,8 +1437,11 @@ def main() -> int:
             "signed body: stdout is the email, so keep it "
             "clean."),
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--version", action="version",
-                    version="%(prog)s " + (__version__ or "unknown"))
+    if _identity is not None:
+        ap.add_argument("--version", action=_identity.VersionAction)
+    else:
+        ap.add_argument("--version", action="version",
+                        version="%(prog)s " + (__version__ or "unknown"))
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     n = sub.add_parser(
@@ -1721,6 +1732,13 @@ def main() -> int:
     r.set_defaults(func=cmd_keyring)
 
     args = ap.parse_args()
+    # The build identity opens the run, at CRITICAL, on stderr:
+    # stdout is the email body contract (subject + blank + body).
+    if _identity is not None:
+        _identity.announce(
+            "runner.cloud.send_job",
+            emit=lambda text: print("[CRITICAL] " + text,
+                                    file=sys.stderr))
     # stderr: stdout is the email body contract (subject + blank + body).
     print(f"send_job {__version__}", file=sys.stderr)
     try:

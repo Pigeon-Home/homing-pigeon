@@ -42,6 +42,14 @@ except ImportError:  # running from inside runner/ as __main__
     from guard import atomicio as _atomicio  # type: ignore
 
 try:
+    from runner.ops import identity as _identity
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        from ops import identity as _identity  # type: ignore
+    except ImportError:
+        _identity = None
+
+try:
     from runner.wire.oauth import browser_consent, refresh_access_token
 except ImportError:  # running from inside runner/ as __main__
     try:
@@ -494,6 +502,12 @@ def run_setup_wizard(cfg_path: str, cfg: dict | None = None) -> dict:
         cfg = _blank_config()
         fresh_seed = True
     _ensure_mail_hosts(cfg)
+
+    # The build identity opens the wizard, at CRITICAL, before
+    # the header: version, platform, build stamp and checksum
+    # (runner/ops/identity.py), once per process.
+    if _identity is not None:
+        _identity.announce("runner.ops.setup")
 
     print("=== Homing Pigeon setup ===")
     print("Thunderbird-style sign-in: a browser window, no password on")

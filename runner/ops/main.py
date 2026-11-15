@@ -445,6 +445,9 @@ def main() -> int:
     os.makedirs(os.path.join(base_dir, "work"), exist_ok=True)
 
     R._LOG_FILE = os.path.join(base_dir, "runner.log")
+    # The build identity opens the log, at CRITICAL, before any
+    # other line can land in it (runner/ops/identity.py).
+    R.announce_identity()
     R._announce_oracle_log()
 
     # Temp reaping: a finished job's workspace is removed when

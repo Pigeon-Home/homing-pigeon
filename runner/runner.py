@@ -109,6 +109,7 @@ def _required_load_mod(package, local, why=""):
 
 __version__ = _load_attr("runner._version", "_version", "__version__", "unknown")
 __build__ = _load_attr("runner._build", "_build", "__build__", "unknown")
+__checksum__ = _load_attr("runner._build", "_build", "__checksum__", "unknown")
 
 class _JobCryptoErrorFallback(ValueError):
     """Fallback when jobcrypto.py is unavailable; never raised."""
@@ -3555,29 +3556,35 @@ def log(msg: str, level: str = "INFO"):
     # A minute budget so a busy inbox cannot flood the console.
     # Verbose is for a person watching: 200/min. Quiet is a service: 50/min.
     # WARN and ERROR always pass. Five jobs a minute is the design point.
+    # CRITICAL stands outside the budget entirely: it always prints,
+    # to the console and to the log file, and consumes no budget --
+    # it carries the build identity banner that opens every log,
+    # which must reach a terminal window however the run is
+    # configured (quiet, non-verbose, budget exhausted).
     global _LOG_MINUTE, _LOG_COUNT, _LOG_DROPPED
     now = time.time()
     with _MAIL_LOCK:
-        if now - _LOG_MINUTE >= 60:
-            if _LOG_DROPPED:
-                notice = (f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} "
-                          f"[INFO] log: {_LOG_DROPPED} line(s) suppressed "
-                          f"this minute")
-                try:
-                    print(notice, flush=True)
-                except Exception:
-                    pass
-                if _LOG_FILE:
-                    append_bounded_log(_LOG_FILE, notice,
-                                       _LOG_MAX_BYTES, _LOG_BACKUPS)
-            _LOG_MINUTE = now
-            _LOG_COUNT = 0
-            _LOG_DROPPED = 0
-        cap = 200 if _VERBOSE else 50
-        if level not in ("WARN", "ERROR") and _LOG_COUNT >= cap:
-            _LOG_DROPPED += 1
-            return
-        _LOG_COUNT += 1
+        if level != "CRITICAL":
+            if now - _LOG_MINUTE >= 60:
+                if _LOG_DROPPED:
+                    notice = (f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} "
+                              f"[INFO] log: {_LOG_DROPPED} line(s) suppressed "
+                              f"this minute")
+                    try:
+                        print(notice, flush=True)
+                    except Exception:
+                        pass
+                    if _LOG_FILE:
+                        append_bounded_log(_LOG_FILE, notice,
+                                           _LOG_MAX_BYTES, _LOG_BACKUPS)
+                _LOG_MINUTE = now
+                _LOG_COUNT = 0
+                _LOG_DROPPED = 0
+            cap = 200 if _VERBOSE else 50
+            if level not in ("WARN", "ERROR") and _LOG_COUNT >= cap:
+                _LOG_DROPPED += 1
+                return
+            _LOG_COUNT += 1
         try:
             text = msg if isinstance(msg, str) else str(msg)
         except Exception:
@@ -3593,6 +3600,24 @@ def log(msg: str, level: str = "INFO"):
         if _LOG_FILE:
             append_bounded_log(_LOG_FILE, line,
                                _LOG_MAX_BYTES, _LOG_BACKUPS)
+
+
+def announce_identity():
+    """Emit the build identity once for this process, through
+    log() at CRITICAL, so the banner opens the runner's log --
+    console and file alike -- ahead of any other line. The
+    identity values are the ones loaded at module head, so a
+    stamped build announces its stamp and checksum. Called by
+    main() as soon as the log file is known and again at the
+    head of log_startup; runner/ops/identity.py's announce() keeps
+    it to once per process."""
+    mod = _load_mod("runner.ops.identity", "ops.identity")
+    if mod is None:
+        return
+    mod.announce("runner.runner",
+                 emit=lambda text: log(text, "CRITICAL"),
+                 version=__version__, build=__build__,
+                 checksum=__checksum__)
 
 _LOG_FILE = None
 if _mailbox_lib is not None:

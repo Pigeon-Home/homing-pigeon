@@ -64,7 +64,7 @@ _REPO = os.path.dirname(os.path.dirname(os.path.dirname(
 if _REPO not in sys.path:
     sys.path.insert(0, _REPO)
 
-from runner import identity
+from runner.ops import identity
 import runner.runner as rr
 from runner.tools import build_stamp as BS
 

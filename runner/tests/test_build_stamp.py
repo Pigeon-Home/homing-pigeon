@@ -3,7 +3,10 @@
 
 runner/_build.py carries __build__, written by
 runner/tools/build_stamp.py at packaging time and "unknown" in a
-plain checkout. The startup log prints the version alone when
+plain checkout, and __checksum__, a single SHA-384 over the tree
+manifest written beside it. The startup block opens with the
+full build identity at CRITICAL (runner/ops/identity.py); the
+invocation and starting lines print the version alone when
 the stamp is unknown, and " (build <commit>)" beside it when a
 build stamped the tree -- so a log reader can tell at a glance
 which code is executing, and the runner never shells out to git

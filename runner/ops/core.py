@@ -31,7 +31,10 @@ wired the runner to load it at startup and at the result
 seam — the first tools module the runner itself executes —
 and the list stands at 135; the macOS confinement backend
 (runner/guard/macos_confine.py) joined it on 2026-11-11,
-and the list stands at 136, with the figures below
+and the list stands at 136; the build identity module
+(runner/ops/identity.py) joined it on 2026-11-15, when the
+identity banner wired every entry point to it, and the list
+stands at 137, with the figures below
 re-measured live by the CLI as always. This module itself
 is not in the list either: the list names the set as assembled
 for the 2026-11-04 pass, and this module is the tooling that
@@ -43,7 +46,7 @@ CLI output:
 - GEMINI_COUNT_TOKENS (619,845) is the Gemini countTokens
   measure of the set as assembled (133 files), 2026-11-04.
 - The project estimator (runner/ops/version4.py's
-  count_text_tokens) counts the canonical list (136 files as
+  count_text_tokens) counts the canonical list (137 files as
   it now stands); the
   CLI prints its figure live. The estimator is not a BPE
   tokenizer, and the 2 figures are not interchangeable: the
@@ -51,8 +54,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 68,474 lines,
-62,072 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 68,749 lines,
+62,310 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -546,8 +549,8 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # (runner/ops/setup.py by 187 lines).
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
-# the module docstring; the list itself stands at 136 since
-# the 2026-11-11 entry above), not the canonical list itself. The
+# the module docstring; the list itself stands at 137 since
+# the 2026-11-15 entry above), not the canonical list itself. The
 # reviewing model's own token measure of the set (Gemini
 # countTokens) is a measure of the 2026-11-04 assembly and is
 # NOT re-recorded here: no re-count of the grown set has been
@@ -555,22 +558,22 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # assembly. The zip size and the estimator counts re-measured
 # here come from this module's own deterministic build and
 # counter over the current tree.
-AS_ASSEMBLED_FILES = 139
+AS_ASSEMBLED_FILES = 140
 AS_ASSEMBLED_ZIP_BYTES = 881778
-AS_ASSEMBLED_LINES = 68474
-AS_ASSEMBLED_NONBLANK_LINES = 62072
+AS_ASSEMBLED_LINES = 68749
+AS_ASSEMBLED_NONBLANK_LINES = 62310
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 23527,
+    "runner/ops": 23745,
     "runner/tools": 10063,
-    "runner/wire": 9033,
-    "runner/runner.py": 7180,
+    "runner/wire": 9047,
+    "runner/runner.py": 7205,
     "runner/oracle": 5063,
     "runner/transport_extensions": 2775,
     "runner/guard": 7034,
-    "runner/cloud": 2062,
+    "runner/cloud": 2080,
     "runner/hosting": 1704,
     "runner/__init__.py": 23,
     "runner/_version.py": 10,
@@ -627,6 +630,7 @@ CORE_FILES = (
     "runner/ops/handlers.py",
     "runner/ops/harness.py",
     "runner/ops/helpers.py",
+    "runner/ops/identity.py",
     "runner/ops/install.py",
     "runner/ops/live.py",
     "runner/ops/local_test.py",

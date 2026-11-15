@@ -46,6 +46,13 @@ except ImportError:  # running from inside runner/ as __main__
         from _version import __version__
     except ImportError:
         __version__ = "unknown"
+try:
+    from runner.ops import identity as _identity
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        from ops import identity as _identity  # type: ignore
+    except ImportError:
+        _identity = None
 
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -325,10 +332,17 @@ def main() -> int:
     ap = argparse.ArgumentParser(
         description="Sign the runner into Gmail the way Thunderbird does: "
                     "browser window, no password on the command line.")
-    ap.add_argument("--version", action="version",
-                    version="%(prog)s " + __version__)
+    if _identity is not None:
+        ap.add_argument("--version", action=_identity.VersionAction)
+    else:
+        ap.add_argument("--version", action="version",
+                        version="%(prog)s " + __version__)
     ap.add_argument("--config", default="config.json")
     args = ap.parse_args()
+    # The build identity opens the run, at CRITICAL, before the
+    # version line: runner/ops/identity.py, once per process.
+    if _identity is not None:
+        _identity.announce("runner.wire.oauth")
     print(f"oauth {__version__}")
     if os.path.islink(args.config):
         print("config error: refusing to follow a symlink", file=sys.stderr)

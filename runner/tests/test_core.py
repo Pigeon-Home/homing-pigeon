@@ -56,9 +56,11 @@ class CoreListTest(unittest.TestCase):
         # into the runner on 2026-11-10: 138 as assembled,
         # 135 canonical; plus the macOS confinement backend
         # (macos_confine) registered on 2026-11-11: 139 as
-        # assembled, 136 canonical.
-        self.assertEqual(139, core.AS_ASSEMBLED_FILES)
-        self.assertEqual(136, len(core.CORE_FILES))
+        # assembled, 136 canonical; plus the build identity
+        # module (ops/identity) registered on 2026-11-15: 140
+        # as assembled, 137 canonical.
+        self.assertEqual(140, core.AS_ASSEMBLED_FILES)
+        self.assertEqual(137, len(core.CORE_FILES))
 
     def test_list_is_sorted_and_duplicate_free(self):
         files = list(core.CORE_FILES)
@@ -210,9 +212,14 @@ class CoreListTest(unittest.TestCase):
         # by 41 more when a runner kept to some of its cores
         # took to pinning its jobs' jails to its own, over a
         # tree that also carries the setup wizard's third
-        # sign-in choice (runner/ops/setup.py by 187 lines).
-        self.assertEqual(68474, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(62072, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # sign-in choice (runner/ops/setup.py by 187 lines),
+        # and again on 2026-11-15 after the build identity
+        # banner grew runner/runner.py by 25 lines,
+        # runner/ops by 70, runner/wire by 14 and
+        # runner/cloud by 18, and the identity module itself
+        # (runner/ops/identity.py, 148 lines) joined the set.
+        self.assertEqual(68749, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(62310, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
@@ -309,7 +316,7 @@ class CoreLinesTest(unittest.TestCase):
 
 class CorePartsTest(unittest.TestCase):
     def test_the_recorded_breakdown_stays_named(self):
-        self.assertEqual(7180, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
+        self.assertEqual(7205, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
         self.assertEqual(core.AS_ASSEMBLED_LINES,
                          sum(core.AS_ASSEMBLED_PART_LINES.values()))
 
@@ -366,7 +373,7 @@ class CoreCliTest(unittest.TestCase):
         parts = core.measure_core_lines_by_part(ROOT)
         # 4 head lines, 1 line per part, then zip + 2 token lines.
         self.assertEqual(4 + len(parts) + 3, len(lines))
-        self.assertEqual("core files: 136", lines[0])
+        self.assertEqual("core files: 137", lines[0])
         total, nonblank = core.measure_core_lines(ROOT)
         self.assertEqual(
             "core lines: %d (%d non-blank)" % (total, nonblank), lines[1])
@@ -398,7 +405,7 @@ class CoreCliTest(unittest.TestCase):
             self.assertEqual(0, rc)
             with zipfile.ZipFile(out_zip) as zf:
                 self.assertEqual(list(core.CORE_FILES), zf.namelist())
-            self.assertIn("core files: 136", out)
+            self.assertIn("core files: 137", out)
 
     def test_cli_rejects_an_unknown_command(self):
         rc, _out, err = self._run(["frobnicate"])
@@ -437,7 +444,7 @@ class CoreScriptFallbackTest(unittest.TestCase):
             capture_output=True, text=True, timeout=120)
         self.assertEqual(0, proc.returncode, proc.stderr)
         self.assertTrue(
-            proc.stdout.startswith("core files: 136\n"), proc.stdout)
+            proc.stdout.startswith("core files: 137\n"), proc.stdout)
 
 
 if __name__ == "__main__":

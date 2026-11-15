@@ -12,6 +12,13 @@ except ImportError:  # running from inside runner/ as __main__
     except ImportError:
         __version__ = "unknown"
 try:
+    from runner.ops import identity as _identity
+except ImportError:  # running from inside runner/ as __main__
+    try:
+        from ops import identity as _identity  # type: ignore
+    except ImportError:
+        _identity = None
+try:
     from runner.wire import transports as _transports
 except ImportError:
     try:
@@ -74,8 +81,11 @@ def build_parser():
             "rewrites\n"
             "the file; a flag beats a later config edit."),
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--version", action="version",
-                    version="%(prog)s " + __version__)
+    if _identity is not None:
+        ap.add_argument("--version", action=_identity.VersionAction)
+    else:
+        ap.add_argument("--version", action="version",
+                        version="%(prog)s " + __version__)
     g = ap.add_argument_group(
         "running",
         "The everyday switches. --no-send sits here on purpose,\n"
