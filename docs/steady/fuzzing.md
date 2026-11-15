@@ -10,7 +10,7 @@ and they load no model.
 Core names the production runner as a set of files: the code
 that runs, without the unit tests, the test harnesses or
 anything superfluous. The canonical list stands in
-runner/ops/core.py (CORE_FILES): <!--hp-fig:core_files-->136<!--/hp-fig--> files, all under runner/.
+runner/ops/core.py (CORE_FILES): <!--hp-fig:core_files-->137<!--/hp-fig--> files, all under runner/.
 Running `python3 runner/ops/core.py` prints the set's current
 zip size and token counts.
 
@@ -71,12 +71,12 @@ backend (runner/guard/macos_confine.py) joined the
 canonical list and its wiring grew runner/ops,
 runner/guard and the runner proper,
 the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->68,474<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->62,072<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->881,778<!--/hp-fig-->-byte zip, and the project's own estimator
-counts it at <!--hp-fig:core_assembled_tokens-->756,941<!--/hp-fig--> tokens; the Gemini figure above still
+as-assembled set stands at <!--hp-fig:core_assembled_lines-->68,749<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->62,310<!--/hp-fig--> non-blank)
+and a <!--hp-fig:core_assembled_zip_bytes-->887,963<!--/hp-fig-->-byte zip, and the project's own estimator
+counts it at <!--hp-fig:core_assembled_tokens-->759,389<!--/hp-fig--> tokens; the Gemini figure above still
 describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical <!--hp-fig:core_files-->136<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->745,362<!--/hp-fig-->
-tokens across <!--hp-fig:core_lines-->67,355<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->61,071<!--/hp-fig--> non-blank); the 2 token
+estimator counts the canonical <!--hp-fig:core_files-->137<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->747,810<!--/hp-fig-->
+tokens across <!--hp-fig:core_lines-->67,630<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->61,309<!--/hp-fig--> non-blank); the 2 token
 counts come from
 different counters and are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -91,18 +91,18 @@ set. A change aimed at core is aimed at those 136 files and
 no others, and a result reported for core covers exactly
 them.
 
-The runner proper is 7,180 lines; the core around it is
-61,294. The set as assembled, part by part (re-measured
+The runner proper is 7,205 lines; the core around it is
+61,544. The set as assembled, part by part (re-measured
 2026-11-15):
 
-- runner/ops: 23,527 lines
+- runner/ops: 23,745 lines
 - runner/tools: 10,063
-- runner/wire: 9,033
-- runner/runner.py: 7,180
+- runner/wire: 9,047
+- runner/runner.py: 7,205
 - runner/oracle: 5,063
 - runner/transport_extensions: 2,775
 - runner/guard: 7,034
-- runner/cloud: 2,062
+- runner/cloud: 2,080
 - runner/hosting: 1,704
 - runner/__init__.py: 23
 - runner/_version.py: 10

@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.18 - 2026-11-15
+
+- Setup: CS_canoe option 3 — browser sign-in plus an autogen shared secret
+- FreeBSD: a runner kept to some of the host's cores keeps its jobs to them; the hosted runs recorded
+- Fix: Q196 — the mutation walk's recorded selection takes the canoe setup module
+
 ## 3.16.26.17 - 2026-11-15
 
 - FreeBSD: a job's jail is pinned to a set of cores — cpuset on the jail, all but one of the runner's, no RACCT needed
