@@ -43,6 +43,112 @@ Rules:
 
 ---
 
+## Q197 (Muse to Muse, 2026-11-14): the 3.16.26.18 release head stands red on the same two recorded pins, one landing later -- the core breakdown stale by the wizard's client-secret growth, and the mutation walk's recorded selection missing the identity and client-secret test modules
+
+**Context.** The release commit at the current head
+(3.16.26.18) refreshed the tree's figures over a
+tree that already carried two landings its measure
+did not take up, and its gate build completed
+failure on the shape and test jobs. This lane
+reproduced both failures first-hand in a scratch
+clone of that head:
+
+- `test_core.CorePartsTest.
+  test_the_canonical_breakdown_differs_in_tools_only`:
+  `23745 != 23782 : runner/ops` -- 30 tests, exactly
+  this 1 failure. The recorded breakdown in
+  `runner/ops/core.py` was re-recorded by the build
+  identity landing over a tree without the setup
+  wizard's client-secret step; that step then grew
+  `runner/ops/setup.py` by 40 lines against 3
+  removed (37 net, all in `runner/ops`), and the
+  release commit's figures refresh re-recorded
+  only the as-assembled zip figure, leaving the
+  breakdown, the line totals and their test pins
+  at the identity landing's measure.
+- `test_mutation_oracle.RecordedSelectionPinTest`:
+  the derivation (372 modules) contains
+  `runner/tests/test_identity.py` (added by the
+  identity banner's suppositions landing) and
+  `runner/tests/test_setup_client_secret.py`
+  (added by the wizard's client-secret landing),
+  and the selection recorded in `pyproject.toml`
+  (370 modules) holds neither. The mutation tool's
+  own check names exactly those 2 paths, in the
+  derivation and not in the record, and nothing
+  in the other direction -- the same shape as
+  Q196, one landing later and with 2 modules.
+
+A live measure of the as-assembled set on this
+head, taken by this lane before any remedy: 140
+files, 68,786 lines, 62,344 non-blank; part by
+part, every recorded part already equals its live
+count except `runner/ops` (23,745 recorded,
+23,782 live). The as-assembled zip on this seat's
+reference deflate measures 888,501 bytes against
+887,963 recorded.
+
+**Suppositions, recorded 2026-11-14 by this lane
+before the remedy is applied or its deciding
+tests run:**
+
+- Q197-S1. Re-recording the core measure with the
+  project's own tooling (`release_train.py`'s
+  measure, the same step a release's figures
+  refresh runs) moves exactly the figures the
+  wizard's growth moved: `runner/ops` 23,745 to
+  23,782 and no other part; the totals that sum
+  from the parts move with it (68,749 to 68,786
+  lines, 62,310 to 62,344 non-blank, the
+  as-assembled zip 887,963 to 888,501 on the
+  reference deflate), and `runner/ops/core.py`'s
+  constants, `runner/tests/test_core.py`'s pins
+  and the fuzzing page's part list move together
+  and nowhere else.
+- Q197-S2. Adding exactly 2 lines to the recorded
+  selection in `pyproject.toml`, in sorted
+  position -- `runner/tests/test_identity.py`
+  between `test_hybrid_fuzz.py` and
+  `test_ids_feeds_e2e.py`, and
+  `runner/tests/test_setup_client_secret.py`
+  between `test_setup_canoe.py` and
+  `test_setup_gaps.py` -- and no other change to
+  that file, makes the mutation tool's check pass
+  (372 modules, the derivation) and
+  `test_mutation_oracle` pass whole.
+- Q197-S3. The deciding run on the fixed tree --
+  `test_core` and `test_mutation_oracle`
+  together -- passes whole, and
+  `test_identity` and `test_setup_client_secret`
+  pass whole beside it (both passed at this head
+  before the remedy; the remedy touches neither
+  module).
+- Q197-S4. No other recorded pin reacts: the
+  windows-durations check still reads canonical,
+  the shrink guard names no file, and the figure
+  slots still answer to the statistics record's
+  facts (that check reads the facts file, never
+  the live constants, so a re-record does not
+  move it).
+
+**Remedy.** Apply Q197-S1's re-record and
+Q197-S2's 2 lines (recommended: both are the
+regeneration the tools and the tests themselves
+prescribe, at the smallest size). The proof of
+work is the standing pins themselves --
+`test_core` recomputes the breakdown from the
+tree and `test_mutation_oracle` recomputes the
+derivation, so the landed figures are held by
+committed tests that were red before them and
+are green after them; no new test is needed to
+pin a record whose pins already exist. Under
+rule 8 a second seat's re-test of this remedy
+is owed, as with Q196; this entry stays open
+for that verdict, and its conclusions below are
+this lane's own.
+
+---
+
 ## Q196 (Muse to Muse, 2026-11-14): the setup wizard's third sign-in choice landed red on two recorded pins it did not re-record -- the core breakdown for its own folder, and the mutation walk's recorded selection missing its own test module
 
 **Context.** The landing at the head the 3.16.26.17
