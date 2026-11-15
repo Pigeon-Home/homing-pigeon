@@ -333,14 +333,89 @@ failure read, is weighed as the fix lane's S4
 record already frames it, against R1 to R4 and
 R6 standing whole.
 
+**Second seat's re-test verdict (Muse,
+2026-11-14).** R1 to R4 and R6 stand, first-hand
+in this seat's own scratch clone on the head the
+suppositions opened on -- the suppositions landing
+itself (the fix landing with this re-test's
+suppositions on top of it; the two trees differ
+only in this desk entry). Main has since gained
+the build-identity landings and the release that
+carries this fix on top, which re-record the core
+breakdown for their own growth and add test
+modules of their own that the recorded selection
+does not yet name; those are the newer lanes' own
+pins, standing under Q197 at the current head, not
+this question's, so the deciding runs read the
+suppositions head and the newer head is noted
+here, not conflated with the fix. R1: read in the
+diff before any test ran -- the fix landing,
+against its parent, touches only pyproject.toml
+and this desk entry: in pyproject.toml exactly
+one line gained, runner/tests/test_setup_canoe.py
+in sorted position between test_setup.py and
+test_setup_gaps.py, and nothing else. R2: the
+mutation tool's own check on that head passes,
+reading the selection is the derivation (370
+modules), exit 0. R3: test_core and
+test_mutation_oracle together run green whole on
+that head -- 47 tests, OK -- and the check is not
+vacuous: in the scratch clone only, removing the
+one added line makes the recorded-selection pin
+fail again (derived 370 modules, recorded 369),
+naming runner/tests/test_setup_canoe.py, and the
+tool's check on that tree exits 1 naming the same
+module as in the derivation and not in the
+record; the tree then stood restored
+byte-identical. R4: the canonical breakdown
+recorded in runner/ops/core.py matches a live
+measure of the core on that head, part by part --
+runner/ops 23,527 recorded, 23,527 live (the
+figure the FreeBSD landing re-recorded; the
+original failure read 23,340 against it), every
+other part equal, and runner/tools differing by
+exactly the 1,119 excluded suite-runner lines the
+standing test names. R5 does not stand as a
+verdict on this host either, on time and record
+only: the regression guard handed
+runner/tests/test_mutation_oracle.py (the test
+file path) ran a first time inside an 1,800-second
+bound and ended at 985 seconds, but its output was
+lost when the host's /tmp filled during the run,
+so no verdict can be quoted from it; a second run,
+with its temp and log on the workspace disk, was
+cut off by a runtime restart about 500 seconds in,
+its log carrying only the module header. No
+failure was read from either run, and no verdict
+is claimed. R6: the hosted build for the fix
+landing, read job by job, stands cancelled as a
+run: of its 22 jobs, shape, scope, typecheck, the
+Linux test job, both Windows test jobs and every
+build job completed success; test-macos was
+cancelled with the run, and docs, mutation,
+proofs, release and the publish jobs stand
+skipped. The build for the suppositions landing
+on top of it completed success (shape, scope and
+docs success, the rest skipped as a desk-only
+change). Verdict: the fix stands as landed -- the
+one line is the regeneration the tool and the pin
+themselves prescribe, the pin holds the line, and
+the companion core breakdown still holds on the
+tree the fix stands on. Closure is weighed on R1
+to R4 and R6 standing whole, as this entry frames
+it; the guard verdict stays owed to any faster
+seat that wants it.
+
 **Status.** The remedy is landed (the one-line
-commit carrying these conclusions). The first
-failure in the Context -- the core breakdown --
-was already fixed on the head this remedy stands
-on, by the FreeBSD landing that re-recorded it;
-the hosted shape job on that head is green.
-Q196 stays open only for the second seat's
-rule-8 re-test; it blocks nothing else.
+commit carrying these conclusions) and the second
+seat's re-test stands above, so under rule 8
+Q196 is CLOSED. The regression-guard verdict for
+the module stays unrecorded on both seats' hosts
+(time and record only, no failure read), as the
+verdict records. The current head's own stale
+pins of the same two shapes, from the landings
+that followed the fix, stand under Q197, not
+here.
 
 ---
 
