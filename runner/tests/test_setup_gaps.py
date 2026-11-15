@@ -178,6 +178,7 @@ class SetupGapsTest(unittest.TestCase):
             with mock.patch.object(
                     SU, "browser_consent",
                     side_effect=[SystemExit(1), SystemExit(1)]), \
+                    mock.patch("getpass.getpass", return_value="pw"), \
                     mock.patch("builtins.input", side_effect=["y", "n"]), \
                     redirect_stderr(io.StringIO()), \
                     self.assertRaises(SystemExit) as caught:

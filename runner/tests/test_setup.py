@@ -72,6 +72,8 @@ class WizardOAuthTest(unittest.TestCase):
                 with open(path, "w") as fh:
                     json.dump(cfg, fh)
             with mock.patch("builtins.input", side_effect=inputs), \
+                 mock.patch("getpass.getpass",
+                            return_value="client-secret-fixture"), \
                  mock.patch.object(SU, "browser_consent",
                                    return_value="refresh-123"), \
                  mock.patch.object(SU, "_mailbox_probe", return_value=None), \
@@ -150,6 +152,8 @@ class WizardOAuthTest(unittest.TestCase):
                                    return_value="new-tok") as bc, \
                  mock.patch.object(SU, "_mailbox_probe",
                                    return_value=None), \
+                 mock.patch("getpass.getpass",
+                            return_value="client-secret-fixture"), \
                  mock.patch("builtins.input", side_effect=["y", ""]), \
                  redirect_stdout(io.StringIO()):
                 SU.run_setup_wizard(path, cfg)
@@ -297,6 +301,8 @@ class WizardSeedPlatformModesTest(unittest.TestCase):
                      "my-client-id",         # oauth client id
                      "y",                    # accept secret
                  ]), \
+                 mock.patch("getpass.getpass",
+                            return_value="client-secret-fixture"), \
                  mock.patch.object(SU, "browser_consent",
                                    return_value="refresh-123"), \
                  mock.patch.object(SU, "_mailbox_probe",

@@ -1549,6 +1549,8 @@ class SeedTest(unittest.TestCase):
                                    return_value=job_user), \
                  mock.patch("builtins.input", side_effect=[
                      "runner@example.com", "", "my-client-id", "y"]), \
+                 mock.patch("getpass.getpass",
+                            return_value="client-secret-fixture"), \
                  mock.patch.object(SU, "browser_consent",
                                    return_value="refresh-123"), \
                  mock.patch.object(SU, "_mailbox_probe",

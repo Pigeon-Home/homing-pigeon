@@ -87,6 +87,8 @@ class SimulationScenarioTest(unittest.TestCase):
             path = os.path.join(d, "config.json")
             out, err = io.StringIO(), io.StringIO()
             with mock.patch.object(SU, "_blank_config", return_value={}), \
+                 mock.patch("getpass.getpass",
+                            return_value="client-secret-fixture"), \
                  mock.patch.object(SU, "browser_consent", return_value=REFRESH), \
                  mock.patch.object(SU, "_mailbox_probe",
                                    return_value="IMAP login failed: simulated"), \

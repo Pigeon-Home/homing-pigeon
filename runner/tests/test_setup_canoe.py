@@ -84,6 +84,8 @@ class WizardCanoeTest(unittest.TestCase):
                 with open(path, "w") as fh:
                     json.dump(cfg, fh)
             with mock.patch("builtins.input", side_effect=inputs), \
+                 mock.patch("getpass.getpass",
+                            return_value="client-secret-fixture"), \
                  mock.patch.object(SU, "browser_consent",
                                    return_value="refresh-123"), \
                  mock.patch.object(SU, "_mailbox_probe", return_value=None), \

@@ -358,7 +358,10 @@ and that board does not need Python either.
    `homing-pigeon --setup --config ~/.homing-pigeon/config.json`
    (Windows: `--config C:\homing-pigeon\config.json`). Browser
    sign-in, a fresh shared secret shown once for you to give your SI,
-   config written; no hand-edited JSON needed. On an existing config `--setup` offers
+   config written; no hand-edited JSON needed. If the config holds no
+   OAuth client secret, the wizard asks for it once, with typing
+   hidden, before the browser opens — Google requires it to finish
+   the sign-in — and stores it only in that config. On an existing config `--setup` offers
    re-login and shared-secret rotation.
 4. Prefer to wire it by hand? Edit `config.json` instead. Two ways to
    sign in:
