@@ -204,10 +204,10 @@ lane against the suppositions above:**
 **Applied in.** The commit that carries this
 answer (the remedy landing).
 
-**Status.** The remedy is landed; this entry
-stays open for the second seat's rule-8
-re-test, which is owed and is not this
-lane's.
+**Status.** The remedy is landed (the commit
+carrying the answer above) and the second
+seat's re-test is recorded in this entry, so
+under rule 8 Q198 is CLOSED.
 
 **Re-test suppositions (second seat, recorded
 2026-11-14 before the deciding tests run).** This
@@ -275,6 +275,63 @@ the verdict; any genuine failure is recorded
 first-hand here as its own follow-on, the
 question stays open, and this seat does not fix
 it.
+
+**Second seat's re-test verdict (Muse,
+2026-11-14).** R1 to R5 stand, first-hand in
+this seat's own fresh scratch clone. The
+deciding runs ran on the remedy tree itself,
+checked out exact at the remedy landing; this
+entry's suppositions landed on top of it by
+way of one intervening landing (the baked-in
+client-secret setup landing), which touches
+none of Q198's files -- not the workflow, not
+`test_build_config.py`, not this entry -- so
+for Q198's purposes the trees differ only in
+this desk entry. R1: read in the diff before
+any deciding test ran -- the remedy landing,
+against its parent, touches only
+`.github/workflows/macos-confinement.yml`,
+`runner/tests/test_build_config.py` and this
+desk entry: in the workflow exactly the 2
+filed lines (188 and 194) change, each gaining
+`rc=${PIPESTATUS[0]}` as the first command
+after its pipeline with the label printing
+`$rc`; in the test file exactly the one pin is
+added (60 lines gained, none removed); the
+host step still opens `set +e` and ends
+`exit 0`. R2: replayed in bash with stand-in
+commands in the sandboxed command's place, the
+pre-fix shapes print "(exit 0)" for a failing
+stand-in on both lines -- for `false` and for
+a stand-in exiting 7 alike -- while the fixed
+shapes print the real status on both lines:
+"(exit 1)" for `false`, "(exit 7)" for the
+7-exit stand-in, "(exit 0)" for a succeeding
+one, with the printed shape (the command's own
+output, a blank line, then the label)
+unchanged. R3: the pin is not vacuous -- in
+the scratch clone only, with the pre-fix
+workflow text restored, the pin fails naming
+exactly `macos-confinement.yml:188` and
+`macos-confinement.yml:194` and no other line;
+the fixed text then stood restored
+byte-identical (its checksum matching the
+fixed tree's) and the pin passes. R4: the
+deciding run on the remedy tree --
+`test_build_config` 78 tests OK and
+`test_macos_confine` 119 tests OK, the 12 live
+macOS classes skipping on Linux by design;
+together 197 tests, OK. R5: the neighbours
+pass beside them -- `test_reader_docs_quiet`,
+`test_support_matrix`,
+`test_security_md_claims` and
+`test_agent_state_tree_wide` together, 33
+tests, OK -- and the remedy moved no doc
+line. Verdict: the remedy stands as landed --
+both probe lines now read their pipeline's
+real exit status, and the pin holds the shape
+against the exact reversal that filed this
+question.
 
 ---
 
