@@ -42,6 +42,8 @@
   "oauth_client_id": "",
   "oauth_client_secret": "",
   "oauth_refresh_token": "",
+  "autogen_login": true,
+  "_autogen_login": "the setup wizard's third sign-in choice (browser sign-in plus a locally generated shared secret, emailed to the mailbox as the install record). Absent or true: the choice is offered. Only literal false turns the choice off; the browser sign-in and app-password choices are unaffected either way",
   "shared_secret": "generate-with-openssl-rand-hex-32",
   "_shared_secret_file": "alternative: read the secret from a file instead of inline (mutually exclusive with shared_secret)",
   "additional_secrets": {},

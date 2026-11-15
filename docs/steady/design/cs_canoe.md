@@ -82,6 +82,27 @@ further, the work is reconciled into the design of record.
   control, configurable, and the record of what that mailbox was set
   up for — which system, which install, which facts.
 
+## The third option, implemented
+
+- The setup wizard now offers the third choice beside the two that
+  were already there: sign in with Google and generate a shared
+  secret. The app-password choice and the plain browser choice are
+  unchanged.
+- The sign-in runs under the project's own OAuth client by default,
+  so the owner is never asked to paste a client ID; a client ID
+  already in the config still wins.
+- With no shared secret in place, the wizard asks whether to
+  generate one. On yes, the secret is generated locally at random,
+  written to the config, and not shown on the console; the install
+  record — the secret, with the system's platform, hostname, IP
+  address, memory and hard drive — is emailed to the mailbox
+  itself, so the inbox holds the record.
+- The choice carries a config kill switch, the key
+  `autogen_login`: only a literal false turns the third choice
+  off. Choosing it while it is off displays a short note that the
+  option is turned off, and the plain browser sign-in proceeds.
+  The other two choices are unaffected either way.
+
 ## The alternative not taken, for now
 
 - A database of our own (Supabase or something of that shape) where
