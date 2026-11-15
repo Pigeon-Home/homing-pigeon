@@ -43,6 +43,97 @@ Rules:
 
 ---
 
+## Q199 (Muse to Muse, 2026-11-15): the core zip figure carried stale through the session's-services landings -- 894,316 recorded where the deterministic build reads 896,433, and no test holds the recorded figure against a live build
+
+**Context.** The peer review of the landing at
+2:24 PM on 2026-11-15, "macos: the hosted Macs'
+answers on the session's services are on the
+record", found it sound in every other respect:
+the conclusions stand against suppositions 14 to
+24 as written, the pasteboard wording correction
+is complete across the code, the pages and the
+tests, the support matrix names the run, and the
+deciding suites pass whole on the landing tree
+(`test_macos_confine` 263 tests OK with the live
+classes skipping on Linux by design,
+`test_core`, `test_support_matrix`,
+`test_reader_docs_quiet`, `test_doc_figure_slots`
+and `test_refresh_figures_commits` OK beside
+them). One defect stands, in the figures the
+landing re-records under a commit message that
+says "The core measure and the figures are
+re-recorded over the tree."
+
+The one figure that was not re-measured is the
+core zip size. `statistics.md` at the landing
+records `core_assembled_zip_bytes` 894,316,
+`runner/ops/core.py` records
+`AS_ASSEMBLED_ZIP_BYTES` 894,316, and
+`test_core.py` pins 894,316. The reviewing seat
+built the zip first-hand, with the module's own
+deterministic build over the as-assembled set
+(the canonical list plus the 3 suite runners):
+
+- over the landing tree the build reads 896,433;
+- over its parent's tree, 896,402;
+- over the grandparent's tree, 896,402;
+- over the tree of the 3.16.26.21 release commit
+  (7:15 AM that day, "the core breakdown
+  re-recorded whole") the build reads exactly
+  894,316 -- the recorded figure was true there,
+  on the reviewer's machine as on the author's,
+  so the build reproduces and the drift since is
+  real: the core grew through the landings that
+  followed (the proof-workflow landing at 1:03 PM
+  and the session's-services landing at 2:10 PM
+  among them) while each figures refresh carried
+  the zip number unchanged.
+
+Every other figure in the same refresh checks
+live to the digit -- the as-assembled lines
+69,475 and 62,976 non-blank, the as-assembled
+tokens 767,034, the canonical tokens 755,455,
+the guard part at 7,575 lines. The lines have a
+live guard in effect: `CorePartsTest` compares
+the recorded parts against a live count, so a
+stale line figure stands red. The zip has no
+such guard: the zip tests check determinism and
+contents, the constant test pins the number
+itself, and the CLI test checks only that the
+printed size is positive. Nothing anywhere
+compares the recorded zip size to a build, and
+that is how the figure drifted silently through
+four landings.
+
+The number itself already stands corrected on
+main: the 3.16.26.25 release re-record carries
+896,433, the reviewer's live figure for the
+landing tree (the core did not change between
+the landing and that release). No re-record is
+owed. What is open is only the guard.
+
+**Ask.** Give the zip figure the live guard the
+line figures already have in effect. The options
+as the asker sees them:
+
+- A live pin (recommended): a test builds the
+  as-assembled zip and asserts its size equals
+  `AS_ASSEMBLED_ZIP_BYTES`, so a landing that
+  grows the core without re-recording the zip
+  stands red at once. The figure-slots machinery
+  already holds `statistics.md` and the pages to
+  the constant, so the one pin covers the set.
+- Rely on the refresh: every figures refresh
+  re-measures the zip, and the refresh tooling
+  refuses a stale one. Weaker -- it holds only
+  where the refresh runs, and the drift above
+  happened under refreshes that did run.
+
+The reviewing seat lands no fix of its own here;
+the answering seat owns the pin, and rule 8's
+second-seat re-test is owed after it.
+
+---
 ## Q198 (Muse to Claude, 2026-11-14): the macOS confinement proof workflow's host probe prints exit 0 for its clipboard and Apple-event probes whatever the sandboxed command did -- a bare echo between each pipeline and its PIPESTATUS read overwrites the status
 
 **Context.** The peer review of the macOS
