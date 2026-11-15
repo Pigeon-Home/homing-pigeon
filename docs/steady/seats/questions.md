@@ -185,6 +185,87 @@ before the remedy was applied):**
   `test_doc_figure_slots` passes in the deciding
   run above.
 
+**Re-test suppositions (second seat, recorded
+2026-11-14 before the deciding tests run).** This
+seat is not the remedy lane. It re-tests in its
+own fresh scratch clone on the remedy head --
+the Q197 fix landing itself, verified by a
+foreground remote read plus a content check in
+the same call before this record was written --
+on its own measures, not the remedy lane's:
+
+- Q197-R1 (the remedy is exactly what S1 and S2
+  prescribed, read in the diff first). The remedy
+  landing, read against its parent, touches only
+  `runner/ops/core.py`, `runner/tests/test_core.py`,
+  `docs/steady/fuzzing.md`, `pyproject.toml` and
+  this desk entry: in `pyproject.toml` exactly 2
+  lines gained, `runner/tests/test_identity.py`
+  and `runner/tests/test_setup_client_secret.py`,
+  each in the sorted position S2 names, and
+  nothing else; in the re-record, `runner/ops`
+  23,745 to 23,782 and no other part, the totals
+  and the as-assembled zip moving with it, and
+  the test pins and the fuzzing page's part list
+  moving together and nowhere else.
+- Q197-R2 (the landing between does not move a
+  Q197 pin). The one Claude landing between the
+  Q196 closure and this remedy (the macOS proof
+  workflow) touches only a workflow file, 2
+  documentation files and a modification -- no
+  new module -- to an existing test file: no file
+  in the canonical core list, no new test module,
+  so neither the core breakdown nor the mutation
+  derivation moves under it, and the remedy,
+  measured over a tree carrying it, stands or
+  falls on its own numbers.
+- Q197-R3 (the live breakdown, re-derived
+  independently). A line count taken in this
+  seat's clone over the as-assembled set (the
+  canonical list plus the 3 suite runners), part
+  by part and in total, equals the recorded
+  breakdown exactly: `runner/ops` 23,782, 68,786
+  lines, 62,344 non-blank, 140 files, every other
+  part equal. The as-assembled zip figure is
+  re-measured and reported with the deflate this
+  seat's machine carries named, never silently
+  assumed the reference one.
+- Q197-R4 (the mutation derivation, re-derived
+  independently). The mutation tool's own check
+  on the remedy head passes, reading the recorded
+  selection is the derivation (372 modules), and
+  an independent count of the recorded selection
+  in `pyproject.toml` agrees at 372.
+- Q197-R5 (the deciding run). `test_core`,
+  `test_mutation_oracle`, `test_identity`,
+  `test_setup_client_secret` and
+  `test_doc_figure_slots` together pass whole on
+  the remedy head, at the 93 tests the remedy
+  lane reported.
+- Q197-R6 (the checks are not vacuous). In this
+  seat's scratch clone only: putting the recorded
+  `runner/ops` figure back by the wizard's 37
+  lines makes the canonical-breakdown pin fail
+  again naming `runner/ops`, and removing the 2
+  recorded-selection lines makes the
+  recorded-selection pin and the tool's check
+  fail again naming exactly those 2 modules; the
+  tree then stands restored byte-identical.
+- Q197-R7 (the S4 neighbours stand here too).
+  The windows-durations check reads the table is
+  canonical, the shrink guard handed the remedy
+  landing names no file, and
+  `test_doc_figure_slots` -- which reads the
+  statistics record's facts, never the live
+  constants -- passes in the R5 run.
+
+If every supposition stands, this seat closes
+Q197 under rule 8 in the landing that carries
+the verdict; any genuine failure is recorded
+first-hand here as its own follow-on, the
+question stays open, and this seat does not fix
+it.
+
 **Status.** The remedy is landed (the re-record
 and 2-line commit carrying these conclusions).
 Q197 stays open only for the second seat's
