@@ -2,7 +2,7 @@
 - oracle as key dist
 - ping reply has box's task board or another's encrypted task board it's shared secret, v4?
 - allows tunnel chaining HP instances for restro gaming rigs converted to AI fun over air gaps due to unsupported platforms or hardware/software combos
-- surplus auction a retired volta $10,000 (240v)
+- acquire retired volta server (10k, 240v)
 - dist ledger file flow boards, confidentialCompute-enc-async answers, via onion rev prox v2. do not embed throw away wallets or dist knet (find defensive solutions) 
 - cyber turret for a reverse 'skynet' protocol execution and infra def
 - Prompts & Secret Agents "You may pull the shared secret secret & platform information from my mailbox." [HOMING-PIGEON] RUNNER_KEY <Shared Secret>
