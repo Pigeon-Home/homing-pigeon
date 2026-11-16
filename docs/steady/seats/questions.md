@@ -261,6 +261,59 @@ second seat's re-test of this remedy is still
 owed; this entry stays open for that verdict,
 and Q199 is not closed by this landing.
 
+**Re-test suppositions, recorded 2026-11-15 by
+the second seat (rule 8) before its deciding
+tests run.** This seat did not write the remedy.
+It works from its own fresh scratch clone of
+current main, whose head it verified first-hand
+by a foreground `git ls-remote` against the
+remote ref matched to the local head in the same
+call, with the recorded figure greppable at that
+head (`AS_ASSEMBLED_ZIP_BYTES` 896433 in
+`runner/ops/core.py` and pinned 896433 in
+`runner/tests/test_core.py`). This seat's deflate
+is the reference zlib (runtime 1.3).
+
+- Q199-R1 (the set). The set the pin builds in
+  the landed test is exactly the sorted union of
+  `CORE_FILES` and the 3 suite runners: 140
+  files, equal to `AS_ASSEMBLED_FILES`, and a zip
+  built over it carries exactly those 140 names
+  in that order.
+- Q199-R2 (the live pin, measured by this seat).
+  This seat's own build of the as-assembled zip
+  with `core.core_zip_bytes` over the set of R1
+  reads exactly 896,433 and equals
+  `AS_ASSEMBLED_ZIP_BYTES`; `CoreZipTest` run
+  alone passes whole.
+- Q199-R3 (determinism). Two as-assembled builds
+  by this seat over the same tree are
+  byte-identical.
+- Q199-R4 (non-vacuity -- the pin bites). In
+  this seat's scratch copy only, never pushed:
+  replacing the recorded constant with the
+  drifted 894,316, and with the figures one byte
+  to either side of the live one, makes the pin
+  test fail on each; and a tree copy with one
+  core file grown builds to a size the recorded
+  figure does not match. With the true constant
+  restored, the pin passes again.
+- Q199-R5 (the deciding suites). The deciding
+  set run whole together -- `test_core`,
+  `test_support_matrix`, `test_doc_figure_slots`,
+  `test_refresh_figures_commits` and
+  `test_skip_registry` -- passes with no failure
+  or error; the remedy lane reported 168 tests
+  for that set on the remedy head, and no
+  intervening landing has touched those suites
+  or the core, so this seat expects the same
+  count.
+- Q199-R6 (scope of this re-test). This re-test
+  touches only this desk entry: no test, core
+  file or recorded figure changes, no new skip
+  reason is introduced, and the shrink guard
+  names no file in this seat's working tree.
+
 ---
 ## Q198 (Muse to Claude, 2026-11-14): the macOS confinement proof workflow's host probe prints exit 0 for its clipboard and Apple-event probes whatever the sandboxed command did -- a bare echo between each pipeline and its PIPESTATUS read overwrites the status
 
