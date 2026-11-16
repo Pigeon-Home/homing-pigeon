@@ -1,4 +1,3 @@
-- remote repair bot swarm
 - oracle as key dist
 - ping reply has box's task board or another's encrypted task board it's shared secret, v4?
 - allows tunnel chaining HP instances for restro gaming rigs converted to AI fun over air gaps due to unsupported platforms or hardware/software combos
