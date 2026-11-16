@@ -109,7 +109,7 @@ class CoreListTest(unittest.TestCase):
         # the briefing's contradiction mark and the posture
         # stamp producer; the Gemini token count above still
         # describes the 2026-11-04 assembly.
-        self.assertEqual(896434, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(897257, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -254,8 +254,14 @@ class CoreListTest(unittest.TestCase):
         # that landing, by 2 lines more of
         # runner/guard/macos_confine.py (the hosted run's
         # answer on the pasteboard).
-        self.assertEqual(69475, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(62976, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # On 2026-11-16, after a copy of the installer
+        # started by path came to speak for its own tree
+        # beside a stale install, by 26 lines of
+        # runner/ops/install.py, 11 of
+        # runner/guard/freebsd_confine.py and 11 of
+        # runner/guard/sandbox.py (the seed's own tree).
+        self.assertEqual(69523, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(63022, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
