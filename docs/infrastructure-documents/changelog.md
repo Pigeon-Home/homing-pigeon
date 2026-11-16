@@ -4,6 +4,16 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.15 - 2026-11-16
+
+- seed: a copy started by path keeps to its own tree beside a stale install
+- retained: a case-differing sibling no longer destroys a record on a folding filesystem
+- core: the recorded figures follow the seed's and the retained store's landings; the build read red on them until each re-measure
+- docs: the README's two diagrams are titled Homing Pigeon v1 and draw version 2 in blue and version 3 in green, with a dashed line that says the SI you bring is the same SI the runner asks, at the owner's word
+- docs: a little white space around the README skim tables
+- de_dust: the race_state crash 6fef584578e2d83c from the Germany rig is banked with its supposition, then promoted into the corpus
+- 3.17.26.14 never published: main moved past its commit while its suites ran, and the cut tags the head only; this cut carries its notes
+
 ## 3.17.26.14 - 2026-11-16
 
 - seed: a copy started by path keeps to its own tree beside a stale install
