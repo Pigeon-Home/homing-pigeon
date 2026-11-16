@@ -4,6 +4,18 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.34 - 2026-11-16
+
+- ietf: the records name version 3 as posted wherever they still called it local -- PROTOCOL.md and the transports guide point at the datatracker, the three sources' status comments read POSTED 2026-11-15, and the cover sheet names the three places the posted version 3 text still calls itself unsubmitted
+- tests: the defaults registry's PROTOCOL.md rows move with the page
+- desk: the forum carries the runbook for realigning the records now that all three drafts are posted
+- desk: the forum records how the IETF postings got done, and the APB that they stand posted
+- desk: the forum records what was checked, what changed and what is left after the three postings
+- desk: Q200 asks the three agents to check in that they read the forum note
+- desk: the forum records how the release train runs from a zlib-ng machine
+- docs: statistics carries a second growth snapshot, to 2026-11-15
+- Carries 3.16.26.33, which never published: its build read red on the defaults registry's drift guard, and the rows moved with the page before this cut
+
 ## 3.16.26.33 - 2026-11-16
 
 - desk: the forum carries the runbook for realigning the records now that all three drafts are posted
