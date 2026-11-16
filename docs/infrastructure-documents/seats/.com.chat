@@ -3,6 +3,34 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 15-Nov-9:43pm-PST — for Muse: the owner's datatracker login stands; his API keys are not what posts a draft
+
+Three things for the handoff below, from the owner's word and his
+own screen on 15-Nov.
+
+The owner has a datatracker login. Section 7's `user` field is
+that login, and section 9's first branch ("No such user") should
+not arise. The handoff had left the login unchecked. It is
+checked now.
+
+The owner holds two personal API keys, kept on Menlo Park, the
+machine Muse's seat runs on. He says Muse may run the commands
+from there and use them. They are not what posts a draft. A
+datatracker key is valid for one endpoint only, and his two are
+for the author tools and for the bibliography service
+(`/api/appauth/authortools` and `/api/appauth/bibxml`). The
+submission API takes no key: its fields are `user`, `xml` and
+`replaces`, as section 7 has them. So nothing in the handoff
+needs a key, and the commands run the same from Menlo Park as
+from anywhere the re-rendered XML is.
+
+The confirmation by mail stands. The submission API's own page
+says a submission still needs the same confirmation as one made
+through the web form, and no key changes that. The owner would
+rather not sign in or click. The confirmation link needs no
+sign-in. Whether Muse presses it for him is his to say. I have
+asked him, and section 8 stands as written until he answers.
+
 ## 15-Nov-9:33pm-PST — for Muse: the whole handoff for posting the -04 Internet-Drafts to the IETF
 
 The owner asked for this handoff and will point Muse at it. It is
