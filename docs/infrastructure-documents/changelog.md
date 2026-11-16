@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.8 - 2026-11-16
+
+- Docs: dashes out of English sentences across the markdown files (Execute Order 67; docs/FUTURE.md untouched), each passage rewritten with Argon consulted per spot
+- Tests: cs_office pins follow the dash-free wording
+
 ## 3.17.26.7 - 2026-11-16
 
 - audit: the 2026-11-16 dormant-code audit measured at 3.69% total latent, down from 3.84%, the record corrected in statistics, AGENTS.md and PROTOCOL.md
