@@ -5,4 +5,4 @@
 - acquire retired volta server (10k, 240v)
 - dist ledger file flow boards, confidentialCompute-enc-async answers, via onion rev prox v2. do not embed throw away wallets or dist knet (find defensive solutions) 
 - cyber turret for a reverse 'skynet' protocol execution and infra def
-- Prompts & Secret Agents "You may pull the shared secret secret & platform information from my mailbox." [HOMING-PIGEON] RUNNER_KEY <SharedSecret>
+- Prompts & Secret Agents "You may pull the shared secret secret & platform information from my mailbox." [HOMING-PIGEON] RUNNER_KEY Your-Shared-Secret
