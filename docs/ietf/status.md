@@ -142,12 +142,14 @@ Version 3's -00 revision is posted: it went up on 15 November
 19 May 2027. Its datatracker page is
 https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v3/,
 and the posted copies stand in that draft's `submitted/` folder.
-`PROTOCOL.md` links the local source
-`draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md`.
+`PROTOCOL.md` names both: the source
+`draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md`
+and the datatracker page.
 
 One wording fact stands in the posted -00 as posted: the text
-still describes itself, in its abstract and in its Section 1.1,
-as a local, unsubmitted draft dated 2026-11-02. That wording was
+still describes itself, in its abstract, in its Section 1.1 and
+in its Section 15 (IANA Considerations), as a local, unsubmitted
+draft; Section 1.1 dates it 2026-11-02. That wording was
 not revised before the posting, and the posted bytes stand as
 they are; correcting it is a change for the -01 revision.
 
@@ -196,6 +198,12 @@ reports 0 errors on the text and the XML; the current
 `.idnits.txt` beside the source is that run. Its other warning
 is the tool reading the `[HOMING-PIGEON]` subject marker as a
 citation, the same reading the version 1 reports carry.
+
+The `.xml` and `.html` beside the source were last rendered on
+2026-11-06. They predate the source's later change to the
+flight-subject grammar: they read `1*gap` where the source, the
+`.txt` beside it and the posted set read `gap`. The posted set in
+`submitted/` is the current render of the text.
 
 ## Discussion
 

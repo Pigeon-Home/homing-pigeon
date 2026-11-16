@@ -6,7 +6,9 @@ The -04 revisions of the version 1 and version 2 drafts were cut on
 2026-11-06 from the posted -03 texts (the frozen copies in each
 draft's `submitted/` folder, byte-identical to the copies at
 ietf.org) and placed in each draft's `source/` folder as local
-working drafts. They have not been submitted. The living drafts in
+working drafts. They have not been submitted. (Recorded
+2026-11-15: both were posted that day; the closing note has the
+particulars.) The living drafts in
 `source/` were not edited: the mirror rule stands, and every change
 below is in the new -04 files only.
 
@@ -195,3 +197,13 @@ local draft's date, the normative reference to a draft, and the
 comments being the long-standing BCP14 boilerplate-tag notes. The
 obsolete-TLS-citation error of the earlier run is also gone: the
 draft already cites RFC 9846.
+
+## Closing note: the -04 drafts are posted (2026-11-15)
+
+The -04 drafts this record describes were posted to the IETF
+datatracker on 15 November 2026, re-dated to that day. The posted
+sets stand frozen in each draft's `submitted/` folder, and the
+datatracker expects -05 next for each. The cover sheet,
+`docs/ietf/status.md`, records how the posted copies differ from
+the working renders. Version 3's -00 was posted the same day, from
+the source as corrected above. The record above stands as written.

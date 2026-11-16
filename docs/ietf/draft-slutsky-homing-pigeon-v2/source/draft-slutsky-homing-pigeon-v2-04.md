@@ -4,10 +4,13 @@
 #         xml2rfc --v2v3 draft-slutsky-homing-pigeon-v2-04.kr.xml -o draft-slutsky-homing-pigeon-v2-04.xml
 #         xml2rfc --text --html draft-slutsky-homing-pigeon-v2-04.xml
 #         idnits draft-slutsky-homing-pigeon-v2-04.txt
-# Status: LOCAL DRAFT -- UNSUBMITTED. The -04 revision, cut from the
-#         posted -03 text plus the CHECKLIST-04 items recorded in
-#         docs/ietf/notes/checklist-04-applied.md. It has not been
-#         submitted to the IETF.
+# Status: POSTED 2026-11-15. The -04 revision, cut from the posted
+#         -03 text plus the CHECKLIST-04 items recorded in
+#         docs/ietf/notes/checklist-04-applied.md, was posted to
+#         the IETF datatracker on 2026-11-15, re-dated to that
+#         day. The posted set stands frozen in ../submitted/.
+#         This file is the working draft; the date line below
+#         is the working draft's own.
 title: "Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context"
 abbrev: "Homing Pigeon v2"
 docname: draft-slutsky-homing-pigeon-v2-04

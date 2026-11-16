@@ -4,10 +4,13 @@
 #         xml2rfc --v2v3 draft-slutsky-homing-pigeon-v3-00.kr.xml -o draft-slutsky-homing-pigeon-v3-00.xml
 #         xml2rfc --text --html draft-slutsky-homing-pigeon-v3-00.xml
 #         idnits draft-slutsky-homing-pigeon-v3-00.txt
-# Status: LOCAL DRAFT -- UNSUBMITTED. This -00 text is local working
-#         text dated 2026-11-02. It has not been submitted to the
-#         IETF, has not been posted to the Internet-Drafts directory,
-#         and requests no IANA action (Section 15).
+# Status: POSTED 2026-11-15. This -00 text was posted to the IETF
+#         datatracker on 2026-11-15, re-dated to that day. The
+#         posted set stands frozen in ../submitted/. This file is
+#         the working text; the date line below is the working
+#         text's own, 2026-11-02. The text requests no IANA action
+#         (Section 15). Its own wording still calls it a local,
+#         unsubmitted draft; that is a change for -01.
 title: "Homing Pigeon Message Protocol, Version 3: DTLS 1.3 via Email"
 abbrev: "Homing Pigeon v3"
 docname: draft-slutsky-homing-pigeon-v3-00

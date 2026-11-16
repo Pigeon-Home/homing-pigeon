@@ -4,6 +4,11 @@
 local, unsubmitted draft. Nothing in this plan authorizes submission
 to the IETF datatracker or publication outside this repository.*
 
+*Since then (15 November 2026): the owner posted the specification
+to the IETF datatracker himself, as
+draft-slutsky-homing-pigeon-v3-00. The plan below stands as
+written.*
+
 ## Starting point
 
 The seed is the owner-written entry in `docs/FUTURE.md`:

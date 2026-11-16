@@ -11,6 +11,11 @@ pass sections for the current claims: the first-build
 section below is the record of the first 5 commits, and its
 26-test count and its unproven list are superseded there.
 
+Since this record was written, the draft has been posted: the
+owner submitted it to the IETF datatracker on 15 November 2026,
+as draft-slutsky-homing-pigeon-v3-00. The record below stands
+as written.
+
 ## What was built
 
 - `docs/infrastructure-documents/design/v3-dtls-over-email-plan.md` -- the plan: 6

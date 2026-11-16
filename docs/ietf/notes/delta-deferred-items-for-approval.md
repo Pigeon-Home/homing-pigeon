@@ -475,3 +475,14 @@ nothing here rests on an invented item:
 - No record names any further deferred item in either
   requested group. The deferred set is Part 1, S1, S2 and S3
   (all already applied) and S4 (the one proposed change).
+
+## Closing note: the line has moved (2026-11-15)
+
+Both drafts now stand at -04 on the IETF datatracker. The -04
+working drafts this document was written against were posted on
+15 November 2026, re-dated to that day, and the posted sets stand
+frozen in each draft's `submitted/` folder. Item S4, the one
+change proposed here, was approved and applied on 2026-11-07, as
+`notes/checklist-04-applied.md` records, and it is in the posted
+version 1 text: `job-id = 1*128 word-char`. The record above
+stands as written, against the line as it was.
