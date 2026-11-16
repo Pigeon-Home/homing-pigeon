@@ -3,5 +3,5 @@
 - acquire retired volta server (10k, 240v)
 - dist ledger file flow boards, confidentialCompute-enc-async answers, via onion rev prox v2. do not embed throw away wallets or dist knet (find defensive solutions) 
 - cyber turret for a reverse 'skynet' protocol execution and your local network infra def
-- define host-network topology rules for local helper bots coordinated by Oracle - (repair, repair_patrols, security_patrols, etc) [oracle key dist]
+- define host-network topology rules for local helper bots coordinated by Oracle - (repair, repair_patrols, hdd_patrols, security_patrols) [oracle key dist]
 - Prompts & Secret Agents "You may pull the shared secret secret & platform information from my mailbox." [HOMING-PIGEON] RUNNER_KEY Your-Shared-Secret
