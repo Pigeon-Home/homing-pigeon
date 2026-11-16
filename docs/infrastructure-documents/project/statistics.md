@@ -1,7 +1,7 @@
 # The project's statistics: the 26-million-token measure
 
 Dated 2026-11-16. Measured on main at commit
-565faae6149828a1897f1bdb71130d0b67eae9e3, the head this
+94e10d1b3321a9bc09eaa30a2c1113a33cd2daf0, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
@@ -66,11 +66,11 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-16",
-  "commit": "565faae6149828a1897f1bdb71130d0b67eae9e3",
+  "commit": "94e10d1b3321a9bc09eaa30a2c1113a33cd2daf0",
   "counter": "runner/ops/version4.py",
-  "tokens": 26753084,
-  "lines_tracked": 1498411,
-  "commits": 6012,
+  "tokens": 26757364,
+  "lines_tracked": 1498689,
+  "commits": 6015,
   "display_commits": 6000,
   "display_lines": 1500000,
   "non_latent_percent": 96.16,
@@ -83,7 +83,7 @@ stays their source of truth.
   "core_tokens": 755455,
   "core_assembled_lines": 69475,
   "core_assembled_nonblank": 62976,
-  "core_assembled_zip_bytes": 896435,
+  "core_assembled_zip_bytes": 896436,
   "core_assembled_tokens": 767034
 }
 ```
