@@ -7,17 +7,22 @@ every listed file exists, no test file or harness is listed,
 the list is sorted and duplicate-free, the zip build is
 deterministic and carries exactly the listed files, the line
 count is computed live and pinned against the recorded
-as-assembled figures, the per-part breakdown sums to the
-total and differs from the recorded one in runner/tools
-only, and the CLI prints its figure lines in shape.
+as-assembled figures, the recorded as-assembled zip size is
+pinned against a live build of the as-assembled set (the
+canonical list plus the 3 suite runners), the per-part
+breakdown sums to the total and differs from the recorded
+one in runner/tools only, and the CLI prints its figure
+lines in shape.
 """
 import io
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
 import zipfile
+from unittest import mock
 from contextlib import redirect_stderr, redirect_stdout
 
 sys.path.insert(0, os.path.join(
@@ -36,6 +41,13 @@ SUITE_RUNNERS = (
     "runner/tools/run_tests_shuffled.py",
     "runner/tools/run_tests_windows_sim.py",
 )
+
+# The as-assembled set the recorded figures describe: the
+# canonical list plus the 3 suite runners, sorted as one
+# list -- the construction the release train's own re-record
+# (record_core_measure in runner/tools/release_train.py)
+# measures the recorded figures over.
+ASSEMBLED_FILES = tuple(sorted(set(core.CORE_FILES) | set(SUITE_RUNNERS)))
 
 
 class CoreListTest(unittest.TestCase):
@@ -285,6 +297,80 @@ class CoreZipTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(FileNotFoundError):
                 core.core_zip_bytes(tmp, files=("runner/__init__.py",))
+
+    # -- the live pin on the recorded as-assembled zip size --
+    # The line figures have a live guard in CorePartsTest: the
+    # recorded parts are compared against a live count, so a
+    # stale line figure stands red. The zip figure had no such
+    # guard, and it drifted stale through four landings while
+    # every other figure in the same refreshes checked live
+    # (Q199). These tests give it the same guard.
+
+    def _assert_recorded_zip_size_matches_a_live_build(self):
+        data = core.core_zip_bytes(ROOT, files=ASSEMBLED_FILES)
+        self.assertEqual(core.AS_ASSEMBLED_ZIP_BYTES, len(data))
+
+    def test_the_as_assembled_set_is_the_canonical_list_plus_the_suite_runners(self):
+        self.assertEqual(core.AS_ASSEMBLED_FILES, len(ASSEMBLED_FILES))
+        self.assertEqual(sorted(ASSEMBLED_FILES), list(ASSEMBLED_FILES))
+        self.assertEqual(len(set(ASSEMBLED_FILES)), len(ASSEMBLED_FILES))
+        self.assertEqual(set(SUITE_RUNNERS),
+                         set(ASSEMBLED_FILES) - set(core.CORE_FILES))
+        self.assertTrue(set(core.CORE_FILES) < set(ASSEMBLED_FILES))
+
+    def test_recorded_zip_size_matches_a_live_as_assembled_build(self):
+        # Inside a mutant copy the mutated file carries one copy
+        # per mutant, so a live build is the copy's, not the
+        # tree's (Q170); see the lines test in CoreLinesTest.
+        skip_in_mutant_copy(self)
+        self._assert_recorded_zip_size_matches_a_live_build()
+
+    def test_as_assembled_zip_build_is_deterministic(self):
+        first = core.core_zip_bytes(ROOT, files=ASSEMBLED_FILES)
+        second = core.core_zip_bytes(ROOT, files=ASSEMBLED_FILES)
+        self.assertEqual(first, second)
+
+    def test_as_assembled_zip_contains_exactly_the_as_assembled_files(self):
+        data = core.core_zip_bytes(ROOT, files=ASSEMBLED_FILES)
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            self.assertEqual(list(ASSEMBLED_FILES), zf.namelist())
+
+    def test_a_stale_recorded_zip_size_fails_the_pin(self):
+        # The pin's comparison, handed the figures a stale record
+        # would carry: the drifted figure Q199 filed (894,316) and
+        # the figures one byte to either side of the live one.
+        # Each must fail; the true constant, checked by the pin
+        # test above, passes.
+        skip_in_mutant_copy(self)
+        live = len(core.core_zip_bytes(ROOT, files=ASSEMBLED_FILES))
+        for stale in (894316, live - 1, live + 1):
+            with self.subTest(stale=stale):
+                with mock.patch.object(
+                        core, "AS_ASSEMBLED_ZIP_BYTES", stale):
+                    with self.assertRaises(AssertionError):
+                        self._assert_recorded_zip_size_matches_a_live_build()
+
+    def test_a_grown_core_file_moves_the_as_assembled_zip_size(self):
+        # The drift shape itself, on a copy of the tree: the copy
+        # builds to the recorded figure, and the same copy with
+        # one core file grown builds to another size -- so a
+        # landing that grows the core without re-recording the
+        # zip stands red under the pin above, not merely a
+        # landing that edits the constant.
+        skip_in_mutant_copy(self)
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in ASSEMBLED_FILES:
+                dest = os.path.join(tmp, name)
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                shutil.copyfile(os.path.join(ROOT, name), dest)
+            before = core.core_zip_bytes(tmp, files=ASSEMBLED_FILES)
+            self.assertEqual(core.AS_ASSEMBLED_ZIP_BYTES, len(before))
+            with open(os.path.join(tmp, "runner", "runner.py"),
+                      "a", encoding="utf-8") as fh:
+                fh.write("# a landing that grows the core\n")
+            after = core.core_zip_bytes(tmp, files=ASSEMBLED_FILES)
+            self.assertNotEqual(len(before), len(after))
+            self.assertNotEqual(core.AS_ASSEMBLED_ZIP_BYTES, len(after))
 
 
 class CoreMeasureTest(unittest.TestCase):

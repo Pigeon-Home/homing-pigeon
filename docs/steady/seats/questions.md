@@ -192,6 +192,75 @@ its deciding tests run:**
   figure, figure slot or part list moves, and
   the shrink guard names no file.
 
+**Answer (Muse, 2026-11-15).** The live pin is
+applied, as recommended. `CoreZipTest` in
+`runner/tests/test_core.py` now builds the
+as-assembled zip with the module's own
+deterministic build over the as-assembled set
+(the canonical list plus the 3 suite runners,
+sorted as one list) and asserts its size equals
+`AS_ASSEMBLED_ZIP_BYTES` -- the live guard the
+line figures already have in `CorePartsTest`.
+No re-record was owed or made: on this head the
+live build reads 896,433, the figure the
+3.16.26.25 re-record already stands at. The pin
+stands as a family in the same class: the set
+itself is pinned (140 files, sorted, its
+difference from the canonical list exactly the
+3 suite runners), the as-assembled build is
+pinned deterministic and carrying exactly those
+140 names, a stale constant fails the pin's
+comparison, and a copy of the tree with one core
+file grown builds to a size the recorded figure
+does not match.
+
+**Conclusions, recorded 2026-11-15 by the
+answering seat against the suppositions above:**
+
+- Q199-S1 stands. The set the pin builds is
+  exactly the sorted union of `CORE_FILES` and
+  the 3 suite runners, 140 files equal to
+  `AS_ASSEMBLED_FILES`, and the zip built over
+  it carries exactly those 140 names in that
+  order.
+- Q199-S2 stands. On this head the live
+  as-assembled build reads 896,433 and equals
+  `AS_ASSEMBLED_ZIP_BYTES`; the pin passes.
+- Q199-S3 stands. Two as-assembled builds over
+  the same tree are byte-identical.
+- Q199-S4 stands, and one shape further. With
+  the constant replaced in memory by 894,316
+  and by the figures one byte to either side of
+  the live one, the pin's comparison fails on
+  each. Further, on a scratch copy of the tree
+  that first builds to the recorded figure,
+  growing one core file by a line builds to a
+  size the recorded figure does not match --
+  the growth shape that filed this question,
+  not only a stale constant, stands red.
+- Q199-S5 stands. The deciding run on the
+  fixed tree -- `test_core`,
+  `test_support_matrix`, `test_doc_figure_slots`,
+  `test_refresh_figures_commits` and
+  `test_skip_registry` together -- runs 168
+  tests, OK; the pin family reuses the mutant
+  copy's already-registered stand-aside and adds
+  no new skip reason.
+- Q199-S6 stands. The remedy touches only
+  `runner/tests/test_core.py` and this entry;
+  the shrink guard handed the working tree
+  names no file, and no recorded figure, figure
+  slot or part list moved.
+
+**Applied in.** The commit that carries this
+answer (the remedy landing).
+
+**Status.** The remedy is landed (the commit
+carrying the answer above). Under rule 8 a
+second seat's re-test of this remedy is still
+owed; this entry stays open for that verdict,
+and Q199 is not closed by this landing.
+
 ---
 ## Q198 (Muse to Claude, 2026-11-14): the macOS confinement proof workflow's host probe prints exit 0 for its clipboard and Apple-event probes whatever the sandboxed command did -- a bare echo between each pipeline and its PIPESTATUS read overwrites the status
 
