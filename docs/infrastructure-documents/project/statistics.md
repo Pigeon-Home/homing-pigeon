@@ -277,3 +277,79 @@ latent code held at 3.84% of the tree at the audit of
 2026-11-13 — under the 5% line the project holds itself to —
 so the figure continues to stand for the tested surface of
 the suite and the protocol rather than for bulk.
+
+## The growth of the measure, continued: a third snapshot as of 2026-11-16
+
+The 2 snapshots above stand as they were drawn, with their
+own dates. This third view carries no new points: it takes
+the second snapshot's 8 points exactly as recorded there
+and asks what 2 different ways of extending the series say
+about the month after 2026-11-15. Both extensions are
+readings, not forecasts. They are shown together because
+they agree on the near term and part company after it, and
+the distance between them is the honest size of the
+uncertainty.
+
+![Security tokens in the tree, 15 October to 15 December 2026: the measured series, a straight extension, and an asymptotic reading](../../../assets/security-tokens-asymptotic-2026-11-16.svg)
+
+An interactive version of this chart stands in the
+repository at
+[assets/security-tokens-asymptotic-2026-11-16.html](../../../assets/security-tokens-asymptotic-2026-11-16.html):
+opened in a browser, it lets the reader move the assumed
+ceiling and watch the bending curve and its readout change.
+
+The straight reading. The dashed red line is the straight
+line through the series' first and last points — about
+0.6 million on 2026-10-15 and 26,451,259 measured on
+2026-11-15, a rise of about 834,000 tokens a day — extended
+unchanged to 2026-12-15. On that line the tree crosses
+30 million on about 2026-11-19 and reaches about 51.5
+million by 2026-12-15. It says: nothing about the pace
+changes.
+
+The bending reading. The teal curve is a logistic,
+y = L / (1 + A e^(-kt)), fitted by least squares to the
+same 8 points with the ceiling L set at 38 million. A
+ceiling is an assumption, not a prediction: the curve is
+drawn toward a limit the reader chooses, and a different
+choice bends it differently — the interactive version
+exists so a reader can make that choice themselves. On
+the 38 million assumption the curve crosses 30 million on
+about 2026-11-18 — within a day of the straight line —
+and then bends away from it, reaching about 37.7 million
+by 2026-12-15. It says: growth that nears a limit slows
+as it nears it, and each further million costs more than
+the last.
+
+Why both are shown. For the crossing of 30 million the 2
+readings barely differ, because the series is still far
+enough below any plausible ceiling for the bend not to
+have bitten yet. They differ over what follows: about
+51.5 million against about 37.7 million by 2026-12-15.
+Which shape the tree takes is not in the 8 points; it
+will be in the counts recorded from here on, and this
+record will carry them as they are taken.
+
+How the curve was derived. The logistic's 2 free constants
+were fitted by least squares over all 8 points of the
+second snapshot (4 implied, 4 measured), with the ceiling
+fixed at 38 million beforehand: A = 17.48 and k = 0.1235
+per day. The fit is a compromise across the whole series —
+it sits above the earliest points and below the steepest
+measured stretch — because the recorded growth steepened
+through the window, and no single S-curve through a fixed
+ceiling reproduces an accelerating series exactly. The
+straight line needs no fitting: it is the 2 end points of
+the series, joined and extended. The points themselves
+are the second snapshot's, unchanged:
+
+| Date | Release | Lines in the tagged tree | Security tokens | Basis |
+|------|---------|--------------------------|-----------------|-------|
+| 2026-10-15 | v3.7.2 | 41,632 | about 0.6M | implied from lines |
+| 2026-10-20 | v3.11.30 | 144,993 | about 2.2M | implied from lines |
+| 2026-10-25 | v3.12.78 | 378,222 | about 5.7M | implied from lines |
+| 2026-10-30 | v3.14.42 | 727,924 | about 11.0M | implied from lines |
+| 2026-11-04 | v3.15.17.156 | 1,127,754 | 17M | measured — the version's 3rd component |
+| 2026-11-08 | count recorded that day | 1,218,733 | 20,163,806 | measured — the count recorded that day |
+| 2026-11-13 | v3.16.25.1 | 1,497,490 | 25,004,714 | measured — the count recorded in that release's statistics |
+| 2026-11-15 | v3.16.26.29 | 1,477,466 | 26,451,259 | measured — the count recorded in that release's statistics |
