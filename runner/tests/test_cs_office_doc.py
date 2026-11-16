@@ -45,9 +45,9 @@ class TestCsOfficePage(unittest.TestCase):
 
     def test_fibonacci_convention_starts_at_zero(self):
         text = _read(PAGE)
-        self.assertIn("the sequence starts at 0 — F(0) = 0, F(1) = 1",
+        self.assertIn("the sequence starts at 0, with F(0) = 0 and F(1) = 1",
                       text)
-        self.assertIn("Fibonacci\nnumbers in the workstream's records",
+        self.assertIn("Fibonacci numbers in the workstream's records",
                       text)
 
 
@@ -61,7 +61,7 @@ class TestCsOfficePostures(unittest.TestCase):
 
     def test_bookend_target_is_the_suite_itself(self):
         text = _read(POSTURES)
-        self.assertIn("target is Homing Pigeon itself — this suite", text)
+        self.assertIn("target is Homing Pigeon itself (this suite, the", text)
 
     def test_delta_is_example_only(self):
         text = _read(POSTURES)
