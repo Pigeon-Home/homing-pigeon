@@ -776,11 +776,24 @@ _ZIP_COMPRESSLEVEL = 9
 
 
 def _read_core_file(root: str, name: str) -> bytes:
-    """One listed file's bytes; a missing file is an error."""
+    """One listed file's bytes, as stored; a missing file
+    is an error.
+
+    The bytes come back with CRLF line endings folded to
+    LF. The figures this module keeps are properties of
+    the stored tree, and a checkout that converts endings
+    on the way out must not move them: Git for Windows'
+    autocrlf hands the Windows legs CRLF bytes for the
+    same stored tree, and before this fold the live
+    as-assembled zip read 5,968 bytes more there than
+    the recorded figure (Q199). No stored core file
+    carries a CRLF, so the fold is exact, and a lone
+    carriage return is kept as stored.
+    """
     path = os.path.join(root, name)
     try:
         with open(path, "rb") as fh:
-            return fh.read()
+            return fh.read().replace(b"\r\n", b"\n")
     except OSError:
         raise FileNotFoundError(
             "core file missing under %r: %s" % (root, name))
@@ -792,7 +805,9 @@ def core_zip_bytes(root: str,
 
     Entries are written in the order of `files` (the canonical
     list is sorted), each with the fixed zip-epoch timestamp,
-    so 2 builds over the same tree are byte-identical.
+    so 2 builds over the same stored tree are byte-identical,
+    on any platform: the reader folds a checkout's converted
+    line endings back to the stored bytes.
     """
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w",

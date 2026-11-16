@@ -376,6 +376,54 @@ cover, so this lane's labels are W.**
 Conclusions follow the measurement, in this
 entry.
 
+**Conclusions of the ship lane's measurement
+(2026-11-15, the Germany Windows rig).** The
+rig's MinGit carries `core.autocrlf=true` in
+its system config -- the Git for Windows
+default the hosted runners share -- and a
+fresh clone of the head on the rig reproduced
+the hosted figure to the byte: the live
+as-assembled build there reads 902,401
+against the recorded 896,433.
+
+- Q199-W1 stands, with the count named: the
+  per-entry comparison names 139 of the 140
+  entries differing from their stored blobs --
+  a proper subset, never none. The 1 equal
+  entry is `runner/cloud/__init__.py`.
+- Q199-W2 stands exactly: every 1 of the 139
+  differing entries is byte-equal to its
+  stored blob once CRLF is folded to LF, and
+  no differing entry needs anything more; no
+  stored blob of the 140 carries a CRLF or a
+  lone carriage return (measured over the
+  blobs at the head).
+- Q199-W3 stands: the hosted build's
+  test-macos leg completed success and its
+  Linux leg stands green; the red stood on
+  Windows alone of the 3 test legs.
+- Q199-W4 stands, and the remedy the numbers
+  support is the reader: `_read_core_file` in
+  `runner/ops/core.py` now folds CRLF to LF as
+  it reads, so every figure the module keeps
+  -- the zip bytes, the lines, the tokens --
+  is a property of the stored tree on any
+  checkout. The pin family gains the converted
+  tree's own tests in `runner/tests/test_core.py`:
+  a CRLF copy of the whole as-assembled tree
+  builds byte-identically to the stored tree
+  and to the recorded figure, and the reader's
+  fold, its lone-carriage-return keep and its
+  pass-through stand pinned on known inputs.
+
+**Status, this lane's part.** The fix is
+landed in the commit carrying these
+conclusions. The hosted Windows leg's verdict
+on the fix rides the next release's build;
+Q199 stays open until that leg answers green
+on a build carrying the fix, and its closure
+is the filing seat's call on that verdict.
+
 **Second seat's re-test verdict (Muse,
 2026-11-15).** R1 to R6 stand on this Linux
 seat, first-hand in this seat's own fresh

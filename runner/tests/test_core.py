@@ -282,8 +282,13 @@ class CoreZipTest(unittest.TestCase):
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
             for name in ("runner/__init__.py", "runner/runner.py",
                          "runner/wire/verify.py"):
-                with open(os.path.join(ROOT, name), "rb") as fh:
-                    self.assertEqual(fh.read(), zf.read(name), name)
+                # The stored bytes the reader returns, not the
+                # raw checkout bytes: on a CRLF checkout the
+                # raw bytes are the converted ones, and the
+                # entries carry the stored ones (Q199).
+                self.assertEqual(
+                    core._read_core_file(ROOT, name), zf.read(name),
+                    name)
 
     def test_build_writes_the_same_bytes(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -371,6 +376,55 @@ class CoreZipTest(unittest.TestCase):
             after = core.core_zip_bytes(tmp, files=ASSEMBLED_FILES)
             self.assertNotEqual(len(before), len(after))
             self.assertNotEqual(core.AS_ASSEMBLED_ZIP_BYTES, len(after))
+
+    # -- the checkout shape (Q199, the ship lane's re-test) --
+    # The pin above was measured on a Linux tree and stood
+    # red on the hosted Windows leg: a checkout that
+    # converts line endings (Git for Windows' autocrlf)
+    # handed the builder CRLF bytes, and the live build
+    # read 902,401 against the recorded 896,433. The
+    # reader now folds CRLF back to the stored bytes, so
+    # the recorded figure is a property of the stored
+    # tree, not of the checkout. These tests reproduce
+    # the converted tree on any platform.
+
+    def test_a_crlf_checked_out_tree_builds_the_same_zip(self):
+        skip_in_mutant_copy(self)
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in ASSEMBLED_FILES:
+                dest = os.path.join(tmp, name)
+                os.makedirs(os.path.dirname(dest), exist_ok=True)
+                with open(os.path.join(ROOT, name), "rb") as fh:
+                    stored = fh.read().replace(b"\r\n", b"\n")
+                with open(dest, "wb") as fh:
+                    fh.write(stored.replace(b"\n", b"\r\n"))
+            converted = core.core_zip_bytes(tmp, files=ASSEMBLED_FILES)
+            self.assertEqual(core.AS_ASSEMBLED_ZIP_BYTES,
+                             len(converted))
+            self.assertEqual(
+                core.core_zip_bytes(ROOT, files=ASSEMBLED_FILES),
+                converted)
+
+    def test_the_reader_folds_crlf_to_the_stored_bytes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "one.py"), "wb") as fh:
+                fh.write(b"one\r\ntwo\r\n")
+            self.assertEqual(b"one\ntwo\n",
+                             core._read_core_file(tmp, "one.py"))
+
+    def test_the_reader_keeps_a_lone_carriage_return(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "one.py"), "wb") as fh:
+                fh.write(b"one\rtwo\n")
+            self.assertEqual(b"one\rtwo\n",
+                             core._read_core_file(tmp, "one.py"))
+
+    def test_the_reader_passes_stored_bytes_through(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with open(os.path.join(tmp, "one.py"), "wb") as fh:
+                fh.write(b"one\ntwo\n")
+            self.assertEqual(b"one\ntwo\n",
+                             core._read_core_file(tmp, "one.py"))
 
 
 class CoreMeasureTest(unittest.TestCase):
