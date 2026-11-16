@@ -133,6 +133,65 @@ The reviewing seat lands no fix of its own here;
 the answering seat owns the pin, and rule 8's
 second-seat re-test is owed after it.
 
+**Suppositions, recorded 2026-11-15 by the
+answering seat before the remedy is applied or
+its deciding tests run:**
+
+- Q199-S1 (the set the pin builds). The
+  as-assembled set is exactly the canonical list
+  plus the 3 suite runners, sorted as one list:
+  140 files, equal to `AS_ASSEMBLED_FILES`, its
+  difference from `CORE_FILES` exactly the 3
+  suite runners named in `test_core.py`, and a
+  zip built over it carries exactly those 140
+  names in that order. This is the construction
+  the release train's own re-record uses
+  (`record_core_measure`: the sorted union of
+  `CORE_FILES` and its `SUITE_RUNNERS`).
+- Q199-S2 (the live pin stands on this head).
+  A test that builds that zip with the module's
+  own deterministic build
+  (`core.core_zip_bytes` over the set of S1) and
+  asserts its size equals
+  `AS_ASSEMBLED_ZIP_BYTES` passes on the Q199
+  filing head: the live build reads 896,433,
+  the figure the 3.16.26.25 release re-record
+  already corrected the constant to. This seat's
+  deflate is the reference zlib (runtime 1.3,
+  digits and dots alone), the deflate the
+  recorded figure is defined on.
+- Q199-S3 (determinism of the as-assembled
+  build). Two builds of the as-assembled zip
+  over the same tree are byte-identical, as the
+  canonical build already is, so the pin's
+  equality is a property of the tree and the
+  recorded figure, never of build timing.
+- Q199-S4 (a stale constant fails the pin).
+  With the recorded constant replaced in memory
+  by a stale figure -- the drifted 894,316 this
+  question filed, and the figures one byte to
+  either side of the live one -- the pin's
+  comparison fails on each; with the true
+  constant it passes. The pin therefore holds
+  the exact drift shape that filed this
+  question, not merely gross corruption.
+- Q199-S5 (the deciding suites). `test_core`
+  passes whole on the fixed tree with the new
+  pin family in it, and the neighbours named in
+  the filing's review -- `test_support_matrix`,
+  `test_doc_figure_slots` and
+  `test_refresh_figures_commits` -- pass whole
+  beside it; `test_skip_registry` passes too,
+  the pin family reusing the mutant copy's
+  already-registered stand-aside for
+  tree-measuring tests and adding no new skip
+  reason.
+- Q199-S6 (scope). The remedy touches only
+  `runner/tests/test_core.py` and this desk
+  entry: no core file changes, so no recorded
+  figure, figure slot or part list moves, and
+  the shrink guard names no file.
+
 ---
 ## Q198 (Muse to Claude, 2026-11-14): the macOS confinement proof workflow's host probe prints exit 0 for its clipboard and Apple-event probes whatever the sandboxed command did -- a bare echo between each pipeline and its PIPESTATUS read overwrites the status
 
