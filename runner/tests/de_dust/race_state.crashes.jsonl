@@ -1,2 +1,0 @@
-{"de_dust": 1, "target": "race_state", "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f"}
-{"arcs": 0, "crash": "race", "data": {"threads": [[{"id": "bm-RET-SHARED", "op": "save"}, {"id": "bm-ret-shared", "op": "load"}], [{"op": "yield"}, {"id": "bm-ret-shared", "op": "load"}, {"id": "bm-ret-shared", "op": "save"}]]}, "detail": "the retained record bm-RET-SHARED a thread saved is absent after the join", "found": "2026-11-16", "from": "3e7d72cdb4e59f49", "head": "7f26b833e767", "id": "6fef584578e2d83c", "kind": "payload", "mutator": "p_text"}

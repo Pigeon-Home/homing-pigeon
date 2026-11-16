@@ -690,6 +690,19 @@ del _stored, _t, _name, _sname
 # green; the banked crash's corpus probe flips to an unexpected
 # success and `promote` retires it. Conclusions are posted below
 # this block once the fix has been measured.
+#
+# CONCLUSIONS (2026-11-16, after the measurements): the supposition
+# held on every prediction. The rig reproducer passes every
+# schedule on NTFS against the fixed tree (the directory holds the
+# plain record and the sidecar side by side, in both save orders);
+# this file's families are green (164 tests, the 93 pre-existing
+# plus the 71 of the family below), the regression guard is green
+# on every surface it runs, and the neighbouring retained families
+# (1,378 tests) are green. The banked crash's probe flipped, and
+# `promote` moved the entry into the race_state corpus as
+# promoted:race, retiring the crashes file. The change the numbers
+# support is the one that landed: sidecar on a folded sibling,
+# plain name everywhere else.
 # ---------------------------------------------------------------------
 
 
