@@ -157,3 +157,67 @@ measured points anchor the series at its later end. Read with
 that caution, the shape is plain: the tree roughly doubled
 every 5 days through October, and the climb steepened into
 November.
+
+## The growth of the measure, continued: a second snapshot as of 2026-11-15
+
+The snapshot above stands as it was drawn, with its own date.
+This second view of the same series keeps its 6 points exactly
+as recorded there and carries the series a week further, to
+2026-11-15, on 2 more measured points. From 2026-11-04 on,
+every point in the series is measured; the implied points
+remain only where the early tags left no count to take.
+
+![Security tokens in the tree, 15 October to 15 November 2026](../../../assets/security-tokens-growth-2026-11-15.svg)
+
+| Date | Release | Lines in the tagged tree | Security tokens | Basis |
+|------|---------|--------------------------|-----------------|-------|
+| 2026-10-15 | v3.7.2 | 41,632 | about 0.6M | implied from lines |
+| 2026-10-20 | v3.11.30 | 144,993 | about 2.2M | implied from lines |
+| 2026-10-25 | v3.12.78 | 378,222 | about 5.7M | implied from lines |
+| 2026-10-30 | v3.14.42 | 727,924 | about 11.0M | implied from lines |
+| 2026-11-04 | v3.15.17.156 | 1,127,754 | 17M | measured — the version's 3rd component |
+| 2026-11-08 | count recorded that day | 1,218,733 | 20,163,806 | measured — the count recorded that day |
+| 2026-11-13 | v3.16.25.1 | 1,497,490 | 25,004,714 | measured — the count recorded in that release's statistics |
+| 2026-11-15 | v3.16.26.29 | 1,477,466 | 26,451,259 | measured — the count recorded in that release's statistics |
+
+How the points were derived. The first 6 points are carried
+over from the snapshot above unchanged, derivation and all.
+The 2 new points need no derivation: each is the token count
+the release named in the row recorded in its own statistics —
+25,004,714 at v3.16.25.1, the measure that first crossed 25
+million, and 26,451,259 at v3.16.26.29 — with the tagged
+tree's line count from the same record beside it. A reader
+with a checkout of either tag reads the same figures in that
+tag's copy of this record.
+
+## Where the project stands
+
+The longer series changes what the shape can say. Across the
+31 days from the first release to the measure of 2026-11-15,
+the tree grew from about 0.6 million security tokens (implied)
+to 26,451,259 measured, and the later part of that growth
+rests on counts taken at the time rather than on estimates
+reconstructed afterwards. The history behind it stands at
+more than 6,000 commits: 6,004 at the v3.16.26.29 measure,
+6,012 at the measure of 2026-11-16 recorded at the top of
+this record.
+
+The release line has kept pace with the growth. The 3.16 line
+stands at 3.16.26.32, and each release is published with its
+artifacts and SHA384SUMS, so the figures a release carries can
+be checked against the artifacts themselves, as the section
+above describes. The confinement work widened over the same
+period from the Linux sandbox to a backend per platform — a
+Job Objects backend on Windows, a jail backend on FreeBSD,
+and a Seatbelt backend on macOS — each with hosted proof runs
+recorded in the support matrix. On 2026-11-15 the project's
+3 Internet-Drafts stood posted on the IETF datatracker in
+their current revisions: version 1 at -04, version 2 at -04,
+and version 3 at -00, each expiring 19 May 2027.
+
+The measure itself is unchanged throughout: the whole tree,
+counted by the project's own estimator, with duplicate and
+latent code held at 3.84% of the tree at the audit of
+2026-11-13 — under the 5% line the project holds itself to —
+so the figure continues to stand for the tested surface of
+the suite and the protocol rather than for bulk.
