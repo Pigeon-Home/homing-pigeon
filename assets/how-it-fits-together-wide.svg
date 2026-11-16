@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1140" height="760" viewBox="0 0 1140 760" font-family="Helvetica, Arial, sans-serif">
-  <title>Homing Pigeon — how it fits together</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="1140" height="818" viewBox="0 0 1140 818" font-family="Helvetica, Arial, sans-serif">
+  <title>Homing Pigeon v1 — how it fits together</title>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#2b060d"/>
@@ -10,86 +10,109 @@
       <stop offset="1" stop-color="#3a0a15"/>
     </linearGradient>
   </defs>
-  <rect width="1140" height="760" fill="url(#bg)"/>
+  <rect width="1140" height="818" fill="url(#bg)"/>
+  <text x="570" y="42" text-anchor="middle" fill="#ffffff" font-size="30" font-weight="bold">Homing Pigeon <tspan fill="#ff4d6d">v1</tspan> — How It Fits Together</text>
 
   <!-- You -->
-  <rect x="40" y="60" width="220" height="170" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
-  <text x="150" y="138" text-anchor="middle" fill="#ffffff" font-size="28" font-weight="bold">You</text>
-  <text x="150" y="170" text-anchor="middle" fill="#ffd7de" font-size="16">(and the SI you bring)</text>
-  <path d="M 260 145 L 295 145" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
-  <polygon points="318,145 294,132 294,158" fill="#ff4d6d"/>
-  <text x="289" y="119" text-anchor="middle" fill="#ffd7de" font-size="15">a job</text>
+  <rect x="33" y="111" width="234" height="184" rx="21" fill="none" stroke="#3ddc97" stroke-width="3"/>
+  <rect x="40" y="118" width="220" height="170" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="150" y="196" text-anchor="middle" fill="#ffffff" font-size="28" font-weight="bold">You</text>
+  <text x="150" y="228" text-anchor="middle" fill="#ffd7de" font-size="16">(and the SI you bring)</text>
+  <path d="M 260 203 L 295 203" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
+  <polygon points="318,203 294,190 294,216" fill="#ff4d6d"/>
+  <text x="289" y="177" text-anchor="middle" fill="#ffd7de" font-size="15">a job</text>
 
   <!-- Transports -->
-  <rect x="320" y="60" width="280" height="170" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
-  <text x="460" y="132" text-anchor="middle" fill="#ffffff" font-size="28" font-weight="bold">Transports</text>
-  <text x="460" y="164" text-anchor="middle" fill="#ffd7de" font-size="15">(email · DTLS · file — the job travels</text>
-  <text x="460" y="186" text-anchor="middle" fill="#ffd7de" font-size="15">signed and encrypted)</text>
-  <path d="M 600 145 L 635 145" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
-  <polygon points="658,145 634,132 634,158" fill="#ff4d6d"/>
+  <rect x="320" y="118" width="280" height="170" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="460" y="190" text-anchor="middle" fill="#ffffff" font-size="28" font-weight="bold">Transports</text>
+  <text x="460" y="222" text-anchor="middle" fill="#ffd7de" font-size="15">(email · DTLS · file — the job travels</text>
+  <text x="460" y="244" text-anchor="middle" fill="#ffd7de" font-size="15">signed and encrypted)</text>
+  <path d="M 600 203 L 635 203" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
+  <polygon points="658,203 634,190 634,216" fill="#ff4d6d"/>
 
   <!-- The Door -->
-  <rect x="660" y="40" width="340" height="230" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
-  <text x="830" y="88" text-anchor="middle" fill="#ffffff" font-size="26" font-weight="bold">The Door</text>
-  <text x="830" y="114" text-anchor="middle" fill="#ffd7de" font-size="14">(the runner's front gate — only signed jobs pass)</text>
-  <rect x="690" y="130" width="280" height="48" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
-  <text x="830" y="161" text-anchor="middle" fill="#ffffff" font-size="19">Signature Check</text>
-  <path d="M 830 178 L 830 184" fill="none" stroke="#ff4d6d" stroke-width="4" stroke-linejoin="round"/>
-  <polygon points="830,198 821,183 839,183" fill="#ff4d6d"/>
-  <rect x="690" y="200" width="280" height="48" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
-  <text x="830" y="231" text-anchor="middle" fill="#ffffff" font-size="19">Job Queue</text>
+  <rect x="660" y="98" width="340" height="230" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="830" y="146" text-anchor="middle" fill="#ffffff" font-size="26" font-weight="bold">The Door</text>
+  <text x="830" y="172" text-anchor="middle" fill="#ffd7de" font-size="14">(the runner's front gate — only signed jobs pass)</text>
+  <rect x="690" y="188" width="280" height="48" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="830" y="219" text-anchor="middle" fill="#ffffff" font-size="19">Signature Check</text>
+  <path d="M 830 236 L 830 242" fill="none" stroke="#ff4d6d" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="830,256 821,241 839,241" fill="#ff4d6d"/>
+  <rect x="690" y="258" width="280" height="48" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="830" y="289" text-anchor="middle" fill="#ffffff" font-size="19">Job Queue</text>
   <!-- the door down to the runner -->
-  <path d="M 830 270 L 830 293 L 478 293 L 478 305" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
-  <polygon points="478,328 465,304 491,304" fill="#ff4d6d"/>
+  <path d="M 830 328 L 830 351 L 478 351 L 478 363" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
+  <polygon points="478,386 465,362 491,362" fill="#ff4d6d"/>
 
   <!-- The Runner -->
-  <rect x="190" y="330" width="576" height="220" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
-  <text x="478" y="372" text-anchor="middle" fill="#ffffff" font-size="26" font-weight="bold">The Runner</text>
-  <rect x="215" y="390" width="168" height="76" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
-  <text x="299" y="422" text-anchor="middle" fill="#ffffff" font-size="16">Shared-Secret</text>
-  <text x="299" y="444" text-anchor="middle" fill="#ffffff" font-size="16">Check</text>
-  <rect x="394" y="390" width="168" height="76" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
-  <text x="478" y="418" text-anchor="middle" fill="#ffffff" font-size="16">The Cage</text>
-  <text x="478" y="440" text-anchor="middle" fill="#ffd7de" font-size="12">(security modes, on by default)</text>
-  <rect x="573" y="390" width="168" height="76" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
-  <text x="657" y="414" text-anchor="middle" fill="#ffffff" font-size="16">The Oracle</text>
-  <text x="657" y="436" text-anchor="middle" fill="#ffd7de" font-size="12">(reads the job, lends</text>
-  <text x="657" y="452" text-anchor="middle" fill="#ffd7de" font-size="12">a hand)</text>
-  <rect x="215" y="478" width="526" height="56" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
-  <text x="478" y="501" text-anchor="middle" fill="#ffffff" font-size="17">Size Guard</text>
-  <text x="478" y="522" text-anchor="middle" fill="#ffd7de" font-size="12">(caps on the job and the result)</text>
+  <rect x="190" y="388" width="576" height="220" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="478" y="430" text-anchor="middle" fill="#ffffff" font-size="26" font-weight="bold">The Runner</text>
+  <rect x="208" y="441" width="182" height="90" rx="15" fill="none" stroke="#3ddc97" stroke-width="3"/>
+  <rect x="215" y="448" width="168" height="76" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="299" y="480" text-anchor="middle" fill="#ffffff" font-size="16">Shared-Secret</text>
+  <text x="299" y="502" text-anchor="middle" fill="#ffffff" font-size="16">Check</text>
+  <rect x="394" y="448" width="168" height="76" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="478" y="476" text-anchor="middle" fill="#ffffff" font-size="16">The Cage</text>
+  <text x="478" y="498" text-anchor="middle" fill="#ffd7de" font-size="12">(security modes, on by default)</text>
+  <rect x="573" y="448" width="168" height="76" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="657" y="472" text-anchor="middle" fill="#ffffff" font-size="16">The Oracle</text>
+  <text x="657" y="494" text-anchor="middle" fill="#ffd7de" font-size="12">(reads the job, lends</text>
+  <text x="657" y="510" text-anchor="middle" fill="#ffd7de" font-size="12">a hand)</text>
+  <rect x="215" y="536" width="526" height="56" rx="10" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="478" y="559" text-anchor="middle" fill="#ffffff" font-size="17">Size Guard</text>
+  <text x="478" y="580" text-anchor="middle" fill="#ffd7de" font-size="12">(caps on the job and the result)</text>
 
   <!-- The SI's Mind, and the two-way line to it -->
-  <rect x="880" y="360" width="220" height="130" rx="14" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
-  <text x="990" y="414" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="bold">The SI's Mind</text>
-  <text x="990" y="442" text-anchor="middle" fill="#ffd7de" font-size="14">(outside the box)</text>
-  <path d="M 789 425 L 857 425" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
-  <polygon points="768,425 790,413 790,437" fill="#ff4d6d"/>
-  <polygon points="878,425 856,413 856,437" fill="#ff4d6d"/>
+  <rect x="880" y="418" width="220" height="130" rx="14" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="990" y="472" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="bold">The SI's Mind</text>
+  <text x="990" y="500" text-anchor="middle" fill="#ffd7de" font-size="14">(outside the box)</text>
+  <path d="M 789 483 L 857 483" fill="none" stroke="#4da3ff" stroke-width="6" stroke-linejoin="round"/>
+  <polygon points="768,483 790,471 790,495" fill="#4da3ff"/>
+  <polygon points="878,483 856,471 856,495" fill="#4da3ff"/>
+  <!-- what the blue line is -->
+  <path d="M 823 471 L 823 377 L 838 377" fill="none" stroke="#4da3ff" stroke-width="1.5" stroke-linejoin="round"/>
+  <text x="845" y="362" fill="#bfe0ff" font-size="15" font-weight="bold">Runner-to-SI Exchange (v2)</text>
+  <text x="845" y="382" fill="#bfe0ff" font-size="13">the runner asks, the SI answers</text>
+  <text x="845" y="400" fill="#8fc4f5" font-size="12">signed, over the same transports</text>
+
+  <!-- version 3: the session between the two holders of the shared secret -->
+  <path d="M 238 319 L 238 417" fill="none" stroke="#3ddc97" stroke-width="6" stroke-linejoin="round"/>
+  <polygon points="238,298 226,320 250,320" fill="#3ddc97"/>
+  <polygon points="238,438 226,416 250,416" fill="#3ddc97"/>
+  <text x="262" y="315" fill="#c8f7e1" font-size="15" font-weight="bold">DTLS via email (v3)</text>
+  <text x="262" y="333" fill="#c8f7e1" font-size="13">a session keyed by the shared secret</text>
+  <text x="262" y="349" fill="#93e6c2" font-size="12">every job still passes The Door</text>
+
+  <!-- one SI: the SI you bring is the mind the runner asks -->
+  <path d="M 150 118 L 150 82 L 1070 82 L 1070 418" fill="none" stroke="#4da3ff" stroke-width="3" stroke-dasharray="9 7" stroke-linejoin="round"/>
+  <circle cx="150" cy="118" r="6" fill="#4da3ff"/>
+  <circle cx="1070" cy="418" r="6" fill="#4da3ff"/>
+  <rect x="402" y="69" width="116" height="26" rx="6" fill="#2a060d"/>
+  <text x="460" y="87" text-anchor="middle" fill="#bfe0ff" font-size="15" font-weight="bold">the same SI</text>
 
   <!-- the runner down to the work loop -->
-  <path d="M 713 550 L 713 575" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
-  <polygon points="713,598 700,574 726,574" fill="#ff4d6d"/>
+  <path d="M 713 608 L 713 633" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
+  <polygon points="713,656 700,632 726,632" fill="#ff4d6d"/>
 
   <!-- The Work Loop -->
-  <rect x="660" y="600" width="420" height="120" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
-  <text x="870" y="646" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="bold">The Work Loop</text>
-  <text x="870" y="678" text-anchor="middle" fill="#ffd7de" font-size="15">run the job → capture the output → sign the</text>
-  <text x="870" y="698" text-anchor="middle" fill="#ffd7de" font-size="15">result</text>
-  <path d="M 660 660 L 635 660" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
-  <polygon points="612,660 636,647 636,673" fill="#ff4d6d"/>
+  <rect x="660" y="658" width="420" height="120" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="870" y="704" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="bold">The Work Loop</text>
+  <text x="870" y="736" text-anchor="middle" fill="#ffd7de" font-size="15">run the job → capture the output → sign the</text>
+  <text x="870" y="756" text-anchor="middle" fill="#ffd7de" font-size="15">result</text>
+  <path d="M 660 718 L 635 718" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
+  <polygon points="612,718 636,705 636,731" fill="#ff4d6d"/>
 
   <!-- The Way Back -->
-  <rect x="190" y="600" width="420" height="120" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
-  <text x="400" y="640" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="bold">The Way Back</text>
-  <rect x="215" y="656" width="150" height="44" rx="9" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
-  <text x="290" y="684" text-anchor="middle" fill="#ffffff" font-size="15">Reply to Your SI</text>
-  <path d="M 443 678 L 382 678" fill="none" stroke="#ff4d6d" stroke-width="4" stroke-linejoin="round"/>
-  <polygon points="367,678 383,669 383,687" fill="#ff4d6d"/>
-  <rect x="443" y="656" width="150" height="44" rx="9" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
-  <text x="518" y="684" text-anchor="middle" fill="#ffffff" font-size="15">Signed Result</text>
+  <rect x="190" y="658" width="420" height="120" rx="16" fill="url(#box)" stroke="#ff4d6d" stroke-width="3"/>
+  <text x="400" y="698" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="bold">The Way Back</text>
+  <rect x="215" y="714" width="150" height="44" rx="9" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="290" y="742" text-anchor="middle" fill="#ffffff" font-size="15">Reply to Your SI</text>
+  <path d="M 443 736 L 382 736" fill="none" stroke="#ff4d6d" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="367,736 383,727 383,745" fill="#ff4d6d"/>
+  <rect x="443" y="714" width="150" height="44" rx="9" fill="#460c18" stroke="#ff8098" stroke-width="2"/>
+  <text x="518" y="742" text-anchor="middle" fill="#ffffff" font-size="15">Signed Result</text>
 
   <!-- the way back up to you -->
-  <path d="M 190 660 L 100 660 L 100 255" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
-  <polygon points="100,232 87,256 113,256" fill="#ff4d6d"/>
+  <path d="M 190 718 L 100 718 L 100 313" fill="none" stroke="#ff4d6d" stroke-width="6" stroke-linejoin="round"/>
+  <polygon points="100,290 87,314 113,314" fill="#ff4d6d"/>
 </svg>
