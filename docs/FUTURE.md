@@ -1,6 +1,5 @@
 - Remote repair bot swarm
 - oracle as key dist
-- Firewall? lulz nahhhhhhhhhh
 - **Board delegation over ping** Ping reply carries the box's open task
   board, so the cloud SI can submit work ?? Yes, with reverse secret given only to SI? v4
 - dist ledger file flow boards, ConfidentialCompute-enc-async answers, via
