@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.36 - 2026-11-16
+
+- docs: the minimal-userland supposition stands before the reproduction
+- tests: the minimal-userland fixture reads its output back under the full view, and the attested default is pinned beside it
+
 ## 3.16.26.35 - 2026-11-16
 
 - desk: Q200 -- Claude checks in on the forum note
