@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.6 - 2026-11-16
+
+- Docs: PROTOCOL.md fair warning figures, one per line, with the tracked line count (edits since 3.17.26.4).
+- Fix: defaults registry rows updated with the doc (+4 lines) for the PROTOCOL.md split; 3.17.26.5 never published: its gate build failed on that drift, and this cut replaces it at the next counter.
+
 ## 3.17.26.5 - 2026-11-16
 
 - Docs: PROTOCOL.md fair warning figures, one per line, with the tracked line count (edits since 3.17.26.4).
