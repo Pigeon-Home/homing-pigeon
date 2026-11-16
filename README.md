@@ -215,15 +215,23 @@ starts one notch tighter than the defaults, under an installer
 profile. The postures and the profiles in full:
 `docs/infrastructure-documents/oracle/configuring-oracle.md`.
 
-Two more dials stand outside the table. **Remediation**
-(`remediation_mode`, default `deterministic`) watches each job
-while it runs: on a closed list of tripwires (confinement escape,
-a process storm past the ceiling, an undeclared credential-store
-reference in something the job produced), it kills the job's
-process tree, quarantines its outputs, refers suspect files to
-the box's antivirus, and files the story with the DRI, which
-pages the owner. `oracle` mode lets the local model order a kill
-for a lesser divergence; `off` watches and records only. Design:
+Two more dials stand outside the table.
+
+```
+  remediation_mode     what happens while a job runs
+  -------------------  ------------------------------------------
+  deterministic        a tripwire trips: kill the job's process
+  (the default)        tree, quarantine the outputs, refer the
+                       suspect files to the antivirus, file the
+                       story with the DRI, page the owner
+  oracle               the local model may also order a kill
+                       for a lesser divergence
+  off                  watches and records only
+```
+
+The tripwires are a closed list: a confinement escape, a process
+storm past the ceiling, an undeclared credential-store reference
+in something the job produced. Design:
 `docs/steady/design/remediation-design.md`. **The opinion
 latitude** (`oracle_opinion_mode`, default `repair`) is the other
 dial; it is covered under Opinions, above.
@@ -249,14 +257,20 @@ secret-scanned before it's sent. The SI gets useful answers, and
 your raw data never leaves the machine. Setup:
 `docs/infrastructure-documents/oracle/configuring-oracle.md`.
 
-**Two Oracle modes.** With `oracle_mode: "llm"` (the default) the
-Oracle narrates with the local model above. With `"deterministic"`
-(the Pi Light mode, for a box with no model worth running), no model
-is installed or ever called: the watch, the wake gate, and the briefs
-still run, but briefs and answers are assembled from the box's own
-records, and the `ask` op stays off. The mode reads live from
-`config.json`; flipping it is the upgrade path when a box gains a
-model worth running. See
+**Two Oracle modes.**
+
+```
+  oracle_mode          model               briefs and answers    ask
+  -------------------  ------------------  --------------------  ---
+  "llm" (the default)  the local model     narrated by model     on
+  "deterministic"      none installed,     the box's own         off
+                       never called        records
+```
+
+`"deterministic"` is the Pi Light mode, for a box with no model
+worth running: the watch, the wake gate, and the briefs still
+run. The mode reads live from `config.json`; flipping it is the
+upgrade path when a box gains a model worth running. See
 `docs/infrastructure-documents/oracle/configuring-oracle.md`.
 
 **The Oracle learns from its own calls.** Each opinion is frozen
@@ -276,10 +290,6 @@ calls right (87.5%), 0 lessons, every miss a job that simply ran
 
 Full spec in PROTOCOL.md (sections 9–12). Oracle fields are optional
 members of a `"v": 1` message. They are not a separate message version.
-
-## Proven platforms
-
-The platform proof story lives with setup now: [Proven platforms](INSTALL.md#proven-platforms) in INSTALL.md, with the full table and the board notes in [docs/steady/use/platforms.md](docs/steady/use/platforms.md).
 
 ## Extending the agent: senses and transports
 
@@ -352,6 +362,10 @@ secret, first job).
 in your own account, with the hosted
 profile and nothing listening: [docs/steady/use/own-cloud.md](docs/steady/use/own-cloud.md).
 Your account, your bill, your secret.
+
+## Proven platforms
+
+The platform proof story lives with setup now: [Proven platforms](INSTALL.md#proven-platforms) in INSTALL.md, with the full table and the board notes in [docs/steady/use/platforms.md](docs/steady/use/platforms.md).
 
 ## How scripts run
 
