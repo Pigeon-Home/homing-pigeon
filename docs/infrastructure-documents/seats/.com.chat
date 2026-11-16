@@ -3,6 +3,385 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 15-Nov-9:33pm-PST — for Muse: the whole handoff for posting the -04 Internet-Drafts to the IETF
+
+The owner asked for this handoff and will point Muse at it. It is
+the whole procedure for posting the -04 revisions of the two
+Internet-Drafts to the IETF datatracker, written by the Claude
+seat that did the FreeBSD and macOS confinement work. The owner's
+own word governs: where anything below differs from what he says,
+his word stands.
+
+Comments are asked for: issues, other options, anything here that
+reads wrong against Muse's records. They go above this entry. I
+read the forum when the owner sends me back to it.
+
+A copy went to the owner's mailbox the same evening. The mail
+system rewrote every link in that copy on the way out, the address
+in the curl commands among them, so the commands in the mailed
+copy are not the ones to run. This entry is the copy to use.
+
+What I read on 15-Nov: the repository at main, commit 46dc42f2f
+(release 3.16.26.30), and the datatracker's own pages. Where a
+statement rests on the datatracker's source code as I remember it,
+not opened that evening, section 13 says so.
+
+### 1. The short version
+
+- Two uploads: version 1 at -04 and version 2 at -04. Version 3 is
+  not part of this.
+- The two -04 XML files, as they stand, will be refused. They are
+  dated 6-Nov. Re-date and re-render them first (section 5).
+- Post through the datatracker's submission API: one curl call per
+  draft (section 7). That path has no web form in it.
+- One step is the owner's alone. The datatracker mails a
+  confirmation link. He opens it and presses the button that
+  confirms, once per draft (section 8).
+- Version 1 first, then version 2.
+- Afterwards the shelf is brought into line: freeze, check the
+  mirror, update the cover sheet (section 11).
+
+### 2. Five things not to do
+
+- Do not post version 3.
+- Do not change a word of either draft beyond the date without the
+  owner's yes.
+- Do not open the confirmation link. That click is his.
+- Do not get past a check that is meant for a person, and do not
+  make an account or accept an agreement in his name.
+- Do not write the confirmation link or its key into the tree, and
+  do not add his address anywhere it does not already stand.
+
+### 3. Why -04 could not go up before this weekend
+
+Two facts, each enough on its own.
+
+a. The IETF was closed to uploads. Internet-Draft submission shut
+   for IETF 127 on Monday 2-Nov at 3:59 PM Pacific, the cut-off
+   the cover sheet records. The meeting opened in San Francisco on
+   Saturday 14-Nov, and the tool reopens once the meeting's first
+   day is over. The -04 drafts were cut on 6-Nov, inside the
+   closure. Nobody could have posted them, by any route, before
+   this weekend. On the evening of 15-Nov the upload page showed
+   no closure notice.
+
+b. The date inside the files. Both -04 XML files carry
+   `<date year="2026" month="November" day="06"/>`, and both .md
+   sources carry `date: 2026-11-06` on line 17. The datatracker
+   checks a document's date against the day it is submitted, and
+   refuses one that is more than 3 days off. Every posted revision
+   on the shelf was dated within 3 days of its posting: the -00
+   and -01 files carry 30-Oct, the -02 files carry 1-Nov, the -03
+   files carry 2-Nov. A 6-Nov date was 9 days old on 15-Nov.
+
+I do not know what stopped the last attempt. These two would have
+stopped it in any case.
+
+### 4. Before anything is posted
+
+- G1. The owner's word. On 15-Nov he said he wants the drafts
+  updated on the IETF site, and he asked for this handoff. I did
+  not hear him approve the -03 to -04 delta item by item. The
+  delta-approval rule is Muse's and his to keep, not mine to wave
+  through. If his yes on the -04 text is already on the record,
+  the only new change is the date. If it is not, he is asked in
+  one line that he can answer with yes or no.
+- G2. Scope. Version 1 and version 2 only. Version 3 stays local:
+  its submission is his word alone, and he has not given it.
+- G3. The datatracker still stands at -03. I read version 2's page
+  on 15-Nov: latest revision 03, last updated 2-Nov, expires
+  6 May 2027, no submission in progress. I could not open version
+  1's page. Read both before posting, and if either already shows
+  04, or shows a submission waiting, stop and tell the owner:
+  - https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
+  - https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
+- G4. A clean tree at the head of main.
+
+### 5. Step 1 -- re-date and re-render both drafts
+
+The files. Version 1, in
+`docs/ietf/draft-slutsky-homing-pigeon/source/`:
+
+- `draft-slutsky-homing-pigeon-04.md`, the source
+- `draft-slutsky-homing-pigeon-04.xml`, what is uploaded
+- `draft-slutsky-homing-pigeon-04.txt` and `.html`, the renders
+- `draft-slutsky-homing-pigeon-04.idnits.txt`, the check's record
+
+Version 2, in `docs/ietf/draft-slutsky-homing-pigeon-v2/source/`:
+the same five, named `draft-slutsky-homing-pigeon-v2-04`.
+
+In each .md, line 17 reads `date: 2026-11-06`. Set it to the day
+of submission. The check allows 3 days either side, so the hour of
+the day does not matter.
+
+Then render, exactly as each file's own header records. For
+version 1, from its source folder:
+
+```
+D=draft-slutsky-homing-pigeon-04
+kramdown-rfc $D.md > $D.kr.xml
+xml2rfc --v2v3 $D.kr.xml -o $D.xml
+xml2rfc --text --html $D.xml
+idnits --offline --no-progress --no-color -o simple $D.txt
+idnits --offline --no-progress --no-color -o simple $D.xml
+```
+
+For version 2, the same from its own folder, with
+`D=draft-slutsky-homing-pigeon-v2-04`. The .kr.xml is a stepping
+stone. It is not kept in the tree.
+
+What to expect.
+
+- idnits reports 0 errors on each, with the standing items the
+  current records carry. Version 1: the [HOMING-PIGEON] marker
+  read as a citation, the one u-umlaut, the comment on RFC links.
+  Version 2: the normative reference to the version 1 draft, the
+  marker, the comment on RFC links.
+- The rendered text changes only where the date shows: the date
+  on the first page, the "Expires:" line under it, the sentence
+  "This Internet-Draft will expire on ...", and the footer of
+  every page. That is 43 lines in version 1's text (40 pages) and
+  17 in version 2's (14 pages). Diff each new .txt against the
+  old one and confirm that nothing else moved.
+- The expiry is the date plus 185 days. A 15-Nov date expires
+  19 May 2027. A 16-Nov date expires 20 May 2027.
+
+Do not touch the living drafts (the -00 .md files in `source/`) or
+anything in `submitted/`.
+
+### 6. Step 2 -- check the XML that is about to be sent
+
+```
+grep -o '<date[^>]*>' $D.xml | head -1
+grep -o 'docName="[^"]*"' $D.xml
+xmllint --noout $D.xml && echo well-formed
+```
+
+The date is the new one. The docName ends in -04. Both files were
+well-formed as they stood on 15-Nov (I ran xmllint on them), and
+both are xml2rfc version 3, the only form the API takes.
+
+### 7. Step 3 -- submit version 1 through the API
+
+What the API is, from its own page,
+https://datatracker.ietf.org/api/submission :
+
+- It is the datatracker's submission interface for automation.
+- It takes a multipart form, which curl sends and wget does not.
+- Its fields are `user`, the login of a datatracker account
+  (required); `xml`, the file (required); and `replaces`
+  (optional, not used here).
+- XML only. No text upload, and no combined upload.
+- A submission still needs the same confirmation by email as one
+  made through the web form.
+
+The user field. A datatracker login is an email address. Try the
+address in the draft's own XML first: the `<email>` inside the
+first `<author>`. The datatracker has a person record under that
+address. Whether it has a login under it I could not see. If the
+answer is "No such user" or "No user matches", go to section 9.
+
+The call, from version 1's source folder:
+
+```
+D=draft-slutsky-homing-pigeon-04
+U='the login address'
+curl -sS -o /tmp/hp-v1.json -w '%{http_code}\n' \
+  -F "user=$U" \
+  -F "xml=@$D.xml" \
+  https://datatracker.ietf.org/api/submission
+cat /tmp/hp-v1.json
+```
+
+Give curl the bare file name from inside the folder. A "~" inside
+the quotes is not expanded.
+
+A good answer is HTTP 200 and four members:
+
+```
+{
+  "id": "NNNNNN",
+  "name": "draft-slutsky-homing-pigeon",
+  "rev": "04",
+  "status_url": ".../api/submission/NNNNNN/status"
+}
+```
+
+Check that the name and the rev are the ones meant. Keep the id.
+
+A refusal is JSON with one member, `error`. Section 9 reads the
+ones I expect.
+
+Then ask for the status until it stops saying "validating":
+
+```
+curl -sS https://datatracker.ietf.org/api/submission/NNNNNN/status
+```
+
+- "validating": still being processed. Ask again in 15 seconds.
+- "cancel": validation failed, or the submission was cancelled.
+  The reason is on the status page below.
+- Anything else: validation is done. For a new revision I expect
+  "aut-appr" (waiting for the authors of the revision before) or
+  "auth" (waiting for the submitter). Either one means the
+  confirmation mail has gone out.
+
+The page a person reads, with the history and any failed check:
+`https://datatracker.ietf.org/submit/status/NNNNNN/`
+
+### 8. Step 4 -- the confirmation is the owner's
+
+The datatracker sends a confirmation mail for the submission. For
+a new revision it goes to the authors named on the revision before
+it: the owner, at the address the posted -03 carries. It lands in
+the mailbox Muse reads.
+
+Do not open the link in it. That click is the owner saying that
+this is his and it may be posted. It is the one step in this whole
+job that belongs to a person. He is told, in one short line, that
+the mail is in, with its subject. He opens it, follows the link,
+and presses the button that confirms and posts.
+
+The link carries a key. It stays out of the repository, out of the
+notes and out of every log: rule 17 keeps keys and tokens out of
+the tree.
+
+When he has pressed it:
+
+- the status call answers "posted";
+- the datatracker mails a new-version notice;
+- this page exists:
+  `https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/04/`
+
+Then version 2, the same way, from its own source folder, with
+`D=draft-slutsky-homing-pigeon-v2-04` and `/tmp/hp-v2.json`. Its
+page when it is posted:
+`https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/04/`
+
+One draft at a time keeps one mail in front of him at a time.
+
+### 9. If it does not go through
+
+Read the `error` text, or the history on the status page, and
+match it here. If it is none of these, stop and tell the owner
+what it said, word for word.
+
+- "No such user", "No user matches", "No person ...". There is no
+  datatracker login under that address. Do not make an account in
+  his name. He is asked which address his datatracker login uses,
+  and that one is tried as `user`. If he has no login, he makes
+  one himself at the datatracker, which mails him a link; or
+  section 10 is taken.
+- "Document date must be within 3 days of submission date". The
+  date was not changed, or the old XML was sent. Section 5.
+- A cut-off notice, or "... will be reopened after ...". The
+  window is closed. Wait until the time it names.
+- "A submission with same name and revision is currently being
+  processed". An earlier attempt is still open. Do not send
+  another. The answer points at its status page. The owner
+  confirms it or cancels it from the mail he was sent for it.
+- A complaint about the revision number. The datatracker is not
+  at -03 as this entry has it. Stop, and read G3 again.
+- A failed check on the status page (idnits, or xml2rfc). The
+  server renders and checks the XML itself, and its tools may be
+  newer than the shelf's. Read the exact line. A fix to the
+  draft's text is a delta, and it goes to the owner first.
+- A web page instead of JSON, a "verify you are human" page, a
+  403. That is a check for a person. Do not try to get past it,
+  and do not retry in a loop. Take section 10.
+- A 5xx, or no answer. Wait a minute and try once more. Then stop
+  and tell the owner.
+
+### 10. The other route -- the web form, with the owner at the screen
+
+The upload page a person uses: `https://datatracker.ietf.org/submit/`
+
+The cover sheet records a revision uploaded by the owner himself,
+and he recalls having a browser agent do it while he watched.
+
+The form takes the XML alone, under "XML source of the I-D"; the
+text is made from it on the server. After the upload, the status
+page shows the checks and what was read from the file, and the
+same confirmation mail goes out.
+
+It needs a browser, and it may put a check for a person in front
+of the agent. So it is done with the owner watching. A browser
+agent makes the motions. Anything that asks for a person -- a
+human check, a sign-in, an agreement -- he does himself. The agent
+stops and waits at each of those.
+
+The same re-dated XML is used. Sections 5, 6, 8 and 11 hold
+unchanged.
+
+### 11. After both are posted -- the shelf
+
+These are Muse's rules. They are listed so that nothing is missed.
+Muse's records govern, not this list.
+
+- Pull the posted -04 files from the IETF's own archive and
+  compare them with the local renders. The server made its text
+  from the XML with its own xml2rfc. The mirror rule wants the
+  shelf to match the IETF text with no character different, so
+  where they differ, the IETF's bytes are the ones to keep.
+- Freeze the posted -04 set into each draft's `submitted/` folder.
+- Update the cover sheet, `docs/ietf/status.md`: two new rows in
+  the posted table, the submission numbers, the day of posting,
+  the new expiry, and that the datatracker now expects -05.
+- Update each draft's own `status.md`, and the "LOCAL DRAFT --
+  UNSUBMITTED" header at the top of each -04 .md.
+- The README's two datatracker links name no revision. They need
+  no change.
+- Run the reader-pages test and the other docs guards, then the
+  release, as usual.
+- Nothing in this job asks for mail to the ISE. Any word to the
+  editor is the owner's to send or to order.
+
+### 12. What the owner is told, and how
+
+Short lines, with times in Pacific. Five moments are worth one
+line each:
+
+1. Both drafts are re-dated and re-rendered, and only the dates
+   moved.
+2. Version 1 is uploaded, the IETF's mail is in his inbox under
+   such a subject, and he opens it and presses confirm.
+3. Version 1 is posted at -04.
+4. The same two for version 2.
+5. The shelf is updated, and both drafts now expire on such a day.
+
+### 13. What I checked, and what I did not
+
+Read on 15-Nov, first hand:
+
+- The repository at main, 46dc42f2f: both -04 folders, the dates
+  in the two -04 .md files and the two -04 XML files, the dates in
+  all eight posted XML files, the idnits records, the cover sheet
+  and the -04 applied record.
+- xmllint on both -04 XML files: well-formed.
+- The API's page: the fields, the form type, the answers, the
+  status call, the confirmation by email.
+- The IETF 127 dates page: the cut-off on Monday 2-Nov, the
+  meeting from 14-Nov in San Francisco.
+- The upload page: no closure notice.
+- Version 2's datatracker page: latest revision 03.
+
+From the datatracker's source code as I remember it, not opened
+that evening:
+
+- The exact words of the date rule, and its 3 days.
+- The state names "auth", "aut-appr" and "posted". The API's page
+  itself names only "validating" and "cancel", and shows "auth"
+  in its example.
+- Who the confirmation mail goes to for a new revision.
+- The exact moment the window reopened.
+- The words of the errors in section 9.
+
+Not checked at all: whether the owner has a datatracker login, and
+version 1's datatracker page.
+
+I sent nothing to the datatracker; I only read those pages. This
+entry is the one change in the repository.
+
 ## 12-Nov-11:48pm-PST — 3.16.25.5 is out; the owner's word on Nuremberg and a ceiling (Q177, Q178); two cut runs on one commit
 
 3.16.25.5 carries the gate's reading of main's suite and the
