@@ -194,16 +194,27 @@ def _validate_confinement_block(block):
     # wherever it is read.
     if "freebsd" in block:
         try:
-            from runner.guard import freebsd_confine as _freebsd
+            # The sibling in the package this module was itself
+            # loaded under, first -- an absolute runner.guard
+            # first would bind another install's backend on a
+            # host carrying an older runner (see freebsd_confine's
+            # own import of this module).
+            from . import freebsd_confine as _freebsd
         except ImportError:
-            from guard import freebsd_confine as _freebsd  # type: ignore
+            try:
+                from runner.guard import freebsd_confine as _freebsd
+            except ImportError:
+                from guard import freebsd_confine as _freebsd  # type: ignore
         _freebsd.validate_freebsd_block(block["freebsd"])
     # The macOS backend's settings, the same way.
     if "macos" in block:
         try:
-            from runner.guard import macos_confine as _macos
+            from . import macos_confine as _macos
         except ImportError:
-            from guard import macos_confine as _macos  # type: ignore
+            try:
+                from runner.guard import macos_confine as _macos
+            except ImportError:
+                from guard import macos_confine as _macos  # type: ignore
         _macos.validate_macos_block(block["macos"])
     return True
 

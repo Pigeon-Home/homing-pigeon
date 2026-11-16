@@ -177,9 +177,20 @@ import time
 import uuid
 
 try:
-    from runner.guard import sandbox as _sandbox
-except ImportError:  # script mode: runner/ is on sys.path
-    from guard import sandbox as _sandbox  # type: ignore
+    # The sibling in the package this module was itself loaded
+    # under: runner.guard in the package, guard when the seed
+    # loaded this tree's guard/ by path. An absolute runner.guard
+    # first would bind ANOTHER install's sandbox on a host whose
+    # site-packages carry an older runner -- the mix the FreeBSD
+    # node battery caught (2026-11-16): this backend, from the
+    # tree, calling the stale sandbox's interpreter_binds, which
+    # predates always_visible, so the seed's trial job died.
+    from . import sandbox as _sandbox
+except ImportError:
+    try:
+        from runner.guard import sandbox as _sandbox
+    except ImportError:  # script mode: runner/ is on sys.path
+        from guard import sandbox as _sandbox  # type: ignore
 
 # The per-process ceiling: applied as both the virtual-memory and
 # the data-size resource limit at spawn.

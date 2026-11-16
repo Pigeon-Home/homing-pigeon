@@ -34,6 +34,25 @@ import zipfile
 from xml.sax.saxutils import escape
 
 
+def _running_as_package():
+    """True when this file is running as part of the runner
+    package -- imported as runner.ops.install by the setup
+    wizard, the frozen runner or the tests. False when it was
+    started by path (a script, or runpy under any name): then
+    the only runner a loader here may speak for is the tree
+    this file was started from. An importable `runner` package
+    on such a host is another install -- the FreeBSD node's
+    site-packages carried 3.15.20.19 beside the tree under
+    test -- and taking the package route there binds that
+    install's modules into the seed: the whole stale runner
+    pulled in at import time, and the tree's jail backend left
+    calling the stale sandbox, whose interpreter_binds
+    predates always_visible. The mix the node battery caught
+    (2026-11-16); the by-path seed must use one copy, its own.
+    """
+    return (__package__ or "").split(".")[0] == "runner"
+
+
 def _load_by_path(path):
     import importlib.util
     spec = importlib.util.spec_from_file_location("hp_atomicio", path)
@@ -51,9 +70,10 @@ def _import_atomicio():
     (`--add-data runner/guard/atomicio.py`), because importing it as
     `runner.guard.atomicio` would run `runner/__init__.py`, which
     imports the whole runner -- more than the installer bundles.
-    Then the package (`runner.guard`), the install layout (`guard`
-    beside `ops`), and this script started by path from a source
-    tree.
+    Then the package (`runner.guard`) -- only when this file is
+    itself running as part of that package, per
+    _running_as_package -- the install layout (`guard` beside
+    `ops`), and this script started by path from a source tree.
     """
     frozen = getattr(sys, "_MEIPASS", None)
     if frozen:
@@ -62,11 +82,12 @@ def _import_atomicio():
             return _load_by_path(cand)
         # The frozen runner imports this module too; it bundles the
         # whole package, so the import below is the one that works.
-    try:
-        from runner.guard import atomicio
-        return atomicio
-    except ImportError:
-        pass
+    if _running_as_package():
+        try:
+            from runner.guard import atomicio
+            return atomicio
+        except ImportError:
+            pass
     try:
         from guard import atomicio  # type: ignore
         return atomicio
@@ -86,11 +107,12 @@ def _import_panic():
         cand = os.path.join(frozen, "pigeon-guard", "panic.py")
         if os.path.isfile(cand):
             return _load_by_path(cand)
-    try:
-        from runner.guard import panic
-        return panic
-    except ImportError:
-        pass
+    if _running_as_package():
+        try:
+            from runner.guard import panic
+            return panic
+        except ImportError:
+            pass
     try:
         from guard import panic  # type: ignore
         return panic
@@ -2513,7 +2535,9 @@ _BY_PATH_MARK = "_loaded_by_path_for_the_seed"
 def _import_freebsd_confine():
     """runner/guard/freebsd_confine.py, or None when it cannot be had.
 
-    The package (`runner.guard`), then the install layout
+    The package (`runner.guard`) -- taken only when this file
+    is itself running as part of that package, per
+    _running_as_package -- then the install layout
     (`guard` beside `ops`), then this script started by path
     from a source tree. The backend imports its sibling
     (`guard.sandbox`) by one of the first two names, and the
@@ -2529,11 +2553,12 @@ def _import_freebsd_confine():
     """
     if getattr(sys, "_MEIPASS", None):
         return None
-    try:
-        from runner.guard import freebsd_confine
-        return freebsd_confine
-    except ImportError:
-        pass
+    if _running_as_package():
+        try:
+            from runner.guard import freebsd_confine
+            return freebsd_confine
+        except ImportError:
+            pass
     try:
         from guard import freebsd_confine  # type: ignore
         return freebsd_confine
@@ -2631,11 +2656,12 @@ def _import_macos_confine():
         cand = os.path.join(frozen, "pigeon-guard", "macos_confine.py")
         if os.path.isfile(cand):
             return _load_macos_by_path(cand)
-    try:
-        from runner.guard import macos_confine
-        return macos_confine
-    except ImportError:
-        pass
+    if _running_as_package():
+        try:
+            from runner.guard import macos_confine
+            return macos_confine
+        except ImportError:
+            pass
     try:
         from guard import macos_confine  # type: ignore
         return macos_confine

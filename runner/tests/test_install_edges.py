@@ -7,6 +7,7 @@ import contextlib
 import io
 import json
 import os
+import shutil
 import socket
 import sys
 import tempfile
@@ -1245,3 +1246,244 @@ class InstallSmallLegsTest(unittest.TestCase):
                         ["install.py", "--dir", dst]):
                 self.assertEqual(inst.main(), 7)
             copy.assert_not_called()
+
+
+
+# --- the stale-install import mix (FreeBSD node battery, 2026-11-16) --
+#
+# The node's site-packages carried an older installed runner
+# (3.15.20.19: no FreeBSD backend at all, and a sandbox whose
+# interpreter_binds predates always_visible) beside the tree under
+# test. Started by path there, the seed's imports mixed the two
+# copies: _import_atomicio took the package route into the stale
+# install (dragging the whole stale runner into sys.modules), the
+# backend itself came from the tree by path, and the backend's
+# `from runner.guard import sandbox` bound the stale sandbox, so
+# the trial job died on the signature mismatch. On a guest with no
+# installed copy the same test was green. The rule the fix pins:
+# a copy started by path speaks for its own tree only, and a guard
+# module takes its siblings from the package it was loaded under.
+
+_REPO = os.path.dirname(os.path.dirname(os.path.dirname(
+    os.path.abspath(__file__))))
+_INSTALL_PY = os.path.join(_REPO, "runner", "ops", "install.py")
+_GUARD_DIR = os.path.join(_REPO, "runner", "guard")
+
+_STALE_FILES = {
+    os.path.join("runner", "__init__.py"):
+        '"""A stale installed runner."""\n'
+        "from runner import corestub as _corestub  # noqa: F401\n"
+        "STALE = True\n",
+    os.path.join("runner", "corestub.py"):
+        '"""Dragged in by the stale package init."""\nSTALE = True\n',
+    os.path.join("runner", "guard", "__init__.py"):
+        '"""A stale guard package."""\nSTALE = True\n',
+    os.path.join("runner", "guard", "atomicio.py"):
+        '"""Stale atomicio."""\nSTALE = True\n\n\n'
+        "def write_json(path, data):\n"
+        "    raise RuntimeError('the stale atomicio must not be used')\n",
+    os.path.join("runner", "guard", "panic.py"):
+        '"""Stale panic."""\nSTALE = True\nWORDLIST = []\n',
+    os.path.join("runner", "guard", "sandbox.py"):
+        '"""Stale sandbox: interpreter_binds predates always_visible."""\n'
+        "STALE = True\n\n\n"
+        "def interpreter_binds(resolved, extra_ro_binds=()):\n"
+        "    return []\n",
+}
+
+_STALE_BACKEND = (
+    '"""A stale FreeBSD backend, answering for the old install."""\n'
+    "STALE = True\nIS_FREEBSD_BACKEND = True\n")
+
+
+def _write_tree(root, files):
+    for rel, text in files.items():
+        path = os.path.join(root, rel)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as fh:
+            fh.write(text)
+
+
+class StaleInstallByPathTest(unittest.TestCase):
+    """The by-path seed on a host carrying an older installed
+    runner, in a subprocess shaped like LiveSeedTest's driver.
+    The stale package rides PYTHONPATH here and rode
+    site-packages on the node; the import-system fact under test
+    is the same -- a foreign `runner` package is importable and
+    the tree's root is not on the path."""
+
+    DRIVER = (
+        "import inspect, json, runpy, sys\n"
+        "ns = runpy.run_path(sys.argv[1], "
+        "run_name='hp_install_by_path')\n"
+        "def pulled():\n"
+        "    return sorted(m for m in sys.modules\n"
+        "                  if m.split('.')[0] in "
+        "('runner', 'ops', 'guard'))\n"
+        "out = {'at_import': pulled()}\n"
+        "ns['freebsd_seed_probe']({})\n"
+        "out['after_probe'] = pulled()\n"
+        "out['atomicio'] = ns['_atomicio'].__file__\n"
+        "out['panic'] = ns['_import_panic']().__file__\n"
+        "backend = ns['_import_freebsd_confine']()\n"
+        "out['backend'] = backend.__file__\n"
+        "out['backend_stale'] = getattr(backend, 'STALE', False)\n"
+        "sandbox = backend._sandbox\n"
+        "out['sandbox'] = sandbox.__file__\n"
+        "out['params'] = sorted(inspect.signature(\n"
+        "    sandbox.interpreter_binds).parameters)\n"
+        "try:\n"
+        "    sandbox.interpreter_binds('/usr/bin/python3',\n"
+        "        always_visible=('/usr',))\n"
+        "    out['trial'] = 'ok'\n"
+        "except TypeError as e:\n"
+        "    out['trial'] = 'TypeError: %s' % e\n"
+        "print(json.dumps(out, sort_keys=True))\n")
+
+    def _run_by_path(self, stale_extra=None):
+        import subprocess
+        td = tempfile.mkdtemp(prefix="hp-stale-")
+        self.addCleanup(shutil.rmtree, td, ignore_errors=True)
+        stale = os.path.join(td, "stale")
+        files = dict(_STALE_FILES)
+        if stale_extra:
+            files.update(stale_extra)
+        _write_tree(stale, files)
+        env = dict(os.environ)
+        env["PYTHONPATH"] = stale
+        done = subprocess.run(
+            [sys.executable, "-c", self.DRIVER, _INSTALL_PY],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=300, cwd=td, env=env)
+        text = done.stdout.decode("utf-8", "replace")
+        self.assertEqual(done.returncode, 0,
+                         done.stderr.decode("utf-8", "replace"))
+        return json.loads(text.splitlines()[-1])
+
+    def test_the_by_path_seed_uses_its_own_tree_only(self):
+        said = self._run_by_path()
+        self.assertEqual(said["at_import"], [])
+        self.assertEqual(said["after_probe"], [])
+        self.assertEqual(said["atomicio"],
+                         os.path.join(_GUARD_DIR, "atomicio.py"))
+        self.assertEqual(said["panic"],
+                         os.path.join(_GUARD_DIR, "panic.py"))
+        self.assertEqual(said["backend"],
+                         os.path.join(_GUARD_DIR, "freebsd_confine.py"))
+        self.assertFalse(said["backend_stale"])
+        self.assertEqual(said["sandbox"],
+                         os.path.join(_GUARD_DIR, "sandbox.py"))
+        self.assertIn("always_visible", said["params"])
+        self.assertEqual(said["trial"], "ok")
+
+    def test_a_stale_backend_of_its_own_is_not_taken_either(self):
+        said = self._run_by_path({
+            os.path.join("runner", "guard", "freebsd_confine.py"):
+                _STALE_BACKEND})
+        self.assertEqual(said["at_import"], [])
+        self.assertEqual(said["backend"],
+                         os.path.join(_GUARD_DIR, "freebsd_confine.py"))
+        self.assertFalse(said["backend_stale"])
+        self.assertEqual(said["sandbox"],
+                         os.path.join(_GUARD_DIR, "sandbox.py"))
+        self.assertEqual(said["trial"], "ok")
+
+    def test_the_mode_predicate_names_the_two_ways(self):
+        import importlib.util
+        self.assertFalse(inst._running_as_package())
+        spec = importlib.util.spec_from_file_location(
+            "hp_install_by_path", _INSTALL_PY)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertFalse(mod._running_as_package())
+        if _REPO not in sys.path:
+            sys.path.insert(0, _REPO)
+        from runner.ops import install as packaged
+        self.assertTrue(packaged._running_as_package())
+
+
+class SiblingPackageTest(unittest.TestCase):
+    """A guard module loaded under a synthetic package (the seed's
+    by-path shape) takes its siblings from that package, even
+    while a foreign runner.guard stands in sys.modules offering
+    the same names."""
+
+    def _load_package(self, name, files, modname):
+        import importlib
+        import importlib.util
+        td = tempfile.mkdtemp(prefix="hp-sibling-")
+        self.addCleanup(shutil.rmtree, td, ignore_errors=True)
+        folder = os.path.join(td, name)
+        _write_tree(folder, files)
+        spec = importlib.util.spec_from_file_location(
+            name, os.path.join(folder, "__init__.py"),
+            submodule_search_locations=[folder])
+        package = importlib.util.module_from_spec(spec)
+        sys.modules[name] = package
+        self.addCleanup(
+            lambda: [sys.modules.pop(m, None) for m in list(sys.modules)
+                     if m == name or m.startswith(name + ".")])
+        spec.loader.exec_module(package)
+        return importlib.import_module(name + "." + modname)
+
+    def _trap(self, dotted, module):
+        saved = sys.modules.get(dotted)
+        sys.modules[dotted] = module
+        def restore():
+            if saved is None:
+                sys.modules.pop(dotted, None)
+            else:
+                sys.modules[dotted] = saved
+        self.addCleanup(restore)
+
+    def test_freebsd_confine_binds_its_own_packages_sandbox(self):
+        import types
+        trap = types.ModuleType("runner.guard.sandbox")
+        trap.MARK = "foreign"
+        self._trap("runner.guard.sandbox", trap)
+        with open(os.path.join(_GUARD_DIR, "freebsd_confine.py")) as fh:
+            backend_src = fh.read()
+        mod = self._load_package("guardshape", {
+            "__init__.py": "",
+            "sandbox.py": 'MARK = "sibling"\n',
+            "freebsd_confine.py": backend_src,
+        }, "freebsd_confine")
+        self.assertEqual(mod._sandbox.MARK, "sibling")
+
+    def test_sandbox_validates_with_its_own_packages_backends(self):
+        import types
+        for backend in ("freebsd_confine", "macos_confine"):
+            trap = types.ModuleType("runner.guard." + backend)
+            def boom(block, _b=backend):
+                raise AssertionError("the foreign %s answered" % _b)
+            setattr(trap, "validate_" + backend.replace(
+                "_confine", "") + "_block", boom)
+            self._trap("runner.guard." + backend, trap)
+        with open(os.path.join(_GUARD_DIR, "sandbox.py")) as fh:
+            sandbox_src = fh.read()
+        stub = ("CALLS = []\n\n\n"
+                "def validate_freebsd_block(block):\n"
+                "    CALLS.append(('freebsd', block))\n\n\n"
+                "def validate_macos_block(block):\n"
+                "    CALLS.append(('macos', block))\n")
+        mod = self._load_package("guardshape2", {
+            "__init__.py": "",
+            "freebsd_confine.py": stub,
+            "macos_confine.py": stub,
+            "sandbox.py": sandbox_src,
+        }, "sandbox")
+        self.assertTrue(mod._validate_confinement_block(
+            {"freebsd": {"a": 1}, "macos": {"b": 2}}))
+        import importlib
+        calls = importlib.import_module(
+            "guardshape2.freebsd_confine").CALLS
+        calls += importlib.import_module(
+            "guardshape2.macos_confine").CALLS
+        self.assertEqual(sorted(calls),
+                         [("freebsd", {"a": 1}), ("macos", {"b": 2})])
+
+    def test_the_package_backend_takes_the_package_sandbox(self):
+        if _REPO not in sys.path:
+            sys.path.insert(0, _REPO)
+        from runner.guard import freebsd_confine, sandbox
+        self.assertIs(freebsd_confine._sandbox, sandbox)
