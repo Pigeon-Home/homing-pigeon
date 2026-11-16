@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.29 - 2026-11-16
+
+- core: Q199 is fixed -- the reader folds CRLF to the stored bytes, so a Windows checkout builds the recorded zip figure
+- desk: Q199 re-tested under rule 8 -- the second seat stands on Linux, the ship lane on the Windows rig
+
 ## 3.16.26.28 - 2026-11-16
 
 - desk: Q199 suppositions are recorded -- the live zip pin, recorded before the remedy
