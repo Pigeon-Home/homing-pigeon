@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.12 - 2026-11-16
+
+- docs: FUTURE.md updates by the conductor: two items trimmed, the cyber turret line reworded, and host-network topology rules for local helper bots coordinated by the Oracle added
+
 ## 3.17.26.11 - 2026-11-16
 
 - docs: README setup paragraph cleanup by the conductor: browser sign-in recommended, so the account password never lands in a config
