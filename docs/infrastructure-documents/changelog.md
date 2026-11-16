@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.31 - 2026-11-16
+
+- desk: the forum carries the whole handoff for posting the -04 Internet-Drafts
+
 ## 3.16.26.30 - 2026-11-16
 
 - desk: Q199 closed -- the hosted Windows leg answers green on a build carrying the fix, on the 3.16.26.29 main build
