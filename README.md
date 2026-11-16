@@ -118,15 +118,12 @@ That ceiling is the thing to understand. By default it is
 **attested**: the SI does not see what the job printed. It questions
 the Oracle rather than inspecting output, and gets back HMAC-signed
 *attestations* — "did the tests pass?", "does the output contain
-secrets?" — proofs about the output that reveal nothing else. It's
-the interactive-proof shape applied at the trust boundary — prove
-things about your data without showing your data — without any
-zero-knowledge proving machinery: the attestation is an HMAC, and
-the runner itself is trusted. Full output is there when the owner
-wants it: set the ceiling to `full` in the config and the SI sees
-what the job printed, which is what makes the runbook loop above
-most direct — at the price of everything the job can print crossing
-the wire.
+secrets?" — proofs about the output that reveal nothing else: the
+interactive-proof shape applied at the trust boundary, the proof an
+HMAC and the runner itself trusted, no zero-knowledge machinery.
+Full output is there when the owner wants it: set the ceiling to
+`full` in the config and the SI sees what the job printed — at the
+price of everything the job can print crossing the wire.
 
 ```
   Cloud SI                                  Your machine
@@ -175,10 +172,9 @@ are the tools it invokes on PATH? does the script's shape fit this
 OS? Its default latitude is **repair**: the one mechanical fix
 those checks can prove — an absent interpreter, replaced with the
 platform default when the script's shape fits it — is applied,
-and never silently. The result says what changed and carries
-`received_digest`, the digest of the job exactly as received, and
-the repaired job is judged again before it runs. When a job asks
-for an opinion, the prediction rides its result too. The owner's
+and never silently. The result says what changed, carries
+`received_digest` — the job exactly as received, by digest — and
+the repaired job is judged again before it runs. The owner's
 `oracle_opinion_mode` is both the default latitude and the
 ceiling: a job may ask for less, never more. Design:
 `docs/steady/design/oracle-opinion-design.md`.
@@ -187,6 +183,7 @@ ceiling: a job may ask for less, never more. Design:
 but only needs `sh` is repaired and runs on a minimal system like
 Alpine (BusyBox, no bash); a job that really needs bash or PowerShell
 is left alone. Every repair is stated in the result.
+
 [![minimal-userland](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/minimal-userland.yml/badge.svg)](https://github.com/Pigeon-Home/homing-pigeon/actions/workflows/minimal-userland.yml)
 
 ### Operating modes
@@ -196,12 +193,10 @@ the cloud AI that sends jobs. **The owner** is you, the person who
 installed this on the box and edits its `config.json`. **The Oracle**
 is the part of the agent on the box that works for the owner: it
 watches jobs, and pages the owner. The **runner** is the part that
-executes what the SI sends.
-
-Five owner-set knobs decide the posture. They are independent; these
-are three coherent postures, not the only combinations. Each is a
-choice about trust: how closely the Oracle watches, and how much the
-box may refuse, is the owner's to pick per machine.
+executes what the SI sends. Five owner-set knobs decide the posture;
+they are independent, and these are three coherent postures, not the
+only combinations — each a choice about trust, the owner's to pick
+per machine.
 
 ```
   knob                  just run it  eyes open    lockdown
@@ -213,80 +208,41 @@ box may refuse, is the owner's to pick per machine.
   max_result_view       attested     attested     attested
 ```
 
-**just run it** (the config-file defaults): the owner trusts the
-signer, so the box just works. The runner executes any signed job and
-returns the result as attestations. The Oracle still reviews every job (its
-notes ride in the result) and logs resource pressure, but it never
-pages the owner and never blocks a job. A fresh install sits one
-notch tighter on the judge: on non-Pi hardware the installer applies the
-`password-only` profile (judge `advisory`, view `attested`) unless
-`--profile` names another or `--no-profile` is passed, and a
-Raspberry Pi, or any install from the pi-light archive, gets
-`pi-light`. See
-docs/steady/use/use-runbook.md Job 7.
-
-**eyes open** (recommended): same trust, but the Oracle watches on the
-owner's behalf. The runner executes and attaches the policy verdict to
-each result, and the SI gets attestations only. The Oracle reviews,
-fuses sensor alerts, and pages the owner when a trigger trips. This
-posture is about seeing; any acting belongs to the remediation
-reflexes below, which have their own switch.
-
-**lockdown**: the box refuses what the policy rejects. The runner
-refuses those jobs, the SI gets attestations, and the Oracle pages the
-owner on every refusal. Nothing runs unless the policy allows it.
+**just run it** (the config-file defaults): any signed job runs;
+results return as attestations; the Oracle reviews and logs but
+never pages and never blocks. **eyes open** (recommended): the
+Oracle watches on your behalf — verdicts ride each result, alerts
+fuse, trips page you. **lockdown**: the box refuses what the policy
+rejects, and pages you on every refusal. A fresh install starts one
+notch tighter than the defaults, under an installer profile. The
+postures and the profiles in full:
+`docs/infrastructure-documents/oracle/configuring-oracle.md`.
 
 Two more dials stand outside the table. **Remediation**
 (`remediation_mode`, default `deterministic`) watches each job
 while it runs: on a closed list of tripwires — confinement
 escape, a process storm past the ceiling, an undeclared
 credential-store reference in something the job produced — it
-kills the job's process tree, quarantines its outputs (moved,
-never deleted; the owner releases them), refers suspect files to the
-box's own antivirus for the antivirus's verdict, and files the
-whole story with the DRI, which pages the owner when paging is on.
-That happens in every posture above. `oracle` mode additionally
-lets the local model order a kill for a lesser divergence;
-`off` watches and records only, and the page is all that
-happens. **The opinion latitude** (`oracle_opinion_mode`,
-default `repair`) is the other dial — it is covered under
-Opinions, above.
+kills the job's process tree, quarantines its outputs, refers
+suspect files to the box's antivirus, and files the story with
+the DRI, which pages the owner. `oracle` mode lets the local
+model order a kill for a lesser divergence; `off` watches and
+records only. Design:
+`docs/steady/design/remediation-design.md`. **The opinion
+latitude** (`oracle_opinion_mode`, default `repair`) is the other
+dial — it is covered under Opinions, above.
 
-Confinement ships in two kinds, and they are not the same kind
-of thing:
-
-- **A snapshot is not a sandbox.** The workspace check compares
-  file metadata in the workspace's parent directory (the
-  workspace's siblings) before and after the run, then attests `confined_to_workspace`: it *detects* a job
-  that reached outside, it does not prevent one. The walk stops
-  at 50000 files, so a huge tree yields a partial snapshot and
-  the log records the cap being hit. The key is `workspace_root`.
-- **The confinement backends** actually wall the job in, each
-  in its platform's own way. On Linux, bubblewrap runs the job
-  with `/usr` read-only, no network, and only the job workdir
-  (at `/work`) and a throwaway tmpfs `/tmp` writable. On
-  Windows, the job is created under a restricted token at low
-  integrity and assigned to a Job Object with a 512 MiB
-  per-process memory ceiling — that is not a filesystem
-  sandbox: a confined job can still read any path its token
-  can read, and a field test recorded an escape read
-  succeeding. On FreeBSD, each job runs in its own jail: the
-  host's system directories mounted read-only, the work
-  directory the only writable mount, a fresh `/tmp`, no
-  network at all, and a 512 MiB per-process ceiling applied
-  at spawn. The key is `security.modes.confinement`; the mode
-  defaults to `enforce`, and at `enforce` the startup gate
-  probes the platform's backend and refuses to start when it
-  cannot engage (macOS has no backend yet, and refuses). A
-  fresh install on Windows states the mode at `audit` in the
-  seeded config, for the operator to step up deliberately. A
-  fresh install on FreeBSD asks the jail backend's probe on
-  that machine: where it passes the mode stays at `enforce`
-  and an account made for the jobs alone is named as the job
-  user, and where it does not the mode is stated at `audit`
-  with the reason. A job whose confinement cannot engage at
-  `enforce` is refused, never run weaker. See SECURITY.md
-  and docs/support-matrix.md.
+**Confinement comes in two kinds, and they are not the same kind
+of thing.** The workspace snapshot *detects*: it compares file
+metadata around the run and attests `confined_to_workspace` — a
+record, not a cage (PROTOCOL.md section 9.4). The confinement
+backends *prevent*: bubblewrap on Linux, a restricted token and
+Job Object on Windows, a per-job jail on FreeBSD, a Seatbelt
+profile on macOS. The key is `security.modes.confinement`; the
+mode defaults to `enforce`, and at `enforce` a job whose
+confinement cannot engage is refused, never run weaker. Each
+backend's reach and limits: SECURITY.md and
+docs/support-matrix.md.
 
 **Local inference.** Point the Oracle at a model running on your
 own box and the SI can `ask` questions in plain English — *"why
@@ -294,38 +250,33 @@ did the tests fail?"* — answered locally, with only the answer
 crossing the boundary. The endpoint must be loopback (fail
 closed), and every answer is truncated, redacted, and
 secret-scanned before it's sent. The SI gets useful answers,
-and your raw data never leaves the machine.
+and your raw data never leaves the machine. Setup:
+`docs/infrastructure-documents/oracle/configuring-oracle.md`.
 
 **Two Oracle modes.** With `oracle_mode: "llm"` (the default) the
 Oracle narrates with the local model above. With `"deterministic"` —
 the Pi Light mode, for a box with no model worth running — no model
 is installed or ever called: the watch, the wake gate, and the briefs
 still run, but briefs and answers are assembled from the box's own
-records (the job index, retained jobs, notable lines, the log tail),
-and the `ask` op stays off. The mode reads live from `config.json`;
-flipping it is the upgrade path when a box gains a model worth
-running. See `docs/infrastructure-documents/oracle/configuring-oracle.md`.
+records, and the `ask` op stays off. The mode reads live from
+`config.json`; flipping it is the upgrade path when a box gains
+a model worth running. See
+`docs/infrastructure-documents/oracle/configuring-oracle.md`.
 
-**The Oracle learns from its own calls.** Before a job runs, its
-opinion — *this will probably succeed here; this will faceplant,
-and here is why* — is frozen. The moment the job finishes, the call
-is compared against what actually happened, and the comparison is
-written to a local ledger (`oracle-learning.jsonl`) immediately;
-the next job's opinion is formed with that ledger read fresh, no
-restart. Two kinds of lessons accumulate: **verified facts**,
-derived by code from execution records (an interpreter was absent
-and the fix worked; a named tool is not on this box), and — only
-when the owner enables the model channel — **model candidates**,
-distilled from a job's outcome and output, labeled uncorroborated
-wherever they surface until later verified outcomes corroborate
-them. A lesson never authorizes anything by itself: a repair still
-requires the repair latitude, the mismatch re-verified on the
-current job, and the repaired job judged again before it runs.
-Set `oracle_learning` to false to turn the loop off. Design:
-`docs/steady/design/oracle-opinion-design.md`. Measured on a real rig in
-deterministic mode: 1,967 of 2,248 reconciled calls right (87.5%), 0 lessons, every
-miss a job that simply ran `exit 3`, which leaves no fact for a
-model-less Oracle to learn ([live examples](docs/steady/use/live-examples.md)).
+**The Oracle learns from its own calls.** Each opinion is frozen
+before the job runs, scored against what actually happened the
+moment the job finishes, and written to a local ledger
+(`oracle-learning.jsonl`); the next job's opinion is formed with
+that ledger read fresh, no restart. Lessons are **verified
+facts**, derived by code from execution records, and — only when
+the owner enables the model channel — **model candidates**,
+labeled uncorroborated wherever they surface until later verified
+outcomes corroborate them. A lesson never authorizes anything by
+itself. Set `oracle_learning` to false to turn the loop off.
+Design: `docs/steady/design/oracle-opinion-design.md`. Measured
+on a real rig in deterministic mode: 1,967 of 2,248 reconciled
+calls right (87.5%), 0 lessons, every miss a job that simply ran
+`exit 3` ([live examples](docs/steady/use/live-examples.md)).
 
 Full spec in PROTOCOL.md (sections 9–12). Oracle fields are optional
 members of a `"v": 1` message. They are not a separate message version.

@@ -144,6 +144,39 @@ Every flag below replaces one config value for that process only. `config.json` 
 
 `--workers COUNT` and `--faster` are the two older one-process switches of the same kind: workers is read from the command line first, and `--faster` swaps the inference model for the process without touching the file.
 
+## The postures
+
+A posture is a named bundle of settings. Five knobs decide it —
+`judge`, `sensors`, `resources`, `dri` and `max_result_view` —
+and they are independent: the three named postures are coherent
+combinations, not the only ones. The grid of the three stands in
+README.md, "Operating modes".
+
+- **just run it** — the config-file defaults. The runner
+  executes any signed job and returns the result as
+  attestations. The Oracle still reviews every job (its notes
+  ride in the result) and logs resource pressure, but it never
+  pages the owner and never blocks a job.
+- **eyes open** — the recommended posture. The runner executes
+  and attaches the policy verdict to each result, and the SI
+  gets attestations only. The Oracle reviews, fuses sensor
+  alerts, and pages the owner when a trigger trips. This
+  posture is about seeing; any acting belongs to remediation,
+  which has its own switch (`remediation_mode`, documented in
+  `docs/steady/design/remediation-design.md`).
+- **lockdown** — the box refuses what the policy rejects. The
+  runner refuses those jobs, the SI gets attestations, and the
+  Oracle pages the owner on every refusal. Nothing runs unless
+  the policy allows it.
+
+A fresh install sits one notch tighter than `just run it` on
+the judge: on non-Pi hardware the installer applies the
+`password-only` profile (judge `advisory`, view `attested`)
+unless `--profile` names another or `--no-profile` is passed,
+and a Raspberry Pi, or any install from the pi-light archive,
+gets `pi-light`. See docs/steady/use/use-runbook.md Job 7, and
+"Applying a profile" below.
+
 ## Deployment profiles
 
 A profile is an ordinary config bundle that captures what matters on a particular box.

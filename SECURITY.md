@@ -578,7 +578,9 @@ same way. On Windows: a Job Object (512 MiB per process), a
 restricted token and a low integrity level, audited as
 `windows: job_object + restricted_token + low_integrity` —
 no filesystem namespace isolation, so a confined job can
-still read any path its token can read. On FreeBSD: a
+still read any path its token can read. A fresh Windows
+install states the mode at `audit` in the seeded config, for
+the operator to step up deliberately. On FreeBSD: a
 per-job jail with a read-only root, the host's system
 directories mounted read-only below it, the work directory
 and a bounded `/tmp` the only two trees that take a write,
