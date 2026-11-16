@@ -128,6 +128,7 @@ def renderings(facts):
         "tokens_millions": str(millions),
         "tokens_millions_word": "%d million" % millions,
         "as_of": facts["as_of"],
+        "lines_tracked": format(facts["lines_tracked"], ","),
         "core_files": str(facts["core_files"]),
         "core_lines": format(facts["core_lines"], ","),
         "core_lines_nonblank": format(

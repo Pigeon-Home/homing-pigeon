@@ -123,6 +123,26 @@ class TestFigureSlots(unittest.TestCase):
     def test_slots_and_display_line_match_the_facts(self):
         self.assertEqual([], RF.check(REPO))
 
+    def test_renderings_carry_the_tracked_line_count(self):
+        # The facts' lines_tracked is the whole repository's
+        # line count over tracked files; its rendering is the
+        # comma-grouped figure, so a slot can carry it.
+        facts = RF.parse_facts(_read(STATISTICS))
+        self.assertEqual(format(facts["lines_tracked"], ","),
+                         RF.renderings(facts)["lines_tracked"])
+
+    def test_protocol_carries_the_line_count_slot(self):
+        # PROTOCOL.md's fair warning states the tree's line
+        # count as its own statistic, in its own slot, so the
+        # refresh step keeps it and a change to it diffs as
+        # one line.
+        facts = RF.parse_facts(_read(STATISTICS))
+        slots = dict(RF.find_slots(
+            _read(os.path.join(REPO, "PROTOCOL.md"))))
+        self.assertEqual(
+            format(facts["lines_tracked"], ","),
+            slots.get("lines_tracked"))
+
     def test_slots_are_present_in_each_evergreen_doc(self):
         facts = RF.parse_facts(_read(STATISTICS))
         wanted = RF.renderings(facts)
