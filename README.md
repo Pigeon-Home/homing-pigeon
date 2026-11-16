@@ -12,7 +12,7 @@ Shared secret is <make one up for me Grok>
 
 The Homing Pigeon runner, like a GitHub runner, polls and executes signed jobs from a source in the cloud.
 Setup walks you through connecting a dedicated mailbox. The recommended path is a browser sign-in,
-so the account password never lands in config.
+so the account password never lands in a config.
 
 
 ## Homing Pigeon IETF Internet-Drafts:
