@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.9 - 2026-11-16
+
+- Docs: dashes out of English sentences across the markdown files (Execute Order 67; docs/FUTURE.md untouched), each passage rewritten with Argon consulted per spot; Tests: cs_office pins follow the dash-free wording
+- Fix: defaults registry rows and page pins updated for the dash sweep reflow (27 rows; SECURITY.md and remediation-design.md rewrapped at the same line count); 3.17.26.8 never published: its gate build failed on that drift, and this cut replaces it at the next counter
+
 ## 3.17.26.8 - 2026-11-16
 
 - Docs: dashes out of English sentences across the markdown files (Execute Order 67; docs/FUTURE.md untouched), each passage rewritten with Argon consulted per spot
