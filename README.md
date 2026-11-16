@@ -89,9 +89,7 @@ email), but email stays the default; a credentialed transport adds its
 own required gate beside the signature, which makes it the more secure
 option even though it is not the default. (A sensor on the same box
 also delivers its signed alerts directly, by local inbox or loopback
-socket: alerts, not jobs.) Want another pipe? Transports are
-extensions, and the ones we'd love to see are sketched in
-[docs/FUTURE.md](docs/FUTURE.md).
+socket: alerts, not jobs.)
 
 **Runbooks, not prompts.** The SI doesn't chat about the task; it ships
 a runbook: deterministic steps, each with a check that proves the step
