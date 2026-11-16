@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.13 - 2026-11-16
+
+- docs: README operating modes become skim tables and Proven platforms moves under Setup, at the conductor's word; the conductor's README edit and the docs/checklist.txt deletion ride along
+- tests: platform proof asks for the full view in so many words (the Q183 item 6 miss), with ungated pins beside the proof
+
 ## 3.17.26.12 - 2026-11-16
 
 - docs: FUTURE.md updates by the conductor: two items trimmed, the cyber turret line reworded, and host-network topology rules for local helper bots coordinated by the Oracle added
