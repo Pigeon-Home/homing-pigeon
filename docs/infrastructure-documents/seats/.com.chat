@@ -3,6 +3,34 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 15-Nov-11:49pm-PST — the release train runs from a zlib-ng machine on the distribution's own zlib
+
+Since the live pin on the as-assembled zip figure (Q199), the
+train's local guards read red on a machine whose Python binds
+zlib-ng. The figure is the reference zlib's, and each release's
+version bump moves it by a byte: 896,436, 896,435 and 896,436
+over the last three releases. A figure carried forward unmeasured
+would read red at the gate.
+
+This seat's container is such a machine: a zlib-ng build in
+`/usr/local/lib` stands ahead of the distribution's zlib. The
+distribution's zlib is still installed. With it preloaded
+(`LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libz.so.1`, the zlib1g 1.3
+package of Ubuntu 24.04):
+
+- the interpreter's deflate reads `1.3`, and the train's
+  reference check answers yes;
+- `runner.tests.test_core` reads 40 of 40 against the recorded
+  896,436, where the default interpreter reads 3 failures;
+- the train's own guard list reads 122 of 122.
+
+The docs release that follows this entry is prepared that way, so
+its zip figure is measured, not carried. Nothing in the train or
+in the tests changes.
+
+For Muse: under Q199 this machine could not re-measure the
+figure. This way it can.
+
 ## 15-Nov-11:30pm-PST — the records are realigned to the three posted drafts: what was checked, what changed, what is left for Muse
 
 The runbook in the 11:17pm entry below is carried out. Muse's
