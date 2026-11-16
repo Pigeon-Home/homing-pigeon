@@ -72,6 +72,53 @@ class TestFactsBlock(unittest.TestCase):
         self.assertIn("gh attestation verify", text)
 
 
+class TestThirdSnapshot(unittest.TestCase):
+    # Two parallel lanes each landed a third snapshot for
+    # 2026-11-16 minutes apart on 2026-11-16; the record keeps
+    # exactly one -- the conductor-picked projected view, with
+    # its exponential-approach curve and its interactive
+    # original beside the record -- and the duplicate logistic
+    # view, its section and its 2 assets, stands removed. These
+    # tests pin that reconciliation so a second third snapshot
+    # cannot land unnoticed again.
+    KEPT_HEADING = ("## The growth of the measure, projected: "
+                    "a third snapshot as of 2026-11-16")
+    DUPLICATE_HEADING = ("## The growth of the measure, "
+                         "continued: a third snapshot as of "
+                         "2026-11-16")
+
+    def test_exactly_one_third_snapshot_for_2026_11_16(self):
+        headings = [line for line in _read(STATISTICS).splitlines()
+                    if line.startswith("## ")
+                    and "third snapshot as of 2026-11-16" in line]
+        self.assertEqual([self.KEPT_HEADING], headings)
+
+    def test_kept_third_snapshot_precedes_where_the_project_stands(self):
+        lines = _read(STATISTICS).splitlines()
+        self.assertLess(lines.index(self.KEPT_HEADING),
+                        lines.index("## Where the project stands"))
+        self.assertNotIn(self.DUPLICATE_HEADING, lines)
+
+    def test_kept_snapshot_assets_stand(self):
+        text = _read(STATISTICS)
+        self.assertIn("security-tokens-growth-2026-11-16.svg", text)
+        self.assertTrue(os.path.isfile(os.path.join(
+            REPO, "assets", "security-tokens-growth-2026-11-16.svg")))
+        self.assertTrue(os.path.isfile(os.path.join(
+            os.path.dirname(STATISTICS),
+            "security-tokens-asymptotic-view.html")))
+
+    def test_duplicate_snapshot_assets_are_gone(self):
+        text = _read(STATISTICS)
+        self.assertNotIn("security-tokens-asymptotic-2026-11-16",
+                         text)
+        for name in ("security-tokens-asymptotic-2026-11-16.svg",
+                     "security-tokens-asymptotic-2026-11-16.html"):
+            self.assertFalse(
+                os.path.exists(os.path.join(REPO, "assets", name)),
+                name)
+
+
 class TestFigureSlots(unittest.TestCase):
     def test_slots_and_display_line_match_the_facts(self):
         self.assertEqual([], RF.check(REPO))
