@@ -642,9 +642,9 @@ system shell) then sets a ceiling on each job process's address
 map, 512 MiB above the size a bare process starts at on that
 Mac, soft and hard, so the job cannot raise it unless it is
 root, which a job is only under a runner run as root with no
-job user named. The audit record names `macos: seatbelt_profile
-+ no_network + spawn_resource_limits`. It needs no root, and a
-release's macOS binaries engage it as a runner started from
+job user named. The audit record names
+`macos: seatbelt_profile + no_network + spawn_resource_limits`.
+It needs no root, and a release's macOS binaries engage it as a
 source does. Of the session's services a job may ask the user
 database who a user is, and no other: the clipboard is refused,
 to a read and to a write. It holds no ceiling on a job as a

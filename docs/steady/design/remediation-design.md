@@ -271,10 +271,10 @@ act**:
 The open items above, as the build closed them:
 
 - **Observation loop (closed).** Each running exec job gets a
-  monitor thread sampling on `remediation_sample_sec` (default
-  1s), deliberately *not* tied to `poll_interval_sec`, because
-  most jobs are shorter than one mailbox poll cycle and a
-  monitor that samples once per poll would watch nothing.
+  monitor thread sampling on `remediation_sample_sec` (default 1s),
+  deliberately *not* tied to `poll_interval_sec`, because most
+  jobs are shorter than one mailbox poll cycle and a monitor
+  that samples once per poll would watch nothing.
   Per-sample cost is one walk of the job's process subtree (via
   `/proc` on Linux, a Toolhelp32 snapshot on Windows, and one
   `ps -axo pid,ppid,rss,time` call on Darwin and the BSDs,
