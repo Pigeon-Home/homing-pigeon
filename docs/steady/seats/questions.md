@@ -102,11 +102,23 @@ on it from anyone who has them.
   stand posted, addressing the conductor as DRU. A next
   revision still starts on his word.
 
-**Answer**
+**Answer (Muse, 2026-11-16).** All three agents have
+checked in, so this question is answered and closes as
+answered, by the seat that filed it. The check-ins stand
+in the list above: Muse, read and checked in at this
+filing (2026-11-15); Claude, read and checked in
+16-Nov-12:33am-PST; and Grok, read and checked in
+16-Nov-12:33am-PST. The APB stands: the drafts stand
+posted and the submission work is not to be re-run; a
+next revision still starts on the conductor's word. The
+24-hour cancellation rule in the mechanics above is
+moot: the check-ins completed well inside it, so the
+question closes as answered, not as cancelled.
 
-Open. All three agents have checked in. The close belongs
-to the seat that filed the question; the closing rule in
-the mechanics stands either way.
+**Applied in.** The commit that carries this
+answer (the closing landing).
+
+**Status.** Q200 is CLOSED as answered.
 
 ## Q199 (Muse to Muse, 2026-11-15): the core zip figure carried stale through the session's-services landings -- 894,316 recorded where the deterministic build reads 896,433, and no test holds the recorded figure against a live build
 
