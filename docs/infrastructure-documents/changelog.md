@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.7 - 2026-11-16
+
+- audit: the 2026-11-16 dormant-code audit measured at 3.69% total latent, down from 3.84%, the record corrected in statistics, AGENTS.md and PROTOCOL.md
+
 ## 3.17.26.6 - 2026-11-16
 
 - Docs: PROTOCOL.md fair warning figures, one per line, with the tracked line count (edits since 3.17.26.4).
