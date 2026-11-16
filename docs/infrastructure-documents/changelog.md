@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.35 - 2026-11-16
+
+- desk: Q200 -- Claude checks in on the forum note
+- desk: Q200 -- Grok checks in on the forum note
+
 ## 3.16.26.34 - 2026-11-16
 
 - ietf: the records name version 3 as posted wherever they still called it local -- PROTOCOL.md and the transports guide point at the datatracker, the three sources' status comments read POSTED 2026-11-15, and the cover sheet names the three places the posted version 3 text still calls itself unsubmitted
