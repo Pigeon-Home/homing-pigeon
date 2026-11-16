@@ -109,7 +109,7 @@ class CoreListTest(unittest.TestCase):
         # the briefing's contradiction mark and the posture
         # stamp producer; the Gemini token count above still
         # describes the 2026-11-04 assembly.
-        self.assertEqual(897257, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(898123, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -260,8 +260,13 @@ class CoreListTest(unittest.TestCase):
         # runner/ops/install.py, 11 of
         # runner/guard/freebsd_confine.py and 11 of
         # runner/guard/sandbox.py (the seed's own tree).
-        self.assertEqual(69523, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(63022, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # Again that day, after the retained store came to
+        # keep two records whose job ids differ only in
+        # case on a filesystem that folds case, by 62
+        # lines of runner/runner.py (the retained store's
+        # case-folded sibling).
+        self.assertEqual(69585, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(63082, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
@@ -486,7 +491,7 @@ class CoreLinesTest(unittest.TestCase):
 
 class CorePartsTest(unittest.TestCase):
     def test_the_recorded_breakdown_stays_named(self):
-        self.assertEqual(7205, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
+        self.assertEqual(7267, core.AS_ASSEMBLED_PART_LINES["runner/runner.py"])
         self.assertEqual(core.AS_ASSEMBLED_LINES,
                          sum(core.AS_ASSEMBLED_PART_LINES.values()))
 

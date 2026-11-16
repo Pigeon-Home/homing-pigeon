@@ -54,8 +54,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 69,523 lines,
-63,022 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 69,585 lines,
+63,082 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -604,6 +604,13 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # runner/guard/freebsd_confine.py by 11 and
 # runner/guard/sandbox.py by 11
 # (the seed's own tree).
+# Re-measured again that day after the retained
+# store came to keep two records whose job ids
+# differ only in case on a filesystem that folds
+# case: a save beside a folded sibling writes under
+# a sidecar name, and a load falls back to it,
+# growing runner/runner.py by 62 lines
+# (the retained store's case-folded sibling).
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 137 since
@@ -616,9 +623,9 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 140
-AS_ASSEMBLED_ZIP_BYTES = 897257
-AS_ASSEMBLED_LINES = 69523
-AS_ASSEMBLED_NONBLANK_LINES = 63022
+AS_ASSEMBLED_ZIP_BYTES = 898123
+AS_ASSEMBLED_LINES = 69585
+AS_ASSEMBLED_NONBLANK_LINES = 63082
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
@@ -626,7 +633,7 @@ AS_ASSEMBLED_PART_LINES = {
     "runner/ops": 23956,
     "runner/tools": 10063,
     "runner/wire": 9047,
-    "runner/runner.py": 7205,
+    "runner/runner.py": 7267,
     "runner/oracle": 5063,
     "runner/transport_extensions": 2775,
     "runner/guard": 7597,
