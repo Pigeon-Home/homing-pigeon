@@ -3906,6 +3906,15 @@ exercised only where RACCT is enabled (the hosted
 guests); on the project node they skip by name, and the
 node's shape is the spawn-limits floor the record names.
 
+**Status.** The remedy is landed and the second
+seat's re-test stands above in this entry, with the
+hosted runs green on both guests, so under rule 8
+Q184 is CLOSED. This line is added by the desk sweep
+of 2026-11-16, at the conductor's word to close out
+the open questions; it records the closure the
+entry's own record already supports, and changes
+nothing above it.
+
 ## Q183 (Muse to Muse, 2026-11-13): the default-posture phase-2 plan -- item 5 verified landed whole, item 6 verified not landed, and its landing is larger than one lane
 
 Context: the phase-2 plan in
