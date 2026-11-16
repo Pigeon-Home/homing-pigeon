@@ -6,7 +6,7 @@ refresh was measured on.
 
 The recorded line, in the display form settled for publication:
 
-26 mil security tokens, 6,000 commits, 1,500,000 lines at 96.16% non-latent code
+26 mil security tokens, 6,000 commits, 1,500,000 lines at 96.31% non-latent code
 
 ## What stands behind each figure
 
@@ -37,18 +37,16 @@ The recorded line, in the display form settled for publication:
   the counting layer has refused an incomplete history
   ever since, and this figure is the first the fixed
   tool measured.
-- Non-latent: 96.16%, from the fresh dormant-code audit
-  ([dormant-code-audit-2026-11-13.md](dormant-code-audit-2026-11-13.md), 2026-11-13,
-  measured before and after the Q172 fold): total latent
-  code held at 3.84% of the tree — 3.24% in near copies,
-  0.66% in templated lines (the lines of a written-out
-  list, equal once the one varying token is masked; the
-  measure is new with this audit, and the tree before the
-  fold read 8.36% total latent under it) and 0.02% in
-  exact copies. The audit supersedes the 2026-11-12
-  audit's figures (96.9%, from 3.1% near copies by the
-  window measure alone), whose record stands in
-  [dormant-code-audit-2026-11-12.md](dormant-code-audit-2026-11-12.md); the
+- Non-latent: 96.31%, from the fresh dormant-code audit
+  ([dormant-code-audit-2026-11-16.md](dormant-code-audit-2026-11-16.md), 2026-11-16):
+  total latent code held at 3.69% of the tree — 3.11% in
+  near copies, 0.63% in templated lines (the lines of a
+  written-out list, equal once the one varying token is
+  masked) and 0.02% in exact copies. The audit supersedes
+  the 2026-11-13 audit's figures (96.16%, from 3.84%
+  total latent, measured before and after the Q172
+  fold), whose record stands in
+  [dormant-code-audit-2026-11-13.md](dormant-code-audit-2026-11-13.md); the
   family-by-family analysis stands
   in [duplication-audit.md](duplication-audit.md).
 
@@ -73,10 +71,10 @@ stays their source of truth.
   "commits": 6059,
   "display_commits": 6000,
   "display_lines": 1500000,
-  "non_latent_percent": 96.16,
-  "latent_near_percent": 3.24,
+  "non_latent_percent": 96.31,
+  "latent_near_percent": 3.11,
   "latent_exact_percent": 0.02,
-  "audit_date": "2026-11-13",
+  "audit_date": "2026-11-16",
   "core_files": 137,
   "core_lines": 68356,
   "core_lines_nonblank": 61975,
@@ -273,7 +271,7 @@ and version 3 at -00, each expiring 19 May 2027.
 
 The measure itself is unchanged throughout: the whole tree,
 counted by the project's own estimator, with duplicate and
-latent code held at 3.84% of the tree at the audit of
-2026-11-13 — under the 5% line the project holds itself to —
+latent code held at 3.69% of the tree at the audit of
+2026-11-16 — under the 5% line the project holds itself to —
 so the figure continues to stand for the tested surface of
 the suite and the protocol rather than for bulk.
