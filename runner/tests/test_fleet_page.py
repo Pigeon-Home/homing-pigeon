@@ -387,8 +387,9 @@ class DocsPublicAddressTest(unittest.TestCase):
 
     def test_the_scan_allows_versions_and_non_global_quads(self):
         lines = _declared_version_lines()
-        for quad in ("3.16.25.5", "3.15.18.7", "127.0.0.1",
-                     "10.0.0.5", "192.0.2.1", "0.0.0.0"):
+        for quad in ("3.16.25.5", "3.15.18.7", "3.17.25.5",
+                     "127.0.0.1", "10.0.0.5", "192.0.2.1",
+                     "0.0.0.0"):
             self.assertEqual(
                 [], _public_addresses_in("x %s y" % quad, lines),
                 quad)
@@ -396,8 +397,10 @@ class DocsPublicAddressTest(unittest.TestCase):
     def test_the_scan_rejects_version_shaped_non_versions(self):
         lines = _declared_version_lines()
         # A quad on no declared version line is an address,
-        # however version-shaped it looks.
-        for quad in ("3.17.25.5", "2.28.30.118"):
+        # however version-shaped it looks. The example stood
+        # on the 17 line until the 3.17 line opened with
+        # 3.17.26.1; it stands on the 18 line now.
+        for quad in ("3.18.25.5", "2.28.30.118"):
             self.assertEqual(
                 [quad], _public_addresses_in("x %s y" % quad, lines),
                 quad)
@@ -406,7 +409,8 @@ class DocsPublicAddressTest(unittest.TestCase):
         # spelling either): the version check itself refuses it.
         self.assertFalse(_is_project_version("03.16.25.5", lines))
         self.assertTrue(_is_project_version("3.16.25.5", lines))
-        self.assertFalse(_is_project_version("3.17.25.5", lines))
+        self.assertTrue(_is_project_version("3.17.25.5", lines))
+        self.assertFalse(_is_project_version("3.18.25.5", lines))
 
     def test_the_scan_leaves_sys_path_unchanged(self):
         # Q174 third case: classification used to insert REPO
