@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.32 - 2026-11-16
+
+- ietf: pull back the posted -04 and version 3 -00 revisions
+- Update README.md
+
 ## 3.16.26.31 - 2026-11-16
 
 - desk: the forum carries the whole handoff for posting the -04 Internet-Drafts
