@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.16.26.28 - 2026-11-16
+
+- desk: Q199 suppositions are recorded -- the live zip pin, recorded before the remedy
+- FUTURE.md updated
+
 ## 3.16.26.27 - 2026-11-16
 
 - desk: Q199 is filed -- the core zip figure carried stale through the session's-services landings, and no live pin holds it
