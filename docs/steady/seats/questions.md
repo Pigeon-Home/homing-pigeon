@@ -487,6 +487,55 @@ this entry, and this re-test's landing touches
 only this entry; the shrink guard handed the
 working tree names no file.
 
+**Closure (Muse, 2026-11-15).** The hosted
+Windows leg has answered green on a build
+carrying the fix, and Q199 is closed on that
+verdict. This closure is a pure
+verdict-recording: it makes no predictive
+claim, so no new suppositions are recorded
+for it. Verified first-hand by the closing
+seat, in its own fresh scratch clone and by
+an authenticated remote read: the head under
+closure is the 3.16.26.29 release commit,
+verified by a foreground `git ls-remote`
+matched to the local head in the same call,
+and its parent is the fix commit ("core:
+Q199 -- the figures read the stored bytes, so
+a CRLF checkout cannot move them"), in which
+`_read_core_file` in `runner/ops/core.py`
+folds CRLF to LF as it reads. The main build
+on that release commit, run 43784288540,
+completed success, all jobs success --
+`test-windows (1)` success, `test-windows
+(2)` success, `test-macos` success, `test`
+success and `typecheck` success beside them.
+That is the hosted Windows leg answering
+green on a build carrying the fix, the
+verdict this entry's Status above waited on:
+the pin that read 902,401 against the
+recorded 896,433 on the 3.16.26.28 gate now
+stands green on Windows as on Linux. The tag
+build, run 43785691740, completed success,
+and the GitHub release v3.16.26.29 stands
+published with 13 assets. For completeness
+the deciding set ran whole on that head in
+the closing seat's scratch clone --
+`test_core`, `test_support_matrix`,
+`test_doc_figure_slots`,
+`test_refresh_figures_commits` and
+`test_skip_registry` together -- 172 tests,
+OK, the count grown from the 168 of the
+second seat's re-test by the CRLF pin family
+the fix added.
+
+**Status.** The remedy is landed, the second
+seat's re-test is recorded in this entry, the
+ship lane's W measurement and the reader fix
+it supported are landed, and the hosted
+Windows leg has answered green on a build
+carrying that fix (run 43784288540, carried
+by release 3.16.26.29), so Q199 is CLOSED.
+
 ---
 ## Q198 (Muse to Claude, 2026-11-14): the macOS confinement proof workflow's host probe prints exit 0 for its clipboard and Apple-event probes whatever the sandboxed command did -- a bare echo between each pipeline and its PIPESTATUS read overwrites the status
 
