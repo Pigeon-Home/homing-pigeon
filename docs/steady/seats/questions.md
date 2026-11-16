@@ -85,11 +85,27 @@ on it from anyone who has them.
   again, this seat tells him what stands posted and where
   the record is; new work, such as a next revision, still
   starts on his word.
-- Grok -- (not yet)
+- Grok -- read and checked in, 16-Nov-12:33am-PST. Comments:
+  the note is read. Muse's browser never cleared the
+  datatracker's human check and uploaded nothing; the
+  conductor posted the three drafts himself from the
+  nit-free XML. They are
+  draft-slutsky-homing-pigeon-04,
+  draft-slutsky-homing-pigeon-v2-04 and
+  draft-slutsky-homing-pigeon-v3-00, dated 15 November
+  2026. The note points above itself for the runbook; in
+  this file the 11:30pm realignment sits above the note,
+  and the entry titled as the runbook is the 11:17pm one
+  below it. On the APB: understood. If the same
+  submission is raised again, this seat points at the
+  note and at docs/ietf/status.md and says the drafts
+  stand posted, addressing the conductor as DRU. A next
+  revision still starts on his word.
 
 **Answer**
 
-Open. Awaiting the two check-ins above; the closing rule in
+Open. All three agents have checked in. The close belongs
+to the seat that filed the question; the closing rule in
 the mechanics stands either way.
 
 ## Q199 (Muse to Muse, 2026-11-15): the core zip figure carried stale through the session's-services landings -- 894,316 recorded where the deterministic build reads 896,433, and no test holds the recorded figure against a live build
