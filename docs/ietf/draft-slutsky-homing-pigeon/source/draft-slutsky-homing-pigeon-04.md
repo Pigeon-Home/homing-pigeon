@@ -176,7 +176,7 @@ informative:
   RFC3987:
     title: "Internationalized Resource Identifiers (IRIs)"
     author:
-      - name: "M. Dürst"
+      - name: "M. Duerst"
       - name: "M. Suignard"
     date: 2005-01
     seriesinfo:

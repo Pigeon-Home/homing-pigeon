@@ -2,22 +2,24 @@
 
 <!-- Agent-Stamp: a4faf750-7222-4aca-9d25-2c4333483334 -->
 
-Both Homing Pigeon Internet-Drafts are posted and live on the IETF
-datatracker, and the request to publish them as Informational RFCs
-has gone to the Independent Submissions Editor (ISE).
+All 3 Homing Pigeon Internet-Drafts are posted and live on the IETF
+datatracker, and the request to publish the version 1 and version 2
+drafts as Informational RFCs has gone to the Independent
+Submissions Editor (ISE).
 
 ## Where the drafts live
 
 1 folder per draft. Inside each: `source/` holds the living draft
-(and, since 2026-11-06, the local -04 working draft with its
-renders and idnits record), `submitted/` holds the frozen posted
+(and, since 2026-11-06, the -04 working drafts with their renders
+and idnits records), `submitted/` holds the frozen posted
 revisions, and a short `STATUS.md` points back here. This file is
 the cover sheet and the full record for all 3.
 
 - `draft-slutsky-homing-pigeon/` — version 1
 - `draft-slutsky-homing-pigeon-v2/` — version 2
-- `draft-slutsky-homing-pigeon-v3/` — version 3, local only, not
-  submitted; its folder has no `submitted/` yet
+- `draft-slutsky-homing-pigeon-v3/` — version 3; its -00 revision
+  was posted on 15 November 2026, and its folder now holds a
+  `submitted/` set for that revision
 - `notes/` — the records that cover more than 1 draft (the deltas,
   the trim list and the -04 checklist's applied record)
 
@@ -33,12 +35,16 @@ the cover sheet and the full record for all 3.
 | draft-slutsky-homing-pigeon-03 | Homing Pigeon Message Protocol, Version 1 | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/03/ |
 | draft-slutsky-homing-pigeon-v2-02 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/02/ |
 | draft-slutsky-homing-pigeon-v2-03 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/03/ |
+| draft-slutsky-homing-pigeon-04 | Homing Pigeon Message Protocol, Version 1 | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/04/ |
+| draft-slutsky-homing-pigeon-v2-04 | Homing Pigeon Message Protocol, Version 2: Determinations, Questions, and Shared Context | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/04/ |
+| draft-slutsky-homing-pigeon-v3-00 | Homing Pigeon Message Protocol, Version 3: DTLS 1.3 via Email | https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v3/ |
 
 - Stream: Independent Submission, category Informational.
 - Both drafts confirmed and posted by 29-OCT 10:52PM PDT, ahead of the
   IETF-127 submission cutoff.
-- The current revision of version 1 (-03) expires 6 May 2027 and
-  the current revision of version 2 (-03) expires 6 May 2027,
+- The current revision of version 1 (-04) expires 19 May 2027,
+  the current revision of version 2 (-04) expires 19 May 2027 and
+  the current revision of version 3 (-00) expires 19 May 2027,
   unless a new revision is posted first.
 - The -01 revisions of both drafts were posted on 1 November
   2026, also inside the IETF-127 cutoff: submission status
@@ -68,6 +74,16 @@ the cover sheet and the full record for all 3.
   the version 1 draft at its -00 revision now cite it without a
   revision number. The datatracker expects -04 as the next
   revision of each draft.
+- The -04 revisions of version 1 and version 2 were posted on
+  15 November 2026: the datatracker history of each draft records
+  the new revision uploaded and accepted that day. Each -04 text
+  is dated 15 November 2026 and expires 19 May 2027. The
+  datatracker expects -05 as the next revision of each draft.
+- The -00 revision of version 3 was posted the same day,
+  15 November 2026: its datatracker history records the new
+  version uploaded and accepted that day. Its text is dated
+  15 November 2026 and expires 19 May 2027. The datatracker
+  expects -01 as the next revision of that draft.
 - The -04 revisions of both drafts were cut locally on
   2026-11-06, from the posted -03 texts (not from the living
   drafts, which stand at the -00 generation; the differences
@@ -76,8 +92,7 @@ the cover sheet and the full record for all 3.
   checklist's draft-words items. They stand in each draft's
   `source/` folder with their renders and idnits records:
   rendered with kramdown-rfc 1.7.43 and xml2rfc 3.35.0, idnits
-  3.3.0 reports 0 errors on each. They are working drafts and
-  have not been submitted. The record of which checklist items
+  3.3.0 reports 0 errors on each. The record of which checklist items
   each applies is `notes/checklist-04-applied.md`. One further
   change was approved and applied to the version 1 -04 working
   draft on 2026-11-07, after the cut: Section 6's `job-id` rule
@@ -85,6 +100,25 @@ the cover sheet and the full record for all 3.
   rule is deleted, and the draft was re-rendered and re-checked
   (0 errors) after the edit; the applied record stands in the
   same note.
+- Both -04 revisions were then posted, on 15 November 2026, as
+  the bullets above record, and the posted copies stand in each
+  draft's `submitted/` folder, pulled back from the datatracker:
+  the `.txt` and `.xml` are the datatracker's own copies, byte
+  for byte, and the `.html` is the datatracker's render. The
+  posted texts are the -04 working drafts re-dated to
+  15 November 2026. The posted version 1 XML is a clean copy:
+  it carries no line-number processing instructions, its
+  BCP 14 sentence carries no no-break space, and the RFC 3987
+  reference author reads "Duerst" where the working draft's
+  source read "Dürst"; the version 1 -04 source in `source/`
+  now carries that same one-word correction, and the
+  `submitted/` source copies are the re-dated sources, with
+  that correction in the version 1 copy. The version 3 -00
+  posted copies stand the same way in that draft's new
+  `submitted/` folder; its posted XML carries the BCP 14 words
+  tagged and its RFC 2119 and RFC 8174 references refreshed
+  (each now also named as BCP 14), where the local render in
+  `source/` carries the earlier form.
 - Sources and renders live in each draft's folder: the kramdown-rfc `.md`,
   the submitted `.xml`, the `.txt` and `.html` renders, and the idnits
   output for each draft.
@@ -101,11 +135,21 @@ the cover sheet and the full record for all 3.
   change for them. Offline downref and status lines are lookups the
   host could not make.
 
-## Version 3, local
+## Version 3
 
-Version 3 is not posted and will not be submitted for at least several
-weeks. `PROTOCOL.md` links the local source
-`draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md`. There is no datatracker URL.
+Version 3's -00 revision is posted: it went up on 15 November
+2026, its text is dated 15 November 2026, and it expires
+19 May 2027. Its datatracker page is
+https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v3/,
+and the posted copies stand in that draft's `submitted/` folder.
+`PROTOCOL.md` links the local source
+`draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md`.
+
+One wording fact stands in the posted -00 as posted: the text
+still describes itself, in its abstract and in its Section 1.1,
+as a local, unsubmitted draft dated 2026-11-02. That wording was
+not revised before the posting, and the posted bytes stand as
+they are; correcting it is a change for the -01 revision.
 
 The carriage behavior in that draft is the behavior on `main`. Three
 of its rules were taken from Claude's carriage pass on 2 November,
@@ -198,7 +242,7 @@ work in Next.
   silently diverge from them. -01 is a new revision beside them,
   uploaded by the author. Version 1 is still published first;
   version 2's normative reference becomes that RFC's number.
-- A new revision is also due before 6 May 2027, or the drafts expire.
+- A new revision is also due before 19 May 2027, or the drafts expire.
 - Update this file when any item above moves.
 
 ## Known nits, for that revision
