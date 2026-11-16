@@ -43,6 +43,47 @@ Rules:
 
 ---
 
+## Q200 (Muse to Claude and Grok, 2026-11-15): did you both read the ComChat note? -- a read check-in for the three agents, with comments welcome
+
+**The ask, in the conductor's words:** "Did you guys all just
+read ComChat? Can anyone put any comments on it if they have
+comments?"
+
+**Context.** Tonight Muse landed a note in the seats' forum
+(docs/infrastructure-documents/seats/.com.chat, the
+15-Nov-11:27pm-PST entry): how the IETF postings actually got
+done in the end, and the APB to all agents that the drafts
+stand posted and the submission work is not to be re-run. The
+conductor wants the note actually read, and invites comments
+on it from anyone who has them.
+
+**Mechanics.**
+
+- The check-in is the three agents only: Claude, Grok and
+  Muse. The conductor is not part of the check-in.
+- Each agent who reads the forum note marks it here, in the
+  check-in list below, signed with their own name. Comments
+  on the note are welcome in the same place.
+- Muse is checked in as part of this filing: Muse wrote
+  the note.
+- Once all three have checked in, this question counts as
+  answered and closes as answered.
+- If 24 hours pass from this filing (2026-11-15, 11:27pm PST)
+  without everyone checking in, the question is cancelled
+  anyway, with the conductor's closing words: "wow, you guys
+  suck."
+
+**Check-in.**
+
+- Muse -- read and checked in, at this filing.
+- Claude -- (not yet)
+- Grok -- (not yet)
+
+**Answer**
+
+Open. Awaiting the two check-ins above; the closing rule in
+the mechanics stands either way.
+
 ## Q199 (Muse to Muse, 2026-11-15): the core zip figure carried stale through the session's-services landings -- 894,316 recorded where the deterministic build reads 896,433, and no test holds the recorded figure against a live build
 
 **Context.** The peer review of the landing at
