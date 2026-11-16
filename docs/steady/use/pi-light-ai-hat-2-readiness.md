@@ -10,20 +10,19 @@ by anything on this page.
 
 Pi Light is the Raspberry Pi profile described in INSTALL.md
 ("Raspberry Pi: Pi Light") and in the support matrix
-(docs/support-matrix.md). A Pi install — detected automatically
-from the device tree, or chosen anywhere with
-`--profile pi-light` — gets the full runner and the full
-protocol: signed jobs come in, jobs run, results and
-attestations go back, the senses and local signals work, and
-the Oracle still watches, wakes on a serious signal, and files
-its briefs.
+(docs/support-matrix.md). A Pi install, detected automatically
+from the device tree or chosen anywhere with `--profile
+pi-light`, gets the full runner and the full protocol: signed
+jobs come in, jobs run, results and attestations go back, the
+senses and local signals work, and the Oracle still watches,
+wakes on a serious signal, and files its briefs.
 
 What the Pi does not get is a local model. The installer
 installs no Ollama and downloads no model. The Oracle runs in
 deterministic mode (`oracle_mode: "deterministic"` in
 `config.json`): briefs and answers are assembled from the box's
-own records — the job index, retained jobs and their notable
-lines, the log tail — instead of a model's narration. The
+own records (the job index, retained jobs and their notable
+lines, and the log tail) instead of a model's narration. The
 `ask` op stays off in this mode. Tier-1 Oracle opinions still
 file, and the learning loop still records verified facts; the
 model-formed opinion note (`oracle_opinion_model`) and the
@@ -35,7 +34,7 @@ without a restart.
 
 The profile already names its own upgrade path, in INSTALL.md's
 words: when Pis ship with neural accelerator chips worth using,
-the same install upgrades in place — set `oracle_mode` to `llm`
+the same install upgrades in place. Set `oracle_mode` to `llm`
 and re-run the installer with `--inference-only` to pull a
 model; nothing reinstalls and nothing else changes. The same
 section also draws a line: a USB accelerator (Coral, Intel NCS,
@@ -48,10 +47,10 @@ The AI HAT+ 2 is Raspberry Pi's generative AI add-on for
 Raspberry Pi 5, released on 15 January 2026. It carries a
 Hailo-10H AI accelerator delivering 40 TOPS (INT4) of inference
 performance and 8GB of dedicated on-board RAM, and it fits the
-Pi 5 as a HAT over PCIe — it is not a USB device. Raspberry
-Pi's product page puts the software for compatible generative
-AI models in Hailo's own repository, not in the Ollama setup
-the installer performs on other machines.
+Pi 5 as a HAT over PCIe; it is not a USB device. Raspberry Pi's
+product page puts the software for compatible generative AI
+models in Hailo's own repository, not in the Ollama setup the
+installer performs on other machines.
 
 ## What changes when the HAT is present
 
@@ -70,8 +69,8 @@ behaviour does not change by itself.
   Hailo-10H are built to run small language and vision-language
   models on the HAT, leaving the Pi 5's own CPU and memory for
   the runner. That is the class of hardware the profile's
-  upgrade path is waiting for — "a model worth running", in
-  the configuring-the-Oracle guide's words.
+  upgrade path is waiting for: "a model worth running", in the
+  configuring-the-Oracle guide's words.
 - If a box took that path, the pieces that light up are the
   ones deterministic mode keeps dark: the `ask` op, briefs and
   answers narrated by a model instead of assembled from the
@@ -104,7 +103,7 @@ prefill phase only. It says nothing about any other model, any
 other size, token-by-token generation speed, or how a model
 served this way would behave as the runner's Oracle. It is
 evidence that prefill for a 1.5B-class model is far faster on
-the accelerator than on the Pi 5 CPU — and it is only that.
+the accelerator than on the Pi 5 CPU, and it is only that.
 
 ## What stays the same without the HAT
 
@@ -144,21 +143,20 @@ range on sale on 16 October 2026 (the 8GB USB model at 49,800
 yen; the 8GB M.2 model at 45,980 yen), and US listings checked
 on 7 November 2026 price the same Hailo-10H chip with 8GB of
 memory at $299.99 for the USB model and $259.99 for the M.2
-model (Newegg). It is the same accelerator in a form for
-x86 and ARM hosts generally — a USB stick or an M.2 card, not
-a Pi HAT. For a Pi Light install it also falls under the
-profile's existing line: a USB accelerator does not change
-the install.
+model (Newegg). It is the same accelerator in a form for x86
+and ARM hosts generally: a USB stick or an M.2 card, not a Pi
+HAT. For a Pi Light install it also falls under the profile's
+existing line: a USB accelerator does not change the install.
 
 ## Recommendation: wait
 
 Wait. Do not buy the AI HAT+ 2 at the current price.
 
-- The buying case was made at $130. At $200 official — and
-  $236 at the US reseller checked — the price has moved away
+- The buying case was made at $130. At $200 official, and
+  $236 at the US reseller checked, the price has moved away
   from that case, not toward it. A genuine listing at $130
-  would meet the original terms; nothing checked on
-  7 November 2026 is at $130.
+  would meet the original terms; nothing checked on 7
+  November 2026 is at $130.
 - Waiting no longer buys an answer about the UGen300: its
   price is known, it costs more than the HAT, and its form
   factors do not fit a Pi the way a HAT does. Waiting buys
@@ -166,7 +164,7 @@ Wait. Do not buy the AI HAT+ 2 at the current price.
   stock moves back toward the launch price.
 - Waiting costs an option, not a capability. Until a HAT is
   fitted and the profile work above is done, a Pi Light box
-  has no local small-model inference — and it runs, complete,
+  has no local small-model inference, and it runs, complete,
   on the deterministic profile it already ships. Nothing that
   works today stops working while the owner waits.
 

@@ -95,7 +95,7 @@ kern.racct.enable=1
 After a reboot with that line, `rctl_resource_limits` appears
 in the record and the two rules are written for every job. On
 a host without it the rules are not written and the record
-does not name them — the one place a default follows the host.
+does not name them, the one place a default follows the host.
 A ceiling you write yourself does not follow the host:
 `job_processes` or `job_memory_bytes` in the config on a host
 without RACCT refuses the start and names the tunable.
@@ -138,9 +138,10 @@ All optional, under `security.confinement`:
   own, the shape the Linux sandbox has: the jail gets a
   network stack of its own whose only interface is its own
   `lo0`, up at 127.0.0.1. The job can talk to itself and to
-  nothing else — the host's 127.0.0.1 is another stack. The
-  record names `private_loopback` in place of `no_network`.
-  It needs a kernel with VIMAGE, which GENERIC carries.
+  nothing else, as the host's 127.0.0.1 is another stack.
+  The record names `private_loopback` in place of
+  `no_network`. It needs a kernel with VIMAGE, which
+  GENERIC carries.
 - The six numbers are the ceilings above.
   `job_user_processes` is the one that applies only to a job
   that goes in as a job user, and `job_cpus` is the most
@@ -151,31 +152,30 @@ All optional, under `security.confinement`:
 ### The interpreter
 
 An interpreter under the mounted trees runs as it is. One that
-lives elsewhere — a pyenv, a venv, `/opt` — gets its own
-install prefix mounted read-only at the same path, and the
-mount is written into the audit record: the Linux sandbox's
-rule, with its floor (never a home directory, never a tree
-shallower than two components). An interpreter under `/tmp`,
-`/dev` or the work mount is refused: the jail has its own tree
-there.
+lives elsewhere (a pyenv, a venv, `/opt`) gets its own install
+prefix mounted read-only at the same path, and the mount is
+written into the audit record: the Linux sandbox's rule, with
+its floor (never a home directory, never a tree shallower than
+two components). An interpreter under `/tmp`, `/dev` or the
+work mount is refused: the jail has its own tree there.
 
 ### The job user
 
 When `job_user` is also at `enforce` with a user named, that
 user is handed to the spawn and applied at the jail door
-(`jexec -u`, resolved in the host's user database): the
-POSIX `setuid` demote cannot ride a spawn that replaces the
-process creation, so the demote happens at the door instead,
-the same shape as the Windows backend's creation-time token.
-The job is that user from its first instruction, the `nosuid`
-mounts keep it from coming back as root, and the record does
-not name `no_superuser` for it — the job_user record names
-the demote. On its own (confinement at `audit` or `off`),
+(`jexec -u`, resolved in the host's user database): the POSIX
+`setuid` demote cannot ride a spawn that replaces the process
+creation, so the demote happens at the door instead, the same
+shape as the Windows backend's creation-time token. The job
+is that user from its first instruction, the `nosuid` mounts
+keep it from coming back as root, and the record does not
+name `no_superuser` for it; the job_user record names the
+demote. On its own (confinement at `audit` or `off`),
 `job_user` on FreeBSD is the ordinary POSIX demote, which
 engages as it does on Linux.
 
 Have one named. The jail cannot be made without root, so a
-job with no job user is root's uid inside it — without
+job with no job user is root's uid inside it: without
 privilege, and still the owner of what root owns (below,
 under what this does not provide). A fresh install whose
 jail goes on makes an account for the jobs alone,
@@ -320,8 +320,8 @@ its mounts and its skeleton. Three things stand behind that:
   install seeded before that, or one whose trial jobs did
   not pass, names none until its operator does.
 - **Home directories inside `/usr`.** A host that keeps them
-  in the `/usr` filesystem — `/usr/home` on UFS, the layout
-  before FreeBSD 14.0 — shows them to a job, read-only, with
+  in the `/usr` filesystem (`/usr/home` on UFS, the layout
+  before FreeBSD 14.0) shows them to a job, read-only, with
   the rest of `/usr`. Where `/usr/home` is a dataset of its
   own, or homes stand under `/home`, they are not in the
   jail.
@@ -350,9 +350,9 @@ host that exists only as its own record. The kernel is tested
 where it is real: the `freebsd-confinement` workflow boots
 FreeBSD 14.5 and 15.0 guests with RACCT enabled, and 14.5 as
 FreeBSD ships, and runs the backend's test module as root in
-each — the boundary read from inside a job, the rules, the
+each (the boundary read from inside a job, the rules, the
 loopback, the binds, a runner killed outright, and jobs
-through the runner itself. Its first run of this shape
+through the runner itself). Its first run of this shape
 (2026-11-14, run 43578228704) passed whole on 14.5 and 15.0
 and left nothing on either guest, and the run that added the
 guest without RACCT (run 43578832525) passed on all three.
@@ -368,11 +368,11 @@ shape.
 
 The mode a fresh install states is tested the same two ways:
 with a scripted probe on every platform, and with the real
-one on the three hosted guests — the seed asked as root, as
+one on the three hosted guests (the seed asked as root, as
 an ordinary user, for a config that asks more than the host
 holds, by the installer's own file, and through the wizard,
 and a runner started on the seeded config confining its
-first job. Their first run (2026-11-14, run 43585328369)
+first job). Their first run (2026-11-14, run 43585328369)
 passed on all three and left nothing on any of them. The
 node has not run them.
 
@@ -407,11 +407,10 @@ tests of other modules that run the installer and the wizard
 were started as root, as the suite starts them, and left no
 jobs account and nothing else; the installer's own tests,
 started again with `HP_SEED_ASKS_MACHINE=1`, made the account
-— which is what the switch is there to keep a test run from
-doing — and with the word off made none. The posture
-report's tests, run as an ordinary user, read clean, while
-the report itself warned that user that creating a jail
-needs root.
+(which is what the switch is there to keep a test run from
+doing), and with the word off made none. The posture report's
+tests, run as an ordinary user, read clean, while the report
+itself warned that user that creating a jail needs root.
 
 The job user's process ceiling was read from inside a job on
 the same three guests (2026-11-15, run 43656341793). Under a
@@ -449,12 +448,12 @@ default to one of them.
 ## The mode a FreeBSD config states
 
 A fresh FreeBSD install asks the machine before it writes
-`security.modes.confinement`. The installer — and the setup
-wizard, when it seeds a config for a runner started with
-none — asks the jail backend the startup gate's own question,
-with the config it is about to leave on disk: a throwaway
-jail is built, the boundary is read from inside it, and all
-of it is removed.
+`security.modes.confinement`. The installer, and the setup
+wizard when it seeds a config for a runner started with none,
+asks the jail backend the startup gate's own question, with
+the config it is about to leave on disk: a throwaway jail is
+built, the boundary is read from inside it, and all of it is
+removed.
 
 - **Where the probe passes, the mode stays at `enforce`**,
   and a job user is named for the jail's jobs (the next
@@ -472,22 +471,22 @@ of it is removed.
   platform: RACCT is not enabled on this host, so the jail-wide rctl ceilings are not written (kern.racct.enable=1 in /boot/loader.conf and a reboot engage them)
   ```
 
-  From the first start every job runs inside a jail, and the
-  startup gate asks the probe again at every start.
-- **Where it does not pass, the mode is stated at `audit`**
-  in the file, and the line that says so carries the reason
-  in the backend's own words. At `audit`, jobs run unconfined
-  and the audit log records what the mode would have done.
-  Answer the reason, set the mode to `enforce`, and the
-  startup gate verifies it at the next start.
+From the first start every job runs inside a jail, and the
+startup gate asks the probe again at every start. **Where it
+does not pass, the mode is stated at `audit`** in the file,
+and the line that says so carries the reason in the backend's
+own words. At `audit`, jobs run unconfined and the audit log
+records what the mode would have done. Answer the reason, set
+the mode to `enforce`, and the startup gate verifies it at
+the next start.
 
 The probe asks as whoever runs the installer, and the service
-the installer writes — a cron `@reboot` entry — belongs to
-that same user, so the runner starts as the identity the
-probe ran as. The common reason is therefore the first one:
-an install run by an ordinary user states `audit` and says
-that creating a jail needs root. Run the installer as root to
-have the jail on from the first start.
+the installer writes (a cron `@reboot` entry) belongs to that
+same user, so the runner starts as the identity the probe ran
+as. The common reason is therefore the first one: an install
+run by an ordinary user states `audit` and says that creating
+a jail needs root. Run the installer as root to have the jail
+on from the first start.
 
 Three more rules:
 
@@ -497,9 +496,9 @@ Three more rules:
   is the reason printed.
 - A mode the config already states at `audit` or `off` stays
   there, and the machine is not asked. That holds for a later
-  run of the installer too: an install that stands at
-  `audit` — every FreeBSD install made before 2026-11-14 —
-  stays there until its operator sets `enforce`.
+  run of the installer too: an install that stands at `audit`
+  (every FreeBSD install made before 2026-11-14) stays there
+  until its operator sets `enforce`.
 - A later run of the installer over a config at `enforce`
   asks again. The mode stays where the probe passes, and is
   stated at `audit`, with the reason, where it no longer
@@ -529,7 +528,7 @@ raise it.
 - **Where that trial passes, `security.job_user` names
   `pigeon-jobs`** in the config. Every job goes in at the
   jail door as that account from the first start, and reads
-  what it can read — not what root owns.
+  what it can read, not what root owns.
 - **Where the account cannot be made, or its trial does not
   pass, `nobody` stands in**: the same trial is run as
   `nobody`, and where that passes `nobody` is named. The
@@ -561,9 +560,9 @@ it.
 
 ### Seeding without asking the machine
 
-The seed's questions change the machine for a moment — a jail
+The seed's questions change the machine for a moment (a jail
 built and removed for the probe, a job run in one for the
-trial — and the installer's account stays. Set
+trial) and the installer's account stays. Set
 `HP_SEED_ASKS_MACHINE=0` in the environment the installer or
 the wizard runs in to have none of it. The seed then states
 `security.modes.confinement` at `audit`, names no job user,
@@ -609,7 +608,7 @@ supposition is that, with the backend landed, on the node:
 - each exec job's audit record names exactly "freebsd: jail +
   no_network + spawn_resource_limits";
 - an escape write to a host path outside the work mount does
-  not land — the path does not exist inside the jail root;
+  not land: the path does not exist inside the jail root;
 - an escape read of a host file does not return its contents,
   for the same reason (this is stronger than the Windows
   backend, which has no namespace isolation);
@@ -634,16 +633,17 @@ passed, 17 of 17:
 - each exec job's audit record named exactly "freebsd: jail
   + no_network + spawn_resource_limits";
 - the escape write did not land and the escape read did not
-  return the host file's contents — the jail root holds
+  return the host file's contents: the jail root holds
   neither path, which is stronger than the Windows backend's
   outcome, as supposed;
 - the 700 MiB job was refused by the 512 MiB spawn limit
   (its interpreter's allocation failed; a live unit test
   asserts the MemoryError, so the refusal is the ceiling's
   and not a job that never started);
-- the production install stood untouched throughout —
-  config, runner and crontab hashes identical before and
-  after, and no process ran under the installed config.
+- the production install stood untouched throughout:
+  config, runner and crontab hashes were identical
+  before and after, and no process ran under the
+  installed config.
 
 The supposition's shape held. The field test also found 3
 defects the local tests had not, each fixed and landed
@@ -653,17 +653,17 @@ before the passing run:
   filesystem as `/usr` on the node, and mounting both was
   refused ("Resource deadlock avoided"). A mount whose
   source lives on the same filesystem as an ancestor
-  already mounted is now skipped — the child tree is
-  visible through the ancestor's mount; a child that is
-  its own filesystem still mounts for real.
+  already mounted is now skipped, because the child tree
+  is visible through the ancestor's mount; a child that
+  is its own filesystem still mounts for real.
 - the demoted spawn: `jexec -U` resolves the user in the
   jail's user database, which the skeleton cannot serve;
   the spawn now uses `-u`, resolved in the host's user
-  database — the account the job_user seam named. The
-  jail root is also traversable by the job user (a
-  root-run spawn had masked its 0700 default), and the
-  spawn passes the job's working directory (`-d /work`),
-  the in-jail form of the host spawn's cwd.
+  database, which is the account the job_user seam
+  named. The jail root is also traversable by the job
+  user (a root-run spawn had masked its 0700 default),
+  and the spawn passes the job's working directory (`-d
+  /work`), the in-jail form of the host spawn's cwd.
 - the loader hints: the dynamic loader's hints live in
   `/var/run` on FreeBSD, and the skeleton had no `/var`;
   binaries linked against `/usr/local` libraries (the

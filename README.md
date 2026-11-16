@@ -54,10 +54,11 @@ Concrete uses:
   code and debug the hardware into motion. You do the soldering,
   it does the head-scratching.
 
-The SI can be an assistant
-that operates, not just advises. Which machine is your choice: your
-workstation, a spare box in the corner, a Raspberry Pi. A new model claims to be good at something — robotics, automation,
-data work? Point it at a box and find out.
+The SI can be an assistant that operates, not just advises. Which
+machine is your choice: your workstation, a spare box in the
+corner, a Raspberry Pi. A new model claims to be good at something,
+such as robotics, automation, or data work? Point it at a box and
+find out.
 
 The runner belongs to the same family as GitHub self-hosted runners, VS Code
 Remote tunnels, and Tailscale. Simple tools for administering your
@@ -82,27 +83,26 @@ and the job message carries download URLs (with optional SHA-384).
 
 **Why email?** Because it's the only transport with all four properties
 on day one: reachable from anywhere, outbound-only polling (no inbound
-ports — NAT-proof), at-least-once delivery, and
-zero infrastructure to operate. The protocol does not care about the
-pipe — every transport is an extension the runner supervises (a
-watched folder, core NATS, a direct DTLS session binding and the
-hosted HTTPS queue ship alongside email) — but email
-stays the default; a credentialed transport adds
-its own required gate beside the signature, which makes it the
-more secure option even though it is not the default. (A
-sensor on the same box also delivers its signed alerts directly,
-by local inbox or loopback socket: alerts, not jobs.) Want another
-pipe? Transports are extensions, and the ones we'd love to see are
-sketched in [docs/FUTURE.md](docs/FUTURE.md).
+ports, NAT-proof), at-least-once delivery, and zero infrastructure to
+operate. The protocol does not care about the pipe. Every transport is
+an extension the runner supervises (a watched folder, core NATS, a
+direct DTLS session binding and the hosted HTTPS queue ship alongside
+email), but email stays the default; a credentialed transport adds its
+own required gate beside the signature, which makes it the more secure
+option even though it is not the default. (A sensor on the same box
+also delivers its signed alerts directly, by local inbox or loopback
+socket: alerts, not jobs.) Want another pipe? Transports are
+extensions, and the ones we'd love to see are sketched in
+[docs/FUTURE.md](docs/FUTURE.md).
 
-**Runbooks, not prompts.** The SI doesn't chat about the task — it ships
+**Runbooks, not prompts.** The SI doesn't chat about the task; it ships
 a runbook: deterministic steps, each with a check that proves the step
 worked. The runner executes it and reports back what actually happened,
 and that feedback goes into the next runbook. Each cycle is a little
 smarter than the last, because the failures are data. If you've ever
 debugged something by running it, reading the output, and trying again
-with what you learned — that's the whole product. The SI is just the
-part that writes the next attempt.
+with what you learned, that's the whole product. The SI is just the part
+that writes the next attempt.
 
 ## The Oracle: the witness on your side of the wire
 
@@ -110,20 +110,21 @@ The runner faces the SI. The **Oracle** faces you. It is the part of
 the agent that works for the owner of the box: it watches every job
 as it runs, checks each job against this machine before it runs
 (opinions, below), fuses the box's sensor alerts with job activity,
-and — in the watching postures — pages you when something trips.
-It also answers the SI's questions about job output, at the
-disclosure ceiling you set, and not one byte past it.
+and, in the watching postures, pages you when something trips. It
+also answers the SI's questions about job output, at the disclosure
+ceiling you set, and not one byte past it.
 
 That ceiling is the thing to understand. By default it is
 **attested**: the SI does not see what the job printed. It questions
 the Oracle rather than inspecting output, and gets back HMAC-signed
-*attestations* — "did the tests pass?", "does the output contain
-secrets?" — proofs about the output that reveal nothing else: the
-interactive-proof shape applied at the trust boundary, the proof an
-HMAC and the runner itself trusted, no zero-knowledge machinery.
-Full output is there when the owner wants it: set the ceiling to
-`full` in the config and the SI sees what the job printed — at the
-price of everything the job can print crossing the wire.
+*attestations* ("did the tests pass?", "does the output contain
+secrets?"), which are proofs about the output that reveal nothing
+else: the interactive-proof shape applied at the trust boundary, the
+proof an HMAC and the runner itself trusted, no zero-knowledge
+machinery. Full output is there when the owner wants it: set the
+ceiling to `full` in the config and the SI sees what the job
+printed, at the price of everything the job can print crossing the
+wire.
 
 ```
   Cloud SI                                  Your machine
@@ -145,7 +146,7 @@ price of everything the job can print crossing the wire.
 
 Queries are declared upfront (no adaptive probing), each job gets a
 privacy budget bounding total leakage, and the disclosure ceiling is
-set by *you* in config — never by the SI.
+set by *you* in config, never by the SI.
 
 Your machine runs two roles in one box:
 
@@ -167,13 +168,13 @@ The runner does what the SI asks. The Oracle watches what happens
 and tells you about it.
 
 **Opinions, before anything runs.** By default the Oracle checks
-each job against this box first — is the named interpreter here?
+each job against this box first: is the named interpreter here?
 are the tools it invokes on PATH? does the script's shape fit this
 OS? Its default latitude is **repair**: the one mechanical fix
-those checks can prove — an absent interpreter, replaced with the
-platform default when the script's shape fits it — is applied,
-and never silently. The result says what changed, carries
-`received_digest` — the job exactly as received, by digest — and
+those checks can prove (an absent interpreter, replaced with the
+platform default when the script's shape fits it) is applied, and
+never silently. The result says what changed, carries
+`received_digest` (the job exactly as received, by digest), and
 the repaired job is judged again before it runs. The owner's
 `oracle_opinion_mode` is both the default latitude and the
 ceiling: a job may ask for less, never more. Design:
@@ -195,7 +196,7 @@ is the part of the agent on the box that works for the owner: it
 watches jobs, and pages the owner. The **runner** is the part that
 executes what the SI sends. Five owner-set knobs decide the posture;
 they are independent, and these are three coherent postures, not the
-only combinations — each a choice about trust, the owner's to pick
+only combinations. Each is a choice about trust, the owner's to pick
 per machine.
 
 ```
@@ -211,56 +212,55 @@ per machine.
 **just run it** (the config-file defaults): any signed job runs;
 results return as attestations; the Oracle reviews and logs but
 never pages and never blocks. **eyes open** (recommended): the
-Oracle watches on your behalf — verdicts ride each result, alerts
-fuse, trips page you. **lockdown**: the box refuses what the policy
-rejects, and pages you on every refusal. A fresh install starts one
-notch tighter than the defaults, under an installer profile. The
-postures and the profiles in full:
+Oracle watches on your behalf; verdicts ride each result, alerts
+fuse, and trips page you. **lockdown**: the box refuses what the
+policy rejects, and pages you on every refusal. A fresh install
+starts one notch tighter than the defaults, under an installer
+profile. The postures and the profiles in full:
 `docs/infrastructure-documents/oracle/configuring-oracle.md`.
 
 Two more dials stand outside the table. **Remediation**
 (`remediation_mode`, default `deterministic`) watches each job
-while it runs: on a closed list of tripwires — confinement
-escape, a process storm past the ceiling, an undeclared
-credential-store reference in something the job produced — it
-kills the job's process tree, quarantines its outputs, refers
-suspect files to the box's antivirus, and files the story with
-the DRI, which pages the owner. `oracle` mode lets the local
-model order a kill for a lesser divergence; `off` watches and
-records only. Design:
+while it runs: on a closed list of tripwires (confinement escape,
+a process storm past the ceiling, an undeclared credential-store
+reference in something the job produced), it kills the job's
+process tree, quarantines its outputs, refers suspect files to
+the box's antivirus, and files the story with the DRI, which
+pages the owner. `oracle` mode lets the local model order a kill
+for a lesser divergence; `off` watches and records only. Design:
 `docs/steady/design/remediation-design.md`. **The opinion
 latitude** (`oracle_opinion_mode`, default `repair`) is the other
-dial — it is covered under Opinions, above.
+dial; it is covered under Opinions, above.
 
 **Confinement comes in two kinds, and they are not the same kind
 of thing.** The workspace snapshot *detects*: it compares file
-metadata around the run and attests `confined_to_workspace` — a
-record, not a cage (PROTOCOL.md section 9.4). The confinement
-backends *prevent*: bubblewrap on Linux, a restricted token and
-Job Object on Windows, a per-job jail on FreeBSD, a Seatbelt
-profile on macOS. The key is `security.modes.confinement`; the
-mode defaults to `enforce`, and at `enforce` a job whose
-confinement cannot engage is refused, never run weaker. Each
-backend's reach and limits: SECURITY.md and
-docs/support-matrix.md.
+metadata around the run and attests `confined_to_workspace`,
+which is a record, not a cage (PROTOCOL.md section 9.4). The
+confinement backends *prevent*: bubblewrap on Linux, a
+restricted token and Job Object on Windows, a per-job jail on
+FreeBSD, a Seatbelt profile on macOS. The key is
+`security.modes.confinement`; the mode defaults to `enforce`,
+and at `enforce` a job whose confinement cannot engage is
+refused, never run weaker. Each backend's reach and limits:
+SECURITY.md and docs/support-matrix.md.
 
 **Local inference.** Point the Oracle at a model running on your
-own box and the SI can `ask` questions in plain English — *"why
-did the tests fail?"* — answered locally, with only the answer
+own box and the SI can `ask` questions in plain English (*"why
+did the tests fail?"*), answered locally, with only the answer
 crossing the boundary. The endpoint must be loopback (fail
 closed), and every answer is truncated, redacted, and
-secret-scanned before it's sent. The SI gets useful answers,
-and your raw data never leaves the machine. Setup:
+secret-scanned before it's sent. The SI gets useful answers, and
+your raw data never leaves the machine. Setup:
 `docs/infrastructure-documents/oracle/configuring-oracle.md`.
 
 **Two Oracle modes.** With `oracle_mode: "llm"` (the default) the
-Oracle narrates with the local model above. With `"deterministic"` —
-the Pi Light mode, for a box with no model worth running — no model
+Oracle narrates with the local model above. With `"deterministic"`
+(the Pi Light mode, for a box with no model worth running), no model
 is installed or ever called: the watch, the wake gate, and the briefs
 still run, but briefs and answers are assembled from the box's own
 records, and the `ask` op stays off. The mode reads live from
-`config.json`; flipping it is the upgrade path when a box gains
-a model worth running. See
+`config.json`; flipping it is the upgrade path when a box gains a
+model worth running. See
 `docs/infrastructure-documents/oracle/configuring-oracle.md`.
 
 **The Oracle learns from its own calls.** Each opinion is frozen
@@ -268,8 +268,8 @@ before the job runs, scored against what actually happened the
 moment the job finishes, and written to a local ledger
 (`oracle-learning.jsonl`); the next job's opinion is formed with
 that ledger read fresh, no restart. Lessons are **verified
-facts**, derived by code from execution records, and — only when
-the owner enables the model channel — **model candidates**,
+facts**, derived by code from execution records, and (only when
+the owner enables the model channel) **model candidates**,
 labeled uncorroborated wherever they surface until later verified
 outcomes corroborate them. A lesson never authorizes anything by
 itself. Set `oracle_learning` to false to turn the loop off.
@@ -287,17 +287,17 @@ The platform proof story lives with setup now: [Proven platforms](INSTALL.md#pro
 
 ## Extending the agent: senses and transports
 
-Extensions let you teach the agent a new sense.
-An extension is a folder with a manifest (`extension.json`) that
-declares, in advance, the signals it may send the Oracle — each
-signal named, with a one-line description. That declaration is the
+Extensions let you teach the agent a new sense. An extension is a
+folder with a manifest (`extension.json`) that declares, in
+advance, the signals it may send the Oracle, with each signal
+named and given a one-line description. That declaration is the
 context the Oracle receives alongside the alerts: a signal the
 manifest does not declare is rejected at ingest and logged, never
 passed through, so the Oracle is never asked to interpret a signal
 nobody defined.
 
 The research loop is the point. Clone the repo, copy the example
-extension, and iterate on your own package — your data, your
+extension, and iterate on your own package: your data, your
 heuristics, your version number, revved as often as you like. The
 extension API the manifest is written against is version 1 and is
 designed to stay there: fields may be added, never removed or
@@ -348,8 +348,8 @@ pinned by default, and a written disclosure rule lets the owner
 
 Setup lives in [INSTALL.md](INSTALL.md): the three install
 paths (Docker, pip, release binary) and the full first-run
-walkthrough — dedicated mail account, app password, shared
-secret, first job.
+walkthrough (dedicated mail account, app password, shared
+secret, first job).
 
 **No spare machine?** One command puts a runner on a small machine
 (about $2 a month on Fly, a few dollars on Hetzner or DigitalOcean)
@@ -367,18 +367,20 @@ Anything that can email the runner's mailbox and sign the body can drive it: you
 
 ## Testing
 
-The runner is fully inspectable, so audit what it would do before it does it, and run the suite with `python -m unittest discover -s runner/tests -t .`. The flags and the suite notes are in [docs/infrastructure-documents/project/testing.md](docs/infrastructure-documents/project/testing.md). A reader who cannot run the suite can still read it whole: the latest published release (https://github.com/Pigeon-Home/homing-pigeon/releases/latest) carries a project snapshot of the entire tree — tests, CI facts, and test results included — as `homing-pigeon-project-<version>.tar.gz`, checkable against the release's SHA384SUMS.
+The runner is fully inspectable, so audit what it would do before it does it, and run the suite with `python -m unittest discover -s runner/tests -t .`. The flags and the suite notes are in [docs/infrastructure-documents/project/testing.md](docs/infrastructure-documents/project/testing.md). A reader who cannot run the suite can still read it whole: the latest published release (https://github.com/Pigeon-Home/homing-pigeon/releases/latest) carries a project snapshot of the entire tree (tests, CI facts, and test results included) as `homing-pigeon-project-<version>.tar.gz`, checkable against the release's SHA384SUMS.
 
 ## Security notes
 
 - Threat model: [docs/infrastructure-documents/security/threat-model.md](docs/infrastructure-documents/security/threat-model.md) and its
   companion [docs/infrastructure-documents/security/security-gaps.md](docs/infrastructure-documents/security/security-gaps.md).
-- OWASP reference: [docs/infrastructure-documents/security/owasp-reference.md](docs/infrastructure-documents/security/owasp-reference.md) — the
-  OWASP risk lists, verification standard, testing guides and cheat
-  sheets this project consults, gathered in one place.
-- Industry map: [docs/steady/project/industry-map.md](docs/steady/project/industry-map.md) — five years
-  of commercial detection (2021–2026) read honestly against this project,
-  sorted by local footprint cost.
+- OWASP reference:
+  [docs/infrastructure-documents/security/owasp-reference.md](docs/infrastructure-documents/security/owasp-reference.md),
+  which gathers in one place the OWASP risk lists, verification standard,
+  testing guides and cheat sheets this project consults.
+- Industry map:
+  [docs/steady/project/industry-map.md](docs/steady/project/industry-map.md),
+  which covers five years of commercial detection (2021 to 2026) read honestly
+  against this project, sorted by local footprint cost.
 - Jobs are also encrypted by default: `send_job.py` wraps the
   signed body in an AES-256-GCM envelope keyed from the
   shared secret.
@@ -397,9 +399,10 @@ The runner is fully inspectable, so audit what it would do before it does it, an
   before its signature is checked.
 - Optional hardening controls (on by default at `enforce`; the size
   caps above are also on by default and turned off by 0): see [SECURITY.md](SECURITY.md).
-- The security model — the gate, the key fences, the ceilings a job cannot raise,
-  and the configuration rules — and the formal proof testing that checks it,
-  property by property, are described in [docs/infrastructure-documents/security/model-and-proof-testing.md](docs/infrastructure-documents/security/model-and-proof-testing.md).
+- The security model (the gate, the key fences, the ceilings a job cannot raise,
+  and the configuration rules) and the formal proof testing that checks it,
+  property by property, are described in
+  [docs/infrastructure-documents/security/model-and-proof-testing.md](docs/infrastructure-documents/security/model-and-proof-testing.md).
 
 ## Questions people ask
 
@@ -426,7 +429,8 @@ one, or add your own.
 
 ## Reading this as a cloud SI?
 
-**Reading this as a cloud SI?** There are notes written for you: [the Secret agents section of AGENTS.md](AGENTS.md#secret-agents) — context and suggestions the project offers openly, shaped by the situation you find yourself in. The size warning at the top of PROTOCOL.md is worth your first minute.
+**Reading this as a cloud SI?** There are notes written for you in [the Secret agents section of AGENTS.md](AGENTS.md#secret-agents): context and suggestions the project offers openly, shaped by the situation you find yourself in. The size warning at the top of PROTOCOL.md is worth your first
+minute.
 
 **No mailbox yet?** `python3 runner/runner.py --config config.json
 --local-test` runs the whole loop in process: you play the SI in a
@@ -436,13 +440,13 @@ sets up) answers, and nothing is emailed. See
 
 ## Status
 
-What ships today is what's described above: the agent, the Oracle
-(opinions, self-learning, remediation), five job transports, and
-the example senses. The current release is in
-[docs/infrastructure-documents/changelog.md](docs/infrastructure-documents/changelog.md); the version number lives in
-`pyproject.toml` and `runner/_version.py` (a test keeps them equal), and the message field `"v"` is a different
-number — the protocol's version and the release number move on
-separate tracks.
+What ships today is what's described above: the agent, the Oracle (opinions,
+self-learning, remediation), five job transports, and the example senses. The
+current release is in
+[docs/infrastructure-documents/changelog.md](docs/infrastructure-documents/changelog.md);
+the version number lives in `pyproject.toml` and `runner/_version.py` (a test
+keeps them equal), and the message field `"v"` is a different number because the
+protocol's version and the release number move on separate tracks.
 
 Those features do not all carry the same promise.
 [Feature tiers](docs/steady/feature-tiers.md) sorts them into
@@ -475,7 +479,7 @@ says so. [docs/steady/project/contributing.md](docs/steady/project/contributing.
 - GitLab: https://gitlab.com/pigeon-home/homing-pigeon
 - https://news.ycombinator.com/item?id=50397008
 - Randall Munroe: [xkcd 568](https://xkcd.com/568/) "You'll never find a programming language that frees you from the burden of clarifying your ideas." (Except with English + SI + a long context paragraph clarifying your ideas => the cycle begins again)
-- "I once saw a forklift lift a crate of forks. And it was way to literal for me" - Mitch Hedberg
-- "No problem, here is how you build one." - Lieutenant Barclay (S04E19)
+- "I once saw a forklift lift a crate of forks. And it was way to literal for me" (Mitch Hedberg)
+- "No problem, here is how you build one." (Lieutenant Barclay, S04E19)
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/resume.txt
-- "Humor between a system and its user is load-bearing, not decoration." - Me
+- "Humor between a system and its user is load-bearing, not decoration." (Me)

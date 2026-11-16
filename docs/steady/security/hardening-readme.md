@@ -20,15 +20,15 @@ of one `--once` poll cycle, plus the paths a working run needs
 
 Files:
 
-- `homing-pigeon.service` — hardened systemd unit. Mirrors
-  the unit `install.py` writes, plus sandboxing directives
-  (NoNewPrivileges, ProtectSystem=strict, ProtectHome, PrivateTmp,
+- `homing-pigeon.service`: hardened systemd unit. Mirrors the unit
+  `install.py` writes, plus sandboxing directives (NoNewPrivileges,
+  ProtectSystem=strict, ProtectHome, PrivateTmp,
   RestrictAddressFamilies, ...). Tune `ReadWritePaths` to your base
   dir and config path.
-- `homing-pigeon` — AppArmor profile for the runner daemon
+- `homing-pigeon`: AppArmor profile for the runner daemon
   itself (not for jobs; jobs get bwrap via the `confinement`
   feature). Load with `apparmor_parser -r`.
-- `homing_pigeon.te` — SELinux type-enforcement module named
+- `homing_pigeon.te`: SELinux type-enforcement module named
   `homing_pigeon`. It uses reference-policy interfaces
   (`policy_module`, `manage_dirs_pattern`, `corenet_*`), so build it
   with the reference policy's Makefile, `make -f

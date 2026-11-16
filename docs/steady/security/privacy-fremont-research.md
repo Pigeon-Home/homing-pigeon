@@ -35,33 +35,32 @@ hostname-to-environment lockstep tests around
 `src/hostEnvironment.js`, authored in one early wave, with no
 privacy content.) The peer lane branch `fremontderby-jfl` is
 larger (+66,711 lines) and newer, but 454 of its 456 unique
-commits are by `subiki` -- Jason Lambert's account -- and its
+commits are by `subiki` (Jason Lambert's account), and its
 subjects are uniformly the JFL lane. `fremontderby-gamma` is a
 promotion target for the author's work, not a separate source.
 
 **No archive branch implements the privacy work.** The branch
 named for archiving, `dru/issue-3223-fake-archive`, does the
 opposite: its only unique commits (by Andrew Slutsky) *remove* a
-made-up archive line from the season page -- "fake archive"
-means the archive text was fabricated, not that the branch is
-an archive. The one genuine archive, `dru-backup-6-october-2026`,
-is a dated snapshot of the author's lane (an ancestor of
-`fremontderby-dru`, later restored from), and its privacy
-content is inherited and sentence-level (section 4.3). An
-exhaustive scan of all 1,735 branch tips and of all history
-found only 11 files ever added anywhere with privacy, scrub,
-redact, vault, retention or personal in the name; every
-mechanism among them is on `main` or is recorded in section 4.
-The substantive privacy implementation beyond `main` is on the
-JFL lane (section 4.1).
+made-up archive line from the season page; "fake archive" means
+the archive text was fabricated, not that the branch is an
+archive. The one genuine archive, `dru-backup-6-october-2026`, is
+a dated snapshot of the author's lane (an ancestor of
+`fremontderby-dru`, later restored from), and its privacy content
+is inherited and sentence-level (section 4.3). An exhaustive scan
+of all 1,735 branch tips and of all history found only 11 files
+ever added anywhere with privacy, scrub, redact, vault, retention
+or personal in the name; every mechanism among them is on `main`
+or is recorded in section 4. The substantive privacy
+implementation beyond `main` is on the JFL lane (section 4.1).
 
 ## 2. The issues: 77 privacy cards
 
 158 issues mention "privacy" and 377 mention "private"; the 77
 below are the ones substantively about personal-data handling,
-consent, exposure, redaction, retention or session isolation.
-61 were authored by `subiki` (Jason Lambert -- the repository
-"is owned by the personal `subiki` account", issue 1173, and the
+consent, exposure, redaction, retention or session isolation. 61
+were authored by `subiki` (Jason Lambert; the repository "is
+owned by the personal `subiki` account", issue 1173, and the
 cards are written in a product-owner voice); 16 are
 implementation and tracking cards by the fork author's agent
 accounts (`ctf-gooo-001`, `ctf-gooo-003`) that state the rule
@@ -135,7 +134,7 @@ closed and verified unless noted.
 |---|-------|------|
 | 3586 | closed | Discard message previews from an earlier browser session: a delayed account-A summary rendered after the tab switched to account B. |
 | 3587 | closed | Implementation of 3586: per-request ownership, session checks after fetch *and* after body parsing. |
-| 3604 | closed | Clear Messages history and drafts on session change: A's unsent draft remained, composer enabled -- a draft typed by A could have been sent under B's credentials. |
+| 3604 | closed | Clear Messages history and drafts on session change: A's unsent draft remained, composer enabled, so a draft typed by A could have been sent under B's credentials. |
 | 3605 | closed | Implementation of 3604. |
 | 3606 | closed | Scope Notices to the current session: A's notice stayed visible under B, and Mark read issued a POST for A's notice using B's credentials (server refused; a UI isolation defect). |
 | 3609 | closed | Implementation of 3606. |
@@ -146,7 +145,7 @@ closed and verified unless noted.
 
 | # | State | Card |
 |---|-------|------|
-| 2545 | closed | Close public read access on notifications *before data lands*: `user_notifications` had RLS disabled with anonymous SELECT -- "do not rely on zero current rows as a security boundary." |
+| 2545 | closed | Close public read access on notifications *before data lands*: `user_notifications` had RLS disabled with anonymous SELECT ("do not rely on zero current rows as a security boundary.") |
 | 2300 | closed | Pin the notification trigger's search path and revoke direct execution from browser roles. |
 | 2887 | open | The DRU-lane twin of 2545, worse: RLS disabled, anonymous SELECT granted, 56 rows already present. A test environment must not normalise insecure access patterns that could be copied toward production. |
 | 2884 | open | Reconcile non-production hygiene findings deliberately (the same pattern in 3 places, plus stale lane binding secrets); explicitly not authorising broad cleanup. |
@@ -168,7 +167,7 @@ closed and verified unless noted.
 |---|-------|------|
 | 1733 | open | Preserve report evidence without exposing unrelated private messages: the moderator retains only the reported message snapshot needed; retention follows the 1705 inventory. |
 | 2581 | closed | Implementation slice of 1733: the moderation page states a report keeps the reported message and does not open unrelated private messages; a test locks the sentence. |
-| 1694 | open | The umbrella epic: data behaviours that must stay correct across seasons -- privacy boundaries, auditability, immutable competition history, archival, recoverability -- as small independently testable child cards. |
+| 1694 | open | The umbrella epic: data behaviours that must stay correct across seasons (privacy boundaries, auditability, immutable competition history, archival, recoverability) as small independently testable child cards. |
 | 1714 | open | Archive invariants: an archived season leaves all active queues, sends no notifications, stays readable to authorised users, read-only except explicit restore. |
 | 1740 | open | Prevent hard deletion of entities with competition history: archive/deactivate or reject, server-side. |
 | 337 | closed | Close a completed season without destroying history: Close is not Cancel, Archive or Delete; closure stops mutation and preserves historical public read access. |
@@ -200,14 +199,14 @@ that follow.
 | 3 | Gamma scrub policy: after a production import into the test schema, phone numbers are nulled before tester access; production service keys never copied | `scripts/gamma-refresh/scrub-policy.mjs` | Gamma refresh execute path only; dry-run (default) does not apply. In practice only phones are scrubbed; the synthetic-email line is a comment, not a statement. |
 | 4 | Gamma refresh fail-closed preflight: refuses production, non-staging, source or wrong-schema targets | `scripts/gamma-refresh/preflight.mjs` | Dry-run default; execute needs explicit env flags. |
 | 5 | Personal data segregated into a non-exposed `private` Postgres schema (contacts, payment status, admin list, audit events) | migrations `20260810001500`, `20260809235600` | Structural, always on. Browser roles get REVOKE ALL; service role only. |
-| 6 | Phone masking: default response is `phone: null` plus a last-4 mask -- including the response after a save; full number only via explicit `?reveal=1` for owner/admin | `src/playerContactHttp.js`, `src/profileContactEnhancer.js` | Default masked for everyone. |
+| 6 | Phone masking: default response is `phone: null` plus a last-4 mask, including the response after a save; full number only via explicit `?reveal=1` for owner/admin | `src/playerContactHttp.js`, `src/profileContactEnhancer.js` | Default masked for everyone. |
 | 7 | Admin contact split: broad readiness RPC returns `has_phone` booleans only; a separate single-player RPC returns one number; phone audit rows record only `hasPhone` | migration `20260812080000_player_phone_contact.sql` | Always on; actor must be a league admin. |
 | 8 | Private-schema RLS defence in depth: RLS on ~20 private tables, all grants revoked from browser roles, deliberately no permissive policy | migrations `20260811155000`, `20260816250000` | Structural. Rationale recorded in the migration: a second wall so future grant drift cannot silently expose the tables. |
 | 9 | Browser-deny data plane for chat/DM/notification tables: deny-all RLS (`using(false)`), grants revoked, all access through service-role RPCs that re-check the actor in SQL | 27 migration files enable RLS; pattern from `20260810003800` on | Structural, no toggle. |
 | 10 | Lane schema isolation: every PostgREST call's profile is forced to the Worker's own schema; a foreign lane profile is forced back (fail-closed); a schema/environment mismatch throws | `src/supabaseSchema.js` | `ENVIRONMENT` + `SUPABASE_SCHEMA` per lane. |
 | 11 | Service-role authorisation checklist: 6 questions every endpoint must answer (actor from auth only, never the body; membership asserted in the command layer; non-leaky 401/403/404; a required unprivileged-actor-rejected test) | `docs/security-authorization-checklist.md` | Policy + convention for all endpoints. |
 | 12 | Bearer-token authentication validated server-side; identity never from client-supplied IDs | `src/supabaseAuth.js` | Always on for non-public routes. |
-| 13 | Test-lane auth bypass, hard-gated: fixed synthetic lane actor, only when no token is supplied (a supplied token is always validated); production never bypasses. The lane set is stated inconsistently across files (jfl/dru vs jfl/dru/gamma) -- a caveat, section 5 | `src/supabaseAuth.js`, `src/securityHeaders.js` | `ENVIRONMENT`, `BETA_AUTH_BYPASS`, actor env secrets. |
+| 13 | Test-lane auth bypass, hard-gated: fixed synthetic lane actor, only when no token is supplied (a supplied token is always validated); production never bypasses. The lane set is stated inconsistently across files (jfl/dru vs jfl/dru/gamma), which is a caveat in section 5 | `src/supabaseAuth.js`, `src/securityHeaders.js` | `ENVIRONMENT`, `BETA_AUTH_BYPASS`, actor env secrets. |
 | 14 | Environment readiness: hard-coded expected project/schema/host per lane, HTTP 503 on mismatch; the public diagnostic returns presence booleans and refs, never credential values | `src/environmentReadiness.js`, `src/hostEnvironment.js` | Always on. |
 | 15 | Secrets handling: secret names declared in git, values only in the platform secret store; deploy fails rather than publishing a lane whose required secrets are missing; the two key classes checked distinct | `wrangler.jsonc`, `config/env.example`, `scripts/put-wrangler-secret.mjs` | Always on. |
 | 16 | Untrusted/public-PR isolation: PR CI runs with no deploy secrets and no deploy jobs; deploys only from trusted lane branches; forks cannot claim lane namespaces | `.github/workflows/ci.yml`, release-source policy scripts | Always on; `STRICT_RELEASE_SOURCE_POLICY=1` tightens further. |
@@ -221,11 +220,11 @@ that follow.
 | 24 | Request guards on all JSON input: 64 KiB body cap, depth/key/string limits, control characters stripped | `src/requestSanitize.js` | Always on for handlers using the shared reader. |
 | 25 | HTML/JSON escaping plus a build lint that fails on dynamic `innerHTML` interpolation (XSS treated as session-compromising, because tokens live in browser storage) | `src/textEscape.js`, `scripts/lint-inner-html.mjs` | Always on; lint in CI. |
 | 26 | Security headers: per-request CSP nonce, `no-referrer`, sensors/payment off, `no-store` | `src/securityHeaders.js` | Always on. |
-| 27 | `no-store` as a named helper for authenticated/contact responses, against a separate public-cacheable helper -- the private choice is the easy choice | `src/httpJson.js` | Chosen per route by helper. |
-| 28 | Browser-storage hygiene: the session body/ETag cache refuses contact and `reveal=` URLs; sign-out purges cached bodies so the next account on a shared device sees nothing. Caveat: a sibling module deliberately mirrors the two token keys to localStorage -- section 5 | `src/livePageRefresh.js`, `src/profilePage.js` | Always on. |
+| 27 | `no-store` as a named helper for authenticated/contact responses, against a separate public-cacheable helper, so the private choice is the easy choice | `src/httpJson.js` | Chosen per route by helper. |
+| 28 | Browser-storage hygiene: the session body/ETag cache refuses contact and `reveal=` URLs; sign-out purges cached bodies so the next account on a shared device sees nothing. Caveat: a sibling module deliberately mirrors the two token keys to localStorage (section 5) | `src/livePageRefresh.js`, `src/profilePage.js` | Always on. |
 | 29 | OAuth callback hygiene: tokens read from the URL into storage and immediately stripped via `history.replaceState`; post-login `next` accepted only as a same-origin path | `src/profilePage.js`, `src/chatPage.js` | Always on. |
 | 30 | Rate-limit policy for admin and PII endpoints (operator-applied WAF runbook: /api/admin/* 30/min, contact 20/min, /api/* 120/min) | `docs/security-rate-limits-cloudflare.md` | Manual operator step; documented, not code. |
-| 31 | Short retention for CI artifacts and backups: failing-test output 1 day, browser-smoke artifacts 7 days; database backup window noted as platform-managed | workflow YAML, `docs/ops-backup-audit-recovery.md` | Fixed in workflows. The only retention rules in the project -- see the gaps, section 5. |
+| 31 | Short retention for CI artifacts and backups: failing-test output 1 day, browser-smoke artifacts 7 days; database backup window noted as platform-managed | workflow YAML, `docs/ops-backup-audit-recovery.md` | Fixed in workflows. The only retention rules in the project; see the gaps in section 5. |
 | 32 | Archive-instead-of-delete for seasons: hard delete succeeds only for a draft season with zero teams, memberships or matches; anything with history is cancelled (audited reason) or archived; a trigger reverts status changes that bypass the gated RPC | migration `20260816140000`, `src/seasonLifecycleCommands.js` | Always on; league-admin only. |
 | 33 | Trade consent gates: completion requires the traded player's consent and both captains' approvals; any decline kills the trade, history preserved | migration `20260810123000` | Always on for trades. The codebase's only consent-shaped workflow outside messaging. |
 | 34 | External-identity provenance: a self-entered external ID is labelled self-asserted, never silently upgraded; rating observations append-only with provenance | migration `20260816260000` | Always on; linking optional. |
@@ -236,12 +235,12 @@ that follow.
 ### 4.1 The JFL lane (`fremontderby-jfl`; consent files later synced byte-identical onto `fremontderby-dru`)
 
 - **Direct-message consent** (`src/directMessageConsentHttp.js`,
-  migration `20261004220514_jfl_direct_message_consent.sql`):
-  a consent table with `enabled default false` -- an absent row
-  is false -- RLS deny-all for browser roles, service-role only.
-  A trigger requires *both* parties' current consent, under
-  sorted advisory locks, before a conversation can be created.
-  The HTTP route returns 404 unless `ENVIRONMENT=jfl`.
+  migration `20261004220514_jfl_direct_message_consent.sql`): a
+  consent table with `enabled default false` (an absent row is
+  false), RLS deny-all for browser roles, service-role only. A
+  trigger requires *both* parties' current consent, under sorted
+  advisory locks, before a conversation can be created. The HTTP
+  route returns 404 unless `ENVIRONMENT=jfl`.
 - **Social-chat consent** (`src/socialChatConsentHttp.js`,
   migration `20261004232538_jfl_social_chat_consent.sql`): the
   same shape per channel (`general`, `team`), independently
@@ -285,9 +284,9 @@ A captain sees the name only.") and `src/privacyCampaign.js`
 test locking the moderation page's sentence that a report does
 not open unrelated private messages. These state the rules on
 the page, locked by tests; they do not implement them. They are
-the most visible form of the card-driven privacy work -- the
-rules called out where a user can read them -- and the
-mechanisms stand behind them in sections 3 and 4.1.
+the most visible form of the card-driven privacy work, with the
+rules called out where a user can read them, and the mechanisms
+stand behind them in sections 3 and 4.1.
 
 ## 5. Gaps and caveats in the source
 
@@ -318,8 +317,8 @@ From the cards and the code together:
 1. **Participation is not consent.** Joining grants no social
    reachability. Every social channel is off by default, opt-in
    is per-channel and independent, opt-out is effective
-   immediately -- against stale clients, deep links, existing
-   threads and direct writes -- and the core duties remain fully
+   immediately (against stale clients, deep links, existing
+   threads and direct writes), and the core duties remain fully
    doable with every channel off.
 2. **Fewer surfaces, deliberately.** A fourth chat surface was
    retired rather than consent-managed. Required coordination
@@ -338,8 +337,9 @@ From the cards and the code together:
    carry the boolean (`has_phone`); the value sits behind a
    narrow, single-subject, explicitly gated read. Audits record
    the boolean, never the value. "Stored as a label, not a value."
-6. **Mask by default; reveal is a separate, explicit action** --
-   at every layer at once: API shape, UI gesture, cache rules.
+6. **Mask by default; reveal is a separate, explicit action**,
+   applied at every layer at once: API shape, UI gesture, cache
+   rules.
 7. **Name fields, never values.** The rule applies to privacy
    tooling itself: the inventory, the diagnostic bundle, the
    scanner finding and the error message all describe data

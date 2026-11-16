@@ -76,35 +76,33 @@ systemctl --user start homing-pigeon
 
 ### The Python floor on older enterprise distributions
 
-The runner needs Python 3.9 or newer (`requires-python` in
-`pyproject.toml`). openSUSE Leap 15 and RHEL/AlmaLinux/Rocky 8
-ship a system `python3` of 3.6 and carry a supported interpreter as
-a separate package -- `zypper install python311` or `dnf install
-python3.11` -- so run the installer with that interpreter
-(`python3.11 runner/ops/install.py` in a checkout). Rocky/Alma 9, Debian 11+, Ubuntu 22.04+,
-Fedora, Amazon Linux 2023 and Alpine 3 ship 3.9 or newer already.
-The platform matrix runs the proof on openSUSE Leap 15 and
-AlmaLinux 8 (with the separate interpreter), Rocky 9, Debian 12
-and 13, Ubuntu 22.04 and 24.04, Fedora, Amazon Linux 2023 and
-Alpine 3; Alma 9 and Debian 11 are not legs of their own.
+The runner needs Python 3.9 or newer (`requires-python` in `pyproject.toml`). openSUSE Leap
+15 and RHEL/AlmaLinux/Rocky 8 ship a system `python3` of 3.6 and carry a supported
+interpreter as a separate package (`zypper install python311` or `dnf install python3.11`),
+so run the installer with that interpreter (`python3.11 runner/ops/install.py` in a
+checkout). Rocky/Alma 9, Debian 11+, Ubuntu 22.04+, Fedora, Amazon Linux 2023 and Alpine 3
+ship 3.9 or newer already. The platform matrix runs the proof on openSUSE Leap 15 and
+AlmaLinux 8 (with the separate interpreter), Rocky 9, Debian 12 and 13, Ubuntu 22.04 and
+24.04, Fedora, Amazon Linux 2023 and Alpine 3; Alma 9 and Debian 11 are not legs of their
+own.
 
 ### Raspberry Pi: Pi Light
 
-A Pi install — detected automatically from the device tree, or
-chosen anywhere with `--profile pi-light` — is the light package.
+A Pi install (detected automatically from the device tree, or
+chosen anywhere with `--profile pi-light`) is the light package.
 You get the full runner and the full protocol: your cloud SI
 pings signed jobs in, jobs run, results and attestations go back,
 the senses and local signals work, and the Oracle still watches,
 wakes on a serious signal, and files its briefs.
 
 What the Pi does **not** get is a local model. The installer
-installs no Ollama and downloads no model — nothing for
-inference touches the box. The Oracle runs in deterministic mode
+installs no Ollama and downloads no model; nothing for inference
+touches the box. The Oracle runs in deterministic mode
 (`oracle_mode: "deterministic"` in `config.json`): briefs and
-answers are assembled from the box's own records — the job
-index, retained jobs and their notable lines, the log tail —
-instead of a model's narration. The diagnosis is the
-deterministic kind: what ran, what failed, what the records say.
+answers are assembled from the box's own records (the job index,
+retained jobs and their notable lines, the log tail) instead of
+a model's narration. The diagnosis is the deterministic kind:
+what ran, what failed, what the records say.
 
 When Pis ship with neural accelerator chips worth using, the
 same install upgrades in place: set `oracle_mode` to `llm` in
@@ -124,17 +122,16 @@ copy files onto them:
 - a USB accelerator with no Linux host under it
 - any environment that cannot execute a shell
 
-Android -- Android TV, Google TV, Fire TV, Shield -- is the one
-television family where a shell is obtainable: a sideloaded
-terminal environment gives this program a real Python, and the
-runner only needs outbound mail. There the installer proceeds
-and states the limits before copying files. Pass `--profile
-display-board` so no model is installed; keep the terminal
-environment running, or use its boot hook, since no service there
-starts the runner; and expect no sandbox, so jobs run unsandboxed as
-the terminal app's user. An Android
-environment with no shell (a signed TV app) is refused like any
-other set.
+Android (Android TV, Google TV, Fire TV, Shield) is the one
+television family where a shell is obtainable: a sideloaded terminal
+environment gives this program a real Python, and the runner only
+needs outbound mail. There the installer proceeds and states the
+limits before copying files. Pass `--profile display-board` so no
+model is installed; keep the terminal environment running, or use
+its boot hook, since no service there starts the runner; and expect
+no sandbox, so jobs run unsandboxed as the terminal app's user. An
+Android environment with no shell (a signed TV app) is refused like
+any other set.
 
 Code signing can put an app on the screen. It cannot give this
 program a shell, and a job runs by executing a shell. The
@@ -144,19 +141,19 @@ systems.
 
 A Linux board behind the television is a normal install. If
 the board is dedicated and the screen is only a screen, use
-`--profile display-board`. That is Pi Light's stance — full
-runner, deterministic Oracle, no model — without claiming the
+`--profile display-board`. That is Pi Light's stance (full
+runner, deterministic Oracle, no model) without claiming the
 board is a Raspberry Pi. Docker is the published Linux image,
 not a third kind of machine; the installer says that and
 continues.
 
 ## 3. Release binary
 
-**Install:** download and extract. Every default OS ships a
-downloader — no extra tools needed. Release file names carry the
-version (for example `homing-pigeon-linux-x86_64-<version>.tar.gz`), and
-extracting creates a folder with the same name, so several releases
-can live side by side.
+**Install:** download and extract. Every default OS ships a downloader,
+so no extra tools are needed. Release file names carry the version (for
+example `homing-pigeon-linux-x86_64-<version>.tar.gz`), and extracting
+creates a folder with the same name, so several releases can live side
+by side.
 
 Linux (curl is always there):
 ```bash
@@ -166,7 +163,7 @@ tar xzf pigeon.tar.gz
 cd "homing-pigeon-linux-x86_64-$ver"
 ```
 
-Raspberry Pi (Pi Light — its own archive, ARM64 like the Pi, with
+Raspberry Pi (Pi Light: its own archive, ARM64 like the Pi, with
 the light profile as its baked-in default):
 ```bash
 ver=$(curl -s https://api.github.com/repos/Pigeon-Home/homing-pigeon/releases/latest | sed -n 's/.*"tag_name": *"v\{0,1\}\([^"]*\)".*/\1/p')
@@ -176,10 +173,10 @@ cd "homing-pigeon-pi-light-arm64-$ver"
 ```
 Then run `install` in the folder. The archive carries a
 `default_profile` marker naming `pi-light`, so the install
-selects Pi Light by itself — no `--profile` flag to remember,
-and no model is installed or downloaded (see "Raspberry Pi:
-Pi Light" in §2). The other archives carry no marker and keep
-the ordinary defaults.
+selects Pi Light by itself: there is no `--profile` flag to
+remember, and no model is installed or downloaded (see
+"Raspberry Pi: Pi Light" in §2). The other archives carry no
+marker and keep the ordinary defaults.
 
 macOS (same):
 ```bash
@@ -203,8 +200,8 @@ Every release carries its own proof, and checking it takes a
 minute, before anything is installed. If you keep a local
 checkout of the repository, verify there first: run the test
 suite and `python3 runner/ops/version4.py measure` on the
-checkout in front of you — a release attests to the commit it
-was cut from, not to your working tree. The checks below
+checkout in front of you, as a release attests to the commit
+it was cut from, not to your working tree. The checks below
 audit a downloaded distribution, for when the release itself
 is what you hold:
 
@@ -215,8 +212,8 @@ is what you hold:
    (macOS). The archive you downloaded should report OK. On
    Windows, `Get-FileHash <file> -Algorithm SHA384` prints the
    sum to compare against the archive's line in `SHA384SUMS`.
-3. For the stronger check — that this repository's own
-   pipeline built the file — run `gh attestation verify
+3. For the stronger check, confirming that this repository's
+   own pipeline built the file, run `gh attestation verify
    <file> --repo Pigeon-Home/homing-pigeon` with the GitHub
    CLI. It checks the build-provenance attestation the release
    workflow recorded over the release set.
@@ -234,74 +231,67 @@ install one that still fails.
 
 **Run:** start the service.
 
-- **Windows:** run `install.exe` from an elevated PowerShell. It creates
-  the one home at `C:\homing-pigeon` — `bin/` (the exes, including a
-  copy of the installer itself), `config.json`, `state/`, and
-  `install-receipt.json` — locks it down to SYSTEM + Administrators
-  (a named `--run-as` account is granted access too), and registers a
-  Scheduled Task that starts at boot. By default the task runs as
-  SYSTEM; for least privilege, create a dedicated local account first
-  and install with `install.exe --run-as pigeon` (schtasks will prompt
-  for the account's password; service accounts like
-  `NT AUTHORITY\Network Service` and gMSA names ending in `$` need
-  none). A named account runs at `LIMITED` run level instead of
-  `HIGHEST`. The service, `install.exe --console`, and `--oracle` all use the
-  same `C:\homing-pigeon\config.json`, so there is one state dir and
-  no more SYSTEM-vs-user split. Re-running `install.exe` is safe: it
-  upgrades the binaries and the project snapshot in `state/project/`
-  in place and leaves `config.json` and the rest of `state/` alone (a
-  re-run with `--faster` also rewrites the `inference` block). Six
-  commands to learn (from `C:\homing-pigeon\bin`):
-  `install.exe --check` (doctor: verifies the home, the receipt, the
-  task, the config, and the inference endpoint, and says what's wrong
-  in plain language), `install.exe --console` (stops the task, runs
-  the agent in your terminal with live logs, restarts the task on
-  Ctrl+C), `install.exe --oracle` (the Oracle chat), `install.exe
-  --logs [--follow]` (tail or watch the runner log), `install.exe
-  --wipe` (backs everything up into one zip, then removes the home,
-  the task, and every scattered state dir), and `install.exe
-  --faster` (switches the local model to `qwen2.5:3b`). The less common flags:
-  `--home DIR` picks a different one-home root (`--dir` without
-  `--home` gives the legacy layout, with no receipt and no doctor); `--migrate` copies
-  state found in older install locations into the one home;
-  `--backup-dir DIR` and `--no-backup` steer or skip the zip that
-  `--wipe` writes; `--lines N` sets how much `--logs` prints; and,
-  on a fresh install, `--shared-secret SECRET` writes that secret into
-  `config.json` instead of generating one (on an existing one-home
-  install, edit `config.json`); it must pass a 128-bit entropy gate at
-  least as strict as the runner's startup check.
-- **Linux:** run `./install` — registers a systemd service.
-- **macOS:** run `./install` — registers a launchd agent.
+- **Windows:** run `install.exe` from an elevated PowerShell. It creates the one home
+  at `C:\homing-pigeon` (containing `bin/` for the exes, including a copy of the
+  installer itself, along with `config.json`, `state/`, and `install-receipt.json`),
+  locks it down to SYSTEM + Administrators (a named `--run-as` account is granted
+  access too), and registers a Scheduled Task that starts at boot. By default the task
+  runs as SYSTEM; for least privilege, create a dedicated local account first and
+  install with `install.exe --run-as pigeon` (schtasks will prompt for the account's
+  password; service accounts like `NT AUTHORITY\Network Service` and gMSA names ending
+  in `$` need none). A named account runs at `LIMITED` run level instead of `HIGHEST`.
+  The service, `install.exe --console`, and `--oracle` all use the same
+  `C:\homing-pigeon\config.json`, so there is one state dir and no more SYSTEM-vs-user
+  split. Re-running `install.exe` is safe: it upgrades the binaries and the project
+  snapshot in `state/project/` in place and leaves `config.json` and the rest of
+  `state/` alone (a re-run with `--faster` also rewrites the `inference` block). Six
+  commands to learn (from `C:\homing-pigeon\bin`): `install.exe --check` (doctor:
+  verifies the home, the receipt, the task, the config, and the inference endpoint,
+  and says what's wrong in plain language), `install.exe --console` (stops the task,
+  runs the agent in your terminal with live logs, restarts the task on Ctrl+C),
+  `install.exe --oracle` (the Oracle chat), `install.exe --logs [--follow]` (tail or
+  watch the runner log), `install.exe --wipe` (backs everything up into one zip, then
+  removes the home, the task, and every scattered state dir), and `install.exe
+  --faster` (switches the local model to `qwen2.5:3b`). The less common flags: `--home
+  DIR` picks a different one-home root (`--dir` without `--home` gives the legacy
+  layout, with no receipt and no doctor); `--migrate` copies state found in older
+  install locations into the one home; `--backup-dir DIR` and `--no-backup` steer or
+  skip the zip that `--wipe` writes; `--lines N` sets how much `--logs` prints; and,
+  on a fresh install, `--shared-secret SECRET` writes that secret into `config.json`
+  instead of generating one (on an existing one-home install, edit `config.json`); it
+  must pass a 128-bit entropy gate at least as strict as the runner's startup check.
+- **Linux:** run `./install`, which registers a systemd
+  service.
+- **macOS:** run `./install`, which registers a launchd
+  agent.
 
-Then sign in: run the app once with `homing-pigeon --setup --config
-<the installed config.json>` (`~/.homing-pigeon/config.json`, or
-`C:\homing-pigeon\config.json` on Windows) — Thunderbird-style browser sign-in, a fresh
-shared secret shown once for you to give to your cloud SI, config
-written. No hand-edited JSON needed. If you'd rather wire it by hand,
-edit `config.json` (add your mailbox address + app password) instead, then send
-the clock check below.
+Then sign in: run the app once with `homing-pigeon --setup --config <the installed
+config.json>` (`~/.homing-pigeon/config.json`, or `C:\homing-pigeon\config.json` on
+Windows) for a Thunderbird-style browser sign-in, with a fresh shared secret shown once
+for you to give to your cloud SI, and the config written. No hand-edited JSON needed.
+If you'd rather wire it by hand, edit `config.json` (add your mailbox address + app
+password) instead, then send the clock check below.
 
-The installer also sets up the Oracle's local model: it installs
-Ollama and pulls a small local model, then points `config.json` at it, so
-the `--oracle` chat answers on the box with nothing leaving it. If
-that step doesn't finish (it downloads a couple of gigabytes), the
-Oracle chat says so and tells you how to fix it — re-running
-`install.exe --inference-only` is safe and only retries the model
-setup, leaving the rest of your install alone. Pass
-`--no-inference` to skip it entirely.
+The installer also sets up the Oracle's local model: it installs Ollama
+and pulls a small local model, then points `config.json` at it, so the
+`--oracle` chat answers on the box with nothing leaving it. If that step
+doesn't finish (it downloads a couple of gigabytes), the Oracle chat says
+so and tells you how to fix it: re-running `install.exe --inference-only`
+is safe and only retries the model setup, leaving the rest of your
+install alone. Pass `--no-inference` to skip it entirely.
 
 ## 4. The full walkthrough
 
 By default the installer also sets up local inference for the Oracle `ask` op: it installs Ollama (if missing) and pulls a model (`qwen3:1.7b` by default). A Raspberry Pi install, detected automatically or selected with `--profile pi-light`, is Pi Light instead: no model is installed or downloaded, and the Oracle runs deterministically (see "Raspberry Pi: Pi Light" in §2). `--faster` pulls `qwen2.5:3b`, a faster model, on any machine. Pass `--inference-model` to choose a tag yourself, or `--no-inference` to skip the model entirely. The runner itself never bundles the model; Ollama runs separately on loopback. `homing-pigeon --faster` uses `qwen2.5:3b` for that process only and leaves `config.json` unchanged.
 
-**Easiest: download a release.** No Python needed — each release ships
-standalone binaries built by GitHub Actions. The common computer
-that does not ship with Python is a Windows PC. Download the
-Windows zip. Do not install Python. `homing-pigeon.exe` carries
-its own interpreter, and so do the Linux and macOS binaries. The
-release build proves the drop: the Linux binary is started in a
-Debian image that has no `python3`, and the Windows binary is
-started with Python taken off `PATH`.
+**Easiest: download a release.** No Python needed: each release ships
+standalone binaries built by GitHub Actions. The common computer that
+does not ship with Python is a Windows PC. Download the Windows zip.
+Do not install Python. `homing-pigeon.exe` carries its own
+interpreter, and so do the Linux and macOS binaries. The release build
+proves the drop: the Linux binary is started in a Debian image that
+has no `python3`, and the Windows binary is started with Python taken
+off `PATH`.
 
 | Platform | Download |
 |----------|----------|
@@ -314,7 +304,7 @@ started with Python taken off `PATH`.
 | Raspberry Pi (ARM64, Pi Light) | `homing-pigeon-pi-light-arm64-<version>.tar.gz` → `homing-pigeon` + `install` |
 
 Every archive carries the version in its file name, and extracting it
-creates a folder with the same name — so several releases can sit side
+creates a folder with the same name, so several releases can sit side
 by side without overwriting each other. `homing-pigeon --version` (or
 `install --version`) reports the build's version.
 
@@ -366,28 +356,23 @@ and that board does not need Python either.
    re-login and shared-secret rotation.
 4. Prefer to wire it by hand? Edit `config.json` instead. Two ways to
    sign in:
-   - **Password** (default): `mailbox_user` + `mailbox_password` (the
-     mailbox's app password, plaintext, on purpose). The HMAC shared secret is a separate
-     `shared_secret` value — generate one with `openssl rand -hex 32`.
-   - **Browser, like Thunderbird**: no Google password anywhere. Create a
-     Desktop OAuth client in [Google Cloud
-     Console](https://console.cloud.google.com/) (APIs & Services →
-     Credentials → Create OAuth client ID → Desktop app), then in
-     `config.json` set `"auth": "oauth"`, put the client id in
-     `oauth_client_id` (and `oauth_client_secret` if Google gave you one),
-     and set `shared_secret` to a random string — that's the HMAC key your
-     SI uses to sign jobs. Add `http://127.0.0.1:8765/` as a redirect URI on the client. Then
-     run `homing-pigeon --setup --config <config.json>` (pip installs
-     also have `homing-pigeon-auth`; from source, `python
-     runner/wire/oauth.py --config config.json`): a browser
-     opens, you sign in and grant access, and the refresh token is stored.
-     IMAP and SMTP then use XOAUTH2. Tested end to end on Windows 11.
-     One gotcha: in the Cloud Console, set the OAuth consent screen to
-     "Publish app" (status "In production"). Left in "Testing", Google
-     expires the refresh token after 7 days and the runner dies weekly.
-     No verification needed — the app stays unverified with the usual
-     first-consent warning (your explicit choice for this throwaway
-     account).
+   - **Password** (default): `mailbox_user` + `mailbox_password` (the mailbox's app
+     password, plaintext, on purpose). The HMAC shared secret is a separate
+     `shared_secret` value; generate one with `openssl rand -hex 32`.
+   - **Browser, like Thunderbird**: no Google password anywhere. Create a Desktop OAuth
+     client in [Google Cloud Console](https://console.cloud.google.com/) (APIs & Services →
+     Credentials → Create OAuth client ID → Desktop app), then in `config.json` set `"auth":
+     "oauth"`, put the client id in `oauth_client_id` (and `oauth_client_secret` if Google
+     gave you one), and set `shared_secret` to a random string, which is the HMAC key your SI
+     uses to sign jobs. Add `http://127.0.0.1:8765/` as a redirect URI on the client. Then
+     run `homing-pigeon --setup --config <config.json>` (pip installs also have
+     `homing-pigeon-auth`; from source, `python runner/wire/oauth.py --config config.json`):
+     a browser opens, you sign in and grant access, and the refresh token is stored. IMAP and
+     SMTP then use XOAUTH2. Tested end to end on Windows 11. One gotcha: in the Cloud
+     Console, set the OAuth consent screen to "Publish app" (status "In production"). Left in
+     "Testing", Google expires the refresh token after 7 days and the runner dies weekly. No
+     verification needed: the app stays unverified with the usual first-consent warning (your
+     explicit choice for this throwaway account).
 5. When you want an SI to send jobs, make sure `shared_secret` in
    config.json matches the string you pasted to the SI in chat
    (the wizard shows you a fresh one; `openssl rand -hex 32` works too).
@@ -435,7 +420,7 @@ and that board does not need Python either.
 3. Copy `runner/` to the target machine.
 4. Copy `config.example.json` to `config.json` and fill in `mailbox_user`
    and `mailbox_password` as above. Replace the `shared_secret`
-   placeholder with a generated secret (`openssl rand -hex 32`) — this is
+   placeholder with a generated secret (`openssl rand -hex 32`); this is
    the HMAC key your SI signs jobs with, separate from the mailbox
    password. (The installer generates one into the config it installs
    against if the placeholder is still there.)
@@ -467,7 +452,7 @@ Every push runs one portable proof on a core set of legs, and the nightly run ta
 
 ## Run it in a VM
 
-For testing — and honestly for everyday use — run the agent inside a
+For testing, and honestly for everyday use, run the agent inside a
 Linux VM on your own hardware rather than directly on the host:
 
 - **Snapshots beat regret.** About to hand an SI the keys to a machine?
@@ -477,10 +462,10 @@ Linux VM on your own hardware rather than directly on the host:
 - **Disposability.** Experiment freely: spin up a fresh VM for a new
   idea, tear it down when you're done. Nothing lingers on the host.
 
-Any hypervisor works — KVM/QEMU, VirtualBox, Hyper-V, VMware. Give the
-VM internet access (NAT is fine) so it can reach the mailbox's IMAP/SMTP
-servers, install the Linux release binary inside the guest, and point your jobs
-at it. The host never needs to know.
+Any hypervisor works: KVM/QEMU, VirtualBox, Hyper-V, VMware. Give the VM
+internet access (NAT is fine) so it can reach the mailbox's IMAP/SMTP servers,
+install the Linux release binary inside the guest, and point your jobs at it.
+The host never needs to know.
 
 ## Working scenario
 
@@ -508,7 +493,7 @@ the simulation used.
    extensions and never opens the mailbox, and the shared secret
    is not printed.
 
----
+-.
 
 ## Verify and live config
 
@@ -516,11 +501,11 @@ Whichever path you pick, **verify** with the clock check from
 [docs/steady/use/use-runbook.md](docs/steady/use/use-runbook.md) Job 7. If the runner replies with the time,
 you're live.
 
-> **Note:** the runner re-reads `config.json` every poll cycle and
-> picks up changes to `poll_interval_sec`, `workers`,
-> `default_timeout_sec`, `max_output_bytes`, `max_job_age_sec`,
+> > **Note:** the runner re-reads `config.json` every poll cycle
+> and > picks up changes to `poll_interval_sec`, `workers`, >
+> `default_timeout_sec`, `max_output_bytes`, `max_job_age_sec`, >
 > `result_stash_retention_sec` and `result_resend_backoff_sec`, and
-> the live keys `owner_instructions`, `inference`, `oracle_mode`,
-> `verbose` and `extension_sources`, automatically — no restart
-> needed. Changing the mailbox credentials, the shared secret or a
-> `security` mode still requires a restart.
+> > the live keys `owner_instructions`, `inference`, `oracle_mode`,
+> > `verbose` and `extension_sources`, automatically, with no
+> restart > needed. Changing the mailbox credentials, the shared
+> secret or a > `security` mode still requires a restart.

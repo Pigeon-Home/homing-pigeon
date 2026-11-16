@@ -4,17 +4,18 @@ A sense fed by [Zeek](https://zeek.org/), the network
 traffic analyzer. Zeek watches the wire so this sense does
 not have to: it tails the `conn.log` and `dns.log` files
 Zeek writes and files the two shapes in them that are worth
-waking the Oracle for — a crowd of external responders the
-box has never talked to before, and DNS queries shaped like
-tunneling or exfiltration. Everything else Zeek records,
-including connection rows with odd services or protocols,
-files nothing: oddity is normal on a real network, and a
-sense that files it trains its operator to ignore it.
+waking the Oracle for, namely a crowd of external
+responders the box has never talked to before, and DNS
+queries shaped like tunneling or exfiltration. Everything
+else Zeek records, including connection rows with odd
+services or protocols, files nothing: oddity is normal on a
+real network, and a sense that files it trains its operator
+to ignore it.
 
 Zeek's default log shape is TSV whose column order is
 stated in the file itself. `#fields` header lines name the
 columns in force and can reappear mid-file when Zeek
-rotates or restarts — so the parser is header-driven: each
+rotates or restarts, so the parser is header-driven: each
 data line is parsed against the field list in force at that
 point, and the reader state carries each file's current
 field list beside its inode and offset. Lines starting with
@@ -70,19 +71,19 @@ python3 zeek_feed.py --log-file fixtures/dns.log
 ```
 
 Alert payloads are unsigned sense alerts; signing and delivery
-follow the standard senses flow. The full extension walkthrough —
-manifest fields, the versioning contract, sensor binding, and how
-to turn this example into your own package — is in
+follow the standard senses flow. The full extension walkthrough
+(manifest fields, the versioning contract, sensor binding, and
+how to turn this example into your own package) is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).
 
 ## Footprint
 
 Zeek itself is the collector, and Zeek is heavy: measured
 ~230 MB RSS idle-with-light-traffic on the project's test
-VM (see the collector comparison in the research notes) —
-the heavyweight of the slate. This producer is a file
-tailer and costs almost nothing; the footprint line belongs
-to the daemon feeding it. Budget for Zeek as an
+VM (see the collector comparison in the research notes),
+making it the heavyweight of the slate. This producer is a
+file tailer and costs almost nothing; the footprint line
+belongs to the daemon feeding it. Budget for Zeek as an
 environment-bound choice: a busy or unusual network is
 exactly where its record is worth the RAM, and a quiet box
 is where it is not.
@@ -90,13 +91,12 @@ is where it is not.
 ## Light mode
 
 For a Pi Light install: leave this feed **off**. It is
-opt-in and NEVER a default — ~230 MB next to the local
+opt-in and NEVER a default: ~230 MB next to the local
 model on a small Pi is the difference between headroom and
 swap, and no producer tunable shrinks the Zeek daemon
 itself. If an operator deliberately runs Zeek beside a Pi
-anyway, its knobs still trim the
-producer's own wakefulness: raise `poll_interval_sec` from
-60 to 600, point `log_paths` at the single log actually
-kept (for example just `conn.log`), and raise
-`new_peer_threshold` — at 25, only a real crowd of new
-external peers files.
+anyway, its knobs still trim the producer's own
+wakefulness: raise `poll_interval_sec` from 60 to 600,
+point `log_paths` at the single log actually kept (for
+example just `conn.log`), and raise `new_peer_threshold`
+(at 25, only a real crowd of new external peers files).

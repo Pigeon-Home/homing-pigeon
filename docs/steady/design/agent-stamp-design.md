@@ -43,9 +43,9 @@ The canonical spelling is `Agent-Stamp`. Variants seen so far:
   bundles (the upstream is declared once, in the manifest)
 - an `Agent-Chat-Stamp:` trailer and file header, the spelling the
   questions desk used under its recycled stamp (`50000c8e`) on its
-  commits and files; the active desk — the Muse seat, whose stamp
-  `40000e00` also stands recycled — signs `Agent-Stamp`; the
-  record check below reads both spellings
+  commits and files; the active desk (the Muse seat, whose stamp
+  `40000e00` also stands recycled) signs `Agent-Stamp`; the record
+  check below reads both spellings
 
 Proposal: rewrite the two file headers to `Agent-Stamp`. Leave history
 alone, and have the search tooling accept the old spellings.

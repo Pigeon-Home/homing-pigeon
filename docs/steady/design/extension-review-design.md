@@ -44,15 +44,15 @@ the AST (exact), call shapes from the text (`.bind(`, `os.system(`,
 `urlopen(`; generous, because a false positive costs the author one
 word in the manifest and a miss costs the owner).
 
-**Findings carry weight, and only the heavy ones refuse.** `high`
-is what a manifest cannot explain away: code that does not compile,
-a symlink inside the folder, a file too large or not UTF-8 to read,
-a bidi or zero-width control character (Trojan Source), an
-undeclared capability, a reference to the runner's own state files
+**Findings carry weight, and only the heavy ones refuse.** `high` is
+what a manifest cannot explain away: code that does not compile, a
+symlink inside the folder, a file too large or not UTF-8 to read, a
+bidi or zero-width control character (Trojan Source), an undeclared
+capability, a reference to the runner's own state files
 (`seen.json`, `board.json`, the security events; in a sense, also
 the mailbox password and key material, which the runner never hands
-a sense -- a transport may legitimately name what it is handed), a
-transport `entry` that steps outside its folder. `warn` is worth a
+a sense, since a transport may legitimately name what it is handed),
+a transport `entry` that steps outside its folder. `warn` is worth a
 line and never a refusal: a signal filed and not declared (ingest
 refuses it anyway), `exec`/`eval` at run time, a drop-in shadowing a
 shipped transport. `note` is for the report: a declared signal never
@@ -83,9 +83,9 @@ a different pipe than the one picked is the wrong surprise. The
 refusal and the "no loadable transport extension" line together say
 what happened.
 
-**Shadowing stays legal and gets loud.** The documented behavior --
-a same-named folder in the owner's extensions directory runs instead
-of the shipped transport -- is kept, because private forks of a
+**Shadowing stays legal and gets loud.** The documented behavior (a
+same-named folder in the owner's extensions directory runs instead
+of the shipped transport) is kept, because private forks of a
 shipped transport are first-class. It is now a `warn` finding and a
 security event at every start.
 

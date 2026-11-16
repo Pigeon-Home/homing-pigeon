@@ -2,14 +2,14 @@
 
 A sense for the health of the machine it runs on, and the Pi
 Light showcase: on a Pi it runs with no local model anywhere
-in the loop — but nothing about it is Pi-only. The watcher
-reads the machine's vitals — CPU/SoC temperature, undervoltage
-and throttling, disk usage, memory pressure — and files what
+in the loop, but nothing about it is Pi-only. The watcher
+reads the machine's vitals (CPU/SoC temperature, undervoltage
+and throttling, disk usage, memory pressure) and files what
 needs attention as Oracle signals. A Raspberry Pi exposes the
 fullest picture (it alone reports undervoltage); a laptop
 exposes temperature, disk and memory; a machine that exposes
 almost nothing still gets its disk watched. Same extension,
-same signals everywhere — which is the point: run it on a Pi
+same signals everywhere, which is the point: run it on a Pi
 Light install and on a laptop install side by side, and any
 difference is the platform and the Oracle configuration, not
 the extension. That makes the pair a clean A/B for the two
@@ -30,17 +30,17 @@ Oracle, which files its brief from the alert itself.
 
 Every source is optional and capability-based: a source the
 machine doesn't expose reports nothing, which never yields a
-signal and is never an error. Temperature comes from the
-Linux thermal sysfs (`/sys/class/thermal`), preferring the
-zone whose type names the SoC or CPU package (`cpu-thermal`
-on a Pi, `x86_pkg_temp` on Intel laptops) over motherboard
-and wifi zones. Throttling comes from `vcgencmd get_throttled`
-— Pi-only by nature; everywhere else power simply has nothing
+signal and is never an error. Temperature comes from the Linux
+thermal sysfs (`/sys/class/thermal`), preferring the zone
+whose type names the SoC or CPU package (`cpu-thermal` on a
+Pi, `x86_pkg_temp` on Intel laptops) over motherboard and wifi
+zones. Throttling comes from `vcgencmd get_throttled`, which
+is Pi-only by nature; everywhere else power simply has nothing
 to say, and `undervoltage_detected` never fires. Disk comes
-from the mount (portable). Memory is `/proc/meminfo` on
-Linux, `GlobalMemoryStatusEx` on Windows, and `os.sysconf`
-page counts on other POSIX systems. A signal files once when
-its condition appears, and again when the reading moves; the
+from the mount (portable). Memory is `/proc/meminfo` on Linux,
+`GlobalMemoryStatusEx` on Windows, and `os.sysconf` page
+counts on other POSIX systems. A signal files once when its
+condition appears, and again when the reading moves; the
 pass's state lives in `.pi-health-state.json` next to the
 script.
 
@@ -73,17 +73,17 @@ A readings file is one JSON object:
 ## Light mode
 
 This sense is the Pi Light showcase, and there is nothing to
-tune down: a pass is a handful of capability reads — the
+tune down: a pass is a handful of capability reads (the
 thermal sysfs, one `vcgencmd get_throttled` call where the
 firmware tool exists, a disk-usage read on `disk_mount`, and
-the memory counters — with no network and no model anywhere
+the memory counters) with no network and no model anywhere
 in it, and the state file stays a few lines of JSON. Leave
 `disk_mount` on the one mount that matters and run it as
 often as you like.
 
 ## Further reading
 
-The full extension walkthrough — manifest fields, the
+The full extension walkthrough, covering manifest fields, the
 versioning contract, sensor binding, and how to turn this
-example into your own package — is in
+example into your own package, is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).

@@ -27,7 +27,7 @@ The account needs:
   log all live here by default).
 - **Read** on anything jobs are expected to read; **write** only
   where jobs are expected to write. Jobs run as this user, so the
-  account is the identity boundary on Windows — there is no
+  account is the identity boundary on Windows. There is no
   bwrap/namespace equivalent; the confinement backend described
   below adds its own controls on top of the account when
   `confinement` is at `enforce`.
@@ -36,7 +36,7 @@ The account needs:
 
 What the limited account loses: binding privileged ports, writing
 outside its directories, and (obviously) the `--run-as` equivalent
-of `job_user` privilege drops — the M8 `job_user` demote itself is
+of `job_user` privilege drops. The M8 `job_user` demote itself is
 a POSIX `setuid` mechanism; on Windows the mode instead carries
 the Job Object ceiling described below, a resource limit rather
 than an account drop, so this account stays the identity boundary.
@@ -58,7 +58,8 @@ icacls config.json /grant:r "pigeon-runner:(R,W)" "SYSTEM:(R,W)" "Administrators
 
 `/inheritance:r` removes inherited grants; the second line grants
 read/write to exactly the runner account, SYSTEM, and Administrators.
-Verify with `icacls config.json` — no other principal should appear.
+Verify with `icacls config.json`, as no other principal should
+appear.
 
 The runner's `--posture` check reports the Windows ACL state
 best-effort (it cannot prove a negative the way mode bits can, so an
@@ -75,9 +76,9 @@ windows: job_object + restricted_token + low_integrity
 ```
 
 A job process is created suspended under a restricted token
-derived from the runner's own token — every privilege except
-SeChangeNotify stripped, the Administrators group disabled —
-with the token's mandatory integrity level set to Low, and it is
+derived from the runner's own token (every privilege except
+SeChangeNotify stripped, the Administrators group disabled) with
+the token's mandatory integrity level set to Low, and it is
 assigned to a Job Object carrying a per-process memory ceiling
 (512 MiB) before it resumes, so the job never runs a line
 unconfined. The job's workspace directory is labelled Low
@@ -91,8 +92,8 @@ isolation. A confined job can still read any path its token can
 read; low integrity stops it writing to medium- or
 higher-integrity objects outside its workspace, it does not
 hide the filesystem, and it isolates no network. At `enforce`
-the startup gate probes the backend — Job Object creation plus
-restricted-token creation plus the integrity-level set — and
+the startup gate probes the backend (Job Object creation plus
+restricted-token creation plus the integrity-level set) and
 refuses to start when the probe fails, naming why. An
 AppContainer backend is the future path to confinement parity
 with the Linux sandbox; it is not built yet.
@@ -115,20 +116,19 @@ job whose process cannot be assigned is refused rather than run
 uncontained. The ceiling is a resource limit, not the demote:
 jobs still run as the runner's account under that mode, and no
 token drop or integrity-level change stands behind `job_user`
-itself — those controls belong to `confinement`.
+itself, as those controls belong to `confinement`.
 
 A fresh Windows install writes both modes into `config.json` at
 `audit`, stated in the file. The reason is the same for both:
 the installer and the setup wizard write the seed without
-running the backend probe on that machine, and stating
-`enforce` sight-unseen risks a first-start refusal on a machine
-where a control cannot engage — the operator steps a mode up to
-`enforce` deliberately, and the startup gate then verifies the
-probe on that machine. A config the first-run setup wizard seeds
-states the same two lines the same way, and the wizard says so
-as it writes the file. At `audit`, jobs run under the account
-boundary above, and the audit log records what the modes would
-have done.
+running the backend probe on that machine, and stating `enforce`
+sight-unseen risks a first-start refusal on a machine where a
+control cannot engage. The operator steps a mode up to `enforce`
+deliberately, and the startup gate then verifies the probe on
+that machine. A config the first-run setup wizard seeds states
+the same two lines the same way, and the wizard says so as it
+writes the file. At `audit`, jobs run under the account boundary
+above, and the audit log records what the modes would have done.
 
 ## Service hardening
 

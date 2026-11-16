@@ -2,8 +2,8 @@
 
 A sense for a release drop folder. Point it at the folder
 where release artifacts land, and the Oracle learns what
-dropped — attested, not just announced: every arrival is
-filed with the full SHA-384 digest (the project's digest)
+dropped, attested rather than just announced: every arrival
+is filed with the full SHA-384 digest (the project's digest)
 of the bytes that actually landed, computed by this sense,
 streamed in chunks so a large artifact never sits whole in
 memory. And if a name that already dropped shows up again
@@ -19,12 +19,12 @@ The watcher files two declared signals:
 | `artifact_changed` | A known artifact name reappears with a different SHA-384; the detail carries the old and new digests side by side |
 
 A file larger than `max_hash_mb` (default 512) is skipped
-entirely for the pass — counted, named on stderr, and never
-watched until it fits under the cap or the cap rises. An
-artifact's arrival is only ever attested by a digest this
-sense actually computed. A name that vanishes from the drop
-is dropped from the state silently: no signal is declared
-for departures, so none is filed.
+entirely for the pass: it is counted, named on stderr, and
+never watched until it fits under the cap or the cap rises.
+An artifact's arrival is only ever attested by a digest
+this sense actually computed. A name that vanishes from the
+drop is dropped from the state silently: no signal is
+declared for departures, so none is filed.
 
 Run one pass:
 
@@ -63,14 +63,14 @@ computed.)
 On a Pi Light install, tune the manifest's tunables down:
 raise `poll_interval_sec` (a drop folder rarely needs a
 one-minute cadence), lower `max_hash_mb` so a pass never
-spends Pi CPU hashing a very large artifact — oversize
-artifacts then simply wait — counted as skipped, never as
-arrivals — until the cap rises — and keep the sense on the
-single `watch_dir` that releases actually land in.
+spends Pi CPU hashing a very large artifact (oversize
+artifacts then simply wait, counted as skipped and never
+as arrivals, until the cap rises), and keep the sense on
+the single `watch_dir` that releases actually land in.
 
 ## Further reading
 
-The full extension walkthrough — manifest fields, the
-versioning contract, sensor binding, and how to turn this
-example into your own package — is in
+The full extension walkthrough (manifest fields, the versioning
+contract, sensor binding, and how to turn this example into your
+own package) is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).

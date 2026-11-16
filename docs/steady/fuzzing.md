@@ -15,73 +15,72 @@ Running `python3 runner/ops/core.py` prints the set's current
 zip size and token counts.
 
 The set was first assembled on 2026-11-04 so a single model
-window could hold the whole runner beside the documentation:
-133 files, 54,427 lines (48,981 of them non-blank), a
-701,403-byte zip, and 619,845 tokens by that window's own
-count (Gemini countTokens). Re-measured on 2026-11-05, after
-the Q-new runner fixes grew 4 of its files, and again after
-the CHECKLIST-04 send_job fixes grew runner/cloud, and
-again on 2026-11-06 after the fy_iceworld F-1 fix grew
-runner/wire, and again the same day after the signed-body
-strictness fix grew runner/guard, and after the audit
-hash-chain fix grew runner/guard and runner/ops, and once
-more the same day after the Oracle tool-mode work and the
-startup posture assertion switch grew runner/ops,
-runner/guard and the runner proper, and again after the
-outbox stash took the per-key guard in the runner proper,
-and again after the send_job verifier took the shared
-strict reader, and again after the startup gate took the
-resources and DRI paging readers, and again after the
-fy_iceworld fragment-buffer caps grew runner/wire, and
-again after the temp-reaping work grew runner/ops,
-runner/tools, runner/guard and the runner proper, and
-again after the repair-note cap fix grew runner/oracle,
-and again after the world-readable secret-file check
-grew runner/wire, and again after the DTLS record-layer
-and framing work grew runner/wire, runner/guard,
-runner/ops, runner/transport_extensions and the runner
-proper, and again after the job_user startup gate took
-its POSIX branches and the confinement startup trial
-took the configured extra_flags, growing runner/ops and
-runner/guard, and after the stamp audit took its
-historical-signings acceptance, growing runner/tools,
-and again on 2026-11-08 after the Oracle briefing
-(shape 4) added runner/ops/briefing.py and
-runner/tools/make_briefing.py to the canonical list and
-its wiring grew runner/ops, runner/tools and the runner
-proper, and again the same day after the release cut
-took a fresh, uncached token measure at every cut —
-version4's --fresh recount — growing runner/ops, and
-again on 2026-11-10 after the platform confinement
-backends (runner/guard/windows_confine.py and
-runner/guard/freebsd_confine.py) joined the canonical
-list and their wiring grew runner/ops, runner/guard and
-the runner proper, and again the same day after the
-FreeBSD backend's field-test fixes and the Windows
-backend's import-safety change grew runner/guard, and
-again the same day after the posture stamp producer
-wired the runner to the disclosure module and
-runner/tools/disclosure.py joined the canonical list,
-growing runner/ops, runner/tools and the runner proper,
-and again the same day after the job_user postspawn
-fix grew runner/ops by 36 lines, which that landing
-left unrecorded,
-and again on 2026-11-11 after the macOS confinement
-backend (runner/guard/macos_confine.py) joined the
-canonical list and its wiring grew runner/ops,
-runner/guard and the runner proper,
-the
-as-assembled set stands at <!--hp-fig:core_assembled_lines-->69,475<!--/hp-fig--> lines (<!--hp-fig:core_assembled_nonblank-->62,976<!--/hp-fig--> non-blank)
-and a <!--hp-fig:core_assembled_zip_bytes-->896,432<!--/hp-fig-->-byte zip, and the project's own estimator
-counts it at <!--hp-fig:core_assembled_tokens-->767,034<!--/hp-fig--> tokens; the Gemini figure above still
-describes the 2026-11-04 assembly. The project's own
-estimator counts the canonical <!--hp-fig:core_files-->137<!--/hp-fig-->-file list at <!--hp-fig:core_tokens-->755,455<!--/hp-fig-->
-tokens across <!--hp-fig:core_lines-->68,356<!--/hp-fig--> lines (<!--hp-fig:core_lines_nonblank-->61,975<!--/hp-fig--> non-blank); the 2 token
-counts come from
-different counters and are not interchangeable. 3 of the 133 files were the suite's own
+window could hold the whole runner beside the documentation: 133
+files, 54,427 lines (48,981 of them non-blank), a 701,403-byte
+zip, and 619,845 tokens by that window's own count (Gemini
+countTokens). Re-measured on 2026-11-05, after the Q-new runner
+fixes grew 4 of its files, and again after the CHECKLIST-04
+send_job fixes grew runner/cloud, and again on 2026-11-06 after
+the fy_iceworld F-1 fix grew runner/wire, and again the same day
+after the signed-body strictness fix grew runner/guard, and
+after the audit hash-chain fix grew runner/guard and runner/ops,
+and once more the same day after the Oracle tool-mode work and
+the startup posture assertion switch grew runner/ops,
+runner/guard and the runner proper, and again after the outbox
+stash took the per-key guard in the runner proper, and again
+after the send_job verifier took the shared strict reader, and
+again after the startup gate took the resources and DRI paging
+readers, and again after the fy_iceworld fragment-buffer caps
+grew runner/wire, and again after the temp-reaping work grew
+runner/ops, runner/tools, runner/guard and the runner proper,
+and again after the repair-note cap fix grew runner/oracle, and
+again after the world-readable secret-file check grew
+runner/wire, and again after the DTLS record-layer and framing
+work grew runner/wire, runner/guard, runner/ops,
+runner/transport_extensions and the runner proper, and again
+after the job_user startup gate took its POSIX branches and the
+confinement startup trial took the configured extra_flags,
+growing runner/ops and runner/guard, and after the stamp audit
+took its historical-signings acceptance, growing runner/tools,
+and again on 2026-11-08 after the Oracle briefing (shape 4)
+added runner/ops/briefing.py and runner/tools/make_briefing.py
+to the canonical list and its wiring grew runner/ops,
+runner/tools and the runner proper, and again the same day after
+the release cut took a fresh, uncached token measure at every
+cut (version4's --fresh recount), growing runner/ops, and again
+on 2026-11-10 after the platform confinement backends
+(runner/guard/windows_confine.py and
+runner/guard/freebsd_confine.py) joined the canonical list and
+their wiring grew runner/ops, runner/guard and the runner
+proper, and again the same day after the FreeBSD backend's
+field-test fixes and the Windows backend's import-safety change
+grew runner/guard, and again the same day after the posture
+stamp producer wired the runner to the disclosure module and
+runner/tools/disclosure.py joined the canonical list, growing
+runner/ops, runner/tools and the runner proper, and again the
+same day after the job_user postspawn fix grew runner/ops by 36
+lines, which that landing left unrecorded, and again on
+2026-11-11 after the macOS confinement backend
+(runner/guard/macos_confine.py) joined the canonical list and
+its wiring grew runner/ops, runner/guard and the runner proper,
+the as-assembled set stands at
+<!--hp-fig:core_assembled_lines-->69,475<!--/hp-fig--> lines
+(<!--hp-fig:core_assembled_nonblank-->62,976<!--/hp-fig-->
+non-blank) and a
+<!--hp-fig:core_assembled_zip_bytes-->896,432<!--/hp-fig-->-byte
+zip, and the project's own estimator counts it at
+<!--hp-fig:core_assembled_tokens-->767,034<!--/hp-fig--> tokens;
+the Gemini figure above still describes the 2026-11-04 assembly.
+The project's own estimator counts the canonical
+<!--hp-fig:core_files-->137<!--/hp-fig-->-file list at
+<!--hp-fig:core_tokens-->755,455<!--/hp-fig--> tokens across
+<!--hp-fig:core_lines-->68,356<!--/hp-fig--> lines
+(<!--hp-fig:core_lines_nonblank-->61,975<!--/hp-fig-->
+non-blank); the 2 token counts come from different counters and
+are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
-run_tests_shuffled.py and run_tests_windows_sim.py) — tools
-that run the tests, not runner code — so the canonical list
+run_tests_shuffled.py and run_tests_windows_sim.py), which are
+tools that run the tests, not runner code, so the canonical list
 leaves them out. The list and its counters stand in
 [runner/ops/core.py](../../runner/ops/core.py), the canonical
 home of the core figures above.
@@ -114,15 +113,15 @@ The tool prints the
 canonical breakdown live, beside the totals.
 
 The core is platform-agnostic in the main. Across its
-61,033 lines, explicit platform branching — sys.platform,
-os.name and win32 markers — totals about 140 lines in 36 of
+61,033 lines, explicit platform branching (sys.platform,
+os.name and win32 markers) totals about 140 lines in 36 of
 its files, beside a small number of dedicated platform
 modules (runner/ops/windows.py, runner/ops/winlog.py,
 runner/guard/windows_confine.py,
 runner/guard/freebsd_confine.py and
-runner/guard/macos_confine.py).
-Dropping 1 platform would trim that thin layer only; the
-rest of the set does not know which platform it is on.
+runner/guard/macos_confine.py). Dropping 1 platform would
+trim that thin layer only; the rest of the set does not
+know which platform it is on.
 
 ## What the passes found and pinned
 
@@ -191,93 +190,83 @@ too, so a canary in retained output is not in the raw reply.
 An encrypted submit opens the task. A cleartext submit does
 not.
 
-A job stamped two hours ago, or an hour ahead, does not
-run. The window is `max_job_age_sec`, with five minutes of
-slack into the future. The next job stamped now still runs.
-A file named `../escaped.txt` is not staged and the script
-does not run. The next ordinary job still does. A body
-whose `job_id` is not the id in the subject does not run
-either. The envelope still decrypts. The ids are what fail.
-A `reply_to` that is not one address does not steer the
-result. A newline, a comma, or a list falls back to the
-runner's own mailbox. One plain address is honored, because
-it was inside the signed body. A job cannot put a
-`PIGEON_` variable into its own process, in either case.
-Any other name it sets is still there. The next ordinary
-job still runs. The same job submitted again does not
-run a second time. A different job id still does. An
-envelope signed with one key, around a body signed with
-another, does not run. The next job whose keys agree still
-does. A job aimed at a different runner, or at no runner,
-does not run when audience is enforce. The job that names
-this runner still does. A `script_url` of `file:` is not
-fetched, in either case, and the inline script does not run
-in its place. The next ordinary job still does. A null
-byte in an argument or an environment name is refused, and
-the script does not start. A null byte in the interpreter
-was not a refusal when this was found: the path was absent,
-repair was the default, and the platform shell was started,
-so the Python script did not run under that shell. The code
-now refuses that shape — an interpreter containing a null
-byte is rejected and the job does not run. The next ordinary
-job still does. A ping that carries a script answers
-`pong` and does not run the script. The next exec job
-still does. A kind the runner does not know (`sh`, an
-empty string, `Exec`) does not run the script it carries.
-The next exec job still does. A script that is a number,
-or a list, does not run either. The next exec job still
-does. A `script_sha384` that does not match the script
-does not run. The same script with the right hash does.
-A hash that is a number does not run. The same hash in
-capitals does, because the compare folds case. A timeout
-of `slow` or a list does not run. A timeout of `0` is
-read as missing, so the default is used and the job runs.
-Args that are a string or a number do not run. Args of
-`0` are read as missing, so the job runs. An env that is
-a string or a list does not run. An env of `0` is read
-as missing, so the job runs. Files that are a string,
-or an entry whose name or url is not a string, do not
-run. Files of `0` are read as missing, so the job runs.
-An interpreter that is a string or a number does not run.
-An empty list was read as missing when this was found: the
-platform shell was started, and the Python script did not
-run under it. The code now refuses that shape too — a
-present-but-empty interpreter list is rejected.
-The next job with an interpreter still does. The same
-query is answered
-once. The second copy, same seen set, gets nothing back.
-A second query, different id, after the budget is spent,
-does not get the canary either. The answer says budget.
-A query aimed at a different job does not get it either.
-The answer says unknown. The query for this job still does.
-After `max_queries_per_hour` is spent, the next query is
-answered `rate_limit` and does not get the canary. An
-unknown op, even one that carries the fork bomb and an
-instruction to print the output, is `unknown_op`. It does
-not get the canary. A later grep of this job still does.
-A pattern that does not compile is `bad_pattern` and does
-not get the canary either. A pattern the shape check lets
-through, and that does not answer within two seconds, is
-`timeout`, and the match is killed. A later good grep still does.
-A retained view of `summary` or `attested` does not return
-the line. The answer says policy. `full` still does.
-`redacted`, with the canary as a pattern, returns the
-line with `[REDACTED:canary]` in its place. The pattern
-the query itself sent is echoed. `full` still returns the
-canary. A `max_matches` of zero returns no lines, and the
-answer says the output was truncated. A later grep with
-the default limit still returns the canary. An `ask`
-whose question says to print the output, with no model
-configured, is `inference_unconfigured`. The output is
-not copied into the answer. A later grep still returns
-the canary. Grep searches stderr as well as stdout. A
-pattern that matches only stdout does not return the
-stderr line. A `queries` value that is not a list, even
-when the value is an instruction to print the canary, is
-no queries. The answer is empty. A later grep still
-returns the canary. A record whose `saved_at` is older
-than the retention window is `expired` and does not
-return the canary. A fresh `saved_at` still does.
+A job stamped two hours ago, or an hour ahead, does not run. The
+window is `max_job_age_sec`, with five minutes of slack into the
+future. The next job stamped now still runs. A file named
+`../escaped.txt` is not staged and the script does not run. The
+next ordinary job still does. A body whose `job_id` is not the id
+in the subject does not run either. The envelope still decrypts.
+The ids are what fail. A `reply_to` that is not one address does
+not steer the result. A newline, a comma, or a list falls back to
+the runner's own mailbox. One plain address is honored, because
+it was inside the signed body. A job cannot put a `PIGEON_`
+variable into its own process, in either case. Any other name it
+sets is still there. The next ordinary job still runs. The same
+job submitted again does not run a second time. A different job
+id still does. An envelope signed with one key, around a body
+signed with another, does not run. The next job whose keys agree
+still does. A job aimed at a different runner, or at no runner,
+does not run when audience is enforce. The job that names this
+runner still does. A `script_url` of `file:` is not fetched, in
+either case, and the inline script does not run in its place. The
+next ordinary job still does. A null byte in an argument or an
+environment name is refused, and the script does not start. A
+null byte in the interpreter was not a refusal when this was
+found: the path was absent, repair was the default, and the
+platform shell was started, so the Python script did not run
+under that shell. The code now refuses that shape: an interpreter
+containing a null byte is rejected and the job does not run. The
+next ordinary job still does. A ping that carries a script
+answers `pong` and does not run the script. The next exec job
+still does. A kind the runner does not know (`sh`, an empty
+string, `Exec`) does not run the script it carries. The next exec
+job still does. A script that is a number, or a list, does not
+run either. The next exec job still does. A `script_sha384` that
+does not match the script does not run. The same script with the
+right hash does. A hash that is a number does not run. The same
+hash in capitals does, because the compare folds case. A timeout
+of `slow` or a list does not run. A timeout of `0` is read as
+missing, so the default is used and the job runs. Args that are a
+string or a number do not run. Args of `0` are read as missing,
+so the job runs. An env that is a string or a list does not run.
+An env of `0` is read as missing, so the job runs. Files that are
+a string, or an entry whose name or url is not a string, do not
+run. Files of `0` are read as missing, so the job runs. An
+interpreter that is a string or a number does not run. An empty
+list was read as missing when this was found: the platform shell
+was started, and the Python script did not run under it. The code
+now refuses that shape too: a present-but-empty interpreter list
+is rejected. The next job with an interpreter still does. The
+same query is answered once. The second copy, same seen set, gets
+nothing back. A second query, different id, after the budget is
+spent, does not get the canary either. The answer says budget. A
+query aimed at a different job does not get it either. The answer
+says unknown. The query for this job still does. After
+`max_queries_per_hour` is spent, the next query is answered
+`rate_limit` and does not get the canary. An unknown op, even one
+that carries the fork bomb and an instruction to print the
+output, is `unknown_op`. It does not get the canary. A later grep
+of this job still does. A pattern that does not compile is
+`bad_pattern` and does not get the canary either. A pattern the
+shape check lets through, and that does not answer within two
+seconds, is `timeout`, and the match is killed. A later good grep
+still does. A retained view of `summary` or `attested` does not
+return the line. The answer says policy. `full` still does.
+`redacted`, with the canary as a pattern, returns the line with
+`[REDACTED:canary]` in its place. The pattern the query itself
+sent is echoed. `full` still returns the canary. A `max_matches`
+of zero returns no lines, and the answer says the output was
+truncated. A later grep with the default limit still returns the
+canary. An `ask` whose question says to print the output, with no
+model configured, is `inference_unconfigured`. The output is not
+copied into the answer. A later grep still returns the canary.
+Grep searches stderr as well as stdout. A pattern that matches
+only stdout does not return the stderr line. A `queries` value
+that is not a list, even when the value is an instruction to
+print the canary, is no queries. The answer is empty. A later
+grep still returns the canary. A record whose `saved_at` is older
+than the retention window is `expired` and does not return the
+canary. A fresh `saved_at` still does.
 
 An open task is not finished by a result or an approval.
 It has to be claimed first. A later submit still opens.
@@ -382,14 +371,14 @@ admission is the part a sensor can reach.
 
 ## Where the tests are
 
-- `runner/tests/test_oracle_intake_fuzz.py` — ring 1 for alerts,
+- `runner/tests/test_oracle_intake_fuzz.py`: ring 1 for alerts,
   manifests, key policy, the local envelope, review, the
   Oracle's tools, sensor config, a poisoned senses store, and
   the loopback socket reader. The tool named `run` is stubbed.
   The fuzzer must not grow a shell.
-- `runner/tests/test_dtls_fuzz.py` — ring 3, started: random
+- `runner/tests/test_dtls_fuzz.py`: ring 3, started: random
   datagrams and the fragment buffer.
-- `runner/tests/test_properties.py` — the older property tests on
+- `runner/tests/test_properties.py`: the older property tests on
   the signed-object core.
 
 Hypothesis is a test-only dependency. CI installs it. A run
@@ -399,76 +388,76 @@ on import.
 ## Mutation testing: the suite, audited
 
 Fuzzing tests the code with hostile input. Mutation testing
-turns the same suspicion on the tests themselves. A tool —
-here, mutmut — takes a file of production code and changes
-it in one small way at a time: a comparison flipped, a
-default swapped, a `+1` made `+2`, a condition dropped.
-Each changed copy is a mutant. The unit suite then runs
-against the mutant. If a test fails, the mutant is killed:
-some test was watching that exact behaviour. If every test
-still passes, the mutant survived, and a survivor is a
-finding about the suite, not about the code — it marks a
-behaviour no test actually pins.
+turns the same suspicion on the tests themselves. A tool,
+mutmut here, takes a file of production code and changes it
+in one small way at a time: a comparison flipped, a default
+swapped, a `+1` made `+2`, a condition dropped. Each
+changed copy is a mutant. The unit suite then runs against
+the mutant. If a test fails, the mutant is killed: some
+test was watching that exact behaviour. If every test still
+passes, the mutant survived, and a survivor is a finding
+about the suite, not about the code: it marks a behaviour
+no test actually pins.
 
 Why a suite this size needs the audit: the suite was
 deliberately grown past 10,000 tests (10,301 ran in the
 2026-11-05 build record), and a suite that large can hide
-a test that is a false positive by construction — a test
-that exercises a path, returns a pass, and asserts nothing
-that could ever fail. Such a test is latent: it shows up
-in the count and in the coverage — the line it runs does
-execute — while pinning nothing. Coverage cannot see it,
-because coverage measures that code ran, not that anything
-checked what the code did. Mutation testing is the check
-that can see it. Change the code slightly, and the honest
-tests notice; the latent one does not. So the standing
-rule: a surviving mutant is a defect in the suite, taken
-as seriously as a crash in the code, and it is closed by
-writing the missing assertion, not by widening a tolerance
-or dropping the mutant from the list.
+a test that is a false positive by construction, meaning a
+test that exercises a path, returns a pass, and asserts
+nothing that could ever fail. Such a test is latent: it
+shows up in the count and in the coverage (the line it
+runs does execute) while pinning nothing. Coverage cannot
+see it, because coverage measures that code ran, not that
+anything checked what the code did. Mutation testing is
+the check that can see it. Change the code slightly, and
+the honest tests notice; the latent one does not. So the
+standing rule: a surviving mutant is a defect in the
+suite, taken as seriously as a crash in the code, and it
+is closed by writing the missing assertion, not by
+widening a tolerance or dropping the mutant from the list.
 
 The scope is deliberately narrow. mutmut mutates one file,
-`runner/guard/security.py` — 392 lines of pure policy and
-audit logic — with the whole suite as the oracle that kills
+`runner/guard/security.py` (392 lines of pure policy and
+audit logic), with the whole suite as the oracle that kills
 or passes each mutant. The configuration stands in
 `pyproject.toml`, and the suite itself, the tools and the
 extensions are never mutation targets. Wider scopes were
 measured before they were wanted: 4 files came to 1,567
 mutants and an extrapolated 45 to 50 minutes a run, and the
-full `runner/` tree would take hours. One file keeps a
-walk at about 7 minutes, and the scope expands
-deliberately or not at all.
+full `runner/` tree would take hours. One file keeps a walk
+at about 7 minutes, and the scope expands deliberately or
+not at all.
 
 The strategy's history, from the record:
 
-- 2026-10-16 — mutmut enters the pipeline as a CI gate,
+- 2026-10-16: mutmut enters the pipeline as a CI gate,
   scoped (commit eec3a646, "CI gates: pyrefly typecheck +
   mutmut mutation (scoped)"). That is the first appearance
   of mutation testing anywhere in the tree; as of
   2026-11-05 the strategy has been running for 20 days.
-- 2026-10-19 — `.github/workflows/mutation-seeded.yml` is
-  added: a scheduled, non-gating twin of the release
+- 2026-10-19: `.github/workflows/mutation-seeded.yml` is
+  added as a scheduled, non-gating twin of the release
   mutation job, first set to a weekly walk (Mondays at
-  06:17 UTC). Each run varies a seed — the run number, or a
-  value supplied on dispatch — carried in `PYTHONHASHSEED`
+  06:17 UTC). Each run varies a seed (the run number, or a
+  value supplied on dispatch) carried in `PYTHONHASHSEED`
   and `HP_MUTATION_SEED`, so different hash seeds and
   different property-test draws walk parts of the mutant
   space a fixed configuration never visits. A run
   reproduces by dispatching the workflow with its printed
   seed on its printed commit.
-- 2026-10-22 — mutation comes off the release path. The
+- 2026-10-22: mutation comes off the release path. The
   measurement that forced it stands in
   `docs/steady/reports/ci-failures.md`: over 310 runs the
   mutation job's median was 6.4 minutes, its p90 22.6 and
   its maximum 29.7, and 20 tags cut inside 15 minutes each
-  carried a 17-to-24-minute mutation job — the long pole
-  of every release, and a signal that never gated one.
-  From this date the build workflow's mutation job runs
-  only on a manual dispatch against a non-tag ref, marked
-  continue-on-error: loud when it fails, unable to hold a
-  publish.
-- 2026-10-25 — the signal is found blind, and un-blinded.
-  A collection failure inside the copied mutants tree ended
+  carried a 17-to-24-minute mutation job, which was the
+  long pole of every release and a signal that never gated
+  one. From this date the build workflow's mutation job
+  runs only on a manual dispatch against a non-tag ref,
+  marked continue-on-error: loud when it fails, unable to
+  hold a publish.
+- 2026-10-25: the signal is found blind, and un-blinded. A
+  collection failure inside the copied mutants tree ended
   mutmut's coverage pass before any test ran: 3 mutants
   were generated where 443 had been, and the run reported
   green. The cause was the coverage pass dying on a shared
@@ -476,11 +465,11 @@ The strategy's history, from the record:
   release 3.12.66 the same day: the archive folders are
   ignored for the test run inside the mutants tree, and
   `runner/tools/mutation_floor.py` now stands after mutmut
-  in both workflows — it reads the run's own statistics and
+  in both workflows. It reads the run's own statistics and
   fails the job when the signal has collapsed, with the
   tally in the log. A run that measured almost nothing is
   red from then on, never quietly green.
-- 2026-10-25 — the seeded walk goes hourly, at 17 minutes
+- 2026-10-25: the seeded walk goes hourly, at 17 minutes
   past each hour: a weekly walk saw 4 seeds a month, and
   the mutant space wanted more visits than that. One walk
   runs at a time; a slow hour queues the next run rather
@@ -489,7 +478,7 @@ The strategy's history, from the record:
 The first whole-signal triage (the D4 pass in the campaign
 record) took the security module's full mutant set: 566
 mutants, 500 killed, 66 survived. Each survivor was read
-as what it is — a missing assertion — and the triage wrote
+as what it is, a missing assertion, and the triage wrote
 tests against them one by one. 5 of the 66 were provably
 equivalent mutants: changes no test could ever catch,
 because both paths give the same answer. One is a default
@@ -500,8 +489,8 @@ equivalent, not chased. The kill verification was a full
 re-run: verdicts on 565 of the 566 mutants, 561 killed and
 4 survived, every one of the 61 targeted mutants dead, and
 the surviving names exactly the recorded equivalents (the
-fifth equivalent's verdict was never written — that run
-was stopped at 563 of 566 — and it stands equivalent on
+fifth equivalent's verdict was never written because that
+run was stopped at 563 of 566, and it stands equivalent on
 the argument). The signal in `security.py` stands at 561
 killed, 5 provably equivalent survivors.
 
@@ -511,7 +500,7 @@ log, its statistics and a plain list of survivors for the
 next triage; the build workflow's mutation job is the
 manual-dispatch twin. Neither is a release guard. No
 publish keys off a mutation result, no tag waits for one,
-and a release is verified — guards green, assets stamped —
+and a release is verified (guards green, assets stamped)
 while a seeded walk is still walking. That is the run a
 reader sees turning on the Actions page after a release is
 already done: it is long because it re-runs the suite
@@ -520,24 +509,23 @@ is allowed to be long because nothing waits on it. Its
 only product is the survivor list, and the survivor list
 is the suite's own defect queue.
 
-The same audit also runs by hand, against the proof
-family — the tests that drive the six properties of
-`docs/infrastructure-documents/proofs/properties.md`
-against the real code. In stage 5 of the proofs, for each
-property one deliberate one-line change was made in a
-scratch copy of the tree, that property's tests were run,
-and the file was restored from the pristine tree: twelve
-shapes in ten runs (two properties share a line, so one
-run covers both), and every run exited 1 — at least one
-test failed, every time, with the catching test named in
-the record (`docs/infrastructure-documents/proofs/stage5.md`).
-In the completion pass on 2026-11-01, five of the recorded
-mutations were re-run first-hand on the final tree in a
-fresh scratch copy, and each was caught by exactly the
-test the record names. The automated walk and the hand
-checks aim at the same failure from two sides: a test that
-would pass in every world is decoration, whichever way the
-break is introduced.
+The same audit also runs by hand, against the proof family:
+the tests that drive the six properties of
+`docs/infrastructure-documents/proofs/properties.md` against
+the real code. In stage 5 of the proofs, for each property one
+deliberate one-line change was made in a scratch copy of the
+tree, that property's tests were run, and the file was
+restored from the pristine tree: twelve shapes in ten runs
+(two properties share a line, so one run covers both), and
+every run exited 1, meaning at least one test failed, every
+time, with the catching test named in the record
+(`docs/infrastructure-documents/proofs/stage5.md`). In the
+completion pass on 2026-11-01, five of the recorded mutations
+were re-run first-hand on the final tree in a fresh scratch
+copy, and each was caught by exactly the test the record
+names. The automated walk and the hand checks aim at the same
+failure from two sides: a test that would pass in every world
+is decoration, whichever way the break is introduced.
 
 The machinery's own tests stand at
 `runner/tests/test_mutation_floor.py` (the collapsed-signal
@@ -647,12 +635,12 @@ CR, LF, VT, FF, ESC, DEL) at the front AND the back, in
 runs of 10 of the odd character at the front, the back and
 the middle, in runs of 10 ordinary characters followed by
 the odd one, as mismatched symbol pairs, and as symbol-only
-and non-printing-only strings -- 2,701 seed texts, pinned
-whole by the corpus tests. Generated cases mutate those
-seeds into job specs, paths, command lines, environment
-blocks, config blocks and limit values, including values
-JSON cannot carry (nested containers, bytes, NaN, infinity,
-integers past 2**63).
+and non-printing-only strings, making 2,701 seed texts,
+pinned whole by the corpus tests. Generated cases mutate
+those seeds into job specs, paths, command lines,
+environment blocks, config blocks and limit values,
+including values JSON cannot carry (nested containers,
+bytes, NaN, infinity, integers past 2**63).
 
 The contract each case must meet: the probes and the trial
 answer a problem string or None and never raise; the
@@ -660,14 +648,14 @@ backend's spawns and assignment raise RuntimeError only;
 the seams answer their value or refuse the job, and a
 confined answer under enforce carries exactly the backend's
 status string (`windows: job_object + restricted_token +
-low_integrity`) in its record -- never a weaker claim, and
+low_integrity`) in its record, never a weaker claim, and
 never the word sandbox. A bookended mode is not the mode:
 it reads as off at the seams and the startup validator
 refuses the config outright.
 
 The recorded run (2026-11-14, this machine): the campaign
-ran in memory for 300.2 seconds -- 38,700 rounds, 503,100
-surface cases -- and completed with no crash and no
+ran in memory for 300.2 seconds (38,700 rounds, 503,100
+surface cases) and completed with no crash and no
 widening: every case ended refused, cleanly errored, or
 confined under the exact status. No finding stood, so no
 regression family was owed; a finding would have taken the
@@ -678,9 +666,9 @@ small run stand as unit tests on main, and the module's
 own `__main__` runs a 400-round campaign.
 
 A second campaign the same day (Q190) drove the wider
-surface around the same decision -- the shared confinement
+surface around the same decision (the shared confinement
 validators and path rules in `runner/guard/sandbox.py`
-beside the backend and the seams -- for 8,970 generated
+beside the backend and the seams) for 8,970 generated
 cases in 300 seconds, deterministic from its own seed. It
 corroborated the verdicts above and found the one shape
 the first campaign's surface did not reach: a generated
@@ -700,9 +688,9 @@ family drives every sibling helper and call site named at
 Q190 with NUL-carrying paths bookended at every position
 and run length, beside the full bookend alphabet. This
 seat expects, surface by surface: (S1) the validators that
-already name the NUL in their own checks --
-`sandbox._absolute_mount` and the macOS profile-path
-validator -- refuse cleanly with RuntimeError, and stand;
+already name the NUL in their own checks
+(`sandbox._absolute_mount` and the macOS profile-path
+validator) refuse cleanly with RuntimeError, and stand;
 (S2) `build_bwrap_command`'s interpreter path refuses
 cleanly, because its resolver answers None for a
 NUL-carrying name and the builder turns that into its
@@ -712,12 +700,12 @@ interpreter_binds fix already starves it of binds and its
 own mounted-tree check then refuses; (S4) the two
 `_install_prefix` helpers (sandbox and macOS) do NOT
 raise, but answer a prefix derived from a path no
-filesystem can hold -- in the leading-NUL shape a prefix
-string carrying the NUL itself -- which is the skip shape
+filesystem can hold (in the leading-NUL shape, a prefix
+string carrying the NUL itself), which is the skip shape
 gone wrong in the other direction: not a crash, a bogus
-bind candidate; (S5) the macOS backend's realpath seams --
-`interpreter_read_paths` and `_profile_realpath`, and
-through them `build_profile` and `build_sandbox_argv` --
+bind candidate; (S5) the macOS backend's realpath seams
+(`interpreter_read_paths` and `_profile_realpath`, and
+through them `build_profile` and `build_sandbox_argv`)
 still raise the unhandled ValueError, because nothing on
 those paths has the landed fix's guard. If S4 and S5 stand
 as stated, the fix shape is the landed one, applied at
@@ -726,29 +714,28 @@ refused with RuntimeError, never carried and never an
 unhandled exception. The family's conclusions stand below
 once it has run.
 
-Conclusions (2026-11-14, the same lane, after the run).
-The family stands in `runner/tests/test_q190_shotgun.py`:
-23 test methods carrying some 570 derived cases (14 NUL
-bookends per base path -- runs of 1, 2 and 10 at the front,
-the back, both ends and the middle, plus the bare shapes --
+Conclusions (2026-11-14, the same lane, after the run). The
+family stands in `runner/tests/test_q190_shotgun.py`: 23
+test methods carrying some 570 derived cases (14 NUL
+bookends per base path: runs of 1, 2 and 10 at the front,
+the back, both ends and the middle, plus the bare shapes,
 across every surface named at Q190, and the full
 36-character bookend alphabet over interpreter_binds and
 _install_prefix). Against the suppositions: S1, S2 stand
 exactly as written. S3 stands for an interpreter outside
 the mounted trees and fails for one under them: a
 NUL-carrying path under /usr passed FreeBSD's
-translate_argv unchanged, because its mounted-tree check
-is a prefix check the NUL does not disturb -- not a crash,
-but not a refusal either, and now refused at the top of
-the translation, by name. S4 and S5 stand exactly as
-written: both _install_prefix helpers answered a
-NUL-derived prefix (in the leading shape, a prefix string
-carrying the NUL itself), and the macOS realpath seams
-raised the unhandled ValueError. All four seams now take
-the landed fix's shape: _install_prefix (both backends)
-answers no prefix for a NUL-carrying path, and the macOS
-interpreter_read_paths and _profile_realpath refuse one
-with RuntimeError, which carries build_profile and
-build_sandbox_argv with them. The family passes whole,
-and the confinement, macOS and FreeBSD suites pass beside
-it unchanged.
+translate_argv unchanged, because its mounted-tree check is
+a prefix check the NUL does not disturb (not a crash, but
+not a refusal either, and now refused at the top of the
+translation, by name). S4 and S5 stand exactly as written:
+both _install_prefix helpers answered a NUL-derived prefix
+(in the leading shape, a prefix string carrying the NUL
+itself), and the macOS realpath seams raised the unhandled
+ValueError. All four seams now take the landed fix's shape:
+_install_prefix (both backends) answers no prefix for a
+NUL-carrying path, and the macOS interpreter_read_paths and
+_profile_realpath refuse one with RuntimeError, which
+carries build_profile and build_sandbox_argv with them. The
+family passes whole, and the confinement, macOS and FreeBSD
+suites pass beside it unchanged.

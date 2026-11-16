@@ -42,14 +42,14 @@ variation tests is desired, not scope creep.
 
 The driver (`campaign_loop.py`, rig-side and never committed; the
 cycles it recorded became the per-cycle tests once kept under
-`runner/tests/archive/` — that record was removed on 2026-11-01
-and survives at the `campaign-1-record` tag, with the eight
-shapes living on in `runner/tests/test_campaign_core.py`)
-cycles eight basic job variants,
-one execution per cycle, at a fixed spacing that never stretches
-on mail health (the tuned campaign ran a 3 s spacing, a sustained
-15 executions/minute; the cycle period floor is the file
-extension's 2-second poll on both legs).
+`runner/tests/archive/`, though that record was removed on
+2026-11-01 and survives at the `campaign-1-record` tag, with the
+eight shapes living on in `runner/tests/test_campaign_core.py`)
+cycles eight basic job variants, one execution per cycle, at a
+fixed spacing that never stretches on mail health (the tuned
+campaign ran a 3 s spacing, a sustained 15 executions/minute; the
+cycle period floor is the file extension's 2-second poll on both
+legs).
 
 | Variant   | Script shape                                             | Contract asserted |
 |-----------|----------------------------------------------------------|-------------------|
@@ -64,35 +64,34 @@ extension's 2-second poll on both legs).
 
 Each completed cycle became ONE test method in the per-cycle
 record (campaign-1's generated file ran to 3,607 methods,
-campaign-2's to 9,714), replaying the
-exact script its cycle sent — rebuilt from cycle number and
-variant exactly as the loop builds it — and asserting the recorded
-exit code and the deterministic marker. Non-deterministic output
-(epoch, uptime, disk figures) is asserted structurally. There are
-no "pure repeats" to skip: every cycle converts. The generated
-files were removed on 2026-11-01, after the shapes were cut down
-to the parameterized core in `runner/tests/test_campaign_core.py`
-and the flagread canary was lifted into
-`runner/tests/test_campaign_canary.py`; the full record stays
-reachable at the `campaign-1-record` tag.
+campaign-2's to 9,714), replaying the exact script its cycle sent
+(rebuilt from cycle number and variant exactly as the loop builds
+it) and asserting the recorded exit code and the deterministic
+marker. Non-deterministic output (epoch, uptime, disk figures) is
+asserted structurally. There are no "pure repeats" to skip: every
+cycle converts. The generated files were removed on 2026-11-01,
+after the shapes were cut down to the parameterized core in
+`runner/tests/test_campaign_core.py` and the flagread canary was
+lifted into `runner/tests/test_campaign_canary.py`; the full
+record stays reachable at the `campaign-1-record` tag.
 
 ## The phase-1 battery
 
 Before the loop, a 12-case bespoke battery probes the basic
 operating-system protection surface directly (output scrubbing at
-each result view, protected-path reads, a write outside the work
-dir, timeout kill timing, exit-code preservation, output
-truncation at the configured cap, a tampered envelope, a duplicate
-delivery, a cleartext job at the default posture). Battery cases
-get bespoke contract tests in `runner/tests/test_campaign_phase1.py`.
-The assurance target is that the basic OS protections — the ones
-that protect things like a GitHub credential — actually work.
-Tests are designed adversarially against our own system and many
-look like attacks; that is intended and stated openly.
+each result view, protected-path reads, a write outside the work dir,
+timeout kill timing, exit-code preservation, output truncation at the
+configured cap, a tampered envelope, a duplicate delivery, a
+cleartext job at the default posture). Battery cases get bespoke
+contract tests in `runner/tests/test_campaign_phase1.py`. The
+assurance target is that the basic OS protections, the ones that
+protect things like a GitHub credential, actually work. Tests are
+designed adversarially against our own system and many look like
+attacks; that is intended and stated openly.
 
 Negative controls belong in the battery: for each protection
 test, run the scenario with the protection off and assert the
-test fails. Name the uid in every protection test — the kernel
+test fails. Name the uid in every protection test: the kernel
 protects a 0600 file from another uid, not from another process
 of the same uid, and the same-uid result is a design fact to
 write down, not a failure to hide.
@@ -138,11 +137,12 @@ sentence for PROTOCOL.md and docs/infrastructure-documents/oracle/configuring-or
 - `refuse` class: ports, bind addresses, key policies,
   resource/DRI thresholds that page a human, secrets and their
   floors, security modes.
-- `default` class: everything else — intervals, timeouts,
-  budgets, limits, cooldowns, retention, disclosure tiers,
-  extension tunables. Default is not silent: one startup line,
-  "config: N settings read as their default", names the keys, and
-  the same list rides in the platform card at the `full` tier.
+- `default` class: everything else, including intervals,
+  timeouts, budgets, limits, cooldowns, retention, disclosure
+  tiers, and extension tunables. Default is not silent: one
+  startup line, "config: N settings read as their default", names
+  the keys, and the same list rides in the platform card at the
+  `full` tier.
 - Live reload: a bad value written while running reads as the
   default and is named in the log; a refuse-class value written
   live keeps the current binding, logs an error, and takes effect
@@ -154,7 +154,7 @@ Each divergence is recorded as a test that FAILS against the
 current code, with a four-part docstring:
 
 1. The doc claim, quoted, with its file location.
-2. How the bug was found — the exact scenario exercised.
+2. How the bug was found: the exact scenario exercised.
 3. The behavior actually observed.
 4. The note: **"Do not make this test pass by editing the test.
    It passes only when the bug described above is fixed in the
@@ -194,8 +194,8 @@ A watchdog ticks every 5 minutes during a run. Each tick:
 2. Proof of work: convert every completed cycle result not yet
    converted into its unit test, run the converted tests, and
    push in one batch, committed as `Muse <muse@localhost>` via
-   git with the stored PAT file — never through a connector
-   approval card, never as any other identity.
+   git with the stored PAT file, never through a connector
+   approval card, and never as any other identity.
 3. At most ONE new divergence hunt per tick.
 
 Ticks may coalesce or die on runtime restarts; that is normal.
@@ -226,8 +226,8 @@ quota on the sending side, not volume through the address.
 - The campaign does NOT fix bugs and does NOT change production
   code. Findings are recorded as tests only. Bug fixing belongs
   to the bug-crush phase, on the owner's word.
-- No input fuzzing. The fuzzer's mentality — systematic,
-  coverage-driven test-point design — yes; mutating inputs, no.
+- No input fuzzing. The fuzzer's mentality (systematic,
+  coverage-driven test-point design), yes; mutating inputs, no.
 - Docs describe shipped state only. When a policy decision
   changes a documented behavior, the doc lines change FIRST and
   the tests change with the docs, not before.
@@ -243,19 +243,18 @@ four-part format, and the defaults registry has no row without
 either table-hunt coverage or a recorded divergence.
 
 The sequence after the first run: snapshot the record (the
-`campaign-1-record` tag — git keeps the tests at every commit, so
-a tag is the frozen branch with nothing to delete later), then
-bug crushing on the owner's word, then group the failures by
-area and component and compile the CORE group of tests (the
-eight cycle shapes as parameterized scenario tests, with the
-per-cycle record archived under `runner/tests/archive/campaign-1/`
-out of default discovery — the archived copy was removed on
-2026-11-01 and the tag above is where the record lives now),
-then the second run against the
-registry — hunting the rows the registry says have no test, plus
-the environment axes (protected_symlinks/protected_regular,
+`campaign-1-record` tag; git keeps the tests at every commit, so a
+tag is the frozen branch with nothing to delete later), then bug
+crushing on the owner's word, then group the failures by area and
+component and compile the CORE group of tests (the eight cycle
+shapes as parameterized scenario tests, with the per-cycle record
+archived under `runner/tests/archive/campaign-1/` out of default
+discovery; the archived copy was removed on 2026-11-01 and the tag
+above is where the record lives now), then the second run against
+the registry, hunting the rows the registry says have no test,
+plus the environment axes (protected_symlinks/protected_regular,
 yama.ptrace_scope, hidepid on /proc,
-apparmor_restrict_unprivileged_userns), recording the setting
-with every result. That protection-versus-protection pass starts
-with the kernel-level protections, the ones the kernel gives
-nearly for free.
+apparmor_restrict_unprivileged_userns), recording the setting with
+every result. That protection-versus-protection pass starts with
+the kernel-level protections, the ones the kernel gives nearly for
+free.

@@ -19,8 +19,8 @@ Instead, use GitHub's **private vulnerability reporting**:
    you think the impact is.
 
 If private reporting isn't available to you, open a minimal public
-issue that says you've found a security problem and ask for a contact —
-no details.
+issue that says you've found a security problem and ask for a contact,
+with no details.
 
 ### What happens next
 
@@ -49,11 +49,11 @@ This project is explicit that the runner is a **full-trust execution
 environment**. Reports along the lines of "anyone with the secret can
 run arbitrary code" describe the intended design, not a vulnerability.
 A vulnerability is something that breaks the documented guarantees:
-signature forgery, a job executing without a valid
-signature, sandbox/workdir escape, or secret leakage through logs,
-emails, or error messages. Sender spoofing is not in scope: the sender
-address is not validated, so there is nothing to spoof — the signature
-is the only thing the runner trusts.
+signature forgery, a job executing without a valid signature,
+sandbox/workdir escape, or secret leakage through logs, emails, or
+error messages. Sender spoofing is not in scope: the sender address is
+not validated, so there is nothing to spoof, as the signature is the
+only thing the runner trusts.
 
 **What the signature proves, and what it does not.** The HMAC signature
 answers two questions: was this job sent by someone holding the shared
@@ -76,53 +76,54 @@ information ending up somewhere it is not authorized to be. CNSSI
 transfer of information onto an information system not authorized
 to store or process it. That definition was written for classified
 information. This project handles no classified information, and
-nothing in this section concerns any government's material — the
-shape of the failure is the same at any sensitivity: material under
-a handling rule appears outside the boundary the rule sets. NIST
-SP 800-53 gives the failure its own control, IR-9 (Information
-Spillage Response), because it recurs everywhere, and because an
-improvised response to it is reliably worse than a prepared one.
+nothing in this section concerns any government's material.
+However, the shape of the failure is the same at any sensitivity:
+material under a handling rule appears outside the boundary the
+rule sets. NIST SP 800-53 gives the failure its own control, IR-9
+(Information Spillage Response), because it recurs everywhere, and
+because an improvised response to it is reliably worse than a
+prepared one.
 
 For this software, the boundary is concrete. The work around the
 suite keeps two shelves:
 
-- **The public shelf** — this repository (code, documentation,
+- **The public shelf**: this repository (code, documentation,
   commit messages, issues, pull requests, release notes) and
   everything published from it: packages, images, mirrors.
-- **The private shelf** — what the public shelf must never carry.
+- **The private shelf**: what the public shelf must never carry.
   Credentials and secret values. The material of security-testing
   work done with the suite: what is being examined, engagement and
   case records, unfixed findings in any detail, crash data and
   crash artifacts. And, for an operator who runs the suite for
-  clients — a penetration-testing firm is the standing example —
+  clients (a penetration-testing firm is the standing example),
   the clients' information: their systems, their findings, their
   names.
 
 One category stands on the private shelf by name, because it is
 the one most often carried across by accident: **agent
-permission and configuration files** — an agent's approval
-memory, the saved record of commands its operator approved and
-need not be asked again (sometimes preserved word for word, with
-a credential inside the command), and a deployment's config and
-state files. Research published in November 2026 counted over a
-thousand public copies of one coding agent's approval file
-holding real secrets, most of them committed without their
-owners noticing. If such a file crosses, the response below
-applies unchanged, and rotation comes first: a credential inside
-an approved command is compromised the moment the commit is
-pushed, and deleting the file does not reach the copies in
-history and forks. The design record for the category is
-`docs/steady/security/privacy-design.md`, section 8.
+permission and configuration files**, meaning an agent's
+approval memory, the saved record of commands its operator
+approved and need not be asked again (sometimes preserved word
+for word, with a credential inside the command), and a
+deployment's config and state files. Research published in
+November 2026 counted over a thousand public copies of one
+coding agent's approval file holding real secrets, most of them
+committed without their owners noticing. If such a file crosses,
+the response below applies unchanged, and rotation comes first:
+a credential inside an approved command is compromised the
+moment the commit is pushed, and deleting the file does not
+reach the copies in history and forks. The design record for the
+category is `docs/steady/security/privacy-design.md`, section 8.
 
 **Spillage is private-shelf material reaching the public shelf:**
-committed to this repository in any form — a file, a page, a
-commit message, a test fixture, a screenshot, a log excerpt, a
-release asset — or published onward from it. The crossing does not
-require anyone to intend it. An operator assembling a public change
-out of private notes can carry a sentence, a file name, or an
-artifact across the boundary without noticing; an agent doing the
-same can do it faster and at larger scale. Intent is not part of
-the definition. Presence is.
+committed to this repository in any form (a file, a page, a commit
+message, a test fixture, a screenshot, a log excerpt, a release
+asset) or published onward from it. The crossing does not require
+anyone to intend it. An operator assembling a public change out of
+private notes can carry a sentence, a file name, or an artifact
+across the boundary without noticing; an agent doing the same can
+do it faster and at larger scale. Intent is not part of the
+definition. Presence is.
 
 ### Why the response matters more than the spill
 
@@ -140,19 +141,19 @@ are ethical:
   once a commit has been pushed, the data it contains should be
   considered compromised, because copies may survive in clones and
   forks, in cached views reachable by commit hash, and in
-  pull-request references — none of which a history rewrite
+  pull-request references, none of which a history rewrite
   reaches. Quiet deletion removes the one copy the deleter
   controls, leaves every other copy live, and manufactures the
   false impression that the exposure has ended.
 - **Exposure runs on a clock, and silence wastes it.** A spilled
   credential is dangerous until it is rotated, and rotation can
-  begin the minute the spill is declared — or never begin, because
+  begin the minute the spill is declared, or never begin because
   nobody was told. The same holds for a client whose information
   crossed, and for a vendor whose unfixed finding crossed: each of
   them can act on early notice, and none of them can act on
   silence.
 - **Concealment converts an accident into a cover-up.** A spill
-  that surfaces later — found by a reader, a client, a program —
+  that surfaces later (found by a reader, a client, a program)
   with no record behind it reads as a decision to hide it, and it
   will be judged as one, whatever the intention was. The same
   spill, declared at once and recorded plainly, reads as what it
@@ -160,16 +161,16 @@ are ethical:
   record costs nothing but the willingness to write it.
 
 So the standing rule, which outranks every other step in this
-section: **a spill is declared, contained, and recorded — never
+section: **a spill is declared, contained, and recorded, never
 concealed.** Removing the material is the first step of the
 response. It is never the whole response.
 
 ### Preparation: what stands before any spill
 
-Incident response is mostly decided before the incident; NIST
-SP 800-61 puts preparation first for exactly that reason. Whoever
-operates a deployment of this suite — the person, firm, or system
-that runs it and works in its repository — keeps four things in
+Incident response is mostly decided before the incident; NIST SP
+800-61 puts preparation first for exactly that reason. Whoever
+operates a deployment of this suite (the person, firm, or system
+that runs it and works in its repository) keeps four things in
 place:
 
 1. **The shelf rule is written down**, as it is here and, for this
@@ -181,7 +182,7 @@ place:
 2. **The alert path is written down**: who is told, by what
    channels, in what order. For this repository the path is: the
    operator on watch alerts the repository's owner immediately,
-   directly and by email — out-of-band from the repository itself,
+   directly and by email, out-of-band from the repository itself,
    because an alert posted only where the spill sits can be missed,
    and IR-9 specifies alerting by a method of communication not
    associated with the spill. A firm adopting this section writes
@@ -197,30 +198,30 @@ place:
    enabled on the repository, and the working rule for every change
    is the shelf rule applied with doubt resolved in one direction:
    a doubtful item stays private. Doubt is settled on the private
-   shelf — by the accountable human, if it needs one — never by
+   shelf (by the accountable human, if it needs one), never by
    publishing and seeing what happens.
 
-   One of those guards is this project's own. A code name that
-   lives only in conversation cannot be scanned for, so protected
-   terms — code names among them — are declared in code instead:
-   the name guard at `runner/tools/nameguard.py` scans candidate
-   public text against a registry of declared terms, under
-   matching rules stated in the tool itself (normalization against
-   lookalike letters and zero-width characters, word and substring
-   rules, case rules). The registry is private-shelf material and
-   never enters this repository; the format ships with obviously
-   fake example entries (`runner/tools/nameguard-registry.example.json`)
-   so any operator can adopt the mechanism, and declare their own
-   terms, without anything real crossing the boundary.
+One of those guards is this project's own. A code name that lives only
+in conversation cannot be scanned for, so protected terms, code names
+among them, are declared in code instead: the name guard at
+`runner/tools/nameguard.py` scans candidate public text against a
+registry of declared terms, under matching rules stated in the tool
+itself (normalization against lookalike letters and zero-width
+characters, word and substring rules, case rules). The registry is
+private-shelf material and never enters this repository; the format
+ships with obviously fake example entries
+(`runner/tools/nameguard-registry.example.json`) so any operator can
+adopt the mechanism, and declare their own terms, without anything real
+crossing the boundary.
 
 ### The response
 
-The lifecycle is NIST SP 800-61's — detection and analysis,
-containment, eradication and recovery, post-incident activity —
+The lifecycle is NIST SP 800-61's (detection and analysis,
+containment, eradication and recovery, post-incident activity)
 applied to a spill:
 
 **1. Declare.** Whoever detects a spill declares it, on the alert
-path, at once — including, especially, whoever caused it.
+path, at once, including, especially, whoever caused it.
 Self-reporting is the design assumption: a response culture that
 punishes the declaration gets silence instead, and silence is the
 failure this section exists to prevent. The declaration names the
@@ -233,9 +234,9 @@ there is no "clean it up first and mention it after."
 immediately, following GitHub's published procedure for removing
 sensitive data from a repository:
 
-- Rewrite the history to purge the material — `git-filter-repo` in
-  its sensitive-data-removal mode, or the BFG Repo-Cleaner — and
-  force-push the rewritten history.
+- Rewrite the history to purge the material (using
+  `git-filter-repo` in its sensitive-data-removal mode, or the BFG
+  Repo-Cleaner) and force-push the rewritten history.
 - Ask GitHub Support, through the support portal, to remove cached
   views and pull-request references and to run garbage collection,
   so the unreachable objects are expunged from GitHub's storage
@@ -245,13 +246,13 @@ sensitive data from a repository:
   project ships to. Anything that carried the material is withdrawn
   or rebuilt from the cleaned history.
 - Coordinate the copies that cannot be reached from here. Anyone
-  holding a clone of the old history re-clones or rebases — never
-  merges — because one merge from a tainted clone reintroduces
+  holding a clone of the old history re-clones or rebases, and
+  never merges, because one merge from a tainted clone reintroduces
   everything the rewrite removed. Forks are their owners' to clean;
   the owners are asked to remove the material or delete the fork.
 
 **3. Assume exposure.** From the moment of publication, the
-material is treated as copied — permanently, by parties unknown.
+material is treated as copied: permanently, by parties unknown.
 Containment limits further exposure; it does not undo the exposure
 that already happened, and the rest of the response is sized by
 this assumption rather than by the hope that nobody looked. It is
@@ -263,7 +264,7 @@ now that anyone could have."
 removes the copy; eradication removes the risk the copy created,
 and the work differs by class:
 
-- *A credential or secret value* is revoked or rotated at once —
+- *A credential or secret value* is revoked or rotated at once:
   before the history work, or alongside it, never after it.
   GitHub's guidance is explicit that a revoked secret can no
   longer be used, which may close the exposure on its own. A
@@ -271,27 +272,27 @@ and the work differs by class:
   key: marked `compromised` in the key directory, which refuses it
   at every door at once, and rotated under
   `docs/steady/secret-rotation.md`.
-- *Security-testing material* — what was being examined, an
-  unfixed finding, crash data — is handled as disclosed. Where it
-  belongs to an engagement, a bounty program, or a vendor's
-  product, the affected client, program, or vendor is notified
-  through its formal channel, by the human accountable for the
-  work, ahead of any public statement: they hear it from the
-  project first. Any plan that depended on the material's secrecy —
-  above all, a fix still in progress — is re-planned on the
-  assumption that the secrecy is gone.
+- *Security-testing material* (what was being examined, an unfixed
+  finding, crash data) is handled as disclosed. Where it belongs to
+  an engagement, a bounty program, or a vendor's product, the
+  affected client, program, or vendor is notified through its
+  formal channel, by the human accountable for the work, ahead of
+  any public statement: they hear it from the project first. Any
+  plan that depended on the material's secrecy, above all a fix
+  still in progress, is re-planned on the assumption that the
+  secrecy is gone.
 - *A client's or another person's information* is notified to the
-  client or person it belongs to, promptly and plainly: what
-  class of material crossed, when, and what has been done. Their
-  own duties — to their customers, their regulators — may run from
+  client or person it belongs to, promptly and plainly: what class
+  of material crossed, when, and what has been done. Their own
+  duties, to their customers and their regulators, may run from
   the same clock, which is one more reason the declaration never
   waits.
 
 **5. Record the incident, publicly.** The response closes with a
 written incident note in this repository: that a spill occurred;
 when the material was published and when the spill was declared;
-the class of material it carried; and what was done — containment,
-rotation, notification — in general terms. The note never
+the class of material it carried; and what was done (containment,
+rotation, notification) in general terms. The note never
 reproduces the spilled material, quotes it, or describes it beyond
 its class. It is published once the notifications in step 4 have
 been made, and it stays: later readers, clients, and programs are
@@ -301,9 +302,9 @@ thorough the cleanup was.
 
 **6. Post-incident: close the mechanism, not just the incident.**
 The follow-up review answers one question: by what mechanism did
-private material reach a public commit — a file assembled from
+private material reach a public commit (a file assembled from
 private notes, a fixture copied across, a code name resolved in
-the wrong place, a screenshot taken on the wrong machine — and
+the wrong place, a screenshot taken on the wrong machine), and
 what change makes that mechanism fail loudly next time? The change
 lands as engineering, not as intention: a scanning rule, a
 pre-push check, a test that fails when the boundary is crossed, a
@@ -322,44 +323,44 @@ repository now holds a reproducer for an unfixed finding in a
 client's product, and enough context to guess whose product it is.
 
 Under this section: the operator notices on a re-read an hour
-later — or a reader reports it — and declares it on the alert path
+later, or a reader reports it, and declares it on the alert path
 at once, naming the class (crash data, an unfixed finding, client
 engagement) and the commit. Containment runs without waiting: the
 history is rewritten, the rewritten history is force-pushed,
 GitHub Support is asked to clear the cached views, and the release
-assets of the affected version are checked and rebuilt. The
-client is notified the same day, through the engagement's formal
-channel, by the human accountable for the engagement — before the
-public incident note, so the client hears it from the firm first.
-The note then goes into the repository in general terms: a spill
-of crash data occurred, it was public for a stated number of
-hours, it has been purged, and it was formally reported to the
-affected client. The follow-up finds the mechanism — the public
-summary was drafted in the same place as the private case notes —
-and closes it: summaries are drafted from public-shelf material
-only, and a check now fails any commit that adds a file matching
-the case-artifact shapes. The spill was an hour's carelessness.
-The response is the part that was rehearsed.
+assets of the affected version are checked and rebuilt. The client
+is notified the same day, through the engagement's formal channel,
+by the human accountable for the engagement, before the public
+incident note, so the client hears it from the firm first. The
+note then goes into the repository in general terms: a spill of
+crash data occurred, it was public for a stated number of hours,
+it has been purged, and it was formally reported to the affected
+client. The follow-up finds the mechanism (the public summary was
+drafted in the same place as the private case notes) and closes
+it: summaries are drafted from public-shelf material only, and a
+check now fails any commit that adds a file matching the
+case-artifact shapes. The spill was an hour's carelessness. The
+response is the part that was rehearsed.
 
 ### Adopting this section
 
 This section is this repository's own policy, and it is written to
-be adopted. This suite will be operated by people and systems
-other than the ones who wrote it — licensed to other testers, run
-inside other firms, picked up by whatever system an operator works
-with next — and a spill response that lives in one operator's
-memory is not a response at all. Adopting it takes three decisions,
-recorded where the deployment's own documentation lives: the
-categories on the private shelf, the alert path, and the human
-accountable for notifications. The steps, the order, and the rule
-against concealment do not change. Only the names do.
+be adopted. This suite will be operated by people and systems other
+than the ones who wrote it (licensed to other testers, run inside
+other firms, picked up by whatever system an operator works with
+next), and a spill response that lives in one operator's memory is
+not a response at all. Adopting it takes three decisions, recorded
+where the deployment's own documentation lives: the categories on
+the private shelf, the alert path, and the human accountable for
+notifications. The steps, the order, and the rule against
+concealment do not change. Only the names do.
 
 ### Open questions: safeguards are yours to extend
 
 Everything above is this project's floor: the safeguards this
 deployment runs, stated so another operator can adopt them as
-they stand. It is not a ceiling. The operators of this suite —
-testers, firms, and the systems that work for them — are
+they stand. It is not a ceiling. The operators of this suite
+(testers, firms, and the systems that work for them) are
 encouraged, in the strongest terms this page has, to treat the
 shelf boundary as a research problem of their own: to implement
 safeguards this page does not describe, to test the ones it does,
@@ -370,7 +371,7 @@ be checked.
 
 The questions below are open on purpose. They are the ones this
 project has not finished answering for itself, posed so that an
-operator — or a system working for one — meets them as work, not
+operator, or a system working for one, meets them as work, not
 as decoration:
 
 - Can you enumerate your private shelf, exactly? A boundary that
@@ -380,26 +381,26 @@ as decoration:
   can enforce them, and which live only in conversation between
   you and your system? The second kind protects nothing, however
   careful the conversation is.
-- If a change were assembled from your private notes tonight —
-  by a tired person, or by a system working quickly — which of
-  your safeguards would stop private material at the boundary:
-  a rule, a scan, a test? Or would only care stop it? Care is
-  not a control.
+- If a change were assembled from your private notes tonight
+  (by a tired person, or by a system working quickly), which
+  of your safeguards would stop private material at the
+  boundary: a rule, a scan, a test? Or would only care stop
+  it? Care is not a control.
 - Does your publication surface end at the repository? Packages,
   images, mirrors, release assets, hosted pages: a cleanup plan
   that reaches only the repository reaches only part of a spill.
-- What is your shelf's answer for material that is not yours —
-  a client's systems, a client's findings, a client's name —
-  and on what clock do they hear about a crossing? Their duties
-  may start before yours end.
+- What is your shelf's answer for material that is not yours (a
+  client's systems, a client's findings, a client's name), and
+  on what clock do they hear about a crossing? Their duties may
+  start before yours end.
 - And the standing one: when your response is written down,
-  could a different operator — or a different system — run it
+  could a different operator, or a different system, run it
   cold, at 3 in the morning, without asking you anything? If
   not, the response is a memory, not a plan.
 
 An operator who answers these in writing, and builds what the
 answers call for, has done more for their material than any
-policy they could adopt unchanged — including this one.
+policy they could adopt unchanged, including this one.
 
 References: CNSSI 4009 (the definition of spillage); NIST
 SP 800-53 Rev. 5, control IR-9, Information Spillage Response;
@@ -411,21 +412,21 @@ NIST SP 800-61, the incident handling lifecycle; GitHub Docs,
 
 Saying it plainly: a program that polls an inbox and executes signed
 messages is the same *shape* as email-based command-and-control malware.
-The difference is not the mechanism — it is consent, control, and
+The difference is not the mechanism; it is consent, control, and
 auditability:
 
 - **Consent:** you install it on your own machine, on purpose, to run
   your own jobs. It does nothing you did not ask it to do.
 - **Control:** the shared secret is yours, the mailbox is yours, and
-  revoking the mailbox credential stops mail delivery — without
-  mailbox access the runner can't receive jobs by email. It is not
-  the only channel, though: a same-box producer can still deliver
-  signed `sensor_alert` envelopes through the local inbox or the
-  loopback signal socket, so a leaked signing secret does have a
-  delivery channel on the box itself — which is why rotating the
-  secret matters more than the mailbox. To rotate a compromised
-  secret, generate a new one and update `shared_secret` in config.json
-  on the runner (and hand the new string to your SI).
+  revoking the mailbox credential stops mail delivery, since without
+  mailbox access the runner can't receive jobs by email. It is not the
+  only channel, though: a same-box producer can still deliver signed
+  `sensor_alert` envelopes through the local inbox or the loopback
+  signal socket, so a leaked signing secret does have a delivery
+  channel on the box itself, which is why rotating the secret matters
+  more than the mailbox. To rotate a compromised secret, generate a
+  new one and update `shared_secret` in config.json on the runner (and
+  hand the new string to your SI).
 - **Auditability:** the runner is inspectable by design. `--dry-run`
   verifies signatures and prints exactly what a job *would* do without
   executing anything; `--verbose` logs every accept/reject decision;
@@ -435,11 +436,11 @@ auditability:
 It belongs to the same family as GitHub self-hosted runners, VS Code
 Remote tunnels, and Tailscale: legitimate remote-administration tools
 whose power is the point. If your antivirus flags the prebuilt
-binaries, that is a known PyInstaller false-positive pattern — verify
+binaries, that is a known PyInstaller false-positive pattern; verify
 the `SHA384SUMS` file attached to the release, or build from source
 (`pip install` the wheel, or run `runner/runner.py` directly).
 
----
+-.
 
 ## Security controls and key management
 
@@ -449,14 +450,14 @@ With no `security` block in `config.json`, every control runs at
 the default fills in only what a config leaves unset. Every control
 has three modes:
 
-- `enforce` — for the `policy_*` features and `audience`,
-  violations are rejected through the existing reject path. For
-  `confinement` and `job_user`, enforce changes how the job runs, as
-  described under each below. This is the default.
-- `audit` — the job proceeds exactly as with `off`, but a line is
+- `enforce`: for the `policy_*` features and `audience`, violations
+  are rejected through the existing reject path. For `confinement`
+  and `job_user`, enforce changes how the job runs, as described
+  under each below. This is the default.
+- `audit`: the job proceeds exactly as with `off`, but a line is
   written to `security-audit.jsonl` describing what `enforce` mode
   would have decided.
-- `off` — the control does nothing.
+- `off`: the control does nothing.
 
 ```json
 "security": {
@@ -485,12 +486,12 @@ The audit log lives at `security-audit.jsonl` in the runner base
 directory, created `0600` on POSIX, bounded by `audit_max_lines`
 (default 20000) with rollover to one `.1` file. A small counter file,
 `security-audit-counts.json`, tracks decisions per feature. Audit
-entries carry identifiers only — never secret values, script text,
-or file contents.
+entries carry identifiers only, never secret values, script text, or
+file contents.
 
-Each audit entry also carries a `seq` number and a `chain` value —
-the SHA-256 of the previous entry's chain value and the entry's
-canonical JSON — forming a tamper-evident hash chain that carries
+Each audit entry also carries a `seq` number and a `chain` value
+(the SHA-256 of the previous entry's chain value and the entry's
+canonical JSON), forming a tamper-evident hash chain that carries
 across the rollover; the counts file records the chain head, so
 tail truncation is detected too. `--audit-verify` walks the chain
 and reports the first break (exit 1), or states honestly what it
@@ -539,28 +540,25 @@ writable (mounted at `/work`), plus a writable tmpfs at `/tmp`,
 `/proc` and `/dev`. When the job's interpreter lives outside `/usr`
 (pyenv, a venv, `/opt`), its install folder is bound read-only too,
 and that is logged and recorded in the audit entry. `PATH` inside is
-`/usr/bin:/bin`.
-The job's scrubbed env arrives via
-`--setenv`. At startup under `enforce` the runner starts bwrap once
-with the built-in namespace flags, and again with the configured
-`extra_flags` added in the position a job's argv gives them; when
-either start cannot (bwrap missing, a kernel that blocks
-the user namespace, such as
-`kernel.apparmor_restrict_unprivileged_userns=1` on Ubuntu 24.04,
-or a configured flag bwrap rejects)
-the runner refuses to start and names the cause — a security mode
-whose mechanism cannot engage is a config error, not a silent
-downgrade (`docs/steady/present-but-invalid-config.md`). Extra
-binds are not part of the trial: they name operator paths and are
-applied per job. If bwrap
-leaves `PATH` after a successful start, or the sandbox command
-cannot be built, the fallback is recorded and the job is refused:
-the runner warns, audits a `fallback` decision, and does not run
-the job at all -- under `enforce` a job never runs unsandboxed.
-If bwrap is still present
-but fails to start, the job fails. Each sandboxed job is audited as
-`sandboxed`. `audit` mode runs normally and records a `would_sandbox`
-decision (reason `would_run_sandboxed`), with or without bwrap.
+`/usr/bin:/bin`. The job's scrubbed env arrives via `--setenv`. At
+startup under `enforce` the runner starts bwrap once with the
+built-in namespace flags, and again with the configured `extra_flags`
+added in the position a job's argv gives them; when either start
+cannot (bwrap missing, a kernel that blocks the user namespace, such
+as `kernel.apparmor_restrict_unprivileged_userns=1` on Ubuntu 24.04,
+or a configured flag bwrap rejects) the runner refuses to start and
+names the cause, as a security mode whose mechanism cannot engage is
+a config error, not a silent downgrade
+(`docs/steady/present-but-invalid-config.md`). Extra binds are not
+part of the trial: they name operator paths and are applied per job.
+If bwrap leaves `PATH` after a successful start, or the sandbox
+command cannot be built, the fallback is recorded and the job is
+refused: the runner warns, audits a `fallback` decision, and does not
+run the job at all, because under `enforce` a job never runs
+unsandboxed. If bwrap is still present but fails to start, the job
+fails. Each sandboxed job is audited as `sandboxed`. `audit` mode
+runs normally and records a `would_sandbox` decision (reason
+`would_run_sandboxed`), with or without bwrap.
 
 Optional tuning under `security.confinement` (all optional):
 
@@ -576,31 +574,30 @@ On Windows and FreeBSD the same mode engages the platform
 backend instead, and the startup gate probes that backend the
 same way. On Windows: a Job Object (512 MiB per process), a
 restricted token and a low integrity level, audited as
-`windows: job_object + restricted_token + low_integrity` —
-no filesystem namespace isolation, so a confined job can
+`windows: job_object + restricted_token + low_integrity`,
+with no filesystem namespace isolation, so a confined job can
 still read any path its token can read. A fresh Windows
 install states the mode at `audit` in the seeded config, for
-the operator to step up deliberately. On FreeBSD: a
-per-job jail with a read-only root, the host's system
-directories mounted read-only below it, the work directory
-and a bounded `/tmp` the only two trees that take a write,
-no network at all, every mount `nosuid`, root inside the
-jail holding no privilege, and a 512 MiB per-process
-ceiling the job cannot raise; on a host with RACCT enabled,
-rctl rules also hold the jail as a whole, and on a host with
-more than one core the jail is pinned to all but one of the
-cores the runner may run on, which the job cannot widen. A
-job with no job user is still the owner of what root owns,
-and reads a root-only file in a tree the jail shows it; a
-job user (below) closes that, and brings a ceiling on its
-own processes that needs no RACCT. The audit record
-names the controls a job's jail carried, from the floor
-`freebsd: jail + no_network + spawn_resource_limits` up.
-`extra_ro_binds` and `work_mount` above mean the same on
-FreeBSD; `extra_flags` are bwrap arguments, and a FreeBSD
-runner whose config carries any refuses to start. The
-jail's own settings are a block of their own, checked on
-every platform:
+the operator to step up deliberately. On FreeBSD: a per-job
+jail with a read-only root, the host's system directories
+mounted read-only below it, the work directory and a bounded
+`/tmp` the only two trees that take a write, no network at
+all, every mount `nosuid`, root inside the jail holding no
+privilege, and a 512 MiB per-process ceiling the job cannot
+raise; on a host with RACCT enabled, rctl rules also hold the
+jail as a whole, and on a host with more than one core the
+jail is pinned to all but one of the cores the runner may run
+on, which the job cannot widen. A job with no job user is
+still the owner of what root owns, and reads a root-only file
+in a tree the jail shows it; a job user (below) closes that,
+and brings a ceiling on its own processes that needs no
+RACCT. The audit record names the controls a job's jail
+carried, from the floor `freebsd: jail + no_network +
+spawn_resource_limits` up. `extra_ro_binds` and `work_mount`
+above mean the same on FreeBSD; `extra_flags` are bwrap
+arguments, and a FreeBSD runner whose config carries any
+refuses to start. The jail's own settings are a block of
+their own, checked on every platform:
 
 ```json
 "confinement": {
@@ -637,23 +634,21 @@ user, after a trial job as that account has run inside a
 jail on that machine; `nobody` stands in where the account
 cannot be had.
 
-On macOS the backend is a Seatbelt profile made for each
-job and applied by `sandbox-exec`: the system trees and the
-job interpreter's own readable, the job's work directory the
-only tree that takes a write, and no network at all. A
-launcher — the system shell — then sets a ceiling on each
-job process's address map, 512 MiB above the size a bare
-process starts at on that Mac, soft and hard, so the job
-cannot raise it unless it is root, which a job is only under
-a runner run as root with no job user named. The audit
-record names
-`macos: seatbelt_profile + no_network + spawn_resource_limits`.
-It needs no root, and a release's macOS binaries engage it
-as a runner started from source does. Of the session's
-services a job may ask the user database who a user is, and
-no other: the clipboard is refused, to a read and to a
-write. It holds no ceiling on a job as a whole.
-`extra_ro_binds`, `work_mount` and `extra_flags` name
+On macOS the backend is a Seatbelt profile made for each job
+and applied by `sandbox-exec`: the system trees and the job
+interpreter's own readable, the job's work directory the only
+tree that takes a write, and no network at all. A launcher (the
+system shell) then sets a ceiling on each job process's address
+map, 512 MiB above the size a bare process starts at on that
+Mac, soft and hard, so the job cannot raise it unless it is
+root, which a job is only under a runner run as root with no
+job user named. The audit record names `macos: seatbelt_profile
++ no_network + spawn_resource_limits`. It needs no root, and a
+release's macOS binaries engage it as a runner started from
+source does. Of the session's services a job may ask the user
+database who a user is, and no other: the clipboard is refused,
+to a read and to a write. It holds no ceiling on a job as a
+whole. `extra_ro_binds`, `work_mount` and `extra_flags` name
 mounts and bwrap arguments and are not read on macOS. Its
 settings are a block of its own, checked on every platform:
 
@@ -682,23 +677,21 @@ platform carries stands in `docs/support-matrix.md`.
 
 ### Running jobs as another user
 
-With `security.modes.job_user: enforce` and
-`security.job_user: {"user": "pigeon-jobs"}`, each `exec` job runs as
-that POSIX user (via setuid after fork). The job's workdir is chown'd
-to the user, and the parent chain up to the base dir gets traverse-only
-(`+x`) permission so the job can reach its workdir without listing the
-runner's state. The demote needs the runner itself to run as root,
-and the configured user to be resolvable: under `enforce`, startup
-refuses when either fails, rather than starting and running jobs
-as the runner's own account. A user that exists at startup and is
-removed later, or a workdir that cannot be chown'd, is met at job
-time instead: the runner warns loudly, audits a `fallback`
-decision, and refuses that job -- under `enforce` a job never
-runs as the current user in place of the demote. Each job run as
-the configured user is audited as `run_as`. `audit` mode runs
+With `security.modes.job_user: enforce` and `security.job_user:
+{"user": "pigeon-jobs"}`, each `exec` job runs as that POSIX user (via
+setuid after fork). The job's workdir is chown'd to the user, and the
+parent chain up to the base dir gets traverse-only (`+x`) permission so
+the job can reach its workdir without listing the runner's state. The
+demote needs the runner itself to run as root, and the configured user
+to be resolvable: under `enforce`, startup refuses when either fails,
+rather than starting and running jobs as the runner's own account. A
+user that exists at startup and is removed later, or a workdir that
+cannot be chown'd, is met at job time instead: the runner warns loudly,
+audits a `fallback` decision, and refuses that job. Under `enforce`, a
+job never runs as the current user in place of the demote. Each job run
+as the configured user is audited as `run_as`. `audit` mode runs
 normally and records a `would_run_as` decision (reason
-`would_run_as_user`).
-The user must exist, or startup fails.
+`would_run_as_user`). The user must exist, or startup fails.
 
 ## Secrets, keys, and emergency stop
 
@@ -789,7 +782,7 @@ questions a reviewer asks about that, and the answers:
 
 - **Is the name a secret?** No. It is a label, like a user name; the
   secret is the credential. A name tells an attacker which key to
-  try -- which the empty key id of the default key told them before
+  try, which the empty key id of the default key told them before
   there were names.
 - **Does the fingerprint leak the secret?** No. It is eight hex
   digits (32 bits) of SHA-384 over a fixed label and a 256-bit random
@@ -802,13 +795,13 @@ questions a reviewer asks about that, and the answers:
   HMAC over a body and from the HKDF that derives a job key; nothing
   the secret keys starts from the same input.
 - **Can a name change what a key may do?** No. The runner reads a
-  key by its value: the default key's empty key id, its fingerprint
+  key by its value: the default key's empty key id, its fingerprint,
   and any name `install --key-id` stored the same secret under are
-  one key to every rule -- its policy entry, `key_policies_default_
-  deny`, the hourly query window, `v2_answerers`, a sense's `key_id`
-  binding. Naming the owner's key by fingerprint grants nothing and
-  escapes nothing, and a `key_policies` entry under two names of one
-  key is refused at startup.
+  one key to every rule (its policy entry, `key_policies_default_
+  deny`, the hourly query window, `v2_answerers`, and a sense's
+  `key_id` binding). Naming the owner's key by fingerprint grants
+  nothing and escapes nothing, and a `key_policies` entry under two
+  names of one key is refused at startup.
 - **What does a runner publish about its keys?** Names, never values:
   `key_ids` in the pong card, `key_id` in a result, the key ids in
   the doctor's line. The card with `key_ids` leaves only in a ping's

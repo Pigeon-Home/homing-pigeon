@@ -28,72 +28,72 @@ application risk categories OWASP's data and community process
 rank as most critical. The 2025 edition is the eighth, and the
 current one; it renumbers and renames against the 2021 edition,
 so a category ID means nothing without its year. It is an
-awareness document, not a testable standard — ASVS, below, is
+awareness document, not a testable standard; ASVS, below, is
 the standard.
 
 Reach for it: to name and rank a web-facing finding in the
 vocabulary every other security reader already shares.
 
-- A01:2025 Broken Access Control — callers reach objects or
+- A01:2025 Broken Access Control: callers reach objects or
   actions that are not theirs; the 2025 edition folds
   server-side request forgery into this category.
-- A02:2025 Security Misconfiguration — insecure defaults,
+- A02:2025 Security Misconfiguration: insecure defaults,
   leftover debug surface, verbose errors, missing hardening.
-- A03:2025 Software Supply Chain Failures — compromised or
+- A03:2025 Software Supply Chain Failures: compromised or
   vulnerable dependencies and build or distribution tooling;
   widens the old vulnerable-components category.
-- A04:2025 Cryptographic Failures — missing, weak or misused
+- A04:2025 Cryptographic Failures: missing, weak or misused
   cryptography; sensitive data exposed as a result.
-- A05:2025 Injection — untrusted input reaches an interpreter
-  (a query language, a shell, a template engine) unneutralized.
-- A06:2025 Insecure Design — controls missing or ineffective at
+- A05:2025 Injection: untrusted input reaches an interpreter (a
+  query language, a shell, a template engine) unneutralized.
+- A06:2025 Insecure Design: controls missing or ineffective at
   the design level, before any line of code is wrong.
-- A07:2025 Authentication Failures — identity proofing and
+- A07:2025 Authentication Failures: identity proofing and
   credential handling that let an attacker impersonate a user.
-- A08:2025 Software or Data Integrity Failures — updates,
+- A08:2025 Software or Data Integrity Failures: updates,
   serialized data and pipelines trusted without integrity
   checks.
-- A09:2025 Security Logging and Alerting Failures — attacks
+- A09:2025 Security Logging and Alerting Failures: attacks
   happen unrecorded, or recorded and never alerted on.
-- A10:2025 Mishandling of Exceptional Conditions — new in
-  2025: errors, timeouts and resource exhaustion handled in
-  ways that fail open or leak detail.
+- A10:2025 Mishandling of Exceptional Conditions (new in
+  2025): errors, timeouts and resource exhaustion handled
+  in ways that fail open or leak detail.
 
 Project page: https://owasp.org/www-project-top-ten/
 
 ### OWASP API Security Top 10 2023
 
 What it is: the API Security Project's ranked list of the risks
-specific to APIs, which fail differently from web pages —
+specific to APIs, which fail differently from web pages:
 authorization is checked at the object, the property and the
 function, and most APIs have no browser standing in front of
 them. The 2023 edition is current.
 
 Reach for it: whenever the surface under test is an API rather
-than a page — including this project's own machine-facing
+than a page, including this project's own machine-facing
 interfaces.
 
-- API1:2023 Broken Object Level Authorization — an endpoint
+- API1:2023 Broken Object Level Authorization: an endpoint
   acts on a caller-supplied object ID with no ownership check.
-- API2:2023 Broken Authentication — login, token and key
+- API2:2023 Broken Authentication: login, token and key
   handling that can be bypassed, replayed or brute-forced.
-- API3:2023 Broken Object Property Level Authorization —
-  callers read or write object fields they should not; merges
-  the 2019 excessive-data-exposure and mass-assignment entries.
-- API4:2023 Unrestricted Resource Consumption — no effective
+- API3:2023 Broken Object Property Level Authorization: callers
+  read or write object fields they should not; merges the 2019
+  excessive-data-exposure and mass-assignment entries.
+- API4:2023 Unrestricted Resource Consumption: no effective
   limits on request size, rate or cost.
-- API5:2023 Broken Function Level Authorization — privileged
+- API5:2023 Broken Function Level Authorization: privileged
   functions reachable by ordinary callers.
-- API6:2023 Unrestricted Access to Sensitive Business Flows —
+- API6:2023 Unrestricted Access to Sensitive Business Flows:
   flows such as signup or recovery abused by automation at
   scale.
-- API7:2023 Server Side Request Forgery — the API fetches
+- API7:2023 Server Side Request Forgery: the API fetches
   caller-supplied URLs without validation.
-- API8:2023 Security Misconfiguration — the API stack's own
+- API8:2023 Security Misconfiguration: the API stack's own
   settings, headers and error handling.
-- API9:2023 Improper Inventory Management — forgotten,
+- API9:2023 Improper Inventory Management: forgotten,
   undocumented or older API versions still live in production.
-- API10:2023 Unsafe Consumption of APIs — data taken from
+- API10:2023 Unsafe Consumption of APIs: data taken from
   upstream APIs trusted without validation or sanitization.
 
 Project page: https://owasp.org/www-project-api-security/
@@ -106,27 +106,28 @@ The 2025 edition is current.
 
 Reach for it: for any feature where a model reads untrusted
 input, produces output something else consumes, or can take
-actions — the failure modes are not in the web list above.
+actions, as the failure modes are not in the web list
+above.
 
-- LLM01:2025 Prompt Injection — crafted input, direct or
+- LLM01:2025 Prompt Injection: crafted input, direct or
   carried in content the model reads, redirects its behavior.
-- LLM02:2025 Sensitive Information Disclosure — the model
+- LLM02:2025 Sensitive Information Disclosure: the model
   reveals data it should not.
-- LLM03:2025 Supply Chain — compromised models, data sets,
+- LLM03:2025 Supply Chain: compromised models, data sets,
   plug-ins and dependencies around the model.
-- LLM04:2025 Data and Model Poisoning — tampered training or
+- LLM04:2025 Data and Model Poisoning: tampered training or
   retrieval data skews behavior.
-- LLM05:2025 Improper Output Handling — model output flows
+- LLM05:2025 Improper Output Handling: model output flows
   into code, queries or pages unsanitized.
-- LLM06:2025 Excessive Agency — the model holds more
+- LLM06:2025 Excessive Agency: the model holds more
   capability, permission or autonomy than the task needs.
-- LLM07:2025 System Prompt Leakage — the hidden instructions
+- LLM07:2025 System Prompt Leakage: the hidden instructions
   can be extracted.
-- LLM08:2025 Vector and Embedding Weaknesses — retrieval
+- LLM08:2025 Vector and Embedding Weaknesses: retrieval
   stores holding poisoned or leaking embeddings.
-- LLM09:2025 Misinformation — plausible, wrong output
+- LLM09:2025 Misinformation: plausible, wrong output
   presented as fact.
-- LLM10:2025 Unbounded Consumption — no caps on model usage;
+- LLM10:2025 Unbounded Consumption: no caps on model usage;
   denial of service and cost abuse.
 
 Project site: https://genai.owasp.org/llm-top-10/
@@ -136,17 +137,17 @@ Project site: https://genai.owasp.org/llm-top-10/
 ### OWASP ASVS 5.0.0 — Application Security Verification Standard
 
 What it is: OWASP's standard of verifiable security
-requirements for web applications and services — roughly 350
-requirements across 17 chapters, each assigned to one of three
-verification levels (L1 baseline, L2 the standard target for
-applications handling sensitive data, L3 the highest
-assurance). Version 5.0.0, released 2025-05-30, is current; it
-reorganized the chapters, so requirement IDs do not carry over
-from 4.0.3 — cite a requirement with its version, in the form
-v5.0.0-1.2.5.
+requirements for web applications and services, covering
+roughly 350 requirements across 17 chapters, each assigned to
+one of three verification levels (L1 baseline, L2 the standard
+target for applications handling sensitive data, L3 the
+highest assurance). Version 5.0.0, released 2025-05-30, is
+current; it reorganized the chapters, so requirement IDs do
+not carry over from 4.0.3. Cite a requirement with its
+version, in the form v5.0.0-1.2.5.
 
 Reach for it: to turn "this looks wrong" into a checkable
-statement — the requirement a piece of code meets or misses —
+statement (the requirement a piece of code meets or misses)
 and to verify a fix against the same wording that named the
 flaw.
 
@@ -184,9 +185,10 @@ stable release is v4.2; a v5.0 is in development, and the
 project's site carries the latest working text.
 
 Reach for it: when testing a web or HTTP surface by hand or
-building a checklist for one — each test case states what to
-look for and how. The input validation and fuzzing material
-(see Fuzzing, below) is the part this project leans on most.
+building a checklist for one, since each test case states
+what to look for and how. The input validation and fuzzing
+material (see Fuzzing, below) is the part this project leans
+on most.
 
 The twelve test categories:
 
@@ -219,20 +221,21 @@ testing guide was called the MSTG before the MAS restructure;
 MASTG is the current name.
 
 Reach for them: when the code under review is a mobile
-application rather than a service — a different storage,
-platform and network world from the web guides above.
+application rather than a service, which is a different
+storage, platform and network world from the web guides
+above.
 
 The eight MASVS groups:
 
-- MASVS-STORAGE — data storage and privacy on the device
-- MASVS-CRYPTO — cryptographic controls
-- MASVS-AUTH — authentication and authorization
-- MASVS-NETWORK — network communication
-- MASVS-PLATFORM — interaction with the platform
-- MASVS-CODE — code quality and build settings
-- MASVS-RESILIENCE — resilience against reverse engineering
+- MASVS-STORAGE, data storage and privacy on the device
+- MASVS-CRYPTO, cryptographic controls
+- MASVS-AUTH, authentication and authorization
+- MASVS-NETWORK, network communication
+- MASVS-PLATFORM, interaction with the platform
+- MASVS-CODE, code quality and build settings
+- MASVS-RESILIENCE, resilience against reverse engineering
   and tampering
-- MASVS-PRIVACY — privacy controls
+- MASVS-PRIVACY, privacy controls
 
 Project page: https://owasp.org/www-project-mobile-application-security/
 MASVS and MASTG online: https://mas.owasp.org/
@@ -253,54 +256,51 @@ is where this project's review attention concentrates.
 
 Index: https://cheatsheetseries.owasp.org/
 
-- Input Validation Cheat Sheet — allowlist-first validation
-  design for every field a program accepts.
+- Input Validation Cheat Sheet: allowlist-first validation design for every field
+  a program accepts.
   https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html
-- Injection Prevention Cheat Sheet — the general rule set:
-  keep untrusted data out of interpreters, or neutralize it
-  for the specific interpreter.
+- Injection Prevention Cheat Sheet, the general rule set: keep untrusted data out of
+  interpreters, or neutralize it for the specific interpreter.
   https://cheatsheetseries.owasp.org/cheatsheets/Injection_Prevention_Cheat_Sheet.html
-- SQL Injection Prevention Cheat Sheet, with the Query
-  Parameterization Cheat Sheet — the data-layer specifics.
+- SQL Injection Prevention Cheat Sheet, with the Query Parameterization Cheat Sheet: the
+  data-layer specifics.
   https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html
-- OS Command Injection Defense Cheat Sheet — when input gets
-  anywhere near a shell.
+- OS Command Injection Defense Cheat Sheet: when input gets anywhere near a shell.
   https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html
-- Cross Site Scripting Prevention Cheat Sheet — context-correct
-  output encoding for anything rendered.
+- Cross Site Scripting Prevention Cheat Sheet: context-correct output encoding
+  for anything rendered.
   https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html
-- XML Security Cheat Sheet — parser settings that keep
-  external entities and entity-expansion attacks off.
+- XML Security Cheat Sheet: parser settings that keep external entities and
+  entity-expansion attacks off.
   https://cheatsheetseries.owasp.org/cheatsheets/XML_Security_Cheat_Sheet.html
-- Deserialization Cheat Sheet — why untrusted data never goes
-  through a native deserializer, and what to do instead.
+- Deserialization Cheat Sheet: why untrusted data never goes through a native
+  deserializer, and what to do instead.
   https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html
-- Server Side Request Forgery Prevention Cheat Sheet —
-  allowlists for any fetch of a caller-influenced URL.
+- Server Side Request Forgery Prevention Cheat Sheet: allowlists for any fetch
+  of a caller-influenced URL.
   https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html
-- Mass Assignment Cheat Sheet — bind only the fields a caller
-  is allowed to set.
+- Mass Assignment Cheat Sheet: bind only the fields a caller is allowed to set.
   https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html
-- File Upload Cheat Sheet — type, size, storage and naming
-  rules for uploaded content.
+- File Upload Cheat Sheet: type, size, storage and naming rules for uploaded
+  content.
   https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
-- REST Security Cheat Sheet — the baseline for API endpoints:
-  authentication, authorization, transport and content types.
+- REST Security Cheat Sheet, the baseline for API endpoints: authentication,
+  authorization, transport and content types.
   https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html
-- Error Handling Cheat Sheet and Logging Cheat Sheet — log
-  the security event; leak nothing in the error.
+- Error Handling Cheat Sheet and Logging Cheat Sheet: log the security
+  event; leak nothing in the error.
   https://cheatsheetseries.owasp.org/cheatsheets/Logging_Cheat_Sheet.html
-- HTTP Security Response Headers Cheat Sheet — the header set
-  for anything served over HTTP.
+- HTTP Security Response Headers Cheat Sheet: the header set for anything served
+  over HTTP.
   https://cheatsheetseries.owasp.org/cheatsheets/HTTP_Security_Response_Headers_Cheat_Sheet.html
-- Secrets Management Cheat Sheet — where keys live, how they
-  are delivered, and how they rotate.
+- Secrets Management Cheat Sheet: where keys live, how they are delivered, and how
+  they rotate.
   https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html
-- Authentication Cheat Sheet and Access Control Cheat Sheet —
-  the baseline controls behind the identity checks.
+- Authentication Cheat Sheet and Access Control Cheat Sheet: the baseline
+  controls behind the identity checks.
   https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html
-- LLM Prompt Injection Prevention Cheat Sheet — defensive
-  design for model-backed features.
+- LLM Prompt Injection Prevention Cheat Sheet: defensive design for model-backed
+  features.
   https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html
 
 ## Fuzzing and input validation
@@ -316,9 +316,9 @@ and all three are worth knowing:
   or later.
   https://owasp.org/www-community/Fuzzing
 - The WSTG's Fuzz Vectors appendix collects ready-made vector
-  sets by target category — cross-site scripting, buffer
+  sets by target category (cross-site scripting, buffer
   overflows and format strings, SQL injection, XML injection
-  and more — usable with ZAP, Burp Suite or a fuzzer of one's
+  and more) usable with ZAP, Burp Suite or a fuzzer of one's
   own. It draws the distinction this project also uses:
   recursive fuzzing iterates the combinations of a set alphabet
   over part of a request; replacive fuzzing substitutes a known
@@ -327,8 +327,8 @@ and all three are worth knowing:
   SecLists and the Big List of Naughty Strings.
   https://wstg.owasp.org/v4.2/6-Appendix/C-Fuzz_Vectors/
 - The WSTG's Input Validation Testing category turns the same
-  ground into named test cases — one per injection class and
-  per encoding or boundary mistake — which is the checklist a
+  ground into named test cases, one per injection class and
+  per encoding or boundary mistake, which is the checklist a
   fuzz run's results get sorted against. The defense side of
   the same ground is ASVS V1 and V2 and the Input Validation
   Cheat Sheet above.
@@ -336,22 +336,23 @@ and all three are worth knowing:
   simplest cut of the same ground, and it still organizes a
   corpus well: dangerous values for numbers (zero, negative,
   very large), for characters (escaped and interpretable
-  characters — quotes, comment and delimiter shapes), for
-  metadata, and as pure binary sequences. A reader that takes
-  more than one of those kinds owes a vector family to each.
+  characters, such as quotes, comment and delimiter shapes),
+  for metadata, and as pure binary sequences. A reader that
+  takes more than one of those kinds owes a vector family to
+  each.
 
 ## How this maps to our work
 
-- Parser and intake code — envelopes, configuration files,
-  wire formats, anything that reads bytes it did not produce:
-  the WSTG input validation tests and fuzz vectors are the
-  attack side; ASVS V1 and V2 state the defense; findings
-  classify under Top 10 A05 (injection) or A10 (exceptional
-  conditions) more often than anywhere else.
+- Parser and intake code (envelopes, configuration files,
+  wire formats, anything that reads bytes it did not
+  produce): the WSTG input validation tests and fuzz vectors
+  are the attack side; ASVS V1 and V2 state the defense;
+  findings classify under Top 10 A05 (injection) or A10
+  (exceptional conditions) more often than anywhere else.
 - Protocol implementations: ASVS V11 (cryptography) and V12
   (secure communication) carry the requirements; Top 10 A04
   names the failure when they are missed.
-- Configuration handling: Top 10 A02 and ASVS V13 — a wrong or
+- Configuration handling: Top 10 A02 and ASVS V13. A wrong or
   hostile value is an input like any other, and gets validated
   like one.
 - API-shaped surfaces: the API Security Top 10 for the risks,
@@ -361,7 +362,7 @@ and all three are worth knowing:
   LLM06 (what it is allowed to do).
 - Writing a finding up: give the OWASP category ID from the
   list it belongs to and the ASVS requirement ID it violates.
-  That pairing — shared name, checkable requirement — is what
+  That pairing (shared name, checkable requirement) is what
   makes a report readable by anyone outside this project.
 
 ## This project, read against the lists
@@ -378,43 +379,43 @@ model are the fuller texts.
 
 ### Signed-job intake and envelope parsing
 
-- Authentication (Top 10 A07; API2) — Covered. A job is acted
+- Authentication (Top 10 A07; API2): Covered. A job is acted
   on only with a valid signature under a high-entropy shared
   secret; the runner refuses weak secrets at startup. The
-  sender's address is never trusted — the signature is the
+  sender's address is never trusted; the signature is the
   credential.
-- Cryptographic failures (A04) — Covered. Job bodies travel
-  as AES-256-GCM envelopes by default. The signed-but-cleartext
+- Cryptographic failures (A04): Covered. Job bodies travel as
+  AES-256-GCM envelopes by default. The signed-but-cleartext
   form is refused unless the operator starts the runner with
   `--allow-cleartext`, and there is deliberately no
   configuration key for that switch.
-- Software and data integrity (A08) — Covered. A job is
+- Software and data integrity (A08): Covered. A job is
   committed as seen before it runs, so execution is
   at-most-once; a stale `issued_at` is refused; and a key's
   policy can narrow what that key's jobs may do.
-- Unrestricted resource consumption (API4) — Covered.
+- Unrestricted resource consumption (API4): Covered.
   `max_job_bytes` (4 MiB) bounds a raw job before its signature
-  is checked, and the script and result sizes are capped too
-  (1 MiB and 5 MiB by default).
-- Injection (A05) — Partially covered. The unsigned surface is
+  is checked, and the script and result sizes are capped too (1
+  MiB and 5 MiB by default).
+- Injection (A05): Partially covered. The unsigned surface is
   the envelope framing and headers, parsed by strict readers
   and exercised by the fuzzing work below. Past the signature,
-  a job is a program by design — that is the next surface.
+  a job is a program by design, which is the next surface.
 
 ### Script handling
 
-- Access control (A01) — Covered, at the signature and the key
+- Access control (A01): Covered, at the signature and the key
   policy: a secret whose policy allows only sensor alerts
   cannot pull work or run scripts at all. What a fully trusted
   secret may run is the product's stated purpose, argued openly
   in the threat model.
-- Secure coding and architecture (ASVS V15) — Covered. Jobs
-  run confined, under sandbox profiles, and optionally as a
+- Secure coding and architecture (ASVS V15): Covered. Jobs run
+  confined, under sandbox profiles, and optionally as a
   dedicated job user; at `enforce`, startup refuses when the
   demotion cannot be applied, and the startup confinement trial
   runs the configured flags before the runner opens for work.
 - Excessive agency (LLM06, read across to automation in
-  general) — Partially covered. Opinion and judge tiers review
+  general): Partially covered. Opinion and judge tiers review
   jobs, remediation tripwires kill a diverging job's process
   tree and quarantine its outputs, and the panic word is the
   operator's emergency stop. A validly signed job inside its
@@ -423,14 +424,14 @@ model are the fuller texts.
 
 ### Configuration loading
 
-- Security misconfiguration (A02; ASVS V13) — Covered. The
+- Security misconfiguration (A02; ASVS V13): Covered. The
   security-relevant settings are read strictly: a
   present-but-invalid value that would change what the runner
   reaches, runs or enforces refuses startup instead of falling
   back to a default; an unknown field inside a key policy
   refuses; and a shared-secret file readable by everyone on
   the box refuses startup.
-- Data protection (ASVS V14) — Partially covered. The secret
+- Data protection (ASVS V14): Partially covered. The secret
   itself is generated at install time at 256 bits and its file
   permissions are policed at startup. Settings that do not
   bear on security keep forgiving defaults, by the same
@@ -438,13 +439,13 @@ model are the fuller texts.
 
 ### The transports, and the DTLS binding
 
-- Secure communication (ASVS V12) — Covered. The DTLS binding
+- Secure communication (ASVS V12): Covered. The DTLS binding
   offers a single AEAD cipher suite (TLS_AES_256_GCM_SHA384)
   with a pre-shared key plus X25519 key exchange, and a hybrid
   post-quantum exchange is implemented and off by default. The
   mail transports require TLS 1.2 or better with certificate
   verification by default.
-- Cryptographic failures (A04) — Partially covered, with the
+- Cryptographic failures (A04): Partially covered, with the
   limit written down where users read it: on the mail path,
   confidentiality is the job envelope rather than the hop, and
   there is no forward secrecy unless the transport layer
@@ -452,7 +453,7 @@ model are the fuller texts.
 
 ### The hosted face
 
-- The web risk lists (Top 10, most of ASVS V3) — Mostly not
+- The web risk lists (Top 10, most of ASVS V3): Mostly not
   applicable to the runner itself. The default and hosted
   installs serve no web interface and open no listening port;
   jobs arrive over mail, files, queues and the other
@@ -461,29 +462,29 @@ model are the fuller texts.
   cloud providers' APIs under the operator's own provider
   account; the web-facing risk there sits with the providers'
   consoles, not with code in this tree. The parts of the lists
-  that do reach this surface — authentication and integrity of
-  the job channel — are the intake verdicts above.
+  that do reach this surface, namely authentication and
+  integrity of the job channel, are the intake verdicts above.
 
 ### File and path handling
 
-- Path traversal (WSTG input validation testing) — Covered. A
+- Path traversal (WSTG input validation testing): Covered. A
   job_id outside `[A-Za-z0-9._-]{1,128}` is rejected, so a
   `..`-shaped id names nothing; results are stashed under the
   runner's own outbox, by validated id.
-- File handling (ASVS V5) — Partially covered. Sizes are
+- File handling (ASVS V5): Partially covered. Sizes are
   capped before work begins. The runner does not extract
   archives or render uploaded content, so most of V5 has
   nothing to attach to.
 
 ### The model-backed component
 
-- Prompt injection (LLM01) — Partially covered, by
+- Prompt injection (LLM01): Partially covered, by
   architecture. The opinion a model contributes is advisory:
   it never blocks, holds or approves a job by itself, and the
   default opinion is deterministic machinery with no model in
   it. A local model joins only when the operator opts in.
 - Improper output handling (LLM05) and excessive agency
-  (LLM06) — Covered at the one place a model's word can affect
+  (LLM06): Covered at the one place a model's word can affect
   a running job: in oracle remediation mode, anything short of
   an affirmative order is an abstention and never kills; the
   deterministic tripwire list acts without the model.
@@ -491,10 +492,10 @@ model are the fuller texts.
 ### The parsing surfaces, family by family
 
 The intake verdicts above name the controls. Read strictly as
-a parser problem — which is how the fuzzing work meets this
-code — the same surfaces sort into seven vector families.
-Each family below names the canonical off-the-shelf shapes,
-the OWASP class they sort under, and the verdict for this
+a parser problem, which is how the fuzzing work meets this
+code, the same surfaces sort into seven vector families. Each
+family below names the canonical off-the-shelf shapes, the
+OWASP class they sort under, and the verdict for this
 project. The shapes are the public ones: they stand in the
 WSTG fuzz vectors appendix and the corpora it names (FuzzDB,
 SecLists, the Big List of Naughty Strings), and in the
@@ -508,11 +509,11 @@ technique; it is the market's existing lists, applied.
   stripping, and names ending in a dot, a space or a NUL.
   Class: WSTG directory traversal and file include testing
   (WSTG-ATHZ-01); ASVS V5 (file paths built from trusted
-  data, not from caller-supplied names). Surface: the
-  job-id and file-name readers. Verdict: Covered — a job_id
-  outside `[A-Za-z0-9._-]{1,128}` is rejected and file names
-  are validated before staging, so the encoded and nested
-  forms name nothing; the corpus holds the grammar to it.
+  data, not from caller-supplied names). Surface: the job-id
+  and file-name readers. Verdict: Covered. A job_id outside
+  `[A-Za-z0-9._-]{1,128}` is rejected and file names are
+  validated before staging, so the encoded and nested forms
+  name nothing; the corpus holds the grammar to it.
 - Wrong and bad characters. Shapes: NUL and the C0 and C1
   control ranges inside names, arguments and values; CR and
   LF where a value will later stand in a header or a log
@@ -521,7 +522,7 @@ technique; it is the market's existing lists, applied.
   Naughty Strings is the canonical shelf for this family.
   Class: A10 (exceptional conditions); ASVS V1. Surface:
   every text reader, and the envelope header readers first.
-  Verdict: Partially covered — the strict readers refuse the
+  Verdict: Partially covered. The strict readers refuse the
   shapes the corpus carries, a NUL in an argument, an
   environment name or an interpreter is a refusal, and the
   family is only as complete as the corpus entries behind
@@ -532,47 +533,47 @@ technique; it is the market's existing lists, applied.
   that is one string before normalization and another
   after), case-folding differences, and duplicate keys that
   appear only after decoding. The sharp form is a
-  differential: two readers of the same bytes — here, the
-  runner's verifier and the sender's verifier — decoding
+  differential: two readers of the same bytes (here, the
+  runner's verifier and the sender's verifier) decoding
   them to different values. Class: ASVS V1 (encoding and
   sanitization); A05 where the decoded form reaches an
   interpreter. Surface: the envelope and header readers,
   the mail subject and body readers, the configuration text
-  readers. Verdict: Partially covered — the two-verifier
+  readers. Verdict: Partially covered. The two-verifier
   agreement is a stated contract of the fuzzing work, and
   the encoding-specific shapes are the thinnest part of the
   corpus; see the additions below.
 - Injection shapes. Shapes: the quote, comment and
-  delimiter sets per interpreter — query languages, shells,
+  delimiter sets per interpreter (query languages, shells,
   directory and XPath expressions, template syntax, format
-  strings, and log lines — shelved in FuzzDB's attack
+  strings, and log lines), shelved in FuzzDB's attack
   categories, the SecLists Fuzzing folders and the WSTG
   input validation cases. Class: A05; ASVS V1.2. Surface in
-  this project: narrow by design — no query language stands
-  behind intake, and a signed job's script is a program by
-  design, not an injection. What remains is real: values
-  that reach a shell's argument list, a search pattern over
-  retained output, a file path, or an audit line. Verdict:
-  Partially covered — argument and environment shapes are
-  refused at intake, patterns run under a time bound, and
-  the per-interpreter shelves are a checklist for any new
-  sink, not a standing corpus.
+  this project: narrow by design, since no query language
+  stands behind intake, and a signed job's script is a
+  program by design, not an injection. What remains is
+  real: values that reach a shell's argument list, a search
+  pattern over retained output, a file path, or an audit
+  line. Verdict: Partially covered. Argument and
+  environment shapes are refused at intake, patterns run
+  under a time bound, and the per-interpreter shelves are a
+  checklist for any new sink, not a standing corpus.
 - Deserialization and type confusion. Shapes: a value of
-  the wrong type in a field built for another — a list
-  where a string stands, a string where a number stands, a
-  boolean where a count stands; duplicate keys; nesting
+  the wrong type in a field built for another (a list where
+  a string stands, a string where a number stands, a
+  boolean where a count stands); duplicate keys; nesting
   past any stated depth; numbers in string, fraction,
   exponent and non-finite forms (the SecLists JSON fuzzing
   list is the canonical shelf). Class: A08 (data integrity
   failures, which carries unsafe deserialization); ASVS
   V1.5 (safe deserialization) and V2 (validation). Surface:
-  every JSON reader — the envelope, the configuration
-  readers, the board and query readers. Verdict: Covered as
-  a discipline — the fuzzing record is a litany of exactly
-  this shape (a value used before its type was checked) and
-  each instance closed as a refusal or a configuration
-  error, never a crash; the per-field form of the check is
-  in the additions below.
+  every JSON reader, including the envelope, the
+  configuration readers, and the board and query readers.
+  Verdict: Covered as a discipline. The fuzzing record is a
+  litany of exactly this shape (a value used before its
+  type was checked) and each instance closed as a refusal
+  or a configuration error, never a crash; the per-field
+  form of the check is in the additions below.
 - Boundary and length handling. Shapes: a length field
   that disagrees with the body it heads, a truncated
   record, a record split across fragments whose offsets
@@ -583,22 +584,22 @@ technique; it is the market's existing lists, applied.
   and partial deliveries. Class: A10; API4 (unrestricted
   resource consumption). Surface: the DTLS record framing
   reader first, then every size-capped intake. Verdict:
-  Covered — records are framed and capped before work
+  Covered. Records are framed and capped before work
   begins, the fragment buffer is capped, and a short or
   malformed record is a dropped record, not a crash; the
   length-disagreement shapes stay in the corpus as the
   framing code changes.
-- Algorithmic complexity. Shapes: inputs small on the
-  wire and expensive to read — deep nesting that makes a
+- Algorithmic complexity. Shapes: inputs small on the wire
+  and expensive to read, such as deep nesting that makes a
   walk quadratic in the nesting or the length, very many
   small fields or keys, a small compressed or indexed form
-  that expands to a large decoded one, a pattern or a brace
-  walk whose cost grows faster than its input. Class: A10
-  and API4; the defense is a stated bound, in ASVS V2's
+  that expands to a large decoded one, or a pattern or a
+  brace walk whose cost grows faster than its input. Class:
+  A10 and API4; the defense is a stated bound, in ASVS V2's
   business-logic limits and the resource-consumption
   category. Surface: the signed-object extractors and every
   reader that walks what it has not yet verified. Verdict:
-  Partially covered — the one known instance (a brace walk,
+  Partially covered. The one known instance (a brace walk,
   quadratic, reachable before the signature was checked)
   was found by a latency class beside the crash oracle and
   replaced with a linear pass; a crash-only oracle cannot
@@ -607,11 +608,11 @@ technique; it is the market's existing lists, applied.
 
 ### Across all surfaces
 
-- Security logging and alerting failures (A09) — Covered.
+- Security logging and alerting failures (A09): Covered.
   Audit records are canonical JSON forming a tamper-evident
   hash chain, and a diverging job pages the owner under
   remediation.
-- Insecure design (A06) — Covered as a practice: the threat
+- Insecure design (A06): Covered as a practice: the threat
   model is written, public, and lists its own gaps beside its
   claims (the threat model and security-gaps pages shelved
   with this one).
@@ -631,35 +632,35 @@ same shelves this page does: FuzzDB (attack patterns by
 interpreter and fault class), SecLists (the Fuzzing folders,
 including its JSON, XML and Unicode lists and its copy of
 the Big List of Naughty Strings), the Big List of Naughty
-Strings itself (over 500 strings whose categories — special
-characters, Unicode, injection shapes, reserved names — map
-one-to-one onto the bad-character family above), and
-PayloadsAllTheThings (payloads and bypasses organized by
+Strings itself (over 500 strings whose categories, such as
+special characters, Unicode, injection shapes, and reserved
+names, map one-to-one onto the bad-character family above),
+and PayloadsAllTheThings (payloads and bypasses organized by
 vulnerability class: the class pages are a checklist of
 shapes to account for, rather than a corpus to copy whole).
 Two cautions are part of the sourcing discipline. First,
 screen any shelf before it joins a corpus: general-purpose
 lists carry entries meant to damage the system they reach,
 and a corpus whose contract is "refused, never run" has no
-use for them — the SecLists copy of the naughty-strings list
+use for them. The SecLists copy of the naughty-strings list
 already omits the destructive entries its upstream carries,
-which is the right precedent. Second, pin what was taken:
-a named snapshot of a shelf, recorded beside the corpus, so
-a result reproduces against the same vectors later.
-The engine side of the market is settled and, for this
-project, mostly beside the point: the maintained
-coverage-guided engines (AFL++ in its current series,
-libFuzzer in maintenance mode inside LLVM, honggfuzz at a
-slower release cadence) are native-code tools, while this
-runner's readers are exercised in-process by the project's
-own corpus machinery — the durable choice is the corpus and
-its contracts, not the engine, and that choice should be
-revisited only if a reader moves to native code.
+which is the right precedent. Second, pin what was taken: a
+named snapshot of a shelf, recorded beside the corpus, so a
+result reproduces against the same vectors later. The engine
+side of the market is settled and, for this project, mostly
+beside the point: the maintained coverage-guided engines
+(AFL++ in its current series, libFuzzer in maintenance mode
+inside LLVM, honggfuzz at a slower release cadence) are
+native-code tools, while this runner's readers are exercised
+in-process by the project's own corpus machinery. The
+durable choice is the corpus and its contracts, not the
+engine, and that choice should be revisited only if a reader
+moves to native code.
 
 The additions themselves:
 
-- Injection-shaped values — the quote, comment and delimiter
-  shapes from the WSTG fuzz vectors — at the envelope and
+- Injection-shaped values (the quote, comment and delimiter
+  shapes from the WSTG fuzz vectors) at the envelope and
   header readers, joining the persistent corpus those readers
   already feed. Class: A05; WSTG input validation testing.
 - Boundary and type-confused values at the numeric
@@ -669,8 +670,8 @@ The additions themselves:
 - A per-field type-confusion pass: every field of the
   envelope, the configuration and the board and query
   bodies, handed in turn a value of each other type the
-  format carries — string, number, boolean, list, object,
-  null — plus the same values with bookend characters at
+  format carries (string, number, boolean, list, object,
+  null) plus the same values with bookend characters at
   the front and the back. One test per field, so a field
   that accepts a wrong type names itself. Class: A08;
   ASVS V1.5 and V2.
@@ -686,12 +687,12 @@ The additions themselves:
   overlong-UTF-8 forms, backslash forms, and names ending
   in a dot or a space. Class: WSTG input validation testing;
   ASVS V5.
-- Encoding edge cases — byte-order marks, mixed line endings,
-  embedded NUL bytes — at the script and configuration text
+- Encoding edge cases (byte-order marks, mixed line endings,
+  embedded NUL bytes) at the script and configuration text
   readers, extended with invalid and overlong UTF-8, lone
   surrogates, and a decoding-differential check: any value
-  the two verifiers read, they read to the same decoded
-  form or both refuse. Class: A10; ASVS V1.
+  the two verifiers read, they read to the same decoded form
+  or both refuse. Class: A10; ASVS V1.
 - Inputs sized just under, exactly at and just past each byte
   cap at the intake, including slow, partial deliveries.
   Class: API4, unrestricted resource consumption.
@@ -699,16 +700,16 @@ The additions themselves:
   signed-object extractors and the header readers: nesting
   depth, key count and field count doubled step by step
   from ordinary sizes, with the reader's time held to the
-  latency bound the fuzzing work already states — an input
+  latency bound the fuzzing work already states. An input
   that only makes a reader slow is a finding, filed the
   same way as one that makes it crash. Class: A10; API4.
 - Header-shaped values at the mail and envelope header
   readers: CR, LF and NUL inside a name or a value, a name
   repeated with different case or spacing, an empty name,
-  and a value folded across lines — the shapes that become
-  header injection or a split message wherever a reader
-  later writes the value into a message of its own. Class:
-  A05; ASVS V1.
+  and a value folded across lines, which are the shapes
+  that become header injection or a split message wherever
+  a reader later writes the value into a message of its
+  own. Class: A05; ASVS V1.
 - Reserved and mistaken-identity names at the file-name and
   job-id readers: device and reserved file names, names
   that differ only in case or in trailing dots and spaces,
@@ -724,5 +725,5 @@ Attribution-ShareAlike licenses (CC BY-SA 4.0 for the current
 projects). This page is an original summary written for this
 repository, with links to the canonical sources; the category
 names and requirement titles are OWASP's own, credited here.
-Read and cite the originals at the links — where this page and
+Read and cite the originals at the links: where this page and
 an original disagree, the original governs.

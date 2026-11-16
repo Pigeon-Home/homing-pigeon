@@ -46,7 +46,7 @@ The extension is solicited, never unsolicited. The initiator
 includes the extension type, empty, in its ClientHello: the
 offer says only that it can receive the disclosure, and it
 asks for nothing. The responder sends the extension only to
-an initiator that offered it -- an extension the client did
+an initiator that offered it; an extension the client did
 not offer is not sent (RFC 8446, section 4.2). A peer that
 does not offer still handshakes; it simply receives no
 disclosure.
@@ -56,12 +56,12 @@ disclosure.
 EncryptedExtensions arrives before the server's Finished in
 the same flight. The client holds the extension's payload as
 pending while the flight is processed and publishes it as
-its `greeting` object when the server Finished verifies --
-the point at which the initiator considers the connection
-established. A sender therefore never has to choose between
-sending its first job and waiting for a separate disclosure
-message: by the time it may send, it already holds the
-platform.
+its `greeting` object when the server Finished verifies,
+which is the point at which the initiator considers the
+connection established. A sender therefore never has to
+choose between sending its first job and waiting for a
+separate disclosure message: by the time it may send, it
+already holds the platform.
 
 For interoperability, a current client also accepts the
 older form: when no platform extension arrived, a legacy
@@ -80,9 +80,9 @@ server Finished has verified.
 
 Disclosure remains the responder's choice. The tier is local
 configuration; the initiator cannot request, negotiate or
-widen it. The payload names platform shape only -- operating
+widen it. The payload names platform shape only (operating
 system, interpreter, protocol versions, and at the higher
-tiers release, runtime and a bounded set of tool presences --
+tiers release, runtime and a bounded set of tool presences),
 never hostnames, addresses, user names or secrets.
 
 ## What changed for jobs

@@ -12,10 +12,10 @@ used: raw ICMP needs privilege a sense should not require, and
 a TCP handshake already proves the host answered and times it.
 That produces one documented asymmetry. The gateway is probed
 for reachability on the `gateway_port` tunable (default 53),
-so a connection refused — an RST came back, the host is alive
-— still counts as a successful gateway probe with a latency.
-A configured target is probed for its service, so a refusal
-there counts as down: `ok` is false and the reason is
+so a connection refused (an RST came back, meaning the host is
+alive) still counts as a successful gateway probe with a
+latency. A configured target is probed for its service, so a
+refusal there counts as down: `ok` is false and the reason is
 `refused`. Timeouts and unreachable routes count as down for
 both. Platform coverage: the gateway is read from
 `/proc/net/route`, so it is Linux-only; configured targets are
@@ -26,7 +26,7 @@ The watcher files two declared signals:
 
 | Signal | Fires when |
 |--------|------------|
-| `target_down` | A probe fails and the target was not already reported down (high severity; recovery clears the flag silently — there is no recovery signal) |
+| `target_down` | A probe fails and the target was not already reported down (high severity; recovery clears the flag silently, as there is no recovery signal) |
 | `latency_spike` | A probe's latency rises above both the `spike_ms` tunable (default 250) and `spike_factor` (default 3) times the median of the target's last samples, with at least 3 prior samples (medium severity) |
 
 A down target files once and stays quiet while it stays down.
@@ -60,9 +60,9 @@ A readings file is one JSON object:
 ```
 
 Alert payloads are unsigned sense alerts; signing and delivery
-follow the standard senses flow. The full extension walkthrough —
-manifest fields, the versioning contract, sensor binding, and how
-to turn this example into your own package — is in
+follow the standard senses flow. The full extension walkthrough
+(manifest fields, the versioning contract, sensor binding, and
+how to turn this example into your own package) is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).
 
 ## Other tunables
@@ -71,8 +71,9 @@ to turn this example into your own package — is in
 
 ## Light mode
 
-For a Pi Light install, tune it down with its tunables: raise `poll_interval_sec` from 60 to 600
-(a slower cadence also means fewer latency samples are taken),
-and leave `targets` empty with `include_gateway` true, so the
-only probe each pass is the gateway check — one small TCP
-connect every ten minutes, and nothing else.
+For a Pi Light install, tune it down with its tunables: raise
+`poll_interval_sec` from 60 to 600 (a slower cadence also means
+fewer latency samples are taken), and leave `targets` empty with
+`include_gateway` true, so the only probe each pass is the
+gateway check, which is one small TCP connect every ten minutes
+and nothing else.

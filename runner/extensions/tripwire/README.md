@@ -1,8 +1,8 @@
 # Tripwire — an example Homing Pigeon extension
 
 A sense for people who test other people's systems and want to
-know when the ground moved. Point it at a tree — a release
-directory, a web root, a test fixture tree, `/etc` — and it
+know when the ground moved. Point it at a tree (a release
+directory, a web root, a test fixture tree, `/etc`), and it
 hashes every regular file with SHA-384 (the project's digest)
 and diffs the result against the baseline it recorded on its
 first pass. What appeared, what vanished, and what changed is
@@ -21,7 +21,7 @@ The watcher files three declared signals:
 |--------|------------|
 | `file_appeared` | A file is present in the watched tree that was not in the recorded baseline (medium) |
 | `file_vanished` | A file in the recorded baseline is no longer present in the watched tree (medium) |
-| `file_changed` | A file's SHA-384 digest differs from the baseline (high); oversize files (over `max_file_mb`) carry no digest and compare by size only — a same-size rewrite of an oversize file is not detected, and a size change is |
+| `file_changed` | A file's SHA-384 digest differs from the baseline (high); oversize files (over `max_file_mb`) carry no digest and compare by size only, so a same-size rewrite of an oversize file is not detected, and a size change is |
 
 Files are walked in sorted order and paths are processed in
 sorted order. At most `max_files` files (default 10000) are
@@ -60,33 +60,33 @@ A readings file is one JSON object:
 ```
 
 Platform coverage: the walk, the hashing, and the diff are
-plain standard-library file I/O and run anywhere Python runs
-— Linux, macOS, and Windows. There is no platform-specific
-source to go missing; a root that does not exist reads as an
-empty tree, never an error.
+plain standard-library file I/O and run anywhere Python
+runs: Linux, macOS, and Windows. There is no
+platform-specific source to go missing; a root that does not
+exist reads as an empty tree, never an error.
 
 ## Light mode
 
 For a low-power install (a Pi, a small VPS, a box doing other
 work), turn the knobs the manifest actually implements:
 
-- `poll_interval_sec` up — 300 by default, 3600 for a tree
+- `poll_interval_sec` up: 300 by default, 3600 for a tree
   that should only be checked hourly. This is the biggest
   lever: the cost is per pass, so cadence is cost.
-- `root` narrower — watch the directory that matters
+- `root` narrower: watch the directory that matters
   (`/etc`, one release tree) instead of a whole filesystem.
-- `excludes` up — add build output, caches, logs, and anything
+- `excludes` up: add build output, caches, logs, and anything
   else whose churn is not news.
-- `max_file_mb` down — files over the cap are recorded by
+- `max_file_mb` down: files over the cap are recorded by
   size only and their bytes are never read.
-- `max_alerts_per_pass` down — fewer alerts per pass, but
+- `max_alerts_per_pass` down: fewer alerts per pass, but
   remember the trade-off owned above: the baseline is still
   absorbed in full, so differences past the cap are recorded,
   not re-filed later.
 
 The honest limit: hashing costs the bytes it reads. A pass
 over N bytes of in-cap files reads N bytes and hashes them,
-and no knob changes that arithmetic — a huge tree cannot be
+and no knob changes that arithmetic; a huge tree cannot be
 made cheap, only narrower (smaller `root`, more `excludes`,
 lower `max_file_mb`) or less frequent (higher
 `poll_interval_sec`). As a practical sizing note, keep the
@@ -97,7 +97,7 @@ a daily cadence, watched narrowly, or not on a Pi at all.
 ## Further reading
 
 Alert payloads are unsigned sense alerts; signing and delivery
-follow the standard senses flow. The full extension walkthrough —
-manifest fields, the versioning contract, sensor binding, and how
-to turn this example into your own package — is in
+follow the standard senses flow. The full extension walkthrough
+(manifest fields, the versioning contract, sensor binding, and
+how to turn this example into your own package) is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).

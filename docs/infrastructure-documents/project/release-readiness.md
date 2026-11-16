@@ -2,9 +2,9 @@
 
 Dated 2026-11-09. This page is the living checklist an official
 release of this project is checked against. It assembles what
-the tree already establishes — the release gate's design, the
+the tree already establishes (the release gate's design, the
 measured default posture, the ship pipeline's own guards, the
-statistics record, and the spillage doctrine — into one list
+statistics record, and the spillage doctrine) into one list
 that can be worked top to bottom at the gate. It decides
 nothing new: where a check rests on another document, that
 document is named, and the check is only as strong as the
@@ -12,8 +12,8 @@ evidence it points at.
 
 The checklist is worked per candidate, the way the release
 gate's own checklist is (release-gate.md). A line is checked
-only from a record — a build result, a ship record, a test
-run, a page read — never from memory of an earlier release.
+only from a record (a build result, a ship record, a test
+run, a page read), never from memory of an earlier release.
 Lines that cannot be checked yet are gaps, and the standing
 gaps known today are listed at the foot of this page so the
 list itself stays honest.
@@ -26,9 +26,9 @@ at Gate 5 of the desk:
 - A candidate record (runner/tools/release_gate.py) exists
   for the exact full version and release commit being cut,
   and the record's ten items are worked in order.
-- Every review class the candidate's range touches — protocol,
+- Every review class the candidate's range touches (protocol,
   execution, key handling, confinement, job-user behavior,
-  extension loading, disclosure controls — carries a reviewed
+  extension loading, disclosure controls) carries a reviewed
   line in the record, and the classes the range did not touch
   are printed as not touched.
 - Dark landings in the range are named in the record, each
@@ -88,7 +88,7 @@ own tests:
 - The IETF pages state the drafts' standing as it is: the
   posted revisions stand as the current text. The living v1
   and v2 draft texts remain byte-identical to the posted
-  texts — the mirror rule is not touched by any readiness
+  texts. The mirror rule is not touched by any readiness
   pass; wording changes for the drafts travel the established
   review route, never into the mirrored texts.
 - The reader's pages stay quiet: no process trail in the
@@ -108,8 +108,8 @@ own tests:
   docs/steady/fuzzing.md equals the facts.
 - The milestone line in statistics.md states measured
   figures only, each with its measured basis beside it.
-- The version's token component is recounted fresh —
-  uncached — on the tree being shipped, and the statistics
+- The version's token component is recounted fresh,
+  uncached, on the tree being shipped, and the statistics
   write stands as the last content commit before the
   release commit (the frozen order of the release
   procedure).
@@ -166,8 +166,8 @@ Job 4) and the cut-release workflow's guards, in their order:
 - The tag does not already exist.
 - The version carriers agree (section 3 above; the workflow
   checks them again).
-- The build job on the exact commit has concluded success —
-  the nine guard jobs green — before any tag lands.
+- The build job on the exact commit has concluded success,
+  with the nine guard jobs green, before any tag lands.
 - The main build on the release commit is green, and the
   tag build is green on every leg.
 - The publish jobs succeed: release, pypi-publish,
@@ -182,8 +182,8 @@ Job 4) and the cut-release workflow's guards, in their order:
 
 ## 8. After the cut
 
-- Every outlet is checked by name — GitHub Release, PyPI,
-  Docker, SourceForge, GitLab — before the release is
+- Every outlet is checked by name (GitHub Release, PyPI,
+  Docker, SourceForge, GitLab) before the release is
   reported, and the release is reported once.
 - The candidate's signed record stands committed on main
   (in the gate's enforcing phase, before the tag; until
@@ -196,17 +196,18 @@ never read as claiming more than stands:
 
 - **The phase-2 changes have landed whole.** Section 2's
   six behavior changes stand as a plan in the posture
-  record; items 1 and 2 — confinement and the job user at
-  enforce failing the job instead of stepping down —
+  record; items 1 and 2 (confinement and the job user at
+  enforce failing the job instead of stepping down)
   landed on 2026-11-09 with their tests. Items 3, 4 and 5
   landed beside them: the unengaged mode named at startup
   and in the posture report, the audience check refusing
   startup without a runner id, and the installer stating
   the platform gates in the seeded config (2026-11-10).
-  Item 6 has landed beside them (2026-11-13): the single
-  result-view default — the seed and the code fallback
-  read `attested`, so a hand-written or no-profile config
-  tells the same story as a fresh install.
+  Item 6 has landed beside them (2026-11-13) as the
+  single result-view default: the seed and the code
+  fallback read `attested`, so a hand-written or
+  no-profile config tells the same story as a fresh
+  install.
 - **The release gate is advisory, not enforcing.** The
   candidate-record tooling and the validator stand landed;
   the trains do not yet refuse a tag for want of a signed

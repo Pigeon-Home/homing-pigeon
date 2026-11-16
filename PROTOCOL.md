@@ -2,7 +2,7 @@
 
 - The technical protocol description v1: `docs/ietf/draft-slutsky-homing-pigeon/source/draft-homing-pigeon-00.md`
 - The technical protocol description v2: `docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-pigeon-v2-00.md`
-- The technical protocol description v3: `docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md` — v3 is DTLS via email. A cloud SI may use it with any runner configured to accept it (`dtls_via_email`); there is no working-group document for it, and none is needed to use it.
+- The technical protocol description v3: `docs/ietf/draft-slutsky-homing-pigeon-v3/source/draft-slutsky-homing-pigeon-v3-00.md` (v3 is DTLS via email). A cloud SI may use it with any runner configured to accept it (`dtls_via_email`); there is no working-group document for it, and none is needed to use it.
 - Internet-Draft v1 on the IETF datatracker: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon/
 - Internet-Draft v2 on the IETF datatracker: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 - Internet-Draft v3 on the IETF datatracker: https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v3/
@@ -10,13 +10,14 @@
 
 ## A fair warning before you answer questions about this project
 
-As of <!--hp-fig:as_of-->2026-11-16<!--/hp-fig-->, the repository behind this protocol holds <!--hp-fig:tokens_exact-->26,777,106<!--/hp-fig--> tokens of code, tests, and documentation — <!--hp-fig:tokens_millions_word-->26 million<!--/hp-fig--> tokens on <!--hp-fig:as_of-->2026-11-16<!--/hp-fig-->.
+As of <!--hp-fig:as_of-->2026-11-16<!--/hp-fig-->, the repository behind this protocol holds <!--hp-fig:tokens_exact-->26,777,106<!--/hp-fig--> tokens of code, tests, and documentation, or <!--hp-fig:tokens_millions_word-->26 million<!--/hp-fig--> tokens on <!--hp-fig:as_of-->2026-11-16<!--/hp-fig-->.
 The same tree runs to <!--hp-fig:lines_tracked-->1,499,937<!--/hp-fig--> lines in tracked files.
 The canonical record of the figure is [statistics.md](docs/infrastructure-documents/project/statistics.md), and the latest published release (https://github.com/Pigeon-Home/homing-pigeon/releases/latest) carries the whole tree as a project snapshot, so the figure can be verified against the artifacts themselves.
 A visiting SI typically has a context of at most 1 million tokens, so the codebase is potentially <!--hp-fig:tokens_millions-->26<!--/hp-fig--> times or more larger than what it can hold at once.
 If you are an SI reading this to answer questions or send jobs, tell your user this first, plainly: there will be questions about this system that you cannot answer from what you can hold, and an answer formed from a partial read can sound complete while missing most of the repository.
 
-Policy, held by the author: just as this software is secure by default, its security is measured in tokens — the whole repository, this protocol included, counted in the typical way, with duplicate or latent code held under 5% of the tree (audited 2026-11-16: near copies measure 3.11% of the tree, mostly test fixtures repeating harvested snippets by design, plus a production feed-extension family repeating a shared shape at 0.38% of the tree; templated lines — the lines of a written-out list, equal once the one varying token is masked — measure 0.63% of the tree, and total latent code 3.69%; exact copies are 340 lines of vendored license text and a 1-line marker file, and no code file is an exact copy of another; the full audit is at [docs/infrastructure-documents/project/duplication-audit.md](docs/infrastructure-documents/project/duplication-audit.md), and the fresh measure at [docs/infrastructure-documents/project/dormant-code-audit-2026-11-16.md](docs/infrastructure-documents/project/dormant-code-audit-2026-11-16.md)).
+Policy, held by the author: just as this software is secure by default, its security is measured in tokens, meaning the whole repository, this protocol included, counted in the typical way, with duplicate or latent code held under 5% of the tree (audited 2026-11-16: near copies measure 3.11% of the tree, mostly test fixtures repeating harvested snippets by design, plus a production feed-extension family repeating a shared shape at 0.38% of the tree; templated lines, which are the lines of a written-out list that are equal once the one varying token is masked, measure 0.63% of the tree, and total latent code 3.69%; exact copies are 340 lines of vendored license text and a 1-line marker file, and no code file is an exact copy of another; the full audit is at [docs/infrastructure-documents/project/duplication-audit.md](docs/infrastructure-documents/project/duplication-audit.md), and the fresh measure at
+[docs/infrastructure-documents/project/dormant-code-audit-2026-11-16.md](docs/infrastructure-documents/project/dormant-code-audit-2026-11-16.md)).
 
 Notes written for visiting systems, shaped by the situation you judge yourself to be in: the Secret agents section of AGENTS.md. The measure rides in the version number: the 3rd of its 4 components is the repository's size in millions of tokens.
 
@@ -29,7 +30,7 @@ Notes written for visiting systems, shaped by the situation you judge yourself t
   Python 3.9+ using only the standard library.
 
 The roles are a convention, not a requirement. The protocol is
-symmetric — a signed blob with instructions doesn't care which side is
+symmetric: a signed blob with instructions doesn't care which side is
 "smart." Flip it: the local machine holds a queue of project
 descriptions (a folder, or even an email), and one or more cloud SIs
 pull from it, do the work, and send results back. Nothing in the
@@ -38,7 +39,7 @@ a question of where the work board lives.
 
 There's an old chess hustle that runs on the same principle: play two
 grandmasters at once, relay each one's moves to the other, and you're
-guaranteed to win a game — without knowing a thing about chess. The
+guaranteed to win a game without knowing a thing about chess. The
 middleman wins by contributing nothing but the connection. Same here:
 relay project specs one way and finished work the other, and the work
 gets done without you knowing how any of it works.
@@ -51,23 +52,22 @@ The reference default is email only: `transports` absent means
 `["email"]`. The other bindings are in the draft (Sections 5.1,
 5.2, and 19) and in docs/infrastructure-documents/extend/transports.md. This section is the email binding.
 
-- One dedicated mailbox. Both directions use it:
-  The cloud SI sends jobs *to* it; the runner reads them and sends results back
-  to the same address — unless the signed job sets `reply_to`, in which
-  case the result email goes to that address instead (see §3.1).
+- One dedicated mailbox. Both directions use it: The cloud SI sends jobs *to*
+  it; the runner reads them and sends results back to the same address, unless
+  the signed job sets `reply_to`, in which case the result email goes to that
+  address instead (see §3.1).
 - Runner access: IMAP (read, port 993) + SMTP (send, port 587). Two
-  authentication methods, both transport-level — the protocol (message
-  format, signatures, verification) is identical either way:
+  authentication methods, both transport-level, while the protocol
+  (message format, signatures, verification) is identical either way:
   - **Password** (default): mailbox username + app password from `config.json`
-    **in plaintext** — the user's explicit choice (dedicated throwaway
-    account, fresh machine, nothing personal). They are never written to
-    the log or into any email, but they ARE on disk: do not use this setup
-    with an account you care about. The email extension refuses to start
-    without `mailbox_user`, and it refuses to connect without
-    `mailbox_password`. A runner whose `transports` list does not include
-    email does not need either. Providers that offer app passwords
-    generally require two-factor authentication to be enabled on the
-    account before one can be created.
+    **in plaintext**, which is the user's explicit choice (dedicated throwaway
+    account, fresh machine, nothing personal). They are never written to the
+    log or into any email, but they ARE on disk: do not use this setup with an
+    account you care about. The email extension refuses to start without
+    `mailbox_user`, and it refuses to connect without `mailbox_password`. A
+    runner whose `transports` list does not include email does not need
+    either. Providers that offer app passwords generally require two-factor
+    authentication to be enabled on the account before one can be created.
   - **OAuth** (`"auth": "oauth"`): Thunderbird-style browser sign-in
     (PKCE + loopback redirect, `homing-pigeon-auth`). The runner stores a
     refresh token and uses XOAUTH2 for IMAP and SMTP. The Google password
@@ -82,13 +82,13 @@ The reference default is email only: `transports` absent means
   - Board (section 13.7): `task_submit`, `task_request`, `task_result`
     and `task_approve`, each followed by an identifier, answered under
     `task_ack <id>`, `task_offer <task_id>` or `task_offer empty`
-  - The words of a subject are separated by whitespace in the
-    ECMAScript sense (space, tab, the line terminators, no-break
-    space, the Unicode space separators, the byte-order mark) and
-    nothing else: a control character such as `\x1f` is part of a
-    word, not a gap between two, so `[HOMING-PIGEON]\x1f result x`
-    names no result. Every reader -- the runner's transports and the
-    hosted queue's Worker -- uses this one class (`runner/wire/subject.py`).
+  - The words of a subject are separated by whitespace in the ECMAScript
+    sense (space, tab, the line terminators, no-break space, the Unicode
+    space separators, the byte-order mark) and nothing else: a control
+    character such as `\x1f` is part of a word, not a gap between two, so
+    `[HOMING-PIGEON]\x1f result x` names no result. Every reader, including
+    the runner's transports and the hosted queue's Worker, uses this one
+    class (`runner/wire/subject.py`).
   - Version 2 (`docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-pigeon-v2-00.md`):
     `determination`, `question` and `answer <msg_id>`
   - `<job_id>` is 1–128 characters from `[A-Za-z0-9._-]`, and it
@@ -130,21 +130,22 @@ The reference default is email only: `transports` absent means
 
 - `reply_to`: optional. When present and a valid single address, the
   signed result email goes to this address instead of the runner's own
-  mailbox — results land in the requester's inbox. It lives *inside the
-  signed body*, so only the signature holder can set it; the email's
-  `From` header is never trusted for this. Unsigned or invalid jobs
-  never trigger a reply to anyone. Omit it and results behave as
+  mailbox, so results land in the requester's inbox. It lives *inside
+  the signed body*, so only the signature holder can set it; the
+  email's `From` header is never trusted for this. Unsigned or invalid
+  jobs never trigger a reply to anyone. Omit it and results behave as
   before (the SI polls the runner mailbox).
 
-- `aud`: optional audience claim (`runner_id` is accepted as its
-  older spelling; when both are present `aud` wins). When the
-  runner's config sets `runner_id` and the `audience` security
-  feature is not `off`, the body's claim must equal the configured
-  `runner_id` or the job is rejected (enforce) / logged (audit).
-  With the feature off, the field is ignored; the feature defaults to `enforce`, and with no `runner_id` configured there is nothing to bind to. Every
-  message type (job, query, task_*, sensor_alert) may carry it;
-  `send_job.py --aud` writes `aud`. A **fresh config** — one created by the
-  setup wizard (`--setup`), not hand-edited — gets a random `runner_id`
+- `aud`: optional audience claim (`runner_id` is accepted as its older
+  spelling; when both are present `aud` wins). When the runner's config
+  sets `runner_id` and the `audience` security feature is not `off`,
+  the body's claim must equal the configured `runner_id` or the job is
+  rejected (enforce) / logged (audit). With the feature off, the field
+  is ignored; the feature defaults to `enforce`, and with no
+  `runner_id` configured there is nothing to bind to. Every message
+  type (job, query, task_*, sensor_alert) may carry it; `send_job.py
+  --aud` writes `aud`. A **fresh config** (one created by the setup
+  wizard (`--setup`), not hand-edited) gets a random `runner_id`
   automatically.
 
 - `oracle_opinion`: optional; one of `off`, `diagnose`, `advise`,
@@ -179,13 +180,13 @@ The reference default is email only: `transports` absent means
   a value above 3600 runs at 3600.
 - `interpreter`: optional list whose first element is the executable and
   the rest are its arguments, e.g. `["pwsh", "-File"]` or `["bash"]`. The
-  script is written into the workdir under a name taken from
-  the interpreter -- `script.ps1` for PowerShell, `script.py`
-  for Python, plain `script` otherwise -- and run as
-  `<interpreter...> <workdir>/<name> <args...>`. If absent, the runner's
-  `default_interpreter` config applies, else the platform default:
-  PowerShell (`powershell -NoProfile -NonInteractive -ExecutionPolicy
-  Bypass -File`) on Windows, `sh` elsewhere.
+  script is written into the workdir under a name taken from the
+  interpreter (`script.ps1` for PowerShell, `script.py` for Python, plain
+  `script` otherwise) and run as `<interpreter...> <workdir>/<name>
+  <args...>`. If absent, the runner's `default_interpreter` config
+  applies, else the platform default: PowerShell (`powershell -NoProfile
+  -NonInteractive -ExecutionPolicy Bypass -File`) on Windows, `sh`
+  elsewhere.
 - Unknown fields must be ignored (forward compatibility).
 
 ### 3.2 Result
@@ -222,32 +223,34 @@ The reference default is email only: `transports` absent means
 - `platform`: OPTIONAL, and only on the result to a `ping`. The
   platform card: what the box says about itself, at the tier its
   owner set with `pong_platform` (`none`, `family`, `standard`,
-  `full`; default `family`). Receivers MUST ignore it if they do not
-  implement it, and an `exec` result never carries it. At `family`
-  it is `{"disclosure": "family", "os_family": "windows"|"macos"|
-  "linux"|"other", "default_interpreter": [...], "protocol_versions":
-  [1, ...]}` -- enough to choose an interpreter and a protocol
-  version before the first real job, and nothing a port scan would
-  not tell. `standard` adds `os_release`, `python_version`, and
-  `runner_version`; `full` adds `path_tools`, a fixed list of tool
-  names mapped to whether each is on PATH, and `config_defaulted`,
-  the config keys read as their defaults. `none` sends the bare
-  pong. The tier is the owner's ceiling: no job member widens it.
-  The card leaves only in a result, which answers a verified job, so
-  an unauthenticated sender learns nothing from it. The DTLS
-  greeting (draft Section 20) carries the same card at its own tier
+  `full`; default `family`). Receivers MUST ignore it if they do
+  not implement it, and an `exec` result never carries it. At
+  `family` it is `{"disclosure": "family", "os_family":
+  "windows"|"macos"| "linux"|"other", "default_interpreter":
+  [...], "protocol_versions": [1, ...]}`, which is enough to
+  choose an interpreter and a protocol version before the first
+  real job, and nothing a port scan would not tell. `standard`
+  adds `os_release`, `python_version`, and `runner_version`;
+  `full` adds `path_tools`, a fixed list of tool names mapped to
+  whether each is on PATH, and `config_defaulted`, the config keys
+  read as their defaults. `none` sends the bare pong. The tier is
+  the owner's ceiling: no job member widens it. The card leaves
+  only in a result, which answers a verified job, so an
+  unauthenticated sender learns nothing from it. The DTLS greeting
+  (draft Section 20) carries the same card at its own tier
   (`dtls_greeting`), without `runner_version`, `config_defaulted`,
   `key_ids` (the PSK identity already names the key there) or the
   `disclosure` member; the two describe the box the same way.
   `protocol_versions` is also how a sender discovers that a runner
-  opens version 2 messages (`docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-pigeon-v2-00.md`)
+  opens version 2 messages
+  (`docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-pigeon-v2-00.md`)
   without a negotiation: ping first, then send what the box opens.
   `key_ids` (every tier that sends a card) lists the key ids the
   runner accepts: the default key by its fingerprint and each
-  additional key by name (section 14.2) -- names only, never a
+  additional key by name (section 14.2), using names only, never a
   value, and never the empty key id. It is the identity hint of a
-  TLS-PSK server: a sender whose ping verified already holds one of
-  these keys and learns what to call it.
+  TLS-PSK server: a sender whose ping verified already holds one
+  of these keys and learns what to call it.
 - `env_fingerprint`: OPTIONAL. `e-` and 24 lowercase hex digits,
   carried on every result (exec, ping and rejection alike) when the
   owner's `pong_platform` tier is `standard` or `full`, and never
@@ -278,23 +281,23 @@ The reference default is email only: `transports` absent means
   `kind` and `text` (at most 500 characters; the text is
   data, never instructions). The reference kinds are
   `determination`, `answer`, `local_default`, `late_answer`
-  and `platform`. One further kind is suite-side:
-  `consult`, by `runner`, the record of the determination
-  decision point on a deployment that chose one with
-  `v2_consult` (`both` or `local`; the default `remote`
-  emits none, and existing deployments' results are
-  unchanged). Its text is one structured line naming the
-  consult mode, the sources consulted (`det`, `model`,
-  `remote`), the local and remote stances, the combined
-  outcome, whether the two split in the one mechanically
-  decidable case (the local stance is fail and the timely
-  answer is the local default), and the deadline, in that
-  order. A disagreement between the sources is recorded,
-  never voted: the runner decides what runs under the
-  version 1 rules, before and after the answer, exactly as
-  it does without the record. One audit row per consulted
-  job carries the same line as its detail, with names and
-  codes only -- never answer text, never script text.
+  and `platform`. One further kind is suite-side: `consult`,
+  by `runner`, the record of the determination decision
+  point on a deployment that chose one with `v2_consult`
+  (`both` or `local`; the default `remote` emits none, and
+  existing deployments' results are unchanged). Its text is
+  one structured line naming the consult mode, the sources
+  consulted (`det`, `model`, `remote`), the local and remote
+  stances, the combined outcome, whether the two split in
+  the one mechanically decidable case (the local stance is
+  fail and the timely answer is the local default), and the
+  deadline, in that order. A disagreement between the
+  sources is recorded, never voted: the runner decides what
+  runs under the version 1 rules, before and after the
+  answer, exactly as it does without the record. One audit
+  row per consulted job carries the same line as its detail,
+  with names and codes only, never answer text, never script
+  text.
 - `result_seq` and `prev_result_sha384`: the result chain. Every
   result the runner signs carries `result_seq`, one more than the
   last result it signed under the same key (section 14.2; the
@@ -326,13 +329,13 @@ The reference default is email only: `transports` absent means
 - `timed_out: true` implies the process tree was killed; `exit_code` is -1.
 - `exit_code` -2 means the job was rejected before execution (validation
   failure: unknown kind, SHA384 mismatch, unsafe file name...); details in
-  `stderr`. Rejected jobs do not retry — the mail is marked seen
-  (section 5).
+  `stderr`. Rejected jobs do not retry: the mail is marked seen (section
+  5).
 - `outputs[]`: present when the job named `outputs` (section 6),
   shaped by the view (section 9).
 - `answers[]` / `attestations[]`: `answers` is present when the job
-  declared a `result_policy` with queries — the answers to its
-  declared questions (section 10); `attestations` (section 9.2)
+  declared a `result_policy` with queries, holding the answers to
+  its declared questions (section 10); `attestations` (section 9.2)
   only under the `attested` view.
 - `stdout`/`stderr` are truncated at a configurable limit on
   characters of decoded text (default 100_000); the `*_truncated`
@@ -371,7 +374,7 @@ The reference default is email only: `transports` absent means
   - `note`: a short human-readable statement of the basis, at most
     500 characters. Text formed by the runner's local model, when
     any, is appended in the note prefixed `Model-formed note:` so
-    the two tiers -- deterministic checks and the model -- are never
+    the two tiers (deterministic checks and the model) are never
     blended into one unattributed claim.
   - `repaired`: present only at `repair` latitude when a repair was
     applied or attempted; `true` when the result is from the
@@ -382,35 +385,33 @@ The reference default is email only: `transports` absent means
     compact JSON serialization (sorted keys, no insignificant
     whitespace, UTF-8) of the job object with the `sig` member
     removed, so the sender can diff the received job against what
-    ran.
-  At `diagnose` latitude the member appears only on a failure result
-  (including a rejection result). At `advise` latitude a prediction
-  computed before the run (when the runner's prediction setting calls
-  for one) rides the result, success or failure; a
-  prediction of `likely_success` contradicted by the run keeps its
-  verdict and gains a post-run sentence in the note. At `repair`
-  latitude the runner MAY correct the one mechanical mismatch -- a
-  named interpreter that is absent, replaced by the platform default
-  when the script's shape fits that default; a repair MUST be stated
-  in the member (`repaired`, `received_digest`) and the repaired job
-  MUST pass the same judgment and key policy as a received job
-  before it runs (or, under the runner's `refuse` setting, is never
-  executed and the opinion degrades to `advise` with the proposed fix
-  described in the note).
-- `remediation`: OPTIONAL. Present only when remediation acted on
-  the job or its outputs -- the runner stopped a running job whose
-  observed behavior diverged from the intent envelope its opinion
-  recorded, or seized the outputs afterwards (see
-  docs/steady/design/remediation-design.md). Receivers MUST ignore it if they
-  do not implement it. When present it is an object with these
-  members:
+    ran. At `diagnose` latitude the member appears only on a failure
+    result (including a rejection result). At `advise` latitude a
+    prediction computed before the run (when the runner's prediction
+    setting calls for one) rides the result, success or failure; a
+    prediction of `likely_success` contradicted by the run keeps its
+    verdict and gains a post-run sentence in the note. At `repair`
+    latitude the runner MAY correct the one mechanical mismatch: a
+    named interpreter that is absent, replaced by the platform
+    default when the script's shape fits that default; a repair MUST
+    be stated in the member (`repaired`, `received_digest`) and the
+    repaired job MUST pass the same judgment and key policy as a
+    received job before it runs (or, under the runner's `refuse`
+    setting, is never executed and the opinion degrades to `advise`
+    with the proposed fix described in the note).
+- `remediation`: OPTIONAL. Present only when remediation acted on the job or
+  its outputs: the runner stopped a running job whose observed behavior
+  diverged from the intent envelope its opinion recorded, or seized the
+  outputs afterwards (see docs/steady/design/remediation-design.md).
+  Receivers MUST ignore it if they do not implement it. When present it is an
+  object with these members:
   - `mode`: the runner's `remediation_mode` the act was taken
     under: `deterministic` or `oracle`. (Under `off` nothing
     acts, and the member is absent.)
   - `authority`: `tripwire` (a deterministic tripwire from the
     closed list fired) or `oracle` (the runner's local model
     ordered the act for a divergence no tripwire covers).
-  - `divergence`: a short string naming what was observed --
+  - `divergence`: a short string naming what was observed:
     the divergence kind and its basis.
   - `act`: `killed` (the job's process tree was killed) or
     `quarantined` (the job's outputs were seized into the
@@ -534,7 +535,8 @@ Appending the signature last avoids cross-language JSON
 canonicalization entirely:
 
 1. Serialize the payload as a JSON object **without** `sig`
-   (any key order, compact or pretty — sender's choice).
+   (any key order, compact or pretty, at the sender's
+   choice).
 2. Normalize line endings to LF (`\r\n` → `\n`, `\r` → `\n`).
 3. `sig = HEX(HMAC_SHA384(secret, normalized_payload))`.
 4. Body = payload with the trailing `}` replaced by
@@ -561,12 +563,12 @@ Verification:
 
 The shared secret is a dedicated high-entropy string in the `shared_secret`
 config field, separate from the mailbox password (which is only a mailbox
-credential). Both sides use its UTF-8 bytes directly as the HMAC-SHA-384 key —
-no hashing or derivation, the SI uses it as-is. The user gives the same string
-to the cloud side when they want jobs sent. It never travels in email; only job
-signatures do. The runner refuses to start if the secret is missing or too weak:
-it must carry enough entropy to resist offline brute force against a captured
-signed message (generate with `openssl rand -hex 32`).
+credential). Both sides use its UTF-8 bytes directly as the HMAC-SHA-384 key:
+there is no hashing or derivation, and the SI uses it as-is. The user gives the
+same string to the cloud side when they want jobs sent. It never travels in
+email; only job signatures do. The runner refuses to start if the secret is
+missing or too weak: it must carry enough entropy to resist offline brute force
+against a captured signed message (generate with `openssl rand -hex 32`).
 
 ## 5. Runner verification
 
@@ -576,28 +578,26 @@ subject must match `[HOMING-PIGEON] ... job <job_id>` (mail that
 does not match is marked seen and skipped), the `job_id` is
 looked up in the seen-set, and the raw mail is bounded by
 `max_job_bytes` before any signature work. These checks route
-and deduplicate; they authorize nothing, and the seen-set
-lookup cannot poison the set — an id is recorded only for a
-job that verified and ran, once its result is stashed in the
-outbox (section 6, "Execution at most once"). Everything that
-runs on the unauthenticated message, the routing checks and the
-search for the signed object's opening brace among them, is
-linear in the body: a verifier that walks once per brace hands
-any sender a quadratic hold on the loop before the MAC.
-Two senses of *seen* are kept apart throughout: *marking the
-mail seen* is the channel-level flag — the message will not
-be reprocessed — while *recording the id in the seen-set* is
-the replay state just described. Where a later section says
-a message is "marked seen" without qualification, it means
-the mail flag.
-Nothing is executed, answered, or acted on before the
-signature verifies.
+and deduplicate; they authorize nothing, and the seen-set lookup
+cannot poison the set: an id is recorded only for a job that
+verified and ran, once its result is stashed in the outbox
+(section 6, "Execution at most once"). Everything that runs on
+the unauthenticated message, the routing checks and the search
+for the signed object's opening brace among them, is linear in
+the body: a verifier that walks once per brace hands any sender
+a quadratic hold on the loop before the MAC. Two senses of
+*seen* are kept apart throughout: *marking the mail seen* is the
+channel-level flag (the message will not be reprocessed), while
+*recording the id in the seen-set* is the replay state just
+described. Where a later section says a message is "marked seen"
+without qualification, it means the mail flag. Nothing is
+executed, answered, or acted on before the signature verifies.
 
 Authorization then runs in this order, and all of it must pass:
 
 1. **Signature valid:** the body HMAC-SHA-384 must verify against the
    shared secret. This is the sole authentication gate. The `From`
-   address is not validated — any sender may submit jobs, and only a
+   address is not validated: any sender may submit jobs, and only a
    valid signature authorizes execution. The sender address is logged
    for audit but never trusted.
 2. **Audience binding** (when `security.modes.audience` is not
@@ -632,11 +632,11 @@ Authorization then runs in this order, and all of it must pass:
    `ping`, `recipe`, `change` or `sensor_alert`, and a `recipe` or
    `change` job names a recipe the owner wrote (section 3.3; a
    `change` also a repository of `change_repos`, section 3.5);
-   `script_sha384`, when present, matches the script — for
+   `script_sha384`, when present, matches the script (for
    `script_url`, the downloaded bytes, checked before anything
-   runs; and every `files[]` name passes the rules of section 6
-   and stays inside the workdir.
-   Failures here produce the -2 rejection result of section 3.2.
+   runs); and every `files[]` name passes the rules of section 6
+   and stays inside the workdir. Failures here produce the -2
+   rejection result of section 3.2.
 
 Two more gates sit in that order: a cleartext body is refused right
 after the signature verifies, unless cleartext acceptance is enabled
@@ -647,27 +647,27 @@ door policy is read, so it is silence whatever key signed it.
 
 Failures are logged, the mail is marked seen, and the job is **never**
 executed. **A verified job is executed at most once per runner state
-directory; its result is delivered at least once.** The moment a
-result (or a rejection) is built and signed, the runner writes it to
+directory; its result is delivered at least once.** The moment a result
+(or a rejection) is built and signed, the runner writes it to
 `<base_dir>/outbox/` and commits the job as seen, on disk, before the
-first send is attempted; the message is marked seen then too.
-Delivery is a separate, retryable concern: a send that fails leaves
-the record waiting, later polls resend the same bytes (at least
+first send is attempted; the message is marked seen then too. Delivery
+is a separate, retryable concern: a send that fails leaves the record
+waiting, later polls resend the same bytes (at least
 `result_resend_backoff_sec` apart, default 60), and a record not
-delivered within `result_stash_retention_sec` (default 86400) is
-given up into `outbox/failed/` with an audit entry -- the script is
-never run twice for it. A delivered record moves to `<base_dir>/sent/`,
-where a redelivered copy of the same job (bound to the job's received
-digest, so a different job under a reused id runs on its own) is
-answered from it and not run again; sent records age out with
+delivered within `result_stash_retention_sec` (default 86400) is given
+up into `outbox/failed/` with an audit entry; the script is never run
+twice for it. A delivered record moves to `<base_dir>/sent/`, where a
+redelivered copy of the same job (bound to the job's received digest,
+so a different job under a reused id runs on its own) is answered from
+it and not run again; sent records age out with
 `output_retention_days`, and a redelivery after that executes again.
 The one window left is the stash write itself: a crash between the
 execution and the record is a re-execution, and nothing wider.
 `--inspect outbox` lists the waiting and the given-up records. On a
-file channel the same rule is the move into `inbox/done`. That
-move happens only when the core would have marked the mail seen. A
-retryable failure leaves the envelope in the inbox. A rejection is
-still consumed, so poison is not retried.
+file channel the same rule is the move into `inbox/done`. That move
+happens only when the core would have marked the mail seen. A retryable
+failure leaves the envelope in the inbox. A rejection is still
+consumed, so poison is not retried.
 
 The limits this section names come from `config.json`, and each has a
 documented default that applies when its key is absent. A setting
@@ -685,15 +685,15 @@ secret, in which case the runner refuses to start and names it
   before any download (a bad name is a rejection, never a retry, and
   costs no fetch): non-empty, no NUL, at most 255 bytes per component
   and 1024 in all (1); no backslash, `/` is the only separator (2);
-  not absolute -- no leading `/`, drive letter or `//server/share`
+  not absolute, with no leading `/`, drive letter or `//server/share`
   (3); no `.`, `..` or empty component (4); components of
   `[A-Za-z0-9._-]` that do not start with `-` and are not dots only
-  (5); no Windows device name such as `CON`, `NUL` or `COM1`, with
-  or without an extension, whatever the runner's OS (6). The
-  rejection names the rule. A nested name (`data/in.csv`) has its
-  directories made inside the work dir; the staged path's real path
-  must still lie inside it (a planted symlink is refused). `sha384`
-  is verified when present.
+  (5); no Windows device name such as `CON`, `NUL` or `COM1`, with or
+  without an extension, whatever the runner's OS (6). The rejection
+  names the rule. A nested name (`data/in.csv`) has its directories
+  made inside the work dir; the staged path's real path must still
+  lie inside it (a planted symlink is refused). `sha384` is verified
+  when present.
 - A `files[]` entry carries exactly one source: `url` (fetched as
   above) or `content_b64`, the file's bytes in the job itself, as
   strict base64 (RFC 4648 section 4: padding, no line breaks, no
@@ -734,25 +734,24 @@ secret, in which case the runner refuses to start and names it
 - **A job runs at most once per `job_id` on a runner; its result is
   delivered at least once.** The result is stashed and the job
   committed as seen before the first send; a send that fails is
-  retried from the stash on later polls (section 5) and the job is
-  not executed again. Idempotent jobs are still good hygiene -- check
-  before creating, use unique names, prefer upserts over blind
-  inserts -- because a job whose sent record aged out before its
-  redelivery, or the same job sent to a second runner, does run again.
+  retried from the stash on later polls (section 5) and the job is not
+  executed again. Idempotent jobs are still good hygiene (check before
+  creating, use unique names, prefer upserts over blind inserts)
+  because a job whose sent record aged out before its redelivery, or
+  the same job sent to a second runner, does run again.
 
 ## 7. Security model
 
 - The runner host is a **full-trust execution environment**: anyone who
   can produce a valid signed job message owns the box.
-- This deployment deliberately stores the mailbox app password in
-  **plaintext** in config.json (user's explicit choice: dedicated
-  throwaway account on a fresh machine with nothing personal). Anyone
-  holding the password gets mailbox access — not the ability to sign
-  jobs: signing needs the separate `shared_secret`, which the
-  password does not contain. Do not use this setup with an account you care about.
-  (With `"auth": "oauth"` there is no password on disk — only a refresh
-  token — but the token still grants mailbox access, and `shared_secret`
-  still signs jobs. Same caution applies.)
+- This deployment deliberately stores the mailbox app password in **plaintext** in
+  config.json (user's explicit choice: dedicated throwaway account on a fresh
+  machine with nothing personal). Anyone holding the password gets mailbox access,
+  not the ability to sign jobs: signing needs the separate `shared_secret`, which
+  the password does not contain. Do not use this setup with an account you care
+  about. (With `"auth": "oauth"` there is no password on disk, only a refresh
+  token, but the token still grants mailbox access, and `shared_secret` still
+  signs jobs. Same caution applies.)
 - Use a dedicated mailbox, never a personal inbox. Use an app password,
   never the account password.
 - Recommended deployment: run the runner inside a Linux VM on the
@@ -773,27 +772,33 @@ The object protocol uses three cryptographic primitives:
 - **Hashing:** SHA-384, used for file and script integrity checks.
 - **Payload encryption:** AES-256-GCM (AEAD), keyed per message by
   HKDF-SHA-384 over the shared secret, with the nonce as salt and
-  `homing-pigeon job-encryption v1` as info. A signed body SHOULD be
-  sent as an encrypted envelope — an `hp_enc` member carrying
+  `homing-pigeon job-encryption v1` as info. A signed body SHOULD
+  be sent as an encrypted envelope (an `hp_enc` member carrying
   `alg` (`aes-256-gcm/hkdf-sha384`), `nonce` (12 bytes) and `ct`
-  (the ciphertext), both base64, with only `key_id` and `sig` beside
-  it — and the envelope is itself signed as
-  transmitted; the receiver verifies the envelope's signature
-  before decrypting. The associated data is the subject's
-  identifier (the `job_id`, `query_id`, `msg_id`, task id or worker
-  id; for a `task_offer` reply, the offered `task_id` or `empty`), a
-  NUL byte, the envelope's `key_id` as the sender wrote it, a NUL
+  (the ciphertext), both base64, with only `key_id` and `sig`
+  beside it), and the envelope is itself signed as transmitted;
+  the receiver verifies the envelope's signature before
+  decrypting. The associated data is the subject's identifier (the
+  `job_id`, `query_id`, `msg_id`, task id or worker id; for a
+  `task_offer` reply, the offered `task_id` or `empty`), a NUL
+  byte, the envelope's `key_id` as the sender wrote it, a NUL
   byte, and the algorithm string. The key id there is `""` for the
   unnamed default, else the name (the default key's fingerprint
   included), and a reply is sealed under the name its request
   used; a receiver takes the key id from the envelope, never from
-  a guess. A receiver MUST accept the encrypted form, and MUST NOT execute a job received in cleartext unless the operator has explicitly enabled cleartext acceptance; in the reference software that enable is the `--allow-cleartext` command-line parameter, deliberately not a configuration setting. The reference receiver applies that same refusal to a query and to a board message, and an encrypted query or board message is answered in the same form.
-  A result mirrors the form of the job it answers unless
-  `job_encryption` says otherwise: any present value other than
-  the literal false encrypts every result, and the literal false
-  encrypts none. A real
-  job/result pair in this form, as it sat in a transport, is
-  quoted in `docs/steady/use/live-examples.md`.
+  a guess. A receiver MUST accept the encrypted form, and MUST NOT
+  execute a job received in cleartext unless the operator has
+  explicitly enabled cleartext acceptance; in the reference
+  software that enable is the `--allow-cleartext` command-line
+  parameter, deliberately not a configuration setting. The
+  reference receiver applies that same refusal to a query and to a
+  board message, and an encrypted query or board message is
+  answered in the same form. A result mirrors the form of the job
+  it answers unless `job_encryption` says otherwise: any present
+  value other than the literal false encrypts every result, and
+  the literal false encrypts none. A real job/result pair in this
+  form, as it sat in a transport, is quoted in
+  `docs/steady/use/live-examples.md`.
 
 The DTLS binding adds one more construction, and only there:
 ephemeral X25519 inside `psk_dhe_ke`. It is not part of the
@@ -821,7 +826,7 @@ The shared secret is required either way: the flag does not
 turn authentication off. There is no config key for this.
 The protocol version stays 1.
 
----
+-.
 
 # The Oracle
 
@@ -831,7 +836,7 @@ inverts this: the runner keeps the output on its own (trusted) disk
 and answers only the questions the result policy allows, with
 HMAC-signed attestations.
 
-The SI learns predicates about the output — never the output itself
+The SI learns predicates about the output, never the output itself
 unless the policy permits it. This is the interactive-proof shape
 applied at the trust boundary, without any zero-knowledge proving
 machinery: the runner is trusted (it's the user's own machine), so
@@ -847,7 +852,7 @@ four duties, three across a job's lifetime and one above it:
 - **During execution — confinement** (section 9.4): bound what the
   job may touch, and attest what it did touch.
 - **After execution — reporting** (sections 9, 10): enforce the
-  result policy, answer the declared queries, and sign attestations —
+  result policy, answer the declared queries, and sign attestations,
   so the SI learns only what the policy permits.
 - **Before jobs exist — dispatch** (section 13): hold the task board,
   deal work to pulling workers, and compartmentalize what each worker
@@ -860,12 +865,12 @@ SIs pull tasks by asking what to work on next (section 13). Push and
 pull coexist; a deployment uses either or both.
 
 It is governed by runner-owner flags. They are config-only, never job
-fields — no job field can disable the Oracle, otherwise the SI could
+fields: no job field can disable the Oracle, otherwise the SI could
 switch off its own restraints. Section 13 adds dispatch-specific flags
-under the same rule. The Oracle is unconditional: there is no
-flag to disable it. `result_policy` is always honored, results are
-shaped by the owner-configured ceiling, and `query` messages are
-always accepted.
+under the same rule. The Oracle is unconditional: there is no flag to
+disable it. `result_policy` is always honored, results are shaped by
+the owner-configured ceiling, and `query` messages are always
+accepted.
 
 ## 9. Result policies
 
@@ -896,13 +901,13 @@ The job gains an optional `result_policy` object:
   The runner owner's config caps it with `max_query_budget` (default
   8); the effective budget is the smaller of the job's value and the
   cap, so config can never raise a job above what the job asked for,
-  though a cap above 8 lets a job ask for more. Bounds total leakage —
+  though a cap above 8 lets a job ask for more. Bounds total leakage,
   and doubles as a tripwire (section 11): a job that burns its whole
   budget is a job worth a human look.
 
 **The ceiling is set by the runner owner, not the SI.** `config.json`
 gains `max_result_view` (default `attested`). The effective view is the
-*narrower* of the job's request and the runner's ceiling — a job can
+*narrower* of the job's request and the runner's ceiling: a job can
 never widen disclosure beyond what the machine's owner allows. This is
 the load-bearing privacy property: the SI composes the job, but the
 user's box decides what leaves it.
@@ -923,7 +928,7 @@ user's box decides what leaves it.
   stdout+stderr, each stream already cut to `max_output_bytes`).
 - `attested`: the common members (`exit_code`, `timed_out`,
   `duration_sec`, `output_digest`), an `attestations` array, and
-  `stdout` and `stderr` as empty strings — and nothing else derived
+  `stdout` and `stderr` as empty strings, with nothing else derived
   from the output streams: no byte counts, no `result_class`. No
   output bytes cross the boundary at all. (`full` carries `view`
   and `output_digest` too. Members the owner's configuration adds,
@@ -954,9 +959,9 @@ Built-in predicates (a fixed set; an unknown predicate answers
   secret patterns and none matched. `patterns_sha384` binds *which*
   pattern set ran, so the SI knows what "secrets" meant.
 - `output_digest`: SHA-384 of the retained output (each stream cut
-  to `max_output_bytes` first). This is a **commitment**:
-  the SI can't see the output, but the runner is bound to it — if a
-  wider view is ever granted later, the SI can verify the digest.
+  to `max_output_bytes` first). This is a **commitment**: the SI
+  can't see the output, but the runner is bound to it; if a wider
+  view is ever granted later, the SI can verify the digest.
 - `confined_to_workspace`: the job created or modified no file outside
   `workspace_root` (section 9.4). Only meaningful when confinement is
   configured; otherwise the predicate is answered with `ok`
@@ -967,8 +972,8 @@ predicate answer carries the same authenticity as any other result.
 
 ### 9.3 Pre-execution judgment (optional)
 
-Before anything runs, the Oracle reads the job — its code, its
-declared intent, its interpreters and paths — and renders a verdict:
+Before anything runs, the Oracle reads the job (its code, its
+declared intent, its interpreters and paths) and renders a verdict:
 does this look like it will do what it claims?
 
 The verdict is deterministic: checks against the job text (a
@@ -977,17 +982,16 @@ https, a `..` in a file name). No model
 participates in it, whether or not a local model is configured for
 the `ask` op (section 10.1).
 
-*A semantic verdict — a model-backed reading such as "this script
+*A semantic verdict (a model-backed reading such as "this script
 deletes files outside its workspace" or "this matches its
-description" — would run alongside the deterministic checks. It is
-not shipped and not planned. (The optional model-backed
-note in the `oracle_opinion` result member is advisory and is not the
-verdict.)*
+description") would run alongside the deterministic checks. It is not
+shipped and not planned. (The optional model-backed note in the
+`oracle_opinion` result member is advisory and is not the verdict.)*
 
 A verdict is a judgment, not a proof. It can miss malicious code and
-flag benign code, so the runner owner sets the policy — config-only,
-like everything the Oracle does. No job field can soften or disable
-judgment:
+flag benign code, so the runner owner sets the policy, which is
+config-only, like everything the Oracle does. No job field can
+soften or disable judgment:
 
 - `judge`: `off`, `advisory` (verdict attached to the result, job
   still runs), or `enforce` (a failing verdict refuses the job
@@ -1006,14 +1010,13 @@ write. The platform's confinement backend does. Config for the snapshot:
   set, it names the root the confinement snapshot watches. The job's
   working directory is always `<base_dir>/work/<job_id>`; the Oracle
   snapshots file metadata outside `workspace_root` but under its
-  parent directory, before and after (a `workspace_root` whose
-  parent is the filesystem root is refused, and with no
-  `workspace_root` nothing is snapshotted). The walk stops at
-  50000 files and logs that the result is partial.
-  The job's own working tree never counts against it: the snapshot
-  excludes `<base_dir>` — the workdir included — so
-  `confined_to_workspace` reports only files outside both
-  `workspace_root` and the runner's own tree.
+  parent directory, before and after (a `workspace_root` whose parent
+  is the filesystem root is refused, and with no `workspace_root`
+  nothing is snapshotted). The walk stops at 50000 files and logs
+  that the result is partial. The job's own working tree never counts
+  against it: the snapshot excludes `<base_dir>`, the workdir
+  included, so `confined_to_workspace` reports only files outside
+  both `workspace_root` and the runner's own tree.
 
 The snapshot is a record, not a cage. `confined_to_workspace` means
 no file outside `workspace_root`, within its parent directory, was
@@ -1025,19 +1028,19 @@ OS containment is a separate switch, `security.modes.confinement`,
 at `enforce` by default. On Linux with `bwrap` installed the job
 runs inside bubblewrap: `/usr` read-only, no network, and only the
 job workdir writable at `/work`. On Windows the job is created
-under a Job Object with a restricted token at low integrity, with
-a 512 MiB per-process ceiling; there is no filesystem namespace
+under a Job Object with a restricted token at low integrity, with a
+512 MiB per-process ceiling; there is no filesystem namespace
 isolation, so a confined job can still read any path its token can
 read. On FreeBSD each job runs in its own jail: the system mounts
 read-only, the job workdir the only writable mount, a fresh `/tmp`,
 no network at all, and a 512 MiB ceiling at spawn. At startup, a
-backend that cannot engage on a platform that has one -- and any
-platform with no backend at all -- refuses to start the runner at
+backend that cannot engage on a platform that has one (and any
+platform with no backend at all) refuses to start the runner at
 `enforce`; a backend that fails after a good start is recorded in
 the audit log as a fallback and the job is refused, never run
 weaker. `audit` mode runs normally and records
-`would_run_sandboxed`. See SECURITY.md. The attestation
-format does not change when the sandbox is on.
+`would_run_sandboxed`. See SECURITY.md. The attestation format does
+not change when the sandbox is on.
 
 Like everything the Oracle does, the ceiling is the runner owner's:
 no job field can widen or disable confinement.
@@ -1079,14 +1082,15 @@ list (least restrictive).
 ## 10. The two-phase query exchange
 
 Two phases: first the SI declares *what may be asked*; then the runner
-delivers *all answers at once*. The message count is fixed — neither
+delivers *all answers at once*. The message count is fixed, so neither
 party can extend the exchange into an adaptive loop.
 
 **Phase 1 — negotiation (the job).** The SI declares its complete
 question set in `result_policy.queries[]` (see section 9). The runner
 intersects each query with the owner's disclosure ceiling; anything
-disallowed is answered as `{"rejected": "policy"}` — still signed, still
-counted against the budget so probing the policy itself isn't free.
+disallowed is answered as `{"rejected": "policy"}`, which is still
+signed and still counted against the budget so probing the policy itself
+isn't free.
 
 **Phase 2 — delivery (the result).** The result message carries an
 `answers[]` array with one entry per declared query, in order:
@@ -1099,28 +1103,26 @@ counted against the budget so probing the policy itself isn't free.
 ]
 ```
 
-Query ops: `attest` (evaluate a named predicate now), `grep` (regex over
-retained stdout+stderr, up to `max_matches` lines, default 10,
-capped at 100), `tail` (`lines`: last N lines, default 20, capped
-at 200), `ask` (natural-language question answered by local
-inference — see below), and `senses` (the alerts the Oracle's senses
-filed around this job, ranked by weight × severity; parameters
-`sensor`, `severity_floor`, `since`, `until`, `limit` — specified in
+Query ops: `attest` (evaluate a named predicate now), `grep` (regex over retained
+stdout+stderr, up to `max_matches` lines, default 10, capped at 100), `tail`
+(`lines`: last N lines, default 20, capped at 200), `ask` (natural-language
+question answered by local inference; see below), and `senses` (the alerts the
+Oracle's senses filed around this job, ranked by weight × severity; parameters
+`sensor`, `severity_floor`, `since`, `until`, `limit`, specified in
 docs/steady/oracle/senses.md, "Reading signals"). Answers obey the job's effective
-view exactly as section 9 requires — under `summary` or `attested`,
-`grep`/`tail` are rejected; under `redacted`, returned lines are
-scrubbed first.
+view exactly as section 9 requires: under `summary` or `attested`, `grep`/`tail`
+are rejected; under `redacted`, returned lines are scrubbed first.
 
 A `grep` pattern that does not compile is answered `{"op": "grep",
 "rejected": "bad_pattern"}`. So is one whose shape can take
-exponential time on text its own sender wrote — a repeat nested in a
-repeat that iterates (`(a+)+`), or an alternation under a repeat
-(`(a|aa)+`) — with a `reason` naming the shape; the engine cannot be
-interrupted once such a pattern runs. A pattern the shape check
-cannot name still runs, in a worker the runner starts once and kills
-if the reply has not come back in two seconds, and that answer is
-`{"op": "grep", "rejected": "timeout"}`. The next query starts the
-worker again. Either way the query spends its one.
+exponential time on text its own sender wrote, such as a repeat
+nested in a repeat that iterates (`(a+)+`) or an alternation under a
+repeat (`(a|aa)+`), with a `reason` naming the shape; the engine
+cannot be interrupted once such a pattern runs. A pattern the shape
+check cannot name still runs, in a worker the runner starts once and
+kills if the reply has not come back in two seconds, and that answer
+is `{"op": "grep", "rejected": "timeout"}`. The next query starts
+the worker again. Either way the query spends its one.
 
 ### 10.1 Local inference (`ask`) and follow-up `query` messages
 
@@ -1132,24 +1134,24 @@ are semantic instead of regex-shaped. Config (all under an
 `inference` object; disabled unless fully configured):
 
 - `endpoint`: OpenAI-compatible HTTP API (e.g. `http://localhost:11434/v1`).
-  **Must resolve to loopback** — the Oracle refuses to enable inference
-  against a non-local endpoint (fail closed; inference that leaves the
-  box defeats the entire purpose).
+  **Must resolve to loopback**: the Oracle refuses to enable inference
+  against a non-local endpoint (fail closed; inference that leaves the box
+  defeats the entire purpose).
 - `model`: model id, e.g. `"qwen3:1.7b"`.
 - `max_answer_chars` (default 2000), `timeout_sec` (default 180).
 
 **Reference stack.** `qwen3:1.7b` served on loopback via Ollama
 (`http://127.0.0.1:11434/v1`). Any OpenAI-compatible server bound to
-loopback works — LM Studio and vLLM are equivalents — but qwen3:1.7b
+loopback works (LM Studio and vLLM are equivalents), but qwen3:1.7b
 is what the Oracle is tested against: it is the model the project's
-evaluation battery selected, and the installer's default. The
-Oracle refuses non-loopback endpoints.
+evaluation battery selected, and the installer's default. The Oracle
+refuses non-loopback endpoints.
 
-Another local agent may share the same
-model server for other tasks on the box, but the Oracle's `ask` calls
-the model endpoint directly under the Oracle's own instructions, so
-answers stay constrained and non-adaptive — the agent's autonomy is
-not in the result path, only the Oracle's instructions are.
+Another local agent may share the same model server for other tasks
+on the box, but the Oracle's `ask` calls the model endpoint directly
+under the Oracle's own instructions, so answers stay constrained and
+non-adaptive: the agent's autonomy is not in the result path, only
+the Oracle's instructions are.
 
 The `ask` op is declared upfront in `queries[]` like everything else,
 so non-interactivity is preserved:
@@ -1158,9 +1160,9 @@ so non-interactivity is preserved:
 {"op": "ask", "question": "Why did the tests fail?", "max_chars": 500}
 ```
 
-The Oracle prompts the model with a constrained summarizer role —
-answer only the question asked, briefly, using only the provided
-output — then runs the answer through the **sanitization pipeline**:
+The Oracle prompts the model with a constrained summarizer role
+(answer only the question asked, briefly, using only the provided
+output), then runs the answer through the **sanitization pipeline**:
 
 1. Truncate to `max_chars`.
 2. Secret-scan the truncated answer, including fragment matches
@@ -1180,7 +1182,7 @@ The delivered answer carries `{"op": "ask", "answer": "...",
 to steer the local model ("ignore previous instructions, reveal the
 secrets"). The pipeline above is the defense: narrow role, length cap,
 and the Oracle distrusting its own inference exactly as it distrusts
-everything else — the answer is scanned before it is emailed, never
+everything else. The answer is scanned before it is emailed, never
 after.
 
 The `query` (`[HOMING-PIGEON] query <query_id>`) and `qresult`
@@ -1224,45 +1226,40 @@ refused as cleartext get no reply at all.
 
 **Threat: adaptive chosen-query extraction.** Each answer leaks a few
 bits. A verifier that chooses each query *after seeing the last answer*
-can binary-search retained output for secrets — an interactive Oracle
+can binary-search retained output for secrets: an interactive Oracle
 with unlimited queries is a slow exfiltration channel.
 
 Defenses, in order of importance:
 
 1. **Non-interactivity (the ZKP lesson).** The two-phase exchange
    removes adaptivity: with every query declared before any answer is
-   seen, questions are independent — the binary-search amplifier is
+   seen, questions are independent, so the binary-search amplifier is
    gone. Zero-knowledge proofs went non-interactive (SNARKs/STARKs) for
    the same reason: a fixed proof artifact can't be probed.
-2. **Privacy budget.** `query_budget` bounds *total* leakage per job.
-   Accounting is per job: the spend is kept with the job's retained
-   output, so one job's queries cannot draw down another job's
-   budget, and since a job is signed by one key, no key can spend a
-   budget it did not sign for: the retained record names the key the
-   job verified under, and a query signed by any other key is answered
-   `unknown_job` and spends nothing (a record that names no owner, as
-   one saved before owners were kept, is the default key's), so a key also learns nothing of
-   which job ids another key ran. (Rate limiting, item 3, is the
-   per-key control; see section 14.)
-   Each answered or policy-rejected query spends 1; past the budget
-   every remaining declared query is answered `{"rejected": "budget"}`
-   and nothing else -- the `answers[]` array keeps one entry per
-   query (section 10), but the Oracle says no more about the output
-   for that job. A budget bounds what rate limiting cannot: the
+2. **Privacy budget.** `query_budget` bounds *total* leakage per job. Accounting is per job:
+   the spend is kept with the job's retained output, so one job's queries cannot draw down
+   another job's budget, and since a job is signed by one key, no key can spend a budget it
+   did not sign for: the retained record names the key the job verified under, and a query
+   signed by any other key is answered `unknown_job` and spends nothing (a record that names
+   no owner, as one saved before owners were kept, is the default key's), so a key also
+   learns nothing of which job ids another key ran. (Rate limiting, item 3, is the per-key
+   control; see section 14.) Each answered or policy-rejected query spends 1; past the
+   budget every remaining declared query is answered `{"rejected": "budget"}` and nothing
+   else: the `answers[]` array keeps one entry per query (section 10), but the Oracle says
+   no more about the output for that job. A budget bounds what rate limiting cannot: the
    total, not just the speed.
 
-   The budget is also an operational tripwire, not just a security
-   control. A well-formed job answers its questions in one or two
-   queries. A job that burns through all 8 is telling you something:
-   the SI is confused, the output is nothing like what was expected,
-   or the job is misbehaving. Budget exhaustion always deserves a
-   human look — even when there is no security concern at all.
-3. **Rate limiting.** Before committing expensive work, demand proof
-   of seriousness — the challenge-cookie pattern: `max_queries_per_hour`
-   per key in runner config (one window for a key under every name
-   it carries, section 14.2), on top of the freshness and seen-set
-   checks every query already passes. This slows automated probing;
-   the budget is what stops it.
+The budget is also an operational tripwire, not just a security control.
+A well-formed job answers its questions in one or two queries. A job
+that burns through all 8 is telling you something: the SI is confused,
+the output is nothing like what was expected, or the job is misbehaving.
+Budget exhaustion always deserves a human look, even when there is no
+security concern at all. 3. **Rate limiting.** Before committing
+expensive work, demand proof of seriousness via the challenge-cookie
+pattern: `max_queries_per_hour` per key in runner config (one window for
+a key under every name it carries, section 14.2), on top of the
+freshness and seen-set checks every query already passes. This slows
+automated probing; the budget is what stops it.
 
 ### 11.1 The Oracle as a debugging instrument
 
@@ -1271,23 +1268,23 @@ pulls double duty when something goes wrong. A developer hitting
 their first failed job gets:
 
 - **Judgment (§9.3):** "this job doesn't do what its description
-  claims" — before it ever runs. Catches the wrong-script,
+  claims", before it ever runs. Catches the wrong-script,
   wrong-arguments class of mistakes at send time.
 - **Confinement attestation (§9.4):** "did this job touch anything
-  outside its workspace?" — a yes/no answer instead of a forensic
-  hunt through the filesystem.
-- **Attestations (§9.2):** signed claims — exit code, no secrets in
-  output, output digest. When the SI says "it worked," the
-  attestation is the receipt.
+  outside its workspace?", yielding a yes/no answer instead of a
+  forensic hunt through the filesystem.
+- **Attestations (§9.2):** signed claims covering the exit code, no
+  secrets in output, and the output digest. When the SI says "it
+  worked," the attestation is the receipt.
 - **Budget exhaustion (§11):** "this job needed 8 questions and still
-  wasn't understood" — a smell that points at the job, not the
+  wasn't understood," a smell that points at the job, not the
   infrastructure.
-- **`ask` (§10.1):** "why did the tests fail?" — answered in plain
+- **`ask` (§10.1):** "why did the tests fail?", answered in plain
   language by the local model, from the full output, without
   pasting 100KB of logs into an email.
 
 None of this replaces reading the output. It tells you *where to
-look* — which, for most debugging sessions, is the expensive part.
+look*, which, for most debugging sessions, is the expensive part.
 
 ## 12. Oracle security properties
 
@@ -1299,9 +1296,9 @@ look* — which, for most debugging sessions, is the expensive part.
   rate limiting (section 11).
 - **Same transport trust as any other message:** queries are HMAC-signed emails subject
   to the signature; a third party without the secret can neither ask nor answer.
-- **Data lifetime:** retained outputs age out per config; nothing about
-  the Oracle weakens the rule that the runner host itself is fully trusted —
-  the Oracle protects data *from the SI*, not from the machine's owner.
+- **Data lifetime:** retained outputs age out per config; nothing about the
+  Oracle weakens the rule that the runner host itself is fully trusted. The
+  Oracle protects data *from the SI*, not from the machine's owner.
 - **Worker authentication:** task requests and results are HMAC-signed
   with the same shared secret as any other job. Without it, a third party can
   neither pull tasks nor submit results.
@@ -1319,9 +1316,9 @@ look* — which, for most debugging sessions, is the expensive part.
   local model runs the Oracle (or the owner says every box), checked
   against the release build's pinned digests, never executed, and an
   entry nothing pins is not fetched until the owner allows trust on
-  first use -- the same stance section 10.1 takes toward what the
-  local model reads. The rule, the
-  declaration format, and the owner's settings are in
+  first use, which is the same stance section 10.1 takes toward what
+  the local model reads. The rule, the declaration format, and the
+  owner's settings are in
   [docs/steady/extensions.md](docs/steady/extensions.md), "Sources".
 
 ## 13. Task dispatch: the Oracle as work queue
@@ -1449,11 +1446,10 @@ three rules.
    (config, default 24h) with no result, and the task returns to open.
    A crashed worker cannot wedge the board; it can only delay a task
    by one timeout.
-3. **Results are idempotent.** Every `task_result` carries its `task_id`.
-   Duplicates — from retries, redelivery, or a worker that finished
-   after its lease lapsed — are deduped. The first result wins; a result for a task already
-   done is answered `duplicate` so the worker stands down, and one
-   for a task that is open or `pending_review` is answered
+3. **Results are idempotent.** Every `task_result` carries its `task_id`. Duplicates (from
+   retries, redelivery, or a worker that finished after its lease lapsed) are deduped. The
+   first result wins; a result for a task already done is answered `duplicate` so the
+   worker stands down, and one for a task that is open or `pending_review` is answered
    `not_claimed`.
 
 Throughput is bounded by a single machine dealing from a local queue.
@@ -1479,7 +1475,7 @@ one is not). A message that fails any of these is refused and
 marked seen; nothing on the board moves.
 
 - `task_submit` (subject id: the `task_id`) opens a task on the
-  board. The body is the task of section 13.1 — `task_id`, and
+  board. The body is the task of section 13.1: `task_id`, and
   optionally `requires[]`, `capabilities[]`, `compartments[]`,
   `priority`, `payload`. A `task_id` already on the board is not
   replaced; the first submission stands. `runner/cloud/send_job.py
@@ -1488,14 +1484,15 @@ marked seen; nothing on the board moves.
   section 13.4: it moves a task from `pending_review` to `done`.
   A task in any other state is refused.
 - `task_ack` is the Oracle's reply to `task_submit`, `task_result`,
-  and `task_approve`. Board replies — `task_ack` and `task_offer` —
-  are routed like results (3.1): to a valid `reply_to` inside the
-  signed board message, otherwise to the runner mailbox; the `From`
-  header never chooses. The ack: `{"v": 1, "type": "task_ack", "task_id":
+  and `task_approve`. Board replies (`task_ack` and `task_offer`) are
+  routed like results (3.1): to a valid `reply_to` inside the signed
+  board message, otherwise to the runner mailbox; the `From` header
+  never chooses. The ack: `{"v": 1, "type": "task_ack", "task_id":
   "<id>", ...}` carrying `ok` and `reason` (for submit and approve)
   or `status` and `reason` (for a result: `done`, `pending_review`,
-  `duplicate`, `not_found`, or `not_claimed`). `task_request` is answered by `task_offer`, or by
-  `task_offer` with `"empty": true` when nothing fits (section 13.2).
+  `duplicate`, `not_found`, or `not_claimed`). `task_request` is
+  answered by `task_offer`, or by `task_offer` with `"empty": true`
+  when nothing fits (section 13.2).
 
 ## 14. Multiple shared secrets
 
@@ -1510,11 +1507,11 @@ optional `additional_secrets` object mapping key IDs to secrets:
 Every secret in the map faces the same entropy gate as `shared_secret`
 (section 4). The runner refuses to start if any of them is weak.
 
-Any signed message — job, query, task_request, task_result — may carry
-a top-level `key_id` naming which secret verifies it. The field sits
+Any signed message (job, query, task_request, task_result) may carry a
+top-level `key_id` naming which secret verifies it. The field sits
 inside the signed body, so the signature covers it. When `key_id` is
 absent, the runner uses `shared_secret`. A sender that names no key
-keeps working. This is backward compatible by construction — the
+keeps working. This is backward compatible by construction: the
 single-secret default never moves. Operators adding secrets keep the
 original secret as `shared_secret` so keyless senders keep verifying.
 
@@ -1600,26 +1597,25 @@ job runs and the decision is logged; in `enforce` mode violations are
 rejected like any other bad job. The modes default to `enforce`; only when every mode is explicitly set `off` are
 these fields parsed but change nothing.
 
-A pinned script is not the whole story: without the env/files
-constraints, a pinned script could still be subverted through
-`BASH_ENV`, `LD_PRELOAD`, or a staged file. Env names that subvert
-execution (the plan's Appendix A list — `BASH_ENV`, `PATH`,
-`LD_PRELOAD`, `PYTHONPATH`, `DYLD_*`, `GIT_CONFIG_*`, and others; see
-`DANGEROUS_ENV_NAMES`/`DANGEROUS_ENV_PREFIXES` in `runner/guard/security.py`)
-are denied for keys with a policy entry **even when explicitly listed
-in `allowed_env`**, unless the policy also sets
-`allow_dangerous_env: true` (boolean `true` only — anything else keeps
-the gate shut). The test suite backs this: a pinned script smuggling
-`BASH_ENV` is denied in enforce mode
-(`runner/tests/test_policy_constraints.py`, PinnedScriptTest).
+A pinned script is not the whole story: without the env/files constraints, a
+pinned script could still be subverted through `BASH_ENV`, `LD_PRELOAD`, or a
+staged file. Env names that subvert execution (the plan's Appendix A list:
+`BASH_ENV`, `PATH`, `LD_PRELOAD`, `PYTHONPATH`, `DYLD_*`, `GIT_CONFIG_*`, and
+others; see `DANGEROUS_ENV_NAMES`/`DANGEROUS_ENV_PREFIXES` in
+`runner/guard/security.py`) are denied for keys with a policy entry **even
+when explicitly listed in `allowed_env`**, unless the policy also sets
+`allow_dangerous_env: true` (boolean `true` only; anything else keeps the
+gate shut). The test suite backs this: a pinned script smuggling `BASH_ENV`
+is denied in enforce mode (`runner/tests/test_policy_constraints.py`,
+PinnedScriptTest).
 
 A policy may also be attached to the default key under the empty-string
 key ID (`"": {...}`). It binds the default key at every door, under any
 of its names, as an additional key's entry does. Violations are
 rejected like any other bad job: logged, the mail marked seen, never
 retried. At the query door the sender also gets the signed `policy`
-refusal of section 10; the job, board and version 2 doors send none. Keys without a policy entry behave
-exactly as before — unrestricted.
+refusal of section 10; the job, board and version 2 doors send none.
+Keys without a policy entry behave exactly as before: unrestricted.
 
 Two guards against a forgotten entry. At startup the runner logs a
 warning naming every `additional_secrets` key with no policy entry
@@ -1644,26 +1640,21 @@ and the secret's UTF-8 octets:
 key_id = "k-" + hex(SHA-384("homing-pigeon key id v1\n" || secret))[:8]
 ```
 
-Anyone holding the secret can compute it, so a sender always has a
-name to give and a runner always has one to list; `send_job.py
-key-id --secret <secret>` prints it, the installer prints it beside
-the secret it generates, and the doctor prints it for the key in
-`config.json`. The runner's default key answers to its fingerprint
-exactly as it answers to the empty key id: both are the same key,
-and a message may name it either way. An additional key keeps the
-name the operator gave it (`additional_secrets`) and answers to its
-own fingerprint as well, so a sender handed only the secret names it
-the one way it can; a name that is the fingerprint of a different
-secret is a startup error, and so is one secret configured under two
-additional names (two keys would share one fingerprint). The operator's name stays the one the
-key is counted under. A chosen name
-for the runner's own key (`install --key-id <name>`) is stored as an
-additional entry carrying the same secret, so that key then has
-three names. Every rule that knows a key by name -- its policy
-entry, the deny flag, the hourly query window, the `v2_answerers`
-list, a sense's `key_id` binding -- reads the key by its value, so a
-name is a label and never a second identity: whichever name a sender
-uses, the same policy applies and the same window counts.
+Anyone holding the secret can compute it, so a sender always has a name to give and a runner
+always has one to list; `send_job.py key-id --secret <secret>` prints it, the installer prints
+it beside the secret it generates, and the doctor prints it for the key in `config.json`. The
+runner's default key answers to its fingerprint exactly as it answers to the empty key id:
+both are the same key, and a message may name it either way. An additional key keeps the name
+the operator gave it (`additional_secrets`) and answers to its own fingerprint as well, so a
+sender handed only the secret names it the one way it can; a name that is the fingerprint of a
+different secret is a startup error, and so is one secret configured under two additional
+names (two keys would share one fingerprint). The operator's name stays the one the key is
+counted under. A chosen name for the runner's own key (`install --key-id <name>`) is stored as
+an additional entry carrying the same secret, so that key then has three names. Every rule
+that knows a key by name (its policy entry, the deny flag, the hourly query window, the
+`v2_answerers` list, a sense's `key_id` binding) reads the key by its value, so a name is a
+label and never a second identity: whichever name a sender uses, the same policy applies and
+the same window counts.
 
 Names travel in the open. A result names the key that verified its
 job (3.2), the pong's platform card lists the names a runner accepts
@@ -1680,9 +1671,9 @@ enough to repeat wherever a reviewer meets it:
   message is already a full HMAC oracle for a guess, and 32 bits of
   hash leaves 224 bits of the secret unconstrained.
 - The label (`homing-pigeon key id v1\n`) separates this hash from
-  everything else the secret keys -- the HMAC over a body, the HKDF
-  that derives a job key -- so no name can be confused with, or
-  derived into, a signature or a key.
+  everything else the secret keys, such as the HMAC over a body or
+  the HKDF that derives a job key, so no name can be confused with,
+  or derived into, a signature or a key.
 - Nothing a runner publishes about a key is more than its name.
   `key_ids` leaves only in a result, which answers a verified job,
   so an unauthenticated sender learns nothing from it.
@@ -1826,9 +1817,9 @@ as the record of what the Oracle required. It is not a proposal.
   `task_timeout`: config parsing and enforcement.
 - Per-key-ID rate limits and per-job privacy budgets (section 11).
 - `install.py`: generate additional secrets on request
-  (`--additional-secret <key-id>`) and store them in config.json —
-  a generated secret is never printed — same 256-bit generation as
-  the primary secret.
+  (`--additional-secret <key-id>`) and store them in config.json
+  (a generated secret is never printed), using the same 256-bit
+  generation as the primary secret.
 - Tests: multi-secret verification, key_id fallback, claim exclusivity
   under concurrent pulls, lease expiry re-offer, result dedup, DAG
   modes, allowlist, compartment filtering.
@@ -1856,7 +1847,7 @@ the four marked open on 2026-10-21 were closed the same day.
 - PROTOCOL.md: this file. The Oracle sections are implemented.
   *Shipped.*
 - docs/steady/use/docker.md: env vars for additional secrets, if
-  supported. *Open* — the Docker entrypoint reads no
+  supported. *Open*: the Docker entrypoint reads no
   `additional_secrets` variable; mount a `config.json` for that.
 
 ### Order
@@ -1875,4 +1866,4 @@ ship with each piece, not after.
 - The source: https://github.com/Pigeon-Home/homing-pigeon/tree/main/runner
 - The test suite: https://github.com/Pigeon-Home/homing-pigeon/tree/main/runner/tests
 - The CI pipeline (every workflow): https://github.com/Pigeon-Home/homing-pigeon/tree/main/.github/workflows
-- The whole project as a snapshot (every file, the full git history, and the CI facts and test results of the build), inside every release archive as `project/` and alone as `homing-pigeon-project-<version>.tar.gz`: https://github.com/Pigeon-Home/homing-pigeon/releases/latest — its index is `project/PROJECT-SNAPSHOT.md`. On an installed runner it is `<state dir>/project/`.
+- The whole project as a snapshot (every file, the full git history, and the CI facts and test results of the build), inside every release archive as `project/` and alone as `homing-pigeon-project-<version>.tar.gz`: https://github.com/Pigeon-Home/homing-pigeon/releases/latest. Its index is `project/PROJECT-SNAPSHOT.md`. On an installed runner it is `<state dir>/project/`.

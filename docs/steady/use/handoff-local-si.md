@@ -31,9 +31,9 @@ does not fall back to a homemade page.
 
 ## Two instances
 
-- **SI** — second `ollama serve` with `OLLAMA_HOST=127.0.0.1:11435`.
+- **SI**, second `ollama serve` with `OLLAMA_HOST=127.0.0.1:11435`.
   This is the chatbot the user talks to.
-- **Oracle** — the runner's inference endpoint. Separate process,
+- **Oracle**, the runner's inference endpoint. Separate process,
   separate port, separate context.
 
 The user never talks to the Oracle or the mailbox directly. They
@@ -86,10 +86,10 @@ Not part of this branch's unique commits, but context:
 
 ## Files
 
-- `runner/ops/local_test.py` — the harness
-- `docs/steady/use/local-si-test.md` — how to run it
-- `docs/steady/reports/transports-status.md` — transport table
-- `docs/steady/use/handoff-local-si.md` — this file
+- `runner/ops/local_test.py`, the harness
+- `docs/steady/use/local-si-test.md`, how to run it
+- `docs/steady/reports/transports-status.md`, transport table
+- `docs/steady/use/handoff-local-si.md`, this file
 - `runner/tests/test_local_si.py`, `runner/tests/test_local_si_blast.py`,
   `runner/tests/test_local_si_transport.py`
 
@@ -100,8 +100,8 @@ Unbuilt work is listed in FUTURE.md. These notes are not a queue.
 1. A live Cloudflare try was planned and was not done. Queues are
    in the runner as a transport extension now; this harness still
    exercises email only.
-2. Open WebUI env var: confirmed — `runner/ops/local_test.py` sets
-   `OLLAMA_BASE_URL` when it launches Open WebUI for
-   `--local-test --browser`.
+2. Open WebUI env var: confirmed (`runner/ops/local_test.py` sets
+   `OLLAMA_BASE_URL` when it launches Open WebUI for `--local-test
+   --browser`).
 3. The chat confirms the send. It does not wait for the result
    email unless someone adds that later.

@@ -3,14 +3,13 @@
 This book explains every job in tiny steps. You do not need to know
 anything. Just read one step, do it, then read the next step.
 
-Words you will see:
-- **Terminal** — the black box where you type commands. On Mac it's
-  called Terminal. On Windows it's called PowerShell. On Linux it's
-  called Terminal.
-- **Command** — one line of text you type into the black box.
-- **Press Enter** — push the big Enter key after typing a command.
+Words you will see: **Terminal**: the black box where you type
+commands. On Mac it's called Terminal. On Windows it's called
+PowerShell. On Linux it's called Terminal. **Command**: one line of
+text you type into the black box. **Press Enter**: push the big
+Enter key after typing a command.
 
----
+-.
 
 ## Job 1: Put the tools on your computer (do this one time)
 
@@ -25,7 +24,7 @@ You need a tool called **git**. It carries code back and forth.
 To check it worked: open the black box, type `git --version`,
 press Enter. If it prints a version number, you did it.
 
----
+-.
 
 ## Job 2: Copy the project onto your computer (do this one time)
 
@@ -47,7 +46,7 @@ cd homing-pigeon
 You are now standing inside the project folder. Every command below
 assumes you are here.
 
----
+-.
 
 ## Job 3: Send your changes up to GitHub
 
@@ -76,24 +75,21 @@ Example: `git commit -m "fixed a typo in the readme"`.
 git push
 ```
 
-The first time, it asks for a username and password.
-- Username: your GitHub username.
-- Password: **not** your real password. GitHub wants a special
-  token instead. Here is how to make one:
-  1. Go to **github.com** and log in.
-  2. Click your picture (top right) → **Settings**.
-  3. Scroll all the way down, click **Developer settings**.
-  4. Click **Personal access tokens** → **Tokens (classic)**.
-  5. Click **Generate new token** → **Generate new token (classic)**.
-  6. Give it a name like `my-laptop`. Check the box called **repo**.
-  7. Scroll down, click **Generate token**.
-  8. Copy the long code it shows you. **Copy it now** — you will
-     never see it again.
-  9. Paste that code as the password.
+The first time, it asks for a username and password. Username: your
+GitHub username. Password: **not** your real password. GitHub wants a
+special token instead. Here is how to make one: 1. Go to
+**github.com** and log in. 2. Click your picture (top right) →
+**Settings**. 3. Scroll all the way down, click **Developer
+settings**. 4. Click **Personal access tokens** → **Tokens
+(classic)**. 5. Click **Generate new token** → **Generate new token
+(classic)**. 6. Give it a name like `my-laptop`. Check the box called
+**repo**. 7. Scroll down, click **Generate token**. 8. Copy the long
+code it shows you. **Copy it now**, because you will never see it
+again. 9. Paste that code as the password.
 
 Your computer remembers it after the first time.
 
----
+-.
 
 ## Job 4: Cut and publish a release
 
@@ -111,43 +107,41 @@ you. You start them by making a **release**. All point and click:
    `runner/_version.py`, not a guess. The rules for the number live
    in `runner/ops/version4.py`: the major stays 3, the minor is the
    release line, the tokens figure is the size of the repository in
-   whole millions of tokens, measured fresh at every release
-   cut — an uncached recount of the tree being shipped, never
-   the last cut's figure reused — and the counter is the
-   release counter, which restarts when a number to its left
-   increases.
+   whole millions of tokens, measured fresh at every release cut
+   (an uncached recount of the tree being shipped, never the last
+   cut's figure reused), and the counter is the release counter,
+   which restarts when a number to its left increases.
 
-   The ship flow takes a fresh token measure at every cut,
-   and the order is frozen: measure first, statistics write
-   last. On the measured tree, run
-   `python3 runner/tools/refresh_figures.py --write` — it
-   rewrites the facts block in
-   `docs/infrastructure-documents/project/statistics.md` and
-   every marked figure slot in the evergreen docs from the
-   fresh measure and the core counters, the record's basis
-   prose reviewed by hand in the same pass. That statistics
-   write is the last content commit before the release
-   commit, and the figures cite the measured commit they were
-   taken at, so the record never lags the number the version
-   carries by more than one measure, and never chases its
-   own tail.
-6. Click the big green **Publish release** button.
-7. Now click the **Actions** tab at the top. You will see the robots
-   working. It typically takes about 20 minutes.
-8. When they finish, go back to **Releases**. Your version is there
-   with files to download (each file and folder name carries that
-   same number):
-   - `homing-pigeon-windows-x86_64-<version>.zip` and `-windows-arm64-` — for Windows computers
-   - `homing-pigeon-linux-x86_64-<version>.tar.gz` and `-linux-arm64-` — for Linux computers
-   - `homing-pigeon-macos-arm64-<version>.tar.gz` and `-macos-x86_64-` — for Mac computers
-   - `homing-pigeon-pi-light-arm64-<version>.tar.gz` — for Raspberry Pi (Pi Light)
+The ship flow takes a fresh token measure at every cut, and the
+order is frozen: measure first, statistics write last. On the
+measured tree, run `python3 runner/tools/refresh_figures.py
+--write`. It rewrites the facts block in
+`docs/infrastructure-documents/project/statistics.md` and every
+marked figure slot in the evergreen docs from the fresh measure
+and the core counters, with the record's basis prose reviewed by
+hand in the same pass. That statistics write is the last content
+commit before the release commit, and the figures cite the
+measured commit they were taken at, so the record never lags the
+number the version carries by more than one measure, and never
+chases its own tail. 6. Click the big green **Publish release**
+button. 7. Now click the **Actions** tab at the top. You will see
+the robots working. It typically takes about 20 minutes. 8. When
+they finish, go back to **Releases**. Your version is there with
+files to download (each file and folder name carries that same
+number): `homing-pigeon-windows-x86_64-<version>.zip` and
+`-windows-arm64-` for Windows computers,
+`homing-pigeon-linux-x86_64-<version>.tar.gz` and `-linux-arm64-`
+for Linux computers, `homing-pigeon-macos-arm64-<version>.tar.gz`
+and `-macos-x86_64-` for Mac computers, and
+`homing-pigeon-pi-light-arm64-<version>.tar.gz` for Raspberry Pi
+(Pi Light).
 
-   The release also carries the Python wheel and source
-   distribution, `SHA384SUMS`, the SBOM, the build-provenance
-   record, and `homing-pigeon-project-<version>.tar.gz` -- the
-   whole project (every file, the full history, and this build's
-   CI facts and test results). Every install archive above carries
-   the same snapshot as its `project/` folder.
+The release also carries the Python wheel and source distribution,
+`SHA384SUMS`, the SBOM, the build-provenance record, and
+`homing-pigeon-project-<version>.tar.gz`, which contains the whole
+project (every file, the full history, and this build's CI facts
+and test results). Every install archive above carries the same
+snapshot as its `project/` folder.
 
 The next release uses the next number. Bigger number = newer.
 Do not reuse a tag that already exists.
@@ -176,30 +170,27 @@ SBOM, and a `BUILD-PROVENANCE.json` stamped inside each archive.
 To check a download against all of it, on any outlet, see
 `docs/steady/verification.md`.
 
-**Releasing through your SI instead:** say "tag and publish
-everything." That one sentence is the whole instruction set. The SI
-computes the next 4-number version by the rules in
-`runner/ops/version4.py` and bumps it in the places it lives, runs the version
-test and the doc-drift guard before pushing, waits until the nine
-guard jobs on that commit are green (`test` and the eight
-`build-*` jobs; `test-macos` is not one of them), and tags that
-commit as soon as they are. A later commit on main is not that
-commit; the tag is the full sha. It watches the tag build through
-`release`, `pypi-publish`, `sourceforge` and `gitlab`. Mutation
-does not run on a tag. The image workflow still starts when the
-tag is cut, before that build finishes. A version whose tests
-fail can already have an image (`v3.14.45`). Holding the image
-until `release` succeeds is not done yet. It then checks every
-outlet by name -- GitHub Release, PyPI, Docker, SourceForge,
-GitLab -- before reporting. You get one report when all of it
-is confirmed, or one report naming the exact outlet that failed.
+**Releasing through your SI instead:** say "tag and publish everything." That
+one sentence is the whole instruction set. The SI computes the next 4-number
+version by the rules in `runner/ops/version4.py` and bumps it in the places it
+lives, runs the version test and the doc-drift guard before pushing, waits
+until the nine guard jobs on that commit are green (`test` and the eight
+`build-*` jobs; `test-macos` is not one of them), and tags that commit as soon
+as they are. A later commit on main is not that commit; the tag is the full
+sha. It watches the tag build through `release`, `pypi-publish`, `sourceforge`
+and `gitlab`. Mutation does not run on a tag. The image workflow still starts
+when the tag is cut, before that build finishes. A version whose tests fail
+can already have an image (`v3.14.45`). Holding the image until `release`
+succeeds is not done yet. It then checks every outlet by name (GitHub Release,
+PyPI, Docker, SourceForge, GitLab) before reporting. You get one report when
+all of it is confirmed, or one report naming the exact outlet that failed.
 
----
+-.
 
 ## Job 5: Put the runner on a computer
 
 This is the computer that will do the work (your home machine, an
-office machine, or a virtual machine — see the README for why a
+office machine, or a virtual machine; see the README for why a
 virtual machine is a good idea).
 
 1. Download the right file from **Releases** (see Job 4).
@@ -211,11 +202,11 @@ virtual machine is a good idea).
    `config.json`. (Copy, paste, rename.)
 5. Open `config.json` in Notepad (Windows) or TextEdit (Mac).
    Fill in these lines:
-   - `mailbox_user` — the email address you made just for the runner.
-   - `mailbox_password` — the app password for that account.
-   - `shared_secret` — a long random string (generate one: `openssl rand -hex 32`).
-     This is the HMAC signing key, separate from the mailbox password. You'll
-     paste the same string to your SI when you want it to send jobs.
+   - `mailbox_user`: the email address you made just for the runner.
+   - `mailbox_password`: the app password for that account.
+   - `shared_secret`: a long random string (generate one: `openssl rand -hex 32`).
+     This is the HMAC signing key, separate from the mailbox password. You'll paste
+     the same string to your SI when you want it to send jobs.
 
    How to get an app password:
    1. Log into the runner's mail account.
@@ -225,31 +216,28 @@ virtual machine is a good idea).
    5. Make one, copy the code it gives you. That code goes in
       `mailbox_password`.
    
-   Save the file and close it.
-6. Run the installer:
-   - Windows: right-click `install.exe` and run it as
-     administrator. (A plain double-click is refused: creating
-     `C:\homing-pigeon` needs elevation.)
-   - Mac/Linux: open the black box in this folder, type `./install`,
-     press Enter.
-7. Done. The runner now starts by itself every time the computer
-   turns on. It checks the mailbox for jobs again and again.
+Save the file and close it. 6. Run the installer. On Windows:
+right-click `install.exe` and run it as administrator. (A plain
+double-click is refused: creating `C:\homing-pigeon` needs
+elevation.) On Mac/Linux: open the black box in this folder, type
+`./install`, press Enter. 7. Done. The runner now starts by itself
+every time the computer turns on. It checks the mailbox for jobs
+again and again.
 
-On Windows, the installer keeps everything in one place:
-`C:\homing-pigeon` — the programs (`bin/`), the settings
+On Windows, the installer keeps everything in one place,
+`C:\homing-pigeon`, which holds the programs (`bin/`), the settings
 (`config.json`), the memory of past jobs (`state/`), and a receipt
 saying what version is installed. Five things to remember, all run
-from `C:\homing-pigeon\bin`:
-- `install.exe --check` — the doctor. It looks at the whole install
-  and tells you in plain words what is wrong, if anything.
-- `install.exe --console` — stops the background runner and runs it
-  in your window instead, so you can watch what it does live. When
-  you stop it (Ctrl+C), the background runner starts again by itself.
-- `install.exe --oracle` — opens the chat with the Oracle.
-- `install.exe --logs` — shows the end of the runner's log.
-  Add `--follow` to keep watching it live.
-- `install.exe --wipe` — the big red button. Copies everything into
-  one backup file first, then removes the lot.
+from `C:\homing-pigeon\bin`: `install.exe --check` is the doctor. It
+looks at the whole install and tells you in plain words what is
+wrong, if anything. `install.exe --console` stops the background
+runner and runs it in your window instead, so you can watch what it
+does live. When you stop it (Ctrl+C), the background runner starts
+again by itself. `install.exe --oracle` opens the chat with the
+Oracle. `install.exe --logs` shows the end of the runner's log. Add
+`--follow` to keep watching it live. `install.exe --wipe` is the big
+red button. It copies everything into one backup file first, then
+removes the lot.
 
 To test it once without installing, type this in the black box:
 
@@ -259,15 +247,15 @@ To test it once without installing, type this in the black box:
 
 It checks the mailbox one time and then stops. Watch what it prints.
 
----
+-.
 
 ## Job 6: Send a job to the runner
 
 You need two things: the **shared secret** (the `shared_secret` string
-from `config.json` in Job 5 — not the app password) and a way to send
-email to the runner's mailbox. The easiest way is to paste
-the secret string to your SI in chat and tell it what you want done —
-it writes the email, signs it, and sends it for you.
+from `config.json` in Job 5, not the app password) and a way to send
+email to the runner's mailbox. The easiest way is to paste the secret
+string to your SI in chat and tell it what you want done; it writes
+the email, signs it, and sends it for you.
 
 If you want to do it by hand with the helper script:
 
@@ -286,13 +274,11 @@ python3 runner/cloud/send_job.py new --kind ping --secret PASTE_YOUR_SECRET_HERE
    - **Subject:** paste the subject line.
    - **Body:** paste the big block of text.
    - Send it.
-5. Typically within a minute or two, a reply email arrives with the
-   result — the wait rides on the runner's poll interval and your
-   mail provider's delivery time.
-   For a ping, the result says `pong` — once decrypted. Jobs and
-   results are encrypted by default, so the reply shows an
-   envelope, not the word; read it with
-   `python3 runner/cloud/send_job.py verify --secret <the-string> --job-id <id> result.txt`.
+5. Typically within a minute or two, a reply email arrives with the result; the wait rides
+   on the runner's poll interval and your mail provider's delivery time. For a ping, the
+   result says `pong`, once decrypted. Jobs and results are encrypted by default, so the
+   reply shows an envelope, not the word; read it with `python3 runner/cloud/send_job.py
+   verify --secret <the-string> --job-id <id> result.txt`.
 
 If this SI has its own key (see INSTALL.md step 6), add
 `--key-id <its-id>` and sign with that key's secret instead of
@@ -306,7 +292,7 @@ python3 runner/cloud/send_job.py new --kind exec --script-file myscript.sh --int
 
 Same steps: copy what it prints, paste into an email, send.
 
----
+-.
 
 ## Job 7: Test a new cloud SI with the clock check
 
@@ -343,9 +329,9 @@ The message is `"v": 1`. Leave the result policy off.
 A current install does not start that way. `install.py` applies the
 `password-only` profile unless you pass `--no-profile`. That profile
 sets `max_result_view` to `attested` and `judge` to `advisory`, so
-the clock string never comes back. A Raspberry Pi gets
-`pi-light`, which does the same and pulls no model at all — its
-Oracle runs deterministically.
+the clock string never comes back. A Raspberry Pi gets `pi-light`,
+which does the same and pulls no model at all: its Oracle runs
+deterministically.
 
 Install, or re-apply, like this:
 
@@ -383,22 +369,22 @@ a `review` note. Those fields do not hide `stdout`. With the keys
 above, `stdout` is the clock, the job is not blocked, nothing is
 paged, and no model is called. There is no flag that deletes the Oracle.
 
----
+-.
 
 ## If something goes wrong and operational notes
 
-- **"command not found"** — you are probably not in the project
+- **"command not found"**: You are probably not in the project
   folder. Type `cd homing-pigeon` and try again.
-- **Push asks for a password forever** — see Job 3, Step 3. Use a
+- **Push asks for a password forever**: See Job 3, Step 3. Use a
   token, not your real password.
-- **The runner says "bad signature"** — the secret string has a typo.
+- **The runner says "bad signature"**: The secret string has a typo.
   Copy it again, carefully.
-- **Nothing happens after sending a job message** — check that the
+- **Nothing happens after sending a job message**: Check that the
   runner computer is turned on, and that the job was signed with the
   right secret. Any sender address works (the address is never
-  checked; the signature and the runner's own admission checks
-  are); a "bad signature" rejection means the secret didn't match.
-- **The robots (Actions) show a red X** — click the X, click the
+  checked; the signature and the runner's own admission checks are);
+  a "bad signature" rejection means the secret didn't match.
+- **The robots (Actions) show a red X**: Click the X, click the
   failed job, read the red text at the bottom. It usually says
   exactly what went wrong.
 
@@ -419,9 +405,14 @@ system are in [live-examples.md](live-examples.md), with what
 
 ### Where results go
 
-Result emails are sent **to the runner's own mailbox** (the account in `mailbox_user`) — unless the signed job sets `reply_to`, in which case the result goes to that address instead (e.g. `send_job.py new --reply-to you@example.com`). The address must live inside the signed body; the email's `From` header is never trusted for this. They do not automatically appear in the cloud SI's connected mail account. To see them from the SI side you must either:
-- set `reply_to` on the job so the result is emailed straight to you, or
-- forward the result message to the connected account, or
-- have the runner configured so results are delivered somewhere the SI can read, or
-- check the runner's console/logs for the outbound result.
+Result emails are sent **to the runner's own mailbox** (the account in
+`mailbox_user`), unless the signed job sets `reply_to`, in which case the result
+goes to that address instead (e.g. `send_job.py new --reply-to
+you@example.com`). The address must live inside the signed body; the email's
+`From` header is never trusted for this. They do not automatically appear in the
+cloud SI's connected mail account. To see them from the SI side you must either
+set `reply_to` on the job so the result is emailed straight to you, forward the
+result message to the connected account, have the runner configured so results
+are delivered somewhere the SI can read, or check the runner's console/logs for
+the outbound result.
 

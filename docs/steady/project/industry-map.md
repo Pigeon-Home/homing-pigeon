@@ -6,12 +6,12 @@ How the commercial security world moved from 2021 to 2026.
 
 The design goal: prefer security technologies that cost little CPU or
 compute on a local box, and include them by default where they fit.
-Target: runs on a laptop with a few gigabytes of RAM — potentially
+Target: runs on a laptop with a few gigabytes of RAM, potentially
 slow, but workable. Stripped-down installs skip the extras.
 
 Corollary: **where the kernel already does the work, use it.** ACLs,
-capabilities, seccomp, namespaces, audit, integrity levels — these
-are nearly free because the OS does the work. Anything that needs a
+capabilities, seccomp, namespaces, audit, and integrity levels are
+nearly free because the OS does the work. Anything that needs a
 resident daemon, line-rate processing, or a second model running 24/7
 has to justify itself.
 
@@ -21,21 +21,21 @@ has to justify itself.
   pipe; Microsoft buys RiskIQ (>$500M); Google buys Mandiant ($5.4B); Palo Alto ships
   XSIAM (Feb 2022) selling "autonomous SOC" *before* LLMs existed.
 - **Spring 2023: the copilot wave.** Security Copilot (Mar 2023, billed at
-  $4/hr per compute unit — practitioners called unreasonable, and adoption
-  showed it), SentinelOne Purple AI, CrowdStrike Charlotte AI. Chat assistants
-  bolted onto existing platforms.
+  $4/hr per compute unit, which practitioners called unreasonable, and
+  adoption showed it), SentinelOne Purple AI, CrowdStrike Charlotte AI. Chat
+  assistants bolted onto existing platforms.
 - **2023–24: consolidation at scale.** Cisco buys Splunk ($28B). Thoma Bravo
-  takes Darktrace private ($5.3B) — after a short-seller report dented its
+  takes Darktrace private ($5.3B), after a short-seller report dented its
   "self-learning AI" story. Exabeam merges with LogRhythm: the end of
   standalone UEBA as a product category.
 - **2025: copilot becomes agent.** Agentic triage and investigation with
-  bounded autonomy — Charlotte Agentic Response, Purple AI Athena, Security
+  bounded autonomy: Charlotte Agentic Response, Purple AI Athena, Security
   Copilot's six-agent fleet. The vocabulary flips; the products start acting
   without being asked.
 - **2026: everyone ships agents; the evidence layer gets reframed.**
   Detection telemetry is repositioned as machine-readable context for agents
   (ExtraHop's "context layer" NDR, MCP-native agent platforms). The newest
-  turn: **baselining the agents themselves** — Securonix watches AI-agent
+  turn is **baselining the agents themselves**: Securonix watches AI-agent
   behavior, Exabeam detects rogue agents, ClawArmor puts guardrails in the
   kernel *below* the agent so a compromised agent can't override them.
   Google's $32B Wiz acquisition closes: the largest security deal ever.
@@ -60,43 +60,43 @@ product; standalone NDR as a growth story; chat-only copilots; pre-LLM
 
 ### Nearly free: kernel primitives and zero-idle checks
 
-- **ACLs** — the example. Partly in place: the Windows one-home install
+- **ACLs**: the example. Partly in place: the Windows one-home install
   sets a real DACL (`icacls`); POSIX ACLs are not applied yet. Extend
   per `docs/infrastructure-documents/security/security-gaps.md`.
-- **Linux capabilities** — drop everything a job doesn't need. A few lines,
+- **Linux capabilities**: drop everything a job doesn't need. A few lines,
   zero runtime cost. Partly there via bwrap; make it explicit per profile.
-- **seccomp-bpf** — syscall filter per job profile. Cheap, set once.
-- **Windows integrity levels + job objects** — free, per-job. In use
+- **seccomp-bpf**: syscall filter per job profile. Cheap, set once.
+- **Windows integrity levels + job objects**: free, per-job. In use
   today: the Windows confinement backend creates each job suspended
   under a restricted token at low integrity and assigns it to a Job
   Object with a 512 MiB ceiling (`runner/guard/windows_confine.py`).
-- **Kernel audit (auditd / SACLs / ETW)** — the OS logs, we just read. An
+- **Kernel audit (auditd / SACLs / ETW)**: the OS logs, we just read. An
   audit-log sense costs almost nothing.
-- **eBPF observability** — ~1–3% overhead for syscall visibility a rootkit
+- **eBPF observability**: ~1–3% overhead for syscall visibility a rootkit
   can't dodge (the Falco/Tetragon lineage, now the respected standard).
   Optional sense on Linux; integrate, don't build.
-- **Canary tokens and files** — zero cost until touched; the cheapest
+- **Canary tokens and files**: zero cost until touched; the cheapest
   high-signal item on this entire list. The runner plants three
   tripwire files in its state directory and reports a change or a
   deletion until the file is restored.
-- **Firewall posture reads** — one line in the Oracle context (on or
+- **Firewall posture reads**: one line in the Oracle context (on or
   off). Not a packet capture. The ruleset-diff daemon in the senses
   doc is still not built.
-- **YARA on job artifacts** — only files that job just wrote, only if
+- **YARA on job artifacts**: only files that job just wrote, only if
   `yr` or `yara` is installed, size-capped. ClamAV the same way, and
   only through `clamdscan`.
-- **ATT&CK IDs on sense output** — on the watch lines now (audit
+- **ATT&CK IDs on sense output**: on the watch lines now (audit
   events, persistence changes, canary trips, a firewall that is off).
   Zero runtime cost. A label, not a verdict.
 
 ### Moderate: optional, off by default
 
-- **Zeek/Suricata as a collector** — real CPU on a busy network. Optional
+- **Zeek/Suricata as a collector**: real CPU on a busy network. Optional
   netmon sense, off unless enabled.
-- **Full AV scan hooks** — on demand, never resident.
-- **Guard-model triage (Llama Guard shape)** — only when a model is already
+- **Full AV scan hooks**: on demand, never resident.
+- **Guard-model triage (Llama Guard shape)**: only when a model is already
   loaded. Costs RAM/VRAM otherwise.
-- **Statistical anomaly baselining** — even Microsoft has been retiring
+- **Statistical anomaly baselining**: even Microsoft has been retiring
   Defender for Cloud Apps' legacy anomaly-detection alerts in waves
   since 2025, migrating them to a newer detection model. Don't ship
   this until it's good. Honestly not built.
@@ -113,7 +113,7 @@ every tool call the Oracle makes); a policy for which tool calls the
 Oracle may make on its own is not built, and this page is its record.
 
 1. **Nobody watches the Oracle.** The industry's newest category is
-   agent-behavior baselining — watching the watchers. Our Oracle's tool
+   agent-behavior baselining: watching the watchers. Our Oracle's tool
    calls are recorded in the oracle log; what is missing is the watch over
    that record. Candidate: an Oracle action-log sense over the existing
    log. The calls already flow through one place; watching them is small.
@@ -122,7 +122,7 @@ Oracle may make on its own is not built, and this page is its record.
    nothing constrains a misbehaving Oracle. Candidate: an Oracle tool-call
    policy. Option for later.
 3. **Bespoke tool protocol.** The industry is standardizing agent tools on
-   MCP; ours are hand-rolled JSON. Out of scope for now — noted, not chased.
+   MCP; ours are hand-rolled JSON. Out of scope for now: noted, not chased.
 4. **The Oracle inventing log events** is exactly the "AI magic" failure mode
    the Darktrace episode warns about. The fix is the same in both cases:
    never let the model or the docs overclaim. The anti-fabrication rule in
@@ -130,7 +130,7 @@ Oracle may make on its own is not built, and this page is its record.
 
 ## What it is not trying to be
 
-Not an XDR, not a UEBA product, not a deception vendor — those are
+Not an XDR, not a UEBA product, not a deception vendor: those are
 standalone categories, and standalone categories fizzle; features win.
-The architecture — thin senses, Oracle fusion, DRI playbook — fits
+The architecture (thin senses, Oracle fusion, DRI playbook) fits
 because it's a pipeline, not a suite.

@@ -10,19 +10,19 @@ differently from what this text supposed, the difference is
 written in "Suppositions and conclusions" at the end, in the
 open.
 
-The mode a fresh install states — the installer asking this
-backend's probe before it writes the seed — was added to this
-page on 2026-11-14, at the owner's direction, and built the
-same day (`runner/ops/install.py`, `runner/ops/setup.py`).
-The job user that seed names where it leaves the jail on was
-added and built the same day, at the owner's direction, and
-so was the account the installer makes for it. The cores a
-job's jail is pinned to were added and built on 2026-11-15,
-at the owner's direction.
+The mode a fresh install states, with the installer asking
+this backend's probe before it writes the seed, was added to
+this page on 2026-11-14, at the owner's direction, and built
+the same day (`runner/ops/install.py`,
+`runner/ops/setup.py`). The job user that seed names where it
+leaves the jail on was added and built the same day, at the
+owner's direction, and so was the account the installer makes
+for it. The cores a job's jail is pinned to were added and
+built on 2026-11-15, at the owner's direction.
 
 Confinement is the software suite's own, platform by
-platform. The protocol documents do not specify it — a
-submitter must not assume a sandbox on the far side — so
+platform. The protocol documents do not specify it (a
+submitter must not assume a sandbox on the far side), so
 nothing here changes a message, a field or a document under
 `docs/ietf`. This page and
 `docs/steady/security/freebsd.md` are where the FreeBSD
@@ -43,9 +43,9 @@ On 2026-11-14 a set of boundary tests was written that reads
 the boundary from inside a job, and run against that backend
 on hosted FreeBSD 14.5 and 15.0, as root (the
 `freebsd-confinement` workflow, run 43574966807). Two of nine
-held — the host's processes did not exist inside the jail,
-and there was no network. Seven did not, the same seven on
-both releases:
+held: the host's processes did not exist inside the jail, and
+there was no network. Seven did not, the same seven on both
+releases:
 
 | What the job did | What happened |
 |---|---|
@@ -148,7 +148,7 @@ first process does.
 The rule is the Linux sandbox's, by the same function
 (`sandbox.interpreter_binds`): an interpreter under a mounted
 tree or an operator bind needs nothing; one that lives
-elsewhere — a pyenv, a venv, `/opt` — gets its install prefix
+elsewhere (a pyenv, a venv, `/opt`) gets its install prefix
 mounted read-only at the same path, and the mount is written
 into the audit record's detail. The floor is the same too:
 never a user's home directory, never a tree shallower than
@@ -302,8 +302,8 @@ has none to hold back, and where the host will not say which
 cores the runner has, none is held back and the posture
 report says so. A number the operator wrote on a host that
 will not say refuses the start. A set that is planned and
-cannot be pinned refuses too — the job, or the start when it
-is the probe's jail — and the refusal names the setting that
+cannot be pinned refuses too (the job, or the start when it
+is the probe's jail), and the refusal names the setting that
 starts a job with no core held back.
 
 One runner's jobs are pinned though no core is held back from
@@ -401,9 +401,9 @@ job user is refused before anything is built.
 A passing verdict is kept for the life of the runner process,
 for the settings it was run with, so the per-job gate does not
 build a throwaway jail beside every job's own. The cheap
-checks — root, the base tools, the host trees — run every
-time. A particular job's spawn still builds its own jail, and
-its failure refuses that job.
+checks (root, the base tools, the host trees) run every time.
+A particular job's spawn still builds its own jail, and its
+failure refuses that job.
 
 ## The mode a fresh install states
 
@@ -413,12 +413,11 @@ FreeBSD the seed stated the mode at `audit` without asking the
 machine: the seed was written blind, and `enforce` written
 blind risks a first start that refuses. The seed now asks.
 
-When the installer seeds a fresh config on a FreeBSD host —
-and when the setup wizard seeds one for a runner started with
-no config — it asks the backend the startup gate's own
-question, with the config it is about to leave on disk: the
-probe above, a throwaway jail built and the boundary read from
-inside it.
+When the installer seeds a fresh config on a FreeBSD host, and
+when the setup wizard seeds one for a runner started with no
+config, it asks the backend the startup gate's own question,
+with the config it is about to leave on disk: the probe above,
+a throwaway jail built and the boundary read from inside it.
 
 - The probe passes: the mode stays at `enforce`. Nothing is
   written for it, as on Linux. The installer says so and
@@ -436,8 +435,8 @@ Four rules bound it:
   installer writes is a cron `@reboot` entry in that same
   user's crontab, so the runner starts as the identity the
   probe ran as. Run as root, the probe can pass. Run as an
-  ordinary user it cannot — the backend needs root — and the
-  seed states `audit` and says that.
+  ordinary user it cannot, since the backend needs root, and
+  the seed states `audit` and says that.
 - It asks about the config as written. A config that came in
   with the install and asks for a loopback, a bind or a
   ceiling is probed with them, and a setting the host cannot
@@ -449,7 +448,7 @@ Four rules bound it:
   later run over the same config, so the rule holds for both:
   an install that stands at `audit` stays there until its
   operator sets `enforce`, and a config at `enforce` is asked
-  again — it stays where the probe passes, and is stated at
+  again. It stays where the probe passes, and is stated at
   `audit`, with the reason, where it no longer does.
 - It is asked only of the machine the seed is written on. A
   caller that names FreeBSD from another host gets the stated
@@ -457,7 +456,7 @@ Four rules bound it:
 
 What a passing probe leaves open is what Linux leaves open: a
 machine that changes between the install and a later start.
-The startup gate answers that in both places — it refuses the
+The startup gate answers that in both places: it refuses the
 start and names why.
 
 ### The job user a fresh install names
@@ -487,8 +486,8 @@ the config, with one tree more shown in it: a directory
 holding a file only root may read. The job must report the
 account's uid, write its work mount, be refused the file, and
 read the ceiling on its account's processes as the config
-sets it, with no way to raise it — the four things a named
-job user is for.
+sets it, with no way to raise it: the four things a named job
+user is for.
 
 - The trial passes: `security.job_user` is written into the
   config, naming the account. From the first start every job
@@ -518,10 +517,10 @@ operator has stated at `audit` or `off`.
 
 The rest is the mode's rule. The question is put only to the
 machine being seeded, only where the first question was put
-and passed, and — on a later run of the installer — only
-where no user is named yet. An ordinary user's install names
-none and makes no account: with no jail there is no door, and
-the demote needs root as the jail does.
+and passed, and, on a later run of the installer, only where
+no user is named yet. An ordinary user's install names none
+and makes no account: with no jail there is no door, and the
+demote needs root as the jail does.
 
 ### Where the machine is not asked
 
@@ -538,23 +537,23 @@ run is to the seed an install like any other.
 So the questions have a switch, and it is in the environment:
 `HP_SEED_ASKS_MACHINE`. With `0`, `no`, `off` or `false`
 there, the seed asks the machine nothing. It states the
-platform's map — `audit` — as it does for a platform it was
-only told about, names no job user, makes no account, and
-the line that states the mode says the machine was not asked.
-Any other word, or none, leaves the questions on: an
-operator's install carries no word and is asked.
+platform's map (`audit`) as it does for a platform it was
+only told about, names no job user, makes no account, and the
+line that states the mode says the machine was not asked. Any
+other word, or none, leaves the questions on: an operator's
+install carries no word and is asked.
 
 The environment is the place because it reaches everything
 such a run starts. A test process holds more than one copy of
-the installer — its test modules load it by package name, by
-its own directory and by its file — and some tests start it
+the installer (its test modules load it by package name, by
+its own directory and by its file), and some tests start it
 as a program. One word in the environment is read by all of
 them; a switch on a module would be read by one.
 
 The suite sets the word for itself, in its package, and
 leaves a word the environment already carries. The tests of
 the questions themselves switch them on by name. A door a
-caller hands in — a scripted probe, trial or account — is
+caller hands in (a scripted probe, trial or account) is
 asked whatever the word: the switch closes the doors to the
 machine, not the tests' own.
 
@@ -570,8 +569,8 @@ the jail (which ends every process still inside it), the
 mounts in reverse order, and the skeleton.
 
 **A skeleton is never removed through a mount.** The release
-unmounts — a mount that is busy because the jail is still
-letting go of a process is tried again before it is forced —
+unmounts (a mount that is busy because the jail is still
+letting go of a process is tried again before it is forced),
 then reads the mount table, and removes the tree only when
 nothing is mounted at or below it. The removal itself stops at
 any entry on another filesystem. A skeleton that cannot be
@@ -620,9 +619,9 @@ The Linux column is bwrap as this project starts it
 (`DEFAULT_FLAGS` in `runner/guard/sandbox.py`) and
 bubblewrap's documented behaviour. The FreeBSD column is what
 the live tests read from inside a job. Linux keeps one thing
-this design cannot have: it confines without root. The row
-on what a job reads follows from it — the runner here is
-root, so a job with no job user is root's uid too.
+this design cannot have: it confines without root. The row on
+what a job reads follows from it: the runner here is root, so
+a job with no job user is root's uid too.
 
 ## What it does not do
 
@@ -640,8 +639,8 @@ root, so a job with no job user is root's uid too.
   whose trials did not pass, names none until its operator
   does.
 - Home directories inside `/usr`. A host that keeps them in
-  the `/usr` filesystem — `/usr/home` on UFS, the layout
-  before FreeBSD 14.0 — shows them read-only with the rest of
+  the `/usr` filesystem (`/usr/home` on UFS, the layout
+  before FreeBSD 14.0) shows them read-only with the rest of
   `/usr`. Where `/usr/home` is a dataset of its own, or homes
   stand under `/home`, they are not in the jail.
 - The floor that keeps a home directory out of an
@@ -657,9 +656,10 @@ root, so a job with no job user is root's uid too.
   account's, not one job's: jobs of the account that run at
   once share it. It counts processes, not the threads inside
   one.
-- Memory a job holds outside any process's address space — a
-  shared-memory object it never maps — is bounded by neither
-  ceiling. The `/tmp` bound closes the largest such door.
+- Memory a job holds outside any process's address space,
+  such as a shared-memory object it never maps, is bounded
+  by neither ceiling. The `/tmp` bound closes the largest
+  such door.
 - The work directory is on the host's disk and is not bounded
   here.
 - The limit on cores is a set, not a share of time: within its
@@ -675,25 +675,25 @@ root, so a job with no job user is root's uid too.
 ## Proof
 
 - The backend's logic runs on every platform: everything below
-  its public names is written against a host object — the
-  commands it runs and the few facts it reads — and the suite
+  its public names is written against a host object (the
+  commands it runs and the few facts it reads), and the suite
   hands it one that keeps a mount table, a set of jails and a
   list of rules. Build order, the record's names, every
   failure's cleanup, the release's rule about mounts, the
   sweep's rule about live runners and the probe's refusals are
   pinned there.
 - The kernel is tested where it is real: the
-  `freebsd-confinement` workflow boots three guests — FreeBSD
+  `freebsd-confinement` workflow boots three guests (FreeBSD
   14.5 and 15.0 with RACCT enabled, and 14.5 as FreeBSD ships,
-  RACCT off — and runs the same module as root in each, the
+  RACCT off) and runs the same module as root in each, the
   live classes included: the boundary read from inside a job,
   the jail-wide rules, the job user's process ceiling with
   RACCT and without, the cores a job reads as its own, cannot
   widen and uses when it spins on all of them, the loopback,
   the binds, the interpreter's prefix, a runner killed
-  outright, jobs through the runner itself, with and without
-  a job user, and the mode a fresh install states on that
-  guest. Weekly and on dispatch.
+  outright, jobs through the runner itself, with and without a
+  job user, and the mode a fresh install states on that guest.
+  Weekly and on dispatch.
 - The posture report (`--posture`) names, on a FreeBSD host,
   the controls a job's jail would carry there and what would
   refuse the start, without building a jail.
@@ -738,8 +738,8 @@ Conclusions, from the first hosted run of this shape
 (2026-11-14, run 43578228704, FreeBSD 14.5-RELEASE and
 15.0-RELEASE-p13, RACCT enabled in both): all nine held, on
 both releases, on the first run. The module ran whole as root
-in each guest — 155 tests, the 5 that exist only off FreeBSD
-skipped, the 28 live tests among the rest all passing — and
+in each guest (155 tests, the 5 that exist only off FreeBSD
+skipped, the 28 live tests among the rest all passing), and
 each guest was read afterwards: no jail mount, no jail, no
 skeleton directory, no rctl rule.
 
@@ -771,8 +771,8 @@ rules; and a job through the runner itself was confined,
 recorded with the names above, and its declared output
 collected.
 
-The third guest — 14.5 as FreeBSD ships, RACCT off, which is
-the state of the project's own node — first ran beside the
+The third guest (14.5 as FreeBSD ships, RACCT off, which is
+the state of the project's own node) first ran beside the
 other two on the same day (run 43578832525), with a job
 through the runner as a job user added to the module. All
 three guests passed, 161 tests each. On the guest without
@@ -790,9 +790,9 @@ spawn_resource_limits`, and the ceiling a job cannot lift is
 held there by `allow.nosuser` alone.
 
 One thing the run measured that this page had not supposed:
-the whole module — every live job among its tests — took
-under 8 seconds in a guest, so a jail of this shape costs a
-job a fraction of a second to build and remove.
+the whole module, including every live job among its tests,
+took under 8 seconds in a guest, so a jail of this shape
+costs a job a fraction of a second to build and remove.
 
 ### The seed
 
@@ -823,8 +823,8 @@ Conclusions, from the first hosted run of the seed
 (2026-11-14, run 43585328369, FreeBSD 14.5-RELEASE and
 15.0-RELEASE-p13 with RACCT enabled, and 14.5-RELEASE
 without): all six held, on all three guests, on the first
-run. The module ran whole as root in each — 192 tests, the
-six live tests of the seed among them — and each guest was
+run. The module ran whole as root in each (192 tests, the
+six live tests of the seed among them), and each guest was
 read afterwards: no jail mount, no jail, no skeleton
 directory, no rctl rule.
 
@@ -883,8 +883,8 @@ Conclusions, from its first hosted run (2026-11-14, run
 43592323669, FreeBSD 14.5-RELEASE and 15.0-RELEASE-p13 with
 RACCT enabled, and 14.5-RELEASE without): all five held, on
 all three guests, on the first run. The module ran whole as
-root in each — 218 tests, the nine live tests of the seed
-among them — and each guest was read afterwards: no jail
+root in each (218 tests, the nine live tests of the seed
+among them), and each guest was read afterwards: no jail
 mount, no jail, no skeleton directory, no rctl rule.
 
 | What was asked | What the seed did |
@@ -908,8 +908,8 @@ Suppositions, recorded 2026-11-14 before the first hosted run
 of it:
 
 22. On a guest with no such account, the installer's seed
-    makes `pigeon-jobs` — no password, a login shell that
-    lets no one in, no home directory, a group of its own —
+    makes `pigeon-jobs` (no password, a login shell that
+    lets no one in, no home directory, a group of its own),
     runs the trial as it, and names it.
 23. A runner started on that config runs its first job as
     that account's uid, confined, and the job is refused a
@@ -935,14 +935,14 @@ Conclusions, from its first hosted run (2026-11-14, run
 43597374538, FreeBSD 14.5-RELEASE and 15.0-RELEASE-p13 with
 RACCT enabled, and 14.5-RELEASE without): all seven held, on
 all three guests, on the first run. The module ran whole as
-root in each — 242 tests, the seven that make an account and
-the nine that do not among them — and each guest was read
+root in each (242 tests, the seven that make an account and
+the nine that do not among them), and each guest was read
 afterwards: no jail mount, no jail, no skeleton directory, no
 rctl rule, and no jobs account.
 
 | What was asked | What happened |
 |---|---|
-| The installer's seed, on a guest with no such account | Made `pigeon-jobs` — a password field no hash can match, `/usr/sbin/nologin`, `/nonexistent` and no directory there, a group of its own with no one else in it — ran the trial as it, and named it |
+| The installer's seed, on a guest with no such account | Made `pigeon-jobs` (a password field no hash can match, `/usr/sbin/nologin`, `/nonexistent` and no directory there, a group of its own with no one else in it), ran the trial as it, and named it |
 | A runner on that config | Its first job ran as the account's uid (1001 on each guest), confined, read the file all may read and was refused the root-only file beside it |
 | The seed again, and a fresh config beside it | The second run made nothing, ran no trial and changed nothing; the fresh config used the account as it stood |
 | An account of that name made another way first | Used as it stood; not a field of it changed |
@@ -963,21 +963,21 @@ first asked the probe, the suite run as root on a FreeBSD
 host whose backend engages put the seed's questions to that
 host from those tests: the probe's jail, then the door trial,
 and, in the two releases that made the account before the
-switch stood (both of 2026-11-14), the account — `pw useradd`
-reached from a test of another module. The hosted guests ran
-this module alone as root, and the hosted suite runs as an
-ordinary user, where the probe refuses and nothing is built.
-A host where either release's suite was run whole as root may
-hold a `pigeon-jobs` account the suite made; `pw userdel -n
-pigeon-jobs` removes it.
+switch stood (both of 2026-11-14), the account, with `pw
+useradd` reached from a test of another module. The hosted
+guests ran this module alone as root, and the hosted suite
+runs as an ordinary user, where the probe refuses and nothing
+is built. A host where either release's suite was run whole
+as root may hold a `pigeon-jobs` account the suite made; `pw
+userdel -n pigeon-jobs` removes it.
 
 Suppositions, recorded 2026-11-14 before the first hosted run
 of the switch:
 
 29. On a guest, as root, the other modules' tests that reach
-    the seed — the installer's main with its service steps
+    the seed (the installer's main with its service steps
     replaced, the wizard, and the installer's own modules
-    with their copies of it — run in a process the suite
+    with their copies of it) run in a process the suite
     starts, with no word handed down, and leave no jobs
     account and nothing else on the guest.
 30. The same installer tests, started with the word on, make
@@ -997,7 +997,7 @@ Conclusions, from the first hosted run of the switch
 (2026-11-14, run 43607344777, FreeBSD 14.5-RELEASE and
 15.0-RELEASE-p13 with RACCT enabled, and 14.5-RELEASE
 without): all four held, on all three guests, on the first
-run. The module ran whole as root in each — 257 tests — and
+run. The module ran whole as root in each (257 tests), and
 each guest was read afterwards: no jail mount, no jail, no
 skeleton directory, no rctl rule, and no jobs account.
 
@@ -1070,7 +1070,7 @@ a change the first run asked for.
 
 | What was asked | What happened |
 |---|---|
-| A job as a job user, under a ceiling of 24 | Read 24 as its soft and its hard limit, started twenty-three children, and was refused the next fork with EAGAIN — on the guest without RACCT too, where the record named no rctl rule |
+| A job as a job user, under a ceiling of 24 | Read 24 as its soft and its hard limit, started twenty-three children, and was refused the next fork with EAGAIN, on the guest without RACCT too, where the record named no rctl rule |
 | The same job, raising its limit | Refused three ways. Below the ceiling it lowered its limit to 10 and put it back |
 | A second job, with a first holding nine processes in another jail | Started fourteen children, not twenty-three: one count across the two jails |
 | A job with no job user | Started forty children; no limit had been set on it |
@@ -1096,8 +1096,8 @@ skeleton directory, rctl rule or jobs account afterwards.
 Suppositions, recorded 2026-11-15 before the first hosted run
 of the pin:
 
-41. Each guest has more than one core, and the test process —
-    the runner, to the backend, as root on the host — reads
+41. Each guest has more than one core, and the test process
+    (the runner, to the backend, as root on the host) reads
     every one of them as its own.
 42. A job under the default reads as its cores all of the
     runner's but the lowest. The record names
@@ -1110,10 +1110,10 @@ of the pin:
     it, a job reads the runner's cores and the record names no
     limit.
 44. A job narrows its cores to one of its set and puts them
-    back. Asked for every core the runner has, three ways —
-    its own process's cores, the set it stands in, a set it
-    makes for itself — it is refused each time and reads its
-    set unchanged afterwards. As uid 0 inside the jail, and as
+    back. Asked for every core the runner has, three ways (its
+    own process's cores, the set it stands in, a set it makes
+    for itself), it is refused each time and reads its set
+    unchanged afterwards. As uid 0 inside the jail, and as
     `nobody`.
 45. A process the job starts after that has the job's set.
 46. A job pinned to one core that spins twice as many
@@ -1140,7 +1140,7 @@ on the first run and on the second.
 | What was asked | What happened |
 |---|---|
 | The cores the test process reads as its own | 0, 1, 2 and 3 on every guest: each had four cores |
-| A job under the default | Read cores 1, 2 and 3. Its record named `cpuset_cpu_limit`, and its detail read `job pinned to cpus 1,2,3: 3 of the runner's 4 cores` — on the guest without RACCT too, where the record named no rctl rule |
+| A job under the default | Read cores 1, 2 and 3. Its record named `cpuset_cpu_limit`, and its detail read `job pinned to cpus 1,2,3: 3 of the runner's 4 cores`, on the guest without RACCT too, where the record named no rctl rule |
 | `job_cpus` of 1, of 2 and of 3 | Core 3; cores 2 and 3; cores 1, 2 and 3 |
 | `job_cpus` of 4 and of 64 | The job read all four cores, and the record named no limit |
 | A job narrowing its cores and putting them back | Narrowed to core 3 and widened again to 1, 2 and 3 |

@@ -11,10 +11,10 @@ release throughout and settles nothing about the notes.
 
 The rev takes the standing release line from 3.15 to 3.16:
 the first release cut on the 3.16 line is the official
-release — the release that presents the project as done,
-secure by default, with its documentation fully updated.
-Releases after it stay on the 3.16 line under the standing
-odometer rules until a later line is deliberately cut.
+release, the one that presents the project as done, secure
+by default, with its documentation fully updated. Releases
+after it stay on the 3.16 line under the standing odometer
+rules until a later line is deliberately cut.
 
 The machinery already supports the move; no version code
 changes are needed:
@@ -60,9 +60,9 @@ commit before the release commit.
    taken at this cut, never a reused one (the standing rule
    for every cut), and the counter restarts at 1 because the
    minor increased.
-3. **Statistics write — the last content commit.**
-   `python3 runner/tools/refresh_figures.py --write`
-   rewrites the facts block in
+3. **Statistics write — the last content commit.** `python3
+   runner/tools/refresh_figures.py --write` rewrites the
+   facts block in
    docs/infrastructure-documents/project/statistics.md and
    every marked figure slot in the evergreen docs from the
    fresh measure. The record's basis prose is reviewed by
@@ -85,10 +85,10 @@ commit before the release commit.
      not on, later leaves the build red between the bump and
      the fix.
    - `docs/infrastructure-documents/changelog.md`: the new
-     entry at the top, under the target version.
-   The commit is made in the ship flow's standing form (its
-   subject, its author, its no-reply release address) — this
-   plan changes none of that.
+     entry at the top, under the target version. The commit
+     is made in the ship flow's standing form (its subject,
+     its author, its no-reply release address); this plan
+     changes none of that.
 5. **The tag.** The annotated tag for the target version is
    placed on the release commit. Tags are protected and
    never move; a defect is fixed forward under the next
@@ -97,14 +97,14 @@ commit before the release commit.
    pipeline unchanged: build.yml produces the GitHub release
    (neither draft nor prerelease, held by
    `runner/tests/test_release_channel_polish.py`), the PyPI
-   upload — the first upload carrying the Production/Stable
+   upload (the first upload carrying the Production/Stable
    development-status classifier, since published release
    metadata is immutable and the classifier set on the 3.15
-   line's uploads cannot be rewritten — the SourceForge
-   step (its tag ordering keys the 3.16 line above every
-   3.15 tag, so the default-download marking follows the
-   new release), and the GitLab release; docker.yml
-   publishes the image and moves its latest tag.
+   line's uploads cannot be rewritten), the SourceForge step
+   (its tag ordering keys the 3.16 line above every 3.15
+   tag, so the default-download marking follows the new
+   release), and the GitLab release; docker.yml publishes
+   the image and moves its latest tag.
 7. **Verification.** The standing stamp check: the wheel,
    the sdist and the platform tarball re-downloaded and
    matched against the release's sums; the release's asset

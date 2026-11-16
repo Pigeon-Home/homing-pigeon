@@ -1,7 +1,7 @@
 # Verifying a release
 
 Every Homing Pigeon release carries the machinery to check that
-the bits you downloaded are the bits the build produced — on
+the bits you downloaded are the bits the build produced, on
 every outlet, not just GitHub. This page walks the chain from a
 release tag to the files on your disk and gives the exact
 command for each link. Nothing here needs project credentials;
@@ -10,19 +10,19 @@ verify with the `gh` CLI.
 
 The chain, in one paragraph: the build on the release commit
 stamps a `BUILD-PROVENANCE.json` into each archive; the tag build
-takes those archives as they are (it reads that build back — a
-build of exactly the tag's commit on main, every artifact leg
-green — and publishes its artifacts rather than building them a
+takes those archives as they are (it reads that build back, a
+build of exactly the tag's commit on main with every artifact leg
+green, and publishes its artifacts rather than building them a
 second time, so what ships is what the gate judged), generates an
 SBOM, hashes every release file into `SHA384SUMS`, and attests the
-whole set — sums and SBOM included — with
-`actions/attest-build-provenance`. PyPI publishing runs over
-OIDC trusted publishing (no stored token exists) and uploads
-its own provenance. The Docker image is attested by digest in
-the registry. The SourceForge and GitLab mirrors copy the
-GitHub release assets unchanged, sums file and SBOM included,
-so the same checks work there — with one caution, stated in
-the mirror section below.
+whole set (sums and SBOM included) with
+`actions/attest-build-provenance`. PyPI publishing runs over OIDC
+trusted publishing (no stored token exists) and uploads its own
+provenance. The Docker image is attested by digest in the
+registry. The SourceForge and GitLab mirrors copy the GitHub
+release assets unchanged, sums file and SBOM included, so the same
+checks work there, with one caution stated in the mirror section
+below.
 
 Examples below use `vX.Y.Z` and `X.Y.Z` for the release; the
 current version lives in `pyproject.toml`, never in this page.
@@ -47,9 +47,9 @@ gh attestation verify homing-pigeon-linux-x86_64-X.Y.Z.tar.gz \
     --repo Pigeon-Home/homing-pigeon
 ```
 
-The same command works for every file in the release —
-archives, wheel, sdist, `SBOM.spdx.json`, and `SHA384SUMS`
-itself — because the attestation's subject is the whole
+The same command works for every file in the release
+(archives, wheel, sdist, `SBOM.spdx.json`, and `SHA384SUMS`
+itself) because the attestation's subject is the whole
 artifact set. A successful verify reports the workflow
 (`build.yml`), the repository, and the commit the tag points
 at.
@@ -102,8 +102,8 @@ digest cannot.
 
 ## SourceForge and GitLab mirrors
 
-Both mirrors copy the published GitHub release assets —
-archives, wheel, sdist, `SHA384SUMS`, and `SBOM.spdx.json` —
+Both mirrors copy the published GitHub release assets
+(archives, wheel, sdist, `SHA384SUMS`, and `SBOM.spdx.json`)
 without repacking them, so after downloading from a mirror
 the sums check works exactly as above:
 
@@ -134,14 +134,14 @@ tar xzf homing-pigeon-linux-x86_64-X.Y.Z.tar.gz -O \
 (Windows: `tar -xzf ... -O` works the same way in a current
 PowerShell, or read the file after extracting the zip.)
 
-It names the product, the version, the commit SHA, the ref,
-and the workflow run (`run_id`, as run/attempt) that built the
+It names the product, the version, the commit SHA, the ref, and
+the workflow run (`run_id`, as run/attempt) that built the
 archive. In a release the tag build published from the gate
 build, the ref is `refs/heads/main` and the run is the gate
-build's — the build that made the bytes — while the snapshot's
+build's (the build that made the bytes), while the snapshot's
 `CI-SNAPSHOT.json` names the tag build that published them; the
 commit is the same in both. A file that arrives detached from
-any release page — a mirror, a forwarded email — can still say
+any release page (a mirror, a forwarded email) can still say
 which build it is, and the commit can be checked against the
 tag.
 
@@ -169,9 +169,9 @@ runtime is stdlib-only, it is short: the project with every
 shipped `runner/` module (per-file checksums, the cloud helpers
 in `runner/cloud/` included), CPython at the version range
 `pyproject.toml` declares, and PyInstaller at the version pinned
-in `.github/requirements-ci.txt` —
-the one build tool whose output ships. Read it with any SPDX
-tool, or as plain JSON:
+in `.github/requirements-ci.txt`, which is the one build tool
+whose output ships. Read it with any SPDX tool, or as plain
+JSON:
 
 ```sh
 python3 -m json.tool SBOM.spdx.json | head -40
@@ -180,7 +180,7 @@ python3 -m json.tool SBOM.spdx.json | head -40
 ## What the chain does not claim
 
 - It proves a file is the file the tag build produced. It
-  does not prove the build was benign — for that, the source
+  does not prove the build was benign: for that, the source
   is the tag itself, and the suite that ran on it is in the
   same workflow run the attestation names.
 - The mirror check anchors on GitHub once, as described

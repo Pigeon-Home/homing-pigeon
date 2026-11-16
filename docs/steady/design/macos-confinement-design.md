@@ -17,8 +17,8 @@ services" below, with its own measurements, suppositions
 and conclusions.
 
 Confinement is the software suite's own, platform by
-platform. The protocol documents do not specify it — a
-submitter must not assume a sandbox on the far side — so
+platform. The protocol documents do not specify it (a
+submitter must not assume a sandbox on the far side), so
 nothing here changes a message, a field or a document under
 `docs/ietf`. This page and `docs/steady/security/macos.md`
 are where the macOS shape is written down;
@@ -106,9 +106,9 @@ deny-by-default and allows:
 
 - reading and executing the system trees (`/System`, `/usr`,
   `/Library`, `/bin`, `/sbin`, `/opt`, `/etc` and the
-  `/private` startup trees a process reads as it starts)
-  and the install prefix of the job's interpreter when that
-  stands outside them — never a home directory;
+  `/private` startup trees a process reads as it starts) and
+  the install prefix of the job's interpreter when that
+  stands outside them, never a home directory;
 - reading and writing the job's work directory, and nothing
   else of the filesystem;
 - the root directory's own listing, and file metadata (that
@@ -161,8 +161,9 @@ Those two are the user database: how a process learns who a
 user is and which groups it is in. Every other service is
 refused, and so is every other Mach operation: a job
 registers no name, and asks for no task port and no host
-port. A service is named whole — no pattern and no prefix —
-so what a job may look up is a list that can be read.
+port. A service is named whole, with no pattern and no
+prefix, so what a job may look up is a list that can be
+read.
 
 ### What a job's programs ask for
 
@@ -227,7 +228,7 @@ Where a job's work needs a service, the operator names it.
 The names are added to the backend's two; nothing takes
 those away. A name is one to 255 letters, digits, dots,
 underscores, hyphens and at signs, starting with a letter
-or a digit — what launchd takes, and nothing a profile's
+or a digit: what launchd takes, and nothing a profile's
 syntax could read as its own. At most 64 are named. A name
 that is not one, or a list that is not a list, is a config
 error and a refusal to start.
@@ -240,24 +241,23 @@ A named service is looked up as it is by any program of the
 session, and no more is promised of it. The pasteboard
 (`com.apple.pasteboard.1`) shows why. Named beside the user
 database on both hosted Macs, it answered a job's lookup,
-and the system's reader ended 0 — and printed nothing: the
+and the system's reader ended 0 and printed nothing: the
 mark on the clipboard came back only with every service
 open, and a job's write to the clipboard did not land
 either. What a service does for a caller that reaches it and
-nothing else of the session is the service's own matter;
-the system log names what else a program asked for.
+nothing else of the session is the service's own matter; the
+system log names what else a program asked for.
 
 ### What the probe asks
 
 The trial asks the pasteboard for the clipboard, with the
 system's own reader. It throws away whatever the reader
-would print — the trial takes the answer, never the
-clipboard — and a start that passes has seen the reader
+would print (the trial takes the answer, never the
+clipboard), and a start that passes has seen the reader
 refused. Where the config names the pasteboard, the answer
 is recorded and is not a refusal: that config says the
 pasteboard may answer a job, and the posture report repeats
-it.
-A Mac with no reader, or a session with no pasteboard,
+it. A Mac with no reader, or a session with no pasteboard,
 answers nothing: there the question proves nothing, and
 there is no clipboard for a job to read.
 
@@ -298,8 +298,8 @@ other two shells `/bin/sh` can be set to, dash and zsh,
 take neither in any mode and accept the flag.
 
 Between the profile and the job stands a shell, so three
-variables in a job's environment are the shell's — `SHLVL`,
-`PWD` and `_` — as they are for any job whose interpreter
+variables in a job's environment are the shell's (`SHLVL`,
+`PWD` and `_`), as they are for any job whose interpreter
 is `sh`, which is the default.
 
 ## The memory ceiling
@@ -307,7 +307,7 @@ is `sh`, which is the default.
 The kernel refuses a data-size limit below the size of the
 asking process's address map, so no fixed number can be the
 limit: 512 MiB is refused on every Mac. The launcher
-therefore finds the floor first — the smallest value the
+therefore finds the floor first, the smallest value the
 kernel accepts from it:
 
 1. It asks for the ceiling itself. On a host with no floor
@@ -325,7 +325,7 @@ process starts at on that Mac.
 - The ceiling is 512 MiB unless the operator names another
   (`process_memory_bytes`, below).
 - The hard limit is set as well as the soft one, so the job
-  cannot raise either — unless the job is root. Root may
+  cannot raise either, unless the job is root. Root may
   raise a hard limit, under a profile as anywhere. A runner
   that is root names a job user, whose jobs are not root.
 - A hard limit the launcher inherits is never raised: a
@@ -335,11 +335,11 @@ process starts at on that Mac.
   the job by name.
 
 It is a ceiling on the address map, not on memory touched,
-and it is each process's own. A program that reserves
-address space it never uses — a language runtime's heap
-reservation is the common case — needs the reservation to
-fit. Read on the two hosted Macs through the launcher itself,
-by the ceiling, the same on both in both of its hosted runs:
+and it is each process's own. A program that reserves address
+space it never uses (a language runtime's heap reservation is
+the common case) needs the reservation to fit. Read on the
+two hosted Macs through the launcher itself, by the ceiling,
+the same on both in both of its hosted runs:
 
 | | 512 MiB | 2 GiB | 8 GiB |
 |---|---|---|---|
@@ -368,7 +368,7 @@ runner's user, kept by the profile from that user's files.
 Where an operator does run the runner as root with a job
 user named (`security.job_user`), the spawn applies the
 user between its fork and the start of `sandbox-exec`: the
-whole chain — `sandbox-exec`, the launcher, the job — is
+whole chain (`sandbox-exec`, the launcher, the job) is
 that user's, with the groups the user database gives it.
 Nothing inside the profile is root, and no step inside it
 needs to be. The directory the spawn makes for the job's
@@ -397,8 +397,8 @@ ceiling an operator misspelled is a ceiling that is not
 there. The block is checked on every platform, so a config
 is right or wrong the same way wherever it is read.
 
-The keys the Linux sandbox and the FreeBSD jail share —
-`work_mount`, `extra_ro_binds`, `extra_flags` — name mounts
+The keys the Linux sandbox and the FreeBSD jail share
+(`work_mount`, `extra_ro_binds`, `extra_flags`) name mounts
 and bwrap arguments. There is no mount here; this backend
 reads none of them.
 
@@ -411,7 +411,7 @@ the process, one per ceiling and list of services.
 1. The config's `macos` block reads.
 2. `sandbox-exec` and `/bin/sh` are there.
 3. `sandbox-exec` starts a trivially confined process.
-4. A trial runs under the full controls — the profile, the
+4. A trial runs under the full controls: the profile, the
    launcher, the ceiling this config names. It is a shell
    program staged in a work directory of its own, with one
    file beside that directory, outside it. It must read its
@@ -425,13 +425,13 @@ nothing does not pass: the trial's own program, run with no
 profile, writes outside its work directory and is convicted
 by the file it leaves.
 
-The posture report asks the same probe — the trial needs no
-privilege and leaves nothing on the host — and says what a
+The posture report asks the same probe (the trial needs no
+privilege and leaves nothing on the host) and says what a
 job carries here: the controls, the ceiling with the floor
 it stands on, and which of the session's services answer a
-job. Where the runner is root and names no
-job user, it says the ceiling is set and does not say it
-holds, and one line of advice names the remedy.
+job. Where the runner is root and names no job user, it
+says the ceiling is set and does not say it holds, and one
+line of advice names the remedy.
 
 ## The mode a fresh install states
 
@@ -458,8 +458,8 @@ finds the backend where the runner does.
 
 ### Where the machine is not asked
 
-A caller that only names macOS — a test, a report — gets
-the stated map, `audit`, and nothing on the host is asked.
+A caller that only names macOS (a test, a report) gets the
+stated map, `audit`, and nothing on the host is asked.
 Whatever drives the installer or the wizard on a machine it
 is not installing sets `HP_SEED_ASKS_MACHINE=0`, as the
 test suite does for every host it runs on: the seed then
@@ -472,11 +472,11 @@ and a frozen installer. The `macos-confinement` workflow
 freezes both on each leg with the build workflow's own
 commands, read out of `build.yml`, and asks of them what a
 release's user meets: the runner starts at `enforce` and
-runs a job under it, which is refused the clipboard — and
-is answered by it under a config that names the pasteboard
-— and the installer, run from a staged copy of the archive
-into a home of its own, leaves `enforce` in the config it
-writes.
+runs a job under it, which is refused the clipboard (and
+is answered by it under a config that names the
+pasteboard), and the installer, run from a staged copy of
+the archive into a home of its own, leaves `enforce` in
+the config it writes.
 
 ## Beside the Linux sandbox and the FreeBSD jail
 
@@ -554,7 +554,7 @@ whose sandbox does not let it ask one number, and a name
 that is merely not there another. The clipboard tests put a
 mark of their own on the session's clipboard and put back
 the text that was there, so they run where they are asked
-for — in the workflow — and are skipped on a Mac where a
+for, in the workflow, and are skipped on a Mac where a
 person's clipboard is.
 
 ## Suppositions and conclusions
@@ -581,7 +581,7 @@ hosted Macs are expected to answer; each is judged by the
 6. A function exported under the name `ulimit` in a job's
    environment, in either shape bash reads, does not lift
    the ceiling, and an option list there does not stop the
-   launcher — on the bash a Mac ships.
+   launcher on the bash a Mac ships.
 7. As root with `nobody` named, the job is `nobody` from
    its first process: it says so, writes its work directory
    and its temporary directory, and does not read a file
@@ -763,8 +763,8 @@ is green the same way.
     system's own password file carries, which a job may
     read.
 18. Held: 36 of 36 on both Macs as both users. Thirty of
-    them work under the profile. The six that do not —
-    `git` in both rows, `cc`, `make`, `xcrun` and `java` —
+    them work under the profile. The six that do not
+    (`git` in both rows, `cc`, `make`, `xcrun` and `java`)
     do not with every service open either. `sqlite3` works
     where the profile is built for it as the job's own
     program, its install readable.

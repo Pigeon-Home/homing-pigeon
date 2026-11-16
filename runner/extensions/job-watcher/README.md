@@ -1,9 +1,9 @@
 # Job Watcher — an example Homing Pigeon extension
 
 A sense that watches the jobs, not the machine. Job
-Watcher reads the runner's retained job history — the
+Watcher reads the runner's retained job history (the
 `retained/` folder under the runner's base dir, one JSON
-file per finished job — and files what the history teaches
+file per finished job) and files what the history teaches
 it: which jobs keep failing, which jobs pass and fail on
 the same script so neither outcome can be trusted, which
 jobs have quietly started taking far longer than they used
@@ -15,16 +15,16 @@ The watcher files four declared signals:
 
 | Signal | Fires when |
 |--------|------------|
-| `job_failing_repeatedly` | The same job — same `kind` and script — failed at least `repeat_failures` times (default 3) inside `failure_window_sec` (default a day); the detail names the dominant exit code and the dominant first error line |
-| `job_flaky` | The job's last `flaky_runs` runs (default 6) alternate success/failure at least `flaky_min_transitions` times (default 3), with both outcomes present — pattern `PFPF…` in the detail |
-| `job_duration_anomaly` | A run's duration is a robust outlier against the job's **own** earlier durations (median/MAD, see below) — never filed for a job without enough history to have a baseline |
+| `job_failing_repeatedly` | The same job (same `kind` and script) failed at least `repeat_failures` times (default 3) inside `failure_window_sec` (default a day); the detail names the dominant exit code and the dominant first error line |
+| `job_flaky` | The job's last `flaky_runs` runs (default 6) alternate success/failure at least `flaky_min_transitions` times (default 3), with both outcomes present (pattern `PFPF…` in the detail) |
+| `job_duration_anomaly` | A run's duration is a robust outlier against the job's **own** earlier durations (median/MAD, see below); never filed for a job without enough history to have a baseline |
 | `failure_cluster` | At least `cluster_min_jobs` distinct jobs (default 3) failed inside `cluster_window_sec` (default 15 minutes): look at the box, not the jobs |
 
 Two honest limits of the source, stated once. Retention is
 view-gated in the runner, so a job delivered at the full
 view with no declared queries may leave no retained record
 at all (or only an artifact-scan note, which carries no
-`duration_sec` — such jobs count toward failures and
+`duration_sec`; such jobs count toward failures and
 clusters but can never build a duration baseline). And
 records are pruned by the runner's retention window; the
 watcher's own state file is the long memory, folding every
@@ -37,8 +37,8 @@ them, and the history grows by itself. On day one it can
 count failures and clusters. Duration calls wait: a job
 needs `duration_min_baseline` earlier durations (default
 5) before any anomaly can be filed against it, and the
-scorer judges by median and MAD — spread the job itself
-demonstrated — so a job that has always taken an hour is
+scorer judges by median and MAD, the spread the job itself
+demonstrated, so a job that has always taken an hour is
 never "anomalous" for taking an hour, while a job that
 takes ten seconds and suddenly takes ten minutes is called
 the first time it happens. The longer it runs, the more
@@ -52,8 +52,8 @@ median/MAD judge. Owners who want a real streaming model
 there can install [River](https://riverml.xyz) (the
 open-source online machine-learning library, Apache-2.0)
 and replace that one function with a scorer backed by its
-streaming anomaly detectors — `HalfSpaceTrees` is the
-natural fit — feeding it the same per-job duration history
+streaming anomaly detectors (`HalfSpaceTrees` is the
+natural fit), feeding it the same per-job duration history
 and returning the same `(anomalous, stats)` shape. The
 state file deliberately keeps each job's recent raw
 durations, so a River-backed scorer can be warmed from
@@ -104,8 +104,8 @@ A readings file is one JSON object of normalized records:
 ## Light mode
 
 This sense reads small JSON files on a calm cadence, and
-Light mode is mostly cadence: raise `poll_interval_sec`
-to 900 or beyond — job history does not move fast, and a
+Light mode is mostly cadence: raise `poll_interval_sec` to
+900 or beyond, since job history does not move fast, and a
 quarter-hour's delay on a flakiness call costs nothing.
 Lower `max_history_runs` (30 is plenty of baseline) and
 `max_records_per_pass` to bound a single pass over a large
@@ -117,7 +117,7 @@ signals (the repeat failures, the long run and its baseline)
 and the info signal (the flapping) are filed for the next
 brief, never a wake.
 
-The full extension walkthrough — manifest fields, the
-versioning contract, sensor binding, and how to turn this
-example into your own package — is in
+The full extension walkthrough (manifest fields, the versioning
+contract, sensor binding, and how to turn this example into your
+own package) is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).

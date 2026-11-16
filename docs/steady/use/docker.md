@@ -8,7 +8,7 @@
 > which points here for these three topics.
 
 The fastest way to run the runner. No Python to install, no git clone,
-no service configuration — write one config file, mount it, and one
+no service configuration: write one config file, mount it, and one
 `docker run` turns your inbox into a job queue.
 
 ## Quick start
@@ -41,7 +41,7 @@ the entrypoint builds from environment variables alone carries no
 `security` block, and under the default an unstated confinement reads
 `enforce`. A plain `docker run` cannot create the user namespace
 bwrap needs, so a runner started that way refuses to start. The
-written config above states the gates off — that is the route the
+written config above states the gates off. That is the route the
 project's own Docker workflow smoke-tests before it publishes the
 image, and it proves the image starts, not the gates. If you mean to
 run a gate, state the mode you mean in the `security` block instead
@@ -68,7 +68,7 @@ anything or marking mail seen. Nothing changes. Safe first run.
 
 ## Send it a job
 
-From anywhere — your laptop, your phone, your cloud SI:
+From anywhere (your laptop, your phone, your cloud SI):
 
 ```bash
 # On your machine (needs the repo):
@@ -78,7 +78,7 @@ python3 runner/cloud/send_job.py new --kind ping --secret "your-shared-secret"
 Copy the subject + body it prints, email it to `your-runner@gmail.com`.
 A reply with `stdout: "pong"` arrives within a poll interval.
 
-Or skip the script entirely — paste the RUNBOOK Job 7 prompt to your
+Or skip the script entirely: paste the RUNBOOK Job 7 prompt to your
 cloud SI and let it do the whole thing.
 
 ## Configuration
@@ -86,14 +86,14 @@ cloud SI and let it do the whole thing.
 **Environment variables.** The entrypoint writes
 `/data/config.json` from them on first start. Note the env-built
 config carries no `security` block, so it is not by itself a
-starting route under a plain `docker run` — see Quick start
-for why, and use a mounted config file with the gates stated.
+starting route under a plain `docker run`. See Quick start for
+why, and use a mounted config file with the gates stated.
 
 | Variable | Required | Default |
 |---|---|---|
-| `PIGEON_MAILBOX_USER` | yes | — |
-| `PIGEON_MAILBOX_PASSWORD` | yes | — |
-| `PIGEON_SHARED_SECRET` | yes | — |
+| `PIGEON_MAILBOX_USER` | yes |, |
+| `PIGEON_MAILBOX_PASSWORD` | yes |, |
+| `PIGEON_SHARED_SECRET` | yes |, |
 | `PIGEON_IMAP_HOST` | no | `imap.gmail.com` |
 | `PIGEON_IMAP_PORT` | no | `993` |
 | `PIGEON_SMTP_HOST` | no | `smtp.gmail.com` |
@@ -106,8 +106,8 @@ for why, and use a mounted config file with the gates stated.
 | `PIGEON_BASE_DIR` | no | `/data/work` (`base_dir`) |
 | `PIGEON_AUTH` | no | `password` (`auth`; `oauth` for the browser sign-in) |
 
-The HMAC shared secret is a separate `shared_secret` value (same as the bare-metal
-install) — set it via `PIGEON_SHARED_SECRET`. Throwaway account, nothing personal — see SECURITY.md.
+The HMAC shared secret is a separate `shared_secret` value (same as the bare-metal install); set it
+via `PIGEON_SHARED_SECRET`. Throwaway account, nothing personal (see SECURITY.md).
 
 **Mounted config file.** If you already have a `config.json`, mount it
 instead. Env vars are ignored when the file exists:
@@ -134,7 +134,8 @@ docker stop pigeon && docker rm pigeon
 # re-run the same docker run command from Quick start
 ```
 
-Your `pigeon-data` volume survives — no jobs re-run after update.
+Your `pigeon-data` volume survives, so no jobs re-run after
+update.
 
 ## Build it yourself
 

@@ -132,11 +132,11 @@ no target gets less than one quarter slice; adding a seed or a
 mutator to a target resets its history so it earns a full look
 again. *Who:* the tool. *Measure:* kept per CPU-hour, fleet-wide,
 back above 2 within two days. *Revised 30-OCT:* the yield is read as
-a rate and projected onto one base slice -- the count over the
-target's newest grows that together ran at least an hour (five at
-least), per second they ran, times the base -- not as a raw count
-over five grows. The raw count fed back on itself twice: a target on
-a long slice kept more per grow and stayed long, and its five grows
+a rate and projected onto one base slice (the count over the
+target's newest grows that together ran at least an hour, five at
+least, per second they ran, times the base), not as a raw count over
+five grows. The raw count fed back on itself twice: a target on a
+long slice kept more per grow and stayed long, and its five grows
 were hours of evidence while a floor target's five were minutes. The
 24-hour table that showed it: dtls_hostile at the floor returning
 108 kept per CPU-hour on nine minutes of work, v2_mail at 2x on four
@@ -245,10 +245,10 @@ sign of life a rig gave; on 30-OCT the cadence went hourly (Menlo
 Park first, the hosted rigs as their timers are changed), which is
 P7's thinning without P7's rule. What the ten-minute cadence was
 carrying: a rig that dies loses at most ten minutes of unbanked
-grow, now at most an hour -- on a box with a flickering disk that
-is the one real cost, and the ledger on the rig's own tree still
-holds the runs until the next bank lands. A crash a rig finds waits
-up to an hour to be seen; nothing in the campaign is that urgent.
+grow, now at most an hour. On a box with a flickering disk that is
+the one real cost, and the ledger on the rig's own tree still holds
+the runs until the next bank lands. A crash a rig finds waits up to
+an hour to be seen; nothing in the campaign is that urgent.
 
 What the rigs run, from the post "de_dust2: the rigs switch" in the
 forum:
@@ -333,30 +333,28 @@ bank and the yield table are the same for all of them.
 - **Stateful protocol scripts against a hostile peer** (`dtls_hostile`):
   the client driven against a server that does not hold its key. The
   script delivers the keyless server's datagrams and mutates them in
-  flight (flip, cut, dup, reorder, drop, inject, tick). The invariant
-  is the plain one and the sound one: no key, no session -- whatever
-  the server sends, the client never reaches established, never
-  surfaces a server message, and raises nothing but `DtlsError`.
-  (A byte-flip may be cosmetic or MAC-protected; which is the
-  server's to judge, so the target does not re-judge it from
-  outside -- it holds the one line that never moves.)
-- **Thread interleavings** (`race_board`, `race_stash`, `race_state`):
-  an entry is a set of lanes, each a list of operations, run as
-  threads under a short switch interval over one shared thing.
-  `race_board` runs the board (one completion per task, the file
-  equals memory, the counts add up, and no lease instant handed to
-  two workers). `race_stash` runs the outbox (a body stashed before
-  it is sent, one delivery per stash unless an undeliver sits
-  between, every record left behind reads back). `race_state` runs
-  the pool's other two files: the seen file (no lost update -- every
-  key a thread marked is in the file after the join) and the
-  retained store (no torn read -- the file matches one complete
-  write, and a second save of the same id replaces the first).
-  prune deletes retained files older than a day and rewrites the
-  seen cache; a fresh key stays. Not deterministic by nature, so the race
-  technique sits out the Windows-surface differential and the
-  survivors' kill set; its proof is many schedules with no
-  violation, logged run by run.
+  flight (flip, cut, dup, reorder, drop, inject, tick). The invariant is
+  the plain one and the sound one: no key, no session; whatever the
+  server sends, the client never reaches established, never surfaces a
+  server message, and raises nothing but `DtlsError`. (A byte-flip may
+  be cosmetic or MAC-protected; which is the server's to judge, so the
+  target does not re-judge it from outside, and instead holds the one
+  line that never moves.)
+- **Thread interleavings** (`race_board`, `race_stash`, `race_state`): an
+  entry is a set of lanes, each a list of operations, run as threads
+  under a short switch interval over one shared thing. `race_board` runs
+  the board (one completion per task, the file equals memory, the counts
+  add up, and no lease instant handed to two workers). `race_stash` runs
+  the outbox (a body stashed before it is sent, one delivery per stash
+  unless an undeliver sits between, every record left behind reads back).
+  `race_state` runs the pool's other two files: the seen file (no lost
+  update: every key a thread marked is in the file after the join) and
+  the retained store (no torn read: the file matches one complete write,
+  and a second save of the same id replaces the first). prune deletes
+  retained files older than a day and rewrites the seen cache; a fresh
+  key stays. Not deterministic by nature, so the race technique sits out
+  the Windows-surface differential and the survivors' kill set; its proof
+  is many schedules with no violation, logged run by run.
 - **Cross-implementation parity** (`edge_subject`, and the `edge`
   differential inside `wire`/`crypto`): two implementations of one
   wire contract, held to the same answer. The hosted queue's Worker

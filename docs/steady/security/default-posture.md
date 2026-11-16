@@ -1,15 +1,15 @@
 # The default posture, measured
 
 An outside review of this project (November 2026) made two claims
-about the first-run posture: that the default story is muddled —
-the config-file defaults are permissive while the security controls
-claim to be on at enforce — and that some controls set to enforce
+about the first-run posture: that the default story is muddled (the
+config-file defaults are permissive while the security controls
+claim to be on at enforce) and that some controls set to enforce
 can still degrade at job time, running a job with less isolation
 than the mode promises. This page records what the tree itself
 says: what a first-time install actually does by default, layer by
 layer, and exactly where an enforce control can step down at job
-time. The behavior changes those findings support are listed at
-the end as a plan; this page is the evidence, not the change.
+time. The behavior changes those findings support are listed at the
+end as a plan; this page is the evidence, not the change.
 
 Three different things are each called "the default" in the
 project's own writing, and the review's muddle charge lives in
@@ -32,8 +32,8 @@ expected to show:
 
 - **S1.** The shipped seed states every security feature at
   `enforce`, and the feature names it states are exactly the
-  feature list the code enforces — no drift between the seed and
-  the code.
+  feature list the code enforces, with no drift between the seed
+  and the code.
 - **S2.** A config with no security block at all reads every
   feature as `enforce` under the code's default rule. The
   permissive side of a first run therefore comes from the
@@ -48,8 +48,8 @@ expected to show:
   platform-appropriate security modes. A first start on a
   platform where an enforce mechanism cannot engage refuses on
   that gate until the owner edits the config by hand.
-- **S5.** The job-time step-downs are exactly two chains —
-  confinement and the job user — each one warns, writes a
+- **S5.** The job-time step-downs are exactly two chains,
+  confinement and the job user; each one warns, writes a
   `fallback` audit entry, and runs the job weaker. Every enforce
   mechanism that cannot engage at startup refuses startup
   instead. Two softer degradations stand beside the chains: an
@@ -71,8 +71,8 @@ The deterministic half of the measurement is
 `runner/tests/test_default_posture.py`: it reads the shipped
 seed, the code's effective-mode map, and every built-in profile
 as the installer applies it, and pins the claims above that a
-test can hold. The behavioral half — the startup refusals and
-the job-time fallback chains — is already pinned by the existing
+test can hold. The behavioral half (the startup refusals and the
+job-time fallback chains) is already pinned by the existing
 suites named in the findings, and is cited there rather than
 re-measured.
 
@@ -85,20 +85,20 @@ with the evidence:
 
 - **S1 — confirmed.** The seed's `security.modes` names exactly
   the code's feature list and states every one `enforce`
-  (`runner/config.example.json` lines 85–96;
+  (`runner/config.example.json` lines 85 to 96;
   `runner/guard/security.py` line 44, the feature list). Pinned
   by `test_default_posture.py`.
 - **S2 — confirmed.** `sec_mode` (`runner/guard/security.py`
   line 350) reads a feature the config does not set as
-  `enforce`; an absent, null, or empty security block — and an
-  empty modes map — all read every feature `enforce`. The
+  `enforce`; an absent, null, or empty security block, along
+  with an empty modes map, all read every feature `enforce`. The
   permissive side of a first run is the non-mode keys: the judge
   reads `off` when unset (`runner/ops/mail.py` line 343) and the
-  result view reads `full` when unset
-  (`runner/ops/policy.py` lines 33–34), both pinned against the
-  seed and against the result-policy code itself. The review's
-  muddle is real but located here: three layers, and only the
-  mode layer is strict by default.
+  result view reads `full` when unset (`runner/ops/policy.py`
+  lines 33 to 34), both pinned against the seed and against the
+  result-policy code itself. The review's muddle is real but
+  located here: three layers, and only the mode layer is strict
+  by default.
 - **S3 — confirmed.** Of the built-in profiles
   (`runner/ops/install.py` line 1682), only `hosted` names
   security modes (confinement `enforce`, audience `audit`, line
@@ -116,54 +116,54 @@ with the evidence:
   chains. Confinement: when the sandbox is unavailable at job
   time, or its command cannot be built, the job runs
   unsandboxed with a warning and a `fallback` audit entry
-  (`runner/runner.py` lines 367–379). The job user: not root,
-  an unresolvable user, or a workdir that cannot be chown'd
-  each warn, audit `fallback`, and run the job as the current
-  user (`runner/ops/remediation_ops.py` lines 203, 210, 238).
-  At startup the same mechanisms refuse instead
-  (`runner/ops/main.py` lines 113–137;
+  (`runner/runner.py` lines 367 to 379). The job user: not
+  root, an unresolvable user, or a workdir that cannot be
+  chown'd each warn, audit `fallback`, and run the job as the
+  current user (`runner/ops/remediation_ops.py` lines 203,
+  210, 238). At startup the same mechanisms refuse instead
+  (`runner/ops/main.py` lines 113 to 137;
   `runner/guard/sandbox.py` line 88). The two softer
   degradations stand as supposed: audience at `enforce` with
   no runner id warns once and the check is skipped
-  (`runner/ops/main.py` lines 138–143), and the job user at
-  `enforce` with no user named engages nothing and writes no
-  audit entry and no log line at job time
-  (`runner/ops/remediation_ops.py` lines 180–186). The chains
-  are reachable when conditions change after a good start —
-  the sandbox binary leaving the path, a user removed — or
-  when a per-job build step the startup trial cannot rehearse
-  fails, such as an operator bind path. The existing suites
-  pin both halves (startup: `test_decision1_startup.py`,
+  (`runner/ops/main.py` lines 138 to 143), and the job user
+  at `enforce` with no user named engages nothing and writes
+  no audit entry and no log line at job time
+  (`runner/ops/remediation_ops.py` lines 180 to 186). The
+  chains are reachable when conditions change after a good
+  start (the sandbox binary leaving the path, a user removed)
+  or when a per-job build step the startup trial cannot
+  rehearse fails, such as an operator bind path. The existing
+  suites pin both halves (startup:
+  `test_decision1_startup.py`,
   `test_windows_platform_proofs.py`; job time:
-  `test_confinement.py`, `test_security_parity.py`).
-  **S5 — refreshed (2026-11-11).** The step-downs above are
-  the record of the tree as measured on 2026-11-09; neither
-  chain runs a job weaker now. Under `enforce`, a
-  confinement that cannot engage at job time — the sandbox
-  unavailable, its command not buildable, a malformed
-  confinement block, or a platform backend that cannot
-  engage — is a denial: the confinement decision is a pure
-  query that answers every configuration with a decision
-  and never raises, and for a denial it answers with no
-  command to run, writing the same warning and the same
-  `fallback` audit entry as before; the job boundary
-  refuses the job on that denial, so the job is refused
-  end to end and never runs unsandboxed, on any backend.
-  The job user refuses in the same shape: not root, an
-  unresolvable user, or a workdir that cannot be chown'd
-  each record the `fallback` first and then refuse the
-  job, instead of running it as the current user. `audit`
-  and `off` are unchanged. The two softer degradations
-  have moved too: audience at `enforce` with no runner id
-  now refuses startup instead of warning once and skipping
-  the check, and the job user at `enforce` with no user
-  named is named at startup and in the posture report as
-  not engaged, instead of engaging nothing silently.
+  `test_confinement.py`, `test_security_parity.py`). **S5 —
+  refreshed (2026-11-11).** The step-downs above are the
+  record of the tree as measured on 2026-11-09; neither chain
+  runs a job weaker now. Under `enforce`, a confinement that
+  cannot engage at job time (the sandbox unavailable, its
+  command not buildable, a malformed confinement block, or a
+  platform backend that cannot engage) is a denial: the
+  confinement decision is a pure query that answers every
+  configuration with a decision and never raises, and for a
+  denial it answers with no command to run, writing the same
+  warning and the same `fallback` audit entry as before; the
+  job boundary refuses the job on that denial, so the job is
+  refused end to end and never runs unsandboxed, on any
+  backend. The job user refuses in the same shape: not root,
+  an unresolvable user, or a workdir that cannot be chown'd
+  each record the `fallback` first and then refuse the job,
+  instead of running it as the current user. `audit` and
+  `off` are unchanged. The two softer degradations have moved
+  too: audience at `enforce` with no runner id now refuses
+  startup instead of warning once and skipping the check, and
+  the job user at `enforce` with no user named is named at
+  startup and in the posture report as not engaged, instead
+  of engaging nothing silently.
 - **S6 — confirmed, with the exception where it was expected.**
-  The README posture table (lines 229–262) and the SECURITY.md
-  confinement and job-user sections (lines 533–590) describe
-  the startup refusals and the job-time fallbacks accurately.
-  The one wrong statement is a code comment:
+  The README posture table (lines 229 to 262) and the
+  SECURITY.md confinement and job-user sections (lines 533 to
+  590) describe the startup refusals and the job-time fallbacks
+  accurately. The one wrong statement is a code comment:
   `runner/ops/main.py` said a missing security block leaves
   "every security feature stays off"; the mode reader reads
   `enforce`. The comment is corrected in the commit that
@@ -185,15 +185,15 @@ line 2031):
 | Linux, sandbox able to engage | password-only | Starts. Jobs run sandboxed; judge advisory, results attested. |
 | Linux, sandbox missing or its namespaces blocked | password-only | Refuses to start, naming confinement, until the owner sets that mode to `audit` or `off`. |
 | Raspberry Pi | pi-light | The same confinement gate; the Oracle runs deterministically, no model installed. |
-| Windows (one-home installer) | password-only | Starts: the fresh-install seed states `confinement` and `job_user` at `audit` in the file. Stated at `enforce` by hand, both are probed at startup — confinement engages through its Windows backend (Job Object, restricted token, low integrity) and `job_user` through the Job Object ceiling — and a probe that cannot engage refuses, naming the mode. |
-| macOS | password-only | Starts: the fresh-install seed asks the macOS Seatbelt backend's probe on that Mac and leaves `confinement` at `enforce` where it passes — each job under a per-job Seatbelt profile with no network, no service of the session but the user database and a spawn resource-limit ceiling — and states it at `audit` in the file, with the reason printed, where it does not. At `enforce` the backend is probed again at every start, and a probe that cannot engage refuses, naming the mode. |
+| Windows (one-home installer) | password-only | Starts: the fresh-install seed states `confinement` and `job_user` at `audit` in the file. Stated at `enforce` by hand, both are probed at startup (confinement engages through its Windows backend of Job Object, restricted token, and low integrity, and `job_user` through the Job Object ceiling), and a probe that cannot engage refuses, naming the mode. |
+| macOS | password-only | Starts: the fresh-install seed asks the macOS Seatbelt backend's probe on that Mac and leaves `confinement` at `enforce` where it passes (each job under a per-job Seatbelt profile with no network, no service of the session but the user database and a spawn resource-limit ceiling) and states it at `audit` in the file, with the reason printed, where it does not. At `enforce` the backend is probed again at every start, and a probe that cannot engage refuses, naming the mode. |
 | FreeBSD, installed as root where the jail engages | password-only | Starts. The installer asks the FreeBSD jail backend's probe before it writes the seed; the probe passes and `confinement` stays at `enforce`: each job runs inside a jail with a read-only root, no network and ceilings it cannot raise. The installer then makes an account for the jobs alone (`pigeon-jobs`) and names it as the job user, after a trial job as that account has run inside a jail on the machine, so a job reads what that account can read and not what root owns; `nobody` stands in where the account cannot be had. The startup gate asks the probe again at every start, and a probe that cannot engage refuses, naming the mode. |
 | FreeBSD, the probe not passing at install (an ordinary user's install: creating a jail needs root) | password-only | Starts: the seed states `confinement` at `audit` in the file, with the probe's reason printed. Stated at `enforce` by hand, the backend is probed at startup, and a probe that cannot engage refuses, naming the mode. |
-| No profile (`--no-profile`, or a platform the host decision does not know), or a hand-written config | none | The seed's own row: judge `off`, results `full`, modes `enforce` — the posture the README calls "just run it" — with the same startup gates above. |
+| No profile (`--no-profile`, or a platform the host decision does not know), or a hand-written config | none | The seed's own row: judge `off`, results `full`, modes `enforce` (the posture the README calls "just run it"), with the same startup gates above. |
 
 One more measured detail: at the `attested` view a result
-carries its output fields emptied, not omitted — the digest
-and attestations ride, the body is blank. The review's
+carries its output fields emptied, not omitted; the digest and
+attestations ride, and the body is blank. The review's
 proposed default (attested disclosure) is therefore already
 the fresh-install behavior through the profiles; the `full`
 default survives only in the seed, in the code fallback behind
@@ -211,20 +211,20 @@ The review's two charges, as the tree answers them:
    platforms the first start is a refusal the owner must edit
    their way out of, choosing weaker modes unguided.
 2. **Enforce can step down at job time, in exactly two
-   places.** Both are loud and audited, both exist because
-   conditions can change after a good start — but a job that
-   runs unsandboxed, or as the runner's own account, under a
-   mode that reads `enforce` is a downgrade of the promise,
-   however well recorded. Two quieter gaps stand beside them:
-   an audience check skipped for want of a runner id, and a
-   job-user mode that reads enforce while engaging nothing.
-   Refreshed (2026-11-11): that step-down has since been
-   retired — under `enforce` both chains now refuse the job
-   rather than run it weaker, as the refresh beside the S5
-   finding records, and the two quieter gaps have closed
-   beside them, the audience check refusing at startup for
-   want of a runner id and the unengaged job-user mode
-   named at startup and in the posture report.
+   places.** Both are loud and audited, and both exist
+   because conditions can change after a good start, but a
+   job that runs unsandboxed, or as the runner's own account,
+   under a mode that reads `enforce` is a downgrade of the
+   promise, however well recorded. Two quieter gaps stand
+   beside them: an audience check skipped for want of a
+   runner id, and a job-user mode that reads enforce while
+   engaging nothing. Refreshed (2026-11-11): that step-down
+   has since been retired; under `enforce` both chains now
+   refuse the job rather than run it weaker, as the refresh
+   beside the S5 finding records, and the two quieter gaps
+   have closed beside them, the audience check refusing at
+   startup for want of a runner id and the unengaged job-user
+   mode named at startup and in the posture report.
 
 ## The phase-2 plan
 
@@ -233,18 +233,17 @@ these are made by the commits that carry this page; each lands
 with its own tests when it is taken up.
 
 Status (2026-11-13): items 1 and 2 have since landed, in the
-shape they state — under `enforce` the job is refused, never
-run weaker — and items 3 and 4 have landed beside them: a job
+shape they state (under `enforce` the job is refused, never
+run weaker), and items 3 and 4 have landed beside them: a job
 user that engages nothing is named at startup and in the
 posture report as not engaged, and audience at `enforce`
 without a runner id refuses startup, closing the
 warn-and-skip path. Item 5 has landed beside them
 (2026-11-10): a first install states the platform gates in
 the seeded config, and the Windows guidance names the two
-modes. Item 6 has landed beside them
-(2026-11-13): the seed and the code fallback read
-`attested`, so the config-file defaults and a fresh
-install tell the same story.
+modes. Item 6 has landed beside them (2026-11-13): the seed
+and the code fallback read `attested`, so the config-file
+defaults and a fresh install tell the same story.
 
 1. **Confinement at enforce fails the job, not open.** When
    the sandbox cannot engage or its command cannot be built

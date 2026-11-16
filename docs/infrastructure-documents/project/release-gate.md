@@ -6,16 +6,16 @@ at the one hard gate the desk already has (desk.md, Gate 5),
 over the candidates the release trains already produce. It
 answers the third change an outside peer review of this project
 asked for first (2026-11-09): a human security gate at release,
-regardless of the AI-native workflow — a human release checklist
-and sign-off for any release, and explicit human review for the
-change classes where a mistake is expensive.
+regardless of the AI-native workflow, meaning a human release
+checklist and sign-off for any release, and explicit human
+review for the change classes where a mistake is expensive.
 
 Nothing here changes how work lands. Landing stays as desk.md
 describes it: streams land early, main may be red, the release
 is the filter. The gate stands at the exit of that filter, not
 at its entrance. The desk document says the collaboration
-machinery of many-human projects — required approving reviews,
-owner sign-offs, review queues — is not used here; that sentence
+machinery of many-human projects (required approving reviews,
+owner sign-offs, review queues) is not used here; that sentence
 is about landing, and it stands. What this document adds is
 narrower and different in kind: one named human reads one short
 checklist over one finished candidate and signs, or does not
@@ -44,21 +44,21 @@ support.
    from records that already exist, and the human's minutes go
    to judgment, not to gathering.
 2. **The review classes map onto the tree's own folders.** The
-   classes the review names — protocol, execution, key handling,
+   classes the review names (protocol, execution, key handling,
    confinement, job-user behavior, extension loading, disclosure
-   controls — correspond to path families this tree already
-   keeps apart (the wire folder, the guard folder, the Oracle
-   folder, the extension folders, the ops modules), closely
-   enough that a declared path registry can classify a release
-   range mechanically. The registry is expected to err toward
+   controls) correspond to path families this tree already keeps
+   apart (the wire folder, the guard folder, the Oracle folder,
+   the extension folders, the ops modules), closely enough that
+   a declared path registry can classify a release range
+   mechanically. The registry is expected to err toward
    over-inclusion: a path that touches two classes asks for both
    reviews, and a class wrongly asked for costs a minute, while
    a class wrongly skipped costs the gate its point.
 3. **A sign-off record can be checked mechanically.** A record
    that names the full version, the release commit, the
    conductor, the date, a verdict, and one reviewed-line per
-   class the range touched can be validated by a tool — fields
-   present, shapes right, every touched class accounted for —
+   class the range touched can be validated by a tool (fields
+   present, shapes right, every touched class accounted for)
    with no secret and no private material in it. If this holds,
    the enforcing phase, when the conductor orders it, is a check
    a machine already knows how to run.
@@ -93,9 +93,9 @@ paths) were classified by hand. A naive range diff gets both
 ranges wrong, twice:
 
 - *The version carriers ride in the release commit itself.* The
-  latest release commit touches exactly five paths — the
+  latest release commit touches exactly five paths (the
   changelog, `pyproject.toml`, `runner/_version.py`,
-  `runner/ops/install.py` and the version-pinning test — so a
+  `runner/ops/install.py` and the version-pinning test), so a
   range diff flags key handling (install.py, which mints the
   install-time secret) on every release there will ever be.
   Correction: the classifier reads content commits only. Release
@@ -105,7 +105,7 @@ ranges wrong, twice:
   trains' statistics-refresh commits refill the generated figure
   slots in `AGENTS.md` and `PROTOCOL.md`, so a path-only rule
   flags protocol on most releases even when not one word of the
-  protocol changed — in both measured ranges, PROTOCOL.md's
+  protocol changed; in both measured ranges, PROTOCOL.md's
   changes were slot refills and nothing else. Correction: for a
   file that carries figure slots, the classifier reads the
   changed lines; if every changed line is a slot line, the path
@@ -113,12 +113,11 @@ ranges wrong, twice:
   other changed line gives the file its normal classes.
 
 With both corrections, the two measured ranges flag no class at
-all — true to their content, which was documentation and figures
+all, true to their content, which was documentation and figures
 only. As a control, a code-bearing range (the 24 paths behind
 the release commit bfc7fb47) was classified the same way: the
-registry flags
-disclosure controls (`runner/ops/briefing.py`, what the Oracle
-is told) and extension loading
+registry flags disclosure controls (`runner/ops/briefing.py`,
+what the Oracle is told) and extension loading
 (`runner/transport_extensions/email/`), and hand classification
 agrees with both. The registry fires when there is something to
 review and stays quiet when there is not.
@@ -128,8 +127,8 @@ classified by path: a test rides with its subject and stands in
 the checklist's per-commit list, where the conductor sees it;
 the class flags come from the paths that change the running
 system. Documentation outside the protocol's own documents is
-likewise unclassified — the classes name behaviour of the
-running system — and likewise still listed per commit.
+likewise unclassified (the classes name behaviour of the
+running system) and likewise still listed per commit.
 
 **Supposition 3 is settled by construction in this pass**: the
 validator described below is built, and its unit tests carry
@@ -180,7 +179,7 @@ the ship record.
 5. **The fresh measure.** The version's token component was
    recounted fresh on the tree being shipped, and the figure
    refresh stands committed as the last content commit before
-   the release commit — or the skip is recorded here with its
+   the release commit, or the skip is recorded here with its
    reason (the ship lane's clone was shallow), never guessed
    around.
 6. **The changelog.** The release's changelog section covers
@@ -226,18 +225,18 @@ a tag, and new work is cut from the recorded last-green. This
 path makes that rule signable. When main's tip is red at ship
 time:
 
-- The candidate is pinned to the **recorded last-green commit** —
+- The candidate is pinned to the **recorded last-green commit**:
   never the red tip, and never a commit whose green exists only
   in one lane's local run.
 - The record states the tip's commit, that it is red, and the
   red guard families or divergences by name, as the ship record
   knows them. A candidate record that hides the red tip is a
   false record.
-- The class range is measured to the candidate — what actually
-  ships. The commits between the candidate and the red tip are
-  listed separately in the record with their classes flagged as
-  **deferred**: they are not in this release, and they will ask
-  for their reviews again at their own.
+- The class range is measured to the candidate, which is what
+  actually ships. The commits between the candidate and the red
+  tip are listed separately in the record with their classes
+  flagged as **deferred**: they are not in this release, and
+  they will ask for their reviews again at their own.
 - The sign-off verdict takes its protected form (below), so the
   signature itself says the signer knew main was red and shipped
   the pinned candidate anyway.
@@ -266,8 +265,8 @@ numeric components (a shortened version is a false record); a
 commit that is not a full SHA; a candidate form that disagrees
 with the verdict form (a protected candidate signed with the
 standard verdict, or the reverse); a class the checklist
-declares touched with no matching reviewed line; a reviewed
-line for a class the range did not touch — the copy-paste
+declares touched with no matching reviewed line; a reviewed line
+for a class the range did not touch, which is the copy-paste
 signature of a record filled from the previous release's; and a
 date that is not an ISO date. A `not signed` verdict is a valid
 record: the gate's answer can be no, and the record of the no
@@ -278,19 +277,19 @@ stands the same way.
 Landed with this document, as documentation and tooling only:
 
 - This design.
-- `runner/tools/release_gate.py`: the candidate-record
-  generator (the checklist above, classes classified from a git
-  range), the sign-off template, and the sign-off validator.
-  Advisory and invoked, never ambient — the approval guard's
+- `runner/tools/release_gate.py`: the candidate-record generator
+  (the checklist above, classes classified from a git range),
+  the sign-off template, and the sign-off validator. Advisory
+  and invoked, never ambient, following the approval guard's
   discipline. It is wired into nothing: no hook, no workflow, no
   train reads it, and no ship waits on it.
-- `runner/tests/test_release_gate.py`: the unit tests — the
-  registry held shut, the two measured corrections (release
+- `runner/tests/test_release_gate.py`: the unit tests, covering
+  the registry held shut, the two measured corrections (release
   commits excluded; slot-only changes are refreshes), checklist
   rendering, and the validator's accept and refuse cases.
 
-What waits on the conductor, by design — the gate is his hand,
-and these are the points where only his hand fits:
+What waits on the conductor, by design, since the gate is his
+hand and these are the points where only his hand fits:
 
 1. **The signature itself.** Each release's sign-off is the
    conductor's own act. No lane can sign for him, and the record
@@ -307,7 +306,7 @@ and these are the points where only his hand fits:
    accepted from a named seat's reading instead of the
    conductor's own; whether one signature may cover a batch of
    candidates cut together; and whether the records' home named
-   here — the release-signoffs drawer in the project documents —
+   here (the release-signoffs drawer in the project documents)
    is where he wants them kept.
 5. **The protected verdict.** Whether the protected-candidate
    form is acceptable as designed, since it puts his signature

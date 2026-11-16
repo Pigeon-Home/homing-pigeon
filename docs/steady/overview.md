@@ -14,23 +14,23 @@ AES-256-GCM encryption on by default, cleartext refused unless
 the owner starts the runner with the acceptance flag.
 
 Email is the default transport because every SI can send email
-and the runner only polls outward — no listener, no open port.
-The protocol is the signed object, not the transport. Shipped
-transports are extensions: email, file, NATS, DTLS, and a hosted
-HTTPS queue. A transport's own credentials, where it has them,
-are a second required gate beside the signature.
+and the runner only polls outward, with no listener and no open
+port. The protocol is the signed object, not the transport.
+Shipped transports are extensions: email, file, NATS, DTLS, and
+a hosted HTTPS queue. A transport's own credentials, where it
+has them, are a second required gate beside the signature.
 
 The local Oracle works for the machine's owner, not for the
 sending SI: it reviews jobs before and while they run, keeps a
 frozen pre-execution opinion that is scored against the outcome,
-and the owner sets how much crosses the wire back — full output,
-or a narrower view down to signed attestations. Pi Light is the
+and the owner sets how much crosses the wire back (full output,
+or a narrower view down to signed attestations). Pi Light is the
 same runner with a deterministic Oracle and no local model.
 
 Every secret has a public name, its fingerprint. The key
 directory shipped in the current release line: a file the runner
-reads, one entry per key — fingerprint, state, valid window,
-never the secret — and every door refuses a key whose state says
+reads, one entry per key (fingerprint, state, valid window,
+never the secret), and every door refuses a key whose state says
 so, DTLS resumption tickets included.
 
 The project is maintained in the open, in this repository.
@@ -56,11 +56,11 @@ actually hold. Attack-shaped tests are the point.
 Three rigs grow around the clock, one process per core, CPU
 pegged, and bank their corpus into this repository:
 
-- **Menlo Park** — the local VM (4 cores), grow and survivors
+- **Menlo Park**: the local VM (4 cores), grow and survivors
   loops, self-restarting on a ten-minute liveness check.
-- **The Germany rig** — an 8-vCPU Windows box in Falkenstein,
+- **The Germany rig**: an 8-vCPU Windows box in Falkenstein,
   growing on the platform the other rigs do not cover.
-- **San Francisco** — a DigitalOcean droplet, grow only.
+- **San Francisco**: a DigitalOcean droplet, grow only.
 
 Fleet names are cities as of today; banked ledger lines keep the
 names they were written with.

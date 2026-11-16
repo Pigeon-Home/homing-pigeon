@@ -1,10 +1,10 @@
 # Sending a job (any SI)
 
 The runner is SI-agnostic: anything that can send email to the runner's
-mailbox and sign the body can drive it — your SI of choice, a cron
-script, whatever. The SI needs the `shared_secret` string from your
-`config.json` — the random value the installer generated, not the
-mailbox password. Then:
+mailbox and sign the body can drive it, including your SI of choice, a
+cron script, or whatever. The SI needs the `shared_secret` string from
+your `config.json` (the random value the installer generated, not the
+mailbox password). Then:
 
 ```bash
 python3 runner/cloud/send_job.py new --kind ping --secret <the-string>
@@ -17,14 +17,14 @@ python3 runner/cloud/send_job.py new --kind exec --script-file job.sh \
 
 ## Before the first job: know the platform
 
-A job's script is written for the runner's platform — PowerShell
-on Windows, a POSIX shell on Linux and macOS — and a script
+A job's script is written for the runner's platform (PowerShell
+on Windows, a POSIX shell on Linux and macOS), and a script
 written for the wrong one fails at once. So before sending
 anything, establish which platform the runner is on:
 
 - **Guess from context when you can.** The machine the owner
-  talks about, the platform an earlier result named, the
-  platform card a ping returns — any of these settles it.
+  talks about, the platform an earlier result named, or the
+  platform card a ping returns: any of these settles it.
 - **When nothing gives it away,** the common cases are Windows
   and macOS. Treat that as a starting guess, not a fact.
 - **When you do not know, ask the owner** which operating
@@ -48,7 +48,7 @@ arrives a little after the send).
 
 Do not name the interpreter by an absolute path. The runner's
 sandbox binds the interpreter's install prefix read-only when that
-prefix is deep enough to bind — an absolute path outside the
+prefix is deep enough to bind. An absolute path outside the
 standard tree makes it bind that install prefix, so
 `/opt/x/bin/python3` binds `/opt/x` read-only and pins the job to
 that one install tree. A shallow path binds nothing: `/bin/sh`
@@ -61,15 +61,16 @@ name (`["bash"]`, `["sh"]`) that resolves under `/usr`.
 
 Once the clock reads true, the natural next job proves the whole
 loop at once: the rig checks out the owner's repository, makes a
-small change, commits, and pushes — the same motion every later
-setup step (credentials, tools, configuration) is built from.
-This example ran live on a fresh Windows runner over the file
-transport on 31 Oct 2026; over email the envelope is identical.
+small change, commits, and pushes, which is the same motion
+every later setup step (credentials, tools, configuration) is
+built from. This example ran live on a fresh Windows runner over
+the file transport on 31 Oct 2026; over email the envelope is
+identical.
 
 Three rules of thumb, all earned the same day:
 
 1. **Assume a bare machine.** The runner's executable carries
-   everything it needs, but nothing else is installed — no git,
+   everything it needs, but nothing else is installed: no git,
    no Python. The job brings what it needs: here a portable git,
    downloaded and unpacked inside its own work directory.
 2. **Declare what your tools carry.** The runner scans every
@@ -79,8 +80,8 @@ Three rules of thumb, all earned the same day:
    portable git's sample ssh client configuration names
    `~/.ssh/id_rsa`, `~/.ssh/id_dsa` and `~/.ssh/id_ecdsa`, and
    the first attempt died in eleven seconds for exactly that.
-   The script declares the three paths in its header comments —
-   declarations are read from the script's own text — and that
+   The script declares the three paths in its header comments
+   (declarations are read from the script's own text), and that
    is the whole fix. Before sending a new job shape, rehearse
    it: run the runner's own scanner (`runner/ops/paths.py`,
    `runner/oracle/remediation.py`'s `classify_findings`) over
@@ -88,8 +89,8 @@ Three rules of thumb, all earned the same day:
 3. **Produce only what the job needs.** A full checkout of a
    repository whose tests and docs discuss credential stores
    produces more undeclared references than a script can
-   declare. The job checks out sparsely — only the file it
-   edits — and a guard refuses to commit if anything else
+   declare. The job checks out sparsely (only the file it
+   edits), and a guard refuses to commit if anything else
    changed.
 
 The credential for the push travels as a job input file
@@ -152,26 +153,26 @@ python3 runner/cloud/send_job.py new --secret <the-string> \
 ## Remote upgrade
 
 A runner can be upgraded remotely by anyone who holds its shared
-secret. The procedure is a part of the software suite — an operating
-procedure built from the job machinery — and deliberately not a part
+secret. The procedure is a part of the software suite (an operating
+procedure built from the job machinery) and deliberately not a part
 of the protocol specification: the wire carries an ordinary signed
 job, nothing more. It was first run end to end on 31 Oct 2026,
 taking a hosted runner from 3.14.2 to 3.15.0.
 
 It has two halves, because a confined job cannot do the whole thing
-and is not allowed to: PROTOCOL.md section 9.4 — no job field can
+and is not allowed to (PROTOCOL.md section 9.4: no job field can
 widen or disable confinement, the sandbox has no network, and the
-runner's own tree is outside a job's reach.
+runner's own tree is outside a job's reach).
 
 **The job half (the secret-holder's side).** Send one signed exec
 job that names the release tarball and the release's SHA384SUMS as
 URL input files (`--file` in send_job.py). The runner itself
 downloads its input files before the job starts, outside the
-sandbox — that is how the bytes cross a wall the job cannot. The
+sandbox; that is how the bytes cross a wall the job cannot. The
 tarball is about 91 MB; the runner's download cap is 100 MiB. The
 job's script then checks the tarball against the sums inside its own
-work directory — the one place a job can write that is still there
-after it exits — moves the tarball into a `remote-upgrade` folder in
+work directory (the one place a job can write that is still there
+after it exits), moves the tarball into a `remote-upgrade` folder in
 that work directory, and leaves a `trigger` file beside it:
 
 ```sh
@@ -192,16 +193,15 @@ nothing staged, and an unconditional "staged" line that said
 otherwise.)
 
 **The host half (installed once by the owner).** The kit in
-`runner/tools/remote-upgrade/` — the applier
-`hp-remote-upgrade-apply` plus its systemd service, path and timer
-units — is installed on the box once. The timer runs the applier
-every minute (the path unit is a fast path only: a PathExistsGlob
-two directories deep did not fire when the trigger appeared). The
-applier finds the newest triggered payload, fetches a FRESH
-SHA384SUMS for the staged version and checks the tarball against it
-a second time, then runs the release's own installer and restarts
-the runner. The outcome is written to `outcome.txt` in the payload
-folder; the full log is `/root/.homing-pigeon/remote-upgrade-applier.log`.
+`runner/tools/remote-upgrade/` (the applier `hp-remote-upgrade-apply` plus
+its systemd service, path and timer units) is installed on the box once.
+The timer runs the applier every minute (the path unit is a fast path
+only: a PathExistsGlob two directories deep did not fire when the trigger
+appeared). The applier finds the newest triggered payload, fetches a FRESH
+SHA384SUMS for the staged version and checks the tarball against it a
+second time, then runs the release's own installer and restarts the
+runner. The outcome is written to `outcome.txt` in the payload folder; the
+full log is `/root/.homing-pigeon/remote-upgrade-applier.log`.
 
 Four things the first run earned, all handled inside the applier:
 
@@ -211,7 +211,7 @@ Four things the first run earned, all handled inside the applier:
   from a service.
 - The frozen installer leaks its bundled OpenSSL into every program
   it shells out to, and a current Fedora's `systemctl` and `curl`
-  need newer OpenSSL symbols than the bundle carries — they die on
+  need newer OpenSSL symbols than the bundle carries; they die on
   the mismatch. The applier puts small wrapper scripts for
   `systemctl` and `curl` first on the installer's PATH; each wrapper
   drops the leaked library path and runs the real tool.
@@ -263,13 +263,13 @@ The sender keeps the pair in its keyring (`send_job.py keyring add
 --key-id upgrade --runner <mailbox>`) and sends with `--key-id
 upgrade`. The policy fences the key to the one act: it can run the
 exact staging script, with the exact two input files, and nothing
-else — a clock job signed with the upgrade key is refused ("script
+else; a clock job signed with the upgrade key is refused ("script
 is not in this key's allowlist"). Rotating the key is a config
 edit: add the new secret, hand it out, retire the old one. When the
 staging script changes, its digest in the policy changes with it;
 that re-pinning is deliberate, not friction. The upgrade key is
-platform-independent — it is config and protocol, and works the
-same on every platform the runner runs on.
+platform-independent: it is config and protocol, and works the same
+on every platform the runner runs on.
 
 **Platforms.** The contract is the same everywhere: the signed
 staging job (under the upgrade key) leaves a verified tarball and a
@@ -278,11 +278,11 @@ tarball against a fresh SHA384SUMS, stops the runner, runs the
 release's installer, restores the config profile if the installer
 re-stamped it, starts the runner, and writes the outcome beside the
 payload. Stopping first is not optional: a running runner holds its
-own program file open, and replacing it fails ("text file busy") —
-a failed install must start the runner again on the previous
-version, which every applier below does. What differs per platform
-is only the service control, the archive tool, and the scheduler
-that fires the applier:
+own program file open, and replacing it fails ("text file busy"). A
+failed install must start the runner again on the previous version,
+which every applier below does. What differs per platform is only
+the service control, the archive tool, and the scheduler that fires
+the applier:
 
 | Platform | Runner runs as | Applier | Fired by | Status |
 |---|---|---|---|---|
@@ -324,12 +324,12 @@ with the same meaning as for `new`. Every subcommand takes
 its `reply_to`, and the runner emails the result to that address
 instead of its own mailbox. Without it the result goes to the
 runner's mailbox. A system sending on a user's behalf addresses
-the result to the user by default — reply to self, the address it
-sends from on their behalf — and, when the user asks for the
-result to go to a different address, says up front that it will
-not be able to retrieve the result from there and the user will
-have to fetch it by hand (AGENTS.md, "Where the answer goes:
-reply to self, by default").
+the result to the user by default (reply to self, the address it
+sends from on their behalf) and, when the user asks for the result
+to go to a different address, says up front that it will not be
+able to retrieve the result from there and the user will have to
+fetch it by hand (AGENTS.md, "Where the answer goes: reply to
+self, by default").
 
 On a runner whose owner caps the view (`max_result_view`), ask for
 the view and declare the questions the result should answer, so the
@@ -368,9 +368,9 @@ A recipe or change job brings no script, interpreter or environment.
 A cancel is answered with a signed `cancel_ack` saying `killed`,
 `will_refuse` or `finished`.
 
-Or paste the string to your SI in chat — it composes, signs, and sends
-the job message itself, and reads the result message when it arrives. Large files
-are uploaded to cloud storage first; the job message carries the URLs.
+Or paste the string to your SI in chat: it composes, signs, and sends the job
+message itself, and reads the result message when it arrives. Large files are
+uploaded to cloud storage first; the job message carries the URLs.
 
 Verify a result body (results are encrypted by default, so pass
 the job id from the result's subject line to decrypt it):

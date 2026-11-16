@@ -1,6 +1,6 @@
 # Airwaves — an example Homing Pigeon extension
 
-A sense for the wireless neighborhood — the Pi's wireless
+A sense for the wireless neighborhood, the Pi's wireless
 neighborhood watch. It reads the Wi-Fi neighborhood the
 platform already sees, and the box's own link, and files the
 wireless analogs of the wired spoofing tells: a familiar SSID
@@ -19,25 +19,25 @@ The watcher files four declared signals:
 
 The first pass learns the neighborhood quietly
 (`learn_first_pass`, default true). A pass with no scan data
-(`scan_ok` false) files nothing and changes nothing — no data
+(`scan_ok` false) files nothing and changes nothing: no data
 is not an absence, so missed-scan counters do not advance.
 Every successful scan is evaluated before it is absorbed, so
 a security downgrade fires before the baseline learns to
 expect it.
 
-Scan sources, in order, all guarded — a missing tool is a
-quiet no-op pass, never an error: NetworkManager's cached
+Scan sources, in order, all guarded (a missing tool is a
+quiet no-op pass, never an error): NetworkManager's cached
 results via `nmcli device wifi list` (never `--rescan`; its
-percentage signal is converted to approximate dBm as
-`pct / 2 - 100`), then a cached `iw dev <iface> scan dump`
-when one exists; the box's own link comes from
-`iw dev <iface> link`. The `iface` tunable names the Wi-Fi
-interface; empty means the first interface `iw dev` names.
-Live reads are therefore a Linux story (a box with neither
-`nmcli` nor `iw` simply has nothing to report); fixture mode
-(`--readings`) works on any platform, including Windows and
-macOS. Security strings are ranked by `security_rank`:
-open 0, WEP 1, WPA/PSK 2, WPA2 3, WPA3/SAE 4.
+percentage signal is converted to approximate dBm as `pct /
+2 - 100`), then a cached `iw dev <iface> scan dump` when one
+exists; the box's own link comes from `iw dev <iface> link`.
+The `iface` tunable names the Wi-Fi interface; empty means
+the first interface `iw dev` names. Live reads are therefore
+a Linux story (a box with neither `nmcli` nor `iw` simply
+has nothing to report); fixture mode (`--readings`) works on
+any platform, including Windows and macOS. Security strings
+are ranked by `security_rank`: open 0, WEP 1, WPA/PSK 2,
+WPA2 3, WPA3/SAE 4.
 
 BLE is out of scope. There is no clean stdlib-reachable BLE
 advertisement source, so this sense says nothing about
@@ -68,20 +68,20 @@ A readings file is one JSON object:
           "signal_dbm": -55}}
 ```
 
-Alert payloads are unsigned sense alerts on stdout; signing
-and delivery follow the standard senses flow. With
-`--local-dir <runner base dir> --key-id <its key id>` (and
+Alert payloads are unsigned sense alerts on stdout; signing and
+delivery follow the standard senses flow. With `--local-dir
+<runner base dir> --key-id <its key id>` (and
 `HOMING_PIGEON_SENSOR_SECRET` set to this sense's key) it
-delivers locally instead. The full extension walkthrough —
-manifest fields, the versioning contract, sensor binding, and
-how to turn this example into your own package — is in
+delivers locally instead. The full extension walkthrough
+(manifest fields, the versioning contract, sensor binding, and
+how to turn this example into your own package) is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).
 
 ## Light mode and safety boundary
 
 Scan cadence is the cost knob, and it leads the Light mode:
 `poll_interval_sec` is `300` by default and `1800` in Light
-mode — the neighborhood changes slowly, and reading the
+mode. The neighborhood changes slowly, and reading the
 platform's cached results every half hour is enough to catch
 a new radio, a vanished one, and a fading link. That is the
 only knob Light mode turns; `gone_after_scans` (3) and
@@ -89,7 +89,7 @@ only knob Light mode turns; `gone_after_scans` (3) and
 cadence three missed scans already mean a long absence.
 
 The boundary, stated plainly: this sense is a read-only
-consumer of the platform's own scan results — it never
+consumer of the platform's own scan results; it never
 associates to a network, never deauthenticates anyone, and
 never injects frames. On a Pi Light install it runs
 deterministically with no model in the loop; the `high`

@@ -18,8 +18,8 @@ The seed is the owner-written entry in `docs/FUTURE.md`:
 
 That sentence ends at `SS`. The question it raised is answered:
 `SS` is the Shared Secret, the same secret the DTLS handshake
-already uses as its key — see the addendum at the end of this
-plan. No part of the design had to guess at it.
+already uses as its key (see the addendum at the end of this
+plan). No part of the design had to guess at it.
 
 Version 1 already defines a direct DTLS 1.3 binding. Its profile is
 narrow and remains the cryptographic basis for this build:
@@ -229,7 +229,7 @@ boundary unchanged.
 
 The DTLS core keys its stateless cookie and sessions to a peer
 address. Email has no UDP address. The address the carriage
-uses is the string `email:` followed by the mail session-id --
+uses is the string `email:` followed by the mail session-id,
 an untrusted routing label that demultiplexes concurrent
 attempts on 1 mailbox, never a credential and never a key
 selector. There is no configured peer identity in it, and none
@@ -257,35 +257,33 @@ parts are idempotent.
 
 A mailbox poll or a sender retry can deliver the same RFC822
 message more than once. The carriage records a digest of each
-accepted DTLS mail payload for the life of its session state.
-The rule is split by phase (the review of 2-Nov-2026 settled
-the split): an exact repeat of a handshake-phase datagram is
-not fed to the engine again -- nothing is derived twice --
-and instead re-posts the saved last outbound flight, since
-the duplicate is the signal the peer's answer was lost; an
-exact repeat of application data is dropped and does nothing.
-This is a carriage dedup rule, separate from DTLS record
-protection and separate from the job seen-set. It stops
-a replayed protected record from being presented to the engine as
-a new application message.
+accepted DTLS mail payload for the life of its session state. The
+rule is split by phase (the review of 2-Nov-2026 settled the
+split): an exact repeat of a handshake-phase datagram is not fed
+to the engine again (nothing is derived twice), and instead
+re-posts the saved last outbound flight, since the duplicate is
+the signal the peer's answer was lost; an exact repeat of
+application data is dropped and does nothing. This is a carriage
+dedup rule, separate from DTLS record protection and separate
+from the job seen-set. It stops a replayed protected record from
+being presented to the engine as a new application message.
 
 ### D9. Bind results to the session that carried the job
 
-The email extension will remember, for each job delivered
-from a session, which local session carried it, keyed by the
-session's connection ID together with the job ident -- never
-by the job ident alone, which the submitter chooses and which
-collides across submitters. When the matching
-result appears in the channel outbox, the extension seals it as
-application data for that session and posts it as DTLS mail. If the
-session is gone, the result remains pending for a fresh session;
-it is not downgraded to an ordinary email result by this carriage.
-The pending hold is bounded (the review of 2-Nov-2026 made the
-bound explicit): a held result expires by age -- 7 days in the
-reference implementation -- and the held set is bounded in
-count and in total bytes, oldest first. An expired result is
-dropped and the expiry logged; dropping is not downgrade,
-because downgrade would be sending it by a weaker path.
+The email extension will remember, for each job delivered from a
+session, which local session carried it, keyed by the session's
+connection ID together with the job ident, never by the job ident
+alone, which the submitter chooses and which collides across
+submitters. When the matching result appears in the channel outbox,
+the extension seals it as application data for that session and
+posts it as DTLS mail. If the session is gone, the result remains
+pending for a fresh session; it is not downgraded to an ordinary
+email result by this carriage. The pending hold is bounded (the
+review of 2-Nov-2026 made the bound explicit): a held result
+expires by age (7 days in the reference implementation), and the
+held set is bounded in count and in total bytes, oldest first. An
+expired result is dropped and the expiry logged; dropping is not
+downgrade, because downgrade would be sending it by a weaker path.
 
 ### D10. The naming: DTLS, and DTLS via email
 
@@ -344,23 +342,22 @@ it. It now says what happened.)
 
 ## Addendum: open questions and D7 wire format (2-Nov-2026)
 
-Open question 1 is answered: `SS` is the Shared Secret. It is
-the DTLS handshake's key in the existing design -- the version
-1 profile's PSK -- so the resolution confirms the plan's
-assumption-free posture rather than changing it: no new key
-material, no second secret, and the specification says so in
-its Section 4.1. One sentence belongs next to the expansion,
-because "shared secret" is the phrase that will be misread as
-the session key: the PSK is an authenticator only. It
-authenticates the handshake; it does not encrypt the session
--- the ephemeral share does. Open questions 2 and 3 stand as defaults
-taken (resumption allowed under the fresh-share rule; the
-carriage datagram limit at 262144 octets with a 32768-character
-default chunk, both tunable).
+Open question 1 is answered: `SS` is the Shared Secret. It is the
+DTLS handshake's key in the existing design (the version 1 profile's
+PSK), so the resolution confirms the plan's assumption-free posture
+rather than changing it: no new key material, no second secret, and
+the specification says so in its Section 4.1. One sentence belongs
+next to the expansion, because "shared secret" is the phrase that
+will be misread as the session key: the PSK is an authenticator only.
+It authenticates the handshake; it does not encrypt the session, as
+the ephemeral share does. Open questions 2 and 3 stand as defaults
+taken (resumption allowed under the fresh-share rule; the carriage
+datagram limit at 262144 octets with a 32768-character default chunk,
+both tunable).
 
 As built, the wire format of D7 is 1 header line per flight
-mail -- `HP-DTLS/3 transfer=<16 hex> part=<n> parts=<m>
-bytes=<total> sha384=<digest>` -- followed by 1 base64 chunk,
+mail (`HP-DTLS/3 transfer=<16 hex> part=<n> parts=<m>
+bytes=<total> sha384=<digest>`), followed by 1 base64 chunk,
 with chunk boundaries on base64 group boundaries so the
 decoded chunks concatenate to the datagram exactly.
 

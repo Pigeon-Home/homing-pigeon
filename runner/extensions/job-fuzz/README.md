@@ -4,8 +4,8 @@ A sense that fuzzes the jobs this box has already run. It
 keeps a bounded corpus of the runner's retained job
 records, mutates them with grammar-shaped mutations on
 idle cycles only, and runs the variants through the
-runner's own validation and confined execution — the
-bucket — via the core's `--run-variant` door. What it
+runner's own validation and confined execution (the
+bucket) via the core's `--run-variant` door. What it
 finds files as Oracle signals: a variant that hangs or
 breaks the run (`variant_hard_failure`, high), a variant
 whose outcome class diverges from the seed job's recorded
@@ -35,8 +35,8 @@ are never admitted through the job path, never mailed,
 never signed. The core's `--run-variant` mode is the one
 door: it copies an allowlist of job keys (script,
 interpreter, args, env, a timeout capped at 120s), drops
-everything else — files, `script_url`, signatures,
-delivery fields — and runs what remains through the same
+everything else (files, `script_url`, signatures,
+delivery fields), and runs what remains through the same
 validation and confined execution as a real exec job.
 The sense never holds the shared secret.
 
@@ -48,10 +48,10 @@ its own signing key, like every sense), and the manifest
 tunables must say where the retained records live and
 which command runs a variant:
 
-- `runner_base_dir` — the runner's base dir; the corpus
+- `runner_base_dir`: the runner's base dir; the corpus
   is read from its `retained/` folder. (`--runner-dir`
   wins over the tunable.)
-- `runner_cmd` — the command handed one variant file,
+- `runner_cmd`: the command handed one variant file,
   e.g. `python3 /path/to/runner/runner.py --config
   /path/to/config.json --run-variant {variant}`. Empty
   (the default) means no execution: the corpus is
@@ -88,7 +88,7 @@ kept deterministic:
   Alongside the single-seed mutators, `splice` grafts a
   segment of one seed's script into another, and
   `dictionary` injects tokens harvested from the corpus's
-  own scripts — the commands, flags, and paths this box
+  own scripts: the commands, flags, and paths this box
   actually runs.
 - **Two mutators are probes with a promise.**
   `blank_line` and `trailing_blank` preserve a script's
@@ -97,8 +97,8 @@ kept deterministic:
   files a divergence that names the broken relation.
 - **Findings shrink, triage buckets, seeds earn their
   budget.** An interesting variant is minimized before it
-  files — lines dropped while the outcome persists,
-  bounded by `minimize_max_steps` (default 12) — so the
+  files, with lines dropped while the outcome persists,
+  bounded by `minimize_max_steps` (default 12), so the
   archived repro is the smallest one the campaign could
   make. Hard failures file once per normalized reason
   bucket across all seeds (the same validation hole found
@@ -118,13 +118,14 @@ retained text. The corpus is the record, not the wire.
 
 This sense exists to spend idle cycles, so Light mode is
 mostly restraint: raise `poll_interval_sec` (900 is the
-default; hours cost nothing — the corpus moves at the
-speed of real jobs), lower `max_variants_per_pass` to 2
-or 3, and keep `variant_timeout_sec` small. On a Pi the
-campaign still runs entirely against the deterministic
-machinery: mutation, the core's validation, the confined
-execution, triage. No model is involved at any point, so
-Pi Light loses nothing but speed.
+default; hours cost nothing because the corpus moves at
+the speed of real jobs), lower `max_variants_per_pass`
+to 2 or 3, and keep `variant_timeout_sec` small. On a Pi
+the campaign still runs entirely against the
+deterministic machinery: mutation, the core's
+validation, the confined execution, triage. No model is
+involved at any point, so Pi Light loses nothing but
+speed.
 
 ```sh
 # HOMING_PIGEON_SENSOR_SECRET holds the job_fuzz sense's key

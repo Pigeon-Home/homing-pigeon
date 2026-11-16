@@ -12,27 +12,27 @@ The watcher files two declared signals:
 | Signal | Fires when |
 |--------|------------|
 | `device_arrived` | A device id not in the learned baseline appears on a watched bus (`info`) |
-| `storage_arrived` | A new device whose USB device class is `08` (mass storage) appears — filed instead of `device_arrived` (`medium`) |
+| `storage_arrived` | A new device whose USB device class is `08` (mass storage) appears, filed instead of `device_arrived` (`medium`) |
 
-Departures file nothing — no departure signal is declared.
-A device that leaves drops out of the state silently, so
-plugging it back in files a fresh arrival.
+Departures file nothing because no departure signal is
+declared. A device that leaves drops out of the state
+silently, so plugging it back in files a fresh arrival.
 
 Live reads are Linux-only. USB devices come from
 `/sys/bus/usb/devices/*/` (`idVendor`, `idProduct`,
 `product`, `bDeviceClass`); a device's id is
 `<vendor>:<product>`, and identical twin devices share that
-id and are indistinguishable at this level — two of them are
-one entry. Serial devices come from `/dev/serial/by-id`
+id and are indistinguishable at this level, so two of them
+are one entry. Serial devices come from `/dev/serial/by-id`
 names when present (the id is the by-id name), else serial
 tty names from `/sys/class/tty` (`ttyUSB*`, `ttyACM*`,
 `ttyAMA*`, `ttyS*`), with `device_class` `"serial"`. Every
 read is guarded: a bus or file the machine does not expose
 contributes nothing and is never an error. On Windows and
-macOS there is no live source — `read_live` returns an empty
-device list and the pass is a quiet no-op; fixture mode
-(`--readings`) is the path on those platforms, and works
-everywhere.
+macOS there is no live source: `read_live` returns an empty
+device list and the pass is a quiet no-op, while fixture
+mode (`--readings`) is the path on those platforms, and
+works everywhere.
 
 Run one pass:
 
@@ -58,13 +58,13 @@ A readings file is one JSON object:
               "device_class": "08"}]}
 ```
 
-Alert payloads are unsigned sense alerts on stdout; signing
-and delivery follow the standard senses flow. With
-`--local-dir <runner base dir> --key-id <its key id>` (and
+Alert payloads are unsigned sense alerts on stdout; signing and
+delivery follow the standard senses flow. With `--local-dir
+<runner base dir> --key-id <its key id>` (and
 `HOMING_PIGEON_SENSOR_SECRET` set to this sense's key) it
-delivers locally instead. The full extension walkthrough —
-manifest fields, the versioning contract, sensor binding, and
-how to turn this example into your own package — is in
+delivers locally instead. The full extension walkthrough
+(manifest fields, the versioning contract, sensor binding, and
+how to turn this example into your own package) is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).
 
 ## Other tunables

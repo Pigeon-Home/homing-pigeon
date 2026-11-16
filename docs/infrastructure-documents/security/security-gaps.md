@@ -1,29 +1,29 @@
 # Security gaps: what the defaults don't cover
 
 This is the honest accounting. The project's threat model
-(`docs/infrastructure-documents/security/threat-model.md`) says: the shared secret is root, and every
-job should be treated as potentially destructive. This document says
-what the *default* installation actually protects against — and what
-it doesn't — plus the order in which to turn things on if the answer
-bothers you.
+(`docs/infrastructure-documents/security/threat-model.md`) says: the
+shared secret is root, and every job should be treated as
+potentially destructive. This document says what the *default*
+installation actually protects against, and what it doesn't, plus
+the order in which to turn things on if the answer bothers you.
 
 ## The one sentence
 
 With default settings, jobs execute as the same OS user that owns
-`config.json`, the code, the state, and the audit log — no separate
+`config.json`, the code, the state, and the audit log; no separate
 job user is named by default, so in that `job_user` sense **the job
 is the runner**. That is not the whole default picture: all six
 `security.modes` features read `enforce` when unset, and
-confinement engages out of the box on a Linux box with `bwrap`,
-on Windows through its backend, and on FreeBSD through its jail, so
-on Linux and FreeBSD the job is sandboxed away from `config.json`,
-the state dir and the audit log; on Windows the backend bounds
-the job's token, integrity level and memory but isolates no
-filesystem, and there a same-user job is separated from those
-files only by the identity split and the ACLs below. Where confinement cannot engage, or where it is set
-to `audit` or `off`, every file permission on the box is theater
-against a same-user job itself, because the job can read and
-rewrite all of it. Everything below follows from that.
+confinement engages out of the box on a Linux box with `bwrap`, on
+Windows through its backend, and on FreeBSD through its jail, so on
+Linux and FreeBSD the job is sandboxed away from `config.json`, the
+state dir and the audit log; on Windows the backend bounds the
+job's token, integrity level and memory but isolates no filesystem,
+and there a same-user job is separated from those files only by the
+identity split and the ACLs below. Where confinement cannot engage,
+or where it is set to `audit` or `off`, every file permission on
+the box is theater against a same-user job itself, because the job
+can read and rewrite all of it. Everything below follows from that.
 
 ## The order
 
@@ -32,11 +32,12 @@ ones before it.
 
 **1. Split the identities.** The job must run as a different
 principal from the runner. That's `security.modes.job_user`
-(`enforce`) on POSIX — the runner keeps its user, the job drops to
-`job_user`. On Windows that's `install.exe --run-as` with a limited
-account instead of the default SYSTEM. Until this is done, steps 2
-and 3 do nothing: an ACL that hides `config.json` from the job also
-hides it from the runner when they're the same user.
+(`enforce`) on POSIX, where the runner keeps its user and the job
+drops to `job_user`. On Windows that's `install.exe --run-as` with
+a limited account instead of the default SYSTEM. Until this is
+done, steps 2 and 3 do nothing: an ACL that hides `config.json`
+from the job also hides it from the runner when they're the same
+user.
 
 **2. ACL the secrets away from the job.** Once the principals are
 split: `config.json`, the secret file, the OAuth token, `seen.json`,
@@ -48,26 +49,26 @@ readable by the runner principal and not by the job principal.
 | Linux | `job_user` (setuid), `install.py` writes owner-only `0600` | Default is still the same user. POSIX ACLs (`setfacl`) on the base dir should hide the secret from the job user when bwrap is off |
 | macOS | launchd agent as the installing user | `chmod +a` ACLs exist but nothing applies them; the real cage would be `sandbox-exec`, not an ACL |
 | FreeBSD | cron `@reboot` as the user | `setfacl` on ZFS/UFS unapplied; the per-job jail is the confinement backend and engages at `enforce` |
-| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `docs/steady/security/windows.md` documents the account as the identity boundary | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r` — a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity and a restricted token are the stronger cousins, and they now ship as the Windows confinement backend at `enforce` |
+| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `docs/steady/security/windows.md` documents the account as the identity boundary | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r`, which is a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity and a restricted token are the stronger cousins, and they now ship as the Windows confinement backend at `enforce` |
 
 `--posture` already warns about the Windows ACL; it should warn
 about a missing POSIX ACL too.
 
 **3. Cage the workspace.** `workspace_root` and `protected_paths`
 are a snapshot today: the Oracle *notices* a write outside the
-workspace after the fact, and remediation (default
-`deterministic`) quarantines the job's outputs, refers and pages on
-that finding; the write itself has happened. An ACL — or a confinement backend with filesystem isolation, where one exists — makes
-the write *fail*. On Linux, bwrap (`security.modes.confinement`) is
-the better tool and should stay the confinement backend; FreeBSD
-has its per-job jail, whose only writable mount is the workdir.
-The Windows backend (Job Object, restricted token, low
-integrity) bounds the job but isolates no filesystem, so on
-Windows the ACL and the identity split carry this step. ACLs matter
-where confinement is set to `off`, and for macOS, where no cage
-exists yet. The Pi profile already lists
-`/etc/shadow` as a protected path; that path should be *denied* to
-the job user, not only watched.
+workspace after the fact, and remediation (default `deterministic`)
+quarantines the job's outputs, refers and pages on that finding;
+the write itself has happened. An ACL, or a confinement backend
+with filesystem isolation where one exists, makes the write *fail*.
+On Linux, bwrap (`security.modes.confinement`) is the better tool
+and should stay the confinement backend; FreeBSD has its per-job
+jail, whose only writable mount is the workdir. The Windows backend
+(Job Object, restricted token, low integrity) bounds the job but
+isolates no filesystem, so on Windows the ACL and the identity
+split carry this step. ACLs matter where confinement is set to
+`off`, and for macOS, where no cage exists yet. The Pi profile
+already lists `/etc/shadow` as a protected path; that path should
+be *denied* to the job user, not only watched.
 
 Set the workdir ACL at the same moment the runner chowns the workdir
 for `job_user` (in `_job_user_preexec`), never from anything in the
@@ -79,7 +80,7 @@ job field that turns the judge off.**
 - **The HMAC check.** An ACL doesn't decide who may send a job.
   Signatures do.
 - **`key_policies.allowed_files`.** That's a string check before a
-  file is staged. The kernel never sees it. Keep it — and don't
+  file is staged. The kernel never sees it. Keep it, and don't
   pretend it's a DACL.
 - **`reply_to`, the Oracle, or the wire format.** No new message
   field. Result routing is not a filesystem question.
@@ -94,7 +95,7 @@ where each one stands. Items marked absent are listed in docs/FUTURE.md.
   every future run. No hash check at startup, no read-only install
   dir. Status: absent.
 - **Network egress control.** The canonical agent attack is
-  exfiltration — the job `curl`s secrets straight out, bypassing
+  exfiltration: the job `curl`s secrets straight out, bypassing
   every redaction rule (those only cover what comes *back* in the
   result email). Bwrap in enforce mode (Linux, the default)
   blocks it, and the FreeBSD jail denies a job all network; the
@@ -115,11 +116,12 @@ where each one stands. Items marked absent are listed in docs/FUTURE.md.
   for Ollama. PyPI trusted publishing is the one solid link.
   Status: partial.
 - **Secret revocation.** "The shared secret is root" is documented,
-  and a written fire drill exists — docs/infrastructure-documents/security/safeguards.md §7 and
-  docs/steady/secret-rotation.md: revoke the mailbox credential first
-  (that stops mail-borne delivery at once), then generate a
-  fresh shared secret, then check `runner.log` and the mailbox
-  for jobs you didn't send. Status: documented.
+  and a written fire drill exists
+  (docs/infrastructure-documents/security/safeguards.md §7 and
+  docs/steady/secret-rotation.md): revoke the mailbox credential
+  first (that stops mail-borne delivery at once), then generate a
+  fresh shared secret, then check `runner.log` and the mailbox for
+  jobs you didn't send. Status: documented.
 - **Windows default privilege.** The out-of-box Scheduled Task runs
   as SYSTEM. `--run-as` exists, but the default is the
   highest-privilege account on the box and it's quiet about it.
@@ -132,17 +134,18 @@ where each one stands. Items marked absent are listed in docs/FUTURE.md.
 
 ## Deliberately not done
 
-The gaps that remain are the owner's call, not an accident:
-this is a personal runner, and availability beats strictness for one
-user's box. The hardening controls themselves are not opt-in —
+The gaps that remain are the owner's call, not an accident: this
+is a personal runner, and availability beats strictness for one
+user's box. The hardening controls themselves are not opt-in;
 all six `security.modes` features read `enforce` when unset.
 What remains in effect until the owner names one is the identity
 split: `job_user` reads `enforce` when unset, but with no job
 user named there is no other user to drop to, so jobs still run
 as the runner's own OS user. The exceptions: M1 is two always-on
 defect fixes with default-on caps (`max_job_bytes` /
-`max_script_bytes`), M3 and M4
-are read-only report tools (`--audit-report` / `--posture`), not
-controls, and M9/M10 are design documents — not implemented. What *was* an oversight is that the docs never said, in one
-place: here's what the defaults don't protect you from, and here's
-the order to turn things on. That's what this file is.
+`max_script_bytes`), M3 and M4 are read-only report tools
+(`--audit-report` / `--posture`), not controls, and M9/M10 are
+design documents, not implemented. What *was* an oversight is
+that the docs never said, in one place: here's what the defaults
+don't protect you from, and here's the order to turn things on.
+That's what this file is.

@@ -1,48 +1,43 @@
 # Transports: beyond email
 
-> **Status.** Five job transports are implemented, and all
-> five are **transport extensions**: standalone programs the
-> runner supervises as child processes, selected by the
-> `transports` config key (default `["email"]`): **email** (the
-> default, and the project's test transport), the **file**
-> transport (a watched folder), **core NATS** pub/sub, the
-> **queues** transport (the hosted queue: a Cloudflare Worker the
-> runner polls over HTTPS, shipped below), and the **DTLS** session
-> binding (shipped below; off unless enabled).
-> The
-> runner core is transport-blind — it imports no transport code
-> and talks to each extension through a file channel (job
-> envelopes in, result envelopes out; see "Writing a new
-> transport"). Everything else below — NATS JetStream, MQTT,
-> Redis, Postgres, a real-time Durable Objects pipe — is design
-> notes, not implementation, recorded as design notes on this
-page. (A
-> loopback local-signal socket IS also shipped — it carries
-> signed `sensor_alert` envelopes from same-box producers, not
-> jobs.)
+> > **Status.** Five job transports are implemented, and all > five
+> are **transport extensions**: standalone programs the > runner
+> supervises as child processes, selected by the > `transports`
+> config key (default `["email"]`): **email** (the > default, and
+> the project's test transport), the **file** > transport (a
+> watched folder), **core NATS** pub/sub, the > **queues**
+> transport (the hosted queue: a Cloudflare Worker the > runner
+> polls over HTTPS, shipped below), and the **DTLS** session >
+> binding (shipped below; off unless enabled). > The > runner core
+> is transport-blind: it imports no transport code > and talks to
+> each extension through a file channel (job > envelopes in, result
+> envelopes out; see "Writing a new > transport"). Everything else
+> below (NATS JetStream, MQTT, > Redis, Postgres, a real-time
+> Durable Objects pipe) is design > notes, not implementation,
+> recorded as design notes on this page. (A > loopback local-signal
+> socket IS also shipped; it carries > signed `sensor_alert`
+> envelopes from same-box producers, not > jobs.)
 
 ## Yes, email. We know.
 
 Let's get it out of the way: the words "email-driven agent" make a
-certain kind of engineer visibly wince. It sounds like a hack — like
+certain kind of engineer visibly wince. It sounds like a hack, like
 we couldn't think of anything better, so we reached for the protocol
 grandpa uses.
 
 Here's the thing: email was the right *first* transport, and not by
-accident. The runner lives on your machine, behind NAT — for jobs
-it can only *poll outward*. (While polling it binds one
-loopback-only listener, the local-signal socket on
-127.0.0.1:39271, and none with `local_signal_port` 0; `--oracle`
-is a separate, non-polling mode that binds the Oracle page on
-127.0.0.1:11436. Neither is reachable off the box, and neither
-carries jobs.) Email gives us a
-store-and-forward mailbox reachable from anywhere, with at-least-once
-semantics (the IMAP unseen flag), authentication (the HMAC signature
-on every message), and zero infrastructure to operate. Every SI on earth can
-already reach a mailbox. It was the only transport with all of those
-properties on day one.
+accident. The runner lives on your machine, behind NAT; for jobs it can only
+*poll outward*. (While polling it binds one loopback-only listener, the
+local-signal socket on 127.0.0.1:39271, and none with `local_signal_port` 0;
+`--oracle` is a separate, non-polling mode that binds the Oracle page on
+127.0.0.1:11436. Neither is reachable off the box, and neither carries
+jobs.) Email gives us a store-and-forward mailbox reachable from anywhere,
+with at-least-once semantics (the IMAP unseen flag), authentication (the
+HMAC signature on every message), and zero infrastructure to operate. Every
+SI on earth can already reach a mailbox. It was the only transport with all
+of those properties on day one.
 
-But — and this is the part that matters — **the protocol was never
+But, and this is the part that matters, **the protocol was never
 about email.** Email is just Transport #1. The signed JSON, the HMAC,
 the Oracle, the two-phase query exchange: none of it knows or cares
 what pipe it travels through.
@@ -54,21 +49,22 @@ Anything that wants to carry homing-pigeon must provide:
 1. **Async store-and-forward.** The SI sends a job and walks away; the
    runner picks it up on its own schedule. No rendezvous, no open
    connections.
-2. **Outbound-only polling for jobs.** The runner opens no inbound
-   port to the network. It reaches *out* to collect jobs and
-   deliver results. (Loopback-only listeners on the same box —
-   the signal socket while polling, the Oracle page under
-   `--oracle` — are not network ports and carry no jobs.) This is non-negotiable — it's what lets
-   the runner live behind NAT on a home machine or a Pi. One
-   deliberate exception exists, and it does not hide: the DTLS
-   session binding (below) is not a store-and-forward transport
-   at all — it listens on a UDP port, only when the owner
-   enables it. Every transport that polls keeps this rule.
+2. **Outbound-only polling for jobs.** The runner opens no
+   inbound port to the network. It reaches *out* to collect jobs
+   and deliver results. (Loopback-only listeners on the same
+   box, the signal socket while polling and the Oracle page
+   under `--oracle`, are not network ports and carry no jobs.)
+   This is non-negotiable: it's what lets the runner live behind
+   NAT on a home machine or a Pi. One deliberate exception
+   exists, and it does not hide: the DTLS session binding
+   (below) is not a store-and-forward transport at all; it
+   listens on a UDP port, only when the owner enables it. Every
+   transport that polls keeps this rule.
 3. **Authenticated sender identity.** The transport must tell the
-   runner *who sent this* in a way the runner can verify — the
+   runner *who sent this* in a way the runner can verify, the
    equivalent of the HMAC signature check, ideally stronger.
 4. **At-least-once delivery.** The runner must be able to say "I
-   haven't processed this yet" and see it again — the equivalent of
+   haven't processed this yet" and see it again, the equivalent of
    leaving a message unseen.
 5. **Opaque blobs.** The transport carries the signed JSON and never
    parses it. The cryptography lives above the pipe, not in it.
@@ -90,74 +86,68 @@ free.
 The HMAC signature on the job body is checked by the runner's
 core on every transport, after the pipe delivers. Where a
 transport has credentials of its own, they are a second,
-required gate in front of the signature — not a formality:
+required gate in front of the signature, not a formality:
 
 - **Email** has one gate: the signature. The mailbox login
   authorizes the runner's *reading*; it says nothing about any
   sender.
 
-  The pipe itself is TLS, as the draft's Transport Binding
-  requires: IMAP and SMTP over TLS 1.2 or higher, the peer
-  certificate verified. The runner expresses that requirement
-  as the `mail_tls_required` config option, required by
-  default — IMAP is implicit TLS only, and SMTP's STARTTLS
-  runs with a verifying context (a refused upgrade fails the
-  connection). Setting `mail_tls_required: false` is an
-  explicit escape hatch: STARTTLS is still attempted but the
-  certificate is unverified — the posture that predates the
-  option — a WARN is logged, and an installation with the
-  hatch open does not carry the draft's confidentiality
-  posture. In the required posture, TLS 1.2 sessions are
-  further restricted to ECDHE cipher suites, so mail-hop
-  connections are forward-secret — as TLS 1.3 connections
-  are inherently. There is no cleartext mail path in either mode;
-  the hatch relaxes verification, never encryption.
-- **NATS**, configured in its default posture, has two:
-  broker authentication (user/password or token) is required
-  before the runner will even start the transport, and the
-  signature is checked on every job after that. A deployment
-  that sets `transport_nats.allow_unauthenticated: true` gives
-  the first gate up — it falls back to the signature as the
-  only gate, and the startup log says so.
-- **Queues** has two: the Worker refuses a job without the SI's
-  bearer token, and with the default `REJECT_INVALID_HMAC` it
-  checks the HMAC at the edge under the tenant's shared secret;
-  the core checks the signature again after the runner leases
-  the job. The runner's own token leases, acks and posts results;
-  it cannot submit a job.
-- **File** has two: the inbox folder's OS access control —
-  only principals the owner grants write access can submit a
-  job file at all — and then the signature.
-- **DTLS** has two, and a property none of the others have.
-  The session is authenticated before any job crosses it —
-  a key derived from the shared secret (HKDF, info
-  `homing-pigeon dtls psk v1`) is the session's pre-shared
-  key, so the transport's authentication is the same secret
-  doing a second job, not a separate credential — and the
-  signature is checked on every job inside the session, as
-  always. On
-  top of the two gates, the session is confidential with
-  perfect forward secrecy (see "DTLS — shipped" below).
+The pipe itself is TLS, as the draft's Transport Binding
+requires: IMAP and SMTP over TLS 1.2 or higher, the peer
+certificate verified. The runner expresses that requirement as
+the `mail_tls_required` config option, required by default. IMAP
+is implicit TLS only, and SMTP's STARTTLS runs with a verifying
+context (a refused upgrade fails the connection). Setting
+`mail_tls_required: false` is an explicit escape hatch: STARTTLS
+is still attempted but the certificate is unverified, the posture
+that predates the option, a WARN is logged, and an installation
+with the hatch open does not carry the draft's confidentiality
+posture. In the required posture, TLS 1.2 sessions are further
+restricted to ECDHE cipher suites, so mail-hop connections are
+forward-secret, as TLS 1.3 connections are inherently. There is
+no cleartext mail path in either mode; the hatch relaxes
+verification, never encryption., **NATS**, configured in its
+default posture, has two: broker authentication (user/password or
+token) is required before the runner will even start the
+transport, and the signature is checked on every job after that.
+A deployment that sets `transport_nats.allow_unauthenticated:
+true` gives the first gate up, it falls back to the signature as
+the only gate, and the startup log says so., **Queues** has two:
+the Worker refuses a job without the SI's bearer token, and with
+the default `REJECT_INVALID_HMAC` it checks the HMAC at the edge
+under the tenant's shared secret; the core checks the signature
+again after the runner leases the job. The runner's own token
+leases, acks and posts results; it cannot submit a job., **File**
+has two: the inbox folder's OS access control, only principals
+the owner grants write access can submit a job file at all, and
+then the signature., **DTLS** has two, and a property none of the
+others have. The session is authenticated before any job crosses
+it, a key derived from the shared secret (HKDF, info
+`homing-pigeon dtls psk v1`) is the session's pre-shared key, so
+the transport's authentication is the same secret doing a second
+job, not a separate credential (and the signature is checked on
+every job inside the session, as always. On top of the two gates,
+the session is confidential with perfect forward secrecy (see
+"DTLS) shipped" below).
 
 That makes a credentialed broker transport, in its default
 required-auth posture, the more secure option of the shipped
 store-and-forward four: submitting a job must pass transport
 authentication AND the signature, where email checks the
-signature alone. Email remains the default anyway — it is the
+signature alone. Email remains the default anyway: it is the
 most universal pipe and the project's test transport. Here,
 "default" does not mean "most secure".
 
 One more layer rides above every pipe, unchanged: per-job
 encryption. `send_job.py` encrypts the signed job body by
-default (AES-256-GCM under a key derived from the
-shared secret), the core unwraps it after the signature
-verifies, and the result mirrors the job's form. A transport
-carries the envelope exactly as it carried the cleartext
-body — it is an opaque blob either way — so encryption is
-identical on email, NATS, file and queues, and no transport code
-knows it exists.
+default (AES-256-GCM under a key derived from the shared
+secret), the core unwraps it after the signature verifies, and
+the result mirrors the job's form. A transport carries the
+envelope exactly as it carried the cleartext body (it is an
+opaque blob either way), so encryption is identical on email,
+NATS, file and queues, and no transport code knows it exists.
 
----
+-.
 
 ## Queues — the hosted pipe (built)
 
@@ -168,57 +158,51 @@ one we'd recommend to anyone who winces at the word "email."
 
 **What ships.** Three parts, one contract:
 
-- `runner/cloud/queues-worker/` — a Cloudflare Worker and one Durable
-  Object per tenant. The Worker gates every job at the edge
-  (bearer token for the role, then HMAC-SHA-384 under the tenant's
-  shared secret, `REJECT_INVALID_HMAC` on by default) and enforces
-  the tenant's quota: jobs per hour and UTF-8 bytes per day, a hard 429
+- `runner/cloud/queues-worker/`, a Cloudflare Worker and one Durable
+  Object per tenant. The Worker gates every job at the edge (bearer
+  token for the role, then HMAC-SHA-384 under the tenant's shared
+  secret, `REJECT_INVALID_HMAC` on by default) and enforces the
+  tenant's quota: jobs per hour and UTF-8 bytes per day, a hard 429
   with `Retry-After`. A missing quota is the default, 600 jobs an hour
   and 256 MiB a day. A quota that is present and not an object of
   numbers (a bare number, a string, a list, or a field that is not a
   number) is a 400, not that default. That quota is the spending cap
   Cloudflare itself does not provide. Its unit tests run under node
-  (`node --test runner/cloud/queues-worker/test/worker.test.mjs runner/cloud/queues-worker/test/fuzz.test.mjs runner/cloud/queues-worker/test/fatfinger.test.mjs`).
-- `runner/transport_extensions/queues/` — the runner-side extension.
-  Outbound only: it leases jobs from the Worker, drops them in the
-  channel inbox, posts the channel's results back and acks the job
-  only once its result has been posted (or the core consumed it
-  without one). The inbox file is the job id, all 128 characters:
-  cutting it at 120 put two ids that differed later in one file, and
-  the result's name was not the id in the subject, so the output was
-  never posted and the job stayed leased. An ack that does not
-  succeed leaves the result where it is and the job leased, and the
-  next pass tries the ack again. Plain http is the loopback host
-  itself, not a URL that only begins with that text, and a redirect
-  is not followed: either one would send the bearer token off the
-  machine. A second file for the same id, named while the first
-  is still waiting, does not replace that result and still acks the
-  job. A result file that was already in the outbox when this
-  life was delivered is the previous life's output. It is posted,
-  and it does not ack the job just pulled. A refused collision name is set aside as that id's
-  result, not under the suffixed filename: the sweep reads
-  `<id>.result.txt`, and the other name never got a stub, so the
-  job stayed leased. A result file that is not UTF-8, or that
-  has no blank line, or that is a symlink, is set aside the
-  same way, and so is a file the process cannot read. The
-  link is not followed. A result name that is still in the
-  outbox and was not posted does not ack the job either. The sweep still
-  answers it: the id is the file's name when the body does not
-  name one. Moving that pair to done without a stub finished the
-  job with nothing stored. A file whose subject names a different job is left where it
-  is. A malformed or oversize envelope is refused and
-  acked so it does not return every lease.
-- `send_job.py new --to-queue <url>` — the SI side. The SI token is
+  (`node --test runner/cloud/queues-worker/test/worker.test.mjs
+  runner/cloud/queues-worker/test/fuzz.test.mjs
+  runner/cloud/queues-worker/test/fatfinger.test.mjs`).
+- `runner/transport_extensions/queues/`, the runner-side extension. Outbound only: it leases
+  jobs from the Worker, drops them in the channel inbox, posts the channel's results back and
+  acks the job only once its result has been posted (or the core consumed it without one).
+  The inbox file is the job id, all 128 characters: cutting it at 120 put two ids that
+  differed later in one file, and the result's name was not the id in the subject, so the
+  output was never posted and the job stayed leased. An ack that does not succeed leaves the
+  result where it is and the job leased, and the next pass tries the ack again. Plain http is
+  the loopback host itself, not a URL that only begins with that text, and a redirect is not
+  followed: either one would send the bearer token off the machine. A second file for the
+  same id, named while the first is still waiting, does not replace that result and still
+  acks the job. A result file that was already in the outbox when this life was delivered is
+  the previous life's output. It is posted, and it does not ack the job just pulled. A
+  refused collision name is set aside as that id's result, not under the suffixed filename:
+  the sweep reads `<id>.result.txt`, and the other name never got a stub, so the job stayed
+  leased. A result file that is not UTF-8, or that has no blank line, or that is a symlink,
+  is set aside the same way, and so is a file the process cannot read. The link is not
+  followed. A result name that is still in the outbox and was not posted does not ack the job
+  either. The sweep still answers it: the id is the file's name when the body does not name
+  one. Moving that pair to done without a stub finished the job with nothing stored. A file
+  whose subject names a different job is left where it is. A malformed or oversize envelope
+  is refused and acked so it does not return every lease.
+- `send_job.py new --to-queue <url>`, the SI side. The SI token is
   read from `HP_SI_TOKEN` (or `--queue-token-env NAME`), never from
   the command line.
-- `send_job.py results --from-queue <url>` — the SI reads its results
-  back: one JSON line per result, verified and, when encrypted, opened
-  under the job id in its subject. A page that stopped says `more`,
-  and the command reads the next page, so a result that does not
-  verify cannot hide the ones after it. `--ack` removes a result only after
-  it verified; one that does not verify stays on the queue. Exit 0 when
-  every result verified or none was waiting, 1 when any did not, 2 when
-  the queue refused the read or a page did not advance.
+- `send_job.py results --from-queue <url>`, the SI reads its results back:
+  one JSON line per result, verified and, when encrypted, opened under the
+  job id in its subject. A page that stopped says `more`, and the command
+  reads the next page, so a result that does not verify cannot hide the
+  ones after it. `--ack` removes a result only after it verified; one that
+  does not verify stays on the queue. Exit 0 when every result verified or
+  none was waiting, 1 when any did not, 2 when the queue refused the read
+  or a page did not advance.
 - Both sides ride out the queue's weather. A read cut short, a
   dropped connection or a timeout is tried again twice, after one and
   three seconds; a read that still cannot finish exits 2 with one plain
@@ -234,13 +218,13 @@ one we'd recommend to anyone who winces at the word "email."
   includes a 200 whose body carries no results list, which the Worker
   never sends. Conclude that a runner has stopped only from reads that
   finished.
-- `send_job.py dlq --from-queue <url>` — the dead-letter list: one JSON
+- `send_job.py dlq --from-queue <url>`, the dead-letter list: one JSON
   line per dead job, or `--drop ID`, or `--requeue ID`. A page that
-  stopped says `more`, and the command reads the next page, so a
-  long subject does not hide the rows after it. A requeued job
-  is the same signed job, so a runner that already saw it, or holds it
-  past its freshness window, refuses it as any replay; send a new job
-  for anything older. The queue transport delivers that offer again,
+  stopped says `more`, and the command reads the next page, so a long
+  subject does not hide the rows after it. A requeued job is the same
+  signed job, so a runner that already saw it, or holds it past its
+  freshness window, refuses it as any replay; send a new job for
+  anything older. The queue transport delivers that offer again,
   including to a process that already finished the id. Ignoring it
   would still lease it on every pull until it dead-lettered.
 
@@ -300,7 +284,7 @@ Why it fits so well it feels designed for this (the notes that led
 here; what ships is the contract above, and where a note below
 says "queue", the shipped pipe is the Worker's Durable Object):
 
-- **HTTP polling API.** The runner long-polls over HTTPS — outbound
+- **HTTP polling API.** The runner long-polls over HTTPS: outbound
   only, NAT-indifferent, no IMAP client, no mailbox quirks. The
   polling loop gets *simpler*, not more complex.
 - **Retries and dead-letter queues.** Email's at-least-once story
@@ -325,16 +309,16 @@ says "queue", the shipped pipe is the Worker's Durable Object):
 The shape of it: one Durable Object per tenant with a `/jobs` side
 and a `/results` side. The SI's `send_job --to-queue` posts a
 signed envelope to `/jobs`. The runner leases it, executes, posts
-the signed result to `/results`. The SI reads it with
-`send_job results --from-queue`. Everything
-else — the JSON, the signatures, the Oracle, the two-phase
-exchange — is byte-identical. You could run email and the queue
-*side by side* during migration and the protocol wouldn't notice.
+the signed result to `/results`. The SI reads it with `send_job
+results --from-queue`. Everything else (the JSON, the signatures,
+the Oracle, the two-phase exchange) is byte-identical. You could
+run email and the queue *side by side* during migration and the
+protocol wouldn't notice.
 
 The pitch, if you need one for the skeptics: *"Email gave us the
 protocol. Queues give it a spine."*
 
----
+-.
 
 ## NATS (core) — shipped
 
@@ -361,7 +345,7 @@ clustering, no persistence.
   or a token, from the `transport_nats` config keys (which
   win) or the URL userinfo. With no credentials the extension
   refuses to start unless `allow_unauthenticated: true` is
-  set — see "Authorization gates" above.
+  set (see "Authorization gates" above).
 - Core NATS is a dumb pipe: it does not store-and-forward. A
   job published while no runner is subscribed is gone.
   At-least-once rests on the sender re-sending jobs it never
@@ -379,11 +363,11 @@ infrastructure, not a SaaS billing line.
   it:** `pigeon.jobs.<job_id>`, `pigeon.results.<job_id>`,
   `pigeon.query.<query_id>`. The routing *is* the addressing scheme.
 - **JetStream gives you persistence, consumer groups, and ack-based
-  redelivery** — the at-least-once contract, done properly, with
+  redelivery**: the at-least-once contract, done properly, with
   per-consumer replay. The runner is just a durable consumer.
 - **Self-host it on the pigeon-coop Pi.** NATS's entire server is a
   single small binary that sips memory. Your always-on Pi becomes
-  the message backbone for your whole fleet of runners — and now
+  the message backbone for your whole fleet of runners, and now
   you're running one agent or ten with no per-message bill at all.
 - **Microsecond latency** for those who care (you won't notice; the
   jobs take longer than the queueing, but it's nice to know).
@@ -396,16 +380,17 @@ it sounds like a pager going off, see Cloudflare Queues.
 
 The file transport extension is a watched folder pair, for
 local harnesses, CI, and SI integrations that share a
-filesystem or a sync folder with the runner — no account, no
+filesystem or a sync folder with the runner: no account, no
 broker, nothing to sign up for.
 
 - A job is a file dropped in the inbox (default
   `<base_dir>/transport-file/inbox`): first line the subject
-  line, blank line, then the signed body — exactly what
-  `runner/cloud/send_job.py new ... --to-file <path>` writes.
+  line, blank line, then the signed body, which is exactly
+  what `runner/cloud/send_job.py new ... --to-file <path>`
+  writes.
 - The extension processes each file once: after the result
-  comes back it moves the job file to a `done/` subfolder —
-  never deletes. Results land in the outbox as
+  comes back it moves the job file to a `done/` subfolder and
+  never deletes it. Results land in the outbox as
   `<job_id>.result.txt`, same envelope shape. A redelivered
   copy of a finished job is acked, not re-executed. A result
   still set aside under the channel's `outbox/failed/` has not
@@ -414,7 +399,7 @@ broker, nothing to sign up for.
 - Refusals mirror the local-inbox discipline: symlinks are
   refused unread, files over 4 MiB are refused unread, and a
   malformed envelope is refused with the reason left in a
-  `.refused.txt` note in `done/` — never silently dropped.
+  `.refused.txt` note in `done/`, never silently dropped.
 - Its first gate is the inbox folder's OS access control:
   only principals the owner grants write access can submit.
   The signature is the second gate (see "Authorization
@@ -423,42 +408,36 @@ broker, nothing to sign up for.
 ## DTLS — shipped (the session binding)
 
 The DTLS transport extension is not a store-and-forward
-transport: it is the DTLS session binding of protocol
-version 1 from `docs/ietf/draft-slutsky-homing-pigeon/source/draft-homing-pigeon-00.md` — a direct DTLS 1.3
-session between the SI and the runner, specified there and
-implemented as a bounded pure-Python profile
+transport: it is the DTLS session binding of protocol version 1
+from
+`docs/ietf/draft-slutsky-homing-pigeon/source/draft-homing-pigeon-00.md`,
+a direct DTLS 1.3 session between the SI and the runner,
+specified there and implemented as a bounded pure-Python profile
 (`runner/wire/dtlsproto.py`, stdlib only) in the extension at
 `runner/transport_extensions/dtls/`.
 
 - **Off unless enabled, and it listens.** Add `"dtls"` to
   `transports` and the extension binds a UDP port
-  (`transport_dtls.port`, default 20220;
-  `transport_dtls.bind`, default `0.0.0.0`; either one present
-  but not usable is a startup config error, the extension
-  refuses to start and names it, because a substituted
-  address is not the one the operator configured). This is the one
-  shipped transport that opens an inbound port — the
-  deliberate exception to the contract's outbound-only rule
-  above, taken by the owner's explicit choice.
-- **One profile, enforced.** DTLS 1.3, one ciphersuite
-  (TLS_AES_256_GCM_SHA384), PSK-only authentication
-  with a key derived from the shared secret as the
-  external PSK (HKDF over the secret, info
-  `homing-pigeon dtls psk v1`; identity `homing-pigeon`,
-  or `homing-pigeon:<key_id>` for an additional secret). Key exchange is `psk_dhe_ke` only: a
-  fresh X25519 ephemeral rides every handshake and every
-  resumption, and `psk_ke` is never offered or accepted —
-  perfect forward secrecy is a requirement of the profile,
-  not a negotiated option. A stateless cookie exchange
-  proves the peer's address before the extension keeps any
-  state, Connection IDs keep a session alive across a NAT
-  rebinding, session resumption uses fresh tickets with
-  fresh DHE, and there is no 0-RTT, ever. A resumption ticket
-  records the key that authenticated the session it was
-  issued on, carried across a resume, and resumes only while
-  that key still stands in the runner's key map: a rotated-out
-  key is refused at a resume exactly as at a fresh handshake,
-  and a ticket that records no key does not resume.
+  (`transport_dtls.port`, default 20220; `transport_dtls.bind`,
+  default `0.0.0.0`; either one present but not usable is a
+  startup config error, the extension refuses to start and names
+  it, because a substituted address is not the one the operator
+  configured). This is the one shipped transport that opens an
+  inbound port: the deliberate exception to the contract's
+  outbound-only rule above, taken by the owner's explicit choice.
+- **One profile, enforced.** DTLS 1.3, one ciphersuite (TLS_AES_256_GCM_SHA384), PSK-only
+  authentication with a key derived from the shared secret as the external PSK (HKDF over the
+  secret, info `homing-pigeon dtls psk v1`; identity `homing-pigeon`, or
+  `homing-pigeon:<key_id>` for an additional secret). Key exchange is `psk_dhe_ke` only: a
+  fresh X25519 ephemeral rides every handshake and every resumption, and `psk_ke` is never
+  offered or accepted, because perfect forward secrecy is a requirement of the profile, not a
+  negotiated option. A stateless cookie exchange proves the peer's address before the
+  extension keeps any state, Connection IDs keep a session alive across a NAT rebinding,
+  session resumption uses fresh tickets with fresh DHE, and there is no 0-RTT, ever. A
+  resumption ticket records the key that authenticated the session it was issued on, carried
+  across a resume, and resumes only while that key still stands in the runner's key map: a
+  rotated-out key is refused at a resume exactly as at a fresh handshake, and a ticket that
+  records no key does not resume.
 - **The platform payload.** The server's EncryptedExtensions
   carries a configuration-style platform extension in the
   final handshake flight. The pattern is lifted from IKEv2's
@@ -486,7 +465,7 @@ implemented as a bounded pure-Python profile
   envelope every other binding carries; the per-job
   encryption extension composes with it unchanged (a
   cleartext job in DTLS and an encrypted job in DTLS are
-  both legal). Ack/dedup is still the protocol's seen-set —
+  both legal). Ack/dedup is still the protocol's seen-set;
   channel security is not delivery. Results return on the
   session; a result that lands after its session is gone
   stays in the outbox. The SI re-asks on a fresh session,
@@ -508,14 +487,13 @@ implemented as a bounded pure-Python profile
   DHE share, as the profile requires); a ticket the runner
   refuses, as after a rotation, is followed by one fresh
   handshake under the key itself, and the file is dropped.
-- **One supervisor deviation, stated plainly:** the dtls
-  extension is handed the shared secret by the supervisor
-  — because this pipe terminates PSK authentication with
-  it. The email extension is handed it too when
+- **One supervisor deviation, stated plainly:** the dtls extension is handed
+  the shared secret by the supervisor, because this pipe terminates PSK
+  authentication with it. The email extension is handed it too when
   `dtls_via_email` is enabled, for the same reason. A pipe that merely carries
-  envelopes (email, file, NATS) is still never handed a
-  secret, and every job that arrives over DTLS still faces
-  the core's signature check like any other transport's.
+  envelopes (email, file, NATS) is still never handed a secret, and every job
+  that arrives over DTLS still faces the core's signature check like any other
+  transport's.
 
 **DTLS via email (version 3).** The same session binding can ride the
 email transport instead of a UDP socket: no inbound network path,
@@ -529,7 +507,7 @@ for it, and using the carriage does not wait on one.
 ## MQTT — the IoT pick
 
 MQTT is the protocol your smart lightbulbs speak, and that's not an
-insult — it's a 25-year-old pub/sub design that does exactly one
+insult: it's a 25-year-old pub/sub design that does exactly one
 thing (move small messages between unreliable endpoints) better
 than almost anything else.
 
@@ -552,7 +530,7 @@ is the pick for the maximum-sovereignty crowd.
 You probably already run Redis. Redis Streams turns it into a
 perfectly good job queue:
 
-- **Consumer groups with pending-message tracking** — the broker
+- **Consumer groups with pending-message tracking:** the broker
   *knows* which messages a consumer hasn't acked and can hand them
   back. That's the at-least-once contract with a paper trail.
 - **`XREADGROUP` with `BLOCK`** is a long-poll. Outbound-only,
@@ -579,7 +557,7 @@ version.
   work arrives.
 
 It's not fast, it's not elegant, and it will never surprise you.
-Some people — good people — consider that the highest praise
+Some people, good people, consider that the highest praise
 infrastructure can earn.
 
 ## Cloudflare Durable Objects — the real-time pick
@@ -598,7 +576,7 @@ the mailbox as one.
 The hosted queue above already runs one Durable Object per tenant;
 what this note adds is the push leg, a WebSocket in place of the
 runner's lease poll. It would be the only transport on the list
-that isn't poll-based, which makes it the odd one out — but for
+that isn't poll-based, which makes it the odd one out, but for
 interactive back-and-forth with your SI (the Oracle's `ask` loop,
 rapid iteration), push notification is genuinely nicer than a
 30-second poll.
@@ -606,7 +584,7 @@ rapid iteration), push notification is genuinely nicer than a
 ## Honorable mentions
 
 - **nostr relays.** Key-based identity is *philosophically* the
-  closest thing here to the protocol's HMAC identity model — your
+  closest thing here to the protocol's HMAC identity model: your
   keypair *is* you, no accounts, no From headers. Exotic, but the
   shape is right, and relays are dumb pipes that can't read your
   (signed, and optionally encrypted) blobs. One to watch.
@@ -614,7 +592,7 @@ rapid iteration), push notification is genuinely nicer than a
   SIs can receive outbound webhooks, which would let the runner
   *push* results instead of the SI polling. Transport #1.5.
 
----
+-.
 
 ## Comparison
 
@@ -627,7 +605,7 @@ The other rows are design notes.
 | Email | poll | HMAC signature only | Unseen flag | n/a (hosted) | yes | yes, the default |
 | File | n/a (local folder) | Folder OS ACL, then HMAC | Process-once + done/ | n/a | n/a | yes |
 | NATS (core) | outbound connect | Broker auth (required), then HMAC | Sender resend + seen-set | tiny binary | self-host | yes |
-| DTLS | no — listens (opt-in) | PSK session (the shared secret), then HMAC | Sender resend + seen-set | n/a | n/a | yes, off by default |
+| DTLS | no, listens (opt-in) | PSK session (the shared secret), then HMAC | Sender resend + seen-set | n/a | n/a | yes, off by default |
 | Queues (hosted) | HTTPS poll | Bearer token per role, then HMAC at the edge | Lease + ack, five attempts, then dead-letter | your own Worker | Cloudflare's | yes |
 | NATS JetStream | yes | NKey/JWT | Consumer acks | tiny binary | self-host | no |
 | MQTT | yes | TLS + creds | QoS 1 | Mosquitto | self-host | no |
@@ -636,24 +614,24 @@ The other rows are design notes.
 | Durable Objects (push) | push | Token | Txn storage | no | yes | no |
 
 On gates: a credentialed NATS deployment in its default
-required-auth posture is the more secure option over email —
+required-auth posture is the more secure option over email, with
 two gates (broker authentication, then the signature) against
 email's one (the signature). A deployment with
 `allow_unauthenticated: true` is not: it falls back to the
 signature as the only gate. The hosted queue has two as well:
 the role's bearer token at the edge, then the signature, checked
-once by the Worker and again by the core. DTLS stands apart
-from the count: its session is authenticated with the shared
-secret itself and is confidential with perfect forward secrecy,
-and the signature still checks every job inside it. See
-"Authorization gates".
+once by the Worker and again by the core. DTLS stands apart from
+the count: its session is authenticated with the shared secret
+itself and is confidential with perfect forward secrecy, and the
+signature still checks every job inside it. See "Authorization
+gates".
 
 ## Writing a new transport
 
 The protocol is deliberately transport-agnostic, and transports
-are *extensions*: a new transport is a new program, not a
-patch to the runner. The contract is versioned at one —
-`TRANSPORT_API_VERSION = 1` in `runner/wire/transports.py`.
+are *extensions*: a new transport is a new program, not a patch
+to the runner. The contract is versioned at one
+(`TRANSPORT_API_VERSION = 1` in `runner/wire/transports.py`).
 
 A transport extension is a folder with an `extension.json`
 manifest:
@@ -667,91 +645,83 @@ manifest:
            "{runtime_config}"]}
 ```
 
-`entry` is the argv the runner launches (tokens `{python}`,
-`{extension_dir}`, `{channel_dir}`, `{runtime_config}`,
-`{base_dir}`, `{name}` are substituted). `capabilities` says
-what the code does -- `network`, `listen`, `subprocess`,
-`native` -- and the runner holds the code to it.
-`startup_settle_ms` (an integer, 0 to 5000, default 0) is the
-pause the runner grants once after a fresh start so a fast
-local pipe can deliver what is already waiting before the first
-cycle; a network transport declares 0 and never holds the cycle
-up. The manifest's identity fields — name, publisher, version —
-are carried from day one so a future lockdown has something to
-pin; this build has no signature on the code, no allowlist, no
-registry check. What it has is the extension review
+`entry` is the argv the runner launches (tokens `{python}`, `{extension_dir}`,
+`{channel_dir}`, `{runtime_config}`, `{base_dir}`, `{name}` are substituted).
+`capabilities` says what the code does (`network`, `listen`, `subprocess`,
+`native`) and the runner holds the code to it. `startup_settle_ms` (an integer,
+0 to 5000, default 0) is the pause the runner grants once after a fresh start
+so a fast local pipe can deliver what is already waiting before the first
+cycle; a network transport declares 0 and never holds the cycle up. The
+manifest's identity fields (name, publisher, version) are carried from day one
+so a future lockdown has something to pin; this build has no signature on the
+code, no allowlist, no registry check. What it has is the extension review
 ([docs/steady/extensions.md](../../steady/extensions.md), "The review"): before
-`entry` is launched, the folder is read against the manifest --
-every path in `entry` stays inside the folder, every `.py`
-compiles, no symlinks, no bidi control characters, nothing that
-names the runner's own state files, and every capability the
-code uses is declared. Under the default `extension_review:
-"enforce"` a folder that fails is refused like a bad manifest and
-the runner starts without it; `advisory` loads it and says so.
+`entry` is launched, the folder is read against the manifest: every path in
+`entry` stays inside the folder, every `.py` compiles, no symlinks, no bidi
+control characters, nothing that names the runner's own state files, and every
+capability the code uses is declared. Under the default `extension_review:
+"enforce"` a folder that fails is refused like a bad manifest and the runner
+starts without it; `advisory` loads it and says so.
 
 **Registration is never a permission to run.** Drop the folder
 into the runner's extensions directory (default
 `<base_dir>/extensions`, or `extensions_dir` in config) and
 name it in `transports`: the runner loads and uses it, no
-catalog consulted, registered or not. That is deliberate —
-test transports, private experiments, and pipes nobody
-catalogued are first-class. A folder in the extensions
-directory shadows a shipped transport of the same name; the
-review says so at every start, with a security event, and a
-shadowing drop-in the review refuses is absent rather than
-quietly replaced by the shipped one. First-party extensions
-ship under `runner/transport_extensions/` and are found the
-same way. A manifest declaring any `api_version` other than 1
-is refused with a log line; the runner keeps running without
-it.
+catalog consulted, registered or not. That is deliberate: test
+transports, private experiments, and pipes nobody catalogued
+are first-class. A folder in the extensions directory shadows
+a shipped transport of the same name; the review says so at
+every start, with a security event, and a shadowing drop-in
+the review refuses is absent rather than quietly replaced by
+the shipped one. First-party extensions ship under
+`runner/transport_extensions/` and are found the same way. A
+manifest declaring any `api_version` other than 1 is refused
+with a log line; the runner keeps running without it.
 
-A transport can bring its own sources for the Oracle, exactly
-as a sense can: a `sources.json` next to the manifest
+A transport can bring its own sources for the Oracle, exactly as a sense can: a
+`sources.json` next to the manifest
 ([docs/steady/extensions.md](../../steady/extensions.md), "Sources"), fetched in the
-background the first time the transport starts and given to the
-Oracle under the disclosure rule. All five shipped transports
-declare their own code in the project tree; email, dtls and nats
-also declare the specifications they speak — the IMAP, SMTP,
-STARTTLS, and message-format RFCs for email, the DTLS 1.3, TLS
-1.3, HKDF, and X25519 RFCs for dtls, the NATS client protocol
-for nats.
+background the first time the transport starts and given to the Oracle under the
+disclosure rule. All five shipped transports declare their own code in the project
+tree; email, dtls and nats also declare the specifications they speak: the IMAP,
+SMTP, STARTTLS, and message-format RFCs for email, the DTLS 1.3, TLS 1.3, HKDF, and
+X25519 RFCs for dtls, the NATS client protocol for nats.
 
 The runner supervises each enabled extension as a child
 process: it starts them with the runner, restarts a dead one
 with backoff (1s doubling to 30s) and a log line, and stops
-them at shutdown. One extension's death never takes the
-runner or the other transports down. Each extension is handed
-a runtime config file (0600) holding only its own config —
-its `transport_<name>` block, and for email the mailbox keys —
+them at shutdown. One extension's death never takes the runner
+or the other transports down. Each extension is handed a
+runtime config file (0600) holding only its own config (its
+`transport_<name>` block, and for email the mailbox keys) and
 never the shared secret, with two exceptions: the dtls
 extension terminates PSK authentication, and the email
-extension does the same when `dtls_via_email` is enabled,
-so each is handed the secret material it authenticates
-with (see "DTLS — shipped").
-Verification is the core's job, not the pipe's. The extension's
-own output lands in `<channel>/extension.log`.
+extension does the same when `dtls_via_email` is enabled, so
+each is handed the secret material it authenticates with (see
+"DTLS — shipped"). Verification is the core's job, not the
+pipe's. The extension's own output lands in
+`<channel>/extension.log`.
 
 The pipe itself is a pair of directories, the channel, at
 `<base_dir>/transport-extensions/<name>/`:
 
-- `inbox/` — job envelopes, extension → runner. An envelope
-  is a subject line, a blank line, then the signed body; drop
-  it as `<ident>.job.txt`, where `<ident>` is your stable id
-  for the job.
-- `outbox/` — result envelopes, runner → extension, same
-  shape, named `<ident>.result.txt` for the job's ident. A second
-  result written while that file is still there is
+- `inbox/`, job envelopes, extension → runner. An envelope is
+  a subject line, a blank line, then the signed body; drop it
+  as `<ident>.job.txt`, where `<ident>` is your stable id for
+  the job.
+- `outbox/`, result envelopes, runner → extension, same shape,
+  named `<ident>.result.txt` for the job's ident. A second result
+  written while that file is still there is
   `<ident>.result-2.txt`. It is the same ident: the pipe
   correlates it with the job, and the sidecar is still
-  `<ident>.target.txt`. When
-  the core knows the job's validated `reply_to`, a sidecar
-  `<ident>.target.txt` sits beside the result file holding
-  that one address, and the extension sends the result there
-  instead of its own default destination. A pipe cannot always
-  read the address out of the job itself (an encrypted job's
-  envelope does not carry it in the clear, and a pipe never
-  holds the secret). An extension that does not read the
-  sidecar behaves exactly as before; the sidecar is additive
+  `<ident>.target.txt`. When the core knows the job's validated
+  `reply_to`, a sidecar `<ident>.target.txt` sits beside the
+  result file holding that one address, and the extension sends
+  the result there instead of its own default destination. A pipe
+  cannot always read the address out of the job itself (an
+  encrypted job's envelope does not carry it in the clear, and a
+  pipe never holds the secret). An extension that does not read
+  the sidecar behaves exactly as before; the sidecar is additive
   at contract v1.
 
 Ack is consumption: whichever side has taken a file moves it
@@ -767,7 +737,7 @@ know the difference. (v1 ships the file channel only; there is
 no socket variant.)
 
 Result routing travels with the job. A signed job may name
-where its result goes — on email that's the `reply_to` field,
+where its result goes: on email that's the `reply_to` field,
 and the sidecar above carries it to any pipe. Without one, the
 result returns over the transport that carried the job in (the
 file outbox, the NATS result subject, the queue's `/results`).
@@ -775,16 +745,15 @@ The transport never invents a destination.
 
 ## Bootstrapping
 
-Email is the pipe to turn on first: get that running (a
-dedicated mailbox account). The file transport needs nothing
-else — set `transports` to include `file` and drop envelopes
-in the inbox. NATS needs a broker you run (or one you already
-have) plus credentials for it. The hosted queue needs a Worker
-you deploy and a tenant record (`docs/steady/project/hosting.md`). The
-`transports` config key (or `--transports` for one process) is
-the switch; several transport extensions run side by side, each
-supervised by the one runner. What is not built is listed in
-docs/FUTURE.md; what was cut is below.
+Email is the pipe to turn on first: get that running (a dedicated
+mailbox account). The file transport needs nothing else: set
+`transports` to include `file` and drop envelopes in the inbox. NATS
+needs a broker you run (or one you already have) plus credentials for
+it. The hosted queue needs a Worker you deploy and a tenant record
+(`docs/steady/project/hosting.md`). The `transports` config key (or
+`--transports` for one process) is the switch; several transport
+extensions run side by side, each supervised by the one runner. What
+is not built is listed in docs/FUTURE.md; what was cut is below.
 
 ## Local socket — cut
 

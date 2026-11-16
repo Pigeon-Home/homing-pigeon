@@ -11,25 +11,24 @@ open.
 
 ## Why this exists
 
-The project can already refuse a job before it runs (the
-judge), predict how it will go (the Oracle's opinion,
+The project can already refuse a job before it runs (the judge),
+predict how it will go (the Oracle's opinion,
 `docs/steady/design/oracle-opinion-design.md`), and report what it did
-afterwards (the retained record, the audit log). What it
-cannot do is act *while* a job runs. If the agent determines
-that something from a job is going bad — not failed, not
-finished, *going* bad — nothing stops it and nothing cleans
-up after it. The DRI playbook pages the owner, and its
-founding line is explicit: it pages, never remediates; the
-human decides. That was the right doctrine when the system
-could only watch. The owner has since directed otherwise:
-the system should be able to stop a job that is going bad
-and remediate — as an option, implemented as a core feature.
-This document gets that design right before it is code.
+afterwards (the retained record, the audit log). What it cannot do is
+act *while* a job runs. If the agent determines that something from a
+job is going bad (not failed, not finished, *going* bad), nothing
+stops it and nothing cleans up after it. The DRI playbook pages the
+owner, and its founding line is explicit: it pages, never remediates;
+the human decides. That was the right doctrine when the system could
+only watch. The owner has since directed otherwise: the system should
+be able to stop a job that is going bad and remediate, as an option
+implemented as a core feature. This document gets that design right
+before it is code.
 
 Three different "fix" stories live in this project and are
 not interchangeable:
 
-- **The judge** gates *entry* -- when it is configured to
+- **The judge** gates *entry*, when it is configured to
   enforce, and then only against a short denylist of
   known-bad shapes. It is off by default and reads for
   strings, not intent; PROTOCOL section 9.3 says so in one
@@ -50,38 +49,38 @@ envelope: the deterministic tier-1 expectations (interpreter,
 script shape, named tools, referenced paths) and, when a
 model formed one, its labeled note. That envelope is the
 record of *what the inference system believed was going to
-happen*. Remediation watches the running job against it.
-A job doing what its envelope said — even something
-destructive the sender openly declared — is the owner's
-business; intake let it through under whatever posture
-the owner configured -- in the default posture, nothing
-reviewed it at all. A job doing what its
-envelope did not say is the remediation case. Expectation
-versus outcome is a genuine field of research; here it is
-also simply the only honest trigger available. The system
-never has to know what malice looks like in general. It has
-to know what *this job promised*, and notice the difference.
+happen*. Remediation watches the running job against it. A
+job doing what its envelope said, even something destructive
+the sender openly declared, is the owner's business; intake
+let it through under whatever posture the owner configured,
+and in the default posture, nothing reviewed it at all. A job
+doing what its envelope did not say is the remediation case.
+Expectation versus outcome is a genuine field of research;
+here it is also simply the only honest trigger available. The
+system never has to know what malice looks like in general.
+It has to know what *this job promised*, and notice the
+difference.
 
 Concretely, the divergences the design recognizes today:
 
 - **Undeclared reach.** The running job touches a credential
   store, a home file, an `/etc` path, or an outside-workspace
-  path its envelope never named — the `_script_path_findings`
+  path its envelope never named: the `_script_path_findings`
   tells, evaluated against the workdir contents the monitor
   scans as the job runs, not only against the script text at
   intake. (Writes outside the workdir are not visible mid-run;
-  the post-run confinement snapshot catches them there — see
-  As built.)
+  the post-run confinement snapshot catches them there; see As
+  built.)
 - **Adversary-shaped resources.** The job's window fills with
   the signals `resource-sentinel` exists to file: sustained
   CPU saturation, disk-fill velocity, process storm,
-  collapsing memory — keyed to this job's process tree and
+  collapsing memory, all keyed to this job's process tree and
   time window, not the box in general.
 - **Confinement events.** A job straining or escaping its
   cage is a divergence by definition; the cage's report is
   the evidence.
-- **A sense fires about this job.** Any sense — built-in or
-  an owner's extension — files an alert that names this
+- **A sense fires about this job.** Any sense, built-in or
+  an owner's extension, files an alert that names this
   job's process tree, its work directory, or its window.
   Detection may come from anywhere (see Placement).
 
@@ -96,34 +95,33 @@ great options, and the build should select the best *given
 that the system has inference*. The selection this design
 records:
 
-- **Deterministic tripwires** — a short, enumerated list of
+- **Deterministic tripwires**: a short, enumerated list of
   divergences that kill on sight: a confinement escape; a
   produced artifact's undeclared reference to a credential
-  store (`credential_artifact` — a reference in something the
+  store (`credential_artifact`, a reference in something the
   job wrote, not a read); a process storm past the hard
-  ceiling. These
-  are the owner's pre-authorized reflexes. No model is
-  consulted, the list is closed, and a new tripwire enters
-  it only as a code change with a test — never as a config
-  accident or a model's suggestion.
-- **The Oracle's judgment** — where inference is configured,
+  ceiling. These are the owner's pre-authorized reflexes. No
+  model is consulted, the list is closed, and a new tripwire
+  enters it only as a code change with a test, never as a
+  config accident or a model's suggestion.
+- **The Oracle's judgment**: where inference is configured,
   the Oracle may order a kill for a divergence that is real
   but not on the tripwire list. It judges with the context
   the build assembles for it: the job id, the divergence, the
   intent envelope's note, and the divergences observed so
-  far — not the box's state, and not the job's history.
-  Its order is recorded *as its judgment* — the divergence,
-  the reasoning it gave, and the act taken ride the result
-  and the audit log, attributed to the Oracle the way its
+  far, not the box's state, and not the job's history. Its
+  order is recorded *as its judgment*: the divergence, the
+  reasoning it gave, and the act taken ride the result and
+  the audit log, attributed to the Oracle the way its
   opinions are. On a box without inference (Pi Light), this
   layer is absent by construction and the reflexes stand
   alone: the deterministic Oracle has no judgment to lend,
   and this design does not pretend otherwise.
 
-The option surface is one key, `remediation_mode`
-(`off | deterministic | oracle`), with a matching
+The option surface is one key, `remediation_mode` (`off |
+deterministic | oracle`), with a matching
 `--remediation-mode` flag for one process. **Default:
-`deterministic`** — the reflexes are armed out of the box;
+`deterministic`**. The reflexes are armed out of the box;
 the Oracle's layer is armed by the owner's deliberate act
 of choosing `oracle`, because a model ordering a kill is
 the one power in this design an owner should switch on
@@ -147,39 +145,39 @@ the system watches, records, and pages; the human decides.
    merely-failed job's outputs are *not*: failure alone is
    not a divergence and quarantines nothing.
 3. **Refer the file to the box's antivirus.** A conventional
-   antivirus, left to itself, tries to kill the process —
-   it is a remediation actor with exactly one move and no
+   antivirus, left to itself, tries to kill the process; it
+   is a remediation actor with exactly one move and no
    knowledge of the job system. The Oracle knows things the
    AV does not: which job, whose envelope, what divergence.
    So after a kill or quarantine, the system refers the
-   suspect files — the workdir artifacts that tripped the
-   finding, plus the job's script — to the antivirus *as
+   suspect files (the workdir artifacts that tripped the
+   finding, plus the job's script) to the antivirus *as
    suspects*, and asks for the AV's own verdict on those
    exact paths. There is no prior "judged malicious" step and
    no process is referred; the referral follows the act, on
    divergence evidence. On Windows, a Defender custom scan
    (`MpCmdRun -Scan -ScanType 3 -File <path>`); where ClamAV
    is installed, `clamdscan` on the same path. A consumer
-   antivirus accepts a scan request, not a declaration —
-   the referral asks; it does not instruct. But an AV that
-   confirms takes ownership with machinery this runner
-   should not imitate: OS-level quarantine, re-execution
-   blocks, a detection that outlives the job's account of
-   itself. The enterprise form of the same idea (Defender
-   for Endpoint file indicators — block and remediate by
-   hash) is recorded as the managed-box variant; the record
-   shape below already carries what an indicator needs. The
-   AV's verdict — `confirmed`, `clean`, or `unavailable` —
-   is recorded beside the Oracle's judgment, attributed to
-   each: two witnesses, neither borrowing the other's
-   authority, and an owner's box with no AV loses nothing
-   but the second witness (`unavailable` is a fact in the
-   record, not an error).
+   antivirus accepts a scan request, not a declaration; the
+   referral asks, it does not instruct. But an AV that
+   confirms takes ownership with machinery this runner should
+   not imitate: OS-level quarantine, re-execution blocks, a
+   detection that outlives the job's account of itself. The
+   enterprise form of the same idea (Defender for Endpoint
+   file indicators: block and remediate by hash) is recorded
+   as the managed-box variant; the record shape below already
+   carries what an indicator needs. The AV's verdict
+   (`confirmed`, `clean`, or `unavailable`) is recorded
+   beside the Oracle's judgment, attributed to each: two
+   witnesses, neither borrowing the other's authority, and an
+   owner's box with no AV loses nothing but the second
+   witness (`unavailable` is a fact in the record, not an
+   error).
 4. **Page the owner.** Through the DRI channel, carrying
    the whole story: the intent envelope, the observed
    divergence, the authority that acted, the acts taken,
    and the AV verdict when one has come back. Remediation
-   acts first and pages after — the page is a report, not a
+   acts first and pages after; the page is a report, not a
    request for permission that would arrive too late to
    matter. In `off` mode the same page is all that happens,
    which is the playbook's original shape preserved as a
@@ -187,27 +185,25 @@ the system watches, records, and pages; the human decides.
 
 ## The record
 
-Every act lands twice. In the job's result, as a
-`remediation` member (additive, OPTIONAL, in the §3.2
-result): `{mode, authority: tripwire | oracle, divergence,
-act: killed | quarantined, av_verdict,
-received_digest}` — referral is never an `act` value; it is
-recorded through `av_verdict`. The sender learns their job was stopped
-and why, in the signed result, like any other outcome. And
-in the audit log, as the operator's copy, with the quarantine
-path and the referral detail. A remediation the owner cannot
-reconstruct from the record did not happen, whatever the
-process table said at the time. The quarantine area is
-bounded like the other state (a count and a size ceiling in
-config, oldest released-to-archive first — archiving moves,
-never deletes).
+Every act lands twice. In the job's result, as a `remediation` member
+(additive, OPTIONAL, in the §3.2 result): `{mode, authority: tripwire
+| oracle, divergence, act: killed | quarantined, av_verdict,
+received_digest}`. Referral is never an `act` value; it is recorded
+through `av_verdict`. The sender learns their job was stopped and why,
+in the signed result, like any other outcome. And in the audit log, as
+the operator's copy, with the quarantine path and the referral detail.
+A remediation the owner cannot reconstruct from the record did not
+happen, whatever the process table said at the time. The quarantine
+area is bounded like the other state (a count and a size ceiling in
+config, oldest released-to-archive first; archiving moves, never
+deletes).
 
 ## Placement: core feature, extension-fed
 
 The owner asked whether remediation is an extension or a
 core feature; it might not have to be an extension, and
 maybe an extension is the right place. The design's answer
-is both, split at the only seam that matters — **who can
+is both, split at the only seam that matters, **who can
 act**:
 
 - **The acts are core.** Only the runner holds the process
@@ -232,7 +228,7 @@ act**:
 - **Scope is the job.** The kill is the job's tree, the
   quarantine is the job's outputs, the referral is the
   job's files. Remediation never widens to the box, the
-  sender's other jobs, or the sender's key — a key-level
+  sender's other jobs, or the sender's key; a key-level
   consequence belongs to the key policy the owner sets,
   not to a mid-run judgment.
 - **No sender surface.** A job cannot request, widen,
@@ -261,13 +257,13 @@ act**:
   beyond the box's own.
 - The Defender path: locating `MpCmdRun.exe` across
   Defender install layouts, and its exit-code/verdict
-  mapping, verified on a real Windows box — the VM that
-  writes this design cannot sign that page.
+  mapping, verified on a real Windows box (the VM that
+  writes this design cannot sign that page).
 - Whether the Oracle's judgment call is synchronous (ask
   at divergence time, bounded by a short timeout, act on
-  timeout as `deterministic` would) — the design's
-  inclination, recorded here so the build argues with it
-  explicitly if it argues at all.
+  timeout as `deterministic` would), which is the
+  design's inclination, recorded here so the build
+  argues with it explicitly if it argues at all.
 
 
 ## As built (2026-10-18): deltas and closed open items
@@ -275,51 +271,45 @@ act**:
 The open items above, as the build closed them:
 
 - **Observation loop (closed).** Each running exec job gets a
-  monitor thread sampling on `remediation_sample_sec`
-  (default 1s) — deliberately *not* tied to
-  `poll_interval_sec`, because most jobs are shorter than one
-  mailbox poll cycle and a monitor that samples once per poll
-  would watch nothing. Per-sample cost is one walk of the
-  job's process subtree (via `/proc` on Linux, a Toolhelp32
-  snapshot on Windows, and one `ps -axo pid,ppid,rss,time`
-  call on Darwin and the BSDs, which have no `/proc` of Linux's
-  shape and no stdlib route to the process table) plus
-  a stat of its workdir. Correlation rule,
-  as built: the box's own clock is the only clock; an event
-  belongs to a job's window when its timestamp falls inside
-  the run and it names the job — by job id, by workdir path,
-  or by a pid in the job's tree. `resource_pressure` events
-  inside the window are box-level evidence and need no
-  naming. Sense alerts are read through the same store the
-  wake gate reads.
-- **What mid-run observation can honestly see (delta).** The
-  monitor sees the job's process tree and the files it writes
-  *in its workdir*, whose contents are scanned with the
-  `_script_path_findings` semantics against the envelope's
-  declared paths. Writes outside the workdir are not visible
-  mid-run with stdlib-only means; they are caught by the
-  post-run confinement snapshot where `workspace_root` is
-  configured, and an escape found there is handled as the
-  escape tripwire at result time (quarantine, referral, page
-  — the job has finished; there is nothing left to kill).
-  The cage's only live report today is its startup audit
-  entry; a `fallback` decision (enforce requested, the
-  confinement could not engage) files as the
-  `confinement_strain` divergence, and the monitor consumes any confinement
-  decision a future cage files for the running job — a
-  `denied` decision is wired as the escape tripwire the day
-  a producer exists. (The runner's confinement gate has
-  since settled the fallback's other half: under `enforce`
-  a `fallback` record now accompanies the job's refusal —
-  the job it was written for does not run at all — so a
-  strain divergence fires only when a `fallback` for the
-  running job's own job id lands inside the window's
-  5-second lookback: in practice a just-preceding refused
-  attempt of the same job id, a retry or redelivery that
-  then ran. An older record is excluded by the window's
-  timestamp filter, a different job's record by the job-id
-  filter, and the record a strain fires on names that
-  refusal — it does not show the running job uncaged.)
+  monitor thread sampling on `remediation_sample_sec` (default
+  1s), deliberately *not* tied to `poll_interval_sec`, because
+  most jobs are shorter than one mailbox poll cycle and a
+  monitor that samples once per poll would watch nothing.
+  Per-sample cost is one walk of the job's process subtree (via
+  `/proc` on Linux, a Toolhelp32 snapshot on Windows, and one
+  `ps -axo pid,ppid,rss,time` call on Darwin and the BSDs,
+  which have no `/proc` of Linux's shape and no stdlib route to
+  the process table) plus a stat of its workdir. Correlation
+  rule, as built: the box's own clock is the only clock; an
+  event belongs to a job's window when its timestamp falls
+  inside the run and it names the job, whether by job id, by
+  workdir path, or by a pid in the job's tree.
+  `resource_pressure` events inside the window are box-level
+  evidence and need no naming. Sense alerts are read through
+  the same store the wake gate reads.
+- **What mid-run observation can honestly see (delta).** The monitor sees
+  the job's process tree and the files it writes *in its workdir*, whose
+  contents are scanned with the `_script_path_findings` semantics against
+  the envelope's declared paths. Writes outside the workdir are not visible
+  mid-run with stdlib-only means; they are caught by the post-run
+  confinement snapshot where `workspace_root` is configured, and an escape
+  found there is handled as the escape tripwire at result time (quarantine,
+  referral, page; the job has finished, so there is nothing left to kill).
+  The cage's only live report today is its startup audit entry; a
+  `fallback` decision (enforce requested, the confinement could not engage)
+  files as the `confinement_strain` divergence, and the monitor consumes
+  any confinement decision a future cage files for the running job, with a
+  `denied` decision wired as the escape tripwire the day a producer exists.
+  (The runner's confinement gate has since settled the fallback's other
+  half: under `enforce` a `fallback` record now accompanies the job's
+  refusal, meaning the job it was written for does not run at all, so a
+  strain divergence fires only when a `fallback` for the running job's own
+  job id lands inside the window's 5-second lookback: in practice a
+  just-preceding refused attempt of the same job id, a retry or redelivery
+  that then ran. An older record is excluded by the window's timestamp
+  filter, a different job's record by the job-id filter, and the record a
+  strain fires on names that refusal; it does not show the running job
+  uncaged.)
 - **Saturation tells are named constants.** Tree CPU at 95%
   of one core across 3 consecutive samples
   (`tree_saturation`), tree resident memory at 50% of the
@@ -340,30 +330,30 @@ The open items above, as the build closed them:
   design's evidence standard accepts this rather than
   pretending to an audit the stdlib cannot give.
 - **The Defender path (narrowed, still open).** `MpCmdRun.exe`
-  is located across the standard layouts — PATH, the classic
+  is located across the standard layouts: PATH, the classic
   `%ProgramFiles%\Windows Defender` folder, and the
   `%ProgramData%\Microsoft\Windows Defender\Platform\<version>`
-  folders, newest first. The exit-code mapping (0 = clean,
-  2 = confirmed, anything else is not read as a verdict)
-  follows the vendor documentation; the referral itself is
-  code-complete, but the mapping remains unverified on a
-  real Windows box — this item stays open in that narrowed
-  form. The ClamAV mapping is `clamdscan`'s documented
-  0/1/2, and a box with no antivirus records `unavailable`,
-  exactly as designed.
+  folders, newest first. The exit-code mapping (0 = clean, 2 =
+  confirmed, anything else is not read as a verdict) follows
+  the vendor documentation; the referral itself is
+  code-complete, but the mapping remains unverified on a real
+  Windows box, so this item stays open in that narrowed form.
+  The ClamAV mapping is `clamdscan`'s documented 0/1/2, and a
+  box with no antivirus records `unavailable`, exactly as
+  designed.
 - **The Oracle's call (resolved).** Synchronous at divergence
   time, on the monitor thread (so the job's pipes keep
   draining while it thinks), bounded by
   `remediation_oracle_timeout_sec` (default 20s) clamped over
   the inference timeout. On timeout or error the Oracle
-  *abstains* — and this is the inclination recorded above,
+  *abstains*, and this is the inclination recorded above,
   made precise: "act on timeout as `deterministic` would"
   cannot mean a kill, because for a non-tripwire divergence
   the deterministic layer's act is no act. An abstention
   never kills; it is written to the audit log like every
-  other decision in this design. One call per divergence
-  kind per job, so a chatty divergence cannot turn into a
-  model bill.
+  other decision in this design. One call per divergence kind
+  per job, so a chatty divergence cannot turn into a model
+  bill.
 - **The final scan (addition).** When a job exits, the
   monitor scans its workdir once more before the result is
   assembled. A short job can write a tripping artifact and
@@ -373,7 +363,7 @@ The open items above, as the build closed them:
   honesty rule applies to a mid-run kill order that loses
   the race with a job already exiting on its own (POSIX:
   the exit was not the SIGKILL): the act that landed is
-  recorded — the quarantine, not the kill.
+  recorded, which is the quarantine, not the kill.
 - **The release door.** `--remediation-release <job_id>` is
   the one door; the Oracle chat reaches the same code path
   through its `run` tool. There is deliberately no second

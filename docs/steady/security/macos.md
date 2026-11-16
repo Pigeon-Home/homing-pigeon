@@ -22,16 +22,16 @@ Each job runs under a profile generated for that job: the
 profile starts from deny-by-default, lets the job execute and
 read the system trees and its interpreter's own install
 prefix, lets it read and write only inside its own work
-directory, and names no network allow rule at all — the
+directory, and names no network allow rule at all. The
 deny-by-default base is the network denial, and the profile
 states a `(deny network*)` line beside it so the record of
-the profile says what it does. Of your session's services
-it lets the job ask the user database who a user is, and no
-other. `sandbox-exec` wraps the
-launcher, so the profile is in force before the launcher's
-first line runs, and the job never runs a line unconfined.
-The profile is generated per job and passed to `sandbox-exec`
-as an argument; it is never written to a file.
+the profile says what it does. Of your session's services it
+lets the job ask the user database who a user is, and no
+other. `sandbox-exec` wraps the launcher, so the profile is
+in force before the launcher's first line runs, and the job
+never runs a line unconfined. The profile is generated per
+job and passed to `sandbox-exec` as an argument; it is never
+written to a file.
 
 A release's macOS binaries engage it as a runner started from
 source does: nothing in the chain is the runner's own
@@ -63,18 +63,18 @@ Three things to know about the ceiling:
   }
   ```
 
-  A language runtime that reserves address space at its start
-  needs the reservation to fit. On the two hosted Macs `sh`,
-  `python`, `ruby`, `perl` and `git` start under 512 MiB;
-  `node` needs 2 GiB; `java` needs 8 GiB. What is left for a
-  job's own data is the ceiling less what its program maps
-  at its start: under 512 MiB a Python job made a buffer of
-  256 MiB every time, and of 512 MiB some of the time.
-- It is not the job's to raise, and it is each process's own:
-  there is no ceiling on a job's processes taken together,
-  and none on processor time or cores. One job can raise it:
-  a job that is root, which is what a job is when you run the
-  runner as root and name no job user. Name one (below).
+A language runtime that reserves address space at its start
+needs the reservation to fit. On the two hosted Macs `sh`,
+`python`, `ruby`, `perl` and `git` start under 512 MiB;
+`node` needs 2 GiB; `java` needs 8 GiB. What is left for a
+job's own data is the ceiling less what its program maps at
+its start: under 512 MiB a Python job made a buffer of 256
+MiB every time, and of 512 MiB some of the time. It is not
+the job's to raise, and it is each process's own: there is no
+ceiling on a job's processes taken together, and none on
+processor time or cores. One job can raise it: a job that is
+root, which is what a job is when you run the runner as root
+and name no job user. Name one (below).
 
 The posture report (`--posture`) says the ceiling and the
 floor it stands on for the Mac it runs on.
@@ -83,8 +83,8 @@ Only the data-size limit is set, never the virtual-memory
 (address-space) limit: the address space a macOS process maps
 at startup already exceeds 512 MiB, and a 512 MiB
 address-space ceiling made every confined spawn abort before
-its first line of job code in the backend's first live run —
-the fix for that failure, and its suppositions and
+its first line of job code in the backend's first live run.
+The fix for that failure, and its suppositions and
 conclusions, stand at the end of this page.
 
 ### The session's services
@@ -102,9 +102,9 @@ configuration or list the disks, and it cannot register a
 service name of its own for another program to find.
 
 Most jobs need nothing more. On the two hosted Macs,
-thirty-six programs a job is likely to be — the shell's
+thirty-six programs a job is likely to be (the shell's
 tools, Python, Perl, Ruby, Node, `curl`, `openssl`, `zip`,
-`tar` and others — behaved under this list as they do with
+`tar` and others) behaved under this list as they do with
 every service open.
 
 If a job of yours does need a service, name it:
@@ -154,12 +154,12 @@ sudo log show --last 5m --style compact --predicate 'eventMessage CONTAINS "deny
   `sandbox-exec` is the mechanism that fits a launcher.
 - The profile is not a filesystem namespace. It is a
   mandatory-access profile over the host filesystem the job
-  process runs on: paths the profile does not name cannot
-  be read, which is stronger than the Windows backend (whose
-  confined jobs can read any path their token can read),
-  and it is not the FreeBSD jail's separate root — the job
-  sees the host's path layout, and the profile, not a
-  mount table, is what refuses it. `work_mount` and
+  process runs on: paths the profile does not name cannot be
+  read, which is stronger than the Windows backend (whose
+  confined jobs can read any path their token can read), and
+  it is not the FreeBSD jail's separate root; the job sees
+  the host's path layout, and the profile, not a mount
+  table, is what refuses it. `work_mount` and
   `extra_ro_binds` name mounts, and name nothing here.
 - The memory ceiling is a per-process resource limit applied
   at spawn (`ulimit` in the launcher), not a Seatbelt rule:
@@ -177,16 +177,16 @@ sudo log show --last 5m --style compact --predicate 'eventMessage CONTAINS "deny
 
 ### The probe
 
-At `enforce` the startup gate probes the backend — the tools
-present, a generated profile that parses, and a trial under
-the full controls. The trial reads a staged file inside its
-work directory and writes its output there, is refused a
-write and a read beside that directory, says it carries a
-ceiling of its own, and is refused the clipboard — unless
-your config names the pasteboard. The gate refuses to start when the
-probe fails, naming why. A job whose own confined spawn
-cannot be created is refused at job time the same way; there
-is no path on which a job runs unconfined under `enforce`.
+At `enforce` the startup gate probes the backend: the tools present,
+a generated profile that parses, and a trial under the full
+controls. The trial reads a staged file inside its work directory
+and writes its output there, is refused a write and a read beside
+that directory, says it carries a ceiling of its own, and is refused
+the clipboard, unless your config names the pasteboard. The gate
+refuses to start when the probe fails, naming why. A job whose own
+confined spawn cannot be created is refused at job time the same
+way; there is no path on which a job runs unconfined under
+`enforce`.
 
 ### A job user
 
@@ -252,7 +252,7 @@ refused at startup ("confinement (bwrap) is Linux-only; this
 machine is darwin") and the platform seed stated the mode at
 `audit` because there was no backend behind it. The
 supposition is that, with the backend landed, on the CI
-macOS legs (macos-15 and macos-15-intel — there is no Mac in
+macOS legs (macos-15 and macos-15-intel; there is no Mac in
 the project's own fleet, so CI is the field test for this
 platform, and the claims below stand only to the strength
 that proof gives):
@@ -265,7 +265,7 @@ that proof gives):
 - each exec job's audit record names exactly "macos:
   seatbelt_profile + no_network + spawn_resource_limits";
 - an escape write to a host path outside the work directory
-  does not land — the profile names no write allow rule for
+  does not land: the profile names no write allow rule for
   it, so Seatbelt refuses the write;
 - an escape read of a host file outside the system trees,
   the interpreter prefix and the work directory does not
@@ -302,11 +302,11 @@ What is proven, and what is not, as this section stands:
   trial-spawn proof's failure naming, the startup gate,
   the argv gate and the spawn seam (which records exactly
   "macos: seatbelt_profile + no_network +
-  spawn_resource_limits"), and the seed shape — a fresh
-  macOS install still states `confinement` at `audit`.
-  The stub half stands as supposed: off darwin the probe
-  always answers a problem string, and a simulated darwin
-  refuses deterministically.
+  spawn_resource_limits"), and the seed shape, where a
+  fresh macOS install still states `confinement` at
+  `audit`. The stub half stands as supposed: off darwin
+  the probe always answers a problem string, and a
+  simulated darwin refuses deterministically.
 - The live half has now had CI's word, and the word is
   failure. The live tests run only on the CI macOS legs,
   and they were skipped on the Linux host the contract
@@ -314,10 +314,10 @@ What is proven, and what is not, as this section stands:
   registered. On the landed tree's build (build run
   43089173541), the test-macos job (job 130770346469)
   completed with a failure verdict at 12:07 PM PST on
-  2026-11-11 — minutes after an earlier form of this
+  2026-11-11, minutes after an earlier form of this
   section, written while that job was still in progress,
-  had correctly recorded it as still in progress. All
-  6 tests in the live class (`LiveBackendTest`) failed.
+  had correctly recorded it as still in progress. All 6
+  tests in the live class (`LiveBackendTest`) failed.
   The confined spawn aborted with exit -6 and could not
   read its staged file, and that one shape is the root
   of the live failures as they stand.
@@ -325,25 +325,26 @@ What is proven, and what is not, as this section stands:
   exactly. Refuted as landed: the probe-engages point
   (`test_the_probe_engages`) and the point that a spawn
   runs inside the profile
-  (`test_a_spawn_runs_inside_the_profile`) — the probe
-  did not engage cleanly, and a confined spawn did not
-  run inside the profile and read its staged file.
-  Unproven, not refuted: the escape write
-  (`test_an_escape_write_does_not_land`), the escape
-  read (`test_an_escape_read_does_not_return_contents`),
-  the network refusal
-  (`test_a_network_attempt_is_refused`) and the spawn
-  limits (`test_the_spawn_limits_are_carried_by_the_job`)
+  (`test_a_spawn_runs_inside_the_profile`); the probe did
+  not engage cleanly, and a confined spawn did not run
+  inside the profile and read its staged file. Unproven,
+  not refuted: the escape write
+  (`test_an_escape_write_does_not_land`), the escape read
+  (`test_an_escape_read_does_not_return_contents`), the
+  network refusal (`test_a_network_attempt_is_refused`)
+  and the spawn limits
+  (`test_the_spawn_limits_are_carried_by_the_job`)
   produced no evidence either way, because the confined
   spawn aborted before any of them could be exercised.
   Seatbelt was never shown to allow an escape: no escape
-  landed, and no refusal was shown either — those points
+  landed, and no refusal was shown either; those points
   simply have no verdict yet.
 - The same job carried a separate failure family on the
-  darwin host: 4 failures in `test_windows_confine` — a
-  fallback name recorded as `macos_confinement_failed`
-  where `windows_confinement_failed` was expected, and
-  3 failures of the form `TypeError: _spawn() got an
+  darwin host: 4 failures in `test_windows_confine`,
+  consisting of a fallback name recorded as
+  `macos_confinement_failed` where
+  `windows_confinement_failed` was expected, and 3
+  failures of the form `TypeError: _spawn() got an
   unexpected keyword argument 'user'`. That is a
   darwin-host seam regression, recorded separately from
   the live verdict above; it is not evidence about the
@@ -354,14 +355,14 @@ What is proven, and what is not, as this section stands:
   completed) or were still pending, so this failure is
   the only completed live verdict on record.
 - The support level therefore does not move up. It
-  stands exactly as the support matrix states it —
-  Supported, reduced confinement — on the basis stated
+  stands exactly as the support matrix states it
+  (Supported, reduced confinement) on the basis stated
   there. The live proof remains open: it closes only
   when a fix has landed and a test-macos job on a head
   carrying that fix completes green. Until then the
   live supposition points stand as this verdict leaves
-  them — 2 refuted as landed, 4 unproven — and no field
-  proof on project hardware is claimed — there is no
+  them (2 refuted as landed, 4 unproven) and no field
+  proof on project hardware is claimed, as there is no
   Mac in the project's own fleet.
 
 ## Suppositions for the fix, recorded before the fix
@@ -379,9 +380,9 @@ below is completed against them.
   the shim sets both `RLIMIT_AS` and `RLIMIT_DATA` to
   512 MiB and then `exec`s the job's command. On macOS a
   process's virtual address space at interpreter startup
-  — the dynamic loader, the dyld shared cache and the
+  (the dynamic loader, the dyld shared cache and the
   system libraries every process maps before its first
-  line of code — already exceeds 512 MiB, on Apple
+  line of code) already exceeds 512 MiB, on Apple
   silicon by a wide margin. The supposed mechanism is
   therefore not the Seatbelt profile's file rules at
   all: the shim's own interpreter starts under the
@@ -389,7 +390,7 @@ below is completed against them.
   lands at the next `exec`, when the job's interpreter
   tries to come up under a virtual-memory ceiling
   smaller than its own startup mappings and dies by
-  SIGABRT (exit -6) before any job code runs — which is
+  SIGABRT (exit -6) before any job code runs, which is
   why every live test failed with the same shape (no
   output, no DENIED markers, no limits read back) and
   why the escape, network and limits points produced no
@@ -399,13 +400,13 @@ below is completed against them.
   on a process's data mappings) and leaves the address
   space unlimited; the audit name
   `spawn_resource_limits` stands, and the live limits
-  test is re-pinned to read back exactly that — the
-  data limit at the ceiling, the address space
-  unlimited — plus a live point the landed suite did
-  not carry: a job that tries to allocate well past the
-  ceiling is refused by it. If a head carrying that fix
-  still aborts at -6, S1 is wrong and this record says
-  so in advance.
+  test is re-pinned to read back exactly that (the data
+  limit at the ceiling, the address space unlimited)
+  plus a live point the landed suite did not carry: a
+  job that tries to allocate well past the ceiling is
+  refused by it. If a head carrying that fix still
+  aborts at -6, S1 is wrong and this record says so in
+  advance.
 - S2, the staged read and the work write (a latent
   failure behind S1). A macOS work directory lives
   under the temp tree, `/var/folders/...`, and `/var`
@@ -414,18 +415,18 @@ below is completed against them.
   canonical path, so a `(subpath "/var/folders/...")`
   rule never matches the file it names. The profile
   writer already carries this knowledge for the system
-  trees — `SYSTEM_READ_PATHS` names `/private/etc`
-  beside `/etc` for exactly this reason — but the work
+  trees (`SYSTEM_READ_PATHS` names `/private/etc`
+  beside `/etc` for exactly this reason), but the work
   directory and the extra read paths get no such twin,
   so even with S1 fixed the trial's staged read and
-  the job's work-directory write would be refused.
-  The fix this supposition calls for: the profile
-  names the `/private` canonical twin of every
-  `/var/...` and `/tmp/...` path it names, on both the
-  read line and the write line, deduplicated against
-  paths already named. This is deterministically
-  testable off macOS — the generated profile text is
-  the substrate — and the contract tests pin it.
+  the job's work-directory write would be refused. The
+  fix this supposition calls for: the profile names
+  the `/private` canonical twin of every `/var/...`
+  and `/tmp/...` path it names, on both the read line
+  and the write line, deduplicated against paths
+  already named. This is deterministically testable
+  off macOS, as the generated profile text is the
+  substrate, and the contract tests pin it.
 - S3, the windows seam failures on the darwin host.
   `_confinement_spawn` derives its platform from two
   different signals: Windows from `os.name`, FreeBSD
@@ -435,9 +436,9 @@ below is completed against them.
   patches `os.name` to `nt`, the signal that seam has
   always used) satisfies the darwin branch at the same
   time, the darwin branch is consulted first, and the
-  scripted Windows backend — whose spawn takes no
+  scripted Windows backend (whose spawn takes no
   `user` argument, because the Windows branch never
-  hands one over — is called by the macOS branch with
+  hands one over) is called by the macOS branch with
   `user=`, which is the recorded `TypeError`, and its
   fallback is recorded under the macOS name. The other
   confinement gates (`_confinement_argv`, the startup
@@ -449,9 +450,9 @@ below is completed against them.
   windows seam tests complete their simulation by
   patching `sys.platform` as the FreeBSD and macOS
   seam tests already do. On a real host nothing
-  changes — a real Windows host answers `win32` to
-  both signals — and the Windows and FreeBSD branches'
-  behaviour is otherwise untouched.
+  changes, because a real Windows host answers `win32`
+  to both signals, and the Windows and FreeBSD
+  branches' behaviour is otherwise untouched.
 
 What is not supposed: that the profile's file or
 network posture caused the abort (the shim starts and
@@ -475,8 +476,8 @@ line alike, deduplicated, and the composed spawn argv
 builds its profile from the work directory's real path,
 so a work directory reached through any alias enters
 the profile under the name Seatbelt matches. And the
-spawn seam derives all three platforms — Windows,
-FreeBSD, darwin — from `sys.platform` alone, the single
+spawn seam derives all three platforms (Windows,
+FreeBSD, darwin) from `sys.platform` alone, the single
 signal the confinement gates beside it already used;
 the windows seam tests complete their simulation by
 patching `sys.platform`, as the FreeBSD and macOS seam
@@ -489,10 +490,10 @@ each supposition now stands on, stated exactly:
   contract tests pin the shim's source to the data-size
   limit alone (no address-space or virtual-memory limit
   name stands in it), and the live limits test is
-  re-pinned to read back exactly that — the data limit
-  at the ceiling, the address space unlimited — beside a
-  new live point the landed suite did not carry, a job
-  that tries to allocate 700 MiB past the ceiling and is
+  re-pinned to read back exactly that (the data limit at
+  the ceiling, the address space unlimited) beside a new
+  live point the landed suite did not carry, a job that
+  tries to allocate 700 MiB past the ceiling and is
   refused by it. Whether the abort is gone is not proven
   here: that is a live fact, and no `test-macos` job on
   a head carrying this fix has completed as this section
@@ -517,45 +518,45 @@ each supposition now stands on, stated exactly:
   darwin platform an `os.name` of `nt` routes nowhere
   but the macOS branch. The windows suite's simulations
   now patch `sys.platform` beside `os.name`, and the
-  three confinement suites — macOS, Windows and FreeBSD
-  — run green together on a Linux host (159 tests, the
+  three confinement suites (macOS, Windows and FreeBSD)
+  run green together on a Linux host (159 tests, the
   live macOS class among the skips, under its registered
-  reasons), beside the neighbouring batteries (the
-  skip registry, the reader-pages guard, the core and
-  figure guards after their re-measure). The 4
-  darwin-host windows failures' mechanism is removed by
+  reasons), beside the neighbouring batteries (the skip
+  registry, the reader-pages guard, the core and figure
+  guards after their re-measure). The 4 darwin-host
+  windows failures' mechanism is removed by
   construction; their confirmation on a darwin host is
   the same outstanding CI verdict, not a claim made
   here.
-- The support level does not move. It stands exactly
-  as the support matrix states it — Supported, reduced
+- The support level does not move. It stands exactly as
+  the support matrix states it: Supported, reduced
   confinement. The live proof remains open, and it
   closes only when a `test-macos` job on a head carrying
   this fix completes green; until then the live points
-  stand as the failure verdict left them — the probe
-  and the confined spawn refuted as originally landed
-  and now addressed by a fix whose live word has not
-  landed, the escape, network and limits points
-  unproven — and no field proof on project hardware is
-  claimed: there is no Mac in the project's own fleet.
+  stand as the failure verdict left them (the probe and
+  the confined spawn refuted as originally landed and
+  now addressed by a fix whose live word has not landed,
+  the escape, network and limits points unproven), and
+  no field proof on project hardware is claimed: there
+  is no Mac in the project's own fleet.
 
 ## The second live verdict (2026-11-11)
 
 The live word has since landed, and it is failure again.
-Two `test-macos` jobs on heads carrying the fix above
-have completed with failure verdicts (build runs
-43101076872 and 43105044003; the newer on the tree this
-section's suppositions were written on, its `test-macos`
-job completing at 1:53 PM PST on 2026-11-11, on macOS
-15.8.2, the arm64 image, under the hosted Python 3.12.10).
-All 7 tests in the live class failed, in exactly the
-shape of the first verdict: the confined spawn aborted
-with exit -6 and produced no output on either stream —
-the probe's trial could not read its staged file, the
-escape, network and limits points again produced no
-evidence either way, and the limits read-back came back
-empty. The verdict was read first-hand from the job log
-before anything below was supposed.
+Two `test-macos` jobs on heads carrying the fix above have
+completed with failure verdicts (build runs 43101076872
+and 43105044003; the newer on the tree this section's
+suppositions were written on, its `test-macos` job
+completing at 1:53 PM PST on 2026-11-11, on macOS 15.8.2,
+the arm64 image, under the hosted Python 3.12.10). All 7
+tests in the live class failed, in exactly the shape of
+the first verdict: the confined spawn aborted with exit -6
+and produced no output on either stream; the probe's trial
+could not read its staged file, the escape, network and
+limits points again produced no evidence either way, and
+the limits read-back came back empty. The verdict was read
+first-hand from the job log before anything below was
+supposed.
 
 What that verdict settles about the first fix, stated
 exactly: S1 is wrong as a diagnosis of the abort, as its
@@ -563,18 +564,18 @@ own record provided in advance ("if a head carrying that
 fix still aborts at -6, S1 is wrong"). The data-size-only
 shim changed the spawn's limits and the abort did not
 move at all, so the address-space limit was not the
-mechanism — or not the whole of it. S2's substrate proof
-stands (the profile text names the canonical twins it
-was built to name), and S3's seam proof stands; neither
-was ever exercised live, because the confined process
-still dies before any of them can be. One further fact
-the log carries: the startup probe — `sandbox-exec`
-starting `/usr/bin/true` under an allow-by-default
-profile — passes on the same host, so the tool works and
-a simply-confined native process starts; the abort lives
-in what this backend's own spawn adds on top of that:
-its deny-by-default profile, its launcher shim, or the
-limit the shim sets. The suppositions below are built to
+mechanism, or not the whole of it. S2's substrate proof
+stands (the profile text names the canonical twins it was
+built to name), and S3's seam proof stands; neither was
+ever exercised live, because the confined process still
+dies before any of them can be. One further fact the log
+carries: the startup probe (`sandbox-exec` starting
+`/usr/bin/true` under an allow-by-default profile) passes
+on the same host, so the tool works and a simply-confined
+native process starts; the abort lives in what this
+backend's own spawn adds on top of that: its
+deny-by-default profile, its launcher shim, or the limit
+the shim sets. The suppositions below are built to
 separate those three, and the fix that follows them
 carries a live bisect that names the culprit in the next
 verdict if the fix itself misses.
@@ -595,16 +596,16 @@ host).
 - R2-S1, the root listing (the primary supposition).
   Every process that starts on macOS reads the listing
   of the root directory as it starts, and a process that
-  is refused that read is aborted — stopped at start
-  with SIGABRT, before it can print anything. That is
-  the published shape of this exact failure in the
-  second outside record: each process under a Seatbelt
-  profile stopped at start with SIGABRT, `/usr/bin/true`
+  is refused that read is aborted, stopped at start with
+  SIGABRT, before it can print anything. That is the
+  published shape of this exact failure in the second
+  outside record: each process under a Seatbelt profile
+  stopped at start with SIGABRT, `/usr/bin/true`
   included, because "the process reads the listing of
   the root directory, and the profile gave `/` only its
-  metadata"; the fix there was one line, an allowance
-  of `file-read-data` on the literal `/`, which "gives
-  the names at the top of the disk" and "nothing below
+  metadata"; the fix there was one line, an allowance of
+  `file-read-data` on the literal `/`, which "gives the
+  names at the top of the disk" and "nothing below
   them". This backend's profile gives `/` less than
   that: its read line names subpath trees (`/System`,
   `/usr`, and the rest) and no rule names the root
@@ -616,70 +617,70 @@ host).
   across both rounds (neither round's profile named the
   root), and the allow-by-default probe passes because
   that profile denies nothing. The fix this supposition
-  calls for: the profile carries exactly that one line
-  — `(allow file-read-data (literal "/"))` — and no
-  subpath grant on `/`, so nothing below the top of the
-  disk is readable by it. If a head carrying that line
-  still aborts at -6, R2-S1 is wrong and this record
-  says so in advance.
-- R2-S2, the system startup trees under `/private`.
-  Working deny-by-default allowlists name, beside the
-  familiar system trees, three `/private` trees this
-  backend's profile does not: `/private/var/db/dyld`
-  (the dynamic loader's own database, read as every
-  process's libraries are bound), `/private/var/db/timezone`
-  (the tree `/etc/localtime` points into, read as a
-  process learns its timezone), and `/private/var/select`
-  (the tool-selection links, which `/bin/sh` reads at
-  every start). This backend's `SYSTEM_READ_PATHS` names
-  `/private/etc` and nothing else under `/private` — the
-  one twin the first backend happened to carry — so all
-  three reads fall under the deny-by-default base. A
-  refused loader or timezone read at startup is the same
-  abort grade as R2-S1's: it lands in the loader or the
-  system library, below the interpreter, with nothing
-  printed. The fix this supposition calls for: the three
-  trees join `SYSTEM_READ_PATHS`, read-only like the
-  rest of that set, named once each. Which of R2-S1 and
-  R2-S2 carries the abort — either, or both — the next
-  live verdict cannot separate if the fix lands both at
-  once, and that is accepted plainly: the live bisect
-  below separates the profile from the shim, and the two
-  profile grants are both minimal, named, system-only
-  reads of the kind every working allowlist on record
-  carries.
+  calls for: the profile carries exactly that one line,
+  `(allow file-read-data (literal "/"))`, and no subpath
+  grant on `/`, so nothing below the top of the disk is
+  readable by it. If a head carrying that line still
+  aborts at -6, R2-S1 is wrong and this record says so
+  in advance.
+- R2-S2, the system startup trees under `/private`. Working
+  deny-by-default allowlists name, beside the familiar
+  system trees, three `/private` trees this backend's
+  profile does not: `/private/var/db/dyld` (the dynamic
+  loader's own database, read as every process's libraries
+  are bound), `/private/var/db/timezone` (the tree
+  `/etc/localtime` points into, read as a process learns its
+  timezone), and `/private/var/select` (the tool-selection
+  links, which `/bin/sh` reads at every start). This
+  backend's `SYSTEM_READ_PATHS` names `/private/etc` and
+  nothing else under `/private` (the one twin the first
+  backend happened to carry), so all three reads fall under
+  the deny-by-default base. A refused loader or timezone
+  read at startup is the same abort grade as R2-S1's: it
+  lands in the loader or the system library, below the
+  interpreter, with nothing printed. The fix this
+  supposition calls for: the three trees join
+  `SYSTEM_READ_PATHS`, read-only like the rest of that set,
+  named once each. Which of R2-S1 and R2-S2 carries the
+  abort (either, or both) the next live verdict cannot
+  separate if the fix lands both at once, and that is
+  accepted plainly: the live bisect below separates the
+  profile from the shim, and the two profile grants are both
+  minimal, named, system-only reads of the kind every
+  working allowlist on record carries.
 - R2-S3, the standing alternative: the data-size limit
   itself. The 512 MiB `RLIMIT_DATA` the shim sets was
   present in both failing rounds, so it cannot be
   cleared by the round-over-round comparison that
   cleared the address-space limit: if the second
-  `exec`'s startup — the loader binding the job
-  interpreter under a data ceiling already in force —
-  is what aborts, the profile grants above change
-  nothing. This round does not act on R2-S3 in the
-  production spawn, for one stated reason: round two
-  changed only the limits and the abort did not move,
-  so the profile is the variable this round changes,
-  one variable at a time. Instead the live suite gains
-  the bisect that convicts or clears each suspect in a
-  single verdict: a spawn under the generated profile
-  alone (no shim, no limit), a spawn through the shim
-  alone (no profile), and a native binary through the
-  full confined chain. If the next verdict still shows
-  -6 on the full chain, those three points' pattern
-  names which of the profile, the shim's limit, or the
-  chain itself is the cause, and this record says so in
+  `exec`'s startup (the loader binding the job
+  interpreter under a data ceiling already in force) is
+  what aborts, the profile grants above change nothing.
+  This round does not act on R2-S3 in the production
+  spawn, for one stated reason: round two changed only
+  the limits and the abort did not move, so the profile
+  is the variable this round changes, one variable at a
+  time. Instead the live suite gains the bisect that
+  convicts or clears each suspect in a single verdict:
+  a spawn under the generated profile alone (no shim,
+  no limit), a spawn through the shim alone (no
+  profile), and a native binary through the full
+  confined chain. If the next verdict still shows -6 on
+  the full chain, those three points' pattern names
+  which of the profile, the shim's limit, or the chain
+  itself is the cause, and this record says so in
   advance.
 
 What is not supposed: that Seatbelt allowed any escape
-(no escape point has ever been exercised — the process
-dies before them), that the first fix's canonical twins
-were wrong (their substrate stands proven, and the
-staged file's canonical name was already in the profile
-in both rounds), or that the outside records prove
-anything about this host (they are the reason these
-three mechanisms are supposed first; the CI macOS legs
-remain the only field proof this platform has).
+(no escape point has ever been exercised, as the
+process dies before them), that the first fix's
+canonical twins were wrong (their substrate stands
+proven, and the staged file's canonical name was
+already in the profile in both rounds), or that the
+outside records prove anything about this host (they
+are the reason these three mechanisms are supposed
+first; the CI macOS legs remain the only field proof
+this platform has).
 
 ## Conclusions for the second fix, against R2-S1 to R2-S3
 
@@ -700,22 +701,22 @@ exactly:
   this fix has completed as this section stands. If
   that verdict still shows exit -6, R2-S1 is wrong,
   exactly as its record said in advance.
-- R2-S2's grant is landed exactly as supposed, and
-  its substrate is proven the same way: the three
-  trees — `/private/var/db/dyld`,
-  `/private/var/db/timezone` and `/private/var/select`
-  — stand in `SYSTEM_READ_PATHS` and in the generated
-  profile, once each, read-only like the rest of that
-  set, pinned by a contract test. Which of R2-S1 and
-  R2-S2 carried the abort the next live verdict
-  cannot separate, as the suppositions record said
-  in advance; both grants are minimal, named,
-  system-only reads.
+- R2-S2's grant is landed exactly as supposed, and its
+  substrate is proven the same way: the three trees
+  (`/private/var/db/dyld`, `/private/var/db/timezone`
+  and `/private/var/select`) stand in
+  `SYSTEM_READ_PATHS` and in the generated profile,
+  once each, read-only like the rest of that set,
+  pinned by a contract test. Which of R2-S1 and R2-S2
+  carried the abort the next live verdict cannot
+  separate, as the suppositions record said in
+  advance; both grants are minimal, named, system-only
+  reads.
 - R2-S3 was not acted on in the production spawn, as
   supposed: the shim and its data-size limit are
   unchanged this round, one variable at a time. The
   live bisect it called for is landed as three live
-  points beside the original seven — a native binary
+  points beside the original seven: a native binary
   through the full confined chain, the generated
   profile alone with no shim and no limit, and the
   shim alone with no profile. If the next verdict
@@ -729,13 +730,13 @@ exactly:
   3), beside the neighbouring confinement suites and
   the figure guards after their re-measure.
 - The support level does not move. It stands exactly
-  as the support matrix states it — Supported,
-  reduced confinement. The live proof remains open,
-  and it closes only when a `test-macos` job on a
-  head carrying this fix completes green; until then
-  the live points stand as the second failure verdict
-  left them — the confined spawn refuted twice over,
-  the escape, network and limits points unproven —
+  as the support matrix states it: Supported, reduced
+  confinement. The live proof remains open, and it
+  closes only when a `test-macos` job on a head
+  carrying this fix completes green; until then the
+  live points stand as the second failure verdict
+  left them (the confined spawn refuted twice over,
+  the escape, network and limits points unproven),
   and no field proof on project hardware is claimed:
   there is no Mac in the project's own fleet.
 
@@ -744,49 +745,49 @@ exactly:
 The live word on the second fix has landed, and it is
 failure in a new shape. Two `test-macos` jobs on heads
 carrying the second fix have completed with failure
-verdicts (build run 43118076619 on the figures head
-that followed the fix, and build run 43121516173 on
-the 3.16.20.5 release head; the newer job's log was
-read first-hand before anything below was supposed,
-on the macos-15 arm64 image, the hosted framework
-Python 3.12). All 10 tests in the live class failed —
-the original 7 and the bisect's 3. The shape changed:
-no confined spawn aborts at -6 any more. A confined
-interpreter now starts far enough to print its own
-diagnostic and exit 1: `python: realpath:
+verdicts (build run 43118076619 on the figures head that
+followed the fix, and build run 43121516173 on the
+3.16.20.5 release head; the newer job's log was read
+first-hand before anything below was supposed, on the
+macos-15 arm64 image, the hosted framework Python 3.12).
+All 10 tests in the live class failed: the original 7
+and the bisect's 3. The shape changed: no confined spawn
+aborts at -6 any more. A confined interpreter now starts
+far enough to print its own diagnostic and exit 1:
+`python: realpath:
 /Library/Frameworks/Python.framework/Versions/3.12/bin/:
 Operation not permitted`. The probe's failure carries
-that line verbatim, the memory-ceiling point's stderr
-is exactly that line instead of a `MemoryError`, the
-full-chain spawns (the interpreter spawn and the
-native binary alike) return 1, the escape and network
-points again produce no output (`b''` — the process
-dies before them), and the limits read-back is empty.
+that line verbatim, the memory-ceiling point's stderr is
+exactly that line instead of a `MemoryError`, the
+full-chain spawns (the interpreter spawn and the native
+binary alike) return 1, the escape and network points
+again produce no output (`b''`, as the process dies
+before them), and the limits read-back is empty.
 
 What that verdict settles about the second fix, stated
 exactly. The -6 abort is gone, so R2-S1 and R2-S2 as a
 pair were carrying it: the grants they added (the root
 listing, the `/private` startup trees) let the loader
-finish and the interpreter's own code run — the
+finish and the interpreter's own code run, so the
 process now lives long enough to report what refuses
 it. They are incomplete, not wrong: a further startup
 need is refused, and it is now visible by name. The
 bisect did part of its job and exposed a gap in
 itself: the profile alone fails (so the profile still
-refuses a startup need), the native binary through
-the full chain fails (but that leg launches through
-the Python shim, so it shares the interpreter's death
-and does not isolate a native start), and the shim
-alone — no profile in force at all — also fails at
-exit 1, so a second, independent defect sits in the
-shim leg; its cause is not in the log, because the
-round-2 bisect assertions checked only the return
-code and captured no stderr. One correction to how
-this verdict is described: the bisect legs are new in
-round 2 and have no earlier CI verdict at all — the
-failure count rose 7 to 10 because three new points
-exist and fail, not because three passing points
-regressed; the original 7 fail in a new shape.
+refuses a startup need), the native binary through the
+full chain fails (but that leg launches through the
+Python shim, so it shares the interpreter's death and
+does not isolate a native start), and the shim alone
+(no profile in force at all) also fails at exit 1, so
+a second, independent defect sits in the shim leg; its
+cause is not in the log, because the round-2 bisect
+assertions checked only the return code and captured
+no stderr. One correction to how this verdict is
+described: the bisect legs are new in round 2 and have
+no earlier CI verdict at all; the failure count rose 7
+to 10 because three new points exist and fail, not
+because three passing points regressed; the original 7
+fail in a new shape.
 
 ## Suppositions for the third fix, recorded before the fix
 
@@ -796,94 +797,91 @@ first-hand read of the failing job log and of
 `runner/guard/macos_confine.py` and the live suite as
 the second fix left them.
 
-- R3-S1, the realpath refusal (the primary
-  supposition). At startup the interpreter resolves
-  its own install location with `realpath()` — the
-  framework interpreter on the CI host resolves
-  `/Library/Frameworks/Python.framework/Versions/3.12/bin/`
-  — and `realpath()` stats every component of the
-  path in turn (the `lstat`/`readlink` family, which
-  Seatbelt governs as `file-read-metadata`). The
-  profile grants `file-read*` — metadata included —
-  on its named subpath trees, so every component
-  under `/Library` is covered; but the root itself
-  carries only R2-S1's `file-read-data` line, which
-  grants the listing and not the stat, so the stat
-  of `/` is refused by the deny-by-default base,
-  `realpath()` fails with `Operation not permitted`,
-  and the interpreter's startup path resolution is
-  fatal: it prints exactly the line the log carries
-  and exits 1. The general form of the same defect
-  reaches further than the root: component-wise stat
-  touches every ancestor of an allowed path, and the
-  ancestors above a granted prefix are nowhere
-  granted — a venv interpreter's `/Users/<name>`
-  ancestors, a work directory's `/private`,
-  `/private/var` and temp-hash ancestors — so any
-  startup (or job) `realpath()` of an allowed path
-  can be refused at an ungranted ancestor. The fix
-  this supposition calls for: the profile carries
-  one `(allow file-read-metadata)` line — metadata
-  (existence, type, size, times, symlink targets) on
-  any path, and never contents: `file-read-data`
-  stays confined to the named trees, so the escape
-  points' contents assertions are untouched, and
-  the root listing line stands as it is. If a head
-  carrying that line still prints the realpath line,
-  R3-S1 is wrong and this record says so in advance.
+- R3-S1, the realpath refusal (the primary supposition). At
+  startup the interpreter resolves its own install location
+  with `realpath()` (the framework interpreter on the CI
+  host resolves
+  `/Library/Frameworks/Python.framework/Versions/3.12/bin/`),
+  and `realpath()` stats every component of the path in
+  turn (the `lstat`/`readlink` family, which Seatbelt
+  governs as `file-read-metadata`). The profile grants
+  `file-read*` (metadata included) on its named subpath
+  trees, so every component under `/Library` is covered;
+  but the root itself carries only R2-S1's `file-read-data`
+  line, which grants the listing and not the stat, so the
+  stat of `/` is refused by the deny-by-default base,
+  `realpath()` fails with `Operation not permitted`, and
+  the interpreter's startup path resolution is fatal: it
+  prints exactly the line the log carries and exits 1. The
+  general form of the same defect reaches further than the
+  root: component-wise stat touches every ancestor of an
+  allowed path, and the ancestors above a granted prefix
+  are nowhere granted (a venv interpreter's `/Users/<name>`
+  ancestors, a work directory's `/private`, `/private/var`
+  and temp-hash ancestors), so any startup (or job)
+  `realpath()` of an allowed path can be refused at an
+  ungranted ancestor. The fix this supposition calls for:
+  the profile carries one `(allow file-read-metadata)`
+  line, granting metadata (existence, type, size, times,
+  symlink targets) on any path, and never contents:
+  `file-read-data` stays confined to the named trees, so
+  the escape points' contents assertions are untouched, and
+  the root listing line stands as it is. If a head carrying
+  that line still prints the realpath line, R3-S1 is wrong
+  and this record says so in advance.
 - R3-S2, why the three bisect legs fail. Each leg's
   failure is one of the two defects above wearing
   that leg's shape. The native-binary leg is not a
   native start: the full chain launches every command
   through the shim's interpreter, so the leg dies at
-  the shim interpreter's own realpath refusal
-  (R3-S1) before `/usr/bin/true` is ever exec'd. The
-  profile-alone leg is R3-S1 in its pure form — the
+  the shim interpreter's own realpath refusal (R3-S1)
+  before `/usr/bin/true` is ever exec'd. The
+  profile-alone leg is R3-S1 in its pure form (the
   interpreter driven directly under the generated
-  profile, no shim, no limit — and its failure is
+  profile, no shim, no limit), and its failure is
   what convicts the profile rather than the chain.
   The shim-alone leg runs with no profile in force,
   so R3-S1 cannot explain it at all: it is the
-  evidence for R3-S3. What the profile must allow
-  for the interpreter to start while the escape,
-  network and spawn-limit assertions still hold is
-  therefore exactly: metadata everywhere (R3-S1),
-  contents only in the named trees (unchanged), no
-  network allow rule (unchanged), and the shim's
-  pre-exec limit left standing (R3-S3).
+  evidence for R3-S3. What the profile must allow for
+  the interpreter to start while the escape, network
+  and spawn-limit assertions still hold is therefore
+  exactly: metadata everywhere (R3-S1), contents only
+  in the named trees (unchanged), no network allow
+  rule (unchanged), and the shim's pre-exec limit
+  left standing (R3-S3).
 - R3-S3, the shim alone. Two named alternatives, and
   this round's work is built to separate them rather
   than to guess. (a) The shim's own `setrlimit` call
-  fails on this host — setting the data-size limit
-  to (512 MiB, 512 MiB) asks to raise the hard limit
+  fails on this host (setting the data-size limit to
+  (512 MiB, 512 MiB) asks to raise the hard limit
   above the inherited one, which an unprivileged
   process may not do, and macOS hosts commonly carry
-  a small inherited hard data limit — so the shim
+  a small inherited hard data limit), so the shim
   dies by exception at exit 1 before its `exec`. (b)
   The limit, once set, is in force across the second
   `exec` and the framework interpreter's startup
   breaks under it (the loader's or allocator's
   accounting against the data ceiling). The
-  production change this round is the same under
-  both and weakens nothing: a shim that cannot set
-  its limit already refuses the job — that is the
-  fail-closed shape — but it must refuse by name, so
-  the shim writes a named line to stderr
-  (`hp-shim: could not set the data-size limit: ...`)
-  and exits 1, instead of dying by a bare exception
-  whose text no assertion captured. The live bisect
-  then gains the separation: every bisect assertion
-  carries the captured stderr in its message, and two
-  legs join it — the profile driving a native binary
-  directly, with no shim at all (a native start the
-  round-2 bisect never isolated), and the shim
-  driving a native binary, with no profile. Under
-  (a) the shim-to-native leg fails carrying the
-  shim's named line; under (b) it passes while the
+  production change this round is the same under both
+  and weakens nothing: a shim that cannot set its
+  limit already refuses the job (that is the
+  fail-closed shape), but it must refuse by name, so
+  the shim writes a named line to stderr (`hp-shim:
+  could not set the data-size limit: ...`) and exits
+  1, instead of dying by a bare exception whose text
+  no assertion captured. The live bisect then gains
+  the separation: every bisect assertion carries the
+  captured stderr in its message, and two legs join
+  it: the profile driving a native binary directly,
+  with no shim at all (a native start the round-2
+  bisect never isolated), and the shim driving a
+  native binary, with no profile. Under (a) the
+  shim-to-native leg fails carrying the shim's named
+  line; under (b) it passes while the
   shim-to-interpreter leg fails without that line.
   The limit's value and kind do not change this
   round: if (a) is convicted, the ceiling's
-  application — not its size — is the next round's
+  application, not its size, is the next round's
   subject, and the limits point's 512 MiB read-back
   expectation would have to be re-judged against the
   host's inherited hard limit in the open.
@@ -893,20 +891,20 @@ memory-ceiling live point supposes the data-size
 limit governs a 700 MiB `bytearray` allocation on
 this platform. If the next verdict shows that point
 failing with the allocation completing instead, the
-ceiling mechanism — not the profile — is the next
+ceiling mechanism, not the profile, is the next
 round's subject. What is not supposed: that metadata
-is contents (it is not — no byte of any file's data
+is contents (it is not; no byte of any file's data
 becomes readable by the metadata line), or that
 Seatbelt has allowed any escape (no escape point has
-ever been exercised — the process still dies before
-them).
+ever been exercised, as the process still dies
+before them).
 
 ## Conclusions for the third fix, against R3-S1 to R3-S3
 
 The third fix has since landed, built to the
 suppositions above. Because the fix grew
-`runner/guard/macos_confine.py` — a file on the
-canonical core list — the core figures stood to be
+`runner/guard/macos_confine.py`, a file on the
+canonical core list, the core figures stood to be
 re-measured over its tree, as the second fix's
 landing was. That re-measure has since been carried
 on the current head in the 3.16.20.7 release landing
@@ -918,7 +916,7 @@ the file itself grew from 756 to 778 lines, the
 as-assembled set stands at 64,050 lines, 57,933 of
 them non-blank, zipped to 809,693 bytes, and the
 canonical set at 63,168 lines over 136 files, the
-runner proper at 7,178 — and the figure check passes
+runner proper at 7,178, and the figure check passes
 against those facts on that head. No separate
 re-measure is owed for this fix beyond that landing.
 What each supposition now stands on, stated exactly:
@@ -942,16 +940,16 @@ What each supposition now stands on, stated exactly:
   the shim interpreter's death; the live suite now
   also drives a native binary directly under the
   profile, with no shim anywhere, and drives a
-  native binary through the shim, with no profile —
+  native binary through the shim, with no profile,
   so a native start is isolated for the first time,
   and the profile-alone and shim-alone interpreter
   legs stand beside them in their pure forms.
 - R3-S3's production change is landed exactly as
   supposed, and neither of its two alternatives is
   guessed at: the shim still refuses a job whose
-  limit it cannot set — that fail-closed shape
+  limit it cannot set (that fail-closed shape
   stands, and the limit's value and kind are
-  unchanged — but it now refuses by name, writing
+  unchanged), but it now refuses by name, writing
   `hp-shim: could not set the data-size limit: ...`
   to stderr and exiting 1, instead of dying by a
   bare exception no assertion captured. The named
@@ -974,22 +972,22 @@ What each supposition now stands on, stated exactly:
   registered reason, beside the neighbouring
   confinement suites (the three together run 169
   tests, OK with 18 skipped), the figure guards
-  after their re-measure, and the skip registry —
+  after their re-measure, and the skip registry,
   which first flagged, and now registers, the
   Windows skip the release landing added to this
   suite's argv field tests.
 - The support level does not move. It stands exactly
-  as the support matrix states it — Supported,
+  as the support matrix states it: Supported,
   reduced confinement. The live proof remains open,
   and it closes only when a `test-macos` job on a
   head carrying this fix completes green; until then
   the live points stand as the third failure verdict
-  left them — every live point failing at exit 1
-  with the realpath line, the escape, network and
-  limits points unproven because the process dies
-  before them — and no field proof on project
-  hardware is claimed: there is no Mac in the
-  project's own fleet.
+  left them (every live point failing at exit 1 with
+  the realpath line, the escape, network and limits
+  points unproven because the process dies before
+  them), and no field proof on project hardware is
+  claimed: there is no Mac in the project's own
+  fleet.
 
 ## The fourth live verdict (2026-11-11)
 
@@ -997,7 +995,7 @@ The live word on the third fix has landed, in the
 3.16.20.9 tag build (build run 43140290479, its
 `test-macos` job completing at 6:39 PM PST on
 2026-11-11), and it is failure in a new shape again.
-10 of the 12 tests in the live class failed — the
+10 of the 12 tests in the live class failed: the
 original 7 and the shim-carrying bisect legs. Every
 failure carries one line, the third fix's own named
 refusal: `hp-shim: could not set the data-size
@@ -1007,8 +1005,8 @@ the memory-ceiling point's stderr is exactly that
 line instead of a `MemoryError`, the limits
 read-back is empty, and the escape and network
 points again produce no evidence either way. The 2
-live points that pass are the 2 that bypass the
-shim entirely — the generated profile driving the
+live points that pass are the 2 that bypass the shim
+entirely: the generated profile driving the
 interpreter directly, and the profile driving a
 native binary directly. The verdict was read
 first-hand from the job log before anything below
@@ -1019,22 +1017,21 @@ profile is cleared: every leg that runs under the
 profile alone passes, and every leg that runs
 through the launcher shim fails at the shim's own
 `setrlimit` call, before the job's command is
-exec'd. R3-S1's metadata grant therefore stands
-(the realpath line is gone), and R3-S3 is answered:
-the shim-alone leg fails carrying the shim's named
-line, which is the shape R3-S3 named for its
-alternative (a) — the shim's `setrlimit` call itself
-is refused on this host. What (a) left open is the
+exec'd. R3-S1's metadata grant therefore stands (the
+realpath line is gone), and R3-S3 is answered: the
+shim-alone leg fails carrying the shim's named line,
+which is the shape R3-S3 named for its alternative
+(a), where the shim's `setrlimit` call itself is
+refused on this host. What (a) left open is the
 refusal's mechanism: the named line's text is
 Python's rendering of the kernel's `EINVAL` (the
 `resource` module maps `EINVAL` from `setrlimit(2)`
-to exactly the string `current limit exceeds
-maximum limit`, and `EPERM` — the hard-limit-raise
-error — to a different string, `not allowed to
-raise maximum limit`). The suppositions below are
-built from that text and from the kernel's own
-record of when it returns `EINVAL` for this
-resource.
+to exactly the string `current limit exceeds maximum
+limit`, and `EPERM`, the hard-limit-raise error, to
+a different string, `not allowed to raise maximum
+limit`). The suppositions below are built from that
+text and from the kernel's own record of when it
+returns `EINVAL` for this resource.
 
 ## Suppositions for the fourth fix, recorded before the fix
 
@@ -1054,16 +1051,16 @@ measurement on that host).
   supposition). For `RLIMIT_DATA` the Darwin kernel
   hands the new soft limit to the Mach VM layer,
   which refuses it with `EINVAL` when the new limit
-  is lower than the process's current VM map size
-  — in the kernel's own words, "the limit specified
+  is lower than the process's current VM map size.
+  In the kernel's own words, "the limit specified
   cannot be lowered because current usage is
   already higher than the limit", the usage being
   the whole VM map, because Darwin enforces this
   limit over the map's total size, not over the
   heap alone. The shim is a started framework
   interpreter: by the time its first line runs, its
-  map — the loader, the dyld shared cache, the
-  framework and the system libraries — already
+  map (the loader, the dyld shared cache, the
+  framework and the system libraries) already
   exceeds 512 MiB on this host, so the shim's
   request for a 512 MiB data-size limit is refused
   before any question of the job's own usage
@@ -1073,29 +1070,28 @@ measurement on that host).
   only through the shim's own interpreter, whose
   map is what is measured), independent of the
   Seatbelt profile (the shim-alone legs fail with
-  no profile in force), and it is `EINVAL`, not
-  the `EPERM` a hard-limit raise would draw. The
+  no profile in force), and it is `EINVAL`, not the
+  `EPERM` a hard-limit raise would draw. The
   supposed consequence for the fix: on this
-  platform a data-size limit at the requested
-  512 MiB cannot be applied by a started process
-  at all; the strongest limit the kernel accepts
-  is the smallest value at or above its
-  current-usage floor, and the shim must ask for
-  that — the requested value first, then a
-  bounded ladder of doublings up to a named cap —
-  rather than for the requested value alone. If a
-  head carrying that fix still shows the named
-  refusal on the shim legs, the floor stands above
-  the ladder's cap on that host and R4-S1's
-  consequence is wrong in its bound, which this
-  record says in advance.
+  platform a data-size limit at the requested 512
+  MiB cannot be applied by a started process at
+  all; the strongest limit the kernel accepts is
+  the smallest value at or above its current-usage
+  floor, and the shim must ask for that (the
+  requested value first, then a bounded ladder of
+  doublings up to a named cap) rather than for the
+  requested value alone. If a head carrying that
+  fix still shows the named refusal on the shim
+  legs, the floor stands above the ladder's cap on
+  that host and R4-S1's consequence is wrong in its
+  bound, which this record says in advance.
 - R4-S2, the hard limit must not move (a second,
   independent defect in the same call). The shim
   asks for the pair (limit, limit): it sets the
   hard limit as well as the soft. On any host whose
   inherited hard data limit is below the requested
   value, that pair asks to raise the hard limit,
-  which an unprivileged process may not do — the
+  which an unprivileged process may not do; the
   refusal is then the hard-raise error, reproduced
   first-hand on a Linux host before this fix was
   written (a driver that lowers its own hard data
@@ -1105,44 +1101,43 @@ measurement on that host).
   such an inherited hard limit, a pair that moves
   the hard limit is asking for more than the
   ceiling it means to apply. The fix this
-  supposition calls for, and it stands whichever
-  of R4-S1 and R4-S2 the CI host exercises: the
-  shim reads the inherited pair first, keeps the
+  supposition calls for, and it stands whichever of
+  R4-S1 and R4-S2 the CI host exercises: the shim
+  reads the inherited pair first, keeps the
   inherited hard limit exactly as it stands, and
-  clamps the soft request to it — the requested
-  pair never exceeds the allowable maximum, and
-  the hard limit is never raised or lowered.
-- R4-S3, what the re-pinned live expectations
-  must say. The limits point's standing
-  expectation — the job reads its data-size soft
-  limit back as exactly 512 MiB — was written for
-  a platform where the requested value is always
-  applicable. Under R4-S1 it cannot stand on this
-  platform: the applied soft limit is the first
-  value on the shim's ladder the kernel accepts,
-  which is the requested value exactly when the
-  floor and the inherited hard both allow it, the
-  inherited hard when that is smaller, and a
-  ladder value above the request when the floor
-  requires it. The fix therefore re-pins the
-  point in the open, as R3-S3's record provided
-  in advance: the job's read-back soft limit must
-  be exactly one of the values on the computed
-  attempt ladder for its inherited hard limit,
-  its hard limit must read back unchanged, and
-  the address space must stay unlimited. The
-  memory-ceiling point is re-pinned the same
-  way: a job that tries to allocate past its own
-  read-back limit — by a fixed margin — is
+  clamps the soft request to it, so the requested
+  pair never exceeds the allowable maximum, and the
+  hard limit is never raised or lowered.
+- R4-S3, what the re-pinned live expectations must
+  say. The limits point's standing expectation,
+  that the job reads its data-size soft limit back
+  as exactly 512 MiB, was written for a platform
+  where the requested value is always applicable.
+  Under R4-S1 it cannot stand on this platform:
+  the applied soft limit is the first value on the
+  shim's ladder the kernel accepts, which is the
+  requested value exactly when the floor and the
+  inherited hard both allow it, the inherited hard
+  when that is smaller, and a ladder value above
+  the request when the floor requires it. The fix
+  therefore re-pins the point in the open, as
+  R3-S3's record provided in advance: the job's
+  read-back soft limit must be exactly one of the
+  values on the computed attempt ladder for its
+  inherited hard limit, its hard limit must read
+  back unchanged, and the address space must stay
+  unlimited. The memory-ceiling point is re-pinned
+  the same way: a job that tries to allocate past
+  its own read-back limit, by a fixed margin, is
   refused by it, whatever ladder value it carries.
   The ceiling's meaning does not move: on Darwin
   this limit has always been enforced over the
-  process's whole VM map, and the applied value
-  is the strongest the host's kernel accepts at
-  or above the requested ceiling — never below
-  it, and a spawn for which no ladder value is
-  accepted still refuses the job by name, never
-  runs it weaker.
+  process's whole VM map, and the applied value is
+  the strongest the host's kernel accepts at or
+  above the requested ceiling, never below it, and
+  a spawn for which no ladder value is accepted
+  still refuses the job by name, never runs it
+  weaker.
 
 What is not supposed: that the profile refuses
 anything in this round (its legs pass), that the
@@ -1150,7 +1145,8 @@ requested pair's soft-over-hard shape is the
 defect (the pair is equal; no system refuses an
 equal pair on that ground), or that Seatbelt has
 allowed any escape (no escape point has ever been
-exercised — the process still dies before them).
+exercised, as the process still dies before
+them).
 
 The predictions this fix is measured against,
 stated before it was written:
@@ -1161,10 +1157,10 @@ stated before it was written:
   the hard limit when the hard limit is finite
   and smaller; the requested value when the hard
   limit is unlimited or larger; then doublings
-  up to the cap — the hard limit when finite,
-  64 times the request when not — strictly
-  increasing, never above the cap, at most
-  7 values for an unlimited hard limit.
+  up to the cap (the hard limit when finite, 64
+  times the request when not), strictly
+  increasing, never above the cap, at most 7
+  values for an unlimited hard limit.
 - P2. Executed off darwin, the fixed shim under
   a 256 MiB inherited hard limit (lowered by a
   driver, the R4-S2 reproduction's own shape)
@@ -1192,8 +1188,9 @@ stated before it was written:
 - P5. The memory-ceiling live point passes with
   its re-pinned shape if the applied data limit
   governs a `bytearray` allocation past it on
-  this platform — the standing risk recorded in
-  the third round, still not supposed either way.
+  this platform, which is the standing risk
+  recorded in the third round, still not supposed
+  either way.
 
 ## Conclusions for the fourth fix, against R4-S1 to R4-S3
 
@@ -1203,28 +1200,27 @@ the release cut as it landed, and
 re-measured over the merged tree). What stands
 proven off darwin, and what is still owed:
 
-- R4-S1 and R4-S2 are convicted as mechanisms, and
-  the fix answers both. The substrate the fix stands
-  on is pinned by a new suite,
+- R4-S1 and R4-S2 are convicted as mechanisms, and the fix
+  answers both. The substrate the fix stands on is pinned
+  by a new suite,
   `runner.tests.test_macos_confine.DataLimitAttemptsTest`:
-  the pure rule `data_limit_attempts` (the clamp,
-  the ladder, its cap, per-field rejection) and a
-  fuzz family over random pairs asserting the
-  ladder's invariants — as P1 required, 400 pairs,
-  all green.
+  the pure rule `data_limit_attempts` (the clamp, the
+  ladder, its cap, per-field rejection) and a fuzz family
+  over random pairs asserting the ladder's invariants, as
+  P1 required, 400 pairs, all green.
 - P2 is proven in full, executed on this Linux
   machine against the shim's real text. Under a
   driver-lowered inherited hard limit of 256 MiB the
-  shim runs the job and the job reads back
-  (256 MiB, 256 MiB); before the fix the same driver
-  made the shim refuse by name and the job never
-  ran. Under a scripted resource seam carrying a
-  768 MiB current-usage floor, the shim climbs to
-  1 GiB and the job runs carrying exactly it; with
-  the floor above the cap, and with the floor above
-  a finite inherited hard limit, the shim refuses by
-  name and nothing runs — the fail-closed posture
-  is unchanged everywhere it was tested.
+  shim runs the job and the job reads back (256 MiB,
+  256 MiB); before the fix the same driver made the
+  shim refuse by name and the job never ran. Under a
+  scripted resource seam carrying a 768 MiB
+  current-usage floor, the shim climbs to 1 GiB and
+  the job runs carrying exactly it; with the floor
+  above the cap, and with the floor above a finite
+  inherited hard limit, the shim refuses by name and
+  nothing runs, so the fail-closed posture is
+  unchanged everywhere it was tested.
 - P3 is proven: the macOS suite stands at 98 tests
   locally (the 12 live points skip off darwin, as
   registered), the neighbouring confinement suites
@@ -1237,35 +1233,31 @@ proven off darwin, and what is still owed:
 - P4 and P5 are NOT yet judged: they are live-darwin
   claims, and the verdict that judges them is the
   `test-macos` leg of the next tag build on a head
-  carrying this fix — the one outstanding proof, by
-  the standing rule that a macOS claim is proven by
-  the leg that runs it and by nothing else. If that
-  leg shows the host's current-usage floor standing
-  above this fix's ladder cap, the refusal shape
-  will be unchanged and the cap is the next round's
-  subject, as R4-S1 pre-named.
+  carrying this fix, which is the one outstanding
+  proof, by the standing rule that a macOS claim is
+  proven by the leg that runs it and by nothing
+  else. If that leg shows the host's current-usage
+  floor standing above this fix's ladder cap, the
+  refusal shape will be unchanged and the cap is the
+  next round's subject, as R4-S1 pre-named.
 
 ## The fifth live verdict (2026-11-11)
 
-The live word on the fourth fix has landed, and
-it is the same refusal. Read first-hand by this
-lane from the job logs and the jobs API: the
-3.16.20.10 tag build of 2026-11-12 (build run 43152532925, its
-`test-macos` job) failed with 13 failures -- all
-10 points of the live class and 3 points of the
-data-limit substrate class -- every shim-carrying
-failure on the one line `hp-shim: could not set
-the data-size limit: current limit exceeds
-maximum limit`; the main build for the same
-release head (43150652145) failed the same way;
-and the next main head carrying the fix whose
-build completed (43156699717) shows its
-`test-macos` job failed again (the run's overall
-success is the 48-hour relief posture reading
-the suites as advisory, not a pass). The fourth
-fix's P4 is therefore answered: it does not
-pass. Three first-hand facts in the substrate
-failures name where the refusal lives:
+The live word on the fourth fix has landed, and it is the same
+refusal. Read first-hand by this lane from the job logs and
+the jobs API: the 3.16.20.10 tag build of 2026-11-12 (build
+run 43152532925, its `test-macos` job) failed with 13 failures
+(all 10 points of the live class and 3 points of the
+data-limit substrate class), every shim-carrying failure on
+the one line `hp-shim: could not set the data-size limit:
+current limit exceeds maximum limit`; the main build for the
+same release head (43150652145) failed the same way; and the
+next main head carrying the fix whose build completed
+(43156699717) shows its `test-macos` job failed again (the
+run's overall success is the 48-hour relief posture reading
+the suites as advisory, not a pass). The fourth fix's P4 is
+therefore answered: it does not pass. Three first-hand facts
+in the substrate failures name where the refusal lives:
 
 - The substrate driver that stages the R4-S2
   shape by lowering its own hard data limit to
@@ -1316,12 +1308,12 @@ subject" (the fourth fix's conclusions).
 - R5-S1, the floor stands above the cap (the
   primary supposition). The Darwin kernel's
   data-size check measures the process's current
-  usage over its whole VM map -- the loader, the
+  usage over its whole VM map (the loader, the
   dyld shared cache and the large regions a
   started process on this platform maps and
-  reserves before its first line runs -- and
-  that map, for a started framework interpreter
-  on the CI host, stands above 32 GiB: above the
+  reserves before its first line runs), and that
+  map, for a started framework interpreter on
+  the CI host, stands above 32 GiB: above the
   fourth fix's ladder cap. Every fact on record
   fits: the refusal is deterministic and
   identical at 256 MiB, at 512 MiB and at every
@@ -1329,89 +1321,89 @@ subject" (the fourth fix's conclusions).
   equal pair, a hard-preserving pair and a
   clamped pair; it strikes a bare driver process
   staging its own limit with no shim and no
-  profile; and it is `EINVAL`, the
-  current-usage error, never the `EPERM` a
-  hard-limit raise would draw. The supposed
-  consequence for the fix: the ladder's bound,
-  not its shape, is the defect. For an unlimited
-  inherited hard limit the ladder must climb by
-  doubling past 32 GiB to a bound set by the
-  platform's own arithmetic -- the largest
-  power-of-two finite value below the platform's
-  unlimited sentinel -- and the applied limit
-  remains the first value the kernel accepts,
-  the strongest the host allows at or above the
-  request. If a head carrying that fix still
-  shows the named refusal, no finite data-size
-  value this ladder can name is accepted on
-  that host, the mechanism itself (a data-size
-  limit set by a started process) stands
-  convicted rather than its bound, and the
-  ceiling's mechanism is the next round's
-  subject; this record says so in advance.
+  profile; and it is `EINVAL`, the current-usage
+  error, never the `EPERM` a hard-limit raise
+  would draw. The supposed consequence for the
+  fix: the ladder's bound, not its shape, is the
+  defect. For an unlimited inherited hard limit
+  the ladder must climb by doubling past 32 GiB
+  to a bound set by the platform's own
+  arithmetic (the largest power-of-two finite
+  value below the platform's unlimited
+  sentinel), and the applied limit remains the
+  first value the kernel accepts, the strongest
+  the host allows at or above the request. If a
+  head carrying that fix still shows the named
+  refusal, no finite data-size value this ladder
+  can name is accepted on that host, the
+  mechanism itself (a data-size limit set by a
+  started process) stands convicted rather than
+  its bound, and the ceiling's mechanism is the
+  next round's subject; this record says so in
+  advance.
 - R5-S2, the substrate's staging is part of the
   defect's blast radius. Two of the fourth
   round's executed substrate tests stage their
-  shape by really lowering a hard data limit in
-  a driver process, and on this host that
-  staging call itself is refused (R5-S1's floor
-  is below 256 MiB nowhere on it), so those
-  tests can never reach the shim they judge on
-  a darwin host, whatever the shim does. The
-  fix this supposition calls for: the executed
-  substrate stages its shapes through the
-  scripted resource seam -- a fake `getrlimit`
-  reporting the staged inherited pair and a fake
-  `setrlimit` enforcing the floor and the
-  soft-at-or-below-hard rule -- deterministically
-  on every host, and the real-module staging
-  shape is kept only where the host allows the
-  staging, with a darwin staging refusal named
-  as what it is (the floor refusing the staging,
-  not the shim failing) rather than counted as
-  a shim failure. The pure ladder rule and the
-  shim's execution of it stay pinned per field
-  and by the fuzz family either way.
+  shape by really lowering a hard data limit in a
+  driver process, and on this host that staging
+  call itself is refused (R5-S1's floor is below
+  256 MiB nowhere on it), so those tests can
+  never reach the shim they judge on a darwin
+  host, whatever the shim does. The fix this
+  supposition calls for: the executed substrate
+  stages its shapes through the scripted resource
+  seam (a fake `getrlimit` reporting the staged
+  inherited pair and a fake `setrlimit` enforcing
+  the floor and the soft-at-or-below-hard rule)
+  deterministically on every host, and the
+  real-module staging shape is kept only where
+  the host allows the staging, with a darwin
+  staging refusal named as what it is (the floor
+  refusing the staging, not the shim failing)
+  rather than counted as a shim failure. The pure
+  ladder rule and the shim's execution of it stay
+  pinned per field and by the fuzz family either
+  way.
 - R5-S3, what the re-pinned live expectations
-  must say. The limits read-back point stands
-  as R4-S3 left it (the applied soft value is
+  must say. The limits read-back point stands as
+  R4-S3 left it (the applied soft value is
   exactly one of the ladder's values for the
   inherited hard limit, the hard limit reads
   back unchanged, the address space stays
-  unlimited) -- it re-derives its expectation
-  from the ladder function, so the fifth fix's
-  wider ladder carries it without a text change.
-  The memory-ceiling point cannot stand as
-  R4-S3 left it: it allocates its own read-back
-  limit plus a fixed margin, and when the
-  applied ladder value stands far above the
-  request (R5-S1's host), that allocation is
-  stopped by whichever reaches it first -- the
-  applied limit (a `MemoryError`) or the host's
-  own memory pressure killing the process
-  mid-touch. The invariant the point exists to
-  hold is the non-completion: the job does not
-  finish an allocation past its applied limit
-  and does not exit 0. The fix therefore
-  re-pins the point in the open: the job must
-  not print its completion marker, must not
-  exit 0, and its refusal must be the ceiling's
-  shape -- `MemoryError` on its stderr, or a
-  death by signal (a negative return code)
-  under the host's memory pressure. The
-  ceiling's meaning does not move: the applied
-  value is the strongest the host's kernel
-  accepts at or above the requested ceiling,
-  never below it, and a spawn for which no
-  ladder value is accepted still refuses the
-  job by name, never runs it weaker.
+  unlimited); it re-derives its expectation from
+  the ladder function, so the fifth fix's wider
+  ladder carries it without a text change. The
+  memory-ceiling point cannot stand as R4-S3
+  left it: it allocates its own read-back limit
+  plus a fixed margin, and when the applied
+  ladder value stands far above the request
+  (R5-S1's host), that allocation is stopped by
+  whichever reaches it first: the applied limit
+  (a `MemoryError`) or the host's own memory
+  pressure killing the process mid-touch. The
+  invariant the point exists to hold is the
+  non-completion: the job does not finish an
+  allocation past its applied limit and does not
+  exit 0. The fix therefore re-pins the point in
+  the open: the job must not print its
+  completion marker, must not exit 0, and its
+  refusal must be the ceiling's shape:
+  `MemoryError` on its stderr, or a death by
+  signal (a negative return code) under the
+  host's memory pressure. The ceiling's meaning
+  does not move: the applied value is the
+  strongest the host's kernel accepts at or
+  above the requested ceiling, never below it,
+  and a spawn for which no ladder value is
+  accepted still refuses the job by name, never
+  runs it weaker.
 
 What is not supposed: that the profile refuses
 anything in this round (its legs pass), that
 the hard limit should move (R4-S2 stands: it
 never moves), or that Seatbelt has allowed any
 escape (no escape point has ever been exercised
-on a live host -- the process still dies in the
+on a live host; the process still dies in the
 shim before them).
 
 The predictions this fix is measured against,
@@ -1436,11 +1428,10 @@ stated before it was written:
   stands above a finite inherited hard limit of
   256 MiB reported by the seam; and clamps to a
   seam-reported 256 MiB hard limit exactly as
-  R4-S2 requires -- all deterministically, on
-  any host. The real-module lowered-hard shape
-  still runs the job and reads back
-  (256 MiB, 256 MiB) on a host that allows the
-  staging.
+  R4-S2 requires, all deterministically, on any
+  host. The real-module lowered-hard shape
+  still runs the job and reads back (256 MiB,
+  256 MiB) on a host that allows the staging.
 - P3. The contract suite runs green off darwin
   with the live class skipped under its
   registered reason, beside the neighbouring
@@ -1467,44 +1458,43 @@ core figures re-measured over it in the commit
 of 10:01 PM Pacific. What stands proven off
 darwin, and what is still owed:
 
-- R5-S1 is answered as a bound, and the fix
-  moves the bound. The pure rule
-  `data_limit_attempts` now climbs, for an
-  unlimited inherited hard limit, by doubling to
-  DATA_LIMIT_LADDER_MAX -- 2**62, the largest
-  power-of-two finite value below the platform's
-  unlimited sentinel -- and the shim text carries
-  the same rule inline (its cap is 2**62 and its
-  first attempt is clamped to the cap). For a
-  finite inherited hard limit the ladder is
-  exactly the fourth fix's. P1 is proven: a
-  512 MiB request yields 34 attempts (2**29
-  through 2**62), strictly increasing, the last
-  exactly the named maximum; a request above the
-  maximum is clamped to it; the fuzz family over
-  400 random pairs keeps every ladder invariant
-  against the new cap.
+- R5-S1 is answered as a bound, and the fix moves
+  the bound. The pure rule `data_limit_attempts`
+  now climbs, for an unlimited inherited hard
+  limit, by doubling to DATA_LIMIT_LADDER_MAX
+  (2**62, the largest power-of-two finite value
+  below the platform's unlimited sentinel), and
+  the shim text carries the same rule inline (its
+  cap is 2**62 and its first attempt is clamped
+  to the cap). For a finite inherited hard limit
+  the ladder is exactly the fourth fix's. P1 is
+  proven: a 512 MiB request yields 34 attempts
+  (2**29 through 2**62), strictly increasing, the
+  last exactly the named maximum; a request above
+  the maximum is clamped to it; the fuzz family
+  over 400 random pairs keeps every ladder
+  invariant against the new cap.
 - R5-S2 is answered in the substrate. The
   executed tests now stage through the scripted
-  resource seam -- a fake `getrlimit` reporting
+  resource seam (a fake `getrlimit` reporting
   the staged inherited pair, a fake `setrlimit`
-  enforcing the floor and the soft-at-or-below-
-  hard rule, and a scripted exec reporting the
-  applied pair -- deterministically on every
-  host. P2 is proven executed on this Linux
-  machine against the shim's real text: the shim
-  climbs past a 768 MiB floor to 1 GiB; climbs
-  past a 48 GiB floor (above the fourth fix's
-  whole ladder) to 64 GiB, the verdict's own
-  shape; refuses by name when the floor stands
-  above the named maximum and when it stands
-  above a seam-reported finite hard limit of
-  256 MiB; and clamps to a seam-reported 256 MiB
-  hard limit, the job running under exactly
-  (256 MiB, 256 MiB). The real-module
-  lowered-hard shape is kept where the host
-  allows the staging -- it runs the job and
-  reads back (256 MiB, 256 MiB) here -- and a
+  enforcing the floor and the
+  soft-at-or-below-hard rule, and a scripted
+  exec reporting the applied pair)
+  deterministically on every host. P2 is proven
+  executed on this Linux machine against the
+  shim's real text: the shim climbs past a 768
+  MiB floor to 1 GiB; climbs past a 48 GiB floor
+  (above the fourth fix's whole ladder) to 64
+  GiB, the verdict's own shape; refuses by name
+  when the floor stands above the named maximum
+  and when it stands above a seam-reported
+  finite hard limit of 256 MiB; and clamps to a
+  seam-reported 256 MiB hard limit, the job
+  running under exactly (256 MiB, 256 MiB). The
+  real-module lowered-hard shape is kept where
+  the host allows the staging (it runs the job
+  and reads back (256 MiB, 256 MiB) here), and a
   host that refuses the staging names it
   STAGING-REFUSED in the driver, recorded as the
   floor refusing the staging, not the shim
@@ -1521,7 +1511,7 @@ darwin, and what is still owed:
   memory-ceiling point is re-pinned to its
   invariant in the open: the job must not print
   its completion marker, must not exit 0, and
-  its refusal must be the ceiling's shape -- a
+  its refusal must be the ceiling's shape: a
   `MemoryError` on its stderr, or a death by
   signal (a negative return code) under the
   host's memory pressure.
@@ -1530,33 +1520,33 @@ darwin, and what is still owed:
   darwin, as registered), and it runs green
   beside the version-rot guard, the neighbouring
   confinement suites, the skip registry and the
-  core figure guards after their re-measure --
-  279 tests in the combined run, all green but
-  the registered skips. The core's as-assembled
-  lines now stand at 64,527, the `runner/guard`
-  part at 5,448. The standing red the
-  suppositions commit introduced is resolved:
-  the fifth verdict's own record above now
-  carries its date on the version's line --
-  landed in that same shape by a parallel
+  core figure guards after their re-measure,
+  with 279 tests in the combined run, all green
+  but the registered skips. The core's
+  as-assembled lines now stand at 64,527, the
+  `runner/guard` part at 5,448. The standing red
+  the suppositions commit introduced is
+  resolved: the fifth verdict's own record above
+  now carries its date on the version's line
+  (landed in that same shape by a parallel
   lane's figures commit while this lane was in
   flight, and carried unchanged through this
-  lane's rebase -- the dated-record shape the
+  lane's rebase), the dated-record shape the
   version-rot guard itself exempts, and the
   verdict record is otherwise word for word as
   it stood.
 - P4 and P5 are NOT yet judged: they are
   live-darwin claims, and the verdict that
   judges them is the `test-macos` leg of the
-  next builds on a head carrying this fix -- the
+  next builds on a head carrying this fix, the
   one outstanding proof, by the standing rule
   that a macOS claim is proven by the leg that
   runs it and by nothing else. If that leg still
   shows the named refusal, then, as this round's
   suppositions stated in advance, no finite
   data-size value this ladder can name is
-  accepted on that host, the mechanism itself
-  (a data-size limit set by a started process)
+  accepted on that host, the mechanism itself (a
+  data-size limit set by a started process)
   stands convicted rather than its bound, and
   the ceiling's mechanism is the next round's
   subject.
@@ -1589,7 +1579,7 @@ limit reads back unchanged (`limits[1]`).
   address-space limit at all: the shim sets only
   `RLIMIT_DATA` (pinned off darwin by
   `test_the_shim_never_sets_an_address_space_limit`,
-  and S1 stands -- an address-space ceiling at the
+  and S1 stands, an address-space ceiling at the
   spawn ceiling aborts the exec'd interpreter before
   job code). The value at `limits[2]` is therefore
   the address-space soft limit the job inherits,
@@ -1598,21 +1588,20 @@ limit reads back unchanged (`limits[1]`).
   family: -1 where the platform's unlimited sentinel
   reaches Python as -1 (Linux, where
   `resource.RLIM_INFINITY` reads -1), and
-  9223372036854775807 -- 2**63 - 1, `INT64_MAX` --
-  where the platform's sentinel is that value
-  (Darwin: the backend's own ladder comment records
-  2**62 as "the largest power-of-two finite value
-  below the platform's unlimited sentinel (2**63 - 1
-  on Darwin)"). The verdict's failing value is
-  exactly the Darwin sentinel: on the CI host the
-  job's address space WAS unlimited, the confinement
-  fact the point exists to hold stood, and the
-  assertion -- which hardcodes the Linux report,
-  `limits[2] == -1` -- can never pass on a darwin
-  host. The backend carrying `INT64_MAX` is not a
-  defect: nothing in the chain asks for that value,
-  sets it, or could distinguish it from unlimited
-  on that platform.
+  9223372036854775807, 2**63, 1, `INT64_MAX` --where
+  the platform's sentinel is that value (Darwin: the
+  backend's own ladder comment records 2**62 as "the
+  largest power-of-two finite value below the
+  platform's unlimited sentinel (2**63, 1 on
+  Darwin)"). The verdict's failing value is exactly
+  the Darwin sentinel: on the CI host the job's
+  address space WAS unlimited, the confinement fact
+  the point exists to hold stood, and the assertion,
+  which hardcodes the Linux report, `limits[2] ==
+  -1`, can never pass on a darwin host. The backend
+  carrying `INT64_MAX` is not a defect: nothing in
+  the chain asks for that value, sets it, or could
+  distinguish it from unlimited on that platform.
 - R6-S2, the defect is local to the one assertion's
   form. Its two sibling assertions are already
   representation-safe: `limits[1]` is compared
@@ -1641,28 +1630,28 @@ is run:
 
 - P1, the substrate classification, off darwin and
   deterministic. A pure classification of a
-  reported limit value -- unlimited exactly for
-  the two named reports (-1 and 2**63 - 1), not
+  reported limit value, unlimited exactly for the
+  two named reports (-1 and 2**63, 1), not
   unlimited for any finite value below the
   sentinel, and a refusal for a field that is not
-  an integer -- is pinned per value, per field,
-  and by a randomized family over the value range
+  an integer, is pinned per value, per field, and
+  by a randomized family over the value range
   including both bookends of the sentinel. Beside
   it, the platform constant on the measuring host
   is read in the open (`resource.RLIM_INFINITY`),
   so the Linux report and the recorded Darwin
   sentinel are both named, neither assumed.
 - P2, the verdict's own numbers, executed. The
-  exact triple shape the verdict carried -- the
+  exact triple shape the verdict carried (the
   applied soft on the ladder, the hard limit equal
   to the inherited hard, and the address-space
-  soft at 9223372036854775807 -- satisfies the
+  soft at 9223372036854775807) satisfies the
   re-pinned expectation's shape (each value
   classified and compared as the fixed point will
   compare it), and the same shape with a finite
   address-space value does not. The old
-  expectation fails the verdict's triple, which
-  is the failure being fixed, restated as a pin.
+  expectation fails the verdict's triple, which is
+  the failure being fixed, restated as a pin.
 - P3, the live verdict, owed and not claimed here.
   The first completed `test-macos` CI job on a
   head carrying this fix judges the live claim:
@@ -1676,17 +1665,17 @@ is run:
 
 The fix R6-S1 calls for, if the measurement
 supports it: the live point's address-space
-assertion compares the read-back value against
-the platform's own unlimited report as the test
-process itself reads it -- `resource.RLIM_INFINITY`
-and the inherited address-space soft limit read
-through the same API, the `limits[1]` shape --
-never a hardcoded -1; and a pure substrate helper
-in the backend module classifies a reported value
-as unlimited exactly for the two named reports,
-so both representations' meaning is pinned where
-it cannot silently drift. The helper classifies
-only; it sets nothing.
+assertion compares the read-back value against the
+platform's own unlimited report as the test process
+itself reads it (`resource.RLIM_INFINITY` and the
+inherited address-space soft limit read through the
+same API, the `limits[1]` shape), never a hardcoded
+-1; and a pure substrate helper in the backend
+module classifies a reported value as unlimited
+exactly for the two named reports, so both
+representations' meaning is pinned where it cannot
+silently drift. The helper classifies only; it sets
+nothing.
 
 ## Conclusions for the spawn-limits fix, against R6-S1 to R6-S2
 
@@ -1703,21 +1692,21 @@ exactly:
   pass-through, executed on a Linux host through
   the real shim text: a job spawned through
   `build_shim_argv` read back its data-size pair
-  as (512 MiB, unlimited) -- the ceiling applied
-  -- and its address-space pair exactly as
+  as (512 MiB, unlimited), the ceiling applied,
+  and its address-space pair exactly as
   inherited, untouched. The backend sets no
   address-space limit, measured, not only pinned
   in source. (b) The platform constant on the
   measuring host: `resource.RLIM_INFINITY` reads
   -1 and the inherited address-space pair reads
-  (-1, -1) -- the Linux report, in the open.
-  (c) The other report: Python's `resource`
-  module states in its own documentation that it
-  does not mask platform differences, the
-  BSD-family definition of `RLIM_INFINITY` is
-  ((uint64_t)1 << 63) - 1, this project's ladder
-  comment records the Darwin sentinel as
-  2**63 - 1, and the CI verdict printed exactly
+  (-1, -1), the Linux report, in the open. (c)
+  The other report: Python's `resource` module
+  states in its own documentation that it does
+  not mask platform differences, the BSD-family
+  definition of `RLIM_INFINITY` is ((uint64_t)1
+  << 63), 1, this project's ladder comment
+  records the Darwin sentinel as 2**63, 1, and
+  the CI verdict printed exactly
   9223372036854775807 for a limit nothing in the
   chain sets. The only consistent reading is
   R6-S1's: the verdict's value IS darwin's report
@@ -1728,13 +1717,12 @@ exactly:
   reads the inherited address-space soft limit in
   the parent and asserts the read-back value
   against it and against `resource.RLIM_INFINITY`
-  as the same process reads them -- the
-  `limits[1]` shape -- and classifies it through
-  the new pure substrate,
-  `reported_limit_is_unlimited` in
+  as the same process reads them, the `limits[1]`
+  shape, and classifies it through the new pure
+  substrate, `reported_limit_is_unlimited` in
   `runner/guard/macos_confine.py`, which names
   both reports exactly in
-  `UNLIMITED_LIMIT_REPORTS` (-1 and 2**63 - 1).
+  `UNLIMITED_LIMIT_REPORTS` (-1 and 2**63, 1).
   That `limits[0]` and `limits[1]` already held
   on the darwin legs is consistent end to end:
   derived from the sentinel as a finite hard
@@ -1745,7 +1733,7 @@ exactly:
   one assertion. No production limit-carrying
   code moved: the shim text is unchanged, no
   limit is set, raised, lowered, or normalized
-  anywhere, and the classifier classifies only --
+  anywhere, and the classifier classifies only;
   no spawn path consults it, so the fail-closed
   shape cannot move through it. The point's
   protection is stronger than the one it
@@ -1762,31 +1750,31 @@ exactly:
   400-draw randomized membership family, the
   verdict's own triple shape, and a darwin-staged
   read-back executed through a scripted resource
-  seam in both directions -- the sentinel
+  seam in both directions (the sentinel
   satisfying the fixed shape while failing the
-  old one, a finite value satisfying neither.
+  old one, a finite value satisfying neither).
   The combined local run over the macOS suite,
   the neighbouring confinement suites, the skip
   registry, the reader-docs guard, the core
   figure guards and the figures check stands
-  green (236 tests in the final combined run,
-  all green but the registered skips). The core
-  grew by the classifier's 48 lines in
-  `runner/guard`: the as-assembled set now
-  stands at 64,586 lines, 58,442 of them
-  non-blank, the `runner/guard` part at 5,496,
-  re-measured over the current tree with the
-  token figures left to the next release cut's
-  fresh measure, as is their standing route.
+  green (236 tests in the final combined run, all
+  green but the registered skips). The core grew
+  by the classifier's 48 lines in `runner/guard`:
+  the as-assembled set now stands at 64,586
+  lines, 58,442 of them non-blank, the
+  `runner/guard` part at 5,496, re-measured over
+  the current tree with the token figures left to
+  the next release cut's fresh measure, as is
+  their standing route.
 - P3 is NOT yet judged: it is a live-darwin
   claim, and the verdict that judges it is the
   first completed `test-macos` CI job on a head
-  carrying this fix -- the one outstanding proof,
-  by the standing rule that a macOS claim is
-  proven by the leg that runs it and by nothing
-  else. Live Seatbelt engagement cannot be
-  proven on this Linux host, and no part of this
-  record claims it early. If that leg fails the
-  point in either direction P3 names, R6-S1
-  stands convicted in the open and the backend
-  is the next round's subject.
+  carrying this fix, which is the one outstanding
+  proof, by the standing rule that a macOS claim
+  is proven by the leg that runs it and by
+  nothing else. Live Seatbelt engagement cannot
+  be proven on this Linux host, and no part of
+  this record claims it early. If that leg fails
+  the point in either direction P3 names, R6-S1
+  stands convicted in the open and the backend is
+  the next round's subject.

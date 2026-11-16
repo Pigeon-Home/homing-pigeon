@@ -10,8 +10,8 @@ holds: a security feature the config does not set now reads as
 mode to `audit` or `off`.*
 
 *Update (2026-11-07): two lines below record the state of their
-day and no longer hold. The M8 `job_user` divergence — non-root
-falls back loudly rather than refusing — was superseded at
+day and no longer hold. The M8 `job_user` divergence (non-root
+falls back loudly rather than refusing) was superseded at
 startup: on POSIX under `enforce` with a configured user, startup
 now refuses when the demote cannot be applied (the runner not
 root, or the user unresolvable through the job-user face); the
@@ -24,8 +24,8 @@ SECURITY.md states both as they now stand.*
 
 ## Scope and constraints
 
-Implemented Claude's security hardening runbook (M0–M11) against
-`main` at v3.5.2. Standing orders for the whole effort:
+Implemented Claude's security hardening runbook (M0 through M11)
+against `main` at v3.5.2. Standing orders for the whole effort:
 
 - **D9**: everything off by default was the standing order for
   this effort. It no longer holds: with no `security` block every
@@ -55,12 +55,12 @@ checks) land on `main` after the tag.
 | Milestone | Branch | What landed |
 |---|---|---|
 | M0 | `hardening/m0-plumbing` | `runner/security.py`: `sec_mode`/`sec_decide` (off/audit/enforce), `validate_security_config` (malformed block stops startup naming key+value), best-effort bounded audit writer (0600, `.1` rollover, counts file). Startup hook in `main()`. Parity harness (`tests/security_parity.py`): 12-job corpus, normalized comparison across no-block/off/audit. |
-| M1 | `hardening/m1-fixes` | Two defect fixes. **M1a**: the review regex's catastrophic backtracking replaced with a quote-position walk + linear reverse tail check — 5000-case differential, zero mismatches; 1M-char scripts review in ms (was 29s at 160k). **M1b**: `max_job_bytes` (4MiB, raw mail pre-signature) and `max_script_bytes` (1MiB, post-verify); 0=unlimited; bad values are startup errors. |
+| M1 | `hardening/m1-fixes` | Two defect fixes. **M1a**: the review regex's catastrophic backtracking replaced with a quote-position walk + linear reverse tail check (5000-case differential, zero mismatches; 1M-char scripts review in ms, was 29s at 160k). **M1b**: `max_job_bytes` (4MiB, raw mail pre-signature) and `max_script_bytes` (1MiB, post-verify); 0=unlimited; bad values are startup errors. |
 | M2 | `hardening/m2-policy` | `key_policies` gains `allowed_env`, `denied_env`, `allowed_files`, `args_pattern`. `DANGEROUS_ENV_NAMES` (BASH_ENV, LD_PRELOAD, PYTHONPATH, …) denied for policy keys unless explicitly allowed. Pinned scripts carrying unlisted env/files are denied. `args_pattern` validated at startup with a backtracking probe; args capped at 1024 chars. PROTOCOL.md's "cannot be repurposed" claim is now backed by a test. |
 | M3 | `hardening/m3-audit-report` | `--audit-report [--since 14d\|48h]`: read-only audit summary (table, per-key suggestions, "refused to suggest"). Dangerous env names and URL file sources are never suggested. Works without mailbox credentials; never writes `config.json` (mtime+hash tested). |
 | M4 | `hardening/m4-posture` | `--posture`: exit 0/1/2 report (config file, secrets, audit log, base dir, modes, policies). `validate_shared_secret` moved to `security.py` (re-exported, not copied). 0600 checks on Linux; best-effort Windows DACL check (True→OK, False→WARN, unknown→WARN, never FAIL). |
 | M5 | `hardening/m5-audience` | `audience` feature (off/audit/enforce). Config `runner_id` (wizard generates one for fresh configs); the expected value always comes from the loaded config, never the body. Enforced for jobs, queries (covers the `ask` op), board messages, sensor alerts. Replay-cache keys namespaced by `runner_id` when set. |
-| M6 | `hardening/m6-confinement` | `confinement` feature: `exec` jobs run inside bwrap (`/usr` ro, no net, no home, workdir rw at `/work`, env via `--setenv`). Proven on this machine (see below). Fallback chain: at `enforce` — the default for a feature the config does not set — a sandbox that cannot engage at startup refuses the start; the loud WARN + audit + run normally chain is the `audit`-mode behaviour and, at runtime, what happens when a sandbox breaks after a good start; audit → run + `would_run_sandboxed`. (Runtime clause as built then: the current behaviour stands in SECURITY.md — under `enforce` a job-time fallback refuses the job, which never runs unsandboxed.) |
+| M6 | `hardening/m6-confinement` | `confinement` feature: `exec` jobs run inside bwrap (`/usr` ro, no net, no home, workdir rw at `/work`, env via `--setenv`). Proven on this machine (see below). Fallback chain: at `enforce` (the default for a feature the config does not set), a sandbox that cannot engage at startup refuses the start; the loud WARN + audit + run normally chain is the `audit`-mode behaviour and, at runtime, what happens when a sandbox breaks after a good start; audit → run + `would_run_sandboxed`. (Runtime clause as built then: the current behaviour stands in SECURITY.md, where under `enforce` a job-time fallback refuses the job, which never runs unsandboxed.) |
 | M7 | `hardening/m7-templates` | `hardening/`: systemd unit, AppArmor profile (paths from `strace -f -e openat`), SELinux module `homing_pigeon`. Opt-in only; `install.py --help` doesn't mention them. |
 | M8 | `hardening/m8-secrets` | `shared_secret_file` / `additional_secrets_files` (mutually exclusive with inline; fail closed). `job_user` feature: jobs run as another POSIX user via setuid (root only; workdir chown'd, parents traverse-only). |
 | M9 | `hardening/m9-m10-design-docs` | `docs/steady/design/asymmetric-signing-design.md`: Ed25519 migration design (public keys per key_id, migration path, dependency question). Not implemented. |
@@ -77,8 +77,8 @@ following are my designs, recorded here per runbook rule 15:
 
 - **Feature names**: `audience` (not `audience_binding`) to match the
   SECURITY.md table written in M0.
-- **Confinement fallback**: at `enforce` — the default for a
-  feature the config does not set — unavailable bwrap / non-Linux
+- **Confinement fallback**: at `enforce` (the default for a
+  feature the config does not set), unavailable bwrap / non-Linux
   at startup is fail closed: the runner refuses to start when the
   sandbox cannot engage. The warn + run normally path, not fail
   closed, applies in `audit` mode, and at runtime when a sandbox
@@ -87,9 +87,8 @@ following are my designs, recorded here per runbook rule 15:
   those scoped cases as a deliberate, documented deviation from
   the plan's "denied, never run unconfined." (That runtime
   fail-open was later retired: under `enforce` a job-time
-  fallback now refuses the job — SECURITY.md states the
-  current chain; this bullet stands as the 2026-10-15
-  record.)
+  fallback now refuses the job. SECURITY.md states the current
+  chain; this bullet stands as the 2026-10-15 record.)
 - **`--unshare-pid` omitted** from the bwrap flags: on this VM it
   breaks the `/proc` mount (AppArmor/seccomp). Without it `--proc`
   mounts fine.
@@ -106,11 +105,12 @@ following are my designs, recorded here per runbook rule 15:
 ## This machine's real paths (M6)
 
 - bwrap was **not** installed; installed `bubblewrap 0.9.0` via apt
-  for the spike (ephemeral — the code handles its absence).
+  for the spike (ephemeral, as the code handles its absence).
 - `/usr/bin/python3` → `/usr/bin/python3.12`. usr-merged system:
-  `/bin`, `/lib`, `/lib64` are symlinks into `/usr` — the sandbox
-  needs `--symlink usr/lib /lib` etc. or the ELF interpreter is
-  missing (this was the actual spike failure, not the mounts).
+  `/bin`, `/lib`, `/lib64` are symlinks into `/usr`, so the
+  sandbox needs `--symlink usr/lib /lib` etc. or the ELF
+  interpreter is missing (this was the actual spike failure, not
+  the mounts).
 - Overlayfs root; user namespaces available
   (`kernel.unprivileged_userns_clone=1`).
 - Sandbox proven: `/usr` read-only, no `/home`, no network, workdir
@@ -125,13 +125,13 @@ following are my designs, recorded here per runbook rule 15:
   mismatches.
 - M5: signed job without `runner_id` rejected in enforce; job signed
   for runner A rejected by runner B.
-- M6: real bwrap run — isolation, env, workdir write, result parity.
+- M6: real bwrap run (isolation, env, workdir write, result parity).
 - M8: real setuid run as `pigeon-test` (root on this VM).
 - M11: schtasks argv asserted (SYSTEM/HIGHEST default, named/LIMITED).
 
 ## Owner decisions needed
 
-1. ~~Merge order~~ — done: merged to `main`, tagged v3.6.0.
+1. ~~Merge order~~ (done): merged to `main`, tagged v3.6.0.
 2. Whether any feature should be on by default (D9 says no; the
    recommendation stands).
 3. M9/M10: approve the designs before any implementation.

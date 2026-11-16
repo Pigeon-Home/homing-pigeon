@@ -20,12 +20,12 @@ covers what **you** do, step by step, to keep a deployment safe.
   machine: install software, read files, add users, pivot to your
   network.
 - Email is the control plane. Whoever can sign a job message is the
-  operator — the sender address is not checked; the HMAC signature
+  operator: the sender address is not checked; the HMAC signature
   is the only thing that authenticates a job, and the runner's own
   admission checks (freshness, replay, key policy, cleartext,
   audience) are the rest. There is no second factor on a job.
 
-If any of that makes you uncomfortable, good — that feeling is the
+If any of that makes you uncomfortable, good: that feeling is the
 whole point of this document. Set it up right and the risk is
 contained; set it up casually and it isn't.
 
@@ -41,12 +41,12 @@ Do all of these before the first job:
    sees. Never the account password. (The alternative is
    `"auth": "oauth"`: the runner then holds a refresh token
    instead, Thunderbird-style.)
-3. **Disposable machine.** A Raspberry Pi, a VM, a cloud instance you
-   can delete — something you can afford to lose completely. See
+3. **Disposable machine.** A Raspberry Pi, a VM, or a cloud instance
+   you can delete: something you can afford to lose completely. See
    "Containment" below.
 4. **Guard the secret like a password.** It lives in plaintext in
    `config.json` (your explicit choice for the throwaway account).
-   When you share it with your SI, paste it in chat and nothing else —
+   When you share it with your SI, paste it in chat and nothing else:
    never commit it, never put it in a file that syncs anywhere, never
    screenshot it. Remember: anyone who can read your SI chat history
    can read the secret.
@@ -95,15 +95,14 @@ Defense in depth, cheapest first:
 ## 4. The Oracle as a safeguard
 
 A `full` view sends stdout and stderr back to your (cloud, third-party) SI. If
-your jobs touch anything sensitive, that's the leak surface. The
-Oracle — implemented, specified in PROTOCOL.md — is the
-mitigation:
+your jobs touch anything sensitive, that's the leak surface. The Oracle
+(implemented, specified in PROTOCOL.md) is the mitigation:
 
 - **Result policies.** `full` / `redacted` / `summary` / `attested`.
   The SI gets answers, not raw output.
 - **The ceiling is yours.** `max_result_view` lives in *your*
-  config. No job can widen disclosure past it — the SI cannot vote
-  itself more access.
+  config. No job can widen disclosure past it, so the SI cannot
+  vote itself more access.
 - **Privacy budget.** Each job gets a fixed number of questions;
   exhaustion silences the Oracle for that job. Rate limiting slows
   probing; the budget stops it.
@@ -113,7 +112,7 @@ mitigation:
 - **Read the logs.** `runner.log` in the install dir shows every job
   received, executed, and rejected. A job you didn't send is a
   five-alarm fire (see §7).
-- **Keep the runner updated.** New releases fix real bugs — including
+- **Keep the runner updated.** New releases fix real bugs, including
   security-relevant ones. Check the releases page when you think of
   it.
 - **Rotate the shared secret every 90 days.** Add a new named
@@ -123,7 +122,7 @@ mitigation:
   that cuts off every sender at once. A leak is different:
   replace the secret now (§7).
 - **Prune the mailbox.** The runner marks processed mail seen, but
-  the job messages remain. Delete them periodically — they're signed,
+  the job messages remain. Delete them periodically: they're signed,
   but they still describe what you asked your machine to do.
 - **Know what the box reaches out for.** The runner's own traffic is
   the mailbox (or the transport you enabled) and the HTTPS downloads a
@@ -140,8 +139,8 @@ mitigation:
 
 ## 5a. Your agent's approval memory is private
 
-If you work with a coding agent -- this suite is built to be
-worked on that way -- the agent keeps a memory of what you
+If you work with a coding agent (this suite is built to be
+worked on that way), the agent keeps a memory of what you
 approved. When you tell it "yes, and don't ask again," it writes
 the approval down, sometimes as the exact command you approved,
 word for word. Commands often carry the very thing that makes
@@ -152,21 +151,20 @@ runner's own `config.json` and state files (`seen.json`,
 disk, and not something that may ever be published.
 
 You do not need to be a version-control expert to be protected
-from the classic accident -- committing that file without
-noticing. This project's own tree ships the protection in its
-`.gitignore`, so the approval and state files stay out of
-commits automatically, on every machine the project is copied
-to; the design record is `docs/steady/security/privacy-design.md`,
-section 8. Keep the same habit in trees of your own: an agent's
-local settings file (`.claude/settings.local.json` is the
-standing example) belongs in the project's ignore list, not in
-one machine's private settings, because the ignore list is the
-part that travels.
+from the classic accident: committing that file without noticing.
+This project's own tree ships the protection in its `.gitignore`,
+so the approval and state files stay out of commits automatically,
+on every machine the project is copied to; the design record is
+`docs/steady/security/privacy-design.md`, section 8. Keep the same
+habit in trees of your own: an agent's local settings file
+(`.claude/settings.local.json` is the standing example) belongs in
+the project's ignore list, not in one machine's private settings,
+because the ignore list is the part that travels.
 
 If an approval file was ever committed and pushed, treat the
 passwords and keys inside it as public: **change them first.**
-Deleting the file does not take it back -- the old version stays
-in the repository's history and in any copies others made -- so
+Deleting the file does not take it back, as the old version stays
+in the repository's history and in any copies others made, so
 rotation comes first and cleanup second, exactly as SECURITY.md's
 spillage section directs.
 
@@ -180,11 +178,11 @@ spillage section directs.
   The SI writes the script; you own the consequences.
 - Don't assume TLS means private. Transport TLS encrypts email in
   transit, but the *mailbox provider itself* can read whatever the
-  transport carries in the clear — which is why jobs are encrypted
+  transport carries in the clear, which is why jobs are encrypted
   per-job by default, so the provider sees the envelope, not the
-  script (subjects and metadata still show). The
-  Oracle (§4) exists precisely because "the SI" and "the
-  infrastructure" are both third parties.
+  script (subjects and metadata still show). The Oracle (§4)
+  exists precisely because "the SI" and "the infrastructure" are
+  both third parties.
 
 ## 6a. Running a task board
 
@@ -198,10 +196,10 @@ and see it whole. Tighten in this order, when you have a reason:
   never so short that a slow worker loses a task it is still doing.
 - **`worker_allowlist`**: name the `worker_id`s that may pull.
   Empty means anyone with the secret.
-- **`worker_compartments`** on tasks that carry `compartments`:
-  a task is visible only to workers sharing a tag. A policy, not a
-  proof — a worker that receives a task sees it fully; do not put
-  mutually hostile workers on one board and expect labels to save you.
+- **`worker_compartments`** on tasks that carry `compartments`: a task
+  is visible only to workers sharing a tag. A policy, not a proof: a
+  worker that receives a task sees it fully; do not put mutually
+  hostile workers on one board and expect labels to save you.
 - **`require_review: true`**: finished tasks park in `pending_review`
   until you send `task_approve`. Use it when a result changes
   something you cannot undo.
@@ -215,23 +213,21 @@ task list; no mailbox needed).
 
 ## 7. If something goes wrong
 
-**Secret leaked or suspected leaked:**
-1. Revoke the mailbox credential *now* (Google Account → Security → App
-   passwords, or revoke the OAuth token). Without mailbox access the runner
-   can't receive jobs — this instantly stops all mail-borne job
-   delivery. (Same-box producers can still deliver `sensor_alert`
-   envelopes through the local inbox; see SECURITY.md.)
+**Secret leaked or suspected leaked:** 1. Revoke the mailbox credential
+*now* (Google Account → Security → App passwords, or revoke the OAuth
+token). Without mailbox access the runner can't receive jobs, which
+instantly stops all mail-borne job delivery. (Same-box producers can still
+deliver `sensor_alert` envelopes through the local inbox; see SECURITY.md.)
 2. Generate a fresh shared secret (`openssl rand -hex 32`), update
-   `shared_secret` in `config.json`.
-3. Paste the new string to your SI.
-4. Check `runner.log` and the mailbox for jobs you didn't send.
+`shared_secret` in `config.json`. 3. Paste the new string to your SI. 4.
+Check `runner.log` and the mailbox for jobs you didn't send.
 
-**Machine compromised or suspected:**
-1. Stop the runner (uninstall the service).
-2. Revert the VM snapshot — or wipe and rebuild the machine.
-3. Rotate the secret as above (assume it was read off the disk).
-4. Review what the jobs touched before you revert.
+**Machine compromised or suspected:** 1. Stop the runner
+(uninstall the service). 2. Revert the VM snapshot, or wipe and
+rebuild the machine. 3. Rotate the secret as above (assume it
+was read off the disk). 4. Review what the jobs touched before
+you revert.
 
-**You see a job you didn't send in the logs:**
-Treat it as a full compromise and follow both playbooks above.
-Then figure out how the secret leaked — that's the actual bug.
+**You see a job you didn't send in the logs:** Treat it as a
+full compromise and follow both playbooks above. Then figure
+out how the secret leaked, because that's the actual bug.

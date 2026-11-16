@@ -1,21 +1,20 @@
 # Failed Login Watch — an example Homing Pigeon extension
 
-A sense for the shape a brute-force run leaves behind. It
-watches the authentication logs for that shape — a burst of failures from one
-source — and, the finding that matters, for a successful
-login that follows one. A burst alone might be a forgotten
-password or a scanner passing in the night; a burst and then
-a success from the same source is an episode, and it closes
+A sense for the shape a brute-force run leaves behind. It watches the
+authentication logs for that shape (a burst of failures from one source) and,
+the finding that matters, for a successful login that follows one. A burst
+alone might be a forgotten password or a scanner passing in the night; a
+burst and then a success from the same source is an episode, and it closes
 when it files.
 
-The log files are tailed incrementally, not re-read: the
-state carries reader offsets per path (`{"inode", "offset"}`),
-a missing file yields no events and keeps its offset, and an
+The log files are tailed incrementally, not re-read: the state
+carries reader offsets per path (`{"inode", "offset"}`), a
+missing file yields no events and keeps its offset, and an
 inode change or a file that shrank (rotation, truncation)
 restarts that file from 0. Platform coverage is Linux auth
-logs in the usual places — the `log_paths` tunable defaults
-to `/var/log/auth.log` and `/var/log/secure` — and the sense
-has nothing to say on a machine without them.
+logs in the usual places (the `log_paths` tunable defaults to
+`/var/log/auth.log` and `/var/log/secure`), and the sense has
+nothing to say on a machine without them.
 
 The patterns it understands, stated plainly:
 
@@ -60,15 +59,16 @@ python3 failed_login_watch.py --log-file fixture-auth.log
 ```
 
 Alert payloads are unsigned sense alerts; signing and delivery
-follow the standard senses flow. The full extension walkthrough —
-manifest fields, the versioning contract, sensor binding, and how
-to turn this example into your own package — is in
+follow the standard senses flow. The full extension walkthrough
+(manifest fields, the versioning contract, sensor binding, and
+how to turn this example into your own package) is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).
 
 ## Light mode
 
-For a Pi Light install, tune it down with its tunables: raise `poll_interval_sec` from 60 to 600,
-point `log_paths` at the single log the Pi actually keeps
-(for example just `/var/log/auth.log`), and raise
-`burst_count` — at 10, only bigger bursts file, and the small
-background noise of a quiet box never wakes anyone.
+For a Pi Light install, tune it down with its tunables: raise
+`poll_interval_sec` from 60 to 600, point `log_paths` at the
+single log the Pi actually keeps (for example just
+`/var/log/auth.log`), and raise `burst_count`. At 10, only
+bigger bursts file, and the small background noise of a quiet
+box never wakes anyone.

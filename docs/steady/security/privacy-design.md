@@ -2,9 +2,9 @@
 
 This document states how privacy is handled in this suite: what
 exists, how it is configured, and what is recorded as still to
-build. It is written the way the audit handling is written --
-the activity is done and documented, in the open, for readers
-who look. Two companions stand beside it:
+build. It is written the way the audit handling is written: the
+activity is done and documented, in the open, for readers who
+look. Two companions stand beside it:
 `privacy-fremont-research.md`, an inventory of privacy work in
 the Fremont Derby project that this design draws on, and
 `privacy-models.md`, a survey of the privacy models an operator
@@ -29,25 +29,25 @@ configuration shape that expresses it.
   name matches legal, tax or medical vocabulary. It never opens
   a file, never keeps a name, never sends anything.
 - **The config security modes** (`runner/guard/security.py`).
-  Nine guard features -- `policy_env`, `policy_files`,
+  Nine guard features (`policy_env`, `policy_files`,
   `policy_args`, `audience`, `confinement`, `job_user`,
   `personal_docs_shelter`, `agent_state_guard`,
-  `v2_question` -- each
-  set to `off`, `audit` or `enforce` under `security.modes` in
-  the config, each defaulting to `enforce`, with audit records
-  written to a tamper-evident log. An unknown feature name in
-  the config is refused at startup. This family is the pattern
-  privacy behaviour follows.
+  `v2_question`), each set to `off`, `audit` or `enforce`
+  under `security.modes` in the config, each defaulting to
+  `enforce`, with audit records written to a tamper-evident
+  log. An unknown feature name in the config is refused at
+  startup. This family is the pattern privacy behaviour
+  follows.
 - **The postures** (README, `runner/ops/posture.py`). The named
-  owner postures -- *just run it*, *eyes open*, *lockdown* --
-  bundle mode settings. Under *just run it* the config defaults
-  stand and privacy is not a concern of the run; under the other
+  owner postures (*just run it*, *eyes open*, *lockdown*) bundle
+  mode settings. Under *just run it* the config defaults stand
+  and privacy is not a concern of the run; under the other
   postures it is treated as a major concern. That split is a
   property of the postures, and the privacy features below are
   engaged or quiet exactly as the posture's configuration says.
 - **The disclosure postures** (`runner/tools/disclosure.py`): what
-  may be said about a piece of work is itself declared in code
-  and carried in logs -- the same declared-configuration shape,
+  may be said about a piece of work is itself declared in code and
+  carried in logs, using the same declared-configuration shape,
   applied to disclosure rather than to data handling.
 
 ## 2. The design rule
@@ -56,10 +56,10 @@ Privacy behaviour is declared in the same place and the same
 shape as the guard features: a named feature under
 `security.modes`, one of `off` / `audit` / `enforce`, defaulting
 to `enforce`, refused when misspelled, visible in the posture
-report. A new privacy behaviour arrives as a new feature in
-that family, with its mode semantics stated in its own
-document -- never as an environment variable, a command-line
-flag of its own, or a code path only one mentality can use.
+report. A new privacy behaviour arrives as a new feature in that
+family, with its mode semantics stated in its own document, and
+never as an environment variable, a command-line flag of its
+own, or a code path only one mentality can use.
 
 Mode semantics for an operator-invoked behaviour (the shelter
 is the first) follow the family's logic one step removed:
@@ -105,7 +105,7 @@ with its disposition here and the reason.
 | Boundary test: prove a sensitive value appears only in allowlisted files | **Adopted as a testing rule** | The shelter family includes it in miniature: manifest paths are validated to stay inside home and the shelter, and the marker tests prove a lookalike folder does not gain the shelter's exemption. The tree-wide value-confinement test stands shipped for the agent-state category (section 8). |
 | Fail-closed preflight for copies (gamma refresh) | **Already the house shape** | Decision 1 refuses startup when a wrong config value changes reach, execution or protection; the shelter validates its manifest fail-closed before moving anything. |
 | Session isolation (one user's state never surfaces in another's session) | **Documented only** | This suite has no multi-user interactive surface; jobs and results are bound to their job and key by the protocol. The principle is recorded for any future surface. |
-| Browser-deny data plane (RLS `using(false)`, service-role RPCs) | **Documented only** | There is no browser data plane here. The structural equivalent -- jobs cannot reach the host except through the runner's checked paths -- already holds. |
+| Browser-deny data plane (RLS `using(false)`, service-role RPCs) | **Documented only** | There is no browser data plane here. The structural equivalent, that jobs cannot reach the host except through the runner's checked paths, already holds. |
 | Consent-gated messaging channels; retire a surface rather than consent-manage it | **Documented only** | No social surface exists here. Both halves are recorded: default-off per-channel consent as the shape for any future contact surface, and retirement as a legitimate disposition. |
 | Archive instead of delete; soft removal with an audit record | **Already the house shape** | Runs and results are append-recorded; deletion of records with history is not a runner operation. |
 | Environment/lane isolation, synthetic identities for test lanes | **Already the house shape** | Test lanes here run synthetic fixtures; the fleet's lanes are separate machines with separate configs. |
@@ -119,19 +119,19 @@ the implementation was measured against them:
 - **S1.** A marker-verified shelter folder can be taken out of
   the warning scan's scope without weakening the scan: a folder
   with the shelter's name but no marker, or the wrong marker,
-  still trips the warning. -- **Held**: tests cover the name-only
+  still trips the warning. **Held**: tests cover the name-only
   and wrong-marker folders (both still trip) and the real marker
   (out of scope).
 - **S2.** A new feature can join the security-modes family
   without changing any existing feature's behaviour: the
   existing families (security config, posture, parity, startup
-  gate) stay green unchanged. -- **Held**: those families pass
+  gate) stay green unchanged. **Held**: those families pass
   unmodified; the one recorded change is the core line measure,
   re-measured and re-recorded in the established way because two
   core files grew.
 - **S3.** Sheltering by the warning check's own name scan makes
   the warning quiet afterwards, end to end: plan, apply, and the
-  check no longer trips. -- **Held**: covered by an integration
+  check no longer trips. **Held**: covered by an integration
   test that trips the check, shelters, and re-checks.
 
 The implementation:
@@ -139,9 +139,9 @@ The implementation:
 - `runner/guard/security.py`: the feature `personal_docs_shelter`
   joins the modes family (section 2's semantics); the shipped
   example config states it.
-- `runner/oracle/personal_docs.py`: the shelter marker --
-  constants and `is_shelter_dir`, a bounded marker read that
-  fails to False on any doubt -- and the scan's skip of a
+- `runner/oracle/personal_docs.py`: the shelter marker
+  (constants and `is_shelter_dir`, a bounded marker read
+  that fails to False on any doubt) and the scan's skip of a
   verified shelter folder.
 - `runner/oracle/personal_docs_shelter.py`: the operator tool.
   Plan (default), `--apply`, `--restore`; the mode gate read
@@ -170,13 +170,13 @@ Recorded, not claimed:
    contract (counters only; dimension keys matching
    phone/token/password/email/message/body/authorization dropped;
    string values over 64 characters dropped), for the first
-   surface that needs counters -- with a production caller this
+   surface that needs counters, with a production caller this
    time, or not at all.
 3. **A raw-evidence retention setting**: an operator-declared
    number of days for raw crash/result evidence, enforced by a
    sweep, in the modes family.
 4. **A tree-wide value-confinement test**: the boundary-test
-   technique generalised -- a test that proves named sensitive
+   technique generalised as a test that proves named sensitive
    values appear only in allowlisted files. Its first concrete
    form stands shipped, recorded in section 8: the
    staged-content guard for the agent's papers
@@ -199,22 +199,22 @@ Recorded, not claimed:
 
 Implemented and measured on 2026-11-08:
 
-- New tests: `runner/tests/test_personal_docs_shelter.py` --
-  plan shape (watched folders, depth, skip rules, symlinks,
-  bookend and unicode names), apply/restore (marker, manifest,
-  collisions, occupied restore, vanished sources, a corrupt
-  manifest refusing), the marker's effect on the warning check,
-  the manifest fuzz family (17 malformed shapes, each failing
-  closed and moving nothing), and the mode gate through the
-  tool's entry point (off refuses, audit plans only, enforce
-  applies, no-config takes the family default).
+- New tests: `runner/tests/test_personal_docs_shelter.py`
+  covers plan shape (watched folders, depth, skip rules,
+  symlinks, bookend and unicode names), apply/restore (marker,
+  manifest, collisions, occupied restore, vanished sources, a
+  corrupt manifest refusing), the marker's effect on the
+  warning check, the manifest fuzz family (17 malformed shapes,
+  each failing closed and moving nothing), and the mode gate
+  through the tool's entry point (off refuses, audit plans
+  only, enforce applies, no-config takes the family default).
 - Existing families re-run green: the personal-documents tests,
   the security-config tests, the posture and parity families,
   the startup gate, the core measure (re-recorded, section 5),
   the document guards and the reader-pages test over the three
   new documents in this drawer.
-- The agent's papers (section 8), measured the same day:
-  `runner/tests/test_gitignore_state_files.py` -- every shipped
+- The agent's papers (section 8), measured the same day in
+  `runner/tests/test_gitignore_state_files.py`: every shipped
   pattern present in the root `.gitignore`, every state path
   ignored by `git check-ignore`, the tracked lookalikes
   (`runner/config.example.json`, the board fixtures) not
@@ -223,63 +223,62 @@ Implemented and measured on 2026-11-08:
 ## 8. The agent's papers: agent permission and config state
 
 The framework's working example is the operator's papers. This
-section names the counterpart category: **the agent's papers**
--- agent permission and configuration state. A coding agent
-that asks its operator's permission keeps a memory of the
-answers: the saved record of what was approved and need not be
-asked again, its local settings, and, on this suite's side, a
-deployment's `config.json` and the runner's state files (the
-board, the seen-file, the Oracle's chat and briefing logs, the
-outbox and work folders). The category is the personal
-documents' mirror image: material that is ordinary to hold,
-private by nature, and damaging only when it crosses a
-publication boundary its holder never noticed.
+section names the counterpart category, **the agent's
+papers**: agent permission and configuration state. A coding
+agent that asks its operator's permission keeps a memory of
+the answers: the saved record of what was approved and need
+not be asked again, its local settings, and, on this suite's
+side, a deployment's `config.json` and the runner's state
+files (the board, the seen-file, the Oracle's chat and
+briefing logs, the outbox and work folders). The category is
+the personal documents' mirror image: material that is
+ordinary to hold, private by nature, and damaging only when it
+crosses a publication boundary its holder never noticed.
 
 The research that settled the category, stated briefly and
-defensively. In November 2026, Apiiro's researchers reported
-("Coding Agents Are Leaking Your Secrets to GitHub", 5 November
-2026) that a widely used coding agent saves an approved command
--- when its operator chooses "yes, and don't ask again" -- as
-an allow rule in a project-local file, `.claude/settings.local.json`,
-in the exact-command case word for word, credential included.
-They counted 104,185 public copies of the file and 1,122 of
-them holding at least one real secret: database passwords, API
-keys, server logins. The product did try to keep the file out
-of version control, but the exclusion lived in each developer's
-*global* git excludes -- one machine only, never the project's
-own `.gitignore` -- so it did not travel with the project, did
-not bind a file once tracked, and did not stop the agent itself,
-which had committed the file in about half the traced cases.
-Deleting such a file does not undo the exposure: earlier
-versions remain in history and in forks, so the reporting's
-advice is rotate first, clean up second. The lesson the design
-takes from it: **persisting approvals is a secrets-handling
-decision, not a user-interface decision**, and a protection
-that lives on one machine is a habit, not a boundary.
+defensively. In November 2026, Apiiro's researchers reported ("Coding
+Agents Are Leaking Your Secrets to GitHub", 5 November 2026) that a
+widely used coding agent saves an approved command, when its operator
+chooses "yes, and don't ask again", as an allow rule in a
+project-local file, `.claude/settings.local.json`, in the
+exact-command case word for word, credential included. They counted
+104,185 public copies of the file and 1,122 of them holding at least
+one real secret: database passwords, API keys, server logins. The
+product did try to keep the file out of version control, but the
+exclusion lived in each developer's *global* git excludes (one
+machine only, never the project's own `.gitignore`), so it did not
+travel with the project, did not bind a file once tracked, and did
+not stop the agent itself, which had committed the file in about half
+the traced cases. Deleting such a file does not undo the exposure:
+earlier versions remain in history and in forks, so the reporting's
+advice is rotate first, clean up second. The lesson the design takes
+from it: **persisting approvals is a secrets-handling decision, not a
+user-interface decision**, and a protection that lives on one machine
+is a habit, not a boundary.
 
-This suite is not shaped like that product -- job approval here
-is per-job and cryptographic, and no approved job body is stored
-as a standing permission -- but the failure shape is present in
-two places: a deployment's state lives wherever its base
-directory is, and any agent working in a published tree writes
-its own approval memory into that tree. The category is
-therefore handled the way this design handles every category:
-declared, expressed as configuration, and sheltered.
+This suite is not shaped like that product (job approval here is
+per-job and cryptographic, and no approved job body is stored as
+a standing permission), but the failure shape is present in two
+places: a deployment's state lives wherever its base directory
+is, and any agent working in a published tree writes its own
+approval memory into that tree. The category is therefore
+handled the way this design handles every category: declared,
+expressed as configuration, and sheltered.
 
-**The shelter for this category is exclusion from the
-publication scope.** Where personal documents are gathered into
-a marker-verified folder out of a scan's scope, agent-state
-files are kept out of a commit's scope. The shipped form stands
-now: the root `.gitignore` -- an existing file, so the patterns
-clone with the tree -- carries the state shapes
+**The shelter for this category is exclusion from the publication
+scope.** Where personal documents are gathered into a
+marker-verified folder out of a scan's scope, agent-state files
+are kept out of a commit's scope. The shipped form stands now:
+the root `.gitignore` (an existing file, so the patterns clone
+with the tree) carries the state shapes
 (`**/.claude/settings.local.json`, `**/config.json`, `seen.json`,
 `board.json`, `oracle-chat.jsonl`, `oracle-briefs.jsonl`,
 `outbox/`, `work/`), pinned by
 `runner/tests/test_gitignore_state_files.py`, which also proves
 no tracked file matches them. `.claude/settings.json` is
 deliberately not ignored: it is shareable project settings by
-design, and the rule for it is the documentation rule -- it must
-never hold a secret.
+design, and the rule for it is the documentation rule, namely
+that it must never hold a secret.
 
 **The configuration rows.** The ignore defaults are not a mode;
 they are part of the tree and stand under every posture. The
@@ -296,15 +295,15 @@ section 3's rows follow the models:
 4.** *Mask by default*: the files are out of the publication
 scope by default, before any decision. *Split existence from
 value*: the documentation and the guard name files and rules,
-never contents -- a warning for this category follows the
+never contents; a warning for this category follows the
 personal-documents warning's own rules (names only, a fixed
 banner, nothing kept, nothing sent). *Fail-closed preflight*:
 the guard validates at the boundary and stops the crossing on
 any doubt, as the shelter validates its manifest before moving
 anything. *The boundary test*: the guard is section 6 item 4's
-value-confinement test in its first concrete form -- agent-state
-files and grant strings proven, at the moment of committing, to
-appear only where the deployment allows.
+value-confinement test in its first concrete form, with
+agent-state files and grant strings proven, at the moment of
+committing, to appear only where the deployment allows.
 
 **What stands and what is queued.** Standing: the category
 named here; the shipped `.gitignore` defaults and their pinning
@@ -312,19 +311,18 @@ test; the operator warning in the safeguards document; the
 standing note in the Oracle's instructions; the category named
 in SECURITY.md's spillage section; and the `agent_state_guard`
 feature in the modes family with its staged-content tool
-(`runner/tools/approvalguard.py`), which scans what a commit
-or push is about to carry -- staged paths matching an
-agent-state shape, permission-grant state in staged JSON, and
-secret-shaped values inside saved command strings, the class
-generic scanners missed in the reported research -- and
-reports by file and rule, never by value. The guard's
-specified extensions stand shipped in the same tool, as
-`agent-state-files.md` section 4 records them: tool-server
-configuration as a category of its own, grant state under its
-other names, the same content shapes in TOML and YAML, and a
-Subversion front door with the other systems' credential
-rules. The general tree-wide value-confinement test stands
-shipped beside the staged guard
-(`runner/tests/test_agent_state_tree_wide.py`). Nothing in
-this category remains queued; section 6's list is the record
-of what was queued, item 4 included.
+(`runner/tools/approvalguard.py`), which scans what a commit or
+push is about to carry (staged paths matching an agent-state
+shape, permission-grant state in staged JSON, and secret-shaped
+values inside saved command strings, the class generic scanners
+missed in the reported research) and reports by file and rule,
+never by value. The guard's specified extensions stand shipped
+in the same tool, as `agent-state-files.md` section 4 records
+them: tool-server configuration as a category of its own, grant
+state under its other names, the same content shapes in TOML
+and YAML, and a Subversion front door with the other systems'
+credential rules. The general tree-wide value-confinement test
+stands shipped beside the staged guard
+(`runner/tests/test_agent_state_tree_wide.py`). Nothing in this
+category remains queued; section 6's list is the record of what
+was queued, item 4 included.

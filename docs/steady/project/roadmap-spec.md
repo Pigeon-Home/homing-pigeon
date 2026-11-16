@@ -9,13 +9,13 @@ approved for build. Drawn from a Claude brainstorm; edited to fit the
 pieces that already exist: the `sensor_alert` ingest path, `key_policies`,
 the Oracle's `ask`, the board, and the DRI Telegram channel.
 
-Design constraints that apply to everything below: minimal-install
-(stdlib first), the Oracle stays advisory-only (it pages, it never
-remediates — a 2026-10-15 constraint, since superseded: remediation
-shipped as a runner-core mechanism; see docs/steady/design/remediation-design.md),
-sensor daemons get restricted keys that may only file for
-their own bound sensor, alert detail is redacted before leaving the
-box, and anything interactive is TTY-gated so services never block.
+Design constraints that apply to everything below: minimal-install (stdlib first),
+the Oracle stays advisory-only (it pages, it never remediates; this was a
+2026-10-15 constraint, since superseded: remediation shipped as a runner-core
+mechanism; see docs/steady/design/remediation-design.md), sensor daemons get
+restricted keys that may only file for their own bound sensor, alert detail is
+redacted before leaving the box, and anything interactive is TTY-gated so services
+never block.
 
 Claude's one-weekend pick, if any of this gets built first: snapshot
 eyes (§1.1) + tap-to-approve (§3.1) + the Oracle learning loop (§4.1).
@@ -33,13 +33,12 @@ A job kind that returns a screenshot, a webcam frame, or a mic clip run
 through local Whisper, attached to the result for the SI. Uses: debug a
 GUI the SI can't see, check on a 3D print, confirm the servo moved.
 
-Design notes:
-- Snapshot jobs run under the same key-policy scoping as any job; the
-  *request* for a snapshot is signed like any other job.
-- Media never leaves the box except inside a signed result to the key
-  that asked — same redaction posture as sensor alerts.
-- The Oracle's `ask` path can request a snapshot mid-reasoning
-  ("show me the screen") and get it back as a job result.
+Design notes: Snapshot jobs run under the same key-policy scoping as
+any job; the *request* for a snapshot is signed like any other job.
+Media never leaves the box except inside a signed result to the key
+that asked, following the same redaction posture as sensor alerts.
+The Oracle's `ask` path can request a snapshot mid-reasoning ("show
+me the screen") and get it back as a job result.
 
 ### 1.2 Cheap sensors
 
@@ -88,17 +87,16 @@ and to any new actuator or exec surface.
 
 "Hey pigeon, run the tests." Local Whisper turns it into a *job draft*
 that the Oracle shows you before anything is signed. Voice never signs
-directly — it drafts, you confirm.
+directly: it drafts, you confirm.
 
 ## 4. Make the Oracle smarter
 
 ### 4.1 Learning loop
 
-When a job fails, the Oracle proposes a new `docs/steady/reports/known-failures.md` entry —
-symptom, cause, fix, match pattern — and the owner approves it. The
-advisory reviewer (`runner/oracle/review.py`, `docs/steady/oracle/job-review.md`) then gets
-better with every failure instead of staying frozen at whatever was
-written by hand.
+When a job fails, the Oracle proposes a new `docs/steady/reports/known-failures.md` entry
+(symptom, cause, fix, match pattern) and the owner approves it. The advisory reviewer
+(`runner/oracle/review.py`, `docs/steady/oracle/job-review.md`) then gets better with every
+failure instead of staying frozen at whatever was written by hand.
 
 ### 4.2 Daily digest
 
@@ -152,17 +150,15 @@ sensor_alert  →  security model (triage)  →  Oracle/Llama (decides)
                               dismiss / log / watch / raise → DRI playbook
 ```
 
-A **security sub-model** — a smaller model trained for safety and
-security classification, running locally next to the main model —
-reads each fused incident first and returns a triage verdict:
-benign / suspicious / malicious, with a severity and a one-line
-reason. The Oracle (the main Llama) then decides what to do with
-that verdict: dismiss it, log it, watch the box for follow-ups, or
-raise it through the DRI playbook (`docs/steady/oracle/dri-playbook.md`), which
-pages the owner. The sub-model never pages, never remediates, never
-touches a tool. It is an advisor with one output: a verdict. The
-Oracle keeps the decision, which keeps the "advisory only" design
-constraint intact.
+A **security sub-model** (a smaller model trained for safety and security
+classification, running locally next to the main model) reads each fused
+incident first and returns a triage verdict: benign / suspicious / malicious,
+with a severity and a one-line reason. The Oracle (the main Llama) then decides
+what to do with that verdict: dismiss it, log it, watch the box for follow-ups,
+or raise it through the DRI playbook (`docs/steady/oracle/dri-playbook.md`),
+which pages the owner. The sub-model never pages, never remediates, never
+touches a tool. It is an advisor with one output: a verdict. The Oracle keeps
+the decision, which keeps the "advisory only" design constraint intact.
 
 Why a separate model instead of a better prompt:
 
@@ -172,24 +168,25 @@ Why a separate model instead of a better prompt:
 - It is cheap to run beside the main model (1–8B parameters) and
   fast enough to sit in the alert path without slowing the chat.
 - The verdict is structured (`safe`/`unsafe` + category), not
-  prose — the Oracle can weight and threshold it like any other
-  sensor signal.
+  prose, so the Oracle can weight and threshold it like any
+  other sensor signal.
 
 What exists today (verified 2026-10-16, all Ollama-pullable,
 all local, no cloud):
 
 - **Llama Guard 3** (`llama-guard3:1b`, ~1.6 GB; `:8b`, ~4.9 GB).
-  Safety classification against the MLCommons hazard taxonomy;
-  the 8B variant is also trained on tool-call and code-interpreter
-  abuse — the closest public model to "agent security triage".
+  Safety classification against the MLCommons hazard taxonomy; the
+  8B variant is also trained on tool-call and code-interpreter
+  abuse, making it the closest public model to "agent security
+  triage".
 - **Granite Guardian** (`granite3-guardian:2b/8b`, Apache-2.0).
   Harm/jailbreak/violence classification with a yes/no output.
 
-Both are content-safety models, not IDS models — they judge
-*text* (an alert, a job script, a tool result), not packets. That
-is exactly the triage job here: "is this alert describing
-something malicious?" Packet-level detection stays with the
-senses (§1); the sub-model judges what the senses *say*.
+Both are content-safety models, not IDS models: they judge *text*
+(an alert, a job script, a tool result), not packets. That is
+exactly the triage job here: "is this alert describing something
+malicious?" Packet-level detection stays with the senses (§1);
+the sub-model judges what the senses *say*.
 
 Config (same adjustable-everything posture as the senses):
 
@@ -211,7 +208,7 @@ Config (same adjustable-everything posture as the senses):
 - `route`: which incidents get triaged. `all`, or
   `severity_floor_<level>` to skip info/low noise.
 - When the sub-model is unreachable or times out, the incident
-  falls through to the Oracle untriaged — loud in the log, never
+  falls through to the Oracle untriaged: loud in the log, never
   silently dropped, never blocking.
 
 Open questions, deliberately unresolved: whether the verdict

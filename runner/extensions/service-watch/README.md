@@ -2,8 +2,8 @@
 
 A sense for operations and DRI duty: the box exists to run
 certain things, and this watcher checks they are actually
-running. Point it at the services that matter — a daemon, a
-worker, a helper process — and the Oracle learns the moment
+running. Point it at the services that matter (a daemon, a
+worker, a helper process) and the Oracle learns the moment
 one disappears, the moment it comes back, and when one cannot
 decide whether it is up or down.
 
@@ -30,18 +30,18 @@ The watcher files three declared signals:
 The first pass is a learn pass by default (`learn_first_pass`):
 it records which services start up and which start down and
 files nothing, so there is no false outage for a service that
-was already down, and no filed recovery when it later starts.
-A `service_down` records when the service fell; the matching
+was already down, and no filed recovery when it later starts. A
+`service_down` records when the service fell; the matching
 `service_recovered` reports the downtime from that moment.
-Flapping files once per burst — it rearms only after a full
+Flapping files once per burst; it rearms only after a full
 `flap_window_sec` with no transitions.
 
-Live reads are Linux-only: the process list comes from
-`/proc` (`comm` for the name, `cmdline` for the command line),
-and a process that exits mid-scan is skipped quietly. On
-Windows and macOS there is no `/proc`, so the live read yields
-an empty process list — fixture mode is the path there. Feed
-the sense a readings file on any box:
+Live reads are Linux-only: the process list comes from `/proc`
+(`comm` for the name, `cmdline` for the command line), and a
+process that exits mid-scan is skipped quietly. On Windows and
+macOS there is no `/proc`, so the live read yields an empty
+process list; fixture mode is the path there. Feed the sense a
+readings file on any box:
 
 ```bash
 python3 service_watch.py --readings readings.json
@@ -65,9 +65,9 @@ python3 service_watch.py --local-dir ~/.homing-pigeon --key-id svc-key
 
 Alert payloads printed to stdout are unsigned sense alerts;
 signing and delivery follow the standard senses flow. The full
-extension walkthrough — manifest fields, the versioning
-contract, sensor binding, and how to turn this example into
-your own package — is in
+extension walkthrough (manifest fields, the versioning contract,
+sensor binding, and how to turn this example into your own
+package) is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).
 
 ## Light mode
@@ -75,7 +75,7 @@ your own package — is in
 On a Pi Light install this sense should cost almost nothing:
 raise `poll_interval_sec` from 30 to 300, watch fewer services
 (keep the `services` list to the one or two processes the box
-truly exists to run), and raise the flap thresholds —
-`flap_window_sec` and `flap_count` — so only sustained churn
+truly exists to run), and raise the flap thresholds
+(`flap_window_sec` and `flap_count`) so only sustained churn
 files. The live read is a single `/proc` scan per pass; at a
 five-minute cadence it is negligible even on a Pi.

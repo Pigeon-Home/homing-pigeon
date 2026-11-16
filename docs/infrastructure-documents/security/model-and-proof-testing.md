@@ -1,15 +1,12 @@
 # The security model, and the proof testing behind it
 
-Homing Pigeon is a remote code execution tool by design: a signed
-message arrives, and code runs on the host. The security model is
-everything that stands between those two events — the checks a job
-must pass before anything executes, the fences on what a key may
-ask for, the ceilings on what a running job and its result can do,
-and the rules for what happens when the owner's own configuration
-is wrong. This page states that model in one account, then
-describes the formal testing program that checks it. The full
-records live in `docs/infrastructure-documents/proofs/`; this page is the map, not a second
-copy of them.
+Homing Pigeon is a remote code execution tool by design: a signed message arrives, and code
+runs on the host. The security model is everything that stands between those two events:
+the checks a job must pass before anything executes, the fences on what a key may ask for,
+the ceilings on what a running job and its result can do, and the rules for what happens
+when the owner's own configuration is wrong. This page states that model in one account,
+then describes the formal testing program that checks it. The full records live in
+`docs/infrastructure-documents/proofs/`; this page is the map, not a second copy of them.
 
 ## The gate
 
@@ -30,7 +27,7 @@ at all.
   under the same key. Encryption is on by default. A cleartext
   job executes only in a process started with
   `--allow-cleartext`; cleartext is refused by default.
-- Where the audience feature is in `enforce` mode — the default —
+- Where the audience feature is in `enforce` mode (the default),
   the job's claimed audience must equal the configured runner id.
   In `audit` mode a mismatch is recorded; with the feature `off`,
   or with no runner id configured, there is no binding to check,
@@ -49,7 +46,7 @@ at all.
 The owner holds the default key. Additional named keys each carry
 a policy entry that narrows what that key may do: the job kinds
 it may run, the recipes and interpreters it may name, a timeout
-cap, file and environment constraints, and — sharpest — a pinning
+cap, file and environment constraints, and, sharpest, a pinning
 list of exact scripts by SHA-384 digest. Under a pinning policy a
 `script_url` job is refused outright, because its content cannot
 be checked before download. Where a key directory is configured,
@@ -59,7 +56,7 @@ the query, board, and version 2 doors, not only at the job's
 door.
 
 The upgrade key is the worked example: a named key whose policy
-admits one shape only — an execution job carrying the one pinned
+admits one shape only, an execution job carrying the one pinned
 staging script, inside a 300-second timeout cap. Every other
 shape signed with that key is refused at the policy step.
 
@@ -83,14 +80,14 @@ that has passed them still faces the signature in full.
   `allow_unauthenticated` is set to literally `true`; with
   credentials configured, the broker enforces them at connect.
 - **DTLS** checks a key derived from the shared secret as the
-  handshake key before any application message moves — two
+  handshake key before any application message moves: two
   checks, one secret, stated in those words.
 - **Queues** checks bearer tokens at the hosted edge, compared by
   hash and failing closed, before anything is enqueued or leased.
 
-A deployment that waives a transport's gate — the NATS waiver, a
+A deployment that waives a transport's gate (the NATS waiver, a
 broker run without authentication, an inbox opened to every local
-principal — does not carry the second-gate property for that
+principal) does not carry the second-gate property for that
 transport, and must not be described as carrying it.
 
 ## Ceilings a job cannot raise
@@ -101,15 +98,16 @@ the job's.
 
 - Whether the job runs inside the sandbox is a function of the
   configured confinement mode and of whether the mechanism works
-  on the machine — of nothing else. No field in the job is read
-  by that decision. Inside the Linux sandbox and the FreeBSD
-  jail, the job's writable set is its work directory alone; the
-  Windows backend carries no filesystem isolation, and what it
-  bounds is the job's token, integrity level and memory.
+  on the machine, and of nothing else. No field in the job is
+  read by that decision. Inside the Linux sandbox and the
+  FreeBSD jail, the job's writable set is its work directory
+  alone; the Windows backend carries no filesystem isolation,
+  and what it bounds is the job's token, integrity level and
+  memory.
 - The visible set grows by one bounded rule only: when the
   interpreter a job names resolves outside `/usr`, that
   interpreter's own install prefix is bound read-only, by a
-  uniform rule, so the interpreter can run — and every such bind
+  uniform rule, so the interpreter can run, and every such bind
   is written into the audit record. The job names no path to
   bind.
 - The result view a job receives is the narrower of the view it
@@ -133,8 +131,8 @@ with the digest of the job as received; delivery of the result is
 at least once, inside the delivery window. Three layers of disk
 state carry the guarantee, so a restart by itself neither grants
 nor loses an execution: the replay cache turns a duplicate away;
-the claim — in-process and on disk, with a stale rule for a dead
-holder — keeps two handlings from running the same job; and the
+the claim (in-process and on disk, with a stale rule for a dead
+holder) keeps two handlings from running the same job; and the
 recorded result answers a redelivery that outlives the cache,
 only when the digest matches.
 
@@ -151,8 +149,8 @@ and Decision 1 governs what happens when a value in it is present
 but unusable. The split is by what a wrong value changes.
 
 - A present-but-invalid value that changes who can reach the box,
-  what it will execute, or what it protects — ports and bind
-  addresses, size caps, key policies, secrets, security modes —
+  what it will execute, or what it protects (ports and bind
+  addresses, size caps, key policies, secrets, security modes)
   refuses startup: the runner does not start, and the error names
   the setting.
 - Every other present-but-invalid value reads as its documented
@@ -165,34 +163,33 @@ but unusable. The split is by what a wrong value changes.
 
 ## The proof testing
 
-The model above is a design account. The proof work — on
-`main`, recorded in `docs/infrastructure-documents/proofs/` — checks it,
-property by property, against the code as it stands.
+The model above is a design account. The proof work, on `main` and
+recorded in `docs/infrastructure-documents/proofs/`, checks it, property
+by property, against the code as it stands.
 
-The method is fixed. First, every value the model depends on is
-harvested from the code itself into a constraint inventory
+The method is fixed. First, every value the model depends on is harvested
+from the code itself into a constraint inventory
 (`docs/infrastructure-documents/proofs/constraints.md`), and a pinning test
-(`runner/tests/test_proof_constraints.py`) fails if a declared
-value in the code drifts from the documented one. Each property
-is then stated in plain language precise enough to model
+(`runner/tests/test_proof_constraints.py`) fails if a declared value in the
+code drifts from the documented one. Each property is then stated in plain
+language precise enough to model
 (`docs/infrastructure-documents/proofs/properties.md`), modelled in TLA+, and
-machine-checked with the TLC model checker, which searches the
-model exhaustively inside its stated bound for a counterexample.
-Witness configurations — cases that must be reachable — are
-checked alongside each property, so a pass cannot be vacuous.
-The model is then reconciled against the real code line by line,
-and conformance tests drive the real gate code along the model's
-paths.
+machine-checked with the TLC model checker, which searches the model
+exhaustively inside its stated bound for a counterexample. Witness
+configurations, which are cases that must be reachable, are checked alongside
+each property, so a pass cannot be vacuous. The model is then reconciled
+against the real code line by line, and conformance tests drive the real gate
+code along the model's paths.
 
 Six properties are stated and checked:
 
 - **P1, the acceptance gate.** Checked at the first rung, scripts
-  of under 50 characters — character count, not lines, because a
+  of under 50 characters (character count, not lines, because a
   one-liner can be arbitrarily long and obfuscation packs
-  characters onto few lines. P1 is a family over the bound,
+  characters onto few lines). P1 is a family over the bound,
   P1(B), re-proven at rising rungs: 500, 5,000, 50,000, 500,000
   characters, and finally the production cap itself. The claim
-  race — two handlers, one job id — is checked at most once.
+  race (two handlers, one job id) is checked at most once.
 - **P2, confinement ceilings.** No job field widens what
   execution may touch or what a result may disclose, checked over
   the full field space, including the bounded interpreter-prefix
@@ -201,20 +198,20 @@ Six properties are stated and checked:
   credential gate with the core signature check, stated per
   transport where the transports genuinely differ.
 - **P4, key pinning.** A named key can do only what its policy
-  allows, checked over the full policy space — the upgrade key's
+  allows, checked over the full policy space, the upgrade key's
   one admitted shape included.
 - **P5, replay resistance.** At most one execution per job across
   the cache, the claim, and the record, with the priced windows
   modelled as window events, each buying at most one further run.
 - **P6, refuse or default.** The Decision 1 split, checked over
-  every combination of class, presence, and moment — startup and
+  every combination of class, presence, and moment: startup and
   live reload.
 
 Stage 5, the conformance tests, has landed: a test is named for
-every clause of the six properties — among them, a refused
+every clause of the six properties (among them, a refused
 cleartext job does not consume its id, an unsigned body does
 not execute, a recorded result is resent rather than re-run,
-and a repaired job the key forbids does not execute — and a
+and a repaired job the key forbids does not execute), and a
 mutation check, one deliberate change per property in a scratch
 copy, proves the family can catch the change it exists to
 catch. The stage closes with a first-hand verification
@@ -228,9 +225,9 @@ per-key policies, to the other doors (cancel, query, board,
 version 2, local), and to the file and DTLS transports beside
 the mail path. Stage 7 re-checked the gate at the
 5,000-character bound by a run at that bound. Stages 8, 9, and
-10 — 50,000 characters, 500,000, and the production cap as
-stages in their own right — have landed the same way, each
-by a run at its own bound. The records are `stage8-50000.md`,
+10 (50,000 characters, 500,000, and the production cap as
+stages in their own right) have landed the same way, each by a
+run at its own bound. The records are `stage8-50000.md`,
 `stage9-500000.md`, and `stage10-1048576.md`.
 
 Alongside the ladder, the content-independence series asks
@@ -239,9 +236,9 @@ says, rather than on its length and the checks above. What
 carries the proof is the model argument: no step of the
 gate's check order branches on script content, walked line
 by line against the code and checked at every bound. The
-series demonstrates it empirically. It was redone in full —
-both bash and PowerShell at every rung, including the
-5,000-character rung the first series skipped — and the
+series demonstrates it empirically. It was redone in full,
+covering both bash and PowerShell at every rung, including
+the 5,000-character rung the first series skipped, and the
 redo was verified first-hand. At the first rung the set is
 an exhaustive fragment, not a sample: 3,682 bash scripts
 and 511 PowerShell scripts, every combination of the atom
@@ -253,8 +250,8 @@ exactly 1,048,576 bytes were admitted in both shells and
 scripts of 1,048,577 bytes refused, the refusal naming the
 script cap. No rung enumerates the full closure of every
 nesting, and no record claims it does; the scripts were
-syntax-checked and presented to the gate, not executed.
-The redo's records are `content-rung-49.md`,
+syntax-checked and presented to the gate, not executed. The
+redo's records are `content-rung-49.md`,
 `content-rung-5000.md`, `content-rung-50000.md`,
 `content-rung-500000.md`, and `content-rung-cap.md`; the
 first series' records, `stage7.md` to `stage10.md`, stand
@@ -264,13 +261,13 @@ The proof work is finished. A final consistency pass
 checked that this page, the staged plan, the property
 statements, the stage records, and the reasoning file all
 state this same position, and re-ran the full proof test
-family on the final tree: 319 tests, none failing — 311
+family on the final tree: 319 tests, none failing. 311
 passed outright, and the 8 skipped are the FreeBSD and
 macOS shell checks, whose shells are not on the machine
 that ran the pass, each skip carrying its registered
-reason (the 5 PowerShell tests that first skipped for
-the same kind of reason were re-run with PowerShell
-7.5.4 on the path, and passed).
+reason (the 5 PowerShell tests that first skipped for the
+same kind of reason were re-run with PowerShell 7.5.4 on
+the path, and passed).
 
 ## Honest limits
 
@@ -286,59 +283,55 @@ the same kind of reason were re-run with PowerShell
   proving the primitives is cryptography's work, not this
   work's.
 - **The findings are on the record, not smoothed over.** Stage 3
-  found that the code can execute a job the Oracle repaired — an
-  interpreter substituted after the claim — instead of the job
+  found that the code can execute a job the Oracle repaired (an
+  interpreter substituted after the claim) instead of the job
   byte-for-byte as checked; the repaired job is re-run through
   the judge and the key policy before it executes, a conformance
   test pins that shape on the real path, and stage 5's
   verification confirmed the debt that finding was owed is
-  closed. P2
-  records the interpreter-prefix bind inside the property itself:
-  bounded and audited, but a widening, stated as one.
+  closed. P2 records the interpreter-prefix bind inside the
+  property itself: bounded and audited, but a widening, stated as
+  one.
 - **The findings have each been given a stated end.** Fixed on
   main, each with the failing test first: a bad refuse-class
-  value written while the runner is up — a port, a size cap,
-  a key policy that does not build — is now named in the log
-  at the moment of the write, and still not applied until the
+  value written while the runner is up (a port, a size cap, a
+  key policy that does not build) is now named in the log at
+  the moment of the write, and still not applied until the
   next start (stage 4, P6 F1); a boolean written live for a
   hot key now reads as the documented default and is named,
   instead of silently becoming 1 (stage 4, P6 F2); the
   key-policy builder now names every entry field it does not
-  recognise, naming the key and the field, instead of
-  silently building a narrower policy (stage 4, P4 F1); and
-  the interpreter-prefix floor now holds on the parent
-  fallback too, so an interpreter in the root or a top-level
-  directory gets no prefix bind instead of binding the whole
-  tree (stage 5 F1). Accepted as stated, and carried here as
-  a named limit: the interpreter-prefix bind itself —
-  bounded, uniform, read-only and audited (stage 4, P2 F1).
+  recognise, naming the key and the field, instead of silently
+  building a narrower policy (stage 4, P4 F1); and the
+  interpreter-prefix floor now holds on the parent fallback
+  too, so an interpreter in the root or a top-level directory
+  gets no prefix bind instead of binding the whole tree (stage
+  5 F1). Accepted as stated, and carried here as a named
+  limit: the interpreter-prefix bind itself, which is bounded,
+  uniform, read-only and audited (stage 4, P2 F1).
 - **The scope starts small and rises.** Each checked claim names
   its property, its bound, and its assumptions. No claim here is
   a claim about the whole system, and the sum of the claims is
-  exactly the properties and bounds checked — nothing more.
+  exactly the properties and bounds checked, nothing more.
 
 ## The records
 
-- `docs/infrastructure-documents/proofs/readme.md` — the goal, the assumptions, and how
+- `docs/infrastructure-documents/proofs/readme.md`: the goal, the assumptions, and how
   the work is reviewed.
-- `docs/infrastructure-documents/proofs/goals.md` — the staged plan and what done means at
+- `docs/infrastructure-documents/proofs/goals.md`: the staged plan and what done means at
   each stage.
-- `docs/infrastructure-documents/proofs/properties.md` — the six properties in full, with
-  the code's check order and the shape of a counterexample to
-  each.
-- `docs/infrastructure-documents/proofs/constraints.md` — the constraint inventory, every
+- `docs/infrastructure-documents/proofs/properties.md`: the six properties in full, with
+  the code's check order and the shape of a counterexample to each.
+- `docs/infrastructure-documents/proofs/constraints.md`: the constraint inventory, every
   value named with the file and function it was read from.
 - `docs/infrastructure-documents/proofs/stage2.md`, `stage3.md`, `stage4-p2.md` through
-  `stage4-p6.md`, `stage5.md`, the `stage6-*.md` records,
-  `stage7-5000.md`, `stage8-50000.md`, `stage9-500000.md`, and
-  `stage10-1048576.md` — the stage records: the checks, the
-  state counts, the witnesses, and the findings. The first
+  `stage4-p6.md`, `stage5.md`, the `stage6-*.md` records, `stage7-5000.md`,
+  `stage8-50000.md`, `stage9-500000.md`, and `stage10-1048576.md`: the stage records,
+  covering the checks, the state counts, the witnesses, and the findings. The first
   content-independence series is recorded in
   `docs/infrastructure-documents/proofs/stage7.md` to `stage10.md`, under the titles
-  those records landed with, and the redo that supersedes
-  it in `docs/infrastructure-documents/proofs/content-rung-49.md`,
-  `content-rung-5000.md`, `content-rung-50000.md`,
-  `content-rung-500000.md`, and `content-rung-cap.md`.
-- `docs/infrastructure-documents/proofs/thinking.md` — the reasoning behind the work,
-  the content-independence challenge, and its final position,
-  stated in full.
+  those records landed with, and the redo that supersedes it in
+  `docs/infrastructure-documents/proofs/content-rung-49.md`, `content-rung-5000.md`,
+  `content-rung-50000.md`, `content-rung-500000.md`, and `content-rung-cap.md`.
+- `docs/infrastructure-documents/proofs/thinking.md`: the reasoning behind the work,
+  the content-independence challenge, and its final position, stated in full.

@@ -4,13 +4,13 @@ A sense for operations: backups fail quietly. The job stops
 running, the disk fills, the schedule rots, and nothing says
 anything until the day the backup is needed and turns out to
 be a month old. This watcher watches a backup directory and
-tells the Oracle two things — that a new backup landed, and
+tells the Oracle two things: that a new backup landed, and
 that the newest one is getting old.
 
 Configure it with the manifest's tunables: `watch_dir` (the
 directory backups land in, default `./backups`), `glob` (which
 files count, default `*`), and `stale_after_sec` (how old is
-too old, default 90000 — just over a day). The newest regular
+too old, default 90000, just over a day). The newest regular
 file matching the glob, by modification time, is the backup
 whose freshness matters.
 
@@ -25,7 +25,7 @@ The watcher files three declared signals:
 Each staleness tier files once. Crossing from fresh to stale
 files `backup_stale`; continuing to twice the threshold
 files `backup_critical`. A jump straight past the critical
-line files `backup_critical` only — the stronger statement
+line files `backup_critical` only; the stronger statement
 wins, not stale-then-critical in the same pass. A fresh
 arrival files `backup_arrived` and resets the tier, so the
 cycle can file again if backups stall a second time.
@@ -34,8 +34,8 @@ The age clock does not forgive an emptied directory: while
 an artifact exists its age is `now - mtime`, and if the
 directory goes empty the clock keeps running on the last
 backup ever seen. If no backup has ever been seen at all the
-sense stays quiet — that nothing has ever been backed up is
-a configuration fact, not this sense's alert. Live reads are
+sense stays quiet: that nothing has ever been backed up is a
+configuration fact, not this sense's alert. Live reads are
 portable (a directory listing, any platform); a missing
 directory reads as no data, never an error.
 
@@ -68,15 +68,15 @@ present.)
 
 Alert payloads printed to stdout are unsigned sense alerts;
 signing and delivery follow the standard senses flow. The full
-extension walkthrough — manifest fields, the versioning
-contract, sensor binding, and how to turn this example into
-your own package — is in
+extension walkthrough (manifest fields, the versioning contract,
+sensor binding, and how to turn this example into your own
+package) is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).
 
 ## Light mode
 
 This sense is already nearly free; say so honestly: one
 directory listing per pass is all it ever does. On a Pi Light
-install just raise `poll_interval_sec` from 3600 to 21600
-and keep it to one `watch_dir` and one `glob` — there is
+install just raise `poll_interval_sec` from 3600 to 21600 and
+keep it to one `watch_dir` and one `glob`, as there is
 nothing else to tune down.

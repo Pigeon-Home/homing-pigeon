@@ -119,7 +119,7 @@ peer on the wire reaches first.
 | 11 | `manifest` | `runner/ops/extensions.py`: `parse_manifest` | in the corpus (Q69) |
 | 12 | `local_inbox` | `runner/runner.py` under the sequence contract: the local signal inbox scanned once by `_scan_local_inbox`, the store held to the ingests | in the corpus |
 | 13 | `secret` | `runner/cloud/send_job.py` `require_signable_secret` and `runner/guard/security.py` `validate_shared_secret`: the sender's and the runner's strength rules on one candidate secret, held in step (a differential the code itself asks for) | in the corpus |
-| 14 | `queries` | `runner/ops/policy.py` `apply_result_policy` and `runner/ops/queries.py` `answer_queries` (with `runner/ops/attest.py` and the pattern bound in `runner/guard/security.py`): a job's `result_policy` -- the view it asks for, its queries, its budget -- and the job's own output, under every ceiling the owner can set (Q84) | in the corpus |
+| 14 | `queries` | `runner/ops/policy.py` `apply_result_policy` and `runner/ops/queries.py` `answer_queries` (with `runner/ops/attest.py` and the pattern bound in `runner/guard/security.py`): a job's `result_policy` (the view it asks for, its queries, its budget) and the job's own output, under every ceiling the owner can set (Q84) | in the corpus |
 | 15 | `names` | `runner/guard/filenames.py` `validate_file_name` and `runner/runner.py` `_safe_job_id`: one name a sender chose, before the six file-name rules (the same on every platform) and the job-id rule; an accepted file name is staged under a scratch work directory on the host (`_staged_dest`) | in the corpus |
 | 16 | `query` | `runner/ops/queries.py` `handle_query_mail` through the mail rig: one query message (its subject id, the sealed object a sender chose, under a key) over the retained record of a job as the runner saved it or as a crash left it; the reply opened and held to the queries contract, the record held to spent and saved_at, a copy taken without a second reply; under the operator's flags a dry run spends nothing and sends nothing (Q87); the hourly window as the runner left it, held to section 11's accounting on every reply (Q88); the senses store as the runner left it, the senses op's filters held to the senses doc | in the corpus |
 | 17 | `board_mail` | `runner/ops/startup.py` `handle_board_mail` through the mail rig: one board message (`task_submit`, `task_request`, `task_result`, `task_approve`; its subject id, the sealed object, the key) over a board file as the runner saved it or as a crash left it; the ack or offer opened and held to section 13's shapes, the reply routed by the signed body's `reply_to` or to the mailbox, the board file read back, a copy taken; under the operator's flags a dry run leaves the board still and sends nothing (Q87); the lease as the owner wrote it over a claim an hour old | in the corpus |
@@ -131,7 +131,7 @@ peer on the wire reaches first.
 | 23 | `race_board` | `runner/wire/board.py` under threads: lanes of board operations interleaved under a short switch interval over one board; one lease is one `claimed_at`, a timeout of 0 ends it at once, one completion, the file is the board in memory | in the corpus (de_dust2, technique `race`) |
 | 24 | `race_stash` | `runner/runner.py` under threads: lanes of stash, deliver, fail, undeliver and resend over one outbox; a sent body was stashed, and one key is not delivered twice with no undeliver between | in the corpus (de_dust2, technique `race`) |
 | 25 | `race_state` | `runner/runner.py` under threads: lanes over the pool's seen and retained files; the seen file loses no key a thread marked, and a retained id reads back as one complete write (a second save of the same id replaces the first) | in the corpus (de_dust2, technique `race`) |
-| 26 | `dtls_hostile` | `runner/wire/dtlsproto.py`, stateful: the client against a server that does not hold its key, the wire mutated in flight; no key, no session -- the client never establishes and never surfaces a server message, raising only `DtlsError` (`docs/steady/project/de_dust2.md` section 7) | in the corpus (de_dust2, technique `protocol`) |
+| 26 | `dtls_hostile` | `runner/wire/dtlsproto.py`, stateful: the client against a server that does not hold its key, the wire mutated in flight; no key, no session: the client never establishes and never surfaces a server message, raising only `DtlsError` (`docs/steady/project/de_dust2.md` section 7) | in the corpus (de_dust2, technique `protocol`) |
 | 27 | `edge_subject` | `runner/wire/transports.py` vs the hosted queue's Worker (`runner/cloud/queues-worker/src/index.js`): one subject line, and the gate's `jobIdOf`/`resultIdOf` must read the same job and result id as the runner's `_JOB_ID_RE`/`_RESULT_ID_RE`, over a node bridge; skipped when node is absent (`docs/steady/project/de_dust2.md` section 7, Q121) | in the corpus (de_dust2, technique `parity`) |
 
 The `dtls` target's core holds three resumption tickets on every
@@ -221,8 +221,8 @@ never files a refusal as a crash.
   its own is read back with the slot overwritten by the keyed
   reader and kept by the plain one, and neither is a disagreement.
 - **Ceiling and view** (`queries`). The policy is read under every
-  ceiling the owner can set -- the four views, the ceiling absent,
-  the ceiling not a view -- and neither reader raises; the view
+  ceiling the owner can set (the four views, the ceiling absent,
+  the ceiling not a view) and neither reader raises; the view
   handed back is the one asked for, capped at the ceiling, an
   unknown or absent request reading as full; the retain flag
   follows the view; under summary and attested nothing of the
@@ -231,15 +231,15 @@ never files a refusal as a crash.
   the name, size and digest that leave under every view by PROTOCOL
   section 6, Q106 and Q111, nor a word of the result's own
   vocabulary, what a result says when the job wrote nothing, Q112),
-  and attested blanks the streams; under
-  redacted no line handed back matches the owner's pattern; the
-  answers are one per query in order, each query spending one,
-  the budget's refusals after the budget, grep and tail refused as
-  policy under the views that hand no lines back, their lines the
-  output's own under full, ask and senses named unavailable; the
-  result with its answers signs and verifies as a body. The output
-  an entry carries is short (1,024 characters): the plain repeats
-  a grep pattern may keep are bounded only by the text (Q84).
+  and attested blanks the streams; under redacted no line handed
+  back matches the owner's pattern; the answers are one per query
+  in order, each query spending one, the budget's refusals after
+  the budget, grep and tail refused as policy under the views that
+  hand no lines back, their lines the output's own under full, ask
+  and senses named unavailable; the result with its answers signs
+  and verifies as a body. The output an entry carries is short
+  (1,024 characters): the plain repeats a grep pattern may keep are
+  bounded only by the text (Q84).
 - **One rule set on every platform** (`names`). `validate_file_name`
   refuses with `BadFileName` naming one of its six rules and
   nothing else, or answers the normalized path, which a second pass
@@ -446,33 +446,33 @@ not a verdict on the reader, and the response is in this order:
    by a seed the survivors named, a grow that moved it, and a
    contract that caught the reader. The sixth batch (the desk,
    2026-10-26, at the conductor's word that survivors become
-   seeds): thirty-six more lines read -- a signed text that is
-   not JSON, a pretty body with lone-CR line ends, a sig whose
-   last digit is not hex, the v2 message and question ids, three
-   more shapes of the core's side of a channel (a bare reply, two
+   seeds): thirty-six more lines read (a signed text that is not
+   JSON, a pretty body with lone-CR line ends, a sig whose last
+   digit is not hex, the v2 message and question ids, three more
+   shapes of the core's side of a channel (a bare reply, two
    replies, a rewrite under the core's hands) and the channel's
-   rollback counted, the board's log read through its own seam
-   and its ranking defaults, lease default and stale warning --
+   rollback counted, the board's log read through its own seam and
+   its ranking defaults, lease default and stale warning), leaving
    65 of 1,970 on the desk's run over the merged seeds, one of
    them a hang the replay detects. The grow merges the seeds the
    corpus lacks before it starts, so the desk's seeds reach the
    campaign's next run with no step between; the campaign's
    survivors run after it carries the count. The instrument then
-   learned to put a mutant where every reader holds the module --
-   the tool's alias, a module's own import of it, the agent
-   module's re-exports -- so the four targets that read through
-   the agent module joined the kill set and a module read only
-   through another's import (the pattern bound under `queries`)
-   is told apart; with the `queries` and `names` targets that is
-   2,357 mutants, 81 of them standing, every one named by kind in
-   the corpus README. The seventh reading (the desk, 2026-10-27)
-   went survivor by survivor through the report the campaign
-   banked and sorted them: the ones a seed kills -- the query
-   window's refusals, the record's stderr and attestation marks,
-   the reply's version and job members, the board's lease default,
-   the answerer's model branches, the result subject's fold, the
+   learned to put a mutant where every reader holds the module
+   (the tool's alias, a module's own import of it, the agent
+   module's re-exports), so the four targets that read through the
+   agent module joined the kill set and a module read only through
+   another's import (the pattern bound under `queries`) is told
+   apart; with the `queries` and `names` targets that is 2,357
+   mutants, 81 of them standing, every one named by kind in the
+   corpus README. The seventh reading (the desk, 2026-10-27) went
+   survivor by survivor through the report the campaign banked and
+   sorted them: the ones a seed kills (the query window's
+   refusals, the record's stderr and attestation marks, the
+   reply's version and job members, the board's lease default, the
+   answerer's model branches, the result subject's fold, the
    literals and numbers JSON does not have and the nesting bound
-   (Q88, Q89) -- have their seeds in the seed functions, and the
+   (Q88, Q89)) have their seeds in the seed functions, and the
    rest are equivalent mutants, the kind no input can tell apart:
    in `jobcrypto`, the GHASH mask widened above bit 127 or
    narrowed at bit 0 (the shift leaves bit 0 clear and nothing

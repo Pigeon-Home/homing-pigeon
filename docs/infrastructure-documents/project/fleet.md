@@ -31,13 +31,13 @@ against it, and asks before a month would pass it.
 ## The month against the ceiling
 
 Stated 2026-11-13 (Q178). The lines whose cost is on the record
-sum to **about $52.97 a month** -- Germany $20.63, San Francisco
+sum to **about $52.97 a month** (Germany $20.63, San Francisco
 $12, Nuremberg about $8.34, the FreeBSD node about $12, the
-hosted queue $0 and the hosting control-plane accounts $0
-beyond the machines -- against the ceiling of $700 a month.
-The "about" is the two lines' own: their figures stand as
-about-figures on their lines, and the sum carries it. The
-total is restated when a line changes.
+hosted queue $0 and the hosting control-plane accounts $0 beyond
+the machines) against the ceiling of $700 a month. The "about"
+is the two lines' own: their figures stand as about-figures on
+their lines, and the sum carries it.
+The total is restated when a line changes.
 
 Beside the sum stand the lines whose cost is not on the
 record, so the stated total is the sum of what is on the
@@ -56,9 +56,9 @@ word and verified absent from the provider account on
 2026-11-13; its line keeps the record of what it cost, so
 the sum above stays the sum of the lines on the page,
 retired line included, and is restated when a line's
-figure itself changes. The month the fleet still stands
-in rents for about $44.63 -- the stated sum less the
-retired line's about $8.34.
+figure itself changes. The month the fleet still stands in
+rents for about $44.63, the stated sum less the retired
+line's about $8.34.
 
 ## The lines
 
@@ -74,11 +74,11 @@ each record carries, recounted for this completion.
 
 | Machine | What it is for | Provider and plan | A month | Stood up | Ends, or next review | Fuzz records: count, first, last | Standing today |
 |---|---|---|---|---|---|---|---|
-| Germany | The fleet's Windows seat: the Windows half of the suite live, and 8 cores of fuzzing | Hetzner Cloud, CX43 (8 shared vCPU, 16 GB), Falkenstein | $20.63 (EUR 18.49 at the rate of 2026-10-31), billed hourly to the monthly cap | 2026-10-31 | no fixed end on the record (billed hourly to the monthly cap); the next review day is not on the record -- the conductor to supply it | 11,423; 2026-11-01; 2026-11-12 | Active, and not idle: banking, with fuzz records to 2026-11-12, carrying the Windows seat SSH: not by key only -- its SSH service offers the word-based login beside the key; read 2026-11-13. A change to key-only waits for the conductor's word, asked under Q176 in the questions file. |
-| Menlo Park | The Linux VM that hosts the Muse seat: 4 cores for the suite's shard lanes, the rotation lane and fuzz lanes | not on the record -- the workspace record calls it the conductor's own VM; its provider and plan stand nowhere the seat can read | no rental bill on the record -- the conductor's own VM, per the workspace record; any bill it carries is the conductor's to supply. The seat cannot read a month's usage for it: it holds no provider key or billing page for this machine (stated 2026-11-13, Q178), so the figure stays the conductor's to supply | not on the record | not on the record -- the conductor to supply a review day if the machine carries one | 7,025; 2026-10-30; 2026-11-01 | The seat itself, and not idle: it hosts this seat's suite shard lanes, rotation lane and fuzz lanes (the inventory of 2026-11-03), and its lanes stood alive at the watchdog read of 2026-11-10. Its corpus records end 2026-11-01 because the seat's work moved to the suite lanes, not because the machine stopped. Not rented on the record, so the fuzz-or-give-back rule does not reach it SSH: no SSH server stands on this machine -- none is installed and nothing listens for it; read on the machine itself, 2026-11-13. |
-| San Francisco | One core: a second, small machine reaching the suite's verdicts independently | DigitalOcean, s-1vcpu-2gb (1 vCPU, 2 GB, 50 GB), San Francisco 2 | $12 | 2026-10-28 | not on the record -- the conductor to supply the next review day | 399; 2026-10-30; 2026-11-01 | **Back to fuzzing.** Its fuzzing was stopped and the box kept idle on 2026-11-01; it carried a suite-shard lane of its own on 2026-11-03, and by 2026-11-10 it runs the fleet's fuzz lane and the preview loop's Linux leg. It stands idle no longer and is not a give-back candidate SSH: not by key only -- its SSH service offers the word-based login beside the key, root login is permitted, and the keyboard-interactive method is not offered; read 2026-11-13. A change to key-only waits for the conductor's word, asked under Q176 in the questions file. |
-| Nuremberg | The second rig of the campaign: one core of corpus growing, and the hosted runner the hosted queue was first proven on | Hetzner Cloud, CPX02 (1 vCPU, AMD EPYC-Genoa, 1 GB), Nuremberg | about $8.34 (EUR 7.49 at the rate of 2026-10-28) | 2026-10-27 | retired -- given back at the conductor's word; verified absent from the provider account on 2026-11-13 (see the standing column) | 1,250; 2026-10-30; 2026-10-31 | **RETIRED -- given back at the conductor's word, and gone.** Stopped into reserve on 2026-10-31: every project service on it stopped and disabled, nothing banked since, its banks standing in the tree to 2026-10-31. The give back the conductor ordered on 2026-11-12 (Q177) stands executed: a first-hand read of the provider account on 2026-11-13 found the account holding only Germany and the FreeBSD node, and no machine answering to Nuremberg's line standing in it at all. The machine is retired, not down: its SSH silence since 2026-11-09 is a retired machine being gone, it is expected, and it is NOT an outage -- no seat is to report this machine as unreachable or file its silence as a problem again. SSH: not read on 2026-11-13, and no reading is owed: the machine no longer stands to be read, and its posture is not guessed here. |
-| The FreeBSD node | The FreeBSD proof on a kernel of its own: the platform's confinement backend proven where no VM step inside a Linux CI runner could prove it | Hetzner Cloud, CX33, on the conductor's existing Hetzner account (the workspace record of the Phase 2 report, 2026-11-10) | about $12 all-in: $9.99 gross for the node plus the charge for its primary address, and about $1 for its snapshot (the workspace record, 2026-11-10), inside the $20-a-month cap the conductor set | 2026-11-10 | next review about 2026-12-10: the conductor's stated term is about a month (2026-11-09), a plan on the workspace record, not a provider contract date | none (not a fuzzing rig) | Proven, and not idle: the runner is installed, a first proof job passed end to end through the installed config, and its confinement backend landed and stands field-proven (the desk's record). Its mailbox pairing is still owed. Keep it to its review day; at that review it is given back unless the conductor extends it SSH: root by key only -- the word-based method is not offered; read 2026-11-13. |
+| Germany | The fleet's Windows seat: the Windows half of the suite live, and 8 cores of fuzzing | Hetzner Cloud, CX43 (8 shared vCPU, 16 GB), Falkenstein | $20.63 (EUR 18.49 at the rate of 2026-10-31), billed hourly to the monthly cap | 2026-10-31 | no fixed end on the record (billed hourly to the monthly cap); the next review day is not on the record, the conductor to supply it | 11,423; 2026-11-01; 2026-11-12 | Active, and not idle: banking, with fuzz records to 2026-11-12, carrying the Windows seat SSH: not by key only: its SSH service offers the word-based login beside the key; read 2026-11-13. A change to key-only waits for the conductor's word, asked under Q176 in the questions file. |
+| Menlo Park | The Linux VM that hosts the Muse seat: 4 cores for the suite's shard lanes, the rotation lane and fuzz lanes | not on the record: the workspace record calls it the conductor's own VM; its provider and plan stand nowhere the seat can read | no rental bill on the record: the conductor's own VM, per the workspace record; any bill it carries is the conductor's to supply. The seat cannot read a month's usage for it: it holds no provider key or billing page for this machine (stated 2026-11-13, Q178), so the figure stays the conductor's to supply | not on the record | not on the record: the conductor to supply a review day if the machine carries one | 7,025; 2026-10-30; 2026-11-01 | The seat itself, and not idle: it hosts this seat's suite shard lanes, rotation lane and fuzz lanes (the inventory of 2026-11-03), and its lanes stood alive at the watchdog read of 2026-11-10. Its corpus records end 2026-11-01 because the seat's work moved to the suite lanes, not because the machine stopped. Not rented on the record, so the fuzz-or-give-back rule does not reach it SSH: no SSH server stands on this machine: none is installed and nothing listens for it; read on the machine itself, 2026-11-13. |
+| San Francisco | One core: a second, small machine reaching the suite's verdicts independently | DigitalOcean, s-1vcpu-2gb (1 vCPU, 2 GB, 50 GB), San Francisco 2 | $12 | 2026-10-28 | not on the record: the conductor to supply the next review day | 399; 2026-10-30; 2026-11-01 | **Back to fuzzing.** Its fuzzing was stopped and the box kept idle on 2026-11-01; it carried a suite-shard lane of its own on 2026-11-03, and by 2026-11-10 it runs the fleet's fuzz lane and the preview loop's Linux leg. It stands idle no longer and is not a give-back candidate SSH: not by key only: its SSH service offers the word-based login beside the key, root login is permitted, and the keyboard-interactive method is not offered; read 2026-11-13. A change to key-only waits for the conductor's word, asked under Q176 in the questions file. |
+| Nuremberg | The second rig of the campaign: one core of corpus growing, and the hosted runner the hosted queue was first proven on | Hetzner Cloud, CPX02 (1 vCPU, AMD EPYC-Genoa, 1 GB), Nuremberg | about $8.34 (EUR 7.49 at the rate of 2026-10-28) | 2026-10-27 | retired: given back at the conductor's word; verified absent from the provider account on 2026-11-13 (see the standing column) | 1,250; 2026-10-30; 2026-10-31 | **RETIRED: given back at the conductor's word, and gone.** Stopped into reserve on 2026-10-31: every project service on it stopped and disabled, nothing banked since, its banks standing in the tree to 2026-10-31. The give back the conductor ordered on 2026-11-12 (Q177) stands executed: a first-hand read of the provider account on 2026-11-13 found the account holding only Germany and the FreeBSD node, and no machine answering to Nuremberg's line standing in it at all. The machine is retired, not down: its SSH silence since 2026-11-09 is a retired machine being gone, it is expected, and it is NOT an outage; no seat is to report this machine as unreachable or file its silence as a problem again. SSH: not read on 2026-11-13, and no reading is owed: the machine no longer stands to be read, and its posture is not guessed here. |
+| The FreeBSD node | The FreeBSD proof on a kernel of its own: the platform's confinement backend proven where no VM step inside a Linux CI runner could prove it | Hetzner Cloud, CX33, on the conductor's existing Hetzner account (the workspace record of the Phase 2 report, 2026-11-10) | about $12 all-in: $9.99 gross for the node plus the charge for its primary address, and about $1 for its snapshot (the workspace record, 2026-11-10), inside the $20-a-month cap the conductor set | 2026-11-10 | next review about 2026-12-10: the conductor's stated term is about a month (2026-11-09), a plan on the workspace record, not a provider contract date | none (not a fuzzing rig) | Proven, and not idle: the runner is installed, a first proof job passed end to end through the installed config, and its confinement backend landed and stands field-proven (the desk's record). Its mailbox pairing is still owed. Keep it to its review day; at that review it is given back unless the conductor extends it SSH: root by key only: the word-based method is not offered; read 2026-11-13. |
 
 The SSH readings on the lines (Q176, read 2026-11-13) were
 taken first-hand and changed nothing on any machine: for
@@ -90,16 +90,15 @@ configuration carries no uncommented line turning that
 login off. The FreeBSD node's effective configuration
 states the word-based login off and root by key only, and
 its service does not offer that method. San Francisco's
-effective configuration states root login permitted and
-the word-based login on beside the key, and the
-keyboard-interactive method is not offered, so it is not
-by key only. Nuremberg
-did not answer either, and owes no reading: the machine
-is retired and no longer stands in the provider account
-(verified first-hand on 2026-11-13), so its line records
-the reading as not taken because no machine stands to be
-read -- its silence is a retired machine being gone, not
-an outage and not a posture unread.
+effective configuration states root login permitted and the
+word-based login on beside the key, and the
+keyboard-interactive method is not offered, so it is not by
+key only. Nuremberg did not answer either, and owes no
+reading: the machine is retired and no longer stands in the
+provider account (verified first-hand on 2026-11-13), so
+its line records the reading as not taken because no
+machine stands to be read; its silence is a retired machine
+being gone, not an outage and not a posture unread.
 
 One machine the page does not carry as a line, because it does
 not stand: a first machine of the Germany rig's name and shape
@@ -107,30 +106,27 @@ was created and deleted the same day, 2026-10-31, during a
 location comparison (its rig report carries the fact). It
 bills nothing today. No other machine stands in the tree or
 the workspace record as a fleet machine: no Mac joins the
-fleet (the desk's record, 2026-11-11 -- the macOS backend is
+fleet (the desk's record, 2026-11-11: the macOS backend is
 proven on the CI legs), and the locations compared for the
 Germany rig and not taken were never stood up.
 
 Where each fact stands: the Germany rig's report
 (`docs/infrastructure-documents/reports/falkenstein-rig-2026-10-31.md`),
-which also carries San Francisco's line as of that day; San
-Francisco's own report, in full in the git history at the
-commit its compressed summary names
-(`docs/steady/reports/san-francisco-rig-2026-10-28.md`); the
-first Germany rig's report, which is Nuremberg's dossier
+which also carries San Francisco's line as of that day; San Francisco's
+own report, in full in the git history at the commit its compressed
+summary names (`docs/steady/reports/san-francisco-rig-2026-10-28.md`);
+the first Germany rig's report, which is Nuremberg's dossier
 (`docs/steady/reports/germany-rig-2026-10-28.md`, and
-`docs/steady/reports/rig-2026-10-27.md`); the forum's
-inventory of 2026-11-03 ("tasking: what the cores are doing");
-the desk's record of the FreeBSD node (`desk.md`, "Where the
-work stands"), including the Packet 8 conclusions of
-2026-11-10 that carry San Francisco's present work; and the
-workspace record -- the fleet calculation of 2026-11-01
-(Menlo Park the conductor's own VM), the reserve record of
-2026-10-31 (Nuremberg stopped, then its runner stopped, at
-the conductor's word), the watchdog read of 2026-11-10 (the
-seat's lanes alive), and the FreeBSD Phase 2 report of
-2026-11-10 (the node's plan and all-in cost, and the
-conductor's term of about a month, recorded 2026-11-09).
+`docs/steady/reports/rig-2026-10-27.md`); the forum's inventory of
+2026-11-03 ("tasking: what the cores are doing"); the desk's record of
+the FreeBSD node (`desk.md`, "Where the work stands"), including the
+Packet 8 conclusions of 2026-11-10 that carry San Francisco's present
+work; and the workspace record: the fleet calculation of 2026-11-01
+(Menlo Park the conductor's own VM), the reserve record of 2026-10-31
+(Nuremberg stopped, then its runner stopped, at the conductor's word),
+the watchdog read of 2026-11-10 (the seat's lanes alive), and the
+FreeBSD Phase 2 report of 2026-11-10 (the node's plan and all-in cost,
+and the conductor's term of about a month, recorded 2026-11-09).
 
 ## Q173 completion: suppositions, recorded before the measuring
 
@@ -141,12 +137,12 @@ conclusions under the completed lines below.
 
 - **Q173-S1.** A recount of `runner/tests/de_dust/runs.jsonl`
   by the rig name each record carries reproduces the seeded
-  counts and last dates exactly -- Germany 11,423 to
+  counts and last dates exactly (Germany 11,423 to
   2026-11-12, Menlo Park 7,025 to 2026-11-01, San Francisco
-  399 to 2026-11-01, Nuremberg 1,250 to 2026-10-31 -- plus
-  one stray record under a clipped form of San Francisco's
-  name, dated 2026-10-31, which the forum already explains
-  as a timer line that split on the space.
+  399 to 2026-11-01, Nuremberg 1,250 to 2026-10-31) plus one
+  stray record under a clipped form of San Francisco's name,
+  dated 2026-10-31, which the forum already explains as a
+  timer line that split on the space.
 - **Q173-S2.** No machine beyond the five lines stands in the
   tree or the workspace record as a fleet machine today: the
   first Falkenstein machine was created and deleted the same
@@ -166,8 +162,8 @@ conclusions under the completed lines below.
   provable from the workspace record (the Phase 2 report of
   2026-11-10) though the tree alone calls it only a dedicated
   host; Menlo Park's provider, plan, cost and stood-up day
-  are provable nowhere -- the workspace record calls it the
-  conductor's own VM -- and those cells will stay stated as
+  are provable nowhere (the workspace record calls it the
+  conductor's own VM), and those cells will stay stated as
   gaps rather than be filled by inference.
 - **Q173-S6.** Of the services, only the hosted queue's bill
   is provable from the tree (inside the provider's free tier
@@ -176,40 +172,39 @@ conclusions under the completed lines below.
   that cell will stand as a gap for the conductor to supply.
 
 Conclusions (2026-11-12, the same seat, after the measuring):
-**Q173-S1 holds** -- the recount, run on the tree this
+**Q173-S1 holds**: the recount, run on the tree this
 completion lands on, reads Germany 11,423 (2026-11-01 to
-2026-11-12), Menlo Park 7,025 (2026-10-30 to 2026-11-01),
-San Francisco 399 (2026-10-30 to 2026-11-01), Nuremberg
-1,250 (2026-10-30 to 2026-10-31), and the one clipped record
-under "San", 2026-10-31, exactly as supposed. **Q173-S2
-holds** -- no sixth standing machine was found in the tree,
-the ship records or the workspace record; the deleted first
-Falkenstein machine is noted under the lines, not lined.
-**Q173-S3 holds** -- Nuremberg's stop into reserve stands on
-the workspace record of 2026-10-31 (twice: the rig, then its
-runner), its absence from the 2026-11-03 inventory agrees,
-and nothing banked from it stands after 2026-10-31; it is
-the one rented rig the order of work reaches, and its line
-carries the give-back recommendation, named a day ahead and
-banked first, for the conductor to decide. **Q173-S4
-holds** -- San Francisco's shard lane of 2026-11-03 stands in
-the forum inventory, and its fuzz lane and preview-loop leg
-stand in the desk's Packet 8 conclusions of 2026-11-10; its
-line reads back to fuzzing. **Q173-S5 holds in both
-halves** -- the FreeBSD line is completed from the workspace
-record (Hetzner, CX33, about $12 a month all-in, review at
-about a month), and Menlo Park's provider, plan, cost and
-stood-up day were found on no record the seat can read, so
-they stand on its line as the gaps they are. **Q173-S6
-holds** -- the services below carry the queue at its free-tier
-standing, and the API access with its monthly figure stated
-as not on the record.
+2026-11-12), Menlo Park 7,025 (2026-10-30 to 2026-11-01), San
+Francisco 399 (2026-10-30 to 2026-11-01), Nuremberg 1,250
+(2026-10-30 to 2026-10-31), and the one clipped record under
+"San", 2026-10-31, exactly as supposed. **Q173-S2 holds**: no
+sixth standing machine was found in the tree, the ship records
+or the workspace record; the deleted first Falkenstein machine
+is noted under the lines, not lined. **Q173-S3 holds**:
+Nuremberg's stop into reserve stands on the workspace record
+of 2026-10-31 (twice: the rig, then its runner), its absence
+from the 2026-11-03 inventory agrees, and nothing banked from
+it stands after 2026-10-31; it is the one rented rig the order
+of work reaches, and its line carries the give-back
+recommendation, named a day ahead and banked first, for the
+conductor to decide. **Q173-S4 holds**: San Francisco's shard
+lane of 2026-11-03 stands in the forum inventory, and its fuzz
+lane and preview-loop leg stand in the desk's Packet 8
+conclusions of 2026-11-10; its line reads back to fuzzing.
+**Q173-S5 holds in both halves**: the FreeBSD line is
+completed from the workspace record (Hetzner, CX33, about $12
+a month all-in, review at about a month), and Menlo Park's
+provider, plan, cost and stood-up day were found on no record
+the seat can read, so they stand on its line as the gaps they
+are. **Q173-S6 holds**: the services below carry the queue at
+its free-tier standing, and the API access with its monthly
+figure stated as not on the record.
 
 What the conductor must still supply, the whole gap list:
-(1) a next review day for Germany and for San Francisco;
-(2) Menlo Park's provider, plan, stood-up day and any bill,
-if it carries one -- on the present record it is his own VM
-with no rental bill; (3) the monthly spend, if any, of the
+(1) a next review day for Germany and for San Francisco; (2)
+Menlo Park's provider, plan, stood-up day and any bill, if
+it carries one (on the present record it is his own VM with
+no rental bill); (3) the monthly spend, if any, of the
 outside-model API access and of the GitHub account, and the
 Cloudflare account's plan standing beyond the free tier the
 transports page records; (4) the FreeBSD node's provider
@@ -222,10 +217,10 @@ No give-back is executed by this completion.
 
 | Service | What it is for | Provider and plan | A month | Since | Ends, or next review |
 |---|---|---|---|---|---|
-| The hosted queue | The queue the hosted runners poll: jobs in, results out, one tenant | Cloudflare: a one-tenant Worker with one Durable Object per tenant, on the operator's own account | $0 at the recorded use -- a Worker and one Durable Object per tenant sit inside Cloudflare's free tier for any agent that is not extraordinarily busy (the transports page) | 2026-10-27 | not on the record -- the conductor to supply the account's plan standing and a review day |
-| Outside-model API access | A second pair of eyes beside the project's own lanes: independent reviews, cross-checks of a finding, breadth on a research question (the desk's record) | Anthropic and OpenAI, the credentials held in the operator's secure vault; no paid tier stands on the record, and none is taken without the conductor's word (rule 17) | not on the record -- no monthly figure stands in the tree or the workspace record; the conductor to supply the spend. The seat cannot read a month's usage for it with the keys it holds (read 2026-11-13, Q178): the Anthropic key returned its organisation record and no usage figure, its data calls standing gated on a workspace identifier the operator supplies, the OpenAI key returned its models list and no usage figure, and neither helper the seat holds carries a usage or billing read -- so the figure stays the conductor's to supply. Reading spent nothing: no completion was run | 2026-11-08 | not on the record. Standing on the desk's record: the OpenAI side is callable and has been exercised; the Anthropic side authenticates, its data calls gated on a workspace identifier the operator supplies |
-| GitHub | The tree's home, its releases, and the builders every landing and release runs on | the project's own account; the plan is not on the record | not on the record -- the hosting page notes billable minutes only for an ephemeral dispatch on a user's own account; any plan bill is the conductor's to supply. The seat cannot read a month's bill for it (read 2026-11-13, Q178): the GitHub connection it holds carries repository, issue and search tools and no billing read among them, so the figure stays the conductor's to supply | not on the record | not on the record |
-| Hosting control-plane accounts | The provider adapters (Fly, Hetzner, DigitalOcean, GitHub Actions) the provisioner creates machines through | exercised against recorded exchanges only; the provisioner itself is not yet live (the hosting page) | no bill on the record beyond the machines lined above | -- | -- |
+| The hosted queue | The queue the hosted runners poll: jobs in, results out, one tenant | Cloudflare: a one-tenant Worker with one Durable Object per tenant, on the operator's own account | $0 at the recorded use: a Worker and one Durable Object per tenant sit inside Cloudflare's free tier for any agent that is not extraordinarily busy (the transports page) | 2026-10-27 | not on the record; the conductor to supply the account's plan standing and a review day |
+| Outside-model API access | A second pair of eyes beside the project's own lanes: independent reviews, cross-checks of a finding, breadth on a research question (the desk's record) | Anthropic and OpenAI, the credentials held in the operator's secure vault; no paid tier stands on the record, and none is taken without the conductor's word (rule 17) | not on the record: no monthly figure stands in the tree or the workspace record; the conductor to supply the spend. The seat cannot read a month's usage for it with the keys it holds (read 2026-11-13, Q178): the Anthropic key returned its organisation record and no usage figure, its data calls standing gated on a workspace identifier the operator supplies, the OpenAI key returned its models list and no usage figure, and neither helper the seat holds carries a usage or billing read, so the figure stays the conductor's to supply. Reading spent nothing: no completion was run | 2026-11-08 | not on the record. Standing on the desk's record: the OpenAI side is callable and has been exercised; the Anthropic side authenticates, its data calls gated on a workspace identifier the operator supplies |
+| GitHub | The tree's home, its releases, and the builders every landing and release runs on | the project's own account; the plan is not on the record | not on the record: the hosting page notes billable minutes only for an ephemeral dispatch on a user's own account; any plan bill is the conductor's to supply. The seat cannot read a month's bill for it (read 2026-11-13, Q178): the GitHub connection it holds carries repository, issue and search tools and no billing read among them, so the figure stays the conductor's to supply | not on the record | not on the record |
+| Hosting control-plane accounts | The provider adapters (Fly, Hetzner, DigitalOcean, GitHub Actions) the provisioner creates machines through | exercised against recorded exchanges only; the provisioner itself is not yet live (the hosting page) | no bill on the record beyond the machines lined above | none | none |
 
 Nothing else that draws on a card was found in the tree, the
 ship records or the workspace record. A mailbox for the

@@ -40,17 +40,17 @@ follow the standard senses flow.
 
 For a Pi Light install this sense is already cheap: a pass is
 one listing of `watch_dir` plus reading the result files in
-it — no network, no subprocess, no model. The one cost that
-can grow is the folder itself: every pass re-reads every
-`.json` file in it to diff the contents against the state
-file, so keep the folder pruned — move results out once the
-lab is done with them. Experiments land on human timescales,
-so run the pass on a slow timer; a result noticed minutes
-late is noticed in plenty of time.
+it, with no network, no subprocess, and no model. The one
+cost that can grow is the folder itself: every pass re-reads
+every `.json` file in it to diff the contents against the
+state file, so keep the folder pruned and move results out
+once the lab is done with them. Experiments land on human
+timescales, so run the pass on a slow timer; a result noticed
+minutes late is noticed in plenty of time.
 
 ## Further reading
 
-The full extension walkthrough — manifest fields, the
-versioning contract, sensor binding, and how to turn this
-example into your own package — is in
+The full extension walkthrough (manifest fields, the versioning
+contract, sensor binding, and how to turn this example into your
+own package) is in
 [docs/steady/extensions.md](../../../docs/steady/extensions.md).

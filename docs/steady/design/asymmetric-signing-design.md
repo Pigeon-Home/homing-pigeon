@@ -18,11 +18,11 @@ Today every signer shares one HMAC-SHA-384 secret with the runner
    secret it verifies with; a read of `config.json` (or a secret file)
    is total compromise, not just verification-key disclosure.
 
-None of this is fatal for the current trust model — the secret *is*
-the root credential and is guarded like one — but it puts a ceiling
-on how far the key hierarchy can go (per-sensor keys, per-key
-policies, and the audience binding in M5 all still bottom out at
-"whoever holds the secret signs").
+None of this is fatal for the current trust model, since the secret
+*is* the root credential and is guarded like one, but it puts a
+ceiling on how far the key hierarchy can go (per-sensor keys,
+per-key policies, and the audience binding in M5 all still bottom
+out at "whoever holds the secret signs").
 
 ## Proposed design
 
@@ -54,7 +54,7 @@ do not change.
    present in both is a startup error.
 2. The SI generates a keypair, sends the public key out of band once
    (the existing "show the secret once" ceremony in the setup wizard
-   becomes "show the public key once" — notably, the public key is
+   becomes "show the public key once"; notably, the public key is
    *not* sensitive, so the ceremony gets simpler, not harder).
 3. Dual-verify during rotation: accept both for a window, then remove
    the HMAC secret. The audit log records which algorithm verified
@@ -64,19 +64,20 @@ do not change.
 
 ## Open questions
 
-- **Dependency.** Options:
-  `cryptography` (C extension, heavy for the minimal-install story),
-  `PyNaCl` (same), or a vendored pure-Python Ed25519 (~200 lines,
-  slow but fine at job-submission rates). The pure-Python route fits
-  the project's stdlib-only preference; it must be constant-time
-  where it matters (it is, for verification, if written carefully —
-  get this reviewed). A fourth option the plan asks us to evaluate is
-  `ssh-keygen -Y` (below) — it may obsolete this whole question.
+- **Dependency.** Options: `cryptography` (C extension, heavy for the
+  minimal-install story), `PyNaCl` (same), or a vendored pure-Python
+  Ed25519 (~200 lines, slow but fine at job-submission rates). The
+  pure-Python route fits the project's stdlib-only preference; it
+  must be constant-time where it matters (it is, for verification, if
+  written carefully; get this reviewed). A fourth option the plan
+  asks us to evaluate is `ssh-keygen -Y` (below), which may obsolete
+  this whole question.
 - **What HMAC still buys.** HMAC-SHA-384 is not broken; the migration
   is about key management, not algorithm strength. There is no rush.
 - **Revocation.** A compromised SI private key needs revocation: remove
-  the public key from config and restart. No CRL/OCSP — the config
-  *is* the revocation list. Document that rotation means a restart.
+  the public key from config and restart. There is no CRL/OCSP; the
+  config *is* the revocation list. Document that rotation means a
+  restart.
 - **Non-repudiation.** Ed25519 gives it; HMAC doesn't. Decide whether
   the audit log should start asserting "key X signed job Y" as a
   forensic claim (it shouldn't, until the migration is complete).
@@ -97,8 +98,8 @@ option with no new Python dependency.
 
 **How it would work.** The SI signs the normalized body bytes with
 `ssh-keygen -Y sign -f <private-key> -n homing-pigeon`, producing an
-armored signature placed in the `sig` field (or a companion field —
-the armor is multi-line, so it needs a JSON-safe encoding). The
+armored signature placed in the `sig` field (or a companion field,
+since the armor is multi-line and needs a JSON-safe encoding). The
 runner verifies with `ssh-keygen -Y verify -f allowed_signers -n
 homing-pigeon -s <sig>`, where `allowed_signers` maps each `key_id`
 to a public key line:
@@ -111,31 +112,28 @@ The `-n` namespace binds the signature to this application, so a
 signature minted for another purpose (git commits, SSH auth) cannot
 be replayed as a job.
 
-**In its favor.**
-- Zero Python dependencies: no C extensions, no vendored crypto to
-  own and get reviewed. OpenSSH ships on every target platform,
-  including recent Windows.
-- The crypto is maintained by someone else (OpenBSD) and is
-  battle-tested.
-- Key generation and management UX already exists
-  (`ssh-keygen -t ed25519`); operators already know it.
-- Verification-only on the runner, signing-only on the SI — the
-  timing-side-channel concern that haunts pure-Python Ed25519
-  applies to signing, which happens off-box.
+**In its favor.** Zero Python dependencies: no C extensions, no
+vendored crypto to own and get reviewed. OpenSSH ships on every
+target platform, including recent Windows. The crypto is
+maintained by someone else (OpenBSD) and is battle-tested. Key
+generation and management UX already exists (`ssh-keygen -t
+ed25519`); operators already know it. Verification-only on the
+runner, signing-only on the SI: the timing-side-channel concern
+that haunts pure-Python Ed25519 applies to signing, which happens
+off-box.
 
-**Against it.**
-- Shelling out per message: a subprocess spawn on every poll hit.
-  At job-submission rates (a handful of messages per poll, polls
-  minutes apart) this is negligible, but it is a new failure mode
-  (missing binary, PATH issues, Windows quoting).
-- The armored signature is bulky (~0.5 KB base64-armored) versus
-  64 bytes raw; fine for email, but the envelope grows.
-- `allowed_signers` is a second key store beside `config.json`,
-  with its own file-permission story (it must not be writable by
-  the SI's key_id — it lives on the runner).
-- Namespace discipline is load-bearing: if the namespace string is
-  ever reused across applications, cross-protocol replay becomes
-  possible. It must be a constant, not configurable.
+**Against it.** Shelling out per message: a subprocess spawn on
+every poll hit. At job-submission rates (a handful of messages per
+poll, polls minutes apart) this is negligible, but it is a new
+failure mode (missing binary, PATH issues, Windows quoting). The
+armored signature is bulky (~0.5 KB base64-armored) versus 64
+bytes raw; fine for email, but the envelope grows.
+`allowed_signers` is a second key store beside `config.json`, with
+its own file-permission story (it must not be writable by the SI's
+key_id, and it lives on the runner). Namespace discipline is
+load-bearing: if the namespace string is ever reused across
+applications, cross-protocol replay becomes possible. It must be a
+constant, not configurable.
 
 **Recommendation.** The plan's lean is correct: `ssh-keygen -Y` is
 the best first mechanism, behind a `signature_scheme` config key

@@ -1,7 +1,7 @@
 # Contributing to Homing Pigeon
 
-Thanks for stopping by. This is a small, security-sensitive project —
-a tool that runs code on people's machines — so contributions are
+Thanks for stopping by. This is a small, security-sensitive project,
+a tool that runs code on people's machines, so contributions are
 welcome but held to a high bar. Here's how to do it well.
 
 ## Before you write code
@@ -35,7 +35,7 @@ welcome but held to a high bar. Here's how to do it well.
 1. Fork the repo and create a branch with a descriptive name
    (`fix-timeout-race`, `add-heartbeat`, ...).
 2. Make your change, add tests, update docs (README, PROTOCOL.md,
-   docs/steady/use/use-runbook.md — whichever your change affects).
+   docs/steady/use/use-runbook.md, whichever your change affects).
 3. Run the full suite: `python -m unittest discover -s runner/tests -t . -v`.
 4. Open a pull request against `main`. Describe **what** changed,
    **why**, and **what you tested**. If it touches anything listed
@@ -54,9 +54,9 @@ welcome but held to a high bar. Here's how to do it well.
 Use the bug report template. Include: platform, Python version (or
 which release binary), what you did, what you expected, what happened,
 and the relevant log lines. If it's a security issue, **do not** open
-a public issue — see SECURITY.md.
+a public issue; see SECURITY.md.
 
----
+-.
 
 ## Maintainer notes
 
@@ -67,12 +67,12 @@ The PyPI publish job uploads `pigeon-home-runner-<version>` taken from
 with the version still at 3.3.0, so both tag builds failed in
 `pypi-publish` with "400 File already exists". Before pushing a tag,
 bump `version` in `pyproject.toml` to match, commit, then tag. Tags on
-this repo are protected by a rule, so a pushed tag cannot be moved —
-if the version is wrong, bump again and tag the next patch version.
+this repo are protected by a rule, so a pushed tag cannot be moved: if
+the version is wrong, bump again and tag the next patch version.
 
-Bump `runner/_version.py` (`__version__`) in the same commit. Every
-CLI reports it via `--version`, and the frozen binaries cannot read
-`pyproject.toml` — `runner/tests/test_version.py` fails the build if the two
+Bump `runner/_version.py` (`__version__`) in the same commit. Every CLI
+reports it via `--version`, and the frozen binaries cannot read
+`pyproject.toml`; `runner/tests/test_version.py` fails the build if the two
 drift.
 
 Two more files carry the version and move in the same commit:
@@ -88,7 +88,7 @@ commit should not do.
 ### Releases: who pushes, and the five-minute window
 
 Nothing pushes to this repository by itself. No rig pushes its own
-output — rigs bank their output locally, on the rig. No timer revs,
+output; rigs bank their output locally, on the rig. No timer revs,
 tags, or ships a release. Pushes to `main` are made by the maintainer
 agent, by hand, in her own passes: landing rig output she has pulled
 in herself, and shipping a release when the work on `main` is worth
@@ -97,8 +97,8 @@ one.
 One automatic exception exists, and it is the owner's own edits. A
 watch checks `main` every 5 minutes for a commit under the owner's
 identity that touches a `.md` file. The owner edits documents in
-bursts — several small edits a few minutes apart, typo fixes
-included — so the watch debounces: once it sees a triggering edit it
+bursts (several small edits a few minutes apart, typo fixes
+included), so the watch debounces: once it sees a triggering edit it
 polls every minute and ships only after 5 quiet minutes with no new
 owner doc edit. If edits keep arriving for 60 minutes it ships
 anyway. The release carries the whole burst. In practice: after
@@ -106,33 +106,31 @@ editing a document, the owner has a 5-minute window to keep editing
 without stepping on a release, and the release fires once the edits
 have stopped for 5 minutes.
 
-An agent asked to make a release outside this flow still uses the
-same mechanics: bump the version in the three carriers (`pyproject.toml`,
+An agent asked to make a release outside this flow still uses the same
+mechanics: bump the version in the three carriers (`pyproject.toml`,
 `runner/_version.py`, `runner/ops/install.py`; the test pin reads the
-package's), add the CHANGELOG entry, commit as a `release:` commit,
-push, wait for the build on that commit to go green on the jobs
-the cut gate names (`runner/tools/cut_gate.py`, one rule for the
-cut, the tag build's promotion check and the train: the eight
-artifact legs always, the Linux suite and both parts of the
-Windows suite too when a file of the core changed since the
-previous published release), dispatch `cut-release.yml` with the
-commit's full sha (it places the tag; a tag is never pushed by
-hand), then verify the tag build's publish jobs and the mirrors'
-own responses in their logs. The tag build does not build the
-artifacts again: the cut hands it the gate build's run id, it
-reads that run back (a build of exactly the tag's commit, every
-gate job green), and its release job publishes that run's
-artifacts -- so the release is the artifacts the gate judged, and
-the tag build is the publish jobs and nothing else. A tag placed
-without that run id (by hand, or a dispatch without the input)
-builds everything again, as before. `runner/tools/release_train.py` does
-all of that as one command — `status` to read the state, `prepare
---note "..."` to land the release commit, `cut` to wait, cut and
-verify, `run` for the whole cycle, `measure` to re-record the core
-measure alone when a landing grows a core file — so a release is
-one invocation and the time the build takes, not a sitting. A
-pushed tag never moves; a defect is fixed forward under the next
-patch version.
+package's), add the CHANGELOG entry, commit as a `release:` commit, push,
+wait for the build on that commit to go green on the jobs the cut gate
+names (`runner/tools/cut_gate.py`, one rule for the cut, the tag build's
+promotion check and the train: the eight artifact legs always, the Linux
+suite and both parts of the Windows suite too when a file of the core
+changed since the previous published release), dispatch `cut-release.yml`
+with the commit's full sha (it places the tag; a tag is never pushed by
+hand), then verify the tag build's publish jobs and the mirrors' own
+responses in their logs. The tag build does not build the artifacts
+again: the cut hands it the gate build's run id, it reads that run back
+(a build of exactly the tag's commit, every gate job green), and its
+release job publishes that run's artifacts, so the release is the
+artifacts the gate judged, and the tag build is the publish jobs and
+nothing else. A tag placed without that run id (by hand, or a dispatch
+without the input) builds everything again, as before.
+`runner/tools/release_train.py` does all of that as one command (`status`
+to read the state, `prepare --note "..."` to land the release commit,
+`cut` to wait, cut and verify, `run` for the whole cycle, `measure` to
+re-record the core measure alone when a landing grows a core file), so a
+release is one invocation and the time the build takes, not a sitting. A
+pushed tag never moves; a defect is fixed forward under the next patch
+version.
 
 ### The looking is the gate
 
@@ -142,8 +140,8 @@ without the owner's word.
 
 This is not a capability limit. The owner is the final integration
 environment: a release proceeds when he has looked at the results and
-said so. The Oracle is not forbidden from approving its own releases
-— it can, and then it waits anyway, because approval was never the
+said so. The Oracle is not forbidden from approving its own releases;
+it can, and then it waits anyway, because approval was never the
 gate. The looking is the gate.
 
 In practice: no push, tag, or release without his explicit word, and
@@ -181,7 +179,7 @@ so the flag table matches the binary.
 ## Why `--no-oracle` was removed
 
 Commit `8f0719f` (author ctf-gooo-003, message "v3: the Oracle is
-unconditional - remove oracle_enabled flag") on 2026-10-15.
+unconditional, remove oracle_enabled flag") on 2026-10-15.
 
 The Oracle had already shipped. A flag that turned it off was
 a way to get full output back without the Oracle. That escape hatch was the thing
@@ -210,11 +208,11 @@ satisfy it.
 
 The owner wanted one way, for the rest of the project, to ask the
 Oracle on a box what it thinks is going on. They were explicit that
-this is not a loopback dashboard. A dashboard page -- job tables,
-controls, a frontend over config -- was sketched once in a document
+this is not a loopback dashboard. A dashboard page (job tables,
+controls, a frontend over config) was sketched once in a document
 the claims audit later removed from the tree; it remains a later
-product idea, not a direction for this flag. Do not grow
-`--oracle` into that page.
+product idea, not a direction for this flag. Do not grow `--oracle`
+into that page.
 
 They had also seen `feat/local-si-test`. That branch opens Open WebUI
 against a second Ollama process (the "cloud SI" on port 11435) and
@@ -238,7 +236,7 @@ re-exports it).
 1. Parse `--oracle` and `--oracle-port`.
 2. Load `config.json`.
 3. `--inspect` still wins if both are passed. Inspect reads local
-   state and exits — `main` returns there, so steps 4 and 5 never
+   state and exits: `main` returns there, so steps 4 and 5 never
    run on the `--inspect` path. It does not open the chat.
 4. `ensure_inference_ready` and `update_llama_from_config` run, same
    as a normal start, so a missing Ollama daemon can be started and a
@@ -258,12 +256,13 @@ no `--oracle`) is unchanged.
 
 `oracle_context` builds the model's context from the base dir: the
 retained job records (id, kind, script, output), the tail of
-`runner.log`, and — by default — the watch sections (canary state,
-Windows Event Log, registry diff, host log, Firewall posture,
-AV posture). The log tail is what lets the Oracle answer
-"did this happen?" instead of inventing log events. `ASK_AGENT_SYSTEM`
-(the window's prompt; `ASK_SYSTEM` is the mailbox door's) tells the model to quote from what it was given and to say it cannot
-see something when it is not there.
+`runner.log`, and, by default, the watch sections (canary state,
+Windows Event Log, registry diff, host log, Firewall posture, AV
+posture). The log tail is what lets the Oracle answer "did this
+happen?" instead of inventing log events. `ASK_AGENT_SYSTEM` (the
+window's prompt; `ASK_SYSTEM` is the mailbox door's) tells the
+model to quote from what it was given and to say it cannot see
+something when it is not there.
 
 The chat goes further: `ask_model_agent` runs a tool loop, so the
 model can call `read_file`, `list_dir`, `write_file`, and `run`
@@ -326,9 +325,9 @@ cannot inject HTML.
   of those hosts; a foreign Origin is refused, so a page on another
   site cannot submit a question to the local port. A POST with no
   `Origin` at all is accepted when the peer is loopback and the token
-  matches — some Windows WebViews omit the header, and refusing it
-  made Send look dead. GET may omit `Origin` because the browser does
-  not send it for a normal navigation.
+  matches, because some Windows WebViews omit the header, and
+  refusing it made Send look dead. GET may omit `Origin` because the
+  browser does not send it for a normal navigation.
 - `X-Oracle-Token` must match the token from the page.
   `hmac.compare_digest` is used. A missing or wrong token is 403, and
   the body is not answered.
@@ -340,7 +339,7 @@ The question is then passed to `ask_model_agent`, the agent loop
 above. (A signed `ask` query uses the separate single-shot
 `ask_model`.) It is not a free chat with a raw Ollama handle.
 
-- The system prompt is `ASK_AGENT_SYSTEM`: the interactive charter —
+- The system prompt is `ASK_AGENT_SYSTEM`, the interactive charter:
   answer from evidence, use the tools when the question needs the
   box itself, never invent an event, never reveal secrets.
 - `owner_instructions` from config is appended to that system prompt
@@ -362,21 +361,21 @@ above. (A signed `ask` query uses the separate single-shot
   material."
 - Other rejections are also fixed sentences (unconfigured).
   `inference_error` is the exception: when the model supplies a
-  `detail`, that text — built from the endpoint's response —
+  `detail`, that text, built from the endpoint's response,
   replaces the fixed sentence (the same override exists in
   `oracle_cli`). The raw exception is not sent to the browser.
 
 The browser keeps the visible transcript, and the chat has a short
 memory besides. `recent_chat` reads `oracle-chat.jsonl` back, and the
-next ask hands the model the last four `ask` turns — question and
-answer each cut to 300 characters, the block capped at 2000 — so a
+next ask hands the model the last four `ask` turns (question and
+answer each cut to 300 characters, the block capped at 2000), so a
 follow-up question can continue an investigation. What goes back is
 only what was written, and what was written was redacted first:
 `record_oracle_turn` passes the question, the answer, and the detail
 through `redact_text` with the config's patterns before the line is
 appended (see "What is written to disk" below). The protection is
-redact-before-write. Turns do persist, and the last four do return
-to the model, in their redacted form.
+redact-before-write. Turns do persist, and the last four do return to
+the model, in their redacted form.
 
 ## What is written to disk
 
@@ -408,17 +407,16 @@ file starts. One backup. The next roll replaces the backup. Worst
 case is about 2 MiB for the chat. The write uses `os.open` with mode
 `0o600` and `O_APPEND`, under `_LOG_WRITE_LOCK`.
 
-`runner.log` uses the same helper, `append_bounded_log`. Its bounds
-are config — `log_max_bytes` / `log_backups`, defaults 32 MiB per
-file with 4 backups: the live file plus 4 rotations, about
-160 MiB retained in all. Those bounds apply to every run that writes the
-process log, not only `--oracle`. The per-minute
-console budget is unchanged: verbose drops ordinary lines past 200 a
-minute, quiet past 50, and WARN and ERROR still pass. Dropped console
-lines are counted, not written. The chat file does not use that
-budget. Every ask is kept until the roll. A 403 (bad token, bad
-origin) is not written to the chat file, so a scanner cannot fill the
-disk by posting.
+`runner.log` uses the same helper, `append_bounded_log`. Its bounds are
+set in config (`log_max_bytes` / `log_backups`), with defaults of 32 MiB
+per file and 4 backups: the live file plus 4 rotations, about 160 MiB
+retained in all. Those bounds apply to every run that writes the process
+log, not only `--oracle`. The per-minute console budget is unchanged:
+verbose drops ordinary lines past 200 a minute, quiet past 50, and WARN
+and ERROR still pass. Dropped console lines are counted, not written.
+The chat file does not use that budget. Every ask is kept until the
+roll. A 403 (bad token, bad origin) is not written to the chat file, so
+a scanner cannot fill the disk by posting.
 
 ## The startup crash that showed up in the same work
 

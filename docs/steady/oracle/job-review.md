@@ -26,8 +26,9 @@ Two tiers, split by whether the check needs the script text:
 - **Content tier** reads the script text: known-failure patterns
   and static checks (dangling file references, operator-defined
   regexes). Under per-job encryption it needs the decrypt
-  credential the runner already holds — no new man-in-the-middle.
-  The Oracle reads what the runner legitimately decrypted.
+  credential the runner already holds, so there is no new
+  man-in-the-middle. The Oracle reads what the runner
+  legitimately decrypted.
 
 ## Authenticated opinion, not a new signature
 
@@ -60,7 +61,7 @@ Operator patterns go in `review_patterns_extra` (see
 Every diagnosed recurring failure gets its pattern written into
 `review_patterns_extra` in `config.json` (`docs/steady/reports/known-failures.md`
 is the archived record of the first batch and shows the format). Filing alone
-changes no matching: the reviewer matches new jobs only against
-patterns supplied via `review_patterns_extra` in config — an
-operator copies a filed pattern there to arm it. The Oracle gets smarter the way
-an on-call engineer does: by writing down what broke.
+changes no matching: the reviewer matches new jobs only against patterns supplied
+via `review_patterns_extra` in config, so an operator copies a filed pattern
+there to arm it. The Oracle gets smarter the way an on-call engineer does: by
+writing down what broke.

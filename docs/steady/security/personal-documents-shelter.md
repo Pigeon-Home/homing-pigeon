@@ -16,8 +16,8 @@ under the operator's own hand.
 The shelter uses the warning check's own name scan and watched
 folders (home Documents, Desktop and Downloads, the paper
 folders inside a OneDrive folder, and XDG-relocated folders).
-An item whose name matches -- a tax folder, a passport scan, a
-bank statement -- is moved into the shelter folder:
+An item whose name matches (a tax folder, a passport scan, a
+bank statement) is moved into the shelter folder:
 
     Desktop/Sheltered Documents/<watched folder>/<item>
 
@@ -69,9 +69,9 @@ Put everything back:
 Restore never overwrites: if an item's original place is
 occupied again, that item stays in the shelter, still recorded
 in the manifest, and the tool reports it. The manifest is
-validated before anything moves -- a manifest that is malformed,
-points outside the shelter, or points outside the home
-directory stops the run with nothing moved.
+validated before anything moves: a manifest that is malformed,
+points outside the shelter, or points outside the home directory
+stops the run with nothing moved.
 
 ## What it never does
 

@@ -13,9 +13,9 @@ guess cheaper. Pigeon mail never carries the secret, only the tag.
 A job with no `key_id` verifies against `shared_secret`, and so does a job
 whose `key_id` is that secret's fingerprint (`k-<8 hex>`, PROTOCOL.md
 section 14.2: the name every secret carries, which the reference sender
-uses by default). A job with any other `key_id` verifies
-against `additional_secrets`. Secrets are read at startup — editing
-config.json takes effect on restart.
+uses by default). A job with any other `key_id` verifies against
+`additional_secrets`. Secrets are read at startup, so editing config.json
+takes effect on restart.
 
 A new secret is a new name: its fingerprint changes with it, and the
 pong's platform card (`key_ids`) lists the names the running config
@@ -25,8 +25,8 @@ is handed over in private.
 
 A new `key_id` does not inherit `key_policies`. If
 `key_policies_default_deny` is false (the default), the new key is
-unrestricted. If true, a new id with no policy is refused — copy the policy
-entry onto the new id.
+unrestricted. If true, a new id with no policy is refused, so copy the
+policy entry onto the new id.
 
 ## Naming the first secret
 
@@ -58,29 +58,25 @@ additional ids.
    ```
    openssl rand -hex 32
    ```
-   Put it in config.json under `additional_secrets` with a new id.
-   The runner imposes no pattern or length limit on these ids — it
-   requires only a non-empty string (the `[A-Za-z0-9._-]{1,64}`
-   pattern is enforced only by `install.py --additional-secret`).
-   Leave `shared_secret` in place.
-   (Note: `install.py --additional-secret KEY_ID` only stores the secret on
-   fresh installs — on an existing Windows one-home install it is silently
-   ignored, so edit the config directly.)
-2. Restart the runner.
-3. Tell the signer the new `key_id` and the new secret, in one prompt. From
-   then on the signer sets `key_id` on every job (`send_job.py keyring add
-   --secret <new> --key-id <new id> --runner <mailbox>` keeps the pair on the
-   signer's side; `send_job.py key-id --secret <new>` prints the fingerprint
-   if the new id is to be the secret's own name).
+Put it in config.json under `additional_secrets` with a new id. The runner
+imposes no pattern or length limit on these ids; it requires only a non-empty
+string (the `[A-Za-z0-9._-]{1,64}` pattern is enforced only by `install.py
+--additional-secret`). Leave `shared_secret` in place. (Note: `install.py
+--additional-secret KEY_ID` only stores the secret on fresh installs; on an
+existing Windows one-home install it is silently ignored, so edit the config
+directly.) 2. Restart the runner. 3. Tell the signer the new `key_id` and the
+new secret, in one prompt. From then on the signer sets `key_id` on every job
+(`send_job.py keyring add --secret <new> --key-id <new id> --runner
+<mailbox>` keeps the pair on the signer's side; `send_job.py key-id --secret
+<new>` prints the fingerprint if the new id is to be the secret's own name).
 4. Confirm a job signed with the new id runs. Mail already in the inbox still
-   runs — it was signed with the old secret.
-5. Remove the old secret only after every signer sends the new `key_id`. Do
-   not delete `shared_secret` while any signer still omits `key_id` or names
-   it by its fingerprint. Restart again. A DTLS resumption ticket records
-   the key that authenticated the session it was issued on, so a sender
-   holding a ticket from the old secret is refused on its next resume and
-   handshakes afresh under the new one (`send_dtls.py` does that itself and
-   drops the ticket).
+runs because it was signed with the old secret. 5. Remove the old secret only
+after every signer sends the new `key_id`. Do not delete `shared_secret`
+while any signer still omits `key_id` or names it by its fingerprint. Restart
+again. A DTLS resumption ticket records the key that authenticated the
+session it was issued on, so a sender holding a ticket from the old secret is
+refused on its next resume and handshakes afresh under the new one
+(`send_dtls.py` does that itself and drops the ticket).
 
 Never reuse a retired secret. Never put two values on one `key_id`.
 
@@ -116,7 +112,6 @@ key's `fingerprint` (`send_job.py key-id --secret <secret>` prints it);
 a fingerprint that is not the key's own refuses the key, which catches
 an entry written against the wrong secret.
 
----
 *Side note: NIST SP 800-57 recommends an originator-usage period of
 under 2 years for symmetric authentication keys. Ninety days sits
 comfortably inside that.*
