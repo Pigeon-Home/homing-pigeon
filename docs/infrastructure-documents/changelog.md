@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.1 - 2026-11-16
+
+- the 3.17 line opens: the first release cut on the new minor line, at the conductor's word
+- docs: statistics carries the third growth snapshot — the asymptotic view at the 38 million ceiling, with the living chart in the tree
+
 ## 3.16.26.36 - 2026-11-16
 
 - docs: the minimal-userland supposition stands before the reproduction
