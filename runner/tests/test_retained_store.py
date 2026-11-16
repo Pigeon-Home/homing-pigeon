@@ -653,5 +653,45 @@ for _stored in ("bm-ret-y", "CaseJob-1", "aB3-dE5", "Job_9-X", "q"):
 del _stored, _t, _name, _sname
 
 
+# ---------------------------------------------------------------------
+# SUPPOSITION, written before the fix (2026-11-16, the conductor's
+# supposition-first rule): race_state crash 6fef584578e2d83c, filed by
+# the Germany rig's grow on 2026-11-16 at head 7f26b833e767 and banked
+# here from the rig's race_state.crashes.jsonl. Two threads save the
+# case-differing ids bm-RET-SHARED and bm-ret-shared into one retained
+# directory; after the join, bm-RET-SHARED reads back absent.
+#
+# What the crash record and a focused reproducer already measured
+# (the sweep's evidence, gathered before this supposition was
+# written): on a case-insensitive filesystem the two ids name one
+# directory entry. The second save's atomic replace renames that
+# entry to the second id's case and destroys the first record, so
+# the first id fails the exact-name listing check the 2026-11-01 fix
+# (crash 9b26d146d86a0e08) put in load_retained. The reproducer, run
+# on the Germany rig (NTFS) against the current head, fails the
+# crash's exact op lists and both deterministic save orders with the
+# crash's exact detail line; run on a case-sensitive filesystem it
+# passes, because the two entries coexist there. save_retained and
+# load_retained are byte-identical between the crash's head and the
+# current head, so the defect stands on main today, on the
+# filesystems that fold case.
+#
+# Supposition: if save_retained, finding a case-folded sibling entry
+# in the retained directory on a filesystem that folds case (probed
+# read-only, from the listing itself), writes the record under a
+# fold-proof sidecar name derived from the exact id, and
+# load_retained falls back to that sidecar name when the exact plain
+# name is absent from the listing, then both records survive and
+# each id reads back its own whole payload on a folding filesystem;
+# behaviour on a case-sensitive filesystem is unchanged (no sibling,
+# no sidecar, the plain name as today), and no other reader's
+# contract moves. Predictions the fix is measured against: the rig
+# reproducer goes green on every schedule; this file's families stay
+# green; the banked crash's corpus probe flips to an unexpected
+# success and `promote` retires it. Conclusions are posted below
+# this block once the fix has been measured.
+# ---------------------------------------------------------------------
+
+
 if __name__ == "__main__":
     unittest.main()
