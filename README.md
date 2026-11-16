@@ -217,6 +217,7 @@ profile. The postures and the profiles in full:
 
 Two more dials stand outside the table.
 
+
 ```
   remediation_mode     what happens while a job runs
   -------------------  ------------------------------------------
@@ -228,6 +229,7 @@ Two more dials stand outside the table.
                        for a lesser divergence
   off                  watches and records only
 ```
+
 
 The tripwires are a closed list: a confinement escape, a process
 storm past the ceiling, an undeclared credential-store reference
@@ -259,6 +261,7 @@ your raw data never leaves the machine. Setup:
 
 **Two Oracle modes.**
 
+
 ```
   oracle_mode          model               briefs and answers    ask
   -------------------  ------------------  --------------------  ---
@@ -266,6 +269,7 @@ your raw data never leaves the machine. Setup:
   "deterministic"      none installed,     the box's own         off
                        never called        records
 ```
+
 
 `"deterministic"` is the Pi Light mode, for a box with no model
 worth running: the watch, the wake gate, and the briefs still
