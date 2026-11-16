@@ -68,4 +68,42 @@ is blanked by design.
 
 ## Conclusions
 
-(Appended after the measurement.)
+Measured 2026-11-16, after the supposition above stood on main.
+
+1. **Supposition 1 stands, exactly.** The leg's substance,
+   reproduced at the head the supposition landed on — the
+   module run with HP_MINIMAL_USERLAND=1 on a PATH carrying sh
+   and no bash and no zsh — failed the same 2 tests on the
+   same assertions ('pigeon-42' not found in '', 'coo-Linux'
+   not found in ''), and passed the other 4. This machine has
+   no docker, so the reproduction ran under a curated PATH
+   (sh is dash here, ash in the image; both are the platform
+   default the repair moves a job onto, and the module drives
+   the same poll_once path either way).
+2. **Supposition 2 stands: the defect is the fixture, and the
+   fix is the fixture.** The fixture's config now states the
+   full ceiling (max_result_view) and its jobs ask for the
+   full view (result_policy {"view": "full"}) unless a test
+   says otherwise — the reconciled shape the other read-back
+   fixtures took when the attested default landed. No runner
+   code changed. After the fix the module runs 7 tests, all
+   OK, and the workflow's own guard step (skip_guard.py
+   --no-skips --require-ok --annotate over the suite output)
+   exits 0 with no skips seen.
+3. **Supposition 3 stands, and is now pinned.** A new test,
+   test_no_view_ask_still_delivers_attested, runs a repaired
+   job in the same fixture with no view ask: exit 0, repaired
+   true, the result's view reads attested and its stdout is
+   blanked. The fixture's ask widens nothing by default; a
+   future change that widened the runner's default instead
+   of the fixture's ask would fail this test.
+
+Neighbouring suites at the same head: test_oracle_opinion,
+test_default_posture and the module's normal-box run together
+ran 113 tests, OK; test_enforce_posture_reconciliation, which
+reads this fixture's stated config, ran 56 tests, OK.
+
+The hosted leg's own verdict comes at its next dispatch (the
+nightly, or the next tag whose tree changed under runner/);
+the local green above is the leg's substance run the way the
+workflow runs it.

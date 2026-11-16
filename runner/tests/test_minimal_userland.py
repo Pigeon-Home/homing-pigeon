@@ -32,13 +32,23 @@ from runner.tests import test_oracle_opinion as oo
 ENABLED = os.environ.get("HP_MINIMAL_USERLAND") == "1"
 
 
-def _run(payload, cfg_over=None):
+def _run(payload, cfg_over=None, ask_full_view=True):
     """One signed job through poll_once, executed for real."""
+    if ask_full_view:
+        # This proof reads its output back, so its jobs ask for
+        # the full view under the full ceiling stated in the
+        # config below -- the shape the other read-back fixtures
+        # take since the result-view default landed on attested
+        # (posture item 6). Unstated, the delivered result
+        # carries attestations and blanked output, and there is
+        # nothing here to read back.
+        payload.setdefault("result_policy", {"view": "full"})
     tmp = tempfile.mkdtemp(prefix="hp-minimal-")
     cfg = {
         "mailbox_user": oo.SENDER,
         "mailbox_password": oo.SECRET,
         "shared_secret": oo.SECRET,
+        "max_result_view": "full",
         "imap_host": "fake", "imap_port": 993,
         "smtp_host": "fake", "smtp_port": 587,
         "max_job_age_sec": 3600,
@@ -91,6 +101,20 @@ class MinimalUserlandRepairTests(unittest.TestCase):
         result = _run(job)
         self.assertEqual(result["exit_code"], 0, result.get("stderr"))
         self.assertIn("coo-Linux", result["stdout"])
+        self.assertIs(result["oracle_opinion"]["repaired"], True)
+
+    def test_no_view_ask_still_delivers_attested(self):
+        # The default holds while the read-back tests above ask
+        # for the full view: a repaired job that asks for no view
+        # runs and exits 0, and its result still carries the
+        # attested shape -- the view named, the output blanked.
+        # The fixture's ask widens nothing by default.
+        job = oo._exec_payload(interpreter=["bash"],
+                               script="echo pigeon-$((6 * 7))")
+        result = _run(job, ask_full_view=False)
+        self.assertEqual(result["exit_code"], 0, result.get("stderr"))
+        self.assertEqual(result["view"], "attested")
+        self.assertEqual(result["stdout"], "")
         self.assertIs(result["oracle_opinion"]["repaired"], True)
 
     def test_powershell_shaped_job_is_not_repaired(self):
