@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="452" viewBox="0 0 720 452" font-family="Helvetica, Arial, sans-serif">
+  <rect width="720" height="452" fill="#11181d"/>
+  <text x="360" y="24" text-anchor="middle" fill="#edf2f3" font-size="17" font-weight="bold">Security tokens in the tree — measured, then projected to 15 December 2026</text>
+  <g stroke="#2a3942" stroke-width="1">
+    <line x1="64" y1="356" x2="696" y2="356"/>
+    <line x1="64" y1="306.7" x2="696" y2="306.7"/>
+    <line x1="64" y1="257.3" x2="696" y2="257.3"/>
+    <line x1="64" y1="208" x2="696" y2="208"/>
+    <line x1="64" y1="158.7" x2="696" y2="158.7"/>
+    <line x1="64" y1="109.3" x2="696" y2="109.3"/>
+    <line x1="64" y1="60" x2="696" y2="60"/>
+  </g>
+  <g fill="#a9b8bd" font-size="12" text-anchor="end">
+    <text x="58" y="360">0</text>
+    <text x="58" y="310.7">10M</text>
+    <text x="58" y="261.3">20M</text>
+    <text x="58" y="212">30M</text>
+    <text x="58" y="162.7">40M</text>
+    <text x="58" y="113.3">50M</text>
+    <text x="58" y="64">60M</text>
+  </g>
+  <text x="18" y="208" fill="#a9b8bd" font-size="12" text-anchor="middle" transform="rotate(-90 18 208)">security tokens</text>
+  <line x1="64" x2="696" y1="168.5" y2="168.5" stroke="#e8b44a" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="70" y="160.5" font-size="13" font-weight="bold" fill="#e8b44a">Ceiling: 38M — approached, never crossed</text>
+  <polyline points="64,353 84.7,344.8 105.4,336.6 126.2,328.3 146.9,320.1 167.6,311.8 188.3,303.6 209,295.3 229.8,287.1 250.5,278.8 271.2,270.6 291.9,262.4 312.7,254.1 333.4,245.9 354.1,237.6 374.8,229.4 395.5,221.1 416.3,212.9 437,204.7 457.7,196.4 478.4,188.2 499.1,179.9 519.9,171.7 540.6,163.4 561.3,155.2 582,147 602.8,138.7 623.5,130.5 644.2,122.2 664.9,114 685.6,105.7" fill="none" stroke="#ff6b7a" stroke-width="2.5" stroke-dasharray="7 5" opacity="0.9"/>
+  <polyline points="64,353 115.8,345.1 167.6,327.9 219.4,301.7 271.2,272.1" fill="none" stroke="#5aa2f0" stroke-width="2" stroke-dasharray="7 5"/>
+  <polyline points="219.4,301.7 271.2,272.1 312.7,256.3 364.5,232.7 385.2,225.3" fill="none" stroke="#5aa2f0" stroke-width="2.5"/>
+  <polyline points="385.2,225.3 395.5,222.2 405.9,219.4 416.3,216.6 426.6,214.1 437,211.6 447.3,209.3 457.7,207.1 468.1,205.1 478.4,203.1 488.8,201.3 499.1,199.5 509.5,197.9 519.9,196.3 530.2,194.8 540.6,193.4 551,192.1 561.3,190.8 571.7,189.6 582,188.5 592.4,187.4 602.8,186.4 613.1,185.5 623.5,184.5 633.8,183.7 644.2,182.9 654.6,182.1 664.9,181.4 675.3,180.7 685.6,180 696,179.4" fill="none" stroke="#2dd4bf" stroke-width="3"/>
+  <line x1="385.2" x2="385.2" y1="52" y2="356" stroke="#a9b8bd" stroke-width="1" stroke-dasharray="3 5" opacity="0.65"/>
+  <text x="385.2" y="44" text-anchor="middle" font-size="12" font-weight="bold" fill="#a9b8bd">Nov 15 — last real count</text>
+  <text x="692" y="91.6" text-anchor="end" font-size="13" font-weight="bold" fill="#ff6b7a">Straight: 51.6M by Dec 15</text>
+  <text x="692" y="205.4" text-anchor="end" font-size="13" font-weight="bold" fill="#2dd4bf">Asymptotic: 35.8M by Dec 15</text>
+  <g fill="#11181d" stroke="#5aa2f0" stroke-width="2.5">
+    <circle cx="64" cy="353" r="6"/>
+    <circle cx="115.8" cy="345.1" r="6"/>
+    <circle cx="167.6" cy="327.9" r="6"/>
+    <circle cx="219.4" cy="301.7" r="6"/>
+  </g>
+  <g fill="#5aa2f0">
+    <circle cx="271.2" cy="272.1" r="6.5"/>
+    <circle cx="312.7" cy="256.3" r="6.5"/>
+    <circle cx="364.5" cy="232.7" r="6.5"/>
+    <circle cx="385.2" cy="225.3" r="6.5"/>
+  </g>
+  <g fill="#edf2f3" font-size="13" font-weight="bold" text-anchor="middle">
+    <text x="64" y="339">0.6M</text>
+    <text x="115.8" y="331.1">2.2M</text>
+    <text x="167.6" y="313.9">5.7M</text>
+    <text x="219.4" y="287.7">11.0M</text>
+    <text x="271.2" y="258.1">17M</text>
+    <text x="312.7" y="242.3">20.2M</text>
+    <text x="364.5" y="218.7">25.0M</text>
+    <text x="385.2" y="211.3">26.5M</text>
+  </g>
+  <g fill="#a9b8bd" font-size="12" text-anchor="middle">
+    <text x="64" y="378">Oct 15</text>
+    <text x="167.6" y="378">Oct 25</text>
+    <text x="271.2" y="378">Nov 4</text>
+    <text x="385.2" y="378">Nov 15</text>
+    <text x="488.8" y="378">Nov 25</text>
+    <text x="592.4" y="378">Dec 5</text>
+    <text x="696" y="378">Dec 15</text>
+  </g>
+  <text x="64" y="396" font-size="12" fill="#a9b8bd">Measured →</text>
+  <text x="696" y="396" text-anchor="end" font-size="12" fill="#a9b8bd">← Projected (model)</text>
+  <g font-size="12" fill="#edf2f3">
+    <circle cx="70" cy="414" r="5" fill="#11181d" stroke="#5aa2f0" stroke-width="2"/>
+    <text x="82" y="418">implied from the line count</text>
+    <circle cx="290" cy="414" r="5.5" fill="#5aa2f0"/>
+    <text x="302" y="418">measured</text>
+    <line x1="400" y1="414" x2="424" y2="414" stroke="#ff6b7a" stroke-width="2.5" stroke-dasharray="6 4"/>
+    <text x="432" y="418">straight trend — keeps going</text>
+    <line x1="64" y1="440" x2="88" y2="440" stroke="#2dd4bf" stroke-width="3"/>
+    <text x="96" y="444">asymptotic — bends to the ceiling</text>
+    <line x1="330" y1="440" x2="354" y2="440" stroke="#e8b44a" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="362" y="444">ceiling (asymptote)</text>
+  </g>
+</svg>

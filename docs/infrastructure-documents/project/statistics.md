@@ -190,6 +190,62 @@ tree's line count from the same record beside it. A reader
 with a checkout of either tag reads the same figures in that
 tag's copy of this record.
 
+## The growth of the measure, projected: a third snapshot as of 2026-11-16
+
+The second snapshot above ends where the counts end, at
+2026-11-15. This third view keeps its 8 points exactly as
+recorded there and draws the 2 lines a reader draws next,
+from the last count forward to 2026-12-15: the straight
+trend of the 31 days extended unchanged, and an asymptotic
+curve that bends toward a ceiling. Everything to the right
+of the 2026-11-15 divider is a model, not a measurement;
+the chart says so on its face, and the figures below are
+the model's, stated so they can be checked against it.
+
+![Security tokens in the tree, 15 October to 15 December 2026 — measured to 15 November, then projected](../../../assets/security-tokens-growth-2026-11-16.svg)
+
+The measured part of the view is the month the second
+snapshot records: from about 0.6 million tokens at the
+first release to 26,451,259 at the measure of 2026-11-15 —
+25.9 million added in 31 days, a 44-fold rise over the
+starting figure (26.5 ÷ 0.6). The projected part is 2
+lines from that last count:
+
+| Line | Form | At 2026-12-15 |
+|------|------|---------------|
+| Straight trend | the endpoints' slope, about 0.84 million a day, extended unchanged | 51.6M |
+| Asymptotic curve | an exponential approach to a ceiling of 38M, from the 2026-11-15 count | 35.8M |
+| Ceiling | the asymptote itself | 38M — approached, never crossed |
+
+How the lines were drawn. The straight trend is the slope
+the 2 endpoints fix — (26.5 − 0.6) over 31 days, about
+0.84 million a day — carried forward unchanged; on that
+slope the line passes 38 million in late November without
+slowing. The asymptotic curve starts at the same last
+count and closes the gap to the ceiling exponentially,
+the remaining gap shrinking by a factor of e^(−0.055) each
+day, so the rise eases as the curve nears 38 million and
+stands 2.2 million short of it at 2026-12-15. Neither line
+is a forecast: the first states what the month's pace
+would do if nothing changed, the second what growth looks
+like when a limit is doing the shaping. Which shape the
+real series takes is a question the coming counts answer.
+
+The ceiling is not an arbitrary round number. On
+2026-11-16 the conductor raised the project's token goal
+from 30 million to 38 million, taking the figure from this
+view's ceiling; the goal now stands where the curve bends
+toward.
+
+The interactive original of this view stands beside this
+record: [security-tokens-asymptotic-view.html](security-tokens-asymptotic-view.html).
+It carries the same points and the same 2 lines with the
+ceiling left on a slider, so a reader who opens the file
+in a browser can move the ceiling between 30 and 60
+million and watch the curve re-bend. The chart above is
+that page with the slider set to 38 million, drawn for
+the record.
+
 ## Where the project stands
 
 The longer series changes what the shape can say. Across the

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="light dark" />
+<link rel="icon" href="data:," />
+<title>Security Tokens — Asymptotic View</title>
+<style>
+  :root{
+    --bg:#f7f5f0; --surface:#ffffff; --surface2:#eef2f1; --ink:#17202a; --muted:#5b6b73;
+    --line:#d8dee0; --blue:#1d6fd1; --red:#d63a4a; --teal:#0f766e; --amber:#b7791f;
+    --ceiling:#7a6a2f; --grid:#e3e8e9;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#11181d; --surface:#1a242c; --surface2:#222f38; --ink:#edf2f3; --muted:#a9b8bd;
+      --line:#33434c; --blue:#5aa2f0; --red:#ff6b7a; --teal:#2dd4bf; --amber:#e8b44a;
+      --ceiling:#e8b44a; --grid:#2a3942;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.55}
+  button,[role="button"],select,summary,input:not([type="checkbox"],[type="radio"]){min-height:2.25rem}
+  .wrap{max-width:980px;margin:0 auto;padding:20px 18px 44px}
+  h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(30px,5vw,46px);line-height:1.05;margin:6px 0 10px;font-weight:700;letter-spacing:-.02em}
+  h2{font-family:Georgia,'Times New Roman',serif;font-size:24px;line-height:1.15;margin:0 0 8px}
+  h3{font-size:15px;margin:0 0 6px;letter-spacing:.02em;text-transform:uppercase}
+  p{margin:0 0 12px}
+  .lede{font-size:18px;color:var(--muted);max-width:720px}
+  .lede strong{color:var(--ink)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:22px 0}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+  .stat b{display:block;font-size:26px;line-height:1;font-family:Georgia,serif}
+  .stat span{font-size:13px;color:var(--muted)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;margin:16px 0}
+  .controls{display:flex;flex-wrap:wrap;gap:14px;align-items:end;justify-content:space-between;margin-bottom:8px}
+  .ceil{flex:1;min-width:260px}
+  .ceil label{font-weight:700;font-size:14px;display:flex;justify-content:space-between;gap:12px}
+  .ceil output{color:var(--teal);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--teal);min-height:44px}
+  .presets{display:flex;flex-wrap:wrap;gap:8px}
+  .presets button{border:1px solid var(--line);background:var(--surface2);color:var(--ink);border-radius:999px;padding:9px 14px;font-weight:700;cursor:pointer;min-height:44px}
+  .presets button[aria-pressed="true"]{background:var(--teal);color:#fff;border-color:var(--teal)}
+  @media (prefers-color-scheme: dark){ .presets button[aria-pressed="true"]{color:#06201c} }
+  .legend{display:flex;flex-wrap:wrap;gap:16px;font-size:13.5px;margin:10px 0 4px}
+  .legend i{display:inline-block;width:22px;height:4px;border-radius:2px;vertical-align:middle;margin-right:7px}
+  .legend .dash{height:0;border-top:3px dashed currentColor;background:none;width:22px}
+  .chart{width:100%;height:auto;display:block}
+  .readout{background:var(--surface2);border-radius:10px;padding:14px 16px;font-size:15.5px}
+  .readout strong{color:var(--teal)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .plain p{color:var(--muted)} .plain p strong{color:var(--ink)}
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  th,td{padding:9px 8px;text-align:left;border-bottom:1px solid var(--line)}
+  th{font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .note{font-size:13.5px;color:var(--muted)}
+  .tooltip{position:absolute;pointer-events:none;background:var(--ink);color:var(--bg);padding:7px 10px;border-radius:8px;font-size:13px;font-weight:700;opacity:0;transform:translate(-50%,-130%);white-space:nowrap}
+  .chartbox{position:relative}
+  @media (max-width:720px){
+    .stats{grid-template-columns:1fr 1fr}
+    .grid2{grid-template-columns:1fr}
+    .card{padding:14px}
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <p style="font-size:13px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--teal)">15 October — 15 November 2026 · Your chart, redrawn</p>
+  <h1>Security tokens — the asymptotic view</h1>
+  <p class="lede">Your straight trend lines keep climbing forever. An <strong>asymptotic</strong> line does something different: it keeps rising, but it <strong>bends toward a ceiling it never quite crosses</strong> — fast growth first, then slower and slower as it gets close.</p>
+
+  <section class="stats" aria-label="Key figures from your chart">
+    <div class="stat"><b>0.6M</b><span>Oct 15 — where it started</span></div>
+    <div class="stat"><b>26.5M</b><span>Nov 15 — where it ended</span></div>
+    <div class="stat"><b>+25.9M</b><span>Added in 31 days</span></div>
+    <div class="stat"><b>44×</b><span>26.5 ÷ 0.6 — total multiple</span></div>
+  </section>
+
+  <section class="card">
+    <div class="controls">
+      <div class="ceil">
+        <label for="ceiling">Drag the ceiling — the asymptote <output id="ceilOut">38.0M tokens</output></label>
+        <input id="ceiling" type="range" min="30" max="60" step="1" value="38" aria-describedby="readout" />
+        <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--muted)"><span>30M — tight ceiling</span><span>60M — roomy ceiling</span></div>
+      </div>
+      <div class="presets" role="group" aria-label="Ceiling presets">
+        <button type="button" data-ceil="32" aria-pressed="false">32M</button>
+        <button type="button" data-ceil="38" aria-pressed="true">38M</button>
+        <button type="button" data-ceil="50" aria-pressed="false">50M</button>
+      </div>
+    </div>
+
+    <div class="legend" aria-hidden="true">
+      <span><i style="background:var(--blue)"></i>Your measured / implied points</span>
+      <span style="color:var(--red)"><i class="dash"></i>Straight trend — keeps going</span>
+      <span style="color:var(--teal)"><i style="background:var(--teal)"></i>Asymptotic — bends to the ceiling</span>
+      <span style="color:var(--ceiling)"><i class="dash"></i>Ceiling (asymptote)</span>
+    </div>
+
+    <div class="chartbox">
+      <svg id="mainChart" class="chart" viewBox="0 0 820 470" role="img" aria-label="Chart showing measured security tokens to November 15, then a straight projection and an asymptotic projection bending toward a ceiling through December 15"></svg>
+      <div id="tip" class="tooltip" role="status"></div>
+    </div>
+
+    <div class="readout" id="readout" aria-live="polite"></div>
+    <p class="note" style="margin-top:12px">Tap or hover any blue dot for its value. Everything after Nov 15 is a model, not a measurement — it shows the <em>shape</em> of asymptotic growth, not a promise of what happens next.</p>
+  </section>
+
+  <div class="grid2">
+    <section class="card plain">
+      <h2>What you were looking at</h2>
+      <p>In your photo, the blue dots are the counts. The open circles on the left are <strong>implied from the line count</strong>; the filled dots on the right are <strong>measured</strong>.</p>
+      <p>They climb in a fairly steady ramp: about <strong>0.84 million more tokens per day</strong> on average across the month. That is why the straight lines you drew in Paint fit so well — for these 31 days, the growth really does look close to straight.</p>
+      <p>The bend has not clearly happened yet in the real data. The last step, Nov 13 → Nov 15, added 1.5M in 2 days — a little slower than the mid-period pace, but one step is not a trend.</p>
+    </section>
+
+    <section class="card plain">
+      <h2>What “asymptotic” means, plainly</h2>
+      <p>An <strong>asymptote</strong> is a line a curve gets closer and closer to, without reaching it.</p>
+      <p>Picture filling a bucket with a hose that weakens as the bucket fills. Early on the level shoots up. Later it creeps. The rim is the asymptote — the level approaches it, but the rise keeps shrinking.</p>
+      <p>Applied here: if there is a practical limit — every token there is to find in the tree, say — growth would not stop with a sudden flat line. It would <strong>ease into</strong> that limit, exactly like the green curve above.</p>
+    </section>
+  </div>
+
+  <section class="card">
+    <h2>Your 31 days, close up</h2>
+    <p class="note">Same points, on the original 0–30M scale from your photo — no projection, just what was counted.</p>
+    <svg id="zoomChart" class="chart" viewBox="0 0 820 340" role="img" aria-label="Close-up chart of measured security tokens from October 15 to November 15 2026, rising from 0.6 million to 26.5 million"></svg>
+  </section>
+
+  <section class="card">
+    <h2>The numbers behind both charts</h2>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr><th>Date</th><th>Type</th><th class="num">Security tokens</th><th class="num">Change from previous</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    </div>
+    <p class="note" style="margin-top:12px">Values read from the labels in your photo on 16 November 2026. Middle dates are read from each point's position on your chart's axis. The asymptotic projection after Nov 15 uses a daily growth rate that shrinks exponentially toward the ceiling you set — an illustrative model chosen to show the shape, fitted to start from the real Nov 15 value of 26.5M.</p>
+  </section>
+</main>
+
+<script>
+// Single source of truth — every mark, label and figure derives from this array.
+var DATA = [
+  {d:"2026-10-15", label:"Oct 15", v:0.6, type:"Implied"},
+  {d:"2026-10-20", label:"Oct 20", v:2.2, type:"Implied"},
+  {d:"2026-10-25", label:"Oct 25", v:5.7, type:"Implied"},
+  {d:"2026-10-30", label:"Oct 30", v:11.0, type:"Implied"},
+  {d:"2026-11-04", label:"Nov 4", v:17.0, type:"Measured"},
+  {d:"2026-11-08", label:"Nov 8", v:20.2, type:"Measured"},
+  {d:"2026-11-13", label:"Nov 13", v:25.0, type:"Measured"},
+  {d:"2026-11-15", label:"Nov 15", v:26.5, type:"Measured"}
+];
+var DAY = 86400000;
+var T0 = new Date("2026-10-15T00:00:00").getTime();
+function days(dateStr){ return Math.round((new Date(dateStr+"T00:00:00").getTime()-T0)/DAY); }
+DATA.forEach(function(p){ p.t = days(p.d); });
+
+// Straight-line slope from the two real endpoints: (26.5-0.6)/31
+var SLOPE = (26.5-0.6)/31;
+function straightAt(t){ return 0.6 + SLOPE*t; }
+// Asymptotic projection: from Nov 15 (t=31, v=26.5), gap to ceiling decays exponentially.
+function asymAt(t, L){
+  if(t<=31){ return null; }
+  return L - (L-26.5)*Math.exp(-0.055*(t-31));
+}
+
+var NS="http://www.w3.org/2000/svg";
+function el(tag, attrs, parent, text){
+  var n=document.createElementNS(NS,tag);
+  for(var k in attrs) n.setAttribute(k, attrs[k]);
+  if(text!=null) n.textContent=text;
+  if(parent) parent.appendChild(n);
+  return n;
+}
+function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+function drawMain(L){
+  var svg=document.getElementById("mainChart");
+  svg.innerHTML="";
+  var W=820,H=470, Lft=62,Rt=18,Tp=26,Bt=52;
+  var pw=W-Lft-Rt, ph=H-Tp-Bt;
+  var tMax=61, yMax=60; // Oct 15 -> Dec 15 ; 0-60M so the straight line (51.5M) and ceilings fit
+  function X(t){ return Lft + (t/tMax)*pw; }
+  function Y(v){ return Tp + ph - (v/yMax)*ph; }
+
+  var cGrid=cssVar("--grid"), cMuted=cssVar("--muted"), cBlue=cssVar("--blue"),
+      cRed=cssVar("--red"), cTeal=cssVar("--teal"), cCeil=cssVar("--ceiling"), cInk=cssVar("--ink");
+
+  // grid + y ticks
+  for(var v=0; v<=60; v+=10){
+    el("line",{x1:Lft,x2:Lft+pw,y1:Y(v),y2:Y(v),stroke:cGrid,"stroke-width":1},svg);
+    el("text",{x:Lft-10,y:Y(v)+4,"text-anchor":"end","font-size":12.5,fill:cMuted},svg, v===0?"0":v+"M");
+  }
+  // x ticks
+  var xticks=[{t:0,l:"Oct 15"},{t:10,l:"Oct 25"},{t:20,l:"Nov 4"},{t:31,l:"Nov 15"},{t:41,l:"Nov 25"},{t:51,l:"Dec 5"},{t:61,l:"Dec 15"}];
+  xticks.forEach(function(x){
+    el("text",{x:X(x.t),y:H-28,"text-anchor":"middle","font-size":12.5,fill:cMuted},svg,x.l);
+  });
+  el("text",{x:Lft,y:H-6,"font-size":12,fill:cMuted},svg,"Measured →");
+  el("text",{x:Lft+pw,y:H-6,"text-anchor":"end","font-size":12,fill:cMuted},svg,"← Projected (model)");
+
+  // divider at Nov 15
+  el("line",{x1:X(31),x2:X(31),y1:Tp,y2:Tp+ph,stroke:cMuted,"stroke-width":1,"stroke-dasharray":"3 5",opacity:.65},svg);
+  el("text",{x:X(31),y:Tp-8,"text-anchor":"middle","font-size":12,fill:cMuted,"font-weight":700},svg,"Nov 15 — last real count");
+
+  // ceiling
+  el("line",{x1:Lft,x2:Lft+pw,y1:Y(L),y2:Y(L),stroke:cCeil,"stroke-width":2,"stroke-dasharray":"8 6"},svg);
+  el("text",{x:Lft+6,y:Y(L)-8,"font-size":13,fill:cCeil,"font-weight":700},svg,"Ceiling: "+L.toFixed(0)+"M — approached, never crossed");
+
+  // straight projection (full span, dashed)
+  var straightPts=""; for(var t=0;t<=61;t+=2){ straightPts+=X(t)+","+Y(straightAt(t))+" "; }
+  el("polyline",{points:straightPts,fill:"none",stroke:cRed,"stroke-width":2.5,"stroke-dasharray":"7 5",opacity:.9},svg);
+
+  // asymptotic: actual path to Nov 15, then saturating curve
+  var actualPts = DATA.map(function(p){return X(p.t)+","+Y(p.v);}).join(" ");
+  el("polyline",{points:actualPts,fill:"none",stroke:cBlue,"stroke-width":3,"stroke-linejoin":"round"},svg);
+  var asymPts = X(31)+","+Y(26.5)+" ";
+  for(var t2=32;t2<=61;t2+=1){ asymPts+=X(t2)+","+Y(asymAt(t2,L))+" "; }
+  el("polyline",{points:asymPts,fill:"none",stroke:cTeal,"stroke-width":3.5,"stroke-linejoin":"round"},svg);
+
+  // end labels
+  el("text",{x:X(61)-4,y:Y(straightAt(61))-10,"text-anchor":"end","font-size":13.5,fill:cRed,"font-weight":700},svg,"Straight: "+straightAt(61).toFixed(1)+"M by Dec 15");
+  el("text",{x:X(61)-4,y:Y(asymAt(61,L))+30,"text-anchor":"end","font-size":13.5,fill:cTeal,"font-weight":700},svg,"Asymptotic: "+asymAt(61,L).toFixed(1)+"M by Dec 15");
+
+  // points
+  var tip=document.getElementById("tip");
+  DATA.forEach(function(p){
+    var c=el("circle",{cx:X(p.t),cy:Y(p.v),r:p.type==="Measured"?6.5:6,fill:p.type==="Measured"?cBlue:"none",stroke:cBlue,"stroke-width":2.5,tabindex:"0",role:"button","aria-label":p.label+": "+p.v.toFixed(1)+" million, "+p.type.toLowerCase()},svg);
+    function show(){
+      var box=svg.getBoundingClientRect();
+      tip.textContent=p.label+" · "+p.v.toFixed(1)+"M · "+p.type;
+      tip.style.left=( (X(p.t)/W)*box.width )+"px";
+      tip.style.top=( (Y(p.v)/H)*box.height )+"px";
+      tip.style.opacity="1";
+    }
+    function hide(){ tip.style.opacity="0"; }
+    c.addEventListener("pointerenter",show); c.addEventListener("pointerleave",hide);
+    c.addEventListener("focus",show); c.addEventListener("blur",hide); c.addEventListener("click",show);
+    el("text",{x:X(p.t),y:Y(p.v)-13,"text-anchor":"middle","font-size":12.5,fill:cInk,"font-weight":700},svg,p.v.toFixed(1)+"M");
+  });
+
+  // readout
+  var a=asymAt(61,L), s=straightAt(61);
+  document.getElementById("readout").innerHTML =
+    "With a <strong>"+L.toFixed(0)+"M ceiling</strong>, the asymptotic curve reaches <strong>"+a.toFixed(1)+"M by Dec 15</strong> — "+
+    "only "+(L-a).toFixed(1)+"M from the ceiling, and closing more slowly every day. "+
+    "The straight trend reaches <strong style='color:var(--red)'>"+s.toFixed(1)+"M</strong> on the same day and would pass the ceiling without slowing at all. "+
+    "That difference — <strong>"+(s-a).toFixed(1)+"M</strong> — is the whole idea of the bend.";
+  document.getElementById("ceilOut").textContent=L.toFixed(0)+"M tokens";
+}
+
+function drawZoom(){
+  var svg=document.getElementById("zoomChart");
+  var W=820,H=340,Lft=62,Rt=18,Tp=22,Bt=44,pw=W-Lft-Rt,ph=H-Tp-Bt,tMax=31,yMax=30;
+  function X(t){return Lft+(t/tMax)*pw;} function Y(v){return Tp+ph-(v/yMax)*ph;}
+  var cGrid=cssVar("--grid"),cMuted=cssVar("--muted"),cBlue=cssVar("--blue"),cInk=cssVar("--ink");
+  for(var v=0;v<=30;v+=5){
+    el("line",{x1:Lft,x2:Lft+pw,y1:Y(v),y2:Y(v),stroke:cGrid,"stroke-width":1},svg);
+    el("text",{x:Lft-10,y:Y(v)+4,"text-anchor":"end","font-size":12.5,fill:cMuted},svg,v===0?"0":v+"M");
+  }
+  DATA.forEach(function(p){
+    el("text",{x:X(p.t),y:H-18,"text-anchor":"middle","font-size":12.5,fill:cMuted},svg,p.label);
+  });
+  var pts=DATA.map(function(p){return X(p.t)+","+Y(p.v);}).join(" ");
+  el("polyline",{points:pts,fill:"none",stroke:cBlue,"stroke-width":3,"stroke-linejoin":"round"},svg);
+  DATA.forEach(function(p){
+    el("circle",{cx:X(p.t),cy:Y(p.v),r:p.type==="Measured"?6:5.5,fill:p.type==="Measured"?cBlue:"#fff",stroke:cBlue,"stroke-width":2.5},svg);
+    el("text",{x:X(p.t),y:Y(p.v)-12,"text-anchor":"middle","font-size":12.5,fill:cInk,"font-weight":700},svg,p.v.toFixed(1)+"M");
+  });
+  el("text",{x:Lft,y:14,"font-size":12.5,fill:cMuted},svg,"○ implied from the line count    ● measured");
+}
+
+// table
+(function(){
+  var tb=document.getElementById("tbody");
+  DATA.forEach(function(p,i){
+    var tr=document.createElement("tr");
+    var prev = i===0 ? "—" : "+"+(p.v-DATA[i-1].v).toFixed(1)+"M";
+    tr.innerHTML="<td>"+p.label+", 2026</td><td>"+p.type+"</td><td class='num'>"+p.v.toFixed(1)+"M</td><td class='num'>"+prev+"</td>";
+    tb.appendChild(tr);
+  });
+})();
+
+var slider=document.getElementById("ceiling");
+function syncPresets(){
+  document.querySelectorAll(".presets button").forEach(function(b){
+    b.setAttribute("aria-pressed", String(Number(b.dataset.ceil)===Number(slider.value)));
+  });
+}
+slider.addEventListener("input",function(){ drawMain(Number(slider.value)); syncPresets(); });
+document.querySelectorAll(".presets button").forEach(function(b){
+  b.addEventListener("click",function(){ slider.value=b.dataset.ceil; drawMain(Number(slider.value)); syncPresets(); });
+});
+drawMain(38); drawZoom(); syncPresets();
+// Redraw on theme change so SVG colors follow light/dark
+if(window.matchMedia){ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",function(){ drawMain(Number(slider.value)); drawZoom(); }); }
+</script>
+</body>
+</html>
