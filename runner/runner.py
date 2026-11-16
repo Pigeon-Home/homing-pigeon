@@ -2770,6 +2770,29 @@ def prune_retained(base_dir, days):
 
 _RETAINED_LOCK = threading.RLock()
 
+def _retained_sidecar_name(job_id):
+    """The file name a retained record takes when its plain name
+    cannot stand beside a case-differing job's record: the exact id,
+    a tilde (a character no job id may carry, so the name can never
+    be another job's plain name), and a digest of the exact id, so
+    two ids that differ only in case still name two different files
+    even once a case-insensitive filesystem folds the name."""
+    digest = hashlib.sha256(job_id.encode("utf-8")).hexdigest()[:16]
+    return f"{job_id}~{digest}.json"
+
+def _dir_folds_case(d, names):
+    """True when the filesystem serving directory d resolves a name
+    the listing does not carry in that case: some listed name,
+    case-flipped, is not itself listed but still exists. The probe
+    is read-only and rides on the listing's own names."""
+    listed = set(names)
+    for name in names:
+        flipped = name.swapcase()
+        if flipped != name and flipped not in listed \
+                and os.path.exists(os.path.join(d, flipped)):
+            return True
+    return False
+
 def save_retained(base_dir, job_id, payload):
     """Persist output for later queries. Unsafe ids are dropped, not written.
 
@@ -2787,6 +2810,25 @@ def save_retained(base_dir, job_id, payload):
         except OSError:
             return
         path = os.path.join(d, f"{job_id}.json")
+        try:
+            names = os.listdir(d)
+        except OSError:
+            names = []
+        folded = [n for n in names
+                  if n != f"{job_id}.json" and n.endswith(".json")
+                  and n[:-5].casefold() == job_id.casefold()]
+        if folded and _dir_folds_case(d, names):
+            # A case-differing job's record already stands here and
+            # this filesystem folds the two ids into one directory
+            # entry (Windows NTFS, a default macOS volume): writing
+            # the plain name would rename that entry to this id's
+            # case and destroy the sibling's record, the Germany
+            # rig's race_state crash 6fef584578e2d83c (2026-11-16).
+            # This record takes its sidecar name instead;
+            # load_retained knows it. Readers that derive a job id
+            # from a file name skip the sidecar (its stem is not a
+            # job id); readers that read content still see it.
+            path = os.path.join(d, _retained_sidecar_name(job_id))
         try:
             safe = _json_safe(payload) if isinstance(payload, dict) else {}
             _atomicio.write_json(path, safe, allow_nan=False)
@@ -2823,11 +2865,31 @@ def load_retained(base_dir, job_id):
             names = os.listdir(retained)
         except OSError:
             return None
-        if f"{job_id}.json" not in names:
+        if f"{job_id}.json" in names:
+            chosen = path
+        elif _retained_sidecar_name(job_id) in names:
+            # The record stands under its sidecar name: when it was
+            # saved, a case-differing job's record already stood
+            # here and the filesystem folds the two ids into one
+            # directory entry, so the plain name was never this
+            # record's to take (crash 6fef584578e2d83c, 2026-11-16).
+            # The sidecar earns the same refusals as the plain
+            # name: a planted link is not followed, and the resolved
+            # path must stay inside the retained directory.
+            side = os.path.join(retained, _retained_sidecar_name(job_id))
+            if os.path.islink(side):
+                return None
+            chosen = os.path.realpath(side)
+            try:
+                if os.path.commonpath([retained, chosen]) != retained:
+                    return None
+            except ValueError:
+                return None
+        else:
             return None
-        if not os.path.isfile(path):
+        if not os.path.isfile(chosen):
             return None
-        data = _read_json_dict(path)
+        data = _read_json_dict(chosen)
     return data
 
 def retained_expired(data, cfg):

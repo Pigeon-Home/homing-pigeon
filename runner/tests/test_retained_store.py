@@ -693,5 +693,413 @@ del _stored, _t, _name, _sname
 # ---------------------------------------------------------------------
 
 
+_REAL_EXISTS = os.path.exists
+
+
+class RetainedCaseCollisionShotgunTest(_Base):
+    """The shotgun family for race_state crash 6fef584578e2d83c
+    (Germany rig, 2026-11-16): on a case-insensitive filesystem two
+    case-differing ids share one directory entry, and the second
+    save's replace renamed the entry and destroyed the first
+    record, so the first id read back absent after the join. The
+    fix: save_retained, finding a case-folded sibling on a
+    filesystem that folds case, writes under a fold-proof sidecar
+    name (the exact id, a tilde no job id may carry, and a digest
+    of the exact id), and load_retained falls back to that name.
+    This family scattershots everything around that failure: the
+    crash's exact thread schedule, both save orders, three and
+    four case variants of one id, the probe's own seams, planted
+    sidecars (whole, corrupt, symlinked), re-saves, prune, the
+    rows reader, and bookended ids built from every symbol the job
+    id alphabet allows at the front and the back (the symbols
+    outside the alphabet are refused at the door, pinned by the
+    unsafe-id tests above). The folding filesystem is simulated at
+    the one seam it changes for the save decision, the way
+    LoadRetainedTest simulates the load seam: os.path.exists
+    resolves a case-flipped name the listing does not carry. The
+    platform proof itself stands on the Germany rig's NTFS, where
+    the crash was filed: the focused reproducer and this whole
+    file were run there against the fixed tree.
+
+    Proof of work (16-Nov-2026). The unit tests are the 71 methods
+    of this class: 29 hand-written seams plus 42 generated cases
+    (19 case-transform pairs over five id shapes, 18 bookended ids,
+    5 case runs). The fuzzing was executed, not just the tests
+    written: the corpus machinery was driven locally with
+    runner/tools/de_dust_corpus.py grow --target race_state
+    --rounds 400 --seed 20261116 against the banked race_state
+    corpus (186 entries). Result: 400 rounds, 0 crashes, 0 slow,
+    arcs unchanged at 197, slowest try 188 ms; the grow's
+    bookkeeping writes were not banked (banking is the rigs' hourly
+    job). The platform measurement the unit tests cannot make
+    stands on the rig: before the fix, the focused reproducer (the
+    crash's exact op lists plus both deterministic save orders) ran
+    on the Germany rig's NTFS against the current head and failed
+    every schedule with the crash's exact detail line; after the
+    fix it passes every schedule there, the directory holding the
+    plain record and the sidecar side by side, and this file's 93
+    pre-existing tests pass on the rig as well. On a case-sensitive
+    filesystem the same reproducer passed before and after: the two
+    entries coexist there, which is why the bug needed a rig to
+    find it. regression_guard on this file: green (native, repeat,
+    shuffled, the simulated Windows surface, no leaks, the registry
+    gates)."""
+
+    # -- the folding surface -------------------------------------
+
+    def _exists_under_fold(self, path):
+        if _REAL_EXISTS(path):
+            return True
+        d, name = os.path.split(path)
+        try:
+            entries = os.listdir(d)
+        except OSError:
+            return False
+        return any(e != name and e.casefold() == name.casefold()
+                   for e in entries)
+
+    def _save_under_fold(self, job_id, payload):
+        with unittest.mock.patch.object(
+                os.path, "exists", side_effect=self._exists_under_fold):
+            R.save_retained(self.base, job_id, payload)
+
+    def _write_paths(self):
+        paths = []
+        real = R._atomicio.write_json
+
+        def recording(path, obj, **kw):
+            paths.append(path)
+            return real(path, obj, **kw)
+
+        return paths, unittest.mock.patch.object(
+            R._atomicio, "write_json", side_effect=recording)
+
+    # -- the crash itself -----------------------------------------
+
+    def test_the_crash_pair_both_read_back_upper_first(self):
+        R.save_retained(self.base, "bm-RET-SHARED", {"v": "bm-RET-SHARED"})
+        self._save_under_fold("bm-ret-shared", {"v": "bm-ret-shared"})
+        self.assertEqual(R.load_retained(self.base, "bm-RET-SHARED"),
+                         {"v": "bm-RET-SHARED"})
+        self.assertEqual(R.load_retained(self.base, "bm-ret-shared"),
+                         {"v": "bm-ret-shared"})
+
+    def test_the_crash_pair_both_read_back_lower_first(self):
+        R.save_retained(self.base, "bm-ret-shared", {"v": "bm-ret-shared"})
+        self._save_under_fold("bm-RET-SHARED", {"v": "bm-RET-SHARED"})
+        self.assertEqual(R.load_retained(self.base, "bm-ret-shared"),
+                         {"v": "bm-ret-shared"})
+        self.assertEqual(R.load_retained(self.base, "bm-RET-SHARED"),
+                         {"v": "bm-RET-SHARED"})
+
+    def test_the_crash_thread_schedule_under_fold(self):
+        lanes = [
+            [{"id": "bm-RET-SHARED", "op": "save"},
+             {"id": "bm-ret-shared", "op": "load"}],
+            [{"op": "yield"}, {"id": "bm-ret-shared", "op": "load"},
+             {"id": "bm-ret-shared", "op": "save"}],
+        ]
+        saved = {}
+
+        def lane(t, ops):
+            for i, op in enumerate(ops):
+                if op["op"] == "save":
+                    p = {"v": op["id"], "t": t, "i": i}
+                    R.save_retained(self.base, op["id"], p)
+                    saved.setdefault(op["id"], []).append(p)
+                elif op["op"] == "load":
+                    R.load_retained(self.base, op["id"])
+                else:
+                    time.sleep(0)
+                time.sleep(0)
+
+        with unittest.mock.patch.object(
+                os.path, "exists", side_effect=self._exists_under_fold):
+            workers = [threading.Thread(target=lane, args=(t, ops))
+                       for t, ops in enumerate(lanes)]
+            for w in workers:
+                w.start()
+            for w in workers:
+                w.join()
+        for job_id, payloads in saved.items():
+            self.assertIn(R.load_retained(self.base, job_id), payloads)
+
+    def test_second_save_under_fold_writes_the_sidecar_path(self):
+        R.save_retained(self.base, "bm-RET-SHARED", {"v": 1})
+        paths, patcher = self._write_paths()
+        with patcher:
+            self._save_under_fold("bm-ret-shared", {"v": 2})
+        self.assertEqual(
+            paths, [os.path.join(
+                self.rdir, R._retained_sidecar_name("bm-ret-shared"))])
+
+    def test_first_save_under_fold_keeps_the_plain_path(self):
+        paths, patcher = self._write_paths()
+        with patcher:
+            self._save_under_fold("bm-RET-SHARED", {"v": 1})
+        self.assertEqual(paths, [self.record_path("bm-RET-SHARED")])
+
+    def test_no_sidecar_without_a_fold(self):
+        # The real filesystem here does not fold: both records keep
+        # their plain names, exactly as before the fix.
+        R.save_retained(self.base, "bm-RET-SHARED", {"v": "up"})
+        R.save_retained(self.base, "bm-ret-shared", {"v": "low"})
+        self.assertEqual(sorted(os.listdir(self.rdir)),
+                         ["bm-RET-SHARED.json", "bm-ret-shared.json"])
+        self.assertEqual(R.load_retained(self.base, "bm-RET-SHARED"),
+                         {"v": "up"})
+        self.assertEqual(R.load_retained(self.base, "bm-ret-shared"),
+                         {"v": "low"})
+
+    # -- more variants of one id -----------------------------------
+
+    def test_four_case_variants_all_read_back(self):
+        variants = ("bm-ret-shared", "bm-RET-SHARED",
+                    "Bm-ReT-ShArEd", "BM-RET-SHARED")
+        R.save_retained(self.base, variants[0], {"v": variants[0]})
+        for v in variants[1:]:
+            self._save_under_fold(v, {"v": v})
+        for v in variants:
+            self.assertEqual(R.load_retained(self.base, v), {"v": v}, v)
+        names = os.listdir(self.rdir)
+        self.assertEqual(len(names), 4)
+        self.assertEqual(
+            sum(1 for n in names if "~" in n), 3)
+
+    def test_a_fifth_variant_that_was_never_saved_is_none(self):
+        R.save_retained(self.base, "bm-ret-shared", {"v": "low"})
+        self._save_under_fold("bm-RET-SHARED", {"v": "up"})
+        self.assertIsNone(R.load_retained(self.base, "BM-RET-SHARED"))
+        self.assertIsNone(R.load_retained(self.base, "Bm-Ret-Shared"))
+
+    def test_resave_of_the_sidecarred_id_updates_its_record(self):
+        R.save_retained(self.base, "bm-RET-SHARED", {"v": "first"})
+        self._save_under_fold("bm-ret-shared", {"v": "second"})
+        self._save_under_fold("bm-ret-shared", {"v": "second-new"})
+        self.assertEqual(R.load_retained(self.base, "bm-ret-shared"),
+                         {"v": "second-new"})
+        self.assertEqual(R.load_retained(self.base, "bm-RET-SHARED"),
+                         {"v": "first"})
+        self.assertEqual(len(os.listdir(self.rdir)), 2)
+
+    def test_resave_of_the_plain_holder_stays_on_the_plain_name(self):
+        R.save_retained(self.base, "bm-RET-SHARED", {"v": "first"})
+        self._save_under_fold("bm-ret-shared", {"v": "second"})
+        paths, patcher = self._write_paths()
+        with patcher:
+            R.save_retained(self.base, "bm-RET-SHARED", {"v": "first-new"})
+        self.assertEqual(paths, [self.record_path("bm-RET-SHARED")])
+        self.assertEqual(R.load_retained(self.base, "bm-RET-SHARED"),
+                         {"v": "first-new"})
+        self.assertEqual(R.load_retained(self.base, "bm-ret-shared"),
+                         {"v": "second"})
+
+    def test_non_dict_payload_sidecars_as_an_empty_record(self):
+        R.save_retained(self.base, "bm-RET-SHARED", {"v": 1})
+        self._save_under_fold("bm-ret-shared", ["not", "a", "dict"])
+        self.assertEqual(R.load_retained(self.base, "bm-ret-shared"), {})
+
+    def test_directory_named_like_the_sibling_forces_the_sidecar(self):
+        os.makedirs(os.path.join(self.rdir, "bm-RET-SHARED.json"))
+        self._save_under_fold("bm-ret-shared", {"v": "low"})
+        self.assertEqual(R.load_retained(self.base, "bm-ret-shared"),
+                         {"v": "low"})
+        self.assertIsNone(R.load_retained(self.base, "bm-RET-SHARED"))
+
+    def test_listdir_failure_during_save_still_saves_plain(self):
+        R.save_retained(self.base, "bm-RET-SHARED", {"v": "up"})
+        with unittest.mock.patch.object(
+                os, "listdir", side_effect=OSError("gone")):
+            R.save_retained(self.base, "bm-ret-shared", {"v": "low"})
+        self.assertEqual(R.load_retained(self.base, "bm-ret-shared"),
+                         {"v": "low"})
+
+    # -- the sidecar name -------------------------------------------
+
+    def test_sidecar_name_carries_the_exact_id_and_a_tilde(self):
+        name = R._retained_sidecar_name("bm-ret-shared")
+        self.assertTrue(name.startswith("bm-ret-shared~"))
+        self.assertTrue(name.endswith(".json"))
+        self.assertFalse(R._SAFE_JOB_ID.match(name[:-5]))
+
+    def test_sidecar_names_differ_for_case_variants(self):
+        names = {R._retained_sidecar_name(v) for v in
+                 ("bm-ret-shared", "bm-RET-SHARED", "Bm-ReT-ShArEd",
+                  "BM-RET-SHARED")}
+        self.assertEqual(len(names), 4)
+        folded = {n.casefold() for n in names}
+        self.assertEqual(len(folded), 4)
+
+    def test_sidecar_name_is_stable(self):
+        self.assertEqual(R._retained_sidecar_name("CaseJob-1"),
+                         R._retained_sidecar_name("CaseJob-1"))
+
+    def test_sidecar_name_fits_a_max_length_id(self):
+        name = R._retained_sidecar_name("A" * 128)
+        self.assertLessEqual(len(name), 255)
+
+    # -- the probe ----------------------------------------------------
+
+    def test_probe_is_false_on_this_filesystem(self):
+        os.makedirs(self.rdir)
+        with open(self.record_path("bm-RET-SHARED"), "w",
+                  encoding="utf-8") as f:
+            f.write("{}")
+        self.assertFalse(
+            R._dir_folds_case(self.rdir, os.listdir(self.rdir)))
+
+    def test_probe_is_true_when_a_flipped_name_resolves(self):
+        with unittest.mock.patch.object(
+                os.path, "exists", side_effect=self._exists_under_fold):
+            os.makedirs(self.rdir)
+            with open(self.record_path("bm-RET-SHARED"), "w",
+                      encoding="utf-8") as f:
+                f.write("{}")
+            self.assertTrue(
+                R._dir_folds_case(self.rdir, os.listdir(self.rdir)))
+
+    def test_probe_ignores_names_without_case(self):
+        # A name with no cased character flips to itself and is
+        # never probed, however exists answers.
+        with unittest.mock.patch.object(
+                os.path, "exists", return_value=True):
+            self.assertFalse(
+                R._dir_folds_case(self.rdir, ["123", "4.5", "-._"]))
+
+    def test_probe_is_false_when_the_flipped_name_is_listed(self):
+        # Both case forms stand in the listing (a case-sensitive
+        # filesystem holding two variants): each name's flip is
+        # itself listed, so the probe never fires.
+        os.makedirs(self.rdir)
+        for name in ("ab.json", "AB.JSON"):
+            with open(os.path.join(self.rdir, name), "w",
+                      encoding="utf-8") as f:
+                f.write("{}")
+        self.assertFalse(
+            R._dir_folds_case(self.rdir, os.listdir(self.rdir)))
+
+    def test_probe_is_false_for_an_empty_listing(self):
+        self.assertFalse(R._dir_folds_case(self.rdir, []))
+
+    # -- planted sidecars, read back ----------------------------------
+
+    def _plant_sidecar(self, job_id, text):
+        os.makedirs(self.rdir, exist_ok=True)
+        path = os.path.join(self.rdir, R._retained_sidecar_name(job_id))
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+        return path
+
+    def test_load_falls_back_to_a_planted_sidecar(self):
+        self._plant_sidecar("bm-ret-shared", json.dumps({"v": "side"}))
+        self.assertEqual(R.load_retained(self.base, "bm-ret-shared"),
+                         {"v": "side"})
+
+    def test_load_prefers_the_plain_record_when_both_stand(self):
+        R.save_retained(self.base, "bm-ret-shared", {"v": "plain"})
+        self._plant_sidecar("bm-ret-shared", json.dumps({"v": "side"}))
+        self.assertEqual(R.load_retained(self.base, "bm-ret-shared"),
+                         {"v": "plain"})
+
+    def test_a_corrupt_sidecar_is_none(self):
+        self._plant_sidecar("bm-ret-shared", "{not json")
+        self.assertIsNone(R.load_retained(self.base, "bm-ret-shared"))
+
+    @unittest.skipUnless(hasattr(os, "symlink"), "needs symlink")
+    def test_a_symlinked_sidecar_is_refused(self):
+        real = os.path.join(self.base, "real.json")
+        with open(real, "w", encoding="utf-8") as f:
+            json.dump({"x": 1}, f)
+        os.makedirs(self.rdir)
+        os.symlink(real, os.path.join(
+            self.rdir, R._retained_sidecar_name("bm-ret-shared")))
+        self.assertIsNone(R.load_retained(self.base, "bm-ret-shared"))
+
+    # -- the neighbours -------------------------------------------------
+
+    def test_prune_removes_sidecar_records_by_age(self):
+        old = self._plant_sidecar("bm-ret-shared", "{}")
+        fresh = os.path.join(self.rdir, "fresh.json")
+        with open(fresh, "w", encoding="utf-8") as f:
+            f.write("{}")
+        when = time.time() - 10 * 86400
+        os.utime(old, (when, when))
+        self.assertEqual(R.prune_retained(self.base, 7), 1)
+        self.assertFalse(os.path.exists(old))
+        self.assertTrue(os.path.exists(fresh))
+
+    def test_rows_reader_names_the_plain_holder_and_skips_the_sidecar(self):
+        R.save_retained(self.base, "bm-RET-SHARED", {"v": "up"})
+        self._save_under_fold("bm-ret-shared", {"v": "low"})
+        ids = [job_id for _m, _p, job_id in
+               R._chosen_retained_rows(self.base, 6)]
+        self.assertIn("bm-RET-SHARED", ids)
+        self.assertNotIn("bm-ret-shared", ids)
+
+    def test_unsafe_ids_never_reach_the_sidecar_logic(self):
+        R.save_retained(self.base, "bm-RET-SHARED", {"v": 1})
+        for bad in ("../bm-ret-shared", "bm ret shared", "", "a/b"):
+            self._save_under_fold(bad, {"x": 1})
+        self.assertEqual(os.listdir(self.rdir), ["bm-RET-SHARED.json"])
+
+
+def _make_collision_test(stored, variant):
+    def run(self):
+        R.save_retained(self.base, stored, {"v": stored})
+        self._save_under_fold(variant, {"v": variant})
+        self.assertEqual(R.load_retained(self.base, stored),
+                         {"v": stored})
+        self.assertEqual(R.load_retained(self.base, variant),
+                         {"v": variant})
+        self.assertIn(R._retained_sidecar_name(variant),
+                      os.listdir(self.rdir))
+    return run
+
+
+# Every case transform of several id shapes, collided pairwise
+# under the folding surface: the stored record keeps the plain
+# name, the variant takes the sidecar, both read back whole.
+for _stored in ("bm-RET-SHARED", "CaseJob-1", "aB3-dE5", "Job_9-X", "qZ"):
+    for _t in ("lower", "upper", "swapcase", "title"):
+        _variant = getattr(_stored, _t)()
+        if _variant == _stored or _variant.casefold() != _stored.casefold():
+            continue
+        _name = f"test_pair_{_t}_of_{_stored}".replace("-", "_")
+        setattr(RetainedCaseCollisionShotgunTest, _name,
+                _make_collision_test(_stored, _variant))
+del _stored, _t, _variant, _name
+
+
+def _make_bookend_test(stored):
+    def run(self):
+        variant = stored.swapcase()
+        R.save_retained(self.base, stored, {"v": stored})
+        self._save_under_fold(variant, {"v": variant})
+        self.assertEqual(R.load_retained(self.base, stored),
+                         {"v": stored})
+        self.assertEqual(R.load_retained(self.base, variant),
+                         {"v": variant})
+    return run
+
+
+# Bookended ids: every symbol the job id alphabet allows, at the
+# front and at the back, single and doubled, around cores that mix
+# case once, twice, and in runs of ten.
+for _core in ("Ret", "rET", "Job"):
+    for _pre, _post in (("-", "-"), ("_", "_"), (".", "."),
+                        ("--", "--"), ("-.", ".-"), ("_", "-")):
+        _stored = f"{_pre}{_core}{_post}"
+        _name = "test_bookend_" + _stored.replace(
+            "-", "d").replace(".", "p").replace("_", "u")
+        setattr(RetainedCaseCollisionShotgunTest, _name,
+                _make_bookend_test(_stored))
+for _stored in ("aaaaaaaaaaB", "Baaaaaaaaaa", "aaaaBaaaaa",
+                "AAAAAAAAAAb", "bAAAAAAAAAA"):
+    _name = f"test_run_{_stored}"
+    setattr(RetainedCaseCollisionShotgunTest, _name,
+            _make_bookend_test(_stored))
+del _core, _pre, _post, _stored, _name
+
+
 if __name__ == "__main__":
     unittest.main()
