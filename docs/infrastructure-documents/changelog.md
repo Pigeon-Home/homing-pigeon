@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.14 - 2026-11-16
+
+- seed: a copy started by path keeps to its own tree beside a stale install
+- core: the recorded figures follow the seed's own-tree landing; the build read red on them on every leg until this re-measure
+- docs: the README's two diagrams are titled Homing Pigeon v1 and draw version 2 in blue and version 3 in green, with a dashed line that says the SI you bring is the same SI the runner asks, at the owner's word
+- docs: a little white space around the README skim tables
+- de_dust: bank race_state crash 6fef584578e2d83c from the Germany rig, supposition recorded
+
 ## 3.17.26.13 - 2026-11-16
 
 - docs: README operating modes become skim tables and Proven platforms moves under Setup, at the conductor's word; the conductor's README edit and the docs/checklist.txt deletion ride along
