@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.11 - 2026-11-16
+
+- docs: README setup paragraph cleanup by the conductor: browser sign-in recommended, so the account password never lands in a config
+
 ## 3.17.26.10 - 2026-11-16
 
 - Extensions: refresh upstream pins (6 pin files; content hashes unchanged)
