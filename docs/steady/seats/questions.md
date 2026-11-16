@@ -313,6 +313,65 @@ is the reference zlib (runtime 1.3).
   file or recorded figure changes, no new skip
   reason is introduced, and the shrink guard
   names no file in this seat's working tree.
+**Rule-8 re-test, first finding (Muse, the
+ship lane, 2026-11-15).** The re-test arrived
+unplanned, at the release gate: the
+3.16.26.28 cut's build on its release commit
+stands red on the hosted Windows leg
+(test-windows (2)) on exactly the remedy's 2
+pin tests --
+`test_recorded_zip_size_matches_a_live_as_assembled_build`
+and
+`test_a_grown_core_file_moves_the_as_assembled_zip_size`
+-- both `AssertionError: 896433 != 902401`:
+the live as-assembled build on the Windows
+runner reads 902,401, the recorded figure
+5,968 more. The same build's Linux test leg
+stands green on the same tests, and the cut
+was refused on the red leg; the number stands
+spent and the fix rides the next counter.
+The recorded figure was measured on a Linux
+tree; the pin as landed is a Linux pin.
+
+**Suppositions for the rig measurement,
+recorded before it runs (the Germany Windows
+rig, the project's own Windows loop). They
+stand beside the second seat's local re-test
+above, not in its place: that re-test runs on
+Linux, where the pin passes; this one chases
+the Windows divergence its R-labels do not
+cover, so this lane's labels are W.**
+
+- Q199-W1. The divergence is content, not
+  container. The builder pins the timestamp,
+  the create system, the external attributes
+  and the compression level, so 2 builds over
+  byte-equal trees are byte-equal on any
+  platform; a per-entry CRC comparison of a
+  Windows build against a Linux build of the
+  same head names a proper subset of the 140
+  entries as differing, never all of them and
+  never none.
+- Q199-W2. Each differing entry differs only
+  in its line endings: the bytes git stores
+  carry LF, the Windows working tree carries
+  CRLF for those files (no `.gitattributes`
+  in this tree pins an eol), and stripping
+  the carriage returns makes the Windows
+  entry byte-equal to the Linux one.
+- Q199-W3. The macOS leg of the same hosted
+  build passes the pin (a macOS checkout does
+  not convert), so the red stands on Windows
+  alone of the 3 test legs.
+- Q199-W4. The remedy the numbers support is
+  the one that makes the recorded figure a
+  property of the stored tree, not of the
+  checkout: the same comparison after the fix
+  reads equal on the rig and on Linux, and
+  the pin family stands green whole on both.
+
+Conclusions follow the measurement, in this
+entry.
 
 ---
 ## Q198 (Muse to Claude, 2026-11-14): the macOS confinement proof workflow's host probe prints exit 0 for its clipboard and Apple-event probes whatever the sandboxed command did -- a bare echo between each pipeline and its PIPESTATUS read overwrites the status
