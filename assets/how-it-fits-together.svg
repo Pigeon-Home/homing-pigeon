@@ -11,7 +11,7 @@
     </linearGradient>
   </defs>
   <rect width="899" height="1670" fill="url(#bg)"/>
-  <text x="450" y="58" text-anchor="middle" fill="#ffffff" font-size="34" font-weight="bold">Homing Pigeon <tspan fill="#ff4d6d">v1</tspan> — How It Fits Together</text>
+  <text x="450" y="58" text-anchor="middle" fill="#ffffff" font-size="34" font-weight="bold">Homing Pigeon <tspan fill="#ff4d6d">v1</tspan></text>
 
   <!-- You -->
   <rect x="63" y="83" width="774" height="144" rx="24" fill="none" stroke="#3ddc97" stroke-width="3"/>
