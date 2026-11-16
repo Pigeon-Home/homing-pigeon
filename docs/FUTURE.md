@@ -6,3 +6,4 @@
 - dist ledger file flow boards, ConfidentialCompute-enc-async answers, via
   onion rev prox v2. do not embed throw away wallets or dist knet (find defensive solutions) 
 - cyber turret for a reverse "Skynet" protocol
+- Test prompts like "You may pull the shared secret secret & platform information from my mailbox." (update secret agents if needed)  
