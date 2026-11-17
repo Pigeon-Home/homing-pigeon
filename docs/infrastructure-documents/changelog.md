@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.21 - 2026-11-17
+
+- statistics: the 3 growth charts and the tables of the first 3 snapshots carry counts of the tagged trees where 4 early points had been implied from line counts, and every circle on the charts is closed, at the owner's word
+- tests: the charts' closed circles and the one series the 4 snapshots carry are pinned
+
 ## 3.17.26.20 - 2026-11-17
 
 - docs: the extension manifest checks in the README read as a skim table, one row per check, with no information removed
