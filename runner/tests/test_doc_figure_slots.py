@@ -253,6 +253,60 @@ class TestRecordSlots(unittest.TestCase):
             ["statistics.md: the record's own list carries no slot "
              "for lines_tracked"], RF.check(self.tmp))
 
+    def test_a_figure_the_page_carries_twice_is_still_named_in_the_list(self):
+        # The closing section carries a commits slot of its own.
+        # With the list's commits figure restated by hand (the
+        # 5,874 that stood there) the name is still on the page,
+        # and a presence test over the whole page saw nothing
+        # (Q201). The list is read as the list.
+        self.assertEqual(2, _read(self.record).count(self._slot("commits")))
+        self._rewrite(self._slot("commits"), "5,874")
+        self.assertEqual(1, _read(self.record).count(self._slot("commits")))
+        self.assertEqual(
+            ["statistics.md: the record's own list carries no slot "
+             "for commits"], RF.check(self.tmp))
+
+    def test_a_slot_outside_the_list_does_not_stand_in_for_it(self):
+        # Every figure the list states, moved out of the list to
+        # the foot of the page, still in its slot and still equal
+        # to the facts: the page holds all 6 names and the list
+        # holds none of them.
+        text = _read(self.record)
+        moved = []
+        for name in RF.RECORD_SLOTS:
+            slot = self._slot(name)
+            self.assertIn(slot, RF.record_list(text), name)
+            moved.append(slot)
+        start = text.index(RF.RECORD_LIST_HEADING)
+        end = text.index("\n## ", start + 1)
+        listed = text[start:end]
+        for slot in moved:
+            listed = listed.replace(slot, "a figure")
+        with open(self.record, "w", encoding="utf-8") as fh:
+            fh.write(text[:start] + listed + text[end:]
+                     + "\n" + " ".join(moved) + "\n")
+        self.assertEqual(
+            ["statistics.md: the record's own list carries no slot "
+             "for %s" % name for name in RF.RECORD_SLOTS],
+            RF.check(self.tmp))
+
+    def test_a_record_without_its_list_is_named(self):
+        self._rewrite(RF.RECORD_LIST_HEADING, "## What the figures rest on")
+        problems = RF.check(self.tmp)
+        self.assertEqual(
+            "statistics.md: the record's own list is not found under "
+            "its heading (%s)" % RF.RECORD_LIST_HEADING, problems[0])
+
+    def test_the_list_is_the_section_under_its_heading_and_no_more(self):
+        text = _read(STATISTICS)
+        listed = RF.record_list(text)
+        self.assertTrue(listed.startswith(RF.RECORD_LIST_HEADING))
+        self.assertIn("- Tokens: ", listed)
+        self.assertIn("- Non-latent: ", listed)
+        self.assertNotIn("## The facts, machine-readable", listed)
+        self.assertNotIn("```json", listed)
+        self.assertEqual("", RF.record_list("# a record with no list\n"))
+
     def test_a_slot_no_rendering_answers_is_named(self):
         self._rewrite(self._slot("tokens_exact"),
                       "<!--hp-fig:tokens_guessed-->26 and a bit<!--/hp-fig-->")
@@ -299,6 +353,64 @@ class TestRecordSlots(unittest.TestCase):
         self.assertIn("statistics.md: unknown figure slot 'tokens_guessed'",
                       str(caught.exception))
         self.assertEqual(before, _read(self.record))
+
+
+class TestClosingSection(unittest.TestCase):
+    # The closing section names where each release line stands in
+    # the record: no slot holds that prose, and it stood 2
+    # releases short of the 3.16 line's end until the changelog
+    # was read beside it (Q201). The changelog is the release
+    # record, so the sentence answers to it here.
+    CHANGELOG = os.path.join(REPO, "docs", "infrastructure-documents",
+                             "changelog.md")
+
+    def _sections(self):
+        sections, current = {}, None
+        for line in _read(self.CHANGELOG).splitlines():
+            head = re.match(r"^## (\d+\.\d+\.\d+\.\d+) - ", line)
+            if head:
+                current = head.group(1)
+                sections[current] = []
+            elif current:
+                sections[current].append(line)
+        return sections
+
+    @staticmethod
+    def _key(version):
+        return tuple(int(part) for part in version.split("."))
+
+    @staticmethod
+    def _record_in_one_line():
+        # The sentence is read whatever its wrapping.
+        return " ".join(_read(STATISTICS).split())
+
+    def test_the_3_16_line_ends_where_the_changelog_ends_it(self):
+        line = [v for v in self._sections() if v.startswith("3.16.")]
+        last = max(line, key=self._key)
+        self.assertIn("The 3.16 line ran to %s," % last,
+                      self._record_in_one_line())
+
+    def test_the_3_17_line_s_first_published_release_is_the_changelog_s(self):
+        sections = self._sections()
+        line = sorted((v for v in sections if v.startswith("3.17.")),
+                      key=self._key)
+        # A cut that never published says so in the entry of the
+        # cut that carried its notes; the first release of the
+        # line no later entry says that of is its first published.
+        unpublished = set()
+        for version in line:
+            for text in sections[version]:
+                found = re.search(
+                    r"((?:\d+\.\d+\.\d+\.\d+(?:,| and)? ?)+)"
+                    r"(?:, which)? never published", text)
+                if found:
+                    unpublished.update(
+                        re.findall(r"\d+\.\d+\.\d+\.\d+", found.group(1)))
+        first = [v for v in line if v not in unpublished][0]
+        self.assertEqual("3.17.26.2", first)
+        self.assertIn("the 3.17 line opened on 2026-11-16 with %s as its "
+                      "first published release" % first,
+                      self._record_in_one_line())
 
 
 class TestFigureSlots(unittest.TestCase):

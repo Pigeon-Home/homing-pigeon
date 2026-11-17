@@ -70,10 +70,15 @@ SLOT_FILES = (
 )
 # The figures the record's own list states, each in a slot of
 # its own: a list that restates one by hand is named by check().
+# The list is read as the list, the section under its heading: a
+# slot of the same name elsewhere on the page (the closing
+# section carries a commits slot of its own) does not stand in
+# for the list's (Q201).
 RECORD_SLOTS = (
     "tokens_exact", "tokens_millions", "lines_tracked",
     "display_lines", "commits", "display_commits",
 )
+RECORD_LIST_HEADING = "## What stands behind each figure"
 SLOT_RE = re.compile(
     r"<!--hp-fig:([a-z0-9_]+)-->(.*?)<!--/hp-fig-->", re.S)
 FACTS_RE = re.compile(r"```json\n(.*?)```", re.S)
@@ -165,6 +170,21 @@ def find_slots(text):
     return [(m.group(1), m.group(2)) for m in SLOT_RE.finditer(text)]
 
 
+def record_list(statistics_text):
+    """The record's own list of what stands behind each figure:
+    the section under RECORD_LIST_HEADING, heading included, up
+    to the next heading of its level. Empty when the record
+    carries no such section."""
+    match = re.search(
+        "^" + re.escape(RECORD_LIST_HEADING) + "$", statistics_text, re.M)
+    if not match:
+        return ""
+    end = statistics_text.find("\n## ", match.end())
+    if end < 0:
+        return statistics_text[match.start():]
+    return statistics_text[match.start():end]
+
+
 def check(root):
     """Problems: each slot or the display line out of step
     with the facts. An empty list is a clean tree."""
@@ -184,12 +204,18 @@ def check(root):
             "statistics.md: display line is not the facts' line "
             "(%s)" % display_line(facts))
     wanted = renderings(facts)
-    held = set(name for name, _value in find_slots(text))
-    for name in RECORD_SLOTS:
-        if name not in held:
-            problems.append(
-                "statistics.md: the record's own list carries no "
-                "slot for %s" % name)
+    listed = record_list(text)
+    if not listed:
+        problems.append(
+            "statistics.md: the record's own list is not found "
+            "under its heading (%s)" % RECORD_LIST_HEADING)
+    else:
+        held = set(name for name, _value in find_slots(listed))
+        for name in RECORD_SLOTS:
+            if name not in held:
+                problems.append(
+                    "statistics.md: the record's own list carries "
+                    "no slot for %s" % name)
     for rel in ("statistics.md",) + SLOT_FILES:
         if rel == "statistics.md":
             slots = find_slots(text)

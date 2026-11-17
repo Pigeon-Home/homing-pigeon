@@ -350,11 +350,12 @@ recorded at the top of this record; it stood at 6,004 at the
 v3.16.26.29 measure.
 
 The release line has kept pace with the growth. The 3.16 line
-ran to 3.16.26.34, the 3.17 line opened with 3.17.26.1 on
-2026-11-16, and each release is published with its
-artifacts and SHA384SUMS, so the figures a release carries can
-be checked against the artifacts themselves, as the section
-above describes. The confinement work widened over the same
+ran to 3.16.26.36, the 3.17 line opened on 2026-11-16 with
+3.17.26.2 as its first published release, and each release
+is published with its artifacts and SHA384SUMS, so the
+figures a release carries can be checked against the
+artifacts themselves, as the section above describes. The
+confinement work widened over the same
 period from the Linux sandbox to a backend per platform (a
 Job Objects backend on Windows, a jail backend on FreeBSD,
 and a Seatbelt backend on macOS), each with hosted proof runs
