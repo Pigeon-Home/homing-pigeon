@@ -2,7 +2,7 @@
 
 Homing Pigeon gives cloud AI like ChatGPT, Claude, Gemini a secure and signed channel to your machine or network.
 
-Try this careful prompt with Grok for example:
+Try this careful prompt with Grok for example, after you set up an email connector:
 ```
 Run a pigeon-home.ai job
 Retrieve the system clock and display it
