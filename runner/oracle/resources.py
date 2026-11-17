@@ -14,10 +14,16 @@ evaluation picks it up. The monitor itself never pages — it records.
 This is the built-in half of the telemetry story: cheap, always on,
 no daemon. The extension senses (host IDS, netmon, sysmon) are the
 other half.
+
+The same module carries the disk guard (guard_disk, below): the
+acting half of the disk story. The monitor records pressure; the
+guard, on by default, keeps the runner's own material from filling
+the host disk past 90%.
 """
 import json
 import os
 import shutil
+import stat
 import threading
 import time
 
@@ -235,4 +241,294 @@ def check_resources(cfg, base_dir, now=None):
         "at": _now_iso(),
         "threshold": threshold,
         "resources": over,
+    }
+
+
+# ------------------------------------------------------------ disk guard
+# The 90% disk truncation guard. On by default: a plain install,
+# with no setting changed, keeps the runner from letting its own
+# material fill the host disk past 90%. The guard acts only on the
+# runner's own material under base_dir: its logs first (rolled
+# backups, then the oldest lines of the live logs), then recorded
+# results and retained outputs, oldest first, then given up result
+# stashes, then job workspaces no job can still be running in. It
+# never touches anything outside base_dir, and it never stops the
+# runner: it stops the growth, records what it did, and the poll
+# carries on. The one opt out is the top level setting
+# no_90_disk_truncation; only a literal true turns the guard off.
+#
+# security-events.jsonl is not truncated: it caps itself at append
+# time, and it is where the guard's own annotation lands.
+
+DISK_GUARD_THRESHOLD = 0.90
+DISK_GUARD_LOG_KEEP_BYTES = 65536
+DISK_GUARD_WORK_MIN_AGE_SEC = 3600
+DISK_GUARD_MAX_ACTIONS = 512
+_DISK_GUARD_LOG_NAMES = ("runner.log", "oracle.log", "oracle-chat.jsonl")
+_DISK_GUARD_OLD_DIRS = ("sent", "retained", os.path.join("outbox", "failed"))
+
+
+def disk_guard_enabled(cfg) -> bool:
+    """True unless cfg turns the guard off with a literal true.
+
+    The reading mirrors the setup wizard's autogen_login: the safe
+    behaviour is the default, and only the exact opt out value
+    changes it. An absent key, false, or an unusable value all
+    leave the guard on.
+    """
+    if not isinstance(cfg, dict):
+        return True
+    return cfg.get("no_90_disk_truncation") is not True
+
+
+def _guard_size(path):
+    """Size of a regular file, or None for anything else. A
+    symlink is never followed."""
+    try:
+        st = os.lstat(path)
+    except OSError:
+        return None
+    if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+        return None
+    return st.st_size
+
+
+def _guard_truncate_log(path, keep):
+    """Drop the oldest lines of one log file, keeping its newest
+    keep bytes, aligned forward to a line boundary. Returns the
+    bytes freed, or 0 when nothing was freed. The file is rewritten
+    in place, so a writer holding it open in append mode keeps
+    appending to the same file. A symlink is never followed."""
+    size = _guard_size(path)
+    if size is None or size <= keep:
+        return 0
+    try:
+        with open(path, "rb") as f:
+            f.seek(size - keep)
+            tail = f.read()
+    except OSError:
+        return 0
+    nl = tail.find(b"\n")
+    if 0 <= nl < len(tail) - 1:
+        tail = tail[nl + 1:]
+    try:
+        with open(path, "r+b") as f:
+            f.write(tail)
+            f.truncate(len(tail))
+    except OSError:
+        return 0
+    return size - len(tail)
+
+
+def _guard_oldest_files(d):
+    """(mtime, path, size) for the regular files directly in d,
+    oldest first. Symlinks and subdirectories are skipped."""
+    out = []
+    try:
+        names = os.listdir(d)
+    except OSError:
+        return out
+    for name in names:
+        path = os.path.join(d, name)
+        try:
+            st = os.lstat(path)
+        except OSError:
+            continue
+        if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+            continue
+        out.append((st.st_mtime, path, st.st_size))
+    out.sort()
+    return out
+
+
+def _guard_remove_file(path):
+    size = _guard_size(path)
+    if size is None:
+        return 0
+    try:
+        os.remove(path)
+    except OSError:
+        return 0
+    return size
+
+
+def _guard_tree_bytes(path):
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for name in files:
+            try:
+                total += os.lstat(os.path.join(root, name)).st_size
+            except OSError:
+                continue
+    return total
+
+
+def _guard_oldest_workspaces(base_dir, now):
+    """(mtime, path, bytes) for leftover job workspaces old enough
+    that no job can still be running in them, oldest first. A job
+    runs at most 3600 seconds, so a workspace untouched for longer
+    than that is a leftover, not a live one."""
+    root = os.path.join(base_dir, "work")
+    out = []
+    try:
+        names = os.listdir(root)
+    except OSError:
+        return out
+    for name in names:
+        path = os.path.join(root, name)
+        try:
+            st = os.lstat(path)
+        except OSError:
+            continue
+        if stat.S_ISLNK(st.st_mode) or not stat.S_ISDIR(st.st_mode):
+            continue
+        if now - st.st_mtime < DISK_GUARD_WORK_MIN_AGE_SEC:
+            continue
+        out.append((st.st_mtime, path, _guard_tree_bytes(path)))
+    out.sort()
+    return out
+
+
+def _guard_remove_tree(path):
+    size = _guard_tree_bytes(path)
+    try:
+        shutil.rmtree(path)
+    except OSError:
+        return 0
+    return size if not os.path.exists(path) else 0
+
+
+def _guard_log_backups(base_dir):
+    """(mtime, path, size) for the rolled backups of the runner's
+    logs, oldest first. A rolled backup is pure history: it is the
+    first material the guard gives up."""
+    out = []
+    for name in _DISK_GUARD_LOG_NAMES:
+        try:
+            entries = os.listdir(base_dir)
+        except OSError:
+            return out
+        for entry in entries:
+            if not entry.startswith(name + "."):
+                continue
+            path = os.path.join(base_dir, entry)
+            try:
+                st = os.lstat(path)
+            except OSError:
+                continue
+            if stat.S_ISLNK(st.st_mode) or not stat.S_ISREG(st.st_mode):
+                continue
+            out.append((st.st_mtime, path, st.st_size))
+    out.sort()
+    return out
+
+
+def guard_disk(cfg, base_dir, now=None):
+    """Run one disk guard pass over the runner's own material.
+
+    Returns the annotation event when the pass truncated or
+    removed anything, else None. The event names every action (up
+    to a cap) and the bytes freed; the caller records it in
+    security-events.jsonl. Never raises, and never stops the
+    runner: a pass that cannot get the disk back under the
+    threshold says so in its event (still_over), and the next pass
+    is held off for the resources cooldown, so a disk the runner
+    cannot fix does not earn an event on every poll.
+    """
+    try:
+        now = float(time.time() if now is None else now)
+    except (TypeError, ValueError):
+        now = time.time()
+    if not isinstance(base_dir, str) or not base_dir:
+        return None
+    if not disk_guard_enabled(cfg):
+        return None
+    before = _disk_fraction(base_dir)
+    if before is None or before < DISK_GUARD_THRESHOLD:
+        return None
+    try:
+        cooldown = parse_resources(cfg)["cooldown_sec"]
+    except (RuntimeError, AttributeError, TypeError):
+        cooldown = 900
+    state = _load_state(base_dir)
+    guard_state = state.get("disk_guard")
+    if isinstance(guard_state, dict) and guard_state.get("still_over"):
+        try:
+            last = float(guard_state.get("at_epoch", 0) or 0)
+        except (TypeError, ValueError):
+            last = 0.0
+        if now - last < cooldown:
+            return None
+
+    actions = []
+    freed = 0
+
+    def note(path, action, nbytes):
+        nonlocal freed
+        freed += nbytes
+        if len(actions) < DISK_GUARD_MAX_ACTIONS:
+            actions.append({
+                "path": os.path.relpath(path, base_dir),
+                "action": action, "bytes": nbytes})
+
+    def under():
+        frac = _disk_fraction(base_dir)
+        return frac is not None and frac < DISK_GUARD_THRESHOLD
+
+    # Stage 1: the logs. Rolled backups go first, oldest first;
+    # then the live logs give up their oldest lines, keeping the
+    # newest tail.
+    for _mtime, path, _size in _guard_log_backups(base_dir):
+        if under():
+            break
+        n = _guard_remove_file(path)
+        if n:
+            note(path, "remove", n)
+    if not under():
+        for name in _DISK_GUARD_LOG_NAMES:
+            if under():
+                break
+            path = os.path.join(base_dir, name)
+            n = _guard_truncate_log(path, DISK_GUARD_LOG_KEEP_BYTES)
+            if n:
+                note(path, "truncate", n)
+    # Stage 2: recorded results, retained outputs and given up
+    # stashes, oldest first across all three.
+    if not under():
+        old = []
+        for sub in _DISK_GUARD_OLD_DIRS:
+            old.extend(_guard_oldest_files(os.path.join(base_dir, sub)))
+        old.sort()
+        for _mtime, path, _size in old:
+            if under():
+                break
+            n = _guard_remove_file(path)
+            if n:
+                note(path, "remove", n)
+    # Stage 3: leftover job workspaces old enough that no job can
+    # still be running in them.
+    if not under():
+        for _mtime, path, _size in _guard_oldest_workspaces(base_dir, now):
+            if under():
+                break
+            n = _guard_remove_tree(path)
+            if n:
+                note(path, "remove", n)
+
+    after = _disk_fraction(base_dir)
+    still_over = after is None or after >= DISK_GUARD_THRESHOLD
+    state["disk_guard"] = {"at": _now_iso(), "at_epoch": now,
+                           "freed_bytes": freed, "still_over": still_over}
+    _save_state(base_dir, state)
+    if not actions:
+        return None
+    return {
+        "type": "disk_truncation",
+        "at": _now_iso(),
+        "threshold": DISK_GUARD_THRESHOLD,
+        "disk_before": round(before, 4),
+        "disk_after": round(after, 4) if after is not None else None,
+        "freed_bytes": freed,
+        "actions": actions,
+        "still_over": still_over,
     }

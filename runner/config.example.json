@@ -44,6 +44,8 @@
   "oauth_refresh_token": "",
   "autogen_login": true,
   "_autogen_login": "the setup wizard's third sign-in choice (browser sign-in plus a locally generated shared secret, emailed to the mailbox as the install record). Absent or true: the choice is offered. Only literal false turns the choice off; the browser sign-in and app-password choices are unaffected either way",
+  "no_90_disk_truncation": false,
+  "_no_90_disk_truncation": "the disk guard opt out. Absent or false: the guard is on, and at 90% disk full the runner truncates its own material (its logs first, oldest first) and records what it did in security-events.jsonl. Only literal true turns the guard off",
   "shared_secret": "generate-with-openssl-rand-hex-32",
   "_shared_secret_file": "alternative: read the secret from a file instead of inline (mutually exclusive with shared_secret)",
   "additional_secrets": {},

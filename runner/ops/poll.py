@@ -50,6 +50,16 @@ def poll_once(cfg, base_dir: str, seen: dict, seen_path: str,
             _runner()._note_resource_event(base_dir, event)
         except Exception as e:
             R.log(f"resource monitor failed: {e}", "WARN")
+    # Disk guard: on by default. At 90% full the runner truncates
+    # its own material (its logs first, oldest first) and records
+    # what it did; it never touches anything outside its own state
+    # directory and never stops the poll.
+    if _runner()._resources is not None:
+        try:
+            guard_event = _runner()._resources.guard_disk(cfg, base_dir)
+            _runner()._note_disk_guard_event(base_dir, guard_event)
+        except Exception as e:
+            R.log(f"disk guard failed: {e}", "WARN")
     # Local watches file alerts before the page check, so a trip that
     # happened since the last poll can page on this cycle.
     _runner()._local_watch(cfg, base_dir)

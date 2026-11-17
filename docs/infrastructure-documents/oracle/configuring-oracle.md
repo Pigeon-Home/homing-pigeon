@@ -109,6 +109,20 @@ names it.*
   malformed block is not a startup config error: the block is only checked at
   poll time, and a malformed one is silently ignored there, with no resource
   event filed for that cycle.
+- `no_90_disk_truncation`: the opt out for the disk guard, the acting half of
+  the resource monitor in the same module. The guard is on by default: on every
+  poll it checks the disk the runner's state directory sits on, and at 90% full
+  it truncates the runner's own material until the disk is back under 90% or
+  nothing of its own is left to give up. Its logs go first (rolled backups,
+  then the oldest lines of the live logs), then recorded results and retained
+  outputs, oldest first, then given up result stashes, then leftover job
+  workspaces no job can still be running in. Every pass that frees anything
+  files a `disk_truncation` security event naming each action and the bytes
+  freed, and a pass that cannot get back under 90% says so in its event and
+  waits out the `resources` cooldown before acting again. The guard touches
+  nothing outside the runner's own state directory, and it never stops the
+  runner: it stops the growth and the poll carries on. Only a literal `true`
+  turns the guard off; an absent key, `false`, or any other value leaves it on.
 - `extension_poll_interval_sec`: inside any `transport_<name>` block, seconds between the extension's passes over its channel. Default 2; a usable number is clamped to 0.2 through 60, and a boolean, infinity, NaN or non-number reads as the default. The block is handed to the extension, so this sets one transport's cadence; the core's own `poll_interval_sec` is separate.
 - `transport_queues`: the hosted queue, handed to the queues extension (`docs/infrastructure-documents/extend/transports.md`, "Queues"): `url` (the tenant's queue base, `https://<worker>/t/<tenant>`), `token_env` (the name of the environment variable holding the runner token; preferred), `token` (the token itself, accepted but then it sits in `config.json`), and `max_jobs` (jobs leased per pass, default 8). The lease length is the Worker's `LEASE_MS`, not a runner key.
 - `recipes`: the owner's named scripts (PROTOCOL.md section 3.3), an object of name to `{script, interpreter, args_pattern, max_args, max_timeout_sec}`. A `kind: "recipe"` job names one and brings no script of its own; its `args` must each fully match `args_pattern` (a recipe with no pattern takes none), at most `max_args` (default 16) of them, and `max_timeout_sec` (1 to 3600) caps its timeout. A malformed recipe, or a pattern that could backtrack exponentially, is a startup error. Default: none.

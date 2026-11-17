@@ -1,7 +1,7 @@
 # The project's statistics: the 26-million-token measure
 
 Dated 2026-11-17. Measured on main at commit
-1af9599d0d663e65d5b9769ccb56e44bb6448c25, the head this
+f760a4748e94662e63a7452db98bbfe5edd85c5d, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
@@ -10,7 +10,7 @@ The recorded line, in the display form settled for publication:
 
 ## What stands behind each figure
 
-- Tokens: <!--hp-fig:tokens_exact-->26,818,219<!--/hp-fig-->, counted over the whole tree by the
+- Tokens: <!--hp-fig:tokens_exact-->26,821,487<!--/hp-fig-->, counted over the whole tree by the
   project's own estimator (runner/ops/version4.py). It is the
   measure the version number's 3rd component carries, in whole
   millions: <!--hp-fig:tokens_millions-->26<!--/hp-fig-->. The component holds its figure when a count
@@ -24,11 +24,11 @@ The recorded line, in the display form settled for publication:
   is sec-tokens. Verify it on any checkout:
   `python3 runner/ops/version4.py measure` prints the count and
   its whole millions.
-- Lines: <!--hp-fig:lines_tracked-->1,502,538<!--/hp-fig--> lines in tracked files at the measured
+- Lines: <!--hp-fig:lines_tracked-->1,502,890<!--/hp-fig--> lines in tracked files at the measured
   head. The display figure, <!--hp-fig:display_lines-->1,500,000<!--/hp-fig-->, is that count rounded.
 - Commits: the display figure, <!--hp-fig:display_commits-->6,000<!--/hp-fig-->, is rounded from a
   full-history count at the measured head, taken from a
-  complete clone, which counts <!--hp-fig:commits-->6,125<!--/hp-fig-->. The project's local
+  complete clone, which counts <!--hp-fig:commits-->6,126<!--/hp-fig-->. The project's local
   mirrors are shallow (the hook mirror reached 171 commits
   at the 3.16.25.27 head) and cannot count the whole
   history on their own, so every count rests on a complete
@@ -70,11 +70,11 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-17",
-  "commit": "1af9599d0d663e65d5b9769ccb56e44bb6448c25",
+  "commit": "f760a4748e94662e63a7452db98bbfe5edd85c5d",
   "counter": "runner/ops/version4.py",
-  "tokens": 26818219,
-  "lines_tracked": 1502538,
-  "commits": 6125,
+  "tokens": 26821487,
+  "lines_tracked": 1502890,
+  "commits": 6126,
   "display_commits": 6000,
   "display_lines": 1500000,
   "non_latent_percent": 96.31,
@@ -82,13 +82,13 @@ stays their source of truth.
   "latent_exact_percent": 0.02,
   "audit_date": "2026-11-16",
   "core_files": 137,
-  "core_lines": 68495,
-  "core_lines_nonblank": 62108,
-  "core_tokens": 757097,
-  "core_assembled_lines": 69614,
-  "core_assembled_nonblank": 63109,
-  "core_assembled_zip_bytes": 898542,
-  "core_assembled_tokens": 768676
+  "core_lines": 68831,
+  "core_lines_nonblank": 62411,
+  "core_tokens": 760043,
+  "core_assembled_lines": 69950,
+  "core_assembled_nonblank": 63412,
+  "core_assembled_zip_bytes": 901499,
+  "core_assembled_tokens": 771622
 }
 ```
 
@@ -348,7 +348,7 @@ The longer series changes what the shape can say. Across the
 the tree grew from 447,477 security tokens to 26,451,259,
 and since the fourth snapshot every point of that series is
 a count of the tagged tree, with nothing implied. The
-history behind it stands at <!--hp-fig:commits-->6,125<!--/hp-fig--> commits at the measure
+history behind it stands at <!--hp-fig:commits-->6,126<!--/hp-fig--> commits at the measure
 recorded at the top of this record; it stood at 6,004 at the
 v3.16.26.29 measure.
 

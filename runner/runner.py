@@ -280,6 +280,36 @@ def _note_resource_event(base_dir, event):
     if bits:
         log(f"resource pressure over threshold ({thr}): {', '.join(bits)}", "WARN")
 
+def _note_disk_guard_event(base_dir, event):
+    """Record a disk guard event. A bad shape is ignored, not fatal.
+
+    The guard is the acting half of the resource monitor. Its
+    event names what was truncated or removed and how many bytes
+    that freed; anything else in that shape is not the guard's
+    record and is not stored as one.
+    """
+    if not event:
+        return
+    if not isinstance(event, dict) or event.get("type") != "disk_truncation":
+        log("disk guard returned an unusable event; ignoring", "WARN")
+        return
+    try:
+        _append_security_event(base_dir, event)
+    except Exception as e:
+        log(f"disk guard event was not stored: {e}", "WARN")
+    try:
+        freed = int(event.get("freed_bytes", 0) or 0)
+    except (TypeError, ValueError):
+        freed = 0
+    try:
+        thr = f"{float(event.get('threshold')):.0%}"
+    except (TypeError, ValueError):
+        thr = "?"
+    tail = "; the disk is still over the threshold" \
+        if event.get("still_over") else ""
+    log(f"disk guard: truncated the runner's own material at {thr} "
+        f"full, freed {freed} bytes{tail}", "WARN")
+
 def _report_event_fallback(message: str, level: str = "ERROR") -> None:
     return None
 
