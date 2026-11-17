@@ -422,6 +422,11 @@ The runner is fully inspectable, so audit what it would do before it does it, an
   and the configuration rules) and the formal proof testing that checks it,
   property by property, are described in
   [docs/infrastructure-documents/security/model-and-proof-testing.md](docs/infrastructure-documents/security/model-and-proof-testing.md).
+- What the security token count is made of is charted in
+  [the statistics record](docs/infrastructure-documents/project/statistics.md);
+  the chart itself:
+
+![What the security-token count is made of: one fuzz run log and everything else](assets/security-tokens-split-2026-11-16.svg)
 
 ## Questions people ask
 
