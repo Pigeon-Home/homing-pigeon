@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.27 - 2026-11-17
+
+- Runner: the disk guard truncates the runner's own material at 90% full, on by default; on every poll it checks the disk the state directory sits on and truncates logs first, then recorded results, retained outputs, given up stashes and leftover job workspaces, filing a disk_truncation security event for every pass that frees anything, touching nothing outside the runner's own state directory and never stopping the runner, with no_90_disk_truncation as the one opt out (since 3.17.26.25)
+- Tools: the mutmut recorded selection carries the disk guard tests, regenerated from the derivation at 373 modules (since 3.17.26.25)
+- Docs: FUTURE.md updated (since 3.17.26.25)
+- Re-cut of 3.17.26.26, which never published: its gate build read red on the recorded-selection pin test, the disk guard landing having added a test module without regenerating the selection; the fix landed before this cut
+
 ## 3.17.26.26 - 2026-11-17
 
 - Runner: the disk guard truncates the runner's own material at 90% full, on by default; on every poll it checks the disk the state directory sits on and truncates logs first, then recorded results, retained outputs, given up stashes and leftover job workspaces, filing a disk_truncation security event for every pass that frees anything, touching nothing outside the runner's own state directory and never stopping the runner, with no_90_disk_truncation as the one opt out (since 3.17.26.25)
