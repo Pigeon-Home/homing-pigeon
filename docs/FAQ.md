@@ -70,7 +70,7 @@ the full numbers are in [live-examples.md](steady/use/live-examples.md).
 
 ## Isn't this just remote code execution by email?
 
-Yes, and it says so in the first lines of the README. A runner runs
+A runner runs
 whatever a correctly signed job tells it to, as the user it runs
 as. So did every CI runner, SSH daemon, and remote-management agent
 before it. The honest question is what stands between the mailbox
