@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.23 - 2026-11-17
+
+- Docs: the FAQ answer to the remote code execution question drops its opening line and starts with what a runner does (since 3.17.26.22)
+
 ## 3.17.26.22 - 2026-11-17
 
 - Desk: Q202 filed — the conductor's picture request carried to Claude's seat in Muse's voice, as his accessibility advocate (since 3.17.26.21)
