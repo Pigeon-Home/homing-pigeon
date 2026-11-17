@@ -128,6 +128,10 @@ a current figure: the figures at the top of this record are the
 current ones, with their own date and measured basis. The 6
 points below are evenly spaced across the project's first 24
 days, from its first release to the measure of 2026-11-08.
+The chart, like the 2 that follow it in this record, was
+redrawn later in the look of the project's diagrams, on an
+axis that spaces the dates by their days; every point stands
+at its recorded value.
 
 ![Security tokens in the tree, 15 October to 8 November 2026](../../../assets/security-tokens-growth-2026-11-08.svg)
 
@@ -158,7 +162,7 @@ November.
 
 ## The growth of the measure, continued: a second snapshot as of 2026-11-15
 
-The snapshot above stands as it was drawn, with its own date.
+The snapshot above stands as it was recorded, with its own date.
 This second view of the same series keeps its 6 points exactly
 as recorded there and carries the series a week further, to
 2026-11-15, on 2 more measured points. From 2026-11-04 on,
@@ -240,9 +244,9 @@ record: [security-tokens-asymptotic-view.html](security-tokens-asymptotic-view.h
 It carries the same points and the same 2 lines with the
 ceiling left on a slider, so a reader who opens the file
 in a browser can move the ceiling between 30 and 60
-million and watch the curve re-bend. The chart above is
-that page with the slider set to 38 million, drawn for
-the record.
+million and watch the curve re-bend. The chart above
+carries that page's points and its 2 lines with the slider
+set to 38 million, drawn for the record.
 
 ## Where the project stands
 
