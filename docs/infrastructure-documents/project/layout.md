@@ -144,6 +144,5 @@
   `pyproject.toml` (the package, the wheel's exclusions, the mutmut
   scope) and `assets/` (images). At the top of `docs/` sit
   `docs/FAQ.md`, `docs/FUTURE.md`, `docs/ENTERPRISE.md` (a
-  placeholder, kept as is), `docs/support-matrix.md` and
-  `docs/checklist.txt` (the conductor's own file), one level back
-  from the root.
+  placeholder, kept as is) and `docs/support-matrix.md`, one level
+  back from the root.
