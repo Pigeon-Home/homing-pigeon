@@ -23,6 +23,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from runner.tools import regression_guard as G  # noqa: E402
+from runner.tests.mutant_copy import skip_in_mutant_copy  # noqa: E402
 
 OK_REPORT = """\
 ..s.x
@@ -341,15 +342,127 @@ class ChangedModulesTest(unittest.TestCase):
         self.assertFalse(G.existed_at("base", "test_new.py", cwd=self.tmp))
 
 
+class CoreCheckTest(unittest.TestCase):
+    """The guard reads the core's recorded figures on every run, by
+    the release train's `measure --check`. A landing that grew a
+    core file and left them standing went green through this guard
+    and red on every leg (twice on 2026-11-16): the tell was local
+    all along, and no check here asked for it."""
+
+    STANDS = "the core's recorded figures stand with the tree\n"
+    NOT_READ = ("the as-assembled zip figure is not read here: this machine's "
+                "deflate is 1.3.1.zlib-ng, not the reference zlib\n")
+    BEHIND = ("behind the tree: lines: 69,585 recorded, 69,614 in the tree (+29)\n"
+              "behind the tree: lines in runner/tools: 10,063 recorded, 10,092 in the tree (+29)\n"
+              "release train: the core's recorded figures are behind the tree; "
+              "`python3 runner/tools/release_train.py measure` re-records them, "
+              "to commit with the landing\n")
+
+    def test_the_check_is_the_train_s_measure_read_and_not_written(self):
+        asked = []
+        with mock.patch.object(G, "run_python",
+                               lambda args, **kw: asked.append(list(args)) or (0, self.STANDS)):
+            verdict = G.check_core()
+        self.assertEqual(asked, [[os.path.join("runner", "tools", "release_train.py"),
+                                  "measure", "--check"]])
+        self.assertEqual((verdict.check, verdict.ok), ("core", True))
+        self.assertEqual(verdict.note, "the core's recorded figures stand with the tree")
+
+    def test_a_deflate_that_cannot_read_the_zip_figure_is_said_and_green(self):
+        with mock.patch.object(G, "run_python",
+                               lambda args, **kw: (0, self.NOT_READ + self.STANDS)):
+            verdict = G.check_core()
+        self.assertTrue(verdict.ok)
+        self.assertIn("zip figure is not read here", verdict.note)
+        self.assertTrue(verdict.note.endswith("the core's recorded figures stand with the tree"))
+
+    def test_a_record_behind_the_tree_is_red_and_names_the_re_record(self):
+        with mock.patch.object(G, "run_python", lambda args, **kw: (1, self.BEHIND)):
+            verdict = G.check_core()
+        self.assertEqual((verdict.check, verdict.ok), ("core", False))
+        self.assertTrue(verdict.note.startswith(
+            "the core's recorded figures are behind the tree: run "
+            "`python3 runner/tools/release_train.py measure`"))
+        self.assertIn("commit what it re-records with the landing", verdict.note)
+        self.assertIn("| behind the tree: lines in runner/tools: 10,063 recorded, "
+                      "10,092 in the tree (+29)", verdict.note)
+
+    def test_a_check_that_could_not_run_is_red_with_what_it_said(self):
+        with mock.patch.object(G, "run_python",
+                               lambda args, **kw: (1, "Traceback (most recent call last):\n  boom\n")):
+            verdict = G.check_core()
+        self.assertFalse(verdict.ok)
+        self.assertIn("| Traceback (most recent call last):", verdict.note)
+
+    def test_a_red_core_makes_the_guard_red_under_green_modules(self):
+        with mock.patch.object(
+                G, "check_native",
+                return_value=(G.Verdict("native", True, "fake green"), None)), \
+                mock.patch.object(
+                    G, "check_gates",
+                    return_value=G.Verdict("gates", True, "fake green")), \
+                mock.patch.object(
+                    G, "check_core",
+                    return_value=G.Verdict("core", False, "fake behind")):
+            lines = []
+            status = G.guard(["test_anything.py"], "origin/main", 0, 0,
+                             True, True, out=lines.append)
+        self.assertEqual(status, 1)
+        self.assertIn("  RED   core      fake behind", lines)
+        self.assertTrue(lines[-1].startswith("regression guard: RED"))
+        # The core's line stands with the gates', after the modules.
+        self.assertLess(lines.index("== gates"), lines.index("  RED   core      fake behind"))
+
+    def _main_with_no_changed_module(self, core_ok):
+        printed = []
+        with mock.patch.object(G, "changed_modules", lambda since: []), \
+                mock.patch.object(
+                    G, "check_core",
+                    return_value=G.Verdict("core", core_ok, "fake note")), \
+                mock.patch("builtins.print", lambda *a, **k: printed.append(" ".join(map(str, a)))):
+            status = G.main([])
+        return status, printed
+
+    def test_a_landing_that_touches_no_test_module_still_has_its_core_read(self):
+        status, printed = self._main_with_no_changed_module(core_ok=False)
+        self.assertEqual(status, 1)
+        self.assertEqual(printed, [
+            "regression guard: no test modules changed against origin/main; "
+            "name the modules to check",
+            "  RED   core      fake note"])
+
+    def test_no_changed_module_and_a_current_record_is_green_as_before(self):
+        status, printed = self._main_with_no_changed_module(core_ok=True)
+        self.assertEqual(status, 0)
+        self.assertEqual(printed[-1], "  green core      fake note")
+
+    def test_the_tree_s_own_record_reads_green_through_the_real_check(self):
+        # The same reading test_core's pins take on every leg, taken
+        # the way the guard takes it: a real run of the train's
+        # check on this tree. Inside a mutant copy the live counts
+        # are the copy's own (Q170), and the test stands aside.
+        skip_in_mutant_copy(self)
+        verdict = G.check_core()
+        self.assertTrue(verdict.ok, verdict.note)
+        self.assertIn("the core's recorded figures stand with the tree", verdict.note)
+
+
 class GuardEndToEndTest(unittest.TestCase):
     def test_one_cheap_module_native_plus_gates(self):
         lines = []
-        status = G.guard(["test_skip_registry.py"], "origin/main",
-                         repeat=0, shuffles=0, no_sim=True, no_leaks=True,
-                         out=lines.append)
+        # The core check is a real run in CoreCheckTest; here it
+        # is stood in for, so this test reads the modules and the
+        # gates as it always has, inside a mutant copy too.
+        with mock.patch.object(
+                G, "check_core",
+                return_value=G.Verdict("core", True, "fake green")):
+            status = G.guard(["test_skip_registry.py"], "origin/main",
+                             repeat=0, shuffles=0, no_sim=True, no_leaks=True,
+                             out=lines.append)
         self.assertEqual(status, 0, "\n".join(lines))
         self.assertTrue(any(l.startswith("  green native") for l in lines))
         self.assertTrue(any(l.startswith("  green gates") for l in lines))
+        self.assertTrue(any(l.startswith("  green core") for l in lines))
         self.assertTrue(lines[-1].startswith("regression guard: green"))
 
     def test_a_red_module_makes_the_guard_red(self):
@@ -360,7 +473,10 @@ class GuardEndToEndTest(unittest.TestCase):
                 return_value=(G.Verdict("native", False, "fake red"), None)), \
                 mock.patch.object(
                     G, "check_gates",
-                    return_value=G.Verdict("gates", True, "fake green")):
+                    return_value=G.Verdict("gates", True, "fake green")), \
+                mock.patch.object(
+                    G, "check_core",
+                    return_value=G.Verdict("core", True, "fake green")):
             lines = []
             status = G.guard(["test_anything.py"], "origin/main", 0, 0,
                              True, True, out=lines.append)

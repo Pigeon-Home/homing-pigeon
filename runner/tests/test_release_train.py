@@ -14,6 +14,7 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -746,6 +747,209 @@ class MeasureTest(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertIn("the local guards are red over the re-measure", err.getvalue())
         self.assertIn("test_core.CorePartsTest", err.getvalue())
+
+
+class CoreDriftTest(unittest.TestCase):
+    """`measure --check`: the record read against the tree, with
+    nothing written. A landing that grows a core file and leaves
+    the recorded figures standing is red on every leg at
+    test_core's pins; this is the same reading before the push.
+    The tree here is a scratch one with its own small list and
+    its own record, so these hold whatever the real record says."""
+
+    FILES = {
+        "runner/runner.py": "one\n\ntwo\n",
+        "runner/ops/b.py": "a\nb\n\nc\n",
+        "runner/ops/c.py": "x\n",
+    }
+    RUNNER_TEXT = "# a suite runner\npass\n"
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-core-drift-")
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        for name, text in self.FILES.items():
+            self._write(name, text)
+        for name in rt.SUITE_RUNNERS:
+            self._write(name, self.RUNNER_TEXT)
+        self.record = {
+            "files": 6, "lines": 14, "nonblank": 12,
+            "parts": {"runner/runner.py": 3, "runner/ops": 5, "runner/tools": 6},
+        }
+        self._write_record(zip_bytes=self._live_zip())
+
+    def _write(self, name, text):
+        path = os.path.join(self.tmp, name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text)
+
+    def _assembled(self):
+        return tuple(sorted(set(self.FILES) | set(rt.SUITE_RUNNERS)))
+
+    def _live_zip(self):
+        return len(rt.core_at(REPO).core_zip_bytes(self.tmp, files=self._assembled()))
+
+    def _write_record(self, zip_bytes, core_files=None, **over):
+        record = dict(self.record, **over)
+        listed = sorted(self.FILES) if core_files is None else core_files
+        self._write("runner/ops/core.py", (
+            "from runner.ops.core import core_zip_bytes  # the builder under test is the tree's own\n"
+            "CORE_FILES = %r\n"
+            "AS_ASSEMBLED_FILES = %d\n"
+            "AS_ASSEMBLED_ZIP_BYTES = %d\n"
+            "AS_ASSEMBLED_LINES = %d\n"
+            "AS_ASSEMBLED_NONBLANK_LINES = %d\n"
+            "AS_ASSEMBLED_PART_LINES = %r\n"
+        ) % (tuple(listed), record["files"], zip_bytes, record["lines"],
+             record["nonblank"], record["parts"]))
+
+    def test_a_current_record_is_not_behind(self):
+        self.assertEqual(rt.core_drift(self.tmp), [])
+
+    def test_a_grown_core_file_is_named_figure_by_figure(self):
+        with open(os.path.join(self.tmp, "runner/ops/b.py"), "a", encoding="utf-8") as fh:
+            fh.write("grown\n\nagain\n")
+        with mock.patch.object(rt, "reference_deflate", lambda name=None: False):
+            behind = rt.core_drift(self.tmp)
+        self.assertEqual(behind, [
+            "lines: 14 recorded, 17 in the tree (+3)",
+            "non-blank lines: 12 recorded, 14 in the tree (+2)",
+            "lines in runner/ops: 5 recorded, 8 in the tree (+3)",
+        ])
+
+    def test_a_shrunk_core_file_reads_with_its_sign(self):
+        self._write("runner/runner.py", "one\n")
+        with mock.patch.object(rt, "reference_deflate", lambda name=None: False):
+            behind = rt.core_drift(self.tmp)
+        self.assertIn("lines: 14 recorded, 12 in the tree (-2)", behind)
+        self.assertIn("lines in runner/runner.py: 3 recorded, 1 in the tree (-2)", behind)
+
+    def test_the_zip_figure_is_read_under_the_reference_deflate_alone(self):
+        live = self._live_zip()
+        self._write_record(zip_bytes=live + 7)
+        with mock.patch.object(rt, "reference_deflate", lambda name=None: True):
+            self.assertEqual(rt.core_drift(self.tmp),
+                             ["zip bytes: %s recorded, %s in the tree (-7)"
+                              % (format(live + 7, ","), format(live, ","))])
+        # Another deflate packs the same tree to another size, so
+        # there the figure is left for a machine that can read it:
+        # the re-record leaves it standing there too.
+        with mock.patch.object(rt, "reference_deflate", lambda name=None: False):
+            self.assertEqual(rt.core_drift(self.tmp), [])
+
+    def test_a_file_added_to_the_list_names_the_count_set_by_hand(self):
+        self._write("runner/ops/d.py", "new\n")
+        self._write_record(zip_bytes=self._live_zip(),
+                           core_files=sorted(list(self.FILES) + ["runner/ops/d.py"]))
+        with mock.patch.object(rt, "reference_deflate", lambda name=None: False):
+            behind = rt.core_drift(self.tmp)
+        self.assertEqual(behind[0], "files: 6 recorded, 7 in the tree (+1); "
+                                    "AS_ASSEMBLED_FILES is set by hand, beside the list")
+        self.assertIn("lines in runner/ops: 5 recorded, 6 in the tree (+1)", behind)
+
+    def test_a_part_the_record_never_named_is_read_from_nothing(self):
+        self._write("runner/wire/e.py", "w\n")
+        self._write_record(zip_bytes=self._live_zip(), files=7,
+                           core_files=sorted(list(self.FILES) + ["runner/wire/e.py"]))
+        with mock.patch.object(rt, "reference_deflate", lambda name=None: False):
+            behind = rt.core_drift(self.tmp)
+        self.assertIn("lines in runner/wire: 0 recorded, 1 in the tree (+1)", behind)
+
+    def test_the_check_writes_nothing(self):
+        with open(os.path.join(self.tmp, "runner/ops/b.py"), "a", encoding="utf-8") as fh:
+            fh.write("grown\n")
+
+        def snapshot():
+            seen = {}
+            for folder, _dirs, names in os.walk(self.tmp):
+                for name in names:
+                    if name.endswith(".pyc"):
+                        continue
+                    path = os.path.join(folder, name)
+                    with open(path, "rb") as fh:
+                        seen[os.path.relpath(path, self.tmp)] = fh.read()
+            return seen
+        before = snapshot()
+        self.assertTrue(rt.core_drift(self.tmp))
+        self.assertEqual(snapshot(), before)
+
+    def test_the_record_is_read_from_the_tree_s_own_file_each_time(self):
+        # The same size, inside the second the file was last
+        # written: the shape a cached bytecode file reads as
+        # current (see drop_bytecode). The check compiles the
+        # source on every read, and leaves no cache behind it.
+        path_before = list(sys.path)
+        with mock.patch.object(rt, "reference_deflate", lambda name=None: False):
+            self.assertEqual(rt.core_drift(self.tmp), [])
+            self._write_record(zip_bytes=self._live_zip(), lines=15)
+            self.assertEqual(rt.core_drift(self.tmp),
+                             ["lines: 15 recorded, 14 in the tree (-1)"])
+            self._write_record(zip_bytes=self._live_zip(), lines=14)
+            self.assertEqual(rt.core_drift(self.tmp), [])
+        self.assertEqual(rt.core_at(self.tmp).AS_ASSEMBLED_LINES, 14)
+        self.assertEqual(rt.core_at(self.tmp).CORE_FILES, tuple(sorted(self.FILES)))
+        self.assertFalse(os.path.exists(os.path.join(self.tmp, "runner", "ops", "__pycache__")))
+        # The tree stands on the import path only while it is read.
+        self.assertEqual(sys.path, path_before)
+
+    def test_the_re_record_and_the_check_count_with_one_routine(self):
+        import inspect
+        for fn in (rt.record_core_measure, rt.core_drift):
+            self.assertIn("total, nonblank, parts = assembled_lines(root, files)",
+                          inspect.getsource(fn), fn.__name__)
+        self.assertEqual(rt.assembled_lines(self.tmp, self._assembled()),
+                         (14, 12, {"runner/runner.py": 3, "runner/ops": 5, "runner/tools": 6}))
+
+    def test_check_on_a_current_record_exits_0_and_re_records_nothing(self):
+        def never(*a, **k):
+            raise AssertionError("--check must not re-record")
+        with mock.patch.object(rt, "core_drift", lambda *a, **k: []), \
+                mock.patch.object(rt, "reference_deflate", lambda name=None: True), \
+                mock.patch.object(rt, "record_core_measure", never), \
+                mock.patch.object(rt, "local_guards", never), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            rc = rt.main(["measure", "--check"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.getvalue(), "the core's recorded figures stand with the tree\n")
+
+    def test_check_on_a_record_behind_exits_1_and_names_the_re_record(self):
+        def never(*a, **k):
+            raise AssertionError("--check must not re-record")
+        behind = ["lines: 69,585 recorded, 69,614 in the tree (+29)",
+                  "lines in runner/tools: 10,063 recorded, 10,092 in the tree (+29)"]
+        with mock.patch.object(rt, "core_drift", lambda *a, **k: behind), \
+                mock.patch.object(rt, "reference_deflate", lambda name=None: True), \
+                mock.patch.object(rt, "record_core_measure", never), \
+                mock.patch.object(rt, "local_guards", never), \
+                contextlib.redirect_stdout(io.StringIO()) as out, \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            rc = rt.main(["measure", "--check"])
+        self.assertEqual(rc, 1)
+        self.assertEqual(out.getvalue().splitlines(), ["behind the tree: " + line for line in behind])
+        self.assertIn("the core's recorded figures are behind the tree", err.getvalue())
+        self.assertIn("`python3 runner/tools/release_train.py measure` re-records them", err.getvalue())
+
+    def test_check_says_when_the_zip_figure_is_not_read(self):
+        with mock.patch.object(rt, "core_drift", lambda *a, **k: []), \
+                mock.patch.object(rt, "reference_deflate", lambda name=None: False), \
+                mock.patch.object(rt, "deflate_name", lambda: "1.3.1.zlib-ng"), \
+                contextlib.redirect_stdout(io.StringIO()) as out:
+            rc = rt.main(["measure", "--check"])
+        self.assertEqual(rc, 0)
+        self.assertEqual(out.getvalue().splitlines(), [
+            "the as-assembled zip figure is not read here: this machine's deflate is "
+            "1.3.1.zlib-ng, not the reference zlib",
+            "the core's recorded figures stand with the tree"])
+
+    def test_plain_measure_still_re_records(self):
+        calls = []
+        with mock.patch.object(rt, "core_drift", lambda *a, **k: calls.append("check") or []), \
+                mock.patch.object(rt, "record_core_measure", lambda *a, **k: calls.append("measure") or {}), \
+                mock.patch.object(rt.subprocess, "run", lambda *a, **k: mock.Mock(returncode=0, stdout="", stderr="")), \
+                mock.patch.object(rt, "local_guards", lambda *a, **k: ""), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(rt.main(["measure"]), 0)
+        self.assertEqual(calls, ["measure"])
 
 
 class PreparePushRetryTest(unittest.TestCase):

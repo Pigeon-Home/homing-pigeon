@@ -109,7 +109,7 @@ class CoreListTest(unittest.TestCase):
         # the briefing's contradiction mark and the posture
         # stamp producer; the Gemini token count above still
         # describes the 2026-11-04 assembly.
-        self.assertEqual(898121, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(898540, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -265,8 +265,13 @@ class CoreListTest(unittest.TestCase):
         # case on a filesystem that folds case, by 62
         # lines of runner/runner.py (the retained store's
         # case-folded sibling).
-        self.assertEqual(69585, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(63082, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # Again that day, after the pre-push guard came to
+        # read these figures against the tree on every
+        # run, by 29 lines of
+        # runner/tools/regression_guard.py (the guard's
+        # core check).
+        self.assertEqual(69614, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(63109, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

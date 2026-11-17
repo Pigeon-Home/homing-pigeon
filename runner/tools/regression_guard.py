@@ -37,6 +37,12 @@ check so the triage is already done when the car runs:
              leg orders them differently
   gates      the registry tests every leg runs: the skip registry,
              the version-rot scan, the layout scan
+  core       the core's recorded figures (runner/ops/core.py) against
+             a fresh measure of the tree, by the release train's
+             `measure --check`: a landing that grows a core file and
+             leaves the figures standing is red on every leg, and
+             `release_train.py measure` re-records them. Read on
+             every run, with or without a changed test module
 
 The exit status is 1 when any check is red; the summary says which.
 Stdlib only. Nothing here changes a test: a red here is a reason to
@@ -322,6 +328,22 @@ def check_gates():
     return Verdict("gates", True, f"{summary['ran']} registry tests green")
 
 
+def check_core():
+    """The core's recorded figures against the tree, as the release
+    train's `measure --check` reads them: writes nothing, and names
+    the re-record when the tree has moved past the record."""
+    rc, out = run_python([os.path.join("runner", "tools", "release_train.py"),
+                          "measure", "--check"])
+    said = [line.strip() for line in out.splitlines() if line.strip()]
+    if rc == 0:
+        return Verdict("core", True, "; ".join(said[-2:]) or
+                       "the core's recorded figures stand with the tree")
+    return Verdict("core", False,
+                   "the core's recorded figures are behind the tree: run "
+                   "`python3 runner/tools/release_train.py measure` and "
+                   "commit what it re-records with the landing" + _tail(out))
+
+
 def _tail(out, lines=25):
     kept = [l for l in out.splitlines() if l.strip()][-lines:]
     return "\n      | " + "\n      | ".join(kept) if kept else ""
@@ -496,6 +518,9 @@ def guard(modules, since, repeat, shuffles, no_sim, no_leaks, out=print):
     out("== gates")
     out(f"  {'green' if gates.ok else 'RED  '} {gates.check:9s} {gates.note}")
     red = red or not gates.ok
+    core = check_core()
+    out(f"  {'green' if core.ok else 'RED  '} {core.check:9s} {core.note}")
+    red = red or not core.ok
     out(f"regression guard: {'RED' if red else 'green'} "
         f"({len(modules)} module(s), {time.time() - t0:.0f}s)")
     return 1 if red else 0
@@ -526,7 +551,11 @@ def main(argv=None):
     if not modules:
         print(f"regression guard: no test modules changed against "
               f"{args.since}; name the modules to check")
-        return 0
+        # A landing can grow a core file and touch no test module:
+        # the core's figures are read all the same.
+        core = check_core()
+        print(f"  {'green' if core.ok else 'RED  '} {core.check:9s} {core.note}")
+        return 0 if core.ok else 1
     return guard(modules, args.since, args.repeat, args.shuffles,
                  args.no_sim, args.no_leaks)
 

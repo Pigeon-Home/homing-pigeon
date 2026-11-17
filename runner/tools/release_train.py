@@ -7,7 +7,7 @@
     python3 runner/tools/release_train.py run --note "..." [--note ...]
     python3 runner/tools/release_train.py clock [--version V] [--since ISO-TIME]
     python3 runner/tools/release_train.py promote-check --run RUN_ID --sha SHA
-    python3 runner/tools/release_train.py measure
+    python3 runner/tools/release_train.py measure [--check]
 
 `status` reads the tree and the hosted record: the three version
 carriers and whether they agree, whether the tag for that version
@@ -48,7 +48,11 @@ over the tree and runs the local guards, and leaves the changes in
 the working tree for the landing's own commit. A core file that
 grows without it is named by the shape job on the next build (the
 Q168 fix of 2026-11-12 grew runner/ops by 118 lines and the head
-read red on shape until the next cut re-recorded it).
+read red on shape until the next cut re-recorded it). `measure
+--check` is the same measure read and not written: it names each
+recorded figure the tree has moved past and exits 1, and the
+pre-push guard (runner/tools/regression_guard.py) runs it, so the
+landing hears it before the push and not from the build.
 
 `clock` reads one cycle's timeline out of the hosted record -- the
 release commit, the build's start, the gate going green, every
@@ -321,15 +325,10 @@ def drop_bytecode(path):
         pass
 
 
-def record_core_measure(root=ROOT):
-    """Re-record runner/ops/core.py's as-assembled constants, the
-    test pins, and the fuzzing page's part list from a fresh
-    measure; returns the parts measured."""
-    sys.path.insert(0, root)
-    import importlib
-    core = importlib.import_module("runner.ops.core")
-    importlib.reload(core)
-    files = tuple(sorted(set(core.CORE_FILES) | set(SUITE_RUNNERS)))
+def assembled_lines(root, files):
+    """(lines, non-blank lines, lines by part) of the listed files
+    under root: the one count the re-record writes down and the
+    check reads the record against."""
     total = nonblank = 0
     parts = {}
     for name in files:
@@ -340,6 +339,91 @@ def record_core_measure(root=ROOT):
         top = name.split("/")
         part = "/".join(top[:2]) if len(top) > 2 else name
         parts[part] = parts.get(part, 0) + len(lines)
+    return total, nonblank, parts
+
+
+def core_at(root):
+    """runner/ops/core.py of the tree at root, read from that file:
+    the list and the recorded figures under measure are that
+    tree's own, whichever copy of the module this process holds.
+
+    The source is compiled on every read and no cached bytecode is
+    consulted or written: a cache is judged current by its
+    source's size and the second it was written (see
+    drop_bytecode), and a record re-written inside that second
+    would read as it stood before. The module's own import of its
+    sibling goes through this tree's package, so the tree stands
+    on the import path for the length of the read and is taken
+    off it again."""
+    import importlib.machinery
+    import importlib.util
+
+    class SourceAlone(importlib.machinery.SourceFileLoader):
+        def get_code(self, fullname):
+            return self.source_to_code(self.get_data(self.path), self.path)
+
+    path = os.path.join(root, "runner", "ops", "core.py")
+    spec = importlib.util.spec_from_file_location(
+        "runner.ops.core", path, loader=SourceAlone("runner.ops.core", path))
+    module = importlib.util.module_from_spec(spec)
+    added = ROOT not in sys.path
+    if added:
+        sys.path.insert(0, ROOT)
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        if added:
+            sys.path.remove(ROOT)
+    return module
+
+
+def core_drift(root=ROOT):
+    """What the record is behind the tree on: one line for each
+    recorded as-assembled figure in runner/ops/core.py that a
+    fresh measure of the tree at root no longer bears out, and
+    none when the record is current.
+
+    A landing that grows a core file and leaves the figures
+    standing is red on every leg, at runner/tests/test_core.py's
+    pins, and until this check the first to say so was the hosted
+    build (the landings of 2026-11-16, twice in a day). Nothing
+    is written here: record_core_measure is the re-record. The
+    zip figure is read only where the deflate is the reference
+    one, as it is re-recorded only there."""
+    core = core_at(root)
+    files = tuple(sorted(set(core.CORE_FILES) | set(SUITE_RUNNERS)))
+    total, nonblank, parts = assembled_lines(root, files)
+    behind = []
+
+    def read(name, recorded, live, hint=""):
+        if recorded != live:
+            behind.append("%s: %s recorded, %s in the tree (%+d)%s" % (
+                name, format(recorded, ","), format(live, ","),
+                live - recorded, hint))
+
+    read("files", core.AS_ASSEMBLED_FILES, len(files),
+         "; AS_ASSEMBLED_FILES is set by hand, beside the list")
+    read("lines", core.AS_ASSEMBLED_LINES, total)
+    read("non-blank lines", core.AS_ASSEMBLED_NONBLANK_LINES, nonblank)
+    for part in sorted(set(core.AS_ASSEMBLED_PART_LINES) | set(parts)):
+        read("lines in " + part, core.AS_ASSEMBLED_PART_LINES.get(part, 0),
+             parts.get(part, 0))
+    if reference_deflate():
+        read("zip bytes", core.AS_ASSEMBLED_ZIP_BYTES,
+             len(core.core_zip_bytes(root, files=files)))
+    return behind
+
+
+def record_core_measure(root=ROOT):
+    """Re-record runner/ops/core.py's as-assembled constants, the
+    test pins, and the fuzzing page's part list from a fresh
+    measure; returns the parts measured."""
+    sys.path.insert(0, root)
+    import importlib
+    core = importlib.import_module("runner.ops.core")
+    importlib.reload(core)
+    files = tuple(sorted(set(core.CORE_FILES) | set(SUITE_RUNNERS)))
+    total, nonblank, parts = assembled_lines(root, files)
     # The zip figure is re-recorded only where the deflate is the
     # reference one. core.py's zip is byte-identical between two
     # builds on one machine, and the same size across machines only
@@ -1087,6 +1171,19 @@ def clock_report(rows):
 
 
 def cmd_measure(args):
+    if args.check:
+        behind = core_drift()
+        if not reference_deflate():
+            _say("the as-assembled zip figure is not read here: this machine's "
+                 "deflate is %s, not the reference zlib" % deflate_name())
+        if not behind:
+            _say("the core's recorded figures stand with the tree")
+            return 0
+        for line in behind:
+            _say("behind the tree: " + line)
+        raise RuntimeError("the core's recorded figures are behind the tree; "
+                           "`python3 runner/tools/release_train.py measure` "
+                           "re-records them, to commit with the landing")
     parts = record_core_measure()
     proc = subprocess.run([sys.executable, os.path.join(ROOT, "runner/tools/refresh_figures.py"), "--write"],
                           cwd=ROOT, capture_output=True, text=True)
@@ -1136,7 +1233,11 @@ def main(argv=None):
     p.add_argument("--sha", required=True, help="the tag's commit (full sha)")
     p.add_argument("--version", default=None,
                    help="the version being released (default: the carriers')")
-    sub.add_parser("measure", help="re-record the core measure and the figures over the tree (prepare's re-measure, alone)")
+    p = sub.add_parser("measure", help="re-record the core measure and the figures over the tree (prepare's re-measure, alone)")
+    p.add_argument("--check", action="store_true",
+                   help="write nothing: say which recorded core figures the tree "
+                        "has moved past, and exit 1 when any has (the pre-push "
+                        "guard's core check)")
     p = sub.add_parser("clock", help="one cycle's timeline from the hosted record")
     p.add_argument("--version", default=None, help="the version (default: the carriers')")
     p.add_argument("--since", default=None, help="when the cycle was asked for (ISO time), as the first row")
