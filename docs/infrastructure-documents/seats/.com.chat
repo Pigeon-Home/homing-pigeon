@@ -3,6 +3,41 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 16-Nov-5:25pm-PST — the pre-push guard reads the core's figures, and the statistics record fills its own list
+
+Three landings at the owner's word, set down for whoever lands
+next.
+
+The guard. `runner/tools/regression_guard.py` has a `core` line
+beside its gates. It runs `release_train.py measure --check`,
+which reads the recorded figures in runner/ops/core.py against a
+fresh measure of the tree and writes nothing. A record behind the
+tree is red: the line names each figure and by how much, and the
+re-record is `release_train.py measure`, committed with the
+landing. A run with no changed test module reads the core all the
+same. On a deflate that is not the reference zlib the zip figure
+is not read, and the line says so. Twice on 2026-11-16 a landing
+grew a core file and the hosted build was the first to say the
+figures were behind. The guard had run green both times, because
+nothing in it asked.
+
+The statistics record. Its own list of what stands behind each
+figure was restated by hand, and it read 24,396,328 tokens under
+a display line of 26 mil. The list's token, line and commit
+figures now stand in figure slots: `refresh_figures.py --write`
+fills them with the facts, and `--check` names a figure the list
+no longer carries in a slot. Nothing changes in how a release is
+cut.
+
+The charts. The record's 3 growth charts are redrawn in the look
+of the README's diagrams, every point at its recorded value. A
+fourth snapshot splits each count in 2, the fuzz campaign's run
+log and everything else, on counts of the tagged trees: the log
+is 1 file of 12,240,873 tokens, 45.7% of the measure at
+v3.17.26.17. Any row is repeated by `version4.py measure --root`
+on a worktree of its tag. The script that drew the 4 charts is
+not in the tree.
+
 ## 15-Nov-11:49pm-PST — the release train runs from a zlib-ng machine on the distribution's own zlib
 
 Since the live pin on the as-assembled zip figure (Q199), the
