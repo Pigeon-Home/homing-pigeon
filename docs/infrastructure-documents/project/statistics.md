@@ -39,7 +39,7 @@ The recorded line, in the display form settled for publication:
   5,874 was the first count the fixed tool measured.
 - Non-latent: 96.31%, from the fresh dormant-code audit
   ([dormant-code-audit-2026-11-16.md](dormant-code-audit-2026-11-16.md), 2026-11-16):
-  total latent code held at 3.69% of the tree: 3.11% in
+  total latent code held at 3.69% of the tree, with 3.11% in
   near copies, 0.63% in templated lines (the lines of a
   written-out list, equal once the one varying token is
   masked) and 0.02% in exact copies. The audit supersedes
@@ -155,7 +155,7 @@ day's last release tag, and the lines are the line count of the
 tagged tree. The token measure was not recorded on the early
 tags, so the first 4 points are implied: the tree's lines at
 each tag, multiplied by the ratio the first measured point
-gives: on 2026-11-04 the version's 3rd component measured
+gives. On 2026-11-04 the version's 3rd component measured
 17M tokens against that tree's 1,127,754 lines, about 15.1
 tokens per line. The last 2 points are measured, not implied:
 2026-11-04 by the version component itself, and 2026-11-08 by
@@ -214,7 +214,7 @@ the model's, stated so they can be checked against it.
 
 The measured part of the view is the month the second
 snapshot records: from about 0.6 million tokens at the
-first release to 26,451,259 at the measure of 2026-11-15:
+first release to 26,451,259 at the measure of 2026-11-15,
 25.9 million added in 31 days, a 44-fold rise over the
 starting figure (26.5 ÷ 0.6). The projected part is 2
 lines from that last count:
