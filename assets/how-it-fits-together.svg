@@ -100,7 +100,7 @@
   <polygon points="110,229 97,253 123,253" fill="#3ddc97"/>
   <polygon points="87,976 65,963 65,989" fill="#3ddc97"/>
   <path d="M 52 804 L 76 804" fill="none" stroke="#3ddc97" stroke-width="1.5"/>
-  <text x="84" y="789" fill="#c8f7e1" font-size="17" font-weight="bold">DTLS via email (v3)</text>
+  <text x="84" y="789" fill="#c8f7e1" font-size="17" font-weight="bold">DTLS (v3)</text>
   <text x="84" y="810" fill="#c8f7e1" font-size="15">a session keyed by the shared secret</text>
   <text x="84" y="829" fill="#93e6c2" font-size="14">every job still passes The Door</text>
 
