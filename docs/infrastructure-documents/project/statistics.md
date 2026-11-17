@@ -136,73 +136,74 @@ points below are evenly spaced across the project's first 24
 days, from its first release to the measure of 2026-11-08.
 The chart, like the 2 that follow it in this record, was
 redrawn later in the look of the project's diagrams, on an
-axis that spaces the dates by their days; every point stands
-at its recorded value.
+axis that spaces the dates by their days. Every point on it
+is a count, and every circle is closed.
 
 ![Security tokens in the tree, 15 October to 8 November 2026](../../../assets/security-tokens-growth-2026-11-08.svg)
 
 | Date | Release | Lines in the tagged tree | Security tokens | Basis |
 |------|---------|--------------------------|-----------------|-------|
-| 2026-10-15 | v3.7.2 | 41,632 | about 0.6M | implied from lines |
-| 2026-10-20 | v3.11.30 | 144,993 | about 2.2M | implied from lines |
-| 2026-10-25 | v3.12.78 | 378,222 | about 5.7M | implied from lines |
-| 2026-10-30 | v3.14.42 | 727,924 | about 11.0M | implied from lines |
-| 2026-11-04 | v3.15.17.156 | 1,127,754 | 17M | measured: the version's 3rd component |
-| 2026-11-08 | count at commit d1b8e8a229 | 1,218,733 | 20,163,806 | measured: the count recorded that day |
+| 2026-10-15 | v3.7.2 | 41,632 | 447,477 | counted from the tagged tree |
+| 2026-10-20 | v3.11.30 | 144,993 | 1,615,732 | counted from the tagged tree |
+| 2026-10-25 | v3.12.78 | 378,222 | 5,548,576 | counted from the tagged tree |
+| 2026-10-30 | v3.14.42 | 727,924 | 10,334,821 | counted from the tagged tree |
+| 2026-11-04 | v3.15.17.156 | 1,127,754 | 17,948,976 | counted from the tagged tree |
+| 2026-11-08 | commit d1b8e8a229 | 1,218,733 | 20,251,953 | counted from that commit's tree |
 
 How the points were derived. Each point is taken from that
 day's last release tag, and the lines are the line count of the
-tagged tree. The token measure was not recorded on the early
-tags, so the first 4 points are implied: the tree's lines at
-each tag, multiplied by the ratio the first measured point
-gives. On 2026-11-04 the version's 3rd component measured
-17M tokens against that tree's 1,127,754 lines, about 15.1
-tokens per line. The last 2 points are measured, not implied:
-2026-11-04 by the version component itself, and 2026-11-08 by
-the count of 20,163,806 taken at commit d1b8e8a229. The implied
-points are estimates, shown for the shape of the growth; the
-measured points anchor the series at its later end. Read with
-that caution, the shape is plain: the tree roughly doubled
-every 5 days through October, and the climb steepened into
-November.
+tagged tree. Every token figure is a count: the tree at the tag
+or commit named, checked out and counted by the estimator as it
+stands today, the method the fourth snapshot below states in
+full. The series was not all counts when it was first recorded.
+The token measure was not recorded on the early tags, so the
+first 4 points were implied from the lines at about 15.1 tokens
+a line (about 0.6M, 2.2M, 5.7M and 11.0M) and drawn as open
+circles. The 2026-11-04 point was the version's 3rd component,
+17M, and the 2026-11-08 point was the count recorded that day,
+20,163,806. At the owner's word the counts took their places on
+2026-11-17. The shape is plain: the tree more than tripled in
+each of its first 2 steps of 5 days, nearly doubled in each of
+the next 2, and added more tokens in each of those 4 steps than
+in the one before.
 
 ## The growth of the measure, continued: a second snapshot as of 2026-11-15
 
-The snapshot above stands as it was recorded, with its own date.
-This second view of the same series keeps its 6 points exactly
-as recorded there and carries the series a week further, to
-2026-11-15, on 2 more measured points. From 2026-11-04 on,
-every point in the series is measured; the implied points
-remain only where the early tags left no count to take.
+This second view of the same series keeps the 6 points of the
+snapshot above and carries the series a week further, to
+2026-11-15, on 2 more. Every point in the series is a count
+of the tree at the release named, as in the snapshot above.
 
 ![Security tokens in the tree, 15 October to 15 November 2026](../../../assets/security-tokens-growth-2026-11-15.svg)
 
 | Date | Release | Lines in the tagged tree | Security tokens | Basis |
 |------|---------|--------------------------|-----------------|-------|
-| 2026-10-15 | v3.7.2 | 41,632 | about 0.6M | implied from lines |
-| 2026-10-20 | v3.11.30 | 144,993 | about 2.2M | implied from lines |
-| 2026-10-25 | v3.12.78 | 378,222 | about 5.7M | implied from lines |
-| 2026-10-30 | v3.14.42 | 727,924 | about 11.0M | implied from lines |
-| 2026-11-04 | v3.15.17.156 | 1,127,754 | 17M | measured: the version's 3rd component |
-| 2026-11-08 | count recorded that day | 1,218,733 | 20,163,806 | measured: the count recorded that day |
-| 2026-11-13 | v3.16.25.1 | 1,497,490 | 25,004,714 | measured: the count recorded in that release's statistics |
-| 2026-11-15 | v3.16.26.29 | 1,477,466 | 26,451,259 | measured: the count recorded in that release's statistics |
+| 2026-10-15 | v3.7.2 | 41,632 | 447,477 | counted from the tagged tree |
+| 2026-10-20 | v3.11.30 | 144,993 | 1,615,732 | counted from the tagged tree |
+| 2026-10-25 | v3.12.78 | 378,222 | 5,548,576 | counted from the tagged tree |
+| 2026-10-30 | v3.14.42 | 727,924 | 10,334,821 | counted from the tagged tree |
+| 2026-11-04 | v3.15.17.156 | 1,127,754 | 17,948,976 | counted from the tagged tree |
+| 2026-11-08 | commit d1b8e8a229 | 1,218,733 | 20,251,953 | counted from that commit's tree |
+| 2026-11-13 | v3.16.25.1 | 1,497,490 | 25,004,718 | counted from the tagged tree |
+| 2026-11-15 | v3.16.26.29 | 1,477,466 | 26,451,259 | counted from the tagged tree |
 
 How the points were derived. The first 6 points are carried
-over from the snapshot above unchanged, derivation and all.
-The 2 new points need no derivation: each is the token count
-the release named in the row recorded in its own statistics
-(25,004,714 at v3.16.25.1, the measure that first crossed 25
-million, and 26,451,259 at v3.16.26.29), with the tagged
-tree's line count from the same record beside it. A reader
-with a checkout of either tag reads the same figures in that
-tag's copy of this record.
+over from the snapshot above, derivation and all. The 2 new
+points are counts of the tagged trees too, and each stands
+beside the figure its release recorded in its own statistics:
+25,004,714 at v3.16.25.1, the measure that first crossed 25
+million, where the tagged tree counts 25,004,718, and
+26,451,259 at v3.16.26.29, the same to the token. A release
+records its measure before its own last edits, so a tagged
+tree can stand a few tokens off its own record. The tagged
+tree's line count, from the release's own record, stands
+beside each figure.
 
 ## The growth of the measure, projected: a third snapshot as of 2026-11-16
 
 The second snapshot above ends where the counts end, at
-2026-11-15. This third view keeps its 8 points exactly as
-recorded there and draws the 2 lines a reader draws next,
+2026-11-15. This third view keeps its 8 points and draws
+the 2 lines a reader draws next,
 from the last count forward to 2026-12-15: the straight
 trend of the 31 days extended unchanged, and an asymptotic
 curve that bends toward a ceiling. Everything to the right
@@ -212,12 +213,11 @@ the model's, stated so they can be checked against it.
 
 ![Security tokens in the tree, 15 October to 15 December 2026: measured to 15 November, then projected](../../../assets/security-tokens-growth-2026-11-16.svg)
 
-The measured part of the view is the month the second
-snapshot records: from about 0.6 million tokens at the
-first release to 26,451,259 at the measure of 2026-11-15,
-25.9 million added in 31 days, a 44-fold rise over the
-starting figure (26.5 ÷ 0.6). The projected part is 2
-lines from that last count:
+The counted part of the view is the month the second
+snapshot records: from 447,477 tokens at the first release
+to 26,451,259 at the count of 2026-11-15, 26.0 million
+added in 31 days, a 59-fold rise over the starting figure.
+The projected part is 2 lines from that last count:
 
 | Line | Form | At 2026-12-15 |
 |------|------|---------------|
@@ -226,7 +226,7 @@ lines from that last count:
 | Ceiling | the asymptote itself | 38M: approached, never crossed |
 
 How the lines were drawn. The straight trend is the slope
-the 2 endpoints fix, (26.5 − 0.6) over 31 days, about
+the 2 endpoints fix, (26.45 − 0.45) over 31 days, about
 0.84 million a day, carried forward unchanged; on that
 slope the line passes 38 million in late November without
 slowing. The asymptotic curve starts at the same last
@@ -247,12 +247,14 @@ toward.
 
 The interactive original of this view stands beside this
 record: [security-tokens-asymptotic-view.html](security-tokens-asymptotic-view.html).
-It carries the same points and the same 2 lines with the
-ceiling left on a slider, so a reader who opens the file
-in a browser can move the ceiling between 30 and 60
-million and watch the curve re-bend. The chart above
-carries that page's points and its 2 lines with the slider
-set to 38 million, drawn for the record.
+It carries the series as it was first recorded and the
+same 2 lines, with the ceiling left on a slider, so a
+reader who opens the file in a browser can move the
+ceiling between 30 and 60 million and watch the curve
+re-bend. The chart above carries that page's 2 lines with
+the slider set to 38 million, drawn for the record. Its
+points are the counts; the page keeps the 4 early points
+as they were first implied.
 
 ## What the measure is made of: a fourth snapshot as of 2026-11-16
 
@@ -292,11 +294,11 @@ everything else is the difference. The row for 2026-10-26 is
 the commit before the log's first, so the chart shows the
 log entering the tree where it did.
 
-Against the earlier snapshots. The 4 early points stood
-there as about 0.6M, 2.2M, 5.7M and 11.0M, implied from line
-counts; counted, they are 447,477, 1,615,732, 5,548,576 and
-10,334,821. The implied figures ran high at each tag, most
-at the first. The later points were counts already, and the
+Against the series as first recorded. The 4 early points
+first stood in the earlier snapshots as about 0.6M, 2.2M,
+5.7M and 11.0M, implied from line counts; counted, they are
+447,477, 1,615,732, 5,548,576 and 10,334,821. The implied
+figures ran high at each tag, most at the first. The later points were counts already, and the
 tagged trees bear them out: 17,948,976 at v3.15.17.156,
 whose whole millions are the 17 the version component
 carried on 2026-11-04, 25,004,718 against the 25,004,714
@@ -306,8 +308,9 @@ records its measure before its own last edits, so a tagged
 tree can stand a few tokens off its own record. The count
 recorded on 2026-11-08 read 20,163,806; the tree at the
 commit named there counts 20,251,953 today, 88,147 more.
-The earlier snapshots stand as recorded. From here the
-series can be read on counts alone.
+The earlier snapshots carry these counts now, in their
+charts and in their tables, and the whole series reads on
+counts alone.
 
 What the split shows:
 

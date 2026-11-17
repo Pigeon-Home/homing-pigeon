@@ -132,6 +132,66 @@ class TestThirdSnapshot(unittest.TestCase):
                 name)
 
 
+class TestGrowthCharts(unittest.TestCase):
+    # The 3 growth charts first drew their 4 early points as open
+    # circles, implied from line counts. At the owner's word every
+    # point is a count and every circle is closed (2026-11-17): a
+    # chart that goes back to an open circle, or loses a point its
+    # snapshot's table carries, is named here.
+    POINTS = {"2026-11-08": 6, "2026-11-15": 8, "2026-11-16": 8}
+
+    def _chart(self, day):
+        return _read(os.path.join(
+            REPO, "assets", "security-tokens-growth-%s.svg" % day))
+
+    def test_every_point_is_a_closed_circle(self):
+        for day, points in sorted(self.POINTS.items()):
+            svg = self._chart(day)
+            closed = re.findall(
+                r'<circle [^>]*r="6\.5" fill="#3987e5"[^>]*/>', svg)
+            self.assertEqual(points, len(closed), day)
+            # An open circle is the surface's colour ringed in the
+            # series colour; none is drawn, in the plot or the key.
+            self.assertEqual(
+                [], re.findall(r'<circle [^>]*fill="#21050b" '
+                               r'stroke="#3987e5"[^>]*/>', svg), day)
+            self.assertNotIn("implied", svg, day)
+
+    def test_the_tables_carry_counts_and_nothing_implied(self):
+        lines = _read(STATISTICS).splitlines()
+        start = lines.index("## The growth of the measure: a snapshot "
+                            "as of 2026-11-08")
+        end = lines.index(TestThirdSnapshot.KEPT_HEADING)
+        rows = [line for line in lines[start:end]
+                if re.match(r"^\| \d{4}-\d{2}-\d{2} \|", line)]
+        self.assertEqual(6 + 8, len(rows))
+        for row in rows:
+            cells = [c.strip() for c in row.strip("|").split("|")]
+            self.assertRegex(cells[3], r"^\d{1,3}(,\d{3})+$", row)
+            self.assertTrue(cells[4].startswith("counted from"), row)
+
+    def test_the_three_snapshots_and_the_fourth_carry_one_series(self):
+        lines = _read(STATISTICS).splitlines()
+
+        def counts(heading, until):
+            start, end = lines.index(heading), lines.index(until)
+            found = {}
+            for line in lines[start:end]:
+                cells = [c.strip() for c in line.strip().strip("|").split("|")]
+                if len(cells) == 5 and re.match(r"^\d{4}-\d{2}-\d{2}$", cells[0]):
+                    found[cells[0]] = int(cells[3 if "counted" in cells[4]
+                                                else 2].replace(",", ""))
+            return found
+        second = counts("## The growth of the measure, continued: a second "
+                        "snapshot as of 2026-11-15",
+                        TestThirdSnapshot.KEPT_HEADING)
+        fourth = counts(TestFourthSnapshot.HEADING,
+                        "## Where the project stands")
+        self.assertEqual(8, len(second))
+        for day, tokens in second.items():
+            self.assertEqual(fourth[day], tokens, day)
+
+
 class TestFourthSnapshot(unittest.TestCase):
     # The fourth snapshot splits each count of the series in 2,
     # the fuzz campaign's run log and everything else, on counts

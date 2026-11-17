@@ -43,37 +43,34 @@
   <path d="M 80 221.3 L 750 221.3" fill="none" stroke="#ffd7de" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"/>
   <text x="90" y="210.3" fill="#ffd7de" font-size="14" font-weight="bold">Ceiling, 38M: approached, never crossed</text>
   <!-- the straight trend: the endpoints' slope, carried on -->
-  <path d="M 80 420.8 L 750 149" fill="none" stroke="#f04866" stroke-width="2.5" stroke-dasharray="8 6" stroke-linecap="round"/>
+  <path d="M 80 421.6 L 750 148.7" fill="none" stroke="#f04866" stroke-width="2.5" stroke-dasharray="8 6" stroke-linecap="round"/>
   <!-- the asymptotic curve: from the last count toward the ceiling -->
-  <path d="M 420.5 282.7 L 426 281 L 431.5 279.4 L 437 277.8 L 442.5 276.3 L 448 274.8 L 453.4 273.3 L 458.9 271.9 L 464.4 270.6 L 469.9 269.2 L 475.4 267.9 L 480.9 266.7 L 486.4 265.4 L 491.9 264.2 L 497.4 263.1 L 502.9 261.9 L 508.4 260.8 L 513.9 259.8 L 519.3 258.7 L 524.8 257.7 L 530.3 256.7 L 535.8 255.8 L 541.3 254.8 L 546.8 253.9 L 552.3 253 L 557.8 252.2 L 563.3 251.3 L 568.8 250.5 L 574.3 249.7 L 579.8 249 L 585.2 248.2 L 590.7 247.5 L 596.2 246.8 L 601.7 246.1 L 607.2 245.4 L 612.7 244.8 L 618.2 244.1 L 623.7 243.5 L 629.2 242.9 L 634.7 242.3 L 640.2 241.7 L 645.7 241.2 L 651.1 240.7 L 656.6 240.1 L 662.1 239.6 L 667.6 239.1 L 673.1 238.6 L 678.6 238.2 L 684.1 237.7 L 689.6 237.3 L 695.1 236.8 L 700.6 236.4 L 706.1 236 L 711.6 235.6 L 717 235.2 L 722.5 234.8 L 728 234.5 L 733.5 234.1 L 739 233.8 L 744.5 233.4 L 750 233.1" fill="none" stroke="#12a594" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="750" cy="149" r="4.5" fill="#f04866" stroke="#21050b" stroke-width="2"/>
-  <circle cx="750" cy="233.1" r="4.5" fill="#12a594" stroke="#21050b" stroke-width="2"/>
-  <!-- the series: implied from the line count, then measured -->
-  <path d="M 80 420.8 L 134.9 412.3 L 189.8 393.6 L 244.8 365.3 L 299.7 333.3" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-dasharray="7 6" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M 299.7 333.3 L 343.6 316.3 L 398.5 290.7 L 420.5 282.7" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="80" cy="420.8" r="5" fill="#21050b" stroke="#3987e5" stroke-width="2.5"/>
-  <circle cx="134.9" cy="412.3" r="5" fill="#21050b" stroke="#3987e5" stroke-width="2.5"/>
-  <circle cx="189.8" cy="393.6" r="5" fill="#21050b" stroke="#3987e5" stroke-width="2.5"/>
-  <circle cx="244.8" cy="365.3" r="5" fill="#21050b" stroke="#3987e5" stroke-width="2.5"/>
-  <circle cx="299.7" cy="333.3" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <circle cx="343.6" cy="316.3" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <circle cx="398.5" cy="290.7" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <circle cx="420.5" cy="282.7" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <text x="86" y="393.8" fill="#ffffff" font-size="15" font-weight="bold">0.6M</text>
-  <text x="408.5" y="268.7" text-anchor="end" fill="#ffffff" font-size="15" font-weight="bold">26.5M</text>
-  <text x="764" y="150" fill="#ffffff" font-size="17" font-weight="bold">51.6M</text>
-  <text x="764" y="168" fill="#ffd7de" font-size="13">straight trend</text>
-  <text x="764" y="255.1" fill="#ffffff" font-size="17" font-weight="bold">35.8M</text>
-  <text x="764" y="273.1" fill="#ffd7de" font-size="13">asymptotic curve</text>
+  <path d="M 420.5 282.9 L 426 281.3 L 431.5 279.6 L 437 278.1 L 442.5 276.5 L 448 275 L 453.4 273.6 L 458.9 272.1 L 464.4 270.8 L 469.9 269.4 L 475.4 268.1 L 480.9 266.8 L 486.4 265.6 L 491.9 264.4 L 497.4 263.2 L 502.9 262.1 L 508.4 261 L 513.9 259.9 L 519.3 258.9 L 524.8 257.9 L 530.3 256.9 L 535.8 255.9 L 541.3 255 L 546.8 254.1 L 552.3 253.2 L 557.8 252.3 L 563.3 251.5 L 568.8 250.6 L 574.3 249.9 L 579.8 249.1 L 585.2 248.3 L 590.7 247.6 L 596.2 246.9 L 601.7 246.2 L 607.2 245.5 L 612.7 244.9 L 618.2 244.2 L 623.7 243.6 L 629.2 243 L 634.7 242.4 L 640.2 241.8 L 645.7 241.3 L 651.1 240.7 L 656.6 240.2 L 662.1 239.7 L 667.6 239.2 L 673.1 238.7 L 678.6 238.2 L 684.1 237.8 L 689.6 237.3 L 695.1 236.9 L 700.6 236.5 L 706.1 236.1 L 711.6 235.7 L 717 235.3 L 722.5 234.9 L 728 234.5 L 733.5 234.2 L 739 233.8 L 744.5 233.5 L 750 233.2" fill="none" stroke="#12a594" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="750" cy="148.7" r="4.5" fill="#f04866" stroke="#21050b" stroke-width="2"/>
+  <circle cx="750" cy="233.2" r="4.5" fill="#12a594" stroke="#21050b" stroke-width="2"/>
+  <!-- the series: every point a count, every circle closed -->
+  <path d="M 80 421.6 L 134.9 415.4 L 189.8 394.4 L 244.8 368.9 L 299.7 328.3 L 343.6 316 L 398.5 290.6 L 420.5 282.9" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="80" cy="421.6" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="134.9" cy="415.4" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="189.8" cy="394.4" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="244.8" cy="368.9" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="299.7" cy="328.3" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="343.6" cy="316" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="398.5" cy="290.6" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="420.5" cy="282.9" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <text x="86" y="394.6" fill="#ffffff" font-size="15" font-weight="bold">0.4M</text>
+  <text x="408.5" y="268.9" text-anchor="end" fill="#ffffff" font-size="15" font-weight="bold">26.5M</text>
+  <text x="764" y="149.7" fill="#ffffff" font-size="17" font-weight="bold">51.6M</text>
+  <text x="764" y="167.7" fill="#ffd7de" font-size="13">straight trend</text>
+  <text x="764" y="255.2" fill="#ffffff" font-size="17" font-weight="bold">35.8M</text>
+  <text x="764" y="273.2" fill="#ffd7de" font-size="13">asymptotic curve</text>
   <!-- the key -->
-  <circle cx="58" cy="489.5" r="5" fill="#21050b" stroke="#3987e5" stroke-width="2.5"/>
-  <text x="74" y="494" fill="#ffd7de" font-size="13.5">implied from the line count</text>
-  <circle cx="267.6" cy="489.5" r="6" fill="#3987e5"/>
-  <text x="283.6" y="494" fill="#ffd7de" font-size="13.5">measured</text>
-  <path d="M 371.6 489.5 L 399.6 489.5" fill="none" stroke="#f04866" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>
-  <text x="409.6" y="494" fill="#ffd7de" font-size="13.5">straight trend</text>
-  <path d="M 516.4 489.5 L 544.4 489.5" fill="none" stroke="#12a594" stroke-width="3" stroke-linecap="round"/>
-  <text x="554.4" y="494" fill="#ffd7de" font-size="13.5">asymptotic curve</text>
-  <path d="M 683.6 489.5 L 711.6 489.5" fill="none" stroke="#ffd7de" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"/>
-  <text x="721.6" y="494" fill="#ffd7de" font-size="13.5">ceiling</text>
+  <circle cx="58" cy="489.5" r="6" fill="#3987e5"/>
+  <text x="74" y="494" fill="#ffd7de" font-size="13.5">counted</text>
+  <path d="M 150 489.5 L 178 489.5" fill="none" stroke="#f04866" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>
+  <text x="188" y="494" fill="#ffd7de" font-size="13.5">straight trend</text>
+  <path d="M 294.8 489.5 L 322.8 489.5" fill="none" stroke="#12a594" stroke-width="3" stroke-linecap="round"/>
+  <text x="332.8" y="494" fill="#ffd7de" font-size="13.5">asymptotic curve</text>
+  <path d="M 462.1 489.5 L 490.1 489.5" fill="none" stroke="#ffd7de" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"/>
+  <text x="500.1" y="494" fill="#ffd7de" font-size="13.5">ceiling</text>
 </svg>

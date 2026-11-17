@@ -34,20 +34,17 @@
   <text x="725" y="398" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 4</text>
   <path d="M 854 374 L 854 380" fill="none" stroke="#6a2130" stroke-width="1"/>
   <text x="854" y="398" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 8</text>
-  <!-- the series: implied from the line count, then measured -->
-  <path d="M 80 367.5 L 241.2 350.2 L 402.5 312.4 L 563.8 255.2 L 725 190.4" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-dasharray="7 6" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M 725 190.4 L 854 155.8" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="80" cy="367.5" r="5" fill="#21050b" stroke="#3987e5" stroke-width="2.5"/>
-  <circle cx="241.2" cy="350.2" r="5" fill="#21050b" stroke="#3987e5" stroke-width="2.5"/>
-  <circle cx="402.5" cy="312.4" r="5" fill="#21050b" stroke="#3987e5" stroke-width="2.5"/>
-  <circle cx="563.8" cy="255.2" r="5" fill="#21050b" stroke="#3987e5" stroke-width="2.5"/>
-  <circle cx="725" cy="190.4" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <circle cx="854" cy="155.8" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <text x="86" y="340.5" fill="#ffffff" font-size="15" font-weight="bold">0.6M</text>
-  <text x="850" y="139.8" text-anchor="end" fill="#ffffff" font-size="15" font-weight="bold">20.2M</text>
+  <!-- the series: every point a count, every circle closed -->
+  <path d="M 80 369.2 L 241.2 356.5 L 402.5 314.1 L 563.8 262.4 L 725 180.2 L 854 155.3" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="80" cy="369.2" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="241.2" cy="356.5" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="402.5" cy="314.1" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="563.8" cy="262.4" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="725" cy="180.2" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="854" cy="155.3" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <text x="86" y="342.2" fill="#ffffff" font-size="15" font-weight="bold">0.4M</text>
+  <text x="850" y="139.3" text-anchor="end" fill="#ffffff" font-size="15" font-weight="bold">20.3M</text>
   <!-- the key -->
-  <circle cx="58" cy="439.5" r="5" fill="#21050b" stroke="#3987e5" stroke-width="2.5"/>
-  <text x="74" y="444" fill="#ffd7de" font-size="13.5">implied from the line count</text>
-  <circle cx="267.6" cy="439.5" r="6" fill="#3987e5"/>
-  <text x="283.6" y="444" fill="#ffd7de" font-size="13.5">measured</text>
+  <circle cx="58" cy="439.5" r="6" fill="#3987e5"/>
+  <text x="74" y="444" fill="#ffd7de" font-size="13.5">counted from the tree at each release</text>
 </svg>
