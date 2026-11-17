@@ -756,7 +756,18 @@ class RetainedCaseCollisionShotgunTest(_Base):
     entries coexist there, which is why the bug needed a rig to
     find it. regression_guard on this file: green (native, repeat,
     shuffled, the simulated Windows surface, no leaks, the registry
-    gates)."""
+    gates).
+
+    The hosted legs (16-Nov-2026). Three of the hand-written seams
+    ask the real filesystem with nothing simulated: the crash's
+    pair saved in order, the probe's own answer, and the listing
+    that carries both case forms. Each measures first whether the
+    filesystem under the test folds case (_this_filesystem_folds)
+    and holds the code to that answer, so on the hosted Windows and
+    macOS legs, whose filesystems fold, the pair is saved and read
+    back on the filesystem itself: the plain record and the sidecar
+    side by side. On the Linux legs the same three read the
+    unfolded answer, as before."""
 
     # -- the folding surface -------------------------------------
 
@@ -770,6 +781,20 @@ class RetainedCaseCollisionShotgunTest(_Base):
             return False
         return any(e != name and e.casefold() == name.casefold()
                    for e in entries)
+
+    def _this_filesystem_folds(self):
+        """The real filesystem's own answer, measured apart from the
+        code under test: a file made under one case is reached, or
+        is not, under the other, while the listing carries the one
+        name. The hosted Windows and macOS legs answer yes; the
+        Linux legs answer no."""
+        with tempfile.TemporaryDirectory(
+                dir=os.path.dirname(self.base)) as d:
+            with open(os.path.join(d, "Fold-Probe"), "w",
+                      encoding="utf-8") as f:
+                f.write("x")
+            return (os.listdir(d) == ["Fold-Probe"]
+                    and _REAL_EXISTS(os.path.join(d, "fOLD-pROBE")))
 
     def _save_under_fold(self, job_id, payload):
         with unittest.mock.patch.object(
@@ -852,13 +877,20 @@ class RetainedCaseCollisionShotgunTest(_Base):
             self._save_under_fold("bm-RET-SHARED", {"v": 1})
         self.assertEqual(paths, [self.record_path("bm-RET-SHARED")])
 
-    def test_no_sidecar_without_a_fold(self):
-        # The real filesystem here does not fold: both records keep
-        # their plain names, exactly as before the fix.
+    def test_the_real_filesystem_sets_the_second_name(self):
+        # Asked of the real filesystem, with nothing simulated. Where
+        # it does not fold, both records keep their plain names,
+        # exactly as before the fix. Where it folds (the hosted
+        # Windows and macOS legs), the second record takes its
+        # sidecar name beside the first. Either way both read back:
+        # the crash's own pair, on the filesystem itself.
         R.save_retained(self.base, "bm-RET-SHARED", {"v": "up"})
         R.save_retained(self.base, "bm-ret-shared", {"v": "low"})
+        second = (R._retained_sidecar_name("bm-ret-shared")
+                  if self._this_filesystem_folds()
+                  else "bm-ret-shared.json")
         self.assertEqual(sorted(os.listdir(self.rdir)),
-                         ["bm-RET-SHARED.json", "bm-ret-shared.json"])
+                         sorted(["bm-RET-SHARED.json", second]))
         self.assertEqual(R.load_retained(self.base, "bm-RET-SHARED"),
                          {"v": "up"})
         self.assertEqual(R.load_retained(self.base, "bm-ret-shared"),
@@ -953,13 +985,17 @@ class RetainedCaseCollisionShotgunTest(_Base):
 
     # -- the probe ----------------------------------------------------
 
-    def test_probe_is_false_on_this_filesystem(self):
+    def test_probe_answers_as_this_filesystem_does(self):
+        # The probe's answer is the real filesystem's own: false
+        # where case variants are two files, true where they are
+        # one.
         os.makedirs(self.rdir)
         with open(self.record_path("bm-RET-SHARED"), "w",
                   encoding="utf-8") as f:
             f.write("{}")
-        self.assertFalse(
-            R._dir_folds_case(self.rdir, os.listdir(self.rdir)))
+        self.assertEqual(
+            R._dir_folds_case(self.rdir, os.listdir(self.rdir)),
+            self._this_filesystem_folds())
 
     def test_probe_is_true_when_a_flipped_name_resolves(self):
         with unittest.mock.patch.object(
@@ -982,14 +1018,22 @@ class RetainedCaseCollisionShotgunTest(_Base):
     def test_probe_is_false_when_the_flipped_name_is_listed(self):
         # Both case forms stand in the listing (a case-sensitive
         # filesystem holding two variants): each name's flip is
-        # itself listed, so the probe never fires.
+        # itself listed, so the probe never fires. The rule is the
+        # listing's, so it is asked with the two names as the
+        # listing on every filesystem; where the filesystem keeps
+        # the two apart, its own listing is asked as well.
         os.makedirs(self.rdir)
-        for name in ("ab.json", "AB.JSON"):
+        names = ["ab.json", "AB.JSON"]
+        for name in names:
             with open(os.path.join(self.rdir, name), "w",
                       encoding="utf-8") as f:
                 f.write("{}")
-        self.assertFalse(
-            R._dir_folds_case(self.rdir, os.listdir(self.rdir)))
+        self.assertFalse(R._dir_folds_case(self.rdir, names))
+        if not self._this_filesystem_folds():
+            self.assertEqual(sorted(os.listdir(self.rdir)),
+                             sorted(names))
+            self.assertFalse(
+                R._dir_folds_case(self.rdir, os.listdir(self.rdir)))
 
     def test_probe_is_false_for_an_empty_listing(self):
         self.assertFalse(R._dir_folds_case(self.rdir, []))
