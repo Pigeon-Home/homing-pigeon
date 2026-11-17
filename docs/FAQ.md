@@ -3,7 +3,7 @@
 ## What can I actually use this for?
 
 Anything with a processor, a job worth doing, and a network that is
-slow, flaky, or absent. A few that show the shape:
+slow, flaky, or absent. A few examples that show the shape:
 
 **Plug in a soil monitor and hand the SI the whole job.** Install the
 runner on a Raspberry Pi in the barn and the software side is done:
@@ -12,7 +12,7 @@ model to download. Wire in a soil-moisture sensor and give your SI a
 broad task: "read this sensor every hour and tell me when the beds
 need water." The SI writes the driver, runs it, reads the failure,
 fixes it, and iterates, all through signed jobs. A cellular link that
-drops for a day just means the jobs wait in the mailbox. Same can be
+drops for a day just means the jobs wait in the mailbox. The same can be
 done with fermentation, growing rooms, and small bioreactors.
 Homebrewers, mushroom and microgreen growers, cheesemakers, and the
 technicians in an agriculture or food-science lab can let an SI
@@ -23,16 +23,16 @@ protocol into an auditable sneakernet. `send_job.py new --to-file`
 writes a signed, encrypted job to a file; someone carries it on a USB
 stick into a watched folder on a machine with no network at all; the
 result lands in the outbox as `<job_id>.result.txt` and rides back the
-same way. Vehicle and generator diagnostics, maintenance and logistics
-boxes in disaster zones or remote sites: with `max_result_view` set to
+same way. For vehicle and generator diagnostics, or maintenance and logistics
+boxes in disaster zones or remote sites, with `max_result_view` set to
 `attested`, only pass/fail, digests, and signed claims leave the box,
 never the raw logs (`docs/infrastructure-documents/extend/transports.md`, PROTOCOL.md section 9).
 
 **A data clean room, lite.** A researcher's script runs against data
 that never leaves the machine, such as a clinic's records or a lab's
 unpublished results. They get attestations ("exit zero", "no secrets
-in the output", an output digest) and, with a local model, plain-
-English `ask` answers that are truncated, secret-scanned, and redacted
+in the output", an output digest) and, with a local model, plain-English
+`ask` answers that are truncated, secret-scanned, and redacted
 before they are sent. The owner's ceiling caps what any job can see,
 and a per-job privacy budget caps how much it can learn by asking
 (PROTOCOL.md sections 9-11).
@@ -51,7 +51,7 @@ extension (`docs/steady/extensions.md`) that declares signals such as
 with the Oracle. Only the labels and a digest leave the box; when a
 frame is a toss-up, your SI sends one more job for just that frame
 instead of pulling the whole card. A runner that asks the cloud its
-own free-form question ("lynx or bobcat?") is the Mirror idea, not
+own free-form question ("lynx or bobcat?") is the Mirror idea, which is not
 built and not listed; the answer-only path below is the nearest
 thing that is.
 
@@ -63,9 +63,9 @@ seconds at most; `docs/ietf/draft-slutsky-homing-pigeon-v2/source/draft-homing-p
 
 ## What does a live run look like?
 
-Three days of a real box: 19,227 jobs, every result verified, a few
+Three days on a real box: 19,227 jobs, every result verified, and a few
 milliseconds of work inside a four-second round trip on the file
-transport. The quoted lines, the envelopes, the posture card and
+transport. The quoted lines, the envelopes, the posture card, and
 the full numbers are in [live-examples.md](steady/use/live-examples.md).
 
 ## Isn't this just remote code execution by email?
@@ -101,14 +101,29 @@ probably don't need this.
 ## What happens if the shared secret leaks?
 
 Whoever holds it can run jobs, full stop. Treat it like a root
-password. Rotate it with `docs/steady/secret-rotation.md`. Two honest
-limits: there is no forward secrecy at the envelope layer unless the
-transport provides it, so a leaked secret exposes captured traffic
-that used it. And revocation of the primary secret is manual:
-per-sender keys do exist (`additional_secrets`, the key directory),
-and a named key is revoked by marking it `compromised` there, but
-the primary secret itself is rotated, not revoked. Asymmetric signing would fix
-the second and is sketched in `docs/steady/design/asymmetric-signing-design.md`.
+password. Rotate it with `docs/steady/secret-rotation.md`. What a
+leak exposes depends on which layer carried the traffic, and the
+layers differ. A job sent as ordinary mail is protected by the
+per-job envelope, and the envelope has no forward secrecy on any
+binding: its key derives from the shared secret, so a leaked
+secret opens every recorded envelope, past and future (the
+draft, Section 16.4). A session is a different story. The DTLS
+binding, and version 3, which carries the same DTLS profile
+over email itself, derive their session keys from a fresh
+ephemeral exchange on every handshake and erase them when the
+session ends: the secret authenticates the session, and it does
+not encrypt it. Record every flight of such a session, archived
+mail and all, and a later leak still does not decrypt it. What
+the leak buys against sessions is a position against the
+future, not the past: impersonation in later handshakes, and
+an active man in the middle against a later session, because
+the shared secret is the authentication. The other honest
+limit is revocation: it is manual for the primary secret.
+Per-sender keys do exist (`additional_secrets`, the key
+directory), and a named key is revoked by marking it
+`compromised` there, but the primary secret itself is rotated,
+not revoked. Asymmetric signing would fix that limit and is
+sketched in `docs/steady/design/asymmetric-signing-design.md`.
 
 ## Is this safe to run on my main machine?
 
@@ -136,9 +151,9 @@ How it works, in order:
    box (unless the operator turned it off with
    `inference.watch_system=false`; on by default): canary tripwire
    files are re-hashed and diffed against their snapshot; on
-   Windows, a bounded tail of the Event Log and a diff of the
+   Windows, it checks a bounded tail of the Event Log and a diff of the
    registry persistence locations (autorun keys, services); on
-   any platform, firewall posture and antivirus posture; plus a
+   any platform, it checks firewall posture and antivirus posture; plus a
    built-in resource monitor whose threshold crossings become
    security events.
 2. **If something tripped, the watch files the alert itself**:
@@ -148,7 +163,7 @@ How it works, in order:
    page on that same cycle.
 3. **Paging is deterministic, not the model's idea.** A trigger
    evaluation runs once per poll (the DRI playbook: e.g. a fused
-   sensor score crossing a threshold, a high-severity alert).
+   sensor score crossing a threshold, or a high-severity alert).
    If a trigger fires and a channel is configured, it pages the
    operator. This is off by default and entirely rule-based.
 4. **Signals arrive two ways, and one of them can wake the
@@ -166,7 +181,7 @@ How it works, in order:
    one wake at a time) that may start the model to write a short
    assessment, appended to `oracle-briefs.jsonl`. The wake never
    takes an action; it writes a brief. With no inference
-   configured the brief is the deterministic fallback, and in
+   configured, the brief is the deterministic fallback, and in
    deterministic (Pi Light) mode no model is ever loaded: the
    gate files its brief from the record alone.
 5. **When the owner asks the Oracle a question** (the loopback
@@ -179,14 +194,14 @@ How it works, in order:
    and, just as importantly, say "unreadable" when something
    cannot be read, rather than reporting it clean.
 
-One sentence version, for when someone asks quickly:
+One-sentence version, for when someone asks quickly:
 
 > > "It polls every 20 seconds, and a serious local signal can
 > > also wake it. The watching is ordinary deterministic code;
 > > the model runs only when you ask it something or the wake
-> > gate lets a signal through; a page is a rule firing, no >
-> model involved; and that's deliberate: a watcher that only >
-> runs when an LLM feels like it isn't a watcher."
+> > gate lets a signal through; a page is a rule firing, no
+> > model involved; and that's deliberate: a watcher that only
+> > runs when an LLM feels like it isn't a watcher."
 
 ## If the default latitude is repair, can't a malicious job use repair to get itself run?
 
@@ -217,8 +232,8 @@ The chain, in order:
    and the job runs exactly as received.
 4. **The opinion never claims to detect malice.** Its question
    is "will this run here?", not "is this good?" Malice is
-   carried by the layers that always carried it: the
-   signature, the judge, the post-run findings, remediation's
+   handled by the layers that always handled it: the
+   signature, the judge, the post-run findings, and remediation's
    tripwires. A bad job stopped only because its interpreter
    was misspelled was stopped by accident, and an accident is
    not a control.
@@ -258,8 +273,10 @@ Run down the alternatives a sender-side SI actually has:
    connections from the internet. This design deliberately
    has the agent dial out and poll, so on the email binding
    the box needs no listening port at all. The one listening
-   transport, DTLS, is off unless the owner enables it, and
-   the loopback listeners are local only.
+   transport, DTLS, is off unless the owner enables it;
+   version 3 can carry DTLS over the mailbox instead, where
+   nothing listens at all; and the loopback listeners are
+   local only.
 3. **Chat platforms are partial and gated.** Slack, Telegram,
    and their kin show up as human chat integrations in some
    ecosystems only. Each is gated on its own account and API
@@ -271,7 +288,7 @@ So the protocol is married to email because email is what
 the providers have in common. That is a statement about
 today's connectors, not a law of the design: the protocol's
 messages are transport-agnostic, and where another pipe
-exists the same signed jobs can ride it unchanged. The
+exists, the same signed jobs can ride it unchanged. The
 runner already carries a watched-folder transport and a
 NATS transport as extensions, with email simply the default
 binding.
@@ -283,7 +300,7 @@ Two reasons, either one sufficient.
 A cloud SI has no mail client. It has a connector with a
 send function, and mail-layer crypto would require every
 provider's connector to implement PGP or S/MIME, key
-management included, which is a surface that does not
+management included. That is a surface that does not
 exist, on exactly the side of the wire the protocol
 cannot control.
 
@@ -311,7 +328,7 @@ cryptography exists to establish trust and keys between
 parties who share nothing. The two endpoints here already
 share a secret, installed out of band, so authentication
 is HMAC-SHA-384, and confidentiality is AES-256-GCM under
-a key the shared secret derives. Symmetric, end to end.
+a key derived from the shared secret. Symmetric, end to end.
 
 Asymmetric machinery would add nothing and subtract
 something. RSA and elliptic-curve schemes fall to a large
@@ -324,10 +341,17 @@ The one deliberate exception proves the rule. The DTLS
 binding uses ephemeral Diffie-Hellman to get forward
 secrecy, and the draft's security considerations say
 plainly that recorded sessions of that binding do not
-share the core protocol's quantum posture. Post-quantum
-key exchange would close that too, at the cost of asking
-every provider to ship it, which, per the entry above, is
-asking a real lot.
+share the core protocol's quantum posture: a recorded
+session falls to a later break of the ephemeral exchange
+itself. Version 3 closes that for the carriage it covers.
+Its hybrid share, X25519MLKEM768, makes the ephemeral
+secret an ML-KEM secret and an X25519 secret together, so
+a recorded session on that carriage falls only if both
+halves fall. The hybrid is part of the version 3 profile,
+the reference implementation implements it, and a session
+negotiates it whenever both endpoints offer it. No
+provider has to ship anything: both endpoints are this
+project's own.
 
 ## Is it safe to use the same shared secret for the HMAC signature and the job encryption?
 
@@ -353,24 +377,25 @@ The runner verifies a signature and executes a job. That is all it
 knows how to do. The intelligence sits on the other side: the SI
 composing the job is also the one reading the user's intent,
 holding the context of who they are, and quoting this project's
-documentation back to them. The first line of the README says this
-tool hands full administrative control of the machine to whoever
+documentation back to them. The README's Setup section opens
+with the warning, in so many words: installing this application
+hands full administrative control of the system to whoever
 holds the shared secret. `docs/infrastructure-documents/security/safeguards.md` and
 `docs/steady/security/personal-documents-warning.md` say what that means on a
 shared or personal computer. Those warnings are written for the
 SI as much as for the human.
 
-So the bet is explicit. An unexperienced user is going to get hold
+So the bet is explicit. An inexperienced user is going to get hold
 of this and break their own computer; that is fine, and it is how
 most of us learned. Every vendor sells a model that would notice,
-say so, and recommend a spare box or a VM. An SI that reads the
-README's first line and helps a novice install onto like a family PC
+say so, and recommend a spare box or a VM. An SI that reads
+that warning and helps a novice install onto a family PC
 without a word has failed at the exact thing it is marketed for.
 No runner-side guardrail should have to cover for that, and
 building one would mean conceding the claim is false.
 
 That is what makes this project a clean test of the claim: a
-novice, a shared machine, a README that says what it says. Point
+novice, a shared machine, and a README that says what it says. Point
 a model at it and find out. The warnings are placed where an
 assistant will read them: the README,
 `docs/infrastructure-documents/security/safeguards.md`,
