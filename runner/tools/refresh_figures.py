@@ -10,11 +10,18 @@ carry marked slots --
 
 -- whose contents this tool fills from the facts, and the
 record's own display line is rendered from the same facts.
+The record's own list of what stands behind each figure
+carries the same slots (RECORD_SLOTS below): its token,
+line and commit figures were restated by hand until
+2026-11-16, and a list read at 26.8 million tokens still
+said 24,396,328 under a display line that had moved on.
 
     python3 runner/tools/refresh_figures.py --check
         Verify every slot and the display line against the
-        facts; exit 1 and name each mismatch. This is what
-        the guard test runs.
+        facts, the record's own slots among them; exit 1 and
+        name each mismatch, and each figure the record's
+        list no longer carries in a slot. This is what the
+        guard test runs.
 
     python3 runner/tools/refresh_figures.py --write
         Take a fresh measure of the tree at the current HEAD
@@ -26,9 +33,9 @@ record's own display line is rendered from the same facts.
         The latent percentages are the duplication audit's,
         not a tree measure: they are carried forward from the
         standing facts, and a fresh audit updates them by
-        hand. The record's basis prose is likewise reviewed
-        by hand in the same commit; this tool owns the
-        mechanical surfaces only.
+        hand. The record's prose around its slots is
+        likewise reviewed by hand in the same commit; this
+        tool owns the mechanical surfaces only.
 
 The commit count is taken only from a complete history.
 rev-list on a shallow checkout counts the clone's depth,
@@ -60,6 +67,12 @@ SLOT_FILES = (
     "AGENTS.md",
     "PROTOCOL.md",
     os.path.join("docs", "steady", "fuzzing.md"),
+)
+# The figures the record's own list states, each in a slot of
+# its own: a list that restates one by hand is named by check().
+RECORD_SLOTS = (
+    "tokens_exact", "tokens_millions", "lines_tracked",
+    "display_lines", "commits", "display_commits",
 )
 SLOT_RE = re.compile(
     r"<!--hp-fig:([a-z0-9_]+)-->(.*?)<!--/hp-fig-->", re.S)
@@ -129,6 +142,9 @@ def renderings(facts):
         "tokens_millions_word": "%d million" % millions,
         "as_of": facts["as_of"],
         "lines_tracked": format(facts["lines_tracked"], ","),
+        "display_lines": format(facts["display_lines"], ","),
+        "commits": format(facts["commits"], ","),
+        "display_commits": format(facts["display_commits"], ","),
         "core_files": str(facts["core_files"]),
         "core_lines": format(facts["core_lines"], ","),
         "core_lines_nonblank": format(
@@ -168,15 +184,23 @@ def check(root):
             "statistics.md: display line is not the facts' line "
             "(%s)" % display_line(facts))
     wanted = renderings(facts)
-    for rel in SLOT_FILES:
-        path = os.path.join(root, rel)
-        try:
-            slots = find_slots(_read(path))
-        except OSError:
-            problems.append("%s: unreadable" % rel)
-            continue
-        if not slots:
-            problems.append("%s: no figure slots found" % rel)
+    held = set(name for name, _value in find_slots(text))
+    for name in RECORD_SLOTS:
+        if name not in held:
+            problems.append(
+                "statistics.md: the record's own list carries no "
+                "slot for %s" % name)
+    for rel in ("statistics.md",) + SLOT_FILES:
+        if rel == "statistics.md":
+            slots = find_slots(text)
+        else:
+            try:
+                slots = find_slots(_read(os.path.join(root, rel)))
+            except OSError:
+                problems.append("%s: unreadable" % rel)
+                continue
+            if not slots:
+                problems.append("%s: no figure slots found" % rel)
         for name, value in slots:
             if name not in wanted:
                 problems.append(
@@ -361,15 +385,9 @@ def write(root):
         r"the \d+-million-token measure",
         "the %d-million-token measure"
         % (facts["tokens"] // 1_000_000), text, count=1)
-    changed = []
-    if text != _read(stats_path):
-        _write(stats_path, text)
-        changed.append(STATISTICS_REL)
     wanted = renderings(facts)
-    for rel in SLOT_FILES:
-        path = os.path.join(root, rel)
-        original = _read(path)
 
+    def fill_slots(rel, original):
         def fill(match):
             name = match.group(1)
             if name not in wanted:
@@ -377,8 +395,19 @@ def write(root):
                                  % (rel, name))
             return "<!--hp-fig:%s-->%s<!--/hp-fig-->" % (
                 name, wanted[name])
+        return SLOT_RE.sub(fill, original)
 
-        updated = SLOT_RE.sub(fill, original)
+    # The record's own list is filled with the rest of its
+    # mechanical surfaces, in the one write of the record.
+    text = fill_slots("statistics.md", text)
+    changed = []
+    if text != _read(stats_path):
+        _write(stats_path, text)
+        changed.append(STATISTICS_REL)
+    for rel in SLOT_FILES:
+        path = os.path.join(root, rel)
+        original = _read(path)
+        updated = fill_slots(rel, original)
         if updated != original:
             _write(path, updated)
             changed.append(rel)
@@ -419,8 +448,8 @@ def main(argv=None):
         print("updated %s" % rel)
     if not changed:
         print("already current; nothing rewritten")
-    print("review the record's basis prose in the same commit; "
-          "it is not generated")
+    print("review the record's prose around its slots in the same "
+          "commit; it is not generated")
     return 0
 
 
