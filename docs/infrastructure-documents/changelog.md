@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.25 - 2026-11-17
+
+- Extensions: refresh upstream pins; softflowd and suricata pins moved with vendored files unchanged, zeek pin moved and its vendored DNS script grew with upstream multi-question handling (since 3.17.26.24)
+
 ## 3.17.26.24 - 2026-11-17
 
 - Docs: FAQ fact pass: forward secrecy with version 3 stated as it stands; the envelope has no forward secrecy on any binding, version 3 sessions use fresh ephemeral shares erased at session end, and the hybrid share is specified and implemented (since 3.17.26.23)
