@@ -198,10 +198,15 @@ per machine.
 ```
   knob                  just run it  eyes open    lockdown
   ------------------    -----------  ---------    --------
+
   judge                 off          advisory     enforce
+
   sensors               off          on           on
+
   resources             on           on           on
+
   dri                   off          on           on
+
   max_result_view       attested     attested     attested
 ```
 
@@ -221,12 +226,15 @@ Two more dials stand outside the table.
 ```
   remediation_mode     what happens while a job runs
   -------------------  ------------------------------------------
+
   deterministic        a tripwire trips: kill the job's process
   (the default)        tree, quarantine the outputs, refer the
                        suspect files to the antivirus, file the
                        story with the DRI, page the owner
+
   oracle               the local model may also order a kill
                        for a lesser divergence
+
   off                  watches and records only
 ```
 
@@ -265,7 +273,9 @@ your raw data never leaves the machine. Setup:
 ```
   oracle_mode          model               briefs and answers    ask
   -------------------  ------------------  --------------------  ---
+
   "llm" (the default)  the local model     narrated by model     on
+
   "deterministic"      none installed,     the box's own         off
                        never called        records
 ```
