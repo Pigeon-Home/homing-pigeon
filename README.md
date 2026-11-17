@@ -321,14 +321,33 @@ extension binds to its own signing key, exactly like the built-in
 senses, and files alerts the Oracle fuses with job activity.
 
 Nothing signs an extension's code, so the agent reads it against
-the manifest before loading it: the manifest's `capabilities` list
-(`network`, `listen`, `subprocess`, `native`) has to cover what the
-code does, a transport's `entry` has to stay inside its folder,
-every file has to compile, and no symlink, bidi control character
-or reference to the runner's own state gets through. By default a
-folder that contradicts its manifest is refused like a bad one and
-the agent runs without it (`extension_review` turns that to
-advisory or off; `--inspect review` shows the verdicts).
+the manifest before loading it. The reading checks 6 things:
+
+```
+  check             the rule
+  ----------------  ------------------------------------------
+
+  capabilities      the manifest's `capabilities` list
+                    (`network`, `listen`, `subprocess`,
+                    `native`) has to cover what the code does
+
+  entry             a transport's `entry` has to stay inside
+                    its folder
+
+  compiles          every file has to compile
+
+  symlink           no symlink gets through
+
+  bidi              no bidi control character gets through
+
+  runner state      no reference to the runner's own state
+                    gets through
+
+```
+
+By default a folder that contradicts its manifest is refused like
+a bad one and the agent runs without it (`extension_review` turns
+that to advisory or off; `--inspect review` shows the verdicts).
 
 The example is a lab-results sense: it watches a folder where
 experiment runs drop result files and files signals like
@@ -341,7 +360,9 @@ first time an extension runs, the agent gives the Oracle the
 extension's installed code and fetches, in the background,
 whatever its optional `sources.json` declares: its published
 source, the upstream project it wraps, the specifications it
-speaks. The release ships only the declarations and the build's
+speaks.
+
+The release ships only the declarations and the build's
 SHA-384 pins of what they name; the box fetches the sources and
 refuses bytes that differ from a pin, and an entry nothing pins
 waits until the owner allows it. A deterministic box (Pi Light)
