@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.18 - 2026-11-17
+
+- statistics: the record's 3 growth charts are redrawn in the look of the README's diagrams, each on an axis that spaces its dates by their days, at the owner's word
+- statistics: a fourth snapshot splits each count in 2, the fuzz campaign's run log and everything else, on counts of the tagged trees; the 4 early points are counted where they had been implied from line counts
+- statistics: the record's own list of what stands behind each figure carries its token, line and commit figures in slots the refresh fills, and the check names a figure restated by hand
+- guard: the pre-push guard reads the core's recorded figures against the tree on every run, by release_train.py measure --check, and names the re-record when the tree has moved past them
+- docs: the README's skim tables take a blank line before and after each row, and the operating modes chart keeps its compact rows
+
 ## 3.17.26.17 - 2026-11-17
 
 - seed: a copy started by path keeps to its own tree beside a stale install
