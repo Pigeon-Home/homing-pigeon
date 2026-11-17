@@ -198,15 +198,10 @@ per machine.
 ```
   knob                  just run it  eyes open    lockdown
   ------------------    -----------  ---------    --------
-
   judge                 off          advisory     enforce
-
   sensors               off          on           on
-
   resources             on           on           on
-
   dri                   off          on           on
-
   max_result_view       attested     attested     attested
 ```
 
