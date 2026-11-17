@@ -758,16 +758,22 @@ class RetainedCaseCollisionShotgunTest(_Base):
     shuffled, the simulated Windows surface, no leaks, the registry
     gates).
 
-    The hosted legs (16-Nov-2026). Three of the hand-written seams
+    The hosted legs (16-Nov-2026). Four of the hand-written seams
     ask the real filesystem with nothing simulated: the crash's
-    pair saved in order, the probe's own answer, and the listing
-    that carries both case forms. Each measures first whether the
+    pair saved in order, the probe's own answer, the listing that
+    carries both case forms, and the save made with the listing
+    gone. Each measures first whether the
     filesystem under the test folds case (_this_filesystem_folds)
     and holds the code to that answer, so on the hosted Windows and
     macOS legs, whose filesystems fold, the pair is saved and read
     back on the filesystem itself: the plain record and the sidecar
-    side by side. On the Linux legs the same three read the
-    unfolded answer, as before."""
+    side by side. On the Linux legs the same four read the
+    unfolded answer, as before. The save made with the listing gone
+    is the one place the two folding legs differ, and the test
+    holds each to its own reading: the blind plain write lands on
+    the sibling's entry, NTFS renames that entry to the newer case
+    and a default macOS volume keeps the older one, so on macOS the
+    newer record stands under the older id's name."""
 
     # -- the folding surface -------------------------------------
 
@@ -952,12 +958,39 @@ class RetainedCaseCollisionShotgunTest(_Base):
         self.assertIsNone(R.load_retained(self.base, "bm-RET-SHARED"))
 
     def test_listdir_failure_during_save_still_saves_plain(self):
+        # With the listing gone the save cannot look for a folded
+        # sibling, so it takes the plain name, as before the fix.
         R.save_retained(self.base, "bm-RET-SHARED", {"v": "up"})
-        with unittest.mock.patch.object(
+        paths, patcher = self._write_paths()
+        with patcher, unittest.mock.patch.object(
                 os, "listdir", side_effect=OSError("gone")):
             R.save_retained(self.base, "bm-ret-shared", {"v": "low"})
-        self.assertEqual(R.load_retained(self.base, "bm-ret-shared"),
-                         {"v": "low"})
+        self.assertEqual(paths, [self.record_path("bm-ret-shared")])
+        listed = sorted(os.listdir(self.rdir))
+        if not self._this_filesystem_folds():
+            # Two files: both records read back.
+            self.assertEqual(
+                listed, ["bm-RET-SHARED.json", "bm-ret-shared.json"])
+            self.assertEqual(
+                R.load_retained(self.base, "bm-ret-shared"), {"v": "low"})
+            self.assertEqual(
+                R.load_retained(self.base, "bm-RET-SHARED"), {"v": "up"})
+            return
+        # Where the filesystem folds, the blind plain write lands on
+        # the sibling's entry: the loss the sidecar exists to
+        # prevent, and cannot prevent without a listing. One entry
+        # stands, holding the newer record. Which id it answers to
+        # is the filesystem's own choice: NTFS renames the entry to
+        # the newer case, and a default macOS volume keeps the older
+        # one (measured on the hosted legs, 16-Nov-2026). The id the
+        # entry does not name reads back absent.
+        self.assertEqual(len(listed), 1, listed)
+        self.assertIn(
+            listed[0], ("bm-RET-SHARED.json", "bm-ret-shared.json"))
+        named = listed[0][:-len(".json")]
+        other = ({"bm-RET-SHARED", "bm-ret-shared"} - {named}).pop()
+        self.assertEqual(R.load_retained(self.base, named), {"v": "low"})
+        self.assertIsNone(R.load_retained(self.base, other))
 
     # -- the sidecar name -------------------------------------------
 
