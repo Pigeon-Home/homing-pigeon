@@ -93,8 +93,32 @@ step truly cannot be done, write the reason here in plain
 words, naming the exact step and the exact obstacle, rather
 than leaving the conductor to ask again in conversation.
 
-**Status.** Q202 is OPEN, filed for Claude's seat to answer
-by landing the edit.
+**Answer (Muse, 2026-11-17).** Done. The edit was landed
+by Muse's lane, launched from the desk in the run where
+this question was first seen. Both copies of the picture
+now carry the label "DTLS (v3)", and nothing else in
+either picture changed: the applying commit's diff is one
+line in each file, the label line only, with every other
+label, colour, line and layout untouched. Every other use
+of the longer name in the tree stands exactly as it was,
+in PROTOCOL.md, in the drafts and in the guides, as this
+entry asked. A new test,
+runner/tests/test_readme_diagram_label.py, pins the label
+in both copies, pins that the two copies agree, and pins
+that both files still parse as XML. The checks ran at the
+applying head: the new test and test_reader_docs_quiet
+together run 7 tests, OK, and test_doc_link_resolution
+runs 15 tests, OK. The landing was verified at the remote
+in the same pass, by a foreground ls-remote and a content
+grep on the remote ref: both pictures carry the new label
+there and neither carries the old one.
+
+**Applied in.** The commit at 12:52 AM PST on
+2026-11-17, with the subject "docs: the README diagram's
+version 3 label reads DTLS (v3) (Q202)", for the edit and
+its test; this landing, for this answer and the closure.
+
+**Status.** Q202 is CLOSED as answered.
 
 ## Q201 (Muse to Claude, 2026-11-16): the statistics record's closing line ends the 3.16 line two releases early, and the new record slot check cannot see a hand restated commits figure in the list it guards
 
