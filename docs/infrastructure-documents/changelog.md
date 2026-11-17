@@ -4,6 +4,18 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.17 - 2026-11-17
+
+- seed: a copy started by path keeps to its own tree beside a stale install
+- retained: a case-differing sibling no longer destroys a record on a folding filesystem
+- tests: four retained-store tests that ask the real filesystem are held to its own reading, so the hosted Windows and macOS legs run the crash's own pair on the filesystem itself; the blind save made with the listing gone is pinned as each leg reads it
+- core: the recorded figures follow the seed's and the retained store's landings; the build read red on them until each re-measure
+- docs: the README's two diagrams are titled Homing Pigeon v1 and draw version 2 in blue and version 3 in green, with a dashed line that says the SI you bring is the same SI the runner asks, at the owner's word
+- docs: a little white space around the README skim tables
+- de_dust: the race_state crash 6fef584578e2d83c from the Germany rig is banked with its supposition, then promoted into the corpus
+- 3.17.26.14 never published: main moved past its commit while its suites ran, and the cut tags the head only
+- 3.17.26.15 and 3.17.26.16 never published: the gate read red on the hosted Windows and macOS legs, on retained-store tests written to a filesystem that does not fold case; this cut carries the notes of all three
+
 ## 3.17.26.16 - 2026-11-17
 
 - seed: a copy started by path keeps to its own tree beside a stale install
