@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.20 - 2026-11-17
+
+- docs: the extension manifest checks in the README read as a skim table, one row per check, with no information removed
+- desk: Q201 answer -- the statistics record's closing line and the list scoped check retested by the filing seat, and the question closed
+
 ## 3.17.26.19 - 2026-11-17
 
 - statistics: the closing section names 3.16.26.36 as the end of the 3.16 line and 3.17.26.2 as the first published release of the 3.17 line, as the tags and this changelog have them, and a test reads the sentence against this changelog
