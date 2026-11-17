@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.19 - 2026-11-17
+
+- statistics: the closing section names 3.16.26.36 as the end of the 3.16 line and 3.17.26.2 as the first published release of the 3.17 line, as the tags and this changelog have them, and a test reads the sentence against this changelog
+- statistics: the check reads the record's own list as the list, so a commits figure restated by hand there is named though the closing section carries a slot of the same name
+- docs: the chart of what the security token count is made of joins the README's security notes
+
 ## 3.17.26.18 - 2026-11-17
 
 - statistics: the record's 3 growth charts are redrawn in the look of the README's diagrams, each on an axis that spaces its dates by their days, at the owner's word
