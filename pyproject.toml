@@ -164,6 +164,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_defaults_table_hunt.py",
     "runner/tests/test_delivery_edges.py",
     "runner/tests/test_design_docs.py",
+    "runner/tests/test_disk_guard.py",
     "runner/tests/test_doc_default_divergences.py",
     "runner/tests/test_doc_gmail_discipline.py",
     "runner/tests/test_doc_version_rot.py",
