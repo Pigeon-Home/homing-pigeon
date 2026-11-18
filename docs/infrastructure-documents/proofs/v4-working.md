@@ -531,3 +531,13 @@ changes bring them together:
 The choice is about what the runner promises, and it is the
 owner's. Until it is made, F7 stands as `v4-search-2.md`
 states it, held by its test.
+
+## F7, decided (18 November 2026)
+
+DRU has decided F7: the words gain the floor. P11 holds
+down to the fitting's last pass, and under that floor the
+body leaves marked; nothing in the runner changes, and a
+marked result over the cap stands. The decision is
+recorded in the seats' forum, in Muse's entry of
+18 November 2026. The wording change is Claude's to land;
+until it lands, F7 stands decided and not yet closed.
