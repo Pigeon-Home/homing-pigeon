@@ -513,3 +513,21 @@ written, as it does F5 and F6. Nothing in the draft's folder
 is changed here.
 
 F7 stands open.
+
+## F7, as it stands
+
+F7 does not close the way F1 to F6 did. `resultfit.tla` and
+`_fit_result_body` already agree: the fixed class leaves over
+the cap, marked. What differs is P11's own words, and 2
+changes bring them together:
+
+- **The words gain the floor.** P11 holds down to the
+  fitting's last pass, and under that floor it says the body
+  leaves marked. Nothing in the runner changes.
+- **The runner holds a hard cap.** A result that cannot be
+  fitted is not sent. P11 stands as worded, and a sender
+  whose result cannot fit receives nothing.
+
+The choice is about what the runner promises, and it is the
+owner's. Until it is made, F7 stands as `v4-search-2.md`
+states it, held by its test.
