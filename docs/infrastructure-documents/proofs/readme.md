@@ -267,7 +267,8 @@ A finding is most useful when it points at the file and the line
   constraint, C1 to C31, mapped to the numbered property that
   states it, with the new properties P7 to P13 stated in
   full. `diskguard.tla` is the first model of that work,
-  of P7; its checker run is recorded as still owed there.
+  of P7. The checker run for every model on this shelf
+  stands recorded in `v4-working.md`, step D.
 - `v4-search.md`: the first 4 models searched without a
   checker and held to the code. `diskguard.tla`,
   `secretfloor.tla`, the model of P13, `probegate.tla`, the

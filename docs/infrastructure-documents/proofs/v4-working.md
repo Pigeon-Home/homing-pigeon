@@ -249,3 +249,111 @@ finding is F7, so the numbers do not collide. U3's checker
 prediction extends to `probegate.cfg` at its search's
 count, 288 distinct states, and to `localgate.cfg` at its
 search's count, 200.
+
+## Step D: the checker run
+
+Run 2026-11-18 with TLC 2.19 (the v1.7.4 tools jar) on
+Java 21, over every configuration on this shelf: 45 in all,
+17 main configurations and 28 witness configurations. The
+run was made on scratch copies of the shelf: the file names
+here are lowercase and the module names capitalized, and on
+a case-sensitive filesystem the checker wants the 2 to
+match, so each model was copied to its module's name for
+the run. Nothing on the shelf changed for the run.
+
+Every main configuration reports no error. Every witness
+configuration reports the violation it exists to produce,
+of the invariant it names. The verdicts, with the distinct
+states the checker found:
+
+- Claim: `claim.cfg` passes, 5 states.
+- Confine (P2): `confineceiling.cfg` passes, 584,167
+  states. The witnesses violate: `confinewitnessnarrow.cfg`
+  (NothingNarrows), `confinewitnessprefix.cfg`
+  (NoPrefixBind).
+- Decision (P6): `decision.cfg` passes, 24 states. The
+  witnesses violate: `decisionwitnessdefault.cfg`
+  (DefaultStaysUnusable), `decisionwitnessstop.cfg`
+  (NothingStops).
+- DiskGuard (P7): `diskguard.cfg` passes, 160 states. The
+  witnesses violate: `diskguardwitnessacts.cfg`
+  (NeverActs), `diskguardwitnessrecords.cfg`
+  (NeverRecords).
+- Gate (P1): `gateaudit.cfg` passes, 809,528 states;
+  `gatedefault.cfg` passes, 794,755; `gateenforce.cfg`
+  passes, 804,611. The witnesses violate:
+  `gatedefaultwitness.cfg` (AudienceWasRequired),
+  `gatewitness.cfg` (NothingExecutes).
+- HybridSelect (P8): `hybridselect.cfg` passes, 16 states.
+  The witnesses violate: `hybridselectwitnesshybrid.cfg`
+  (NothingSelectsHybrid), `hybridselectwitnessrefused.cfg`
+  (NothingIsRefused).
+- KeyPolicy (P4): `keypolicy.cfg` passes, 42,793 states.
+  The witnesses violate: `keywitnessdefault.cfg`
+  (DefaultNeverRuns), `keywitnesspinned.cfg`
+  (PinnedNeverAccepted).
+- KeysCompose (P1 with P4): `keyscompose.cfg` passes, 36
+  states. The witnesses violate: `keyswitnessexec.cfg`
+  (NothingExecutes), `keyswitnesspinned.cfg` (PinnedNever).
+- LocalGate (P12): `localgate.cfg` passes, 200 states. The
+  witnesses violate: `localgatewitnesssize.cfg`
+  (NothingIsRefusedForSize),
+  `localgatewitnessverifies.cfg`
+  (NothingReachesTheVerifier).
+- ProbeGate (P10): `probegate.cfg` passes, 288 states. The
+  witnesses violate: `probegatewitnessrefused.cfg`
+  (NothingIsRefused), `probegatewitnessstarts.cfg`
+  (NothingStartsAtEnforce).
+- Replay (P5): `replay.cfg` passes, 1,792 states. The
+  witnesses violate: `replaywitnessexec.cfg`
+  (NothingExecutes), `replaywitnessresend.cfg`
+  (NeverAnswered).
+- ResultFit (P11): `resultfit.cfg` passes, 12 states.
+  `resultfitwitnessshrunk.cfg` violates NothingIsShrunk,
+  as designed. `resultfitwitnesscap.cfg` violates P11Inv:
+  that violation is finding F7's counterexample, produced
+  by the checker at exactly the fixed class, as the search
+  predicted.
+- SecretFloor (P13): `secretfloor.cfg` passes, 67 states.
+  The witnesses violate: `secretfloorwitnessrefused.cfg`
+  (NothingIsRefused), `secretfloorwitnessstarts.cfg`
+  (NothingStarts).
+- Surfaces (P1 family): `surfaces.cfg` passes, 96 states.
+  The witnesses violate: `surfaceswitnesscancel.cfg`
+  (CancelRuns), `surfaceswitnessjob.cfg` (NothingRuns).
+- TransGate (P3): `transgate.cfg` passes, 160 states. The
+  witnesses violate: `transwitnessboth.cfg`
+  (BothGatesNeverEnough), `transwitnessnogate.cfg`
+  (NoGateNoAccept).
+
+The suppositions of the finishing pass, against the
+measurements:
+
+- **U1 holds.** Each of P8 and P11 admitted its
+  one-decision model; the suite twins hold their invariants
+  in every reachable state and both witness probes are
+  reachable in each. P10's and P12's models are the
+  continued pass's `probegate.tla` and `localgate.tla`.
+  P9 completed as a pin.
+- **U2 holds.** The fitting's floor for the measured
+  result is 4,625 bytes; at a cap under it the body leaves
+  at 4,625 bytes, over the cap, marked. Recorded as
+  finding F7 in `v4-search-2.md` and held by a test.
+- **U3 holds.** The checker reports exactly 160 distinct
+  states for `diskguard.cfg` and exactly 67 for
+  `secretfloor.cfg`, the searches' predictions; exactly
+  288 for `probegate.cfg` and exactly 200 for
+  `localgate.cfg`, their searches' predictions; no error
+  on any main configuration; and every witness
+  configuration reports its violation.
+- **U4 holds.** The checker's counts for the 2 new models
+  equal their searches': 16 and 12 distinct states.
+- **U5 holds.** C28 to C31 stand folded into
+  `constraints.md` in its own format, and the constraint
+  pin suite is green unedited, 68 tests.
+
+2 models are not in this run's count: the P10 and P12
+models this pass wrote and withdrew in the landed models'
+favour. Their files never landed here; the scratch runs of
+them agreed with their searches, and they are recorded as
+withdrawn, not as second models of their properties.
