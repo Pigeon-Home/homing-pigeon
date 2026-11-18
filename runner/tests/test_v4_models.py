@@ -1,4 +1,4 @@
-"""The v4 binding's first 2 models, searched and held to the code.
+"""The v4 binding's first 3 models, searched and held to the code.
 
 FUTURE.md item 1, step C continued. diskguard.tla states P7 of
 v4-properties.md: the disk guard gives up the runner's own
@@ -24,10 +24,11 @@ the suite:
                     test so it cannot fade. The record is
                     docs/infrastructure-documents/proofs/v4-search.md.
 
-secretfloor.tla, the model of P13 that the working record named
-as a small step, is treated the same way at the foot of this
-module: searched, then held to the real build_secrets over every
-standing of 3 keys.
+secretfloor.tla and probegate.tla, the models of P13 and P10 that
+the working record named as small steps, are treated the same way
+at the foot of this module: each searched, then held to the real
+code, build_secrets over every standing of 3 keys and the
+confinement gate over every start.
 """
 import hashlib
 import itertools
@@ -36,12 +37,15 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
 
+from runner import runner as RUNNER  # noqa: E402,F401
 from runner.guard import security as SECURITY  # noqa: E402
+from runner.ops import remediation_ops as GATE  # noqa: E402
 from runner.oracle import resources as RES  # noqa: E402
 from runner.wire import verify as VERIFY  # noqa: E402
 
@@ -770,6 +774,219 @@ class SecretFloorConformance(unittest.TestCase):
                 wrong += 1
         self.assertEqual((107, 32), (len(refused), wrong))
         self.assertIn("32 of the 107 refusals", _flat(RECORD))
+
+
+# ---- The third model: probegate.tla, P10
+
+MODES = ("enforce", "audit", "off")
+PLATFORMS = ("darwin", "freebsd", "win32", "other")
+BACKENDS = ("none", "stub", "noprobe", "real")
+PROBES = ("passes", "problem", "raises")
+
+
+def gated(start):
+    """Gated: the starts where this gate decides."""
+    mode, platform, _backend, _probe = start
+    return mode == "enforce" and platform != "other"
+
+
+def goes_ahead(start):
+    """GoesAhead: the start goes ahead unless the gate names a
+    problem."""
+    _mode, _platform, backend, probe = start
+    return not gated(start) or (backend == "real" and probe == "passes")
+
+
+def gate_init():
+    for start in itertools.product(MODES, PLATFORMS, BACKENDS, PROBES):
+        yield (start, False, False)
+
+
+def gate_next(state):
+    start, decided, _started = state
+    if not decided:
+        yield (start, True, goes_ahead(start))
+
+
+def p10_inv(state):
+    start, decided, started = state
+    return (not (decided and started and gated(start))
+            or (start[2] == "real" and start[3] == "passes"))
+
+
+def refuses_only_its_own(state):
+    start, decided, started = state
+    return not (decided and not started) or gated(start)
+
+
+class ProbeGateSearch(unittest.TestCase):
+    """probegate.tla's Init and Next, searched to the fixed
+    point."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.initial = list(gate_init())
+        cls.reached, _steps = search(cls.initial, gate_next)
+
+    def test_the_2_invariants_hold_in_every_reachable_state(self):
+        self.assertIsNone(first_breaking(self.reached, p10_inv))
+        self.assertIsNone(first_breaking(self.reached, refuses_only_its_own))
+
+    def test_the_counts_are_the_prediction_for_the_checker(self):
+        # 144 starts. 36 are at enforce on a platform with a
+        # backend of its own; 3 of those go ahead, 1 a platform,
+        # and 33 are refused.
+        decided = [s for s in self.reached if s[1]]
+        at_the_gate = [s for s in decided if gated(s[0])]
+        refused = [s for s in decided if not s[2]]
+        self.assertEqual((144, 288, 36, 33),
+                         (len(self.initial), len(self.reached),
+                          len(at_the_gate), len(refused)))
+        self.assertEqual(
+            {"darwin", "freebsd", "win32"},
+            {s[0][1] for s in at_the_gate if s[2]})
+        self.assertIn("144 initial states, 288 distinct states",
+                      _flat(RECORD))
+
+    def test_the_2_probes_are_false_somewhere_as_they_must_be(self):
+        self.assertIsNotNone(first_breaking(
+            self.reached, lambda s: not (s[1] and s[2] and gated(s[0]))))
+        self.assertIsNotNone(first_breaking(
+            self.reached, lambda s: not (s[1] and not s[2])))
+        text = _read(os.path.join(PROOFS, "probegate.tla"))
+        for stated in (
+                "Gated(s) == s.mode = \"enforce\" /\\ s.platform /= "
+                "\"other\"",
+                "GoesAhead(s) ==\n  \\/ ~Gated(s)\n"
+                "  \\/ s.backend = \"real\" /\\ s.probe = \"passes\"",
+                "This file has not been run with TLC."):
+            self.assertIn(stated, text, stated)
+        self.assertTrue(_read(os.path.join(PROOFS, "probegate.cfg"))
+                        .endswith("SPECIFICATION Spec\nINVARIANT P10Inv\n"
+                                  "INVARIANT RefusesOnlyItsOwn\n"))
+        for name, probe in (
+                ("probegatewitnessstarts.cfg", "NothingStartsAtEnforce"),
+                ("probegatewitnessrefused.cfg", "NothingIsRefused")):
+            held = _read(os.path.join(PROOFS, name))
+            self.assertTrue(held.startswith("\\* Expected to fail."), name)
+            self.assertTrue(held.endswith(
+                "SPECIFICATION Spec\nINVARIANT %s\n" % probe), name)
+
+
+REAL_PLATFORM = {"darwin": "darwin", "freebsd": "freebsd14",
+                 "win32": "win32", "other": "linux"}
+FLAG = {"darwin": "IS_MACOS_BACKEND", "freebsd": "IS_FREEBSD_BACKEND",
+        "win32": "IS_WINDOWS_BACKEND"}
+PROBE_NAME = {"darwin": "macos_confinement_problem",
+              "freebsd": "freebsd_confinement_problem",
+              "win32": "windows_confinement_problem"}
+RESOLVER = {"darwin": "_macos_confine", "freebsd": "_freebsd_confine",
+            "win32": "_windows_confine"}
+
+
+class _Backend:
+    """What stands in a platform backend's place for 1 start."""
+
+    def __init__(self, platform, backend, probe):
+        self.asked = 0
+        setattr(self, FLAG[platform], backend in ("noprobe", "real"))
+        if backend != "real":
+            return
+
+        def answer(cfg, *rest):
+            self.asked += 1
+            if probe == "raises":
+                raise OSError("the trial process could not be started")
+            return None if probe == "passes" else "the trial was refused"
+        setattr(self, PROBE_NAME[platform], answer)
+
+
+def ask_the_gate(start):
+    """The real gate's answer for 1 start: (the problem it names
+    or None, how often the probe was asked)."""
+    mode, platform, backend, probe = start
+    cfg = {"security": {"modes": {"confinement": mode}}}
+    if platform == "other":
+        return GATE.confinement_startup_problem(
+            cfg, platform=REAL_PLATFORM[platform]), 0
+    if backend == "none":
+        with mock.patch.object(GATE, RESOLVER[platform],
+                               lambda backend=None: None):
+            return GATE.confinement_startup_problem(
+                cfg, platform=REAL_PLATFORM[platform]), 0
+    stand_in = _Backend(platform, backend, probe)
+    return GATE.confinement_startup_problem(
+        cfg, platform=REAL_PLATFORM[platform], backend=stand_in), \
+        stand_in.asked
+
+
+class ProbeGateConformance(unittest.TestCase):
+    """The real confinement_startup_problem on every start of the
+    model."""
+
+    def test_the_gate_s_answer_is_the_model_s_on_every_start(self):
+        refused = 0
+        for start in itertools.product(MODES, PLATFORMS, BACKENDS, PROBES):
+            problem, asked = ask_the_gate(start)
+            self.assertEqual(goes_ahead(start), problem is None, start)
+            # The probe is asked only where the gate decides, and
+            # there exactly once.
+            self.assertEqual(
+                1 if gated(start) and start[2] == "real" else 0, asked,
+                start)
+            if problem is None:
+                continue
+            refused += 1
+            # A refusal names the platform, and carries the
+            # probe's own words when the probe spoke.
+            self.assertIn(start[1], problem, start)
+            if start[2] == "real" and start[3] == "problem":
+                self.assertEqual("confinement cannot engage on %s: the "
+                                 "trial was refused" % start[1], problem)
+            if start[2] == "real" and start[3] == "raises":
+                self.assertIn("could not be started", problem, start)
+        self.assertEqual(33, refused)
+        self.assertIn("144 starts, 33 of them refused", _flat(RECORD))
+
+    def test_a_model_that_is_wrong_either_way_is_caught(self):
+        # The comparison above bites in both directions: a model
+        # that lets a raising probe through, and a model that
+        # gates a mode below enforce, each disagree with the gate
+        # on a start that can be named.
+        def differs(model):
+            return [start for start in itertools.product(
+                MODES, PLATFORMS, BACKENDS, PROBES)
+                if model(start) != (ask_the_gate(start)[0] is None)]
+        self.assertEqual([], differs(goes_ahead))
+        lenient = differs(lambda start: goes_ahead(start) or (
+            start[2] == "real" and start[3] == "raises"))
+        self.assertEqual(
+            [("enforce", platform, "real", "raises")
+             for platform in ("darwin", "freebsd", "win32")], lenient)
+        strict = differs(lambda start: goes_ahead(start) and not (
+            start[0] == "audit" and start[1] != "other"))
+        self.assertEqual(36, len(strict))
+        self.assertEqual({"audit"}, {start[0] for start in strict})
+
+    def test_the_startup_refuses_where_the_gate_names_a_problem(self):
+        # The gate's caller: at enforce, on each of the 3
+        # platforms, the startup asks this gate and a problem is
+        # exit 2 with the reason.
+        text = _read(os.path.join(ROOT, "runner", "ops", "main.py"))
+        self.assertEqual(3, text.count(
+            "problem = R._confinement_startup_problem(cfg)"))
+        self.assertIn(
+            '            if problem:\n'
+            '                print("config error: security.modes.confinement '
+            'is "\n'
+            '                      "enforce but the sandbox cannot engage: "\n'
+            '                      + problem + ". Refusing to start; fix the "\n'
+            '                      "sandbox, or set confinement to audit or '
+            'off.",\n'
+            '                      file=sys.stderr)\n'
+            '                return 2\n', text)
+        self.assertIs(GATE.confinement_startup_problem,
+                      RUNNER._confinement_startup_problem)
 
 
 if __name__ == "__main__":

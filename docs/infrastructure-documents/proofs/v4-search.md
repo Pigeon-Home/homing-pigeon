@@ -1,4 +1,4 @@
-# The v4 binding: the first model, searched and held to the code
+# The v4 binding: the first 3 models, searched and held to the code
 
 This record continues step C of the v4 work in `v4-working.md`
 and prepares step D. `diskguard.tla` states P7 of
@@ -9,9 +9,11 @@ This pass does the 3 things that need no checker, and the
 suite now does them on every run:
 `runner/tests/test_v4_models.py`.
 
-The same pass then writes the model `v4-working.md` names
-as a small step for P13, the secret floor, and treats it the
-same way: `secretfloor.tla`, searched and held to the code.
+The same pass then writes the 2 models `v4-working.md` names
+as small steps, for P13, the secret floor, and for P10, the
+confinement probe, and treats each the same way:
+`secretfloor.tla` and `probegate.tla`, searched and held to
+the code.
 
 Nothing here changes the runner. The 5 findings below are
 stated, not fixed.
@@ -159,15 +161,57 @@ time the map is built. The model states it that way.
   change that closes it is to hand the reader the setting's
   name with the secret.
 
+## The third model: the probe gate, P10
+
+`probegate.tla` is one decision again: a mode, a platform,
+what stands in the place of that platform's confinement
+backend (nothing, a stub that says it is not the backend, the
+backend with no probe, the backend with its probe), and what
+the probe answers (it passes, it names a problem, it raises).
+The gate is `confinement_startup_problem` in
+`runner/ops/remediation_ops.py`, asked by the startup, which
+refuses the start with exit 2 when the gate names a problem.
+2 invariants: `P10Inv`, a start at enforce on a platform with
+a backend of its own means that backend stood there and its
+probe passed, and `RefusesOnlyItsOwn`, the gate refuses
+nothing below enforce and nothing on another platform. 2
+witness configurations, each expected to fail.
+
+The search: 144 initial states, 288 distinct states. 36
+starts stand at the gate. 3 of them go ahead, 1 a platform,
+and 33 are refused. Both invariants hold in every state.
+
+The conformance: the real gate on all 144 starts, 33 of them
+refused, and the gate's answer is the model's on every one.
+The backend is stood in for through the gate's own injection
+point. The probe is asked exactly once where the gate
+decides and never anywhere else. A refusal names the
+platform, and carries the probe's own words when the probe
+spoke. A probe that raises costs the start, the same as a
+probe that names a problem: there is no weaker run. The
+startup's 3 calls to the gate, 1 a platform, and its exit 2
+are held by a pin on `runner/ops/main.py`.
+
+No finding against the code. 1 observation for the index:
+P10 is written for macOS, and the gate makes the same claim,
+by the same code, for FreeBSD and for Windows. The model
+states all 3. The index states 1.
+
+What the model does not reach: the probe itself. What the
+trial process does on a real Mac is the backend's, and no
+macOS host ran here. The model starts from the probe's
+answer.
+
 ## What stands
 
 - **The checker run, step D.** Fetch the tools jar of the
   version the stage records name, run TLC on `diskguard.cfg`
   and the 2 witness configurations, and set its counts
   beside the prediction above.
-- **The same run for `secretfloor.cfg`** and its 2 witness
-  configurations.
+- **The same run for `secretfloor.cfg` and `probegate.cfg`**
+  and their witness configurations.
 - **F1 to F3 and F5 are for the seat that carries the runner
   and the models.** This pass changed no runner code.
-- **The model for P10**, which `v4-working.md` names as a
-  small step, is not begun here.
+- **P8, P11 and P12 have no model.** `v4-working.md` names
+  each as more than a small step, and this pass leaves them
+  there.
