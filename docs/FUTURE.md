@@ -1,8 +1,8 @@
 - homing pigeon ietf v4 binds the listed "generalized" HP-software constraints based on protocol v1v2v3 for in a provable security model (also do proof)
 - Prompts & Secret Agents "You may pull the shared secret & platform information from my mailbox." [HOMING-PIGEON] RUNNER_KEY Your-Shared-Secret
-- allows tunnel chaining HP instances for restro gaming rigs converted to AI fun over air gaps due to unsupported platforms or hardware/software combos
+- dist ledger file flow boards, encrypted task boards, confidentialCompute-enc-async answers, via onion rev prox v2. do not embed throw away wallets or dist knet (find defensive solutions)
+- tunnel chaining research for restro gaming rigs converted to AI fun over air gaps due to unsupported platforms or hardware/software combos
 - volta set up
-- dist ledger file flow boards, encrypted task boards, confidentialCompute-enc-async answers, via onion rev prox v2. do not embed throw away wallets or dist knet (find defensive solutions) 
 - cyber turret for auditing frameworks "security firmness tests"
 - define host-network topology rules for local helper bots coordinated by Oracle - (repair, repair_patrols, hdd_patrols, security_patrols) [oracle key dist]
 - reduce idea: global deps on centralize Internet PKI, delete public infra pki deps by performing self-hosted key management system via current attestation mech
