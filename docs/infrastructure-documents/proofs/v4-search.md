@@ -1,4 +1,4 @@
-# The v4 binding: the first 3 models, searched and held to the code
+# The v4 binding: the first 4 models, searched and held to the code
 
 This record continues step C of the v4 work in `v4-working.md`
 and prepares step D. `diskguard.tla` states P7 of
@@ -15,7 +15,10 @@ confinement probe, and treats each the same way:
 `secretfloor.tla` and `probegate.tla`, searched and held to
 the code.
 
-Nothing here changes the runner. The 5 findings below are
+A later pass adds a fourth, for P12, the local envelope cap:
+`localgate.tla`, treated the same way.
+
+Nothing here changes the runner. The 6 findings below are
 stated, not fixed.
 
 ## The search
@@ -202,16 +205,98 @@ trial process does on a real Mac is the backend's, and no
 macOS host ran here. The model starts from the probe's
 answer.
 
+## The fourth model: the local gate, P12
+
+`v4-working.md` names P12 as more than a small step, since
+its path is the local-signals path. The cap itself is a gate
+in front of that path, and the gate is what P12 states: 2
+doors and 1 check. `localgate.tla` models that gate and stops
+at the verifier.
+
+It is one decision again. An arrival is its form (a file in
+the inbox, a symlink there, a directory there, or a stream on
+the loopback listener), its size, whether its bytes decode as
+UTF-8 when read whole, and whether a cut at 1 byte past the
+cap falls inside a character. The model's cap is 2 and its
+chunk is 2, so the sizes 0 to 5 stand on both sides of every
+comparison the 2 doors make. The doors are
+`_scan_local_inbox` and `_handle_local_signal_conn` in
+`runner/runner.py`, and the check behind both is
+`_ingest_local_envelope_inner`. 4 invariants: `P12Inv`, what
+reaches the verifier is at most the cap and is the whole
+envelope, never the head of a longer one; `SymlinkUnread`,
+nothing of a symlink's target is read; `ReadBounded`, the
+scan reads at most 1 byte past the cap and the listener at
+most 1 chunk past it; and `OverCapRefused`, an envelope over
+the cap is refused under a recorded reason. 2 witness
+configurations, each expected to fail.
+
+The search: 96 initial states, 200 distinct states. A stream
+2 or more over the cap can stop on 2 totals, so 8 arrivals
+decide 2 ways: 104 decisions, 8 of them at the verifier and
+24 refused for size. All 4 invariants hold in every state.
+
+The conformance: the real doors at the real cap of 262,144
+bytes. 112 arrivals, 140 runs: 7 sizes from nothing to 1
+byte more than a chunk over the cap, in each form, decoding
+and cut, and every stream in 2 chunkings. The verifier is
+stood in for, and the bytes read are counted at the door
+itself. The gate's answer and its read are the model's on
+every run. On the code:
+
+- **Nothing over the cap reaches the verifier.** 48 runs of
+  a file or a stream over the cap, none at the verifier. The
+  12 runs that reach it carry the whole envelope. An
+  envelope of exactly the cap goes through, and 1 byte more
+  does not.
+- **The read is bounded.** The scan opens a file once and
+  reads the file or 1 byte past the cap, whichever is less.
+  The listener's largest read is 327,680 bytes, the cap and
+  1 chunk.
+- **A symlink is refused unread.** Nothing is opened at the
+  link, the target is as it was, the link is removed, and
+  the refusal is logged. All 28, whatever the target's size.
+- **Every refusal over the cap is recorded**, 1 line at WARN
+  naming the door.
+- **The comparison has teeth.** The same doors run with the
+  cap 1 byte higher part from the model on 22 runs, every
+  one of them over the true cap.
+
+The reason recorded is where the code and P12's words part
+ways:
+
+- **F6. A file cut inside a character is refused as not
+  UTF-8.** The scan reads 1 byte past the cap and decodes
+  what it read before the size is checked. When the cut
+  falls inside a character, the file is dropped as
+  `envelope is not UTF-8`, though it is UTF-8 when read
+  whole and its fault is its size: 3 of the 8 files over the
+  cap that decode whole. The same bytes at the listener are
+  refused as too large. The refusal itself is right, so the
+  safety P12 states holds. The reason recorded is true of
+  what was read and not of the envelope, and P12 says an
+  over-cap envelope is rejected with the reason recorded.
+  The smallest change that closes it is to check the size of
+  what was read before decoding it.
+
+1 observation for the index. P12 gives the scan's bound, 1
+byte past the cap. The listener's bound is 1 chunk past the
+cap, 65,536 bytes, and P12 does not state it.
+
+What the model does not reach: an envelope that is only
+white space, the `local_signals` switch, and everything from
+the verifier on.
+
 ## What stands
 
 - **The checker run, step D.** Fetch the tools jar of the
   version the stage records name, run TLC on `diskguard.cfg`
   and the 2 witness configurations, and set its counts
   beside the prediction above.
-- **The same run for `secretfloor.cfg` and `probegate.cfg`**
-  and their witness configurations.
-- **F1 to F3 and F5 are for the seat that carries the runner
-  and the models.** This pass changed no runner code.
-- **P8, P11 and P12 have no model.** `v4-working.md` names
-  each as more than a small step, and this pass leaves them
-  there.
+- **The same run for `secretfloor.cfg`, `probegate.cfg` and
+  `localgate.cfg`** and their witness configurations.
+- **F1 to F3, F5 and F6 are for the seat that carries the
+  runner and the models.** This record changed no runner
+  code.
+- **P8 and P11 have no model.** `v4-working.md` names each as
+  more than a small step, and this record leaves them there.

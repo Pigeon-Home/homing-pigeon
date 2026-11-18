@@ -1,4 +1,4 @@
-"""The v4 binding's first 3 models, searched and held to the code.
+"""The v4 binding's first 4 models, searched and held to the code.
 
 FUTURE.md item 1, step C continued. diskguard.tla states P7 of
 v4-properties.md: the disk guard gives up the runner's own
@@ -29,6 +29,10 @@ the working record named as small steps, are treated the same way
 at the foot of this module: each searched, then held to the real
 code, build_secrets over every standing of 3 keys and the
 confinement gate over every start.
+
+localgate.tla, the model of P12, follows them: searched, then
+held to the real inbox scan and the real listener's read, on
+every arrival at the real cap.
 """
 import hashlib
 import itertools
@@ -987,6 +991,492 @@ class ProbeGateConformance(unittest.TestCase):
             '                return 2\n', text)
         self.assertIs(GATE.confinement_startup_problem,
                       RUNNER._confinement_startup_problem)
+
+
+# ---- The fourth model: localgate.tla, P12
+
+CAP, CHUNK = 2, 2
+FORMS = ("file", "symlink", "directory", "stream")
+CUTS = ("clean", "splits")
+
+
+def local_reads(arrival, cap=CAP, chunk=CHUNK):
+    """Reads: what a door may read of an arrival."""
+    form, size, _decodes, _cut = arrival
+    if form == "file":
+        return range(min(size, cap + 1), min(size, cap + 1) + 1)
+    if form == "stream" and size > cap:
+        return range(cap + 1, min(size, cap + chunk) + 1)
+    return range(size, size + 1) if form == "stream" else range(1)
+
+
+def garbled(arrival, read, cap=CAP):
+    """Garbled: the bytes read do not decode."""
+    form, size, decodes, cut = arrival
+    return read > 0 and (not decodes or (
+        form == "file" and size > cap + 1 and cut == "splits"))
+
+
+def local_outcome(arrival, read, cap=CAP):
+    """Outcome: what the gate does with what it read."""
+    form = arrival[0]
+    if form == "directory":
+        return "left"
+    if form == "symlink":
+        return "symlink"
+    if form == "file":
+        if garbled(arrival, read, cap):
+            return "not utf-8"
+        if read == 0:
+            return "empty"
+        return "too large" if read > cap else "verify"
+    if read > cap:
+        return "too large"
+    if read == 0:
+        return "nothing"
+    return "not utf-8" if garbled(arrival, read, cap) else "verify"
+
+
+def local_init():
+    for arrival in itertools.product(FORMS, range(CAP + CHUNK + 2),
+                                     (True, False), CUTS):
+        yield (arrival, False, "none", 0)
+
+
+def local_next(state):
+    arrival, decided, _outcome, _read = state
+    if not decided:
+        for read in local_reads(arrival):
+            yield (arrival, True, local_outcome(arrival, read), read)
+
+
+def p12_inv(state):
+    arrival, decided, outcome, read = state
+    return (not (decided and outcome == "verify")
+            or (arrival[1] <= CAP and read == arrival[1]))
+
+
+def symlink_unread(state):
+    arrival, _decided, _outcome, read = state
+    return arrival[0] != "symlink" or read == 0
+
+
+def read_bounded(state):
+    arrival, _decided, _outcome, read = state
+    return read <= {"file": CAP + 1, "stream": CAP + CHUNK}.get(arrival[0], 0)
+
+
+def over_cap_refused(state):
+    arrival, decided, outcome, _read = state
+    return (not (decided and arrival[1] > CAP
+                 and arrival[0] in ("file", "stream"))
+            or outcome in ("too large", "not utf-8"))
+
+
+LOCAL_INVARIANTS = (("P12Inv", p12_inv), ("SymlinkUnread", symlink_unread),
+                    ("ReadBounded", read_bounded),
+                    ("OverCapRefused", over_cap_refused))
+
+
+def tally(outcomes):
+    counted = {}
+    for outcome in outcomes:
+        counted[outcome] = counted.get(outcome, 0) + 1
+    return counted
+
+
+class LocalGateSearch(unittest.TestCase):
+    """localgate.tla's Init and Next, searched to the fixed
+    point."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.initial = list(local_init())
+        cls.reached, _steps = search(cls.initial, local_next)
+        cls.decided = [s for s in cls.reached if s[1]]
+
+    def test_the_4_invariants_hold_in_every_reachable_state(self):
+        for name, holds in LOCAL_INVARIANTS:
+            self.assertIsNone(first_breaking(self.reached, holds), name)
+
+    def test_the_counts_are_the_prediction_for_the_checker(self):
+        # 96 arrivals. A stream over the cap by 2 or more can
+        # stop on 2 totals, so 8 arrivals decide 2 ways and the
+        # other 88 decide 1 way: 104 decisions.
+        self.assertEqual((96, 200, 104), (len(self.initial),
+                                          len(self.reached),
+                                          len(self.decided)))
+        self.assertEqual(
+            {"verify": 8, "too large": 24, "not utf-8": 16, "empty": 4,
+             "nothing": 4, "symlink": 24, "left": 24},
+            tally(s[2] for s in self.decided))
+        self.assertEqual(
+            {"file": 4, "stream": 4},
+            tally(s[0][0] for s in self.decided if s[2] == "verify"))
+        self.assertIn("96 initial states, 200 distinct states",
+                      _flat(RECORD))
+
+    def test_the_2_probes_are_false_somewhere_as_they_must_be(self):
+        self.assertIsNotNone(first_breaking(
+            self.reached, lambda s: not (s[1] and s[2] == "verify")))
+        self.assertIsNotNone(first_breaking(
+            self.reached, lambda s: not (s[1] and s[2] == "too large")))
+        text = _read(os.path.join(PROOFS, "localgate.tla"))
+        for stated in (
+                "Cap == 2\nChunk == 2\n",
+                "Reads(a) ==\n"
+                "  IF a.form = \"file\" THEN {Min(a.size, Cap + 1)}\n"
+                "  ELSE IF a.form = \"stream\" /\\ a.size > Cap\n"
+                "    THEN (Cap + 1)..Min(a.size, Cap + Chunk)\n"
+                "  ELSE IF a.form = \"stream\" THEN {a.size}\n"
+                "  ELSE {0}\n",
+                "Garbled(a, r) ==\n  /\\ r > 0\n  /\\ \\/ ~a.decodes\n"
+                "     \\/ a.form = \"file\" /\\ a.size > Cap + 1 /\\ "
+                "a.cut = \"splits\"\n",
+                "    IF Garbled(a, r) THEN \"not utf-8\"\n"
+                "    ELSE IF r = 0 THEN \"empty\"\n"
+                "    ELSE IF r > Cap THEN \"too large\"\n"
+                "    ELSE \"verify\"\n"
+                "  ELSE\n"
+                "    IF r > Cap THEN \"too large\"\n"
+                "    ELSE IF r = 0 THEN \"nothing\"\n"
+                "    ELSE IF Garbled(a, r) THEN \"not utf-8\"\n"
+                "    ELSE \"verify\"\n",
+                "This file has not been run with TLC."):
+            self.assertIn(stated, text, stated)
+        self.assertTrue(_read(os.path.join(PROOFS, "localgate.cfg"))
+                        .endswith("SPECIFICATION Spec\nINVARIANT P12Inv\n"
+                                  "INVARIANT SymlinkUnread\n"
+                                  "INVARIANT ReadBounded\n"
+                                  "INVARIANT OverCapRefused\n"))
+        for name, probe in (
+                ("localgatewitnessverifies.cfg", "NothingReachesTheVerifier"),
+                ("localgatewitnesssize.cfg", "NothingIsRefusedForSize")):
+            held = _read(os.path.join(PROOFS, name))
+            self.assertTrue(held.startswith("\\* Expected to fail."), name)
+            self.assertTrue(held.endswith(
+                "SPECIFICATION Spec\nINVARIANT %s\n" % probe), name)
+
+    def test_a_cut_inside_a_character_is_in_the_model(self):
+        # F6 as the model has it: a file over the cap that
+        # decodes when read whole, refused as not UTF-8. It is
+        # the cut that does it, and only past 1 byte over.
+        cut_short = [s[0] for s in self.decided
+                     if s[0][0] == "file" and s[0][2] and s[2] == "not utf-8"]
+        self.assertEqual([("file", 4, True, "splits"),
+                          ("file", 5, True, "splits")], sorted(cut_short))
+        self.assertEqual(6, sum(
+            1 for s in self.decided
+            if s[0][0] == "file" and s[0][2] and s[0][1] > CAP))
+
+
+# ---- The real doors, asked at the real cap
+
+REAL_CAP = RUNNER._LOCAL_ENVELOPE_MAX_BYTES
+REAL_CHUNK = 65536
+REAL_SIZES = (0, 1000, REAL_CAP, REAL_CAP + 1, REAL_CAP + 2,
+              REAL_CAP + REAL_CHUNK, REAL_CAP + REAL_CHUNK + 1)
+CHUNKINGS = (REAL_CHUNK, 1000)
+SAID = (("symlink refused", "symlink"),
+        ("envelope too large", "too large"),
+        ("envelope is not UTF-8", "not utf-8"),
+        ("rejected: empty envelope", "empty"))
+
+
+class _Held(Exception):
+    """The stand-in verifier's answer: the envelope got here."""
+
+
+class _Counted:
+    """A file the scan opened, counting what is read of it."""
+
+    def __init__(self, handle, counts):
+        self.handle, self.counts = handle, counts
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        self.handle.close()
+        return False
+
+    def read(self, size=-1):
+        data = self.handle.read(size)
+        self.counts.append(len(data))
+        return data
+
+
+class _Stream:
+    """A connection that hands its bytes out a chunk at a time
+    and counts what it handed out."""
+
+    def __init__(self, data, chunk):
+        self.data, self.chunk, self.handed = data, chunk, 0
+
+    def settimeout(self, _seconds):
+        pass
+
+    def recv(self, size):
+        data = self.data[self.handed:self.handed + min(size, self.chunk)]
+        self.handed += len(data)
+        return data
+
+
+def real_bytes(arrival):
+    """The bytes of a real arrival: plain where it decodes, a
+    byte no UTF-8 text begins with where it does not, and a
+    2 byte character astride the scan's cut where the cut
+    splits."""
+    _form, size, decodes, cut = arrival
+    if size == 0:
+        return b""
+    if not decodes:
+        return b"\xff" + b"a" * (size - 1)
+    if cut == "splits" and size > REAL_CAP + 1:
+        return (b"a" * REAL_CAP + "é".encode("utf-8")
+                + b"a" * (size - REAL_CAP - 2))
+    return b"a" * size
+
+
+class Asked:
+    """One real arrival at its real door: what the gate did, in
+    the model's words, and what the tests read off it."""
+
+    def __init__(self, arrival, chunk=REAL_CHUNK, cap=REAL_CAP):
+        form = arrival[0]
+        self.arrival, self.data = arrival, real_bytes(arrival)
+        self.said, self.reached, self.opened, counts = [], [], [], []
+        base = tempfile.mkdtemp(prefix="v4-localgate-")
+        inbox = os.path.join(base, RUNNER.LOCAL_INBOX_DIRNAME)
+        path = os.path.join(inbox, "arrival.json")
+        target = os.path.join(base, "elsewhere", "target")
+        plain_open = open
+
+        def counting_open(name, *args, **kwargs):
+            if isinstance(name, str) and os.path.dirname(name) == inbox:
+                self.opened.append(name)
+                return _Counted(plain_open(name, *args, **kwargs), counts)
+            return plain_open(name, *args, **kwargs)
+
+        def verifier(text, _secrets):
+            self.reached.append(text)
+            raise _Held("held at the verifier")
+
+        try:
+            os.makedirs(inbox)
+            if form == "file":
+                _write(path, self.data)
+            elif form == "symlink":
+                _write(target, self.data)
+                os.symlink(target, path)
+            elif form == "directory":
+                os.makedirs(path)
+            stream = _Stream(self.data, chunk)
+            config = {"shared_secret": STRONG["default"]}
+            with mock.patch.object(
+                    RUNNER, "log",
+                    side_effect=lambda line, level="INFO":
+                    self.said.append((level, line))), \
+                    mock.patch.object(RUNNER, "vlog"), \
+                    mock.patch.object(RUNNER, "verify_body_keyed",
+                                      side_effect=verifier), \
+                    mock.patch.object(RUNNER, "open", counting_open,
+                                      create=True), \
+                    mock.patch.object(RUNNER, "_LOCAL_ENVELOPE_MAX_BYTES",
+                                      cap):
+                if form == "stream":
+                    self.handled = None
+                    RUNNER._handle_local_signal_conn(config, base, stream)
+                else:
+                    self.handled = RUNNER._scan_local_inbox(config, base)
+            self.read = stream.handed if form == "stream" else sum(counts)
+            self.still_there = os.path.lexists(path)
+            self.target_kept = (form != "symlink"
+                                or _read_bytes(target) == self.data)
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+        self.outcome = self._outcome()
+
+    def _outcome(self):
+        if self.reached:
+            return "verify"
+        for words, outcome in SAID:
+            if any(words in line for _level, line in self.said):
+                return outcome
+        if self.arrival[0] == "directory":
+            return "left"
+        return "nothing"
+
+
+def _read_bytes(path):
+    with open(path, "rb") as fh:
+        return fh.read()
+
+
+def can_symlink():
+    probe = tempfile.mkdtemp(prefix="v4-localgate-")
+    try:
+        os.symlink(probe, os.path.join(probe, "link"))
+        return True
+    except (OSError, NotImplementedError, AttributeError):
+        return False
+    finally:
+        shutil.rmtree(probe, ignore_errors=True)
+
+
+class LocalGateConformance(unittest.TestCase):
+    """The real inbox scan and the real listener's read, asked
+    on every arrival at the real cap, against the model."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.symlinks = can_symlink()
+        cls.asked = {}
+        for arrival in itertools.product(FORMS, REAL_SIZES,
+                                         (True, False), CUTS):
+            if arrival[0] == "symlink" and not cls.symlinks:
+                continue
+            for chunk in (CHUNKINGS if arrival[0] == "stream"
+                          else (REAL_CHUNK,)):
+                cls.asked[arrival, chunk] = Asked(arrival, chunk)
+
+    def of(self, *forms):
+        return [asked for (arrival, _chunk), asked in sorted(
+            self.asked.items()) if arrival[0] in forms]
+
+    def agrees(self, arrival, asked):
+        return (asked.read in local_reads(arrival, REAL_CAP, REAL_CHUNK)
+                and asked.outcome == local_outcome(arrival, asked.read,
+                                                   REAL_CAP))
+
+    def test_the_gate_is_the_model_on_every_arrival(self):
+        for (arrival, chunk), asked in sorted(self.asked.items()):
+            self.assertTrue(self.agrees(arrival, asked),
+                            (arrival, chunk, asked.read, asked.said))
+        # 28 files and 28 directories at the scan, and 28
+        # streams at the listener, each in 2 chunkings.
+        self.assertEqual((28, 28, 56), (len(self.of("file")),
+                                        len(self.of("directory")),
+                                        len(self.of("stream"))))
+        self.assertEqual(
+            {"verify": 4, "too large": 5, "not utf-8": 15, "empty": 4},
+            tally(asked.outcome for asked in self.of("file")))
+        self.assertEqual(
+            {"verify": 8, "too large": 32, "not utf-8": 8, "nothing": 8},
+            tally(asked.outcome for asked in self.of("stream")))
+        self.assertEqual(140 if self.symlinks else 112, len(self.asked))
+        self.assertIn("112 arrivals, 140 runs", _flat(RECORD))
+        self.assertEqual(262144, REAL_CAP)
+        self.assertEqual(1, _read(os.path.join(
+            ROOT, "runner", "runner.py")).count(
+                "            data = conn.recv(%d)\n" % REAL_CHUNK))
+
+    def test_nothing_over_the_cap_reaches_the_verifier(self):
+        # P12 on the code. What reaches the verifier is at most
+        # the cap, and it is the whole envelope.
+        over = [asked for asked in self.of("file", "stream")
+                if asked.arrival[1] > REAL_CAP]
+        self.assertEqual(48, len(over))
+        for asked in over:
+            self.assertEqual([], asked.reached, asked.arrival)
+        through = [asked for asked in self.asked.values() if asked.reached]
+        self.assertEqual(12, len(through))
+        for asked in through:
+            self.assertEqual([asked.data],
+                             [text.encode("utf-8") for text in asked.reached])
+            self.assertLessEqual(len(asked.data), REAL_CAP)
+        # The cap itself is let through, and 1 byte more is not.
+        at_the_cap = {asked.arrival[1] for asked in through}
+        self.assertEqual({1000, REAL_CAP}, at_the_cap)
+
+    def test_the_read_is_bounded_at_both_doors(self):
+        for asked in self.of("file"):
+            self.assertEqual(1, len(asked.opened), asked.arrival)
+            self.assertEqual(min(asked.arrival[1], REAL_CAP + 1), asked.read)
+        for asked in self.of("directory"):
+            self.assertEqual(([], 0), (asked.opened, asked.read))
+        reads = [asked.read for asked in self.of("stream")]
+        self.assertEqual(REAL_CAP + REAL_CHUNK, max(reads))
+        self.assertEqual(327680, max(reads))
+
+    def test_a_symlink_is_refused_unread(self):
+        if not self.symlinks:
+            self.skipTest("symlinks unavailable")
+        links = self.of("symlink")
+        self.assertEqual(28, len(links))
+        for asked in links:
+            self.assertEqual("symlink", asked.outcome, asked.arrival)
+            self.assertEqual(([], 0, []), (asked.opened, asked.read,
+                                           asked.reached))
+            self.assertTrue(asked.target_kept, asked.arrival)
+            self.assertFalse(asked.still_there, asked.arrival)
+            self.assertEqual(
+                [("WARN", "local signal (file): arrival.json: "
+                          "symlink refused")], asked.said)
+
+    def test_every_refusal_over_the_cap_is_recorded(self):
+        for asked in self.of("file", "stream"):
+            if asked.arrival[1] <= REAL_CAP:
+                continue
+            self.assertEqual(1, len(asked.said), asked.arrival)
+            level, line = asked.said[0]
+            self.assertEqual("WARN", level)
+            self.assertTrue(line.startswith(
+                "local signal (%s): " % (
+                    "file" if asked.arrival[0] == "file" else "socket")),
+                line)
+            self.assertIn(asked.outcome, ("too large", "not utf-8"))
+
+    def test_the_scan_removes_a_file_and_leaves_a_directory(self):
+        for asked in self.of("file"):
+            self.assertEqual((1, False), (asked.handled, asked.still_there))
+        for asked in self.of("directory"):
+            self.assertEqual((0, True, []), (asked.handled,
+                                             asked.still_there, asked.said))
+
+    def test_a_cut_inside_a_character_is_refused_as_not_utf8(self):
+        # F6. A file over the cap that is UTF-8 when read whole.
+        # The scan's cut at 1 byte past the cap falls inside a
+        # character, and the refusal names the encoding, not
+        # the size. The same bytes at the listener are refused
+        # for their size.
+        whole = [asked for asked in self.of("file")
+                 if asked.arrival[1] > REAL_CAP and asked.arrival[2]]
+        cut_short = [asked for asked in whole
+                     if asked.outcome == "not utf-8"]
+        self.assertEqual((8, 3), (len(whole), len(cut_short)))
+        self.assertIn("3 of the 8 files over the cap", _flat(RECORD))
+        for asked in cut_short:
+            self.assertEqual("splits", asked.arrival[3])
+            self.assertEqual(len(asked.data),
+                             len(asked.data.decode("utf-8").encode("utf-8")))
+            self.assertEqual(
+                [("WARN", "local signal (file): arrival.json: envelope "
+                          "is not UTF-8; dropped")], asked.said)
+            for chunk in CHUNKINGS:
+                same_bytes = self.asked[("stream",) + asked.arrival[1:],
+                                        chunk]
+                self.assertEqual(asked.data, same_bytes.data)
+                self.assertEqual("too large", same_bytes.outcome)
+
+    def test_a_gate_with_its_cap_1_byte_higher_is_caught(self):
+        # The comparison has teeth: run the real doors with the
+        # cap 1 byte too high and the model at the true cap
+        # parts from them on 22 runs. Every file 2 or more over
+        # the cap, the 2 files of 1 byte over that decode, and
+        # every stream of 1 byte over. Nothing at or under the
+        # cap: the 2 gates agree there.
+        caught = sorted(
+            (arrival, chunk) for (arrival, chunk) in self.asked
+            if arrival[0] in ("file", "stream")
+            and not self.agrees(arrival, Asked(arrival, chunk,
+                                               cap=REAL_CAP + 1)))
+        self.assertEqual(22, len(caught))
+        self.assertEqual(
+            {("file", 1): 2, ("file", 2): 4, ("file", REAL_CHUNK): 4,
+             ("file", REAL_CHUNK + 1): 4, ("stream", 1): 8},
+            tally((arrival[0], arrival[1] - REAL_CAP)
+                  for arrival, _chunk in caught))
 
 
 if __name__ == "__main__":

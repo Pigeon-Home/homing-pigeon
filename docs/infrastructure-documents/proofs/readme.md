@@ -268,15 +268,16 @@ A finding is most useful when it points at the file and the line
   states it, with the new properties P7 to P13 stated in
   full. `diskguard.tla` is the first model of that work,
   of P7; its checker run is recorded as still owed there.
-- `v4-search.md`: the first 3 models searched without a
+- `v4-search.md`: the first 4 models searched without a
   checker and held to the code. `diskguard.tla`,
-  `secretfloor.tla`, the model of P13, and `probegate.tla`,
-  the model of P10, each with its states counted as the
-  prediction for the TLC run and its witness configurations;
-  the real disk guard driven down every path its
-  re-measuring allows, the real key map built over every
-  standing of 3 keys, the real confinement gate asked on
-  every start, and 5 findings.
+  `secretfloor.tla`, the model of P13, `probegate.tla`, the
+  model of P10, and `localgate.tla`, the model of P12, each
+  with its states counted as the prediction for the TLC run
+  and its witness configurations; the real disk guard driven
+  down every path its re-measuring allows, the real key map
+  built over every standing of 3 keys, the real confinement
+  gate asked on every start, the real local doors asked on
+  every arrival at the cap, and 6 findings.
   `runner/tests/test_v4_models.py` is that search and that
   conformance, run with the suite.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning

@@ -169,7 +169,7 @@ the 25 of `test_disk_guard.py`.
 
 ## Step C, continued
 
-A later pass took up 3 of the items above. Its record is
+Later work took up 4 of the items above. Its record is
 `v4-search.md`, and its checking runs with the suite as
 `runner/tests/test_v4_models.py`.
 
@@ -184,8 +184,10 @@ A later pass took up 3 of the items above. Its record is
   left as it was checked.
 - **P10 has its model**, `probegate.tla`, stated for the 3
   platforms the one gate serves.
+- **P12 has its model**, `localgate.tla`: the cap's own gate,
+  the 2 doors and the 1 check in front of the local-signals
+  path, with that path left outside it.
 
-That pass also names 5 findings, F1 to F5, none of them
-fixed there. What stands after it: the checker runs for all
-3 models, the models for P8, P11 and P12, and the inventory
-merge.
+That record names 6 findings, F1 to F6, none of them fixed
+there. What stands after it: the checker runs for all 4
+models, the models for P8 and P11, and the inventory merge.
