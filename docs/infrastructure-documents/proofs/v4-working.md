@@ -97,9 +97,72 @@ Whether each of these still matches the code at this head is
 the measurement S1 predicts. The conclusions section records
 the result.
 
-## Conclusions
+## Conclusions, against the suppositions
 
-To be written in this file, in this pass, after the
-measurements run: the verdict on S1 to S4, the newly harvested
-constraints stated as C28 onward with their sources, and what
-of step C remains.
+Measured at this branch's head, after the suppositions above
+were committed.
+
+- **S1 held.** `runner/tests/test_proof_constraints.py` runs
+  68 tests at this head and all pass: every value in the
+  C1 to C27 summary still matches the code. Step A therefore
+  re-states the standing inventory at the new head with no
+  value changed.
+- **S2 held, and wider than predicted.** The disk guard is
+  there as predicted (C28 in `v4-properties.md`), and the
+  harvest found a second post-harvest family beside it: the
+  macOS confinement backend's fail-closed startup rule (C31).
+- **S3 held.** Both draft-side constraints are there: the v3
+  hybrid key agreement group (C29) and the ratified same-side
+  framing rule (C30).
+- **S4 held in part.** The model of the guard's decision,
+  `diskguard.tla` with `diskguard.cfg`, is written: one pass,
+  the four classes in their order, the re-measurement after
+  every action stated as a nondeterministic flag, and the
+  three invariants P7 names (NeverStops, OrderRespected,
+  RecordedFaithfully). It touches no existing model. It is
+  NOT yet checked: TLC is not installed on this machine, so
+  no verdict is claimed for it. Running the checker is step
+  D of the plan, and the model's verdict belongs there.
+
+One finding the suppositions did not predict: three standing
+constraints were stated by no property at all. A citation
+count over `properties.md` finds C3, C4 and C6 mentioned zero
+times there. All three are real in the code at this head (the
+result cap's fit-before-signing step, the local envelope cap,
+the secret entropy floor's raise under 128 bits). Step B
+states them as P11, P12 and P13 in `v4-properties.md`, so the
+v4 binding index now covers every harvested constraint:
+C1 to C31, each with a numbered property.
+
+The pins for the new claims are
+`runner/tests/test_v4_binding.py`: 21 tests, all passing at
+this head, beside the 68 of `test_proof_constraints.py` and
+the 25 of `test_disk_guard.py`.
+
+## What of step C remains
+
+- **The checker run for `diskguard.tla`.** Install tla2tools
+  by the bare-machine rule, run TLC against `diskguard.cfg`,
+  and record the verdict, the state count, and any
+  counterexample in a stage record. That is step D's first
+  item, and until it runs, P7 is a stated property with a
+  written model and conformance pins, not a checked one.
+- **Models for P8 to P13 do not exist yet.** Per property:
+  P8 is a handshake negotiation claim inside the DTLS stack;
+  a model belongs with the DTLS records' own extension, not
+  a small step. P9 is a support-scope claim, held by its
+  record and a doc pin; it is not a checker claim. P10 is a
+  startup probe claim and a candidate for a small model in
+  the shape of `decision.tla` (probe outcome by mode), not
+  begun. P11's seam is the result path, which no current
+  model covers; not small. P12's path is the local-signals
+  path, named in `properties.md` as a later stage's scope;
+  not small. P13 sits in P6's family: `decision.tla`'s
+  attempt classes could carry the secret floor as one more
+  refuse-class attempt, a small extension, not begun.
+- **The inventory merge.** C28 to C31 are stated in
+  `v4-properties.md` in this pass so the branch's claims sit
+  in one reviewable place. Folding them into
+  `constraints.md` itself, in that file's own format, belongs
+  with the step D pass, so the inventory of record stays one
+  file in the end.
