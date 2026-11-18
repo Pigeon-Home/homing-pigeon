@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.29.6 - 2026-11-18
+
+- Extensions: the nightly upstream pins refreshed for the osquery, softflowd and zeek feed senses, each pinned ref resolved to its current tip with the pinned files refetched and the drift tests green against them (since 3.17.29.5)
+
 ## 3.17.29.5 - 2026-11-18
 
 - Proofs: v4 binding working record and harvest conclusions, v4-properties.md mapping C1 to C31 with P7 to P13 in full, the diskguard TLA model of P7, pin tests, and the mutation selection regenerated (since 3.17.29.3)
