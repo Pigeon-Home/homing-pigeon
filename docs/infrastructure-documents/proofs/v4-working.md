@@ -166,3 +166,26 @@ the 25 of `test_disk_guard.py`.
   `constraints.md` itself, in that file's own format, belongs
   with the step D pass, so the inventory of record stays one
   file in the end.
+
+## Step C, continued
+
+A later pass took up 3 of the items above. Its record is
+`v4-search.md`, and its checking runs with the suite as
+`runner/tests/test_v4_models.py`.
+
+- **`diskguard.tla` is searched, and has its witnesses.** The
+  model's states are counted without a checker, as the
+  prediction for the TLC run, and the real guard is driven
+  down every path its re-measuring allows. 2 witness
+  configurations are added. The checker run itself still
+  stands.
+- **P13 has its model**, `secretfloor.tla`, as its own small
+  file in the shape of `decision.tla`, with `decision.tla`
+  left as it was checked.
+- **P10 has its model**, `probegate.tla`, stated for the 3
+  platforms the one gate serves.
+
+That pass also names 5 findings, F1 to F5, none of them
+fixed there. What stands after it: the checker runs for all
+3 models, the models for P8, P11 and P12, and the inventory
+merge.
