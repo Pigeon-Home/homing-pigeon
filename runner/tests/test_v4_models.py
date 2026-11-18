@@ -1,4 +1,4 @@
-"""The v4 binding's first 4 models, searched and held to the code.
+"""The v4 binding's models, searched and held to the code.
 
 FUTURE.md item 1, step C continued. diskguard.tla states P7 of
 v4-properties.md: the disk guard gives up the runner's own
@@ -33,6 +33,15 @@ confinement gate over every start.
 localgate.tla, the model of P12, follows them: searched, then
 held to the real inbox scan and the real listener's read, on
 every arrival at the real cap.
+
+The finishing pass adds the last 2 models the continued
+record names, in the same shape and treated the same way:
+hybridselect.tla (P8, the DTLS group selection) and
+resultfit.tla (P11, the result fitting before signing).
+Finding F7, the fitting's floor, is held the way F1 to F6
+are held. P9, the framing scope claim, is not a checker
+claim: the last class pins it by reading the documents it
+is a claim about. The record for these 2 is v4-search-2.md.
 """
 import hashlib
 import itertools
@@ -40,6 +49,7 @@ import os
 import shutil
 import sys
 import tempfile
+import types
 import unittest
 from unittest import mock
 
@@ -51,10 +61,14 @@ from runner import runner as RUNNER  # noqa: E402,F401
 from runner.guard import security as SECURITY  # noqa: E402
 from runner.ops import remediation_ops as GATE  # noqa: E402
 from runner.oracle import resources as RES  # noqa: E402
+from runner.tests.test_dtls import SECRET as DTLS_SECRET  # noqa: E402
+from runner.tests.test_dtls import _pump as dtls_pump  # noqa: E402
+from runner.wire import dtlsproto as DTLS  # noqa: E402
 from runner.wire import verify as VERIFY  # noqa: E402
 
 PROOFS = os.path.join(ROOT, "docs", "infrastructure-documents", "proofs")
 RECORD = os.path.join(PROOFS, "v4-search.md")
+RECORD2 = os.path.join(PROOFS, "v4-search-2.md")
 
 CLASSES = (1, 2, 3, 4)
 OVER, UNDER = 0.95, 0.50
@@ -1477,6 +1491,353 @@ class LocalGateConformance(unittest.TestCase):
              ("file", REAL_CHUNK + 1): 4, ("stream", 1): 8},
             tally((arrival[0], arrival[1] - REAL_CAP)
                   for arrival, _chunk in caught))
+
+
+# ---- The third model: hybridselect.tla, P8
+
+GROUPS = ("hybrid", "x25519")
+
+
+def hybrid_init():
+    """Init: every offer set, both profiles, nothing decided."""
+    for bits in range(4):
+        offered = frozenset(g for i, g in enumerate(GROUPS)
+                            if bits >> i & 1)
+        for profile in ("v1", "v3"):
+            yield (offered, profile, False, "none")
+
+
+def hybrid_next(state):
+    """Decide: the hybrid exactly when the v3 profile carries
+    the option and the hello offered it; else X25519 when
+    offered; else refused."""
+    offered, profile, decided, _outcome = state
+    if decided:
+        return
+    if profile == "v3" and "hybrid" in offered:
+        outcome = "hybrid"
+    elif "x25519" in offered:
+        outcome = "x25519"
+    else:
+        outcome = "refused"
+    yield (offered, profile, True, outcome)
+
+
+def p8_inv(state):
+    offered, profile, decided, outcome = state
+    return (not (decided and profile == "v3" and "hybrid" in offered)
+            or outcome == "hybrid")
+
+
+def only_offered(state):
+    offered, _profile, decided, outcome = state
+    if not decided:
+        return True
+    return ((outcome != "hybrid" or "hybrid" in offered)
+            and (outcome != "x25519" or "x25519" in offered)
+            and ((outcome == "refused") == (len(offered) == 0)))
+
+
+class HybridSelectSearch(unittest.TestCase):
+    """hybridselect.tla's Init and Next, searched to the fixed
+    point."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.initial = list(hybrid_init())
+        cls.reached, _steps = search(cls.initial, hybrid_next)
+
+    def test_the_2_invariants_hold_in_every_reachable_state(self):
+        self.assertIsNone(first_breaking(self.reached, p8_inv))
+        self.assertIsNone(first_breaking(self.reached, only_offered))
+
+    def test_the_counts_are_the_prediction_for_the_checker(self):
+        # 4 offer sets by 2 profiles. The decision is
+        # deterministic, so each hello has exactly 1 decided
+        # state: 8 and 8.
+        decided = [s for s in self.reached if s[2]]
+        self.assertEqual((8, 8), (len(self.initial), len(decided)))
+        self.assertEqual(16, len(self.reached))
+        self.assertIn("8 initial states, %d distinct states"
+                      % len(self.reached), _flat(RECORD2))
+
+    def test_the_2_probes_are_false_somewhere_as_they_must_be(self):
+        self.assertIsNotNone(first_breaking(
+            self.reached, lambda s: not (s[2] and s[3] == "hybrid")))
+        self.assertIsNotNone(first_breaking(
+            self.reached, lambda s: not (s[2] and s[3] == "refused")))
+        text = _read(os.path.join(PROOFS, "hybridselect.tla"))
+        for stated in (
+                "  /\\ outcome' = IF profile = \"v3\" /\\ \"hybrid\""
+                " \\in offered\n",
+                "                         THEN \"x25519\"\n"
+                "                         ELSE \"refused\"",
+                "Not yet run with TLC."):
+            self.assertIn(stated, text, stated)
+        self.assertTrue(_read(os.path.join(PROOFS, "hybridselect.cfg"))
+                        .endswith("SPECIFICATION Spec\nINVARIANT P8Inv\n"
+                                  "INVARIANT OnlyOffered\n"))
+        for name, probe in (
+                ("hybridselectwitnesshybrid.cfg", "NothingSelectsHybrid"),
+                ("hybridselectwitnessrefused.cfg", "NothingIsRefused")):
+            held = _read(os.path.join(PROOFS, name))
+            self.assertTrue(held.startswith("\\* Expected to fail."), name)
+            self.assertTrue(held.endswith(
+                "SPECIFICATION Spec\nINVARIANT %s\n" % probe), name)
+
+
+class HybridSelectConformance(unittest.TestCase):
+    """The real DTLS cores, pumped through a handshake for
+    every combination of the client's offer and the server's
+    profile."""
+
+    def test_the_group_numbers_are_c29_s(self):
+        self.assertEqual(4588, DTLS.GROUP_X25519MLKEM768)
+        self.assertEqual(0x001D, DTLS.GROUP_X25519)
+
+    def test_every_combination_agrees_with_the_model(self):
+        # The model decides from the offer set and the profile;
+        # the cores are driven through the same 4 combinations
+        # and must land on the model's group every time.
+        reached, _steps = search(list(hybrid_init()), hybrid_next)
+        decided = {(s[0], s[1]): s[3] for s in reached if s[2]}
+        groups = {"hybrid": DTLS.GROUP_X25519MLKEM768,
+                  "x25519": DTLS.GROUP_X25519}
+        handshakes = 0
+        for client_hybrid in (False, True):
+            for server_hybrid in (False, True):
+                offered = (frozenset(GROUPS) if client_hybrid
+                           else frozenset(("x25519",)))
+                profile = "v3" if server_hybrid else "v1"
+                server = DTLS.DtlsServerCore(
+                    secret_lookup=DTLS.make_secret_lookup(DTLS_SECRET),
+                    hybrid=server_hybrid)
+                client = DTLS.DtlsClientCore(DTLS_SECRET,
+                                              hybrid=client_hybrid)
+                dtls_pump(client, server, addr=("127.0.0.1", 50001),
+                          now=1000.0)
+                sessions = list(server.sessions.values())
+                self.assertEqual(1, len(sessions))
+                want = groups[decided[(offered, profile)]]
+                self.assertEqual(want, sessions[0].negotiated_group,
+                                 (client_hybrid, server_hybrid))
+                self.assertEqual(want, client.negotiated_group,
+                                 (client_hybrid, server_hybrid))
+                handshakes += 1
+        self.assertEqual(4, handshakes)
+        self.assertIn("4 handshakes", _flat(RECORD2))
+
+
+# ---- The fifth model: resultfit.tla, P11
+
+BODIES = ("fits", "shrinkable", "fixed")
+
+
+def fit_init():
+    """Init: both cap classes, the 3 body classes, nothing
+    decided."""
+    for cap in ("zero", "set"):
+        for body in BODIES:
+            yield (cap, body, False, "none", False)
+
+
+def fit_next(state):
+    """Decide: unlimited, or already within the cap, leaves as
+    built; a body the cutting can fit leaves shrunk and
+    marked; a body over even at the third pass shape leaves
+    over the cap, marked."""
+    cap, body, decided, _sent, _marked = state
+    if decided:
+        return
+    if cap == "zero" or body == "fits":
+        yield (cap, body, True, "asis", False)
+    elif body == "shrinkable":
+        yield (cap, body, True, "shrunk", True)
+    else:
+        yield (cap, body, True, "over", True)
+
+
+def marked_when_cut(state):
+    _cap, _body, decided, sent, marked = state
+    return (not decided
+            or ((sent not in ("shrunk", "over") or marked)
+                and (sent != "asis" or not marked)))
+
+
+def cap_zero_asis(state):
+    cap, _body, decided, sent, _marked = state
+    return not (decided and cap == "zero") or sent == "asis"
+
+
+def fits_asis(state):
+    _cap, body, decided, sent, _marked = state
+    return not (decided and body == "fits") or sent == "asis"
+
+
+def p11_inv(state):
+    cap, _body, decided, sent, _marked = state
+    return not (decided and cap == "set") or sent != "over"
+
+
+class ResultFitSearch(unittest.TestCase):
+    """resultfit.tla's Init and Next, searched to the fixed
+    point."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.initial = list(fit_init())
+        cls.reached, _steps = search(cls.initial, fit_next)
+
+    def test_the_3_kept_invariants_hold_in_every_reachable_state(self):
+        for holds in (marked_when_cut, cap_zero_asis, fits_asis):
+            self.assertIsNone(first_breaking(self.reached, holds),
+                              holds.__name__)
+
+    def test_p11_s_own_words_break_at_exactly_the_fixed_class(self):
+        # The witness configuration's invariant: it fails, and
+        # every state it fails on is the fixed class under a
+        # set cap, and there is exactly 1 such decided state.
+        breaking = [s for s in self.reached if not p11_inv(s)]
+        self.assertEqual(1, len(breaking))
+        cap, body, decided, sent, marked = breaking[0]
+        self.assertEqual(("set", "fixed", True, "over", True),
+                         (cap, body, decided, sent, marked))
+
+    def test_the_counts_are_the_prediction_for_the_checker(self):
+        # 2 cap classes by 3 body classes, the decision
+        # deterministic: 6 initial states, 6 decided.
+        decided = [s for s in self.reached if s[2]]
+        self.assertEqual((6, 6), (len(self.initial), len(decided)))
+        self.assertEqual(12, len(self.reached))
+        self.assertIn("6 initial states, %d distinct states"
+                      % len(self.reached), _flat(RECORD2))
+
+    def test_the_probes_are_false_somewhere_as_they_must_be(self):
+        self.assertIsNotNone(first_breaking(
+            self.reached, lambda s: not (s[2] and s[3] == "shrunk")))
+        text = _read(os.path.join(PROOFS, "resultfit.tla"))
+        for stated in (
+                "       THEN sent' = \"asis\" /\\ marked' = FALSE\n",
+                "              THEN sent' = \"shrunk\" /\\ marked' = TRUE\n"
+                "              ELSE sent' = \"over\" /\\ marked' = TRUE",
+                "Not yet run with TLC."):
+            self.assertIn(stated, text, stated)
+        self.assertTrue(_read(os.path.join(PROOFS, "resultfit.cfg"))
+                        .endswith("INVARIANT MarkedWhenCut\n"
+                                  "INVARIANT CapZeroAsIs\n"
+                                  "INVARIANT FitsAsIs\n"))
+        for name, probe in (
+                ("resultfitwitnessshrunk.cfg", "NothingIsShrunk"),
+                ("resultfitwitnesscap.cfg", "P11Inv")):
+            held = _read(os.path.join(PROOFS, name))
+            self.assertTrue(held.startswith("\\* Expected to fail."), name)
+            self.assertTrue(held.endswith(
+                "SPECIFICATION Spec\nINVARIANT %s\n" % probe), name)
+
+
+FIT_SECRET = "v4 fit secret " + hashlib.sha384(b"v4 fit").hexdigest()
+
+
+def _fit_result(out, err):
+    return {"v": 1, "type": "result", "job_id": "j1",
+            "kind": "exec", "completed_at": "2026-10-25T00:00:00Z",
+            "exit_code": 0, "timed_out": False, "stdout": out,
+            "stderr": err, "stdout_truncated": False,
+            "stderr_truncated": False, "duration_sec": 0.5,
+            "runner": "box", "review": None}
+
+
+def _fit(cap, out="A" * 40000, err="x" * 40000):
+    return RUNNER._fit_result_body(_fit_result(out, err), FIT_SECRET,
+                                   False, "j1", "", cap)
+
+
+class ResultFitConformance(unittest.TestCase):
+    """The real _fit_result_body, over the cap classes the
+    model names."""
+
+    def test_a_cap_of_0_is_unlimited(self):
+        res, body = _fit(0)
+        self.assertNotIn("result_truncated", res)
+        self.assertGreater(len(body.encode("utf-8")), 80000)
+
+    def test_a_body_within_the_cap_leaves_as_built(self):
+        res, body = _fit(100000, "hello", "")
+        self.assertNotIn("result_truncated", res)
+        self.assertLessEqual(len(body.encode("utf-8")), 100000)
+        self.assertEqual("hello", res["stdout"])
+
+    def test_a_shrinkable_body_is_cut_marked_and_fits(self):
+        res, body = _fit(20000)
+        self.assertLessEqual(len(body.encode("utf-8")), 20000)
+        self.assertEqual("max_result_bytes",
+                         res["result_truncated"]["reason"])
+        self.assertGreater(res["result_truncated"]["dropped"], 0)
+        self.assertTrue(res["stdout_truncated"])
+
+    def test_the_floor_is_sharp_and_is_4625(self):
+        # The smallest cap the 40,000 by 40,000 result fits
+        # under, found by search over the real function. At
+        # the floor the body fits and is marked; 1 byte under
+        # it, and at every smaller cap tried, the same body
+        # leaves at the floor's size, over the cap, marked.
+        lo, hi = 1, 30000
+        while lo < hi:
+            mid = (lo + hi) // 2
+            if len(_fit(mid)[1].encode("utf-8")) <= mid:
+                hi = mid
+            else:
+                lo = mid + 1
+        self.assertEqual(4625, lo)
+        res, body = _fit(lo)
+        self.assertEqual(lo, len(body.encode("utf-8")))
+        self.assertIn("result_truncated", res)
+        for cap in (1, 100, lo - 1):
+            res, body = _fit(cap)
+            self.assertEqual(lo, len(body.encode("utf-8")), cap)
+            self.assertGreater(len(body.encode("utf-8")), cap)
+            self.assertEqual("max_result_bytes",
+                             res["result_truncated"]["reason"], cap)
+        self.assertIn("the floor is %s bytes" % _said(lo),
+                      _flat(RECORD2))
+
+    def test_f7_a_cap_under_the_floor_sends_the_body_over_it(self):
+        # Finding F6, held as the tree stands: P11's words say
+        # no body leaves over a non-zero cap. At a cap under
+        # the fitted floor the body leaves at 4,625 bytes,
+        # over the cap, marked result_truncated, because the
+        # fitting has nothing left to cut. A change on either
+        # side, the property's words or the fitting's last
+        # pass, shows up here.
+        res, body = _fit(100)
+        self.assertGreater(len(body.encode("utf-8")), 100)
+        self.assertEqual("max_result_bytes",
+                         res["result_truncated"]["reason"])
+        self.assertIn("Finding F7", _flat(RECORD2))
+
+
+class FramingScopePin(unittest.TestCase):
+    """P9: no session is claimed across the framing break.
+    Not a checker claim: a claim about what the documents
+    claim, pinned by reading them."""
+
+    def test_the_framing_record_states_the_break(self):
+        text = _flat(os.path.join(
+            PROOFS, "dtls-record-layer-and-framing.md"))
+        self.assertIn("Mixed-version DTLS interoperability is "
+                      "not supported across this landing", text)
+        self.assertIn("Both ends must run the same side of it",
+                      text)
+
+    def test_the_support_matrix_claims_no_mixed_version_session(self):
+        text = _flat(os.path.join(ROOT, "docs", "support-matrix.md"))
+        self.assertNotIn("mixed-version", text.lower())
+        self.assertNotIn("mixed version", text.lower())
+
+    def test_p9_is_stated_in_the_binding_index(self):
+        text = _flat(os.path.join(PROOFS, "v4-properties.md"))
+        self.assertIn("P9. No session is claimed across the "
+                      "framing break", text)
 
 
 if __name__ == "__main__":

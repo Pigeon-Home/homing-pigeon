@@ -280,6 +280,14 @@ A finding is most useful when it points at the file and the line
   every arrival at the cap, and 6 findings.
   `runner/tests/test_v4_models.py` is that search and that
   conformance, run with the suite.
+- `v4-search-2.md`: the last 2 models searched the same
+  way. `hybridselect.tla` (P8) and `resultfit.tla` (P11),
+  each with its states counted as the prediction for the
+  TLC run and its witness configurations; the real
+  selection and the real fitting driven over their
+  decision spaces, P9 pinned by reading the documents,
+  and finding F7. The same suite carries these searches
+  and this conformance too.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.
