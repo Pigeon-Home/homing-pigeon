@@ -1,4 +1,4 @@
-- homing pigeon ietf v4 binds the listed "generalized" HP-software constraints based on protocol v1v2v3 for in a security model
+- homing pigeon ietf v4 binds the listed "generalized" HP-software constraints based on protocol v1v2v3 for in a provable security model (also do proof)
 - allows tunnel chaining HP instances for restro gaming rigs converted to AI fun over air gaps due to unsupported platforms or hardware/software combos
 - acquire retired volta server (10k, 240v)
 - dist ledger file flow boards, encrypted task boards, confidentialCompute-enc-async answers, via onion rev prox v2. do not embed throw away wallets or dist knet (find defensive solutions) 
