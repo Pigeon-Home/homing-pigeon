@@ -163,12 +163,12 @@ class DraftCountsAgainstTheRecords(unittest.TestCase):
 
     def test_the_6_models_checker_counts(self):
         working = _flat(os.path.join(PROOFS, "v4-working.md"))
-        for cfg, count in (("diskguard", 160), ("secretfloor", 67),
-                           ("probegate", 288), ("hybridselect", 16),
-                           ("resultfit", 12), ("localgate", 200)):
-            self.assertIn("`%s.cfg` passes, %d states" % (cfg, count),
+        for cfg, count in (("diskguard", "1,086"), ("secretfloor", "67"),
+                           ("probegate", "288"), ("hybridselect", "16"),
+                           ("resultfit", "12"), ("localgate", "200")):
+            self.assertIn("`%s.cfg` passes, %s states" % (cfg, count),
                           working, cfg)
-            self.assertIn("%d distinct states" % count, DRAFT_TEXT,
+            self.assertIn("%s distinct states" % count, DRAFT_TEXT,
                           cfg)
 
     def test_the_conformance_counts(self):

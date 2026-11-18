@@ -581,9 +581,9 @@ the model and its files, and F7 in the property's words.
 ## The checker again, on the 3 changed models
 
 Run 2026-11-18 with TLC 2.19 (the v1.7.4 tools jar) on
-Java 21, over the 9 configurations that wanted the checker
+Java 21, over the 10 configurations that wanted the checker
 again: the 3 main configurations whose models or
-invariants changed after step D's run, and their 6 witness
+invariants changed after step D's run, and their 7 witness
 configurations. The run was made on scratch copies of the
 shelf, each model copied to its module's name, as step D's
 run was. Nothing on the shelf changed for the run.

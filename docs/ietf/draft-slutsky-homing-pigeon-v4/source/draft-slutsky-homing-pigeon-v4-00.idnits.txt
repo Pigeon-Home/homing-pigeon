@@ -21,3 +21,26 @@ PASS - Document draft-slutsky-homing-pigeon-v4-00.txt is nit-free. (mode: submis
 
 $ idnits --offline --no-progress --no-color --mode submission -o simple draft-slutsky-homing-pigeon-v4-00.xml
 PASS - Document draft-slutsky-homing-pigeon-v4-00.xml is nit-free. (mode: submission)
+
+# Fresh run 2026-11-18, on the re-render after the draft took up the
+# forum's 5 points and the disk guard model's count was corrected to
+# 1,086 distinct states: both files are nit-free again, 0 errors,
+# 0 warnings, 0 comments.
+
+$ idnits --offline --no-progress --no-color --mode submission -o simple draft-slutsky-homing-pigeon-v4-00.txt
+PASS - Document draft-slutsky-homing-pigeon-v4-00.txt is nit-free. (mode: submission)
+
+$ idnits --offline --no-progress --no-color --mode submission -o simple draft-slutsky-homing-pigeon-v4-00.xml
+PASS - Document draft-slutsky-homing-pigeon-v4-00.xml is nit-free. (mode: submission)
+
+# Fresh run 2026-11-18, on the re-render after the draft's P7 section took
+# the widened disk guard model's count in full (48 initial states, 1,086
+# distinct states, 3 witness configurations) and the three treatments
+# gained their P1 to P6 sentence: both files are nit-free again, 0 errors,
+# 0 warnings, 0 comments.
+
+$ idnits --offline --no-progress --no-color --mode submission -o simple draft-slutsky-homing-pigeon-v4-00.txt
+PASS - Document draft-slutsky-homing-pigeon-v4-00.txt is nit-free. (mode: submission)
+
+$ idnits --offline --no-progress --no-color --mode submission -o simple draft-slutsky-homing-pigeon-v4-00.xml
+PASS - Document draft-slutsky-homing-pigeon-v4-00.xml is nit-free. (mode: submission)

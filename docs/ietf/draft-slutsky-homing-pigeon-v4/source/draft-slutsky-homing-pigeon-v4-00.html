@@ -13,9 +13,10 @@ message of versions 1, 2, or 3. It binds those versions to a
 formal model of the running implementation: a constraint
 inventory harvested from the code, a set of numbered
 properties stated against that inventory, a TLA+ model of
-each property checked with the TLC model checker, and a
-conformance suite that holds every model to the code it
-models. The document states each property, the verdict the
+each property but P9, which is held by a pin on the
+documents instead, the models checked with the TLC model
+checker, and a conformance suite that holds every model
+to the code it models. The document states each property, the verdict the
 checker returned, and the findings where the implementation's
 behaviour bounds a property's strongest reading, so that a
 reader can tell exactly which claims about the running
@@ -1280,9 +1281,10 @@ message of versions 1, 2, or 3. It binds those versions to a
 formal model of the running implementation: a constraint
 inventory harvested from the code, a set of numbered
 properties stated against that inventory, a TLA+ model of
-each property checked with the TLC model checker, and a
-conformance suite that holds every model to the code it
-models. The document states each property, the verdict the
+each property but P9, which is held by a pin on the
+documents instead, the models checked with the TLC model
+checker, and a conformance suite that holds every model
+to the code it models. The document states each property, the verdict the
 checker returned, and the findings where the implementation's
 behaviour bounds a property's strongest reading, so that a
 reader can tell exactly which claims about the running
@@ -1475,7 +1477,7 @@ records, and the conformance suite. This document restates
 their substance in specification form. Where this document
 and the working papers disagree, the working papers are the
 record and this document is in error; the unit tests
-described in Section 4.4 exist to keep the two from drifting
+described in Section 4.5 exist to keep the two from drifting
 apart unnoticed.<a href="#section-1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -1587,7 +1589,8 @@ prediction, and is recorded as one.<a href="#section-4.3-1" class="pilcrow">¶</
         <h3 id="name-search-check-and-hold-to-th">
 <a href="#section-4.4" class="section-number selfRef">4.4. </a><a href="#name-search-check-and-hold-to-th" class="section-name selfRef">Search, check, and hold to the code</a>
         </h3>
-<p id="section-4.4-1">Each model is treated three ways. First, a twin of the
+<p id="section-4.4-1">Each of this version's models, those of P7, P8, and P10
+to P13, is treated three ways. First, a twin of the
 model written in the test suite's language is searched to
 its fixed point, and the properties are evaluated over
 every reachable state. Second, the TLA+ model itself is
@@ -1596,7 +1599,9 @@ witness configurations. Third, a conformance test drives
 the real code over the decision's whole input space, as
 far as the code exposes one, and reads the outcomes against
 the model's. The three treatments must agree; where they
-cannot, the gap is a finding.<a href="#section-4.4-1" class="pilcrow">¶</a></p>
+cannot, the gap is a finding. The models of P1 to P6 have
+no twin: each is checked with TLC and held to the code by
+a clause by clause conformance.<a href="#section-4.4-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="the-pin-suite">
@@ -1627,9 +1632,9 @@ Signatures are HMAC-SHA-384 (C5) over a shared secret whose
 estimated entropy is at least 128 bits, a refuse-class
 startup condition (C6). The one AEAD is AES-256-GCM (C9).
 The disk guard acts at 90 percent full, keeps the newest
-65536 bytes of a truncated live log, leaves workspaces
-untouched for 3600 seconds alone, and takes at most 512
-actions in a pass (C28). The version 3 hybrid group is
+65536 bytes of a truncated live log, gives up job
+workspaces untouched for at least 3600 seconds, and names
+at most 512 actions in the event a pass records (C28). The version 3 hybrid group is
 X25519MLKEM768, group 4588, beside X25519, group 29 (C29).
 Both ends of a DTLS session run the same side of the
 framing change, and the replay window is 32768 records
@@ -1737,10 +1742,11 @@ runner's own material, in the order of C28, records what it
 did, and the runner continues: no pass terminates the
 runner, follows a symlink, or touches the pending outbox,
 the configuration, or the security event log. The model is
-the disk guard model: 160 distinct states under search, its
+the disk guard model, widened as F1 closed it: 48 initial
+states and 1,086 distinct states under search, its
 invariants holding in every one, and TLC returns the same
-count with no error. The witness configurations fail as
-designed. Findings F1, F2, and F3 bounded this property
+count with no error. The witness configurations are 3,
+the third added by the widening, and they fail as designed. Findings F1, F2, and F3 bounded this property
 and are closed: the model now measures as the code does,
 a removal is recorded whatever it freed, and a measurement
 that fails ends the pass. F2 and F3 were differences from

@@ -18,7 +18,8 @@ Abstract
    message of versions 1, 2, or 3.  It binds those versions to a formal
    model of the running implementation: a constraint inventory harvested
    from the code, a set of numbered properties stated against that
-   inventory, a TLA+ model of each property checked with the TLC model
+   inventory, a TLA+ model of each property but P9, which is held by a
+   pin on the documents instead, the models checked with the TLC model
    checker, and a conformance suite that holds every model to the code
    it models.  The document states each property, the verdict the
    checker returned, and the findings where the implementation's
@@ -52,7 +53,6 @@ Copyright Notice
 
 
 
-
 Slutsky                    Expires 22 May 2027                  [Page 1]
 
 Internet-Draft              Homing Pigeon v4               November 2026
@@ -77,29 +77,29 @@ Table of Contents
      4.5.  The pin suite . . . . . . . . . . . . . . . . . . . . . .   5
    5.  The Constraint Inventory in Brief . . . . . . . . . . . . . .   5
    6.  The Properties and Their Verdicts . . . . . . . . . . . . . .   5
-     6.1.  P1.  The acceptance gate  . . . . . . . . . . . . . . . .   5
+     6.1.  P1.  The acceptance gate  . . . . . . . . . . . . . . . .   6
      6.2.  P2.  Result policies cannot widen confinement . . . . . .   6
      6.3.  P3.  A transport's credentials are a required second
             gate . . . . . . . . . . . . . . . . . . . . . . . . . .   6
      6.4.  P4.  A named key can do only what its policy allows . . .   6
      6.5.  P5.  Replay cannot re-execute . . . . . . . . . . . . . .   6
-     6.6.  P6.  Refuse-class configuration behaves as required . . .   6
+     6.6.  P6.  Refuse-class configuration behaves as required . . .   7
      6.7.  P7.  The disk guard cannot stop the runner  . . . . . . .   7
      6.8.  P8.  A v3 session that can agree the hybrid group does
             so . . . . . . . . . . . . . . . . . . . . . . . . . . .   7
-     6.9.  P9.  No session is claimed across the framing break . . .   7
-     6.10. P10.  On macOS, enforce means the probe passed  . . . . .   7
+     6.9.  P9.  No session is claimed across the framing break . . .   8
+     6.10. P10.  On macOS, enforce means the probe passed  . . . . .   8
      6.11. P11.  A result body leaves within max_result_bytes, down to
             the fitting's floor  . . . . . . . . . . . . . . . . . .   8
-     6.12. P12.  A local envelope over the cap is refused unread . .   8
+     6.12. P12.  A local envelope over the cap is refused unread . .   9
      6.13. P13.  The runner does not start on a weak secret  . . . .   9
    7.  The Findings  . . . . . . . . . . . . . . . . . . . . . . . .   9
    8.  Operational Considerations  . . . . . . . . . . . . . . . . .  10
-   9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  10
-   10. Security Considerations . . . . . . . . . . . . . . . . . . .  10
+   9.  IANA Considerations . . . . . . . . . . . . . . . . . . . . .  11
+   10. Security Considerations . . . . . . . . . . . . . . . . . . .  11
    11. References  . . . . . . . . . . . . . . . . . . . . . . . . .  11
      11.1.  Normative References . . . . . . . . . . . . . . . . . .  11
-     11.2.  Informative References . . . . . . . . . . . . . . . . .  11
+     11.2.  Informative References . . . . . . . . . . . . . . . . .  12
    Appendix A.  Acknowledgments  . . . . . . . . . . . . . . . . . .  12
    Author's Address  . . . . . . . . . . . . . . . . . . . . . . . .  12
 
@@ -142,7 +142,7 @@ Internet-Draft              Homing Pigeon v4               November 2026
    suite.  This document restates their substance in specification form.
    Where this document and the working papers disagree, the working
    papers are the record and this document is in error; the unit tests
-   described in Section 4.4 exist to keep the two from drifting apart
+   described in Section 4.5 exist to keep the two from drifting apart
    unnoticed.
 
 2.  Requirements Language
@@ -228,14 +228,17 @@ Internet-Draft              Homing Pigeon v4               November 2026
 
 4.4.  Search, check, and hold to the code
 
-   Each model is treated three ways.  First, a twin of the model written
-   in the test suite's language is searched to its fixed point, and the
-   properties are evaluated over every reachable state.  Second, the
-   TLA+ model itself is checked with TLC under its main configuration
-   and its witness configurations.  Third, a conformance test drives the
-   real code over the decision's whole input space, as far as the code
+   Each of this version's models, those of P7, P8, and P10 to P13, is
+   treated three ways.  First, a twin of the model written in the test
+   suite's language is searched to its fixed point, and the properties
+   are evaluated over every reachable state.  Second, the TLA+ model
+   itself is checked with TLC under its main configuration and its
+   witness configurations.  Third, a conformance test drives the real
+   code over the decision's whole input space, as far as the code
    exposes one, and reads the outcomes against the model's.  The three
-   treatments must agree; where they cannot, the gap is a finding.
+   treatments must agree; where they cannot, the gap is a finding.  The
+   models of P1 to P6 have no twin: each is checked with TLC and held to
+   the code by a clause by clause conformance.
 
 4.5.  The pin suite
 
@@ -255,14 +258,29 @@ Internet-Draft              Homing Pigeon v4               November 2026
    estimated entropy is at least 128 bits, a refuse-class startup
    condition (C6).  The one AEAD is AES-256-GCM (C9).  The disk guard
    acts at 90 percent full, keeps the newest 65536 bytes of a truncated
-   live log, leaves workspaces untouched for 3600 seconds alone, and
-   takes at most 512 actions in a pass (C28).  The version 3 hybrid
-   group is X25519MLKEM768, group 4588, beside X25519, group 29 (C29).
-   Both ends of a DTLS session run the same side of the framing change,
-   and the replay window is 32768 records (C30).  On macOS, confinement
-   at enforce is gated on a probe of the host (C31).
+   live log, gives up job workspaces untouched for at least 3600
+   seconds, and names at most 512 actions in the event a pass records
+   (C28).  The version 3 hybrid group is X25519MLKEM768, group 4588,
+   beside X25519, group 29 (C29).  Both ends of a DTLS session run the
+   same side of the framing change, and the replay window is 32768
+   records (C30).  On macOS, confinement at enforce is gated on a probe
+   of the host (C31).
 
 6.  The Properties and Their Verdicts
+
+
+
+
+
+
+
+
+
+
+Slutsky                    Expires 22 May 2027                  [Page 5]
+
+Internet-Draft              Homing Pigeon v4               November 2026
+
 
 6.1.  P1.  The acceptance gate
 
@@ -273,14 +291,6 @@ Internet-Draft              Homing Pigeon v4               November 2026
    configurations, and the claim model covers the gate's final step, the
    at-most-once claim on a job identifier.  Verdict: the invariants
    hold; the witness configurations fail as designed.
-
-
-
-
-Slutsky                    Expires 22 May 2027                  [Page 5]
-
-Internet-Draft              Homing Pigeon v4               November 2026
-
 
 6.2.  P2.  Result policies cannot widen confinement
 
@@ -316,16 +326,6 @@ Internet-Draft              Homing Pigeon v4               November 2026
    step.  Verdict: the invariants hold; the witness configurations fail
    as designed.
 
-6.6.  P6.  Refuse-class configuration behaves as required
-
-   A present but unusable value in the refuse class of settings stops
-   the runner at startup, and the error names the setting that cost the
-   start.  The model is the decision model.  Verdict: the invariants
-   hold; the witness configurations fail as designed.  Finding F5
-   recorded the one place the code's naming fell short of this property,
-   at the secret floor; a weak additional key is now refused under its
-   own setting's name, and the finding is closed.
-
 
 
 
@@ -338,6 +338,16 @@ Slutsky                    Expires 22 May 2027                  [Page 6]
 Internet-Draft              Homing Pigeon v4               November 2026
 
 
+6.6.  P6.  Refuse-class configuration behaves as required
+
+   A present but unusable value in the refuse class of settings stops
+   the runner at startup, and the error names the setting that cost the
+   start.  The model is the decision model.  Verdict: the invariants
+   hold; the witness configurations fail as designed.  Finding F5
+   recorded the one place the code's naming fell short of this property,
+   at the secret floor; a weak additional key is now refused under its
+   own setting's name, and the finding is closed.
+
 6.7.  P7.  The disk guard cannot stop the runner
 
    When the disk under the runner's state directory measures at or over
@@ -345,14 +355,16 @@ Internet-Draft              Homing Pigeon v4               November 2026
    material, in the order of C28, records what it did, and the runner
    continues: no pass terminates the runner, follows a symlink, or
    touches the pending outbox, the configuration, or the security event
-   log.  The model is the disk guard model: 160 distinct states under
-   search, its invariants holding in every one, and TLC returns the same
-   count with no error.  The witness configurations fail as designed.
-   Findings F1, F2, and F3 bounded this property and are closed: the
-   model now measures as the code does, a removal is recorded whatever
-   it freed, and a measurement that fails ends the pass.  F2 and F3 were
-   differences from the property's own words, closed in the runner; F1
-   was a difference of the model, closed in the model.
+   log.  The model is the disk guard model, widened as F1 closed it: 48
+   initial states and 1,086 distinct states under search, its invariants
+   holding in every one, and TLC returns the same count with no error.
+   The witness configurations are 3, the third added by the widening,
+   and they fail as designed.  Findings F1, F2, and F3 bounded this
+   property and are closed: the model now measures as the code does, a
+   removal is recorded whatever it freed, and a measurement that fails
+   ends the pass.  F2 and F3 were differences from the property's own
+   words, closed in the runner; F1 was a difference of the model, closed
+   in the model.
 
 6.8.  P8.  A v3 session that can agree the hybrid group does so
 
@@ -366,6 +378,21 @@ Internet-Draft              Homing Pigeon v4               November 2026
    handshakes, every combination of offer and profile, and the
    negotiated group is the model's outcome on all 4.  The witness
    configurations fail as designed.
+
+
+
+
+
+
+
+
+
+
+
+Slutsky                    Expires 22 May 2027                  [Page 7]
+
+Internet-Draft              Homing Pigeon v4               November 2026
+
 
 6.9.  P9.  No session is claimed across the framing break
 
@@ -386,14 +413,6 @@ Internet-Draft              Homing Pigeon v4               November 2026
    freebsd, and win32, and the model states the claim for all 3; the
    index states it for macOS.  The model is the probe gate model: 288
    distinct states under search, its invariants holding in every one,
-
-
-
-Slutsky                    Expires 22 May 2027                  [Page 7]
-
-Internet-Draft              Homing Pigeon v4               November 2026
-
-
    and TLC returns the same count with no error.  The conformance drives
    the real gate over all 144 starts the model stands in, and the gate's
    answer is the model's on every one.  The witness configurations fail
@@ -419,6 +438,18 @@ Internet-Draft              Homing Pigeon v4               November 2026
    F7 is closed by the floor standing in the property's words; nothing
    in the runner changed.
 
+
+
+
+
+
+
+
+Slutsky                    Expires 22 May 2027                  [Page 8]
+
+Internet-Draft              Homing Pigeon v4               November 2026
+
+
 6.12.  P12.  A local envelope over the cap is refused unread
 
    An envelope over 262144 bytes on the local path is refused before any
@@ -437,18 +468,6 @@ Internet-Draft              Homing Pigeon v4               November 2026
    the size of what it read before it decodes anything, and a file over
    the cap is refused as too large wherever its cut falls; the finding
    is closed.
-
-
-
-
-
-
-
-
-Slutsky                    Expires 22 May 2027                  [Page 8]
-
-Internet-Draft              Homing Pigeon v4               November 2026
-
 
 6.13.  P13.  The runner does not start on a weak secret
 
@@ -480,6 +499,13 @@ Internet-Draft              Homing Pigeon v4               November 2026
       door of every class, and every pass the real guard can make ends
       on one of the model's finished passes.
 
+
+
+Slutsky                    Expires 22 May 2027                  [Page 9]
+
+Internet-Draft              Homing Pigeon v4               November 2026
+
+
    F2:  Material of 0 bytes was removed by the disk guard with no
       record, against P7's clause that every acting pass leaves an
       event.  Closed in the runner: the guard notes a removal when the
@@ -498,14 +524,6 @@ Internet-Draft              Homing Pigeon v4               November 2026
       own files.  Closed by adding them.
 
    F5:  A weak additional key was refused in the default key's name,
-
-
-
-Slutsky                    Expires 22 May 2027                  [Page 9]
-
-Internet-Draft              Homing Pigeon v4               November 2026
-
-
       against P6's clause that the error names the setting that cost the
       start.  Closed in the runner: the key is refused under its own
       setting's name, and the naming holds of the real key map on all
@@ -536,6 +554,14 @@ Internet-Draft              Homing Pigeon v4               November 2026
    except where a finding says otherwise.  Values in the inventory
    change as the code changes; the pin suite is the mechanism that keeps
    this document honest between revisions, and a deployment that changes
+
+
+
+Slutsky                    Expires 22 May 2027                 [Page 10]
+
+Internet-Draft              Homing Pigeon v4               November 2026
+
+
    a pinned value has changed the claims of this document whether or not
    the document has been reissued.
 
@@ -554,14 +580,6 @@ Internet-Draft              Homing Pigeon v4               November 2026
    reading, and how each such place was closed: in the runner, in the
    model, or in the property's own words.  A reader deciding how much to
    trust the runner should weigh the findings as part of the protocol's
-
-
-
-Slutsky                    Expires 22 May 2027                 [Page 10]
-
-Internet-Draft              Homing Pigeon v4               November 2026
-
-
    security posture, not as footnotes to it.
 
    The checking itself has limits.  The models are finite abstractions
@@ -593,6 +611,13 @@ Internet-Draft              Homing Pigeon v4               November 2026
               <https://datatracker.ietf.org/doc/html/draft-slutsky-
               homing-pigeon-v2-04>.
 
+
+
+Slutsky                    Expires 22 May 2027                 [Page 11]
+
+Internet-Draft              Homing Pigeon v4               November 2026
+
+
    [I-D.slutsky-homing-pigeon-v3]
               Slutsky, A., "Homing Pigeon Message Protocol, Version 3:
               DTLS 1.3 via Email", Work in Progress, Internet-Draft,
@@ -609,14 +634,6 @@ Internet-Draft              Homing Pigeon v4               November 2026
               <https://www.rfc-editor.org/info/rfc8174>.
 
 11.2.  Informative References
-
-
-
-
-Slutsky                    Expires 22 May 2027                 [Page 11]
-
-Internet-Draft              Homing Pigeon v4               November 2026
-
 
    [RFC9147]  Rescorla, E., Tschofenig, H., and N. Modadugu, "The
               Datagram Transport Layer Security (DTLS) Protocol Version
@@ -645,23 +662,6 @@ Author's Address
    Andrew Slutsky
    Independent
    Email: slutsky5544@gmail.com
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
