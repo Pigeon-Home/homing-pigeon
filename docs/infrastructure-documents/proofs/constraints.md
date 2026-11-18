@@ -809,6 +809,92 @@ refuse-class setting it stops the runner before any job is read.
   recorded at the top of this file; the startup check is the
   one that enforces the class.
 
+## C28. The disk guard — the runner's own material, at 90 percent
+
+- **Constraint:** when the disk under the runner's state
+  directory measures at or over 90 percent full, a guard
+  pass gives up the runner's own material in a stated
+  order, re-measuring after every action, and stops as
+  soon as the disk is under the threshold. The pass never
+  stops the runner and never touches anything outside the
+  state directory.
+- **Value:** `DISK_GUARD_THRESHOLD` 0.90;
+  `DISK_GUARD_LOG_KEEP_BYTES` 65536;
+  `DISK_GUARD_WORK_MIN_AGE_SEC` 3600;
+  `DISK_GUARD_MAX_ACTIONS` 512, all constants in
+  `runner/oracle/resources.py`. The order: rolled log
+  backups, oldest first; the live logs (`runner.log`,
+  `oracle.log`, `oracle-chat.jsonl`) truncated, keeping
+  the newest 65536 bytes of each; recorded results and
+  retained outputs (`sent/`, `retained/`,
+  `outbox/failed/`), oldest first; job workspaces
+  untouched for at least 3600 seconds. A symlink is never
+  followed; the pending outbox, the configuration, and
+  `security-events.jsonl` are never touched, and every
+  acting pass records a `disk_truncation` event there
+  naming its actions, up to the 512 cap.
+- **Where:** `guard_disk` and `disk_guard_enabled` in
+  `runner/oracle/resources.py`, called from the poll
+  cycle in `runner/ops/poll.py`, line 59.
+- **Class:** the constants are code, not settings. The
+  one opt out, the top level `no_90_disk_truncation`, is
+  read in the default class's shape in reverse: only a
+  literal `true` turns the guard off, and an absent or
+  unusable value leaves it on.
+
+## C29. The v3 hybrid key agreement group
+
+- **Constraint:** protocol v3's DTLS carries the hybrid
+  key agreement group X25519MLKEM768 (RFC 10024). The
+  client offers the hybrid share beside the X25519
+  share; the server selects the hybrid when its carriage
+  profile carries the hybrid option and the share was
+  offered, else X25519 when offered, else the hello is
+  refused.
+- **Value:** `GROUP_X25519MLKEM768` is 4588 (0x11EC);
+  `GROUP_X25519` is 29 (0x001D).
+- **Where:** `runner/wire/dtlsproto.py`, the group
+  constants and the server core's selection; the hybrid
+  option is the version 3 carriage profile's, in
+  `runner/wire/profiles.py`. The carriage record is
+  `dtls-over-email-v3.md` on this shelf.
+- **Class:** not a setting.
+
+## C30. DTLS framing — both ends run the same side
+
+- **Constraint:** mixed-version DTLS interoperability
+  across the framing landing is not supported; both ends
+  of a session run the same side of the framing change,
+  this release or later. The derived PSK is part of the
+  wire change.
+- **Value:** ratified 2026-11-07 in the record layer and
+  framing record on this shelf. The replay window's
+  width, 32,768 records, is also the carriage's reorder
+  tolerance.
+- **Where:** `dtls-record-layer-and-framing.md` on this
+  shelf; the record layer in `runner/wire/dtlsproto.py`.
+- **Class:** not a setting.
+
+## C31. The macOS confinement probe
+
+- **Constraint:** on macOS the confinement backend gates
+  the start on a probe: the sandbox tool present, a
+  generated profile that parses, and a trial spawn under
+  the full controls that works. At `enforce` a failed
+  probe refuses the start; the runner never runs in a
+  weaker form because the mechanism was unavailable.
+- **Value:** the probe's verdict is a problem string, or
+  None when the host can confine. The gates that consume
+  it are the startup check and the per-job argv build.
+- **Where:** `macos_confinement_problem` in
+  `runner/guard/macos_confine.py`;
+  `_confinement_startup_problem` and `_confinement_argv`
+  in `runner/runner.py`. The platform record is
+  `docs/steady/security/macos.md`.
+- **Class:** refuse class at `enforce`, through the
+  startup path; the confinement mode itself is one of
+  the seven security modes of C11.
+
 ## Summary table
 
 | ID | Constraint | Default or value | Startup class |
@@ -840,3 +926,7 @@ refuse-class setting it stops the runner before any job is read.
 | C25 | Record retention and delivery window | sent ages at `output_retention_days` (7; 0 never); stash given up at `result_stash_retention_sec` 86,400, backoff 60 | default class; the shape is code |
 | C26 | Default-class reader | unusable reads as the documented default and is named; absent is not named; a bool is not a number | default class |
 | C27 | Refuse class at startup | exit 2, the error names the key; those keys are not in the live-reload set | refuse class |
+| C28 | Disk guard | threshold 0.90; live logs keep 65536 bytes; workspaces at 3600 sec; 512 actions; opt out `no_90_disk_truncation`, literal `true` only | constants are code; the opt out is read default class in reverse |
+| C29 | v3 hybrid group | X25519MLKEM768, 4588 (0x11EC); X25519 29 (0x001D) | not a setting |
+| C30 | DTLS framing | both ends the same side; replay window 32,768 | not a setting |
+| C31 | macOS confinement probe | tool present; profile parses; trial spawn works | refuse at enforce |
