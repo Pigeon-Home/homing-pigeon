@@ -259,3 +259,15 @@ A finding is most useful when it points at the file and the line
   against `constraints.md`. If a declared default changes, this
   test fails, and the inventory must be revisited before the
   model's claims can stand.
+- `v4-working.md` — the working record for the v4 binding
+  (the first item of `docs/FUTURE.md`): the supposition
+  written before the measurement, the harvest at the current
+  head, and the conclusions against it.
+- `v4-properties.md` — the v4 binding index: every harvested
+  constraint, C1 to C31, mapped to the numbered property that
+  states it, with the new properties P7 to P13 stated in
+  full. `diskguard.tla` is the first model of that work,
+  of P7; its checker run is recorded as still owed there.
+- `runner/tests/test_v4_binding.py` — the unit tests pinning
+  the v4 harvest's values (C28 to C31, and C3, C4, C6) against
+  the code and against `v4-properties.md`.
