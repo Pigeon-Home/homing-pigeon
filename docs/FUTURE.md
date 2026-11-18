@@ -5,6 +5,6 @@
 - cyber turret for auditing frameworks "security firmness tests"
 - define host-network topology rules for local helper bots coordinated by Oracle - (repair, repair_patrols, hdd_patrols, security_patrols) [oracle key dist]
 - reduce idea: global deps on centralize Internet PKI, delete public infra pki deps by performing self-hosted key management system via current attestation mech
-- generalize and then formalize proof
+- generalize and then formalize my Proof
 - dist ledger file flow boards, encrypted task boards, confidentialCompute-enc-async answers, via onion rev prox v2. do not embed throw away wallets or dist knet (find defensive solutions)
 - anna founding builder prog research & grant offer responce
