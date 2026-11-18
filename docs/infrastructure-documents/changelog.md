@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.29.4 - 2026-11-18
+
+- Proofs: v4 binding working record with the supposition written before the harvest and conclusions after, v4-properties.md mapping every constraint C1 to C31 with P7 to P13 stated in full, the diskguard TLA model of P7, the v4 binding pin tests, and the mutation selection regenerated for the v4 binding module (since 3.17.29.3)
+
 ## 3.17.29.3 - 2026-11-18
 
 - Docs: FUTURE.md updated: wording edits to the IETF v4 line (provable security model), the volta line, and the cyber turret line (since 3.17.29.2)
