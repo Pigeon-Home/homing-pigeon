@@ -87,4 +87,15 @@ RecordedFaithfully ==
   /\ (phase = "done" /\ acted /= <<>>) => recorded = TRUE
   /\ recorded = TRUE => acted /= <<>>
 
+\* Witness probes. Both are expected to FAIL; their
+\* counterexamples are the evidence that the model moves.
+\* NeverActs says no pass ever acts: its counterexample is a
+\* disk over the threshold with material in a class, and 1
+\* action on it.
+NeverActs == acted = <<>>
+
+\* NeverRecords says no pass ever records an event: its
+\* counterexample is a pass that acted and ended.
+NeverRecords == recorded = FALSE
+
 =============================================================================

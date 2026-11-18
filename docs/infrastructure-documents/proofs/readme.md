@@ -268,6 +268,12 @@ A finding is most useful when it points at the file and the line
   states it, with the new properties P7 to P13 stated in
   full. `diskguard.tla` is the first model of that work,
   of P7; its checker run is recorded as still owed there.
+- `v4-search.md`: the first model searched without a checker
+  and held to the code. The model's states counted as the
+  prediction for the TLC run, the real disk guard driven down
+  every path its re-measuring allows, and 4 findings.
+  `runner/tests/test_v4_models.py` is that search and that
+  conformance, run with the suite.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.
