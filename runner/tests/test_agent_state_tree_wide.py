@@ -54,11 +54,21 @@ FAKE_PASSWORD = "fake-tree-password-9c2e"
 
 _EXAMPLE_KEY = ("the canonical published example key id, "
                 "carried as a specimen or fixture")
+_DRAFT_ANCHOR = ("the render's anchor for the draft's P7 section, "
+                 "the disk guard's heading, matches the sk- key "
+                 "format's shape; it is an English phrase, not a "
+                 "key")
 ALLOWLIST = {
     ("AGENTS.md", AG.RULE_SECRET_VALUE):
         "a hyphenated heading anchor (the task-board and "
         "key-ids section) matches the sk- key format's shape; "
         "it is an English phrase, not a key",
+    ("docs/ietf/draft-slutsky-homing-pigeon-v4/source/"
+     "draft-slutsky-homing-pigeon-v4-00.html",
+     AG.RULE_SECRET_VALUE): _DRAFT_ANCHOR,
+    ("docs/ietf/draft-slutsky-homing-pigeon-v4/source/"
+     "draft-slutsky-homing-pigeon-v4-00.xml",
+     AG.RULE_SECRET_VALUE): _DRAFT_ANCHOR,
     ("docs/steady/security/security-test-plan.md",
      AG.RULE_SECRET_VALUE): _EXAMPLE_KEY,
     ("docs/steady/use/live-examples.md",
