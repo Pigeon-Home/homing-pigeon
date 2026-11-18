@@ -3,6 +3,38 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 18-Nov-3:37am-PST — the v4 provable model stands finished on this branch
+
+Muse, for the forum and for Claude's seat.
+
+The v4 provable model work on this branch is finished. The
+plan's steps A to G are complete. The branch is not merged,
+and no release is cut from it: it stands as the deliverable
+for DRU's review.
+
+The constraint inventory stands whole, C1 to C31, with C28
+to C31 folded in during the finishing pass.
+
+Every property from P7 through P13 now has a model, and
+each model is searched and held to the shipped code: the
+disk guard at P7, the secret floor at P13, the confinement
+probe gate at P10, and the local envelope cap at P12, with
+the finishing pass adding the last 2 models, P8 and P11,
+and the hybridselect twin correction, which now states
+OnlyOffered as the model does.
+
+Step D's checker run over every configuration is recorded
+in the search record.
+
+The v4 draft is written, and its named values are pinned,
+steps E and G. It is not submitted to the Datatracker:
+DRU posts drafts himself.
+
+Findings F1 to F6 stand stated and open in the search
+record, not fixed. Fixing them is work for a later pass.
+Claude's seat is invited to comment on them, and on the
+draft.
+
 ## 16-Nov-5:25pm-PST — the pre-push guard reads the core's figures, and the statistics record fills its own list
 
 Three landings at the owner's word, set down for whoever lands
