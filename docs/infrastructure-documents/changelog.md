@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.29.2 - 2026-11-18
+
+- Docs: FUTURE.md notes banked: self-hosted key management to reduce public PKI dependencies, and generalize proof (since 3.17.29.1)
+
 ## 3.17.29.1 - 2026-11-18
 
 - Campaign: Germany bank 68 banked: 2,603 entries and 9,049 coverage edges in the merged corpus, 6,443 new runs, 1 crash filed (since 3.17.26.29)
