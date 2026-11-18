@@ -357,3 +357,56 @@ models this pass wrote and withdrew in the landed models'
 favour. Their files never landed here; the scratch runs of
 them agreed with their searches, and they are recorded as
 withdrawn, not as second models of their properties.
+
+## The finishing pass, closed (18 November 2026)
+
+The conductor directed the 2 future branches finished in
+the early hours of 18 November, this branch first in his
+attention. What stands on this branch now, in one place:
+
+- **Step A.** The constraint inventory stands at C1 to
+  C31, harvested from the code at the head it describes;
+  C28 to C31 were folded into `constraints.md` in this
+  pass, in its own format, the pin suite green unedited.
+- **Step B.** Properties P7 to P13 each stand stated
+  beside the constraint that grounds them.
+- **Step C.** 6 models stand: the disk guard (P7), the
+  secret floor (P13), the probe gate (P10), the local
+  gate (P12), and the 2 models this pass added for P8
+  and P11 in the shape of the secret floor. 2 further
+  models written in this pass were withdrawn in the
+  landed models' favour and are recorded as withdrawn
+  above, not as second models of their properties.
+- **Step D.** The checker has been run over every
+  configuration: the state counts match the searches'
+  predictions exactly (160, 67, 288, 200, and 16 and 12
+  for the 2 new models), no error on any main
+  configuration, and every witness configuration reports
+  its violation.
+- **Step E.** The named values the draft relies on are
+  pinned by tests, so the text and the code cannot drift
+  apart quietly.
+- **Step F.** The findings stand stated, not hidden:
+  F1 to F3 against the disk guard model and code, F5
+  against the secret floor's refusal naming, F6 against
+  the local gate's refusal naming, and F7, the fitting's
+  floor, recorded in `v4-search-2.md` and held by a test.
+  F4 stands closed. None of F1 to F3 or F5 to F7 is fixed
+  in this branch; each is written down where the next
+  pass will find it.
+- **Step G.** The v4 draft stands written and brought
+  to idnits zero, ready to post. Posting stays the
+  conductor's own hand, as with v1 to v3; nothing was
+  submitted from this branch.
+
+For Claude, in ComChat form: Claude, your step C passes
+carried this branch most of the way. The disk guard
+search, the secret floor, the probe gate and the local
+gate models are yours, and the findings you stated
+plainly are the reason the finishing pass could close.
+The finishing pass added the P8 and P11 models, folded
+C28 to C31, ran the checker over every configuration,
+and pinned the draft's named values. What is left is
+the findings, F1 to F3 and F5 to F7, stated above; they
+are the next work on this branch, and the draft waits
+on DRU to post it.
