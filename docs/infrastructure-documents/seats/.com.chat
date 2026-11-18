@@ -3,6 +3,75 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 18-Nov-12:58pm-PST — Claude: the v4 draft read against the branch as it stands
+
+Claude, for Muse's seat. The owner asked this seat to carry
+on with the v4 branch. The checker and the draft's render
+tools are not in this container, so this is what can be
+given from here: a reading of the draft's source against the
+code, the models and the records at this branch's head.
+Nothing in the draft's folder is changed.
+
+What the closed findings change, section by section:
+
+- Terminology, "Finding": it says the findings are stated,
+  not resolved. All 7 are closed.
+- 6.6, P6: F5 no longer bounds it. The refusal names the
+  setting of the key that cost the start.
+- 6.7, P7: the model is the widened one, 48 initial states
+  and 1,086 distinct states, with a third witness
+  configuration. The sentence on F1 to F3 comes out: the
+  model measures at every door, a removal of 0 bytes is
+  recorded, and a measurement that fails ends the pass.
+- 6.11, P11: the heading and the first sentence state the
+  cap with no floor. P11 now holds down to the fitting's
+  floor. The property's own words are `P11Floor`, in the
+  main configuration, and they pass. The witness states the
+  cap with no floor.
+- 6.12, P12: F6 is closed. The fourth invariant is
+  `OverCapRefusedForSize`: a file over the cap is refused
+  for its size wherever its cut falls.
+- 6.13, P13: F5 is closed. Each of the 32 refusals of an
+  additional key alone names that key's own setting.
+- 7, The Findings: the opening sentence, and each of F1 to
+  F3 and F5 to F7.
+- 10, Security Considerations: the sentence naming F2, F3
+  and F7.
+- `runner/tests/test_v4_draft.py` pins "160 distinct states"
+  in the draft. It moves with 6.7.
+
+5 points that do not come from the findings:
+
+1. Section 5 says the disk guard "takes at most 512 actions
+   in a pass". The 512 is not a cap on actions.
+   `DISK_GUARD_MAX_ACTIONS` caps the actions the event
+   names. The pass goes on acting past it, and counts every
+   byte it frees. The inventory has it right: the event
+   names its actions "up to the 512 cap".
+2. Section 5 says the guard "leaves workspaces untouched for
+   3600 seconds alone". Read the plain way, that says the
+   opposite of the code: a workspace untouched for 3600
+   seconds is one the guard may remove. The inventory's
+   words are "job workspaces untouched for at least 3600
+   seconds", in the list of what is given up.
+3. The Introduction points to "the unit tests described in
+   Section 4.4". Section 4.4 is "Search, check, and hold to
+   the code". The pin suite is Section 4.5. A reference by
+   anchor would keep the number from drifting.
+4. Section 4.4 says each model is treated 3 ways, the first
+   a twin searched in the suite. That holds for the 6 models
+   of P7, P8 and P10 to P13. The models of P1 to P6 have the
+   checker and the clause by clause conformance, and no
+   twin. The sentence wants scoping to this version's
+   models.
+5. The abstract says "a TLA+ model of each property". P9 has
+   none, as 6.9 says itself.
+
+Checked and found right: the 3 normative drafts at their
+posted revisions, RFC 10024's number, title and date, group
+4588 beside 29, and the sections behind "Section 10" and the
+front matter's "Section 9".
+
 ## 18-Nov-10:54am-PST — Claude: F7 closed in P11's words, by the owner's choice
 
 Claude, for Muse's seat, in answer to the entry of 10:53am
