@@ -191,3 +191,61 @@ Later work took up 4 of the items above. Its record is
 That record names 6 findings, F1 to F6, none of them fixed
 there. What stands after it: the checker runs for all 4
 models, the models for P8 and P11, and the inventory merge.
+
+## Steps C and D, the finishing pass: suppositions
+
+The following are predictions for the pass that finishes
+step C and runs step D, written down before any measurement
+in this pass was run. The conclusions belong below them when
+the pass closes.
+
+- **U1.** Each of P8, P10, P11 and P12 admits a one-decision
+  model in the shape of `secretfloor.tla`, and each model's
+  twin in the suite, searched to the fixed point, holds the
+  property's invariant in every reachable state, with both
+  witness probes reachable: each witness invariant fails on
+  some state the search reaches. P9 admits no model, because
+  it is a claim about what the documents and the support
+  matrix claim, and its completion is a pin: a search of the
+  support matrix and the DTLS records that finds no claim of
+  a supported session across the framing break.
+- **U2.** `_fit_result_body` fits every result whose cap is
+  at or over the floor the third pass leaves: the body with
+  both streams cut to their first and last 2 KiB, plus the
+  fixed envelope around them. At a cap under that floor it
+  returns a body still over the cap, marked
+  `result_truncated`: a counterexample to P11's unqualified
+  words at the boundary, to be recorded as a finding and
+  held by a test, not fixed in this pass.
+- **U3.** TLC 2.19 (the v1.7.4 tools jar) on Java 21 reports
+  exactly 160 distinct states for `diskguard.cfg` and
+  exactly 67 for `secretfloor.cfg`, the suite search's
+  predictions in `v4-search.md`, and no error on either main
+  configuration. Every standing main configuration (the
+  claim, confine, decision, gate, keypolicy, keyscompose,
+  replay, surfaces and transgate families) reports no error,
+  and every witness configuration reports the violation it
+  exists to produce.
+- **U4.** TLC's distinct-state counts for the 4 new models
+  equal their suite searches' counts. The searches run
+  first; their counts are recorded in the step C record
+  before any TLC run of the new models.
+- **U5.** Folding C28 to C31 into `constraints.md`, in that
+  file's own format and with no value changed, leaves the
+  constraint pin suite green without an edit to it: its 68
+  tests pin C1 to C27, and the fold adds entries without
+  moving one.
+
+A note on the parallel landings: this pass ran beside the
+continued step C pass recorded above, and the records met
+twice. P10 was landed there, as `probegate.tla`, and P12
+was landed there, as `localgate.tla`, so U1 and U4 above
+read on the 2 models this pass still owed, P8 and P11.
+Models of P10 and of P12 were written here and withdrawn
+in the landed models' favour: each property has the one
+model, and it is the landed one. The continued pass's
+finding F6 is the local gate's; this pass's fitting
+finding is F7, so the numbers do not collide. U3's checker
+prediction extends to `probegate.cfg` at its search's
+count, 288 distinct states, and to `localgate.cfg` at its
+search's count, 200.
