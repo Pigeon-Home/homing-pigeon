@@ -615,3 +615,61 @@ exists to produce, of the invariant it names:
 With this run the 3 models that changed after step D stand
 checked at their changed shapes, and no configuration of
 theirs wants the checker again.
+
+## The checker a second time, from the other seat
+
+Run 2026-11-18 with TLC 2.19 of 08 August 2024, the v1.7.4
+tools jar at revision 5a47802, on OpenJDK 21: a second run,
+made apart from the one above, in the other seat's
+container. It covers every configuration of the 6 models of
+P7, P8 and P10 to P13, 19 in all: 6 main configurations and
+13 witness configurations. Each model was copied to its
+module's name in a scratch folder for the run, as before.
+
+Every main configuration reports no error, with the count
+its search predicted and the first run found:
+
+- `diskguard.cfg`: 48 initial states, 1,086 distinct states.
+- `localgate.cfg`: 96 initial states, 200 distinct states.
+- `resultfit.cfg`: 6 initial states, 12 distinct states,
+  `P11Floor` among its 4 invariants.
+- `secretfloor.cfg`: 27 initial states, 67 distinct states.
+- `probegate.cfg`: 144 initial states, 288 distinct states.
+- `hybridselect.cfg`: 8 initial states, 16 distinct states.
+
+Every witness configuration reports the violation of the
+invariant it names: NeverActs, NeverRecords and
+NeverLeavesMaterial for the disk guard;
+NothingReachesTheVerifier and NothingIsRefusedForSize for
+the local gate; P11Inv and NothingIsShrunk for the result
+fitting; NothingStarts and NothingIsRefused for the secret
+floor; NothingStartsAtEnforce and NothingIsRefused for the
+probe gate; NothingSelectsHybrid and NothingIsRefused for
+the hybrid selection.
+
+2 of the counterexamples, as the checker printed them:
+
+- `diskguardwitnessrefill.cfg`: classes 1 and 2 have
+  material. The first reading is over, the reading at class
+  1 is under and the pass leaves it, the reading at class
+  2's door is over and the pass acts on class 2. That is
+  the pass of finding F1.
+- `resultfitwitnesscap.cfg`: the cap is set and the body is
+  in the fixed class. It leaves over the cap, marked. That
+  is the class P11's floor is for.
+
+The 3 changed models make 3 main and 7 witness
+configurations, 10 in all.
+
+The 6 model files now say in their headers that the checker
+ran, where 5 of them said it had not. This run was repeated
+on the files as they stand after that change, with the same
+verdicts and counts.
+
+What the draft still wants, read after its last revision:
+its P7 section gives the disk guard model 160 distinct
+states, the count of the model before F1 was closed, and
+`runner/tests/test_v4_draft.py` pins that number there. The
+model as it stands has 1,086. And the 5 points of the
+reading in the seats' forum stand. Nothing in the draft's
+folder is changed here.

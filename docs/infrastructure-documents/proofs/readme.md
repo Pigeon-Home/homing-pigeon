@@ -270,7 +270,8 @@ A finding is most useful when it points at the file and the line
   of P7. The checker run for every model on this shelf
   stands recorded in `v4-working.md`, step D. `diskguard.tla`,
   `localgate.tla` and `resultfit.tla` changed after that run,
-  when findings were closed, and want the checker again.
+  when findings were closed, and the checker ran on them
+  again, twice, as that record says.
 - `v4-search.md`: the first 4 models searched without a
   checker and held to the code. `diskguard.tla`,
   `secretfloor.tla`, the model of P13, `probegate.tla`, the

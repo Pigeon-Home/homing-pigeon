@@ -24,6 +24,13 @@
 \* this model; the claims checked are the order, the
 \* threshold, the recording, and that the runner is never
 \* stopped.
+\*
+\* This file was run with TLC on 2026-11-18 in this shape, and
+\* the checker found the count the search had predicted. The
+\* model it states is searched by
+\* runner/tests/test_v4_models.py; the state counts in
+\* v4-search.md are that search's, and the checker's verdicts
+\* are in v4-working.md.
 
 EXTENDS Integers, Sequences
 

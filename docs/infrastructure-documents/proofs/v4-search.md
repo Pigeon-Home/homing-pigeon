@@ -52,11 +52,10 @@ free to come out over, under, or not at all:
   but on a first reading of over, and a reading that fails
   ends the pass where it stands.
 
-These counts are the prediction for the checker. The model
-changed after step D's run, so `diskguard.cfg` and its
-witness configurations want the checker again, and a run
-that reports another number of distinct states is a finding
-against this record or against the model.
+These counts were written as the prediction for the checker.
+The checker has since run on the model in this shape, twice
+and from 2 seats, and found the same 48 and 1,086
+(`v4-working.md`).
 
 The model has 3 witness configurations, each expected to
 fail: `diskguardwitnessacts.cfg` (the probe `NeverActs`),
@@ -335,16 +334,15 @@ the verifier on.
 
 ## What stands
 
-- **The checker, again, for 3 models.** Step D ran the
-  checker over every configuration, and its counts were the
-  searches' (`v4-working.md`). `diskguard.tla` and
-  `localgate.tla` changed after that run, when F1 and F6
-  were closed, and `resultfit.tla` gained an invariant when
-  F7 was. Their configurations, 4 for the disk guard, 3 for
-  the local gate and 3 for the result fitting, want the
-  checker again, against 1,086, 200 and 12 distinct states.
-  The verdicts on `secretfloor.cfg`, `probegate.cfg` and
-  `hybridselect.cfg` stand.
+- **The checker has run on every model as it stands.** Step
+  D ran it over every configuration, and its counts were the
+  searches'. `diskguard.tla` and `localgate.tla` changed
+  after that run, when F1 and F6 were closed, and
+  `resultfit.tla` gained an invariant when F7 was. The
+  checker then ran again on those 3, twice and from 2 seats:
+  1,086 distinct states for the disk guard, 200 for the
+  local gate and 12 for the result fitting, each the count
+  its search predicted. Every run is in `v4-working.md`.
 - **P8 and P11 have their models** in the record that
   follows this one, `v4-search-2.md`, with finding F7,
   closed there.

@@ -862,7 +862,7 @@ class SecretFloorSearch(unittest.TestCase):
                 "{\"default\"} ELSE {})",
                 "       THEN started' = TRUE /\\ named' = \"none\"\n"
                 "       ELSE started' = FALSE /\\ named' \\in Causes(map)",
-                "This file has not been run with TLC."):
+                "This file was run with TLC on 2026-11-18"):
             self.assertIn(stated, text, stated)
         self.assertTrue(_read(os.path.join(PROOFS, "secretfloor.cfg"))
                         .endswith("SPECIFICATION Spec\nINVARIANT P13Inv\n"
@@ -1067,7 +1067,7 @@ class ProbeGateSearch(unittest.TestCase):
                 "\"other\"",
                 "GoesAhead(s) ==\n  \\/ ~Gated(s)\n"
                 "  \\/ s.backend = \"real\" /\\ s.probe = \"passes\"",
-                "This file has not been run with TLC."):
+                "This file was run with TLC on 2026-11-18"):
             self.assertIn(stated, text, stated)
         self.assertTrue(_read(os.path.join(PROOFS, "probegate.cfg"))
                         .endswith("SPECIFICATION Spec\nINVARIANT P10Inv\n"
@@ -1335,7 +1335,7 @@ class LocalGateSearch(unittest.TestCase):
                 "\"nothing\")\n"
                 "  ELSE IF Garbled(a, r) THEN \"not utf-8\"\n"
                 "  ELSE \"verify\"\n",
-                "This file has not been run with TLC."):
+                "This file was run with TLC on 2026-11-18"):
             self.assertIn(stated, text, stated)
         self.assertTrue(_read(os.path.join(PROOFS, "localgate.cfg"))
                         .endswith("SPECIFICATION Spec\nINVARIANT P12Inv\n"
@@ -1755,7 +1755,7 @@ class HybridSelectSearch(unittest.TestCase):
                 " \\in offered\n",
                 "                         THEN \"x25519\"\n"
                 "                         ELSE \"refused\"",
-                "Not yet run with TLC."):
+                "This file was run with TLC on 2026-11-18"):
             self.assertIn(stated, text, stated)
         self.assertTrue(_read(os.path.join(PROOFS, "hybridselect.cfg"))
                         .endswith("SPECIFICATION Spec\nINVARIANT P8Inv\n"
@@ -1917,7 +1917,7 @@ class ResultFitSearch(unittest.TestCase):
                 "       THEN sent' = \"asis\" /\\ marked' = FALSE\n",
                 "              THEN sent' = \"shrunk\" /\\ marked' = TRUE\n"
                 "              ELSE sent' = \"over\" /\\ marked' = TRUE",
-                "Not yet run with TLC."):
+                "This file was run with TLC on 2026-11-18"):
             self.assertIn(stated, text, stated)
         self.assertIn(
             "P11Floor ==\n"

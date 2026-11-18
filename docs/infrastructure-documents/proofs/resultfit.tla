@@ -25,10 +25,11 @@
 \* no floor, so the checker yields the class the floor is
 \* for.
 \*
-\* Not yet run with TLC. The model it states is searched by
-\* runner/tests/test_v4_models.py; the state counts in
-\* v4-search-2.md are that search's, written as the
-\* prediction for the checker.
+\* This file was run with TLC on 2026-11-18, and the checker
+\* found the count the search had predicted. The model it
+\* states is searched by runner/tests/test_v4_models.py; the
+\* state counts in v4-search-2.md are that search's, and the
+\* checker's verdicts are in v4-working.md.
 
 EXTENDS Integers
 
