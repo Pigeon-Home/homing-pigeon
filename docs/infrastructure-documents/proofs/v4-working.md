@@ -480,3 +480,36 @@ state, and the renders made again, before the draft is
 posted. Nothing in the draft's folder is changed here.
 
 F1 to F3 and F7 stand open.
+
+## Findings F1, F2 and F3, closed
+
+The 3 findings on the disk guard are closed, and each is
+marked in `v4-search.md` where it was stated:
+
+- **F2.** The guard notes a removal when the path is gone,
+  whatever it freed, and a workspace removed part way with
+  what that freed. An event names exactly what a pass
+  removed.
+- **F3.** A measurement that fails ends the pass. Nothing is
+  given up without a measurement that says the disk is at or
+  over the threshold.
+- **F1.** `diskguard.tla` measures as the code does, before
+  every action and again at the door of every class, with
+  every measurement free to come out over, under, or not at
+  all. All 1,516 passes the real guard can make end on one
+  of the model's finished passes. A third witness
+  configuration, `diskguardwitnessrefill.cfg`, shows the
+  model reaches a disk that fills up again.
+
+`diskguard.tla` changed after step D's checker run. The
+suite's search of the changed model counts 48 initial states
+and 1,086 distinct states, 405 of them finished passes, and
+that count is the prediction: `diskguard.cfg` and its 3
+witness configurations want the checker again. The 160 the
+checker found is the count of the model as it stood then.
+
+The v4 draft states F1, F2 and F3 as they stood when it was
+written, as it does F5 and F6. Nothing in the draft's folder
+is changed here.
+
+F7 stands open.

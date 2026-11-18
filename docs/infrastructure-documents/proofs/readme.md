@@ -268,7 +268,9 @@ A finding is most useful when it points at the file and the line
   states it, with the new properties P7 to P13 stated in
   full. `diskguard.tla` is the first model of that work,
   of P7. The checker run for every model on this shelf
-  stands recorded in `v4-working.md`, step D.
+  stands recorded in `v4-working.md`, step D. `diskguard.tla`
+  and `localgate.tla` changed after that run, when findings
+  were closed, and want the checker again.
 - `v4-search.md`: the first 4 models searched without a
   checker and held to the code. `diskguard.tla`,
   `secretfloor.tla`, the model of P13, `probegate.tla`, the
@@ -278,7 +280,7 @@ A finding is most useful when it points at the file and the line
   down every path its re-measuring allows, the real key map
   built over every standing of 3 keys, the real confinement
   gate asked on every start, the real local doors asked on
-  every arrival at the cap, and 6 findings, 3 of them closed.
+  every arrival at the cap, and 6 findings, all closed.
   `runner/tests/test_v4_models.py` is that search and that
   conformance, run with the suite.
 - `v4-search-2.md`: the last 2 models searched the same

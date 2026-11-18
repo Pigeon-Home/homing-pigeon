@@ -342,13 +342,16 @@ def _guard_oldest_files(d):
 
 
 def _guard_remove_file(path):
+    """Remove one file. Returns the bytes freed, 0 for an empty
+    file, or None when nothing was removed: a removal is an
+    action whatever it freed."""
     size = _guard_size(path)
     if size is None:
-        return 0
+        return None
     try:
         os.remove(path)
     except OSError:
-        return 0
+        return None
     return size
 
 
@@ -389,13 +392,27 @@ def _guard_oldest_workspaces(base_dir, now):
     return out
 
 
+def _guard_tree_entries(path):
+    return sum(len(dirs) + len(files)
+               for _root, dirs, files in os.walk(path))
+
+
 def _guard_remove_tree(path):
+    """Remove one workspace. Returns the bytes freed, 0 for an
+    empty one, or None when it stands as it stood. A removal
+    that stopped part way freed what it freed, and is an action
+    too."""
     size = _guard_tree_bytes(path)
+    held = _guard_tree_entries(path)
     try:
         shutil.rmtree(path)
     except OSError:
-        return 0
-    return size if not os.path.exists(path) else 0
+        pass
+    if not os.path.lexists(path):
+        return size
+    if _guard_tree_entries(path) == held:
+        return None
+    return max(0, size - _guard_tree_bytes(path))
 
 
 def _guard_log_backups(base_dir):
@@ -471,9 +488,22 @@ def guard_disk(cfg, base_dir, now=None):
                 "path": os.path.relpath(path, base_dir),
                 "action": action, "bytes": nbytes})
 
+    blind = False
+
     def under():
+        # True when the pass gives up nothing more: the disk
+        # measures under the threshold, or it cannot be measured.
+        # Nothing is given up without a measurement that says the
+        # disk is at or over the threshold, so a measurement that
+        # fails ends the pass, and no later one is asked for.
+        nonlocal blind
+        if blind:
+            return True
         frac = _disk_fraction(base_dir)
-        return frac is not None and frac < DISK_GUARD_THRESHOLD
+        if frac is None:
+            blind = True
+            return True
+        return frac < DISK_GUARD_THRESHOLD
 
     # Stage 1: the logs. Rolled backups go first, oldest first;
     # then the live logs give up their oldest lines, keeping the
@@ -482,7 +512,7 @@ def guard_disk(cfg, base_dir, now=None):
         if under():
             break
         n = _guard_remove_file(path)
-        if n:
+        if n is not None:
             note(path, "remove", n)
     if not under():
         for name in _DISK_GUARD_LOG_NAMES:
@@ -503,7 +533,7 @@ def guard_disk(cfg, base_dir, now=None):
             if under():
                 break
             n = _guard_remove_file(path)
-            if n:
+            if n is not None:
                 note(path, "remove", n)
     # Stage 3: leftover job workspaces old enough that no job can
     # still be running in them.
@@ -512,7 +542,7 @@ def guard_disk(cfg, base_dir, now=None):
             if under():
                 break
             n = _guard_remove_tree(path)
-            if n:
+            if n is not None:
                 note(path, "remove", n)
 
     after = _disk_fraction(base_dir)

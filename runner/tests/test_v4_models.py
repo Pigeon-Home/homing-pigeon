@@ -90,34 +90,37 @@ def _said(number):
 
 # ---- The model: diskguard.tla, written apart from it
 
+READINGS = ("over", "under", "failed")
+
+
 def model_init():
-    """Init: the disk over or under, any of the 16 combinations of
-    classes with material, nothing acted on."""
-    for over in (True, False):
+    """Init: the first measurement any of 3 ways, any of the 16
+    combinations of classes with material, nothing acted on. A
+    state ends with `at`, the class whose turn it is: 0 before
+    the first measurement is acted on, 5 past the last class."""
+    for reading in READINGS:
         for bits in range(16):
             present = frozenset(c for c in CLASSES if bits >> (c - 1) & 1)
-            yield (over, present, (), "run", False, True)
-
-
-def next_class(present, acted):
-    """NextClass: the smallest class with material not acted on
-    yet, or 0."""
-    left = sorted(c for c in present if c not in acted)
-    return left[0] if left else 0
+            yield (reading, present, (), "run", False, True, 0)
 
 
 def model_next(state):
-    """Next: Act, then the re-measurement either way; or End."""
-    over, present, acted, phase, recorded, alive = state
+    """Next: Open, Act or Leave, each followed by the next
+    measurement any of 3 ways; or End."""
+    reading, present, acted, phase, recorded, alive, at = state
     if phase != "run":
         return
-    following = next_class(present, acted)
-    if over and following:
-        for again in (True, False):
-            yield (again, present, acted + (following,), phase, recorded,
-                   alive)
-    if not over or not following:
-        yield (over, present, acted, "done", bool(acted), alive)
+    if at == 0 and reading == "over":
+        moved = acted                                          # Open
+    elif at in CLASSES and at in present and reading == "over":
+        moved = acted + (at,)                                  # Act
+    elif at in CLASSES and reading != "failed":
+        moved = acted                                          # Leave
+    else:                                                      # End
+        yield (reading, present, acted, "done", bool(acted), alive, at)
+        return
+    for again in READINGS:
+        yield (again, present, moved, phase, recorded, alive, at + 1)
 
 
 def never_stops(state):
@@ -125,15 +128,22 @@ def never_stops(state):
 
 
 def order_respected(state):
-    _over, present, acted, _phase, _recorded, _alive = state
+    present, acted = state[1], state[2]
     return (all(c in present for c in acted)
             and all(a < b for a, b in zip(acted, acted[1:])))
 
 
 def recorded_faithfully(state):
-    _over, _present, acted, phase, recorded, _alive = state
+    acted, phase, recorded = state[2], state[3], state[4]
     return ((not (phase == "done" and acted) or recorded)
             and (not recorded or bool(acted)))
+
+
+def never_leaves_material(state):
+    """NeverLeavesMaterial, the third witness probe: no class is
+    acted on with an earlier class's material left standing."""
+    present, acted = state[1], state[2]
+    return all(c in acted for a in acted for c in present if c < a)
 
 
 INVARIANTS = (("NeverStops", never_stops),
@@ -186,30 +196,58 @@ class ModelSearch(unittest.TestCase):
             self.assertIsNone(first_breaking(self.reached, holds), name)
 
     def test_the_counts_are_the_prediction_for_the_checker(self):
-        # 32 initial states: 2 readings by 16 combinations. Over
-        # a combination of n classes a running pass stands at any
-        # of its n + 1 prefixes with the disk over or under, and
-        # a finished one at any prefix with the disk under, or at
-        # the whole of it with the disk still over: 3n + 4 states.
-        self.assertEqual(32, len(self.initial))
+        # 48 initial states: 3 readings by 16 combinations. At
+        # the door of class k a pass stands in 1 way for a class
+        # before k with no material and 2 for one with it, acted
+        # on or left: 3 to the k - 1, by 2 for each class from k
+        # on, by the 3 readings. A pass ends before the first
+        # class on 2 readings, at a class on 1, and past the last
+        # on all 3.
+        self.assertEqual(48, len(self.initial))
         done = [s for s in self.reached if s[3] == "done"]
-        self.assertEqual((160, 64), (len(self.reached), len(done)))
-        sizes = [bin(bits).count("1") for bits in range(16)]
-        self.assertEqual(len(self.reached), sum(3 * n + 4 for n in sizes))
-        self.assertEqual(len(done), sum(n + 2 for n in sizes))
+        self.assertEqual((1_086, 405), (len(self.reached), len(done)))
+        doors = [3 * 3 ** (k - 1) * 2 ** (5 - k) for k in range(1, 6)]
+        self.assertEqual([48, 72, 108, 162, 243], doors)
+        self.assertEqual(len(self.reached) - len(done), 48 + sum(doors))
+        self.assertEqual(len(done),
+                         32 + sum(d // 3 for d in doors[:4]) + doors[4])
         text = _flat(RECORD)
-        self.assertIn("32 initial states, %s distinct states, %s of them "
+        self.assertIn("48 initial states, %s distinct states, %s of them "
                       "finished passes" % (_said(len(self.reached)),
                                            _said(len(done))), text)
+
+    def test_the_finished_passes_are_the_classes_in_order_any_left_out(self):
+        # Over a combination of n classes a pass can end having
+        # acted on any of them and left the others, in order:
+        # 2 to the n finished passes.
+        for bits in range(16):
+            present = frozenset(c for c in CLASSES if bits >> (c - 1) & 1)
+            ended = {s[2] for s in self.reached
+                     if s[1] == present and s[3] == "done"}
+            every = {tuple(c for c in sorted(present) if pick >> c & 1)
+                     for pick in range(32)}
+            self.assertEqual(every, ended, sorted(present))
+            self.assertEqual(2 ** len(present), len(ended))
 
     def test_the_model_file_states_what_was_searched(self):
         text = _read(os.path.join(PROOFS, "diskguard.tla"))
         for stated in (
-                "  /\\ over \\in {TRUE, FALSE}\n"
-                "  /\\ present \\in SUBSET Classes\n",
-                "  /\\ acted' = Append(acted, NextClass)\n"
-                "  /\\ over' \\in {TRUE, FALSE}\n",
-                "  /\\ (~over \\/ NextClass = 0)\n"
+                "Readings == {\"over\", \"under\", \"failed\"}\n",
+                "  /\\ reading \\in Readings\n"
+                "  /\\ present \\in SUBSET Classes\n"
+                "  /\\ acted = <<>>\n"
+                "  /\\ at = 0\n",
+                "  /\\ at \\in present\n"
+                "  /\\ reading = \"over\"\n"
+                "  /\\ acted' = Append(acted, at)\n"
+                "  /\\ at' = at + 1\n"
+                "  /\\ reading' \\in Readings\n",
+                "  /\\ reading /= \"failed\"\n"
+                "  /\\ (at \\notin present \\/ reading = \"under\")\n"
+                "  /\\ at' = at + 1\n",
+                "  /\\ \\/ at = 0 /\\ reading /= \"over\"\n"
+                "     \\/ at \\in Classes /\\ reading = \"failed\"\n"
+                "     \\/ at = 5\n"
                 "  /\\ phase' = \"done\"\n"
                 "  /\\ recorded' = (acted /= <<>>)\n",
                 "NeverStops == alive = TRUE",
@@ -236,42 +274,65 @@ class ModelWitnesses(unittest.TestCase):
             self.reached,
             lambda s: not (s[2] == (1, 2, 3, 4) and s[3] == "done"))
         self.assertIsNotNone(path)
-        self.assertEqual(6, len(path))            # Init, 4 actions, End
+        self.assertEqual(7, len(path))      # Init, Open, 4 actions, End
         self.assertTrue(path[-1][4])
-        self.assertEqual([(), (1,), (1, 2), (1, 2, 3), (1, 2, 3, 4),
+        self.assertEqual([(), (), (1,), (1, 2), (1, 2, 3), (1, 2, 3, 4),
                           (1, 2, 3, 4)], [s[2] for s in path])
+        self.assertEqual([0, 1, 2, 3, 4, 5, 5], [s[6] for s in path])
 
-    def test_a_pass_stops_as_soon_as_the_disk_reads_under(self):
-        stopped = [s for s in self.reached
-                   if s[3] == "done" and s[2] == (1,)
-                   and s[1] == frozenset(CLASSES)]
-        self.assertEqual(1, len(stopped))
-        self.assertFalse(stopped[0][0])
+    def test_no_pass_opens_but_on_a_first_reading_of_over(self):
+        for state in self.reached:
+            if state[3] == "done" and state[6] == 0:
+                self.assertIn(state[0], ("under", "failed"))
+                self.assertEqual(((), False), (state[2], state[4]))
+
+    def test_a_reading_that_fails_ends_the_pass_where_it_stands(self):
+        # A pass ends at a class only on a failed reading, and
+        # every action was taken on a reading of over: the state
+        # an action leads from reads over.
+        at_a_class = [s for s in self.reached
+                      if s[3] == "done" and s[6] in CLASSES]
+        self.assertEqual(130, len(at_a_class))
+        self.assertEqual({"failed"}, {s[0] for s in at_a_class})
+        for state in self.reached:
+            for following in model_next(state):
+                if following[2] != state[2]:
+                    self.assertEqual("over", state[0])
 
     def test_a_pass_under_the_threshold_acts_on_nothing(self):
         for state in self.reached:
             if state[3] == "done" and not state[2]:
                 self.assertFalse(state[4])
 
-    def test_the_2_probes_are_false_somewhere_as_they_must_be(self):
-        # NeverActs and NeverRecords, the 2 witness
-        # configurations: each expected to fail under the checker.
+    def test_the_3_probes_are_false_somewhere_as_they_must_be(self):
+        # NeverActs, NeverRecords and NeverLeavesMaterial, the 3
+        # witness configurations: each expected to fail under the
+        # checker. The third fails on a disk that fills up again:
+        # the shortest such pass leaves class 1 at a reading of
+        # under and acts on class 2 at a reading of over.
         self.assertIsNotNone(first_breaking(self.reached,
                                             lambda s: s[2] == ()))
         self.assertIsNotNone(first_breaking(self.reached,
                                             lambda s: s[4] is False))
-        text = _read(os.path.join(PROOFS, "diskguard.tla"))
-        self.assertIn("NeverActs == acted = <<>>", text)
-        self.assertIn("NeverRecords == recorded = FALSE", text)
-        for name, probe in (("diskguardwitnessacts.cfg", "NeverActs"),
-                            ("diskguardwitnessrecords.cfg", "NeverRecords")):
+        refill = first_breaking(self.reached, never_leaves_material)
+        self.assertIsNotNone(refill)
+        left = [s for s in self.reached
+                if s[3] == "done" and s[2] == (2,) and 1 in s[1]]
+        self.assertTrue(left)
+        for name, probe in (
+                ("diskguardwitnessacts.cfg", "NeverActs"),
+                ("diskguardwitnessrecords.cfg", "NeverRecords"),
+                ("diskguardwitnessrefill.cfg", "NeverLeavesMaterial")):
             held = _read(os.path.join(PROOFS, name))
             self.assertTrue(held.startswith("\\* Expected to fail."), name)
             self.assertTrue(held.endswith(
                 "SPECIFICATION Spec\nINVARIANT %s\n" % probe), name)
+        self.assertIn(
+            "NeverLeavesMaterial ==\n"
+            "  \\A i \\in DOMAIN acted : \\A c \\in present :\n"
+            "    c < acted[i] => \\E j \\in DOMAIN acted : acted[j] = c\n",
+            _read(os.path.join(PROOFS, "diskguard.tla")))
 
-
-# ---- The code: one real pass over a real directory
 
 PROTECTED = ("config.json", "seen.json", "security-events.jsonl",
              os.path.join("outbox", "pending.txt"))
@@ -524,22 +585,36 @@ class Conformance(unittest.TestCase):
             self.assertEqual(run.readings[-1] >= RES.DISK_GUARD_THRESHOLD,
                              run.event["still_over"], where)
 
-    def test_on_a_steady_disk_the_pass_is_one_of_the_model_s(self):
-        # The model's finished passes over a combination are the
-        # prefixes of its classes in order. On a disk that does
-        # not fill up again between 2 measurements, the code's
-        # passes are those and only those, and it reaches them all.
+    def test_on_every_disk_the_pass_is_one_of_the_model_s(self):
+        # The model's finished passes over a combination are its
+        # classes in order, any of them left out: a disk can read
+        # under at one class and over again at the next. The
+        # code's passes, on every path, are those and only those,
+        # and it reaches them all.
         reached, _steps = search(list(model_init()), model_next)
         for present, runs in self.paths.items():
             model = {s[2] for s in reached
                      if s[1] == present and s[3] == "done"}
-            code = {run.classes for run in runs if run.steady}
+            code = {run.classes for run in runs}
             self.assertEqual(model, code, sorted(present))
+            self.assertEqual(2 ** len(present), len(code))
 
-    def test_off_a_steady_disk_the_pass_can_end_outside_the_model(self):
-        # Finding F1, counted: every such pass still keeps P7's
-        # order, and none of them is steady.
-        outside = 0
+    def test_on_a_steady_disk_a_pass_gives_up_its_classes_from_the_first(self):
+        # On a disk that does not fill up again between 2
+        # measurements, the passes are the prefixes of the
+        # combination in order, all of them and no others.
+        for present, runs in self.paths.items():
+            prefixes = {tuple(sorted(present))[:n]
+                        for n in range(len(present) + 1)}
+            steady = {run.classes for run in runs if run.steady}
+            self.assertEqual(prefixes, steady, sorted(present))
+
+    def test_off_a_steady_disk_a_pass_can_leave_material_and_go_on(self):
+        # F1, closed in the model: the passes that end with an
+        # earlier class's material left standing and a later
+        # class acted on. None of them is steady, each keeps
+        # P7's order, and each is one of the model's.
+        left = 0
         for present, runs in self.paths.items():
             prefixes = {tuple(sorted(present))[:n]
                         for n in range(len(present) + 1)}
@@ -547,57 +622,155 @@ class Conformance(unittest.TestCase):
                 if run.classes not in prefixes:
                     self.assertFalse(run.steady)
                     self.assertEqual(sorted(run.acted), run.acted)
-                    outside += 1
-        self.assertEqual(412, outside)
-        self.assertIn("%s of them end outside the model's finished passes"
-                      % _said(outside), _flat(RECORD))
+                    self.assertFalse(never_leaves_material(
+                        ("over", present, run.classes, "done", True,
+                         True, 5)))
+                    left += 1
+        self.assertEqual(412, left)
+        self.assertIn("%s of them leave an earlier class's material "
+                      "standing" % _said(left), _flat(RECORD))
+
+    def test_a_reading_that_fails_ends_the_pass_at_every_point(self):
+        # F3, closed in the code. Over each combination, the
+        # pass that reads over all the way is cut short at each
+        # of its readings in turn: the reading fails, nothing is
+        # given up after it, and no reading is asked for but the
+        # last one, which says how the pass left the disk.
+        cut = 0
+        for present, runs in self.paths.items():
+            (whole,) = [run for run in runs if set(run.readings) == {OVER}]
+            for at in range(1, len(whole.readings)):
+                run = Pass(self, present,
+                           (OVER,) * at + (None,) + (OVER,) * 20)
+                where = (sorted(present), at)
+                failed = run.trace.index(("read", None))
+                self.assertNotIn("act", [kind for kind, _value
+                                         in run.trace[failed:]], where)
+                self.assertLessEqual(len(run.readings), at + 2, where)
+                self.assertIsNone(run.raised, where)
+                self.assertEqual(bool(run.changed), run.event is not None,
+                                 where)
+                if run.event is not None:
+                    self.assertTrue(run.event["still_over"], where)
+                cut += 1
+        self.assertEqual(136, cut)
+        self.assertIn("%s passes over the 16 combinations" % cut,
+                      _flat(RECORD))
+
+    def test_material_of_0_bytes_is_recorded_on_every_combination(self):
+        # F2, closed in the code. The pass that reads over all
+        # the way, over material of 0 bytes: the event names
+        # exactly what the pass removed, whatever it freed.
+        for bits in range(16):
+            present = frozenset(c for c in CLASSES if bits >> (c - 1) & 1)
+            run = Pass(self, present, (OVER,) * 20, empty=True)
+            where = sorted(present)
+            self.assertLess(len(run.readings), 20, where)
+            self.assertEqual(bool(run.changed), run.event is not None, where)
+            if run.event is None:
+                self.assertEqual(frozenset(), present, where)
+                continue
+            self.assertEqual(
+                run.roots, sorted(a["path"] for a in run.event["actions"]),
+                where)
+            self.assertEqual(present, frozenset(run.classes), where)
+            self.assertEqual(2 not in present,
+                             run.event["freed_bytes"] == 0, where)
 
 
 class Findings(unittest.TestCase):
     """Where the code and the model, or the code and P7's words,
-    part ways. Each is held here as the tree stands, so a change
-    to either side shows up as a change to this class."""
+    parted ways when the model was first held to the guard. Each
+    is closed, and each is held here as it stands now, so a
+    change to either side shows up as a change to this class."""
 
-    def test_f1_a_disk_that_refills_takes_the_pass_past_the_model(self):
+    def test_f1_a_disk_that_refills_takes_the_pass_on_as_the_model_says(self):
         # Before any action, the code measures twice: once at the
         # head of a class's loop and once at the next class's
         # door. Under, then over, and the pass moves on to class
         # 2 with class 1's material still on the disk. The model
-        # ends the pass at the first reading of under.
+        # has that pass: it leaves class 1 at a reading of under
+        # and acts on class 2 at a reading of over.
         run = Pass(self, frozenset(CLASSES),
                    (OVER, UNDER, OVER, OVER) + (UNDER,) * 4)
         self.assertEqual(len(run.script), len(run.readings))
         self.assertFalse(run.steady)
         self.assertEqual((2,), run.classes)
         self.assertIn("runner.log.1", snapshot(run.base))
-        # It is outside the model, and inside P7: in order, after
-        # a reading of over, recorded.
         reached, _steps = search(list(model_init()), model_next)
-        self.assertNotIn((2,), {s[2] for s in reached
-                                if s[1] == frozenset(CLASSES)})
+        self.assertIn((2,), {s[2] for s in reached
+                             if s[1] == frozenset(CLASSES)
+                             and s[3] == "done"})
         self.assertIsNotNone(run.event)
 
-    def test_f2_material_of_0_bytes_goes_with_no_record(self):
+    def test_f2_material_of_0_bytes_is_given_up_on_the_record(self):
         # P7 clause 4: every pass that acts leaves 1 event. A pass
-        # that removes only 0 byte material acts, and leaves none:
-        # the action is noted only when it freed bytes.
+        # that removes only 0 byte material acts, and its event
+        # names each removal with the 0 bytes it freed.
         run = Pass(self, frozenset((1, 3, 4)), (OVER,) * 12, empty=True)
         self.assertEqual(["runner.log.1",
                           os.path.join("sent", "old-result.txt"),
                           os.path.join("work", "old-job")], run.roots)
-        self.assertIsNone(run.event)
         self.assertIsNone(run.raised)
+        self.assertEqual("disk_truncation", run.event["type"])
+        self.assertEqual(
+            [("runner.log.1", "remove", 0),
+             (os.path.join("sent", "old-result.txt"), "remove", 0),
+             (os.path.join("work", "old-job"), "remove", 0)],
+            [(a["path"], a["action"], a["bytes"])
+             for a in run.event["actions"]])
+        self.assertEqual(0, run.event["freed_bytes"])
 
-    def test_f3_a_reading_that_fails_mid_pass_reads_as_over(self):
+    def test_f3_a_reading_that_fails_mid_pass_ends_the_pass(self):
         # The first reading failing means no pass. A later one
-        # failing is taken as over: the pass goes on giving up
-        # material with no measurement that says the disk is full.
+        # failing ends the pass: nothing is given up without a
+        # measurement that says the disk is at or over the
+        # threshold, and the event of a pass that had acted says
+        # the disk may still be over.
         self.assertEqual([], Pass(self, frozenset(CLASSES), (None,)).changed)
         run = Pass(self, frozenset(CLASSES), (OVER,) + (None,) * 12)
-        self.assertEqual((1, 2, 3, 4), run.classes)
-        self.assertIsNotNone(run.event)
+        self.assertEqual(((), []), (run.classes, run.changed))
+        self.assertIsNone(run.event)
+        self.assertEqual([OVER, None, None], run.readings)
+        run = Pass(self, frozenset(CLASSES), (OVER, OVER) + (None,) * 12)
+        self.assertEqual((1,), run.classes)
+        self.assertEqual(["runner.log.1"], run.roots)
+        self.assertEqual([OVER, OVER, None, None], run.readings)
         self.assertTrue(run.event["still_over"])
         self.assertIsNone(run.event["disk_after"])
+
+    def test_a_workspace_removed_part_way_is_on_the_record(self):
+        # A removal that stops part way freed what it freed: the
+        # workspace stands, smaller, and the event says so.
+        present = frozenset((4,))
+        plain = shutil.rmtree
+        workspace = os.path.join("work", "old-job")
+
+        def held_open(first):
+            # rmtree, failing on the workspace alone: after its
+            # 1 file when `first` is set, before anything when
+            # it is not. Every other tree is removed as usual.
+            def rmtree(path, *rest, **more):
+                if not str(path).endswith(workspace):
+                    return plain(path, *rest, **more)
+                if first:
+                    os.remove(os.path.join(path, "leftover.bin"))
+                raise OSError("held open")
+            return rmtree
+
+        with mock.patch.object(shutil, "rmtree", held_open(True)):
+            run = Pass(self, present, (OVER,) * 12)
+        self.assertIs(plain, shutil.rmtree)
+        self.assertIsNone(run.raised)
+        self.assertEqual([os.path.join(workspace, "leftover.bin")],
+                         run.changed)
+        self.assertEqual(
+            [(workspace, "remove", 320)],
+            [(a["path"], a["action"], a["bytes"])
+             for a in run.event["actions"]])
+        with mock.patch.object(shutil, "rmtree", held_open(False)):
+            run = Pass(self, present, (OVER,) * 12)
+        self.assertEqual(([], None), (run.changed, run.event))
 
     def test_the_opt_out_is_a_pass_that_never_measures(self):
         # Not a gap: the model starts where the guard is enabled,

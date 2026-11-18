@@ -19,8 +19,9 @@ A later pass adds a fourth, for P12, the local envelope cap:
 `localgate.tla`, treated the same way.
 
 The passes recorded here changed nothing in the runner, and
-stated 6 findings. A later change closes 2 of them in the
-runner, F5 and F6, and each is marked where it stands below.
+stated 6 findings. Later changes closed them all, F2, F3, F5
+and F6 in the runner and F1 in the model, and each is marked
+where it stands below.
 
 ## The search
 
@@ -29,29 +30,40 @@ from the TLA+ file and searched to the fixed point, with the
 path to every state kept so a counterexample would come with
 its trace.
 
-- 32 initial states, 160 distinct states, 64 of them finished
-  passes. Over a combination of n classes with material, a
-  running pass stands at any of n + 1 points with the disk
-  over or under, and a finished one at any of those points
-  with the disk under, or at the last with the disk still
-  over: 3n + 4 states, summed over the 16 combinations.
-- `NeverStops`, `OrderRespected` and `RecordedFaithfully` hold
-  in every one of the 160.
-- The model moves: a pass that gives up all 4 classes in
-  order and records it is reached in 5 steps, a pass that
-  stops at the first reading of under is reached, and a pass
-  under the threshold acts on nothing and records nothing.
+The model as first searched ended a pass at the first reading
+of under. It had 32 initial states and 160 distinct states,
+64 of them finished passes, and the checker run of step D
+found the same 160. That model's reach was finding F1 below.
+The model now measures as the code does, before every action
+and again at the door of every class, with every measurement
+free to come out over, under, or not at all:
 
-These counts are the prediction for the checker, written
-before any run of it. A TLC run of `diskguard.cfg` that
-reports another number of distinct states is a finding
+- 48 initial states, 1,086 distinct states, 405 of them
+  finished passes. At the door of class k a pass stands in 1
+  way for an earlier class with no material and 2 for one
+  with it, acted on or left as it stood, by the 3 readings.
+- `NeverStops`, `OrderRespected` and `RecordedFaithfully` hold
+  in every one of the 1,086.
+- Over a combination of n classes the finished passes are its
+  classes in order with any of them left out, 2 to the n of
+  them.
+- The model moves: a pass that gives up all 4 classes in
+  order and records it is reached in 6 steps, no pass opens
+  but on a first reading of over, and a reading that fails
+  ends the pass where it stands.
+
+These counts are the prediction for the checker. The model
+changed after step D's run, so `diskguard.cfg` and its
+witness configurations want the checker again, and a run
+that reports another number of distinct states is a finding
 against this record or against the model.
 
-The model had no witness configurations. It has 2 now, each
-expected to fail: `diskguardwitnessacts.cfg` (the probe
-`NeverActs`) and `diskguardwitnessrecords.cfg` (the probe
-`NeverRecords`). The 2 probes are added at the foot of
-`diskguard.tla`, and nothing else in that file is changed.
+The model has 3 witness configurations, each expected to
+fail: `diskguardwitnessacts.cfg` (the probe `NeverActs`),
+`diskguardwitnessrecords.cfg` (the probe `NeverRecords`) and
+`diskguardwitnessrefill.cfg` (the probe
+`NeverLeavesMaterial`), whose counterexample is a disk that
+read under at one class and over again at the next.
 
 ## The conformance
 
@@ -81,45 +93,65 @@ action between them. On every one of the 1,516:
   disk changed, it names exactly the paths that changed, and
   its `still_over` is the last reading.
 
-And on a steady disk the code's finished passes are exactly
-the model's: for each of the 16 combinations, the sets of
-classes the code can end on are the prefixes of that
-combination in order, all of them and no others.
+And on every one the code's finished pass is one of the
+model's: for each of the 16 combinations, the sets of classes
+the code can end on are that combination's classes in order
+with any left out, all of them and no others. On a steady
+disk they are the prefixes of the combination. Off it, 412 of
+them leave an earlier class's material standing and act on a
+later class, and each of those is one of the model's too.
+
+2 more families of passes hold the changes that closed F2 and
+F3. The pass that reads over all the way is cut short at each
+of its readings in turn, 136 passes over the 16 combinations:
+the reading fails, nothing is given up after it, and no
+reading is asked for but the last. And the same pass over
+material of 0 bytes, on each combination, leaves an event
+that names exactly what it removed.
 
 ## Findings
 
-- **F1. The model ends a pass sooner than the code does.**
-  Before an action the code measures at the head of a
-  class's loop, and it measures again at the door of the next
-  class. If the first reads under and the second reads over,
-  the pass moves on to the later class with the earlier
-  class's material still on the disk. The model ends the pass
-  at the first reading of under. Of the 1,516 passes, 412 of
-  them end outside the model's finished passes, and none of
-  those is steady. Every one still keeps the order and
-  follows a reading of over, so P7 as worded holds. The gap
-  is in the model's reach: either the model gains the second
-  measurement, or its header says it assumes a steady disk.
-- **F2. Material of 0 bytes is removed with no record.** An
-  action is noted in the event only when it freed bytes. A
-  pass that removes only empty files or an empty workspace
-  changes the disk and returns no event. P7 clause 4 says
-  every pass that acts leaves 1 event. The smallest change
-  that closes it is to note an action when the path is gone,
-  whatever it freed.
-- **F3. A reading that fails in the middle of a pass is taken
-  as over.** A first reading that fails means no pass. A
-  later one that fails does not end the pass: it goes on
-  giving up material with no measurement that says the disk
-  is full, through all 4 classes if every later reading
-  fails too. P7 clause 2 says a later class is touched only
-  while the disk still measures at or over the threshold.
-- **F4. The model has no witnesses in its own files.** Closed
-  in this pass by the 2 configurations named above.
+- **F1. The model ended a pass sooner than the code does.**
+  Before an action the code measures at the head of a class's
+  loop, and it measures again at the door of the next class.
+  If the first reads under and the second reads over, the
+  pass moves on to the later class with the earlier class's
+  material still on the disk. The model as first searched
+  ended the pass at the first reading of under, and 412 of
+  the 1,516 passes ended outside its finished passes, none of
+  them steady.
 
-F2 and F3 are differences between the code and P7's own
-words, each held by a test as the tree stands today, so a
-change on either side shows as a change to that test.
+  Closed in the model. It measures at every door, as the code
+  does, and all 1,516 passes end on one of its finished
+  passes. P7 as worded held before and holds now: every pass
+  keeps the order, and every action follows a reading of
+  over.
+- **F2. Material of 0 bytes was removed with no record.** An
+  action was noted in the event only when it freed bytes, so
+  a pass that removed only empty files or an empty workspace
+  changed the disk and returned no event. P7 clause 4 says
+  every pass that acts leaves 1 event.
+
+  Closed in the code. A removal is noted when the path is
+  gone, whatever it freed, and a workspace removed part way
+  is noted with what that freed.
+- **F3. A reading that failed in the middle of a pass was
+  taken as over.** A first reading that fails means no pass.
+  A later one that failed did not end the pass: it went on
+  giving up material with no measurement that said the disk
+  was full, through all 4 classes if every later reading
+  failed too. P7 clause 2 says a later class is touched only
+  while the disk still measures at or over the threshold.
+
+  Closed in the code, and stated in the model. A measurement
+  that fails ends the pass. Nothing is given up after it, no
+  later measurement is asked for but the last, and the event
+  of a pass that had acted says the disk may still be over.
+- **F4. The model had no witnesses in its own files.** Closed
+  by the configurations named above.
+
+F1 to F3 are each held by a test as the tree stands now, so
+a change on either side shows as a change to that test.
 
 ## The second model: the secret floor, P13
 
@@ -303,14 +335,14 @@ the verifier on.
 
 ## What stands
 
-- **The checker run, step D.** Fetch the tools jar of the
-  version the stage records name, run TLC on `diskguard.cfg`
-  and the 2 witness configurations, and set its counts
-  beside the prediction above.
-- **The same run for `secretfloor.cfg`, `probegate.cfg` and
-  `localgate.cfg`** and their witness configurations.
-- **F1 to F3 stand.** F2 and F3 are differences between the
-  disk guard and P7's words, and F1 is in the model's reach.
-  F4, F5 and F6 are closed.
-- **P8 and P11 have no model.** `v4-working.md` names each as
-  more than a small step, and this record leaves them there.
+- **The checker, again, for 2 models.** Step D ran the
+  checker over every configuration, and its counts were the
+  searches' (`v4-working.md`). `diskguard.tla` and
+  `localgate.tla` changed after that run, when F1 and F6
+  were closed. Their configurations, 4 for the disk guard
+  and 3 for the local gate, want the checker again, against
+  1,086 and 200 distinct states. The verdicts on
+  `secretfloor.cfg` and `probegate.cfg` stand.
+- **P8 and P11 have their models** in the record that
+  follows this one, `v4-search-2.md`, with finding F7.
+- **No finding of this record stands open.**
