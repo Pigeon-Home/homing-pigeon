@@ -319,7 +319,7 @@ For the record, the protocol also permits the other
 arrangement: an implementation MAY support PGP on the
 mail binding (the draft, Section 5). It is not required,
 and the reference implementation does not do it, because
-the job encrypts itself (the draft, Section 16).
+a job encrypts itself (the draft, Section 16).
 
 ## Why does the protocol use no public-key (asymmetric) cryptography?
 
