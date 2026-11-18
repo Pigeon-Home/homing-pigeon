@@ -1,4 +1,4 @@
-"""The v4 binding's first model, searched and held to the code.
+"""The v4 binding's first 2 models, searched and held to the code.
 
 FUTURE.md item 1, step C continued. diskguard.tla states P7 of
 v4-properties.md: the disk guard gives up the runner's own
@@ -23,7 +23,14 @@ the suite:
                     P7's own words, part ways, each held as a
                     test so it cannot fade. The record is
                     docs/infrastructure-documents/proofs/v4-search.md.
+
+secretfloor.tla, the model of P13 that the working record named
+as a small step, is treated the same way at the foot of this
+module: searched, then held to the real build_secrets over every
+standing of 3 keys.
 """
+import hashlib
+import itertools
 import os
 import shutil
 import sys
@@ -34,7 +41,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
 sys.path.insert(0, ROOT)
 
+from runner.guard import security as SECURITY  # noqa: E402
 from runner.oracle import resources as RES  # noqa: E402
+from runner.wire import verify as VERIFY  # noqa: E402
 
 PROOFS = os.path.join(ROOT, "docs", "infrastructure-documents", "proofs")
 RECORD = os.path.join(PROOFS, "v4-search.md")
@@ -575,6 +584,192 @@ class Findings(unittest.TestCase):
                    cfg={"no_90_disk_truncation": True})
         self.assertEqual(([], []), (run.readings, run.changed))
         self.assertIsNone(run.event)
+
+
+# ---- The second model: secretfloor.tla, P13
+
+KEYS = ("default", "extra1", "extra2")
+STANDING = ("absent", "strong", "weak")
+
+
+def floor_init():
+    """Init: every standing of the default key and 2 additional
+    keys, nothing decided."""
+    for standing in itertools.product(STANDING, repeat=len(KEYS)):
+        yield (standing, False, False, "none")
+
+
+def causes(standing):
+    """Causes: the keys that, each alone, cost the start."""
+    found = {key for key, how in zip(KEYS, standing) if how == "weak"}
+    if standing[0] == "absent":
+        found.add("default")
+    return found
+
+
+def floor_next(state):
+    """Decide: a start when nothing costs it, else a refusal that
+    names one of its causes."""
+    standing, decided, _started, _named = state
+    if decided:
+        return
+    cost = causes(standing)
+    if not cost:
+        yield (standing, True, True, "none")
+    for key in sorted(cost):
+        yield (standing, True, False, key)
+
+
+def p13_inv(state):
+    standing, decided, started, _named = state
+    return (not (decided and started)
+            or (standing[0] == "strong" and "weak" not in standing))
+
+
+def names_a_cause(state):
+    standing, decided, started, named = state
+    return not (decided and not started) or named in causes(standing)
+
+
+class SecretFloorSearch(unittest.TestCase):
+    """secretfloor.tla's Init and Next, searched to the fixed
+    point."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.initial = list(floor_init())
+        cls.reached, _steps = search(cls.initial, floor_next)
+
+    def test_the_2_invariants_hold_in_every_reachable_state(self):
+        self.assertIsNone(first_breaking(self.reached, p13_inv))
+        self.assertIsNone(first_breaking(self.reached, names_a_cause))
+
+    def test_the_counts_are_the_prediction_for_the_checker(self):
+        # 27 key maps. 4 of them start. Each of the other 23 is
+        # refused once for every key that could be named.
+        started = [s for s in self.reached if s[1] and s[2]]
+        refused = [s for s in self.reached if s[1] and not s[2]]
+        self.assertEqual((27, 4, 36), (len(self.initial), len(started),
+                                       len(refused)))
+        self.assertEqual(27 + 4 + 36, len(self.reached))
+        self.assertIn("27 initial states, %d distinct states"
+                      % len(self.reached), _flat(RECORD))
+
+    def test_the_2_probes_are_false_somewhere_as_they_must_be(self):
+        self.assertIsNotNone(first_breaking(
+            self.reached, lambda s: not (s[1] and s[2])))
+        self.assertIsNotNone(first_breaking(
+            self.reached, lambda s: not (s[1] and not s[2])))
+        text = _read(os.path.join(PROOFS, "secretfloor.tla"))
+        for stated in (
+                "Causes(m) ==\n  {k \\in Keys : m[k] = \"weak\"}\n"
+                "    \\cup (IF m[\"default\"] = \"absent\" THEN "
+                "{\"default\"} ELSE {})",
+                "       THEN started' = TRUE /\\ named' = \"none\"\n"
+                "       ELSE started' = FALSE /\\ named' \\in Causes(map)",
+                "This file has not been run with TLC."):
+            self.assertIn(stated, text, stated)
+        self.assertTrue(_read(os.path.join(PROOFS, "secretfloor.cfg"))
+                        .endswith("SPECIFICATION Spec\nINVARIANT P13Inv\n"
+                                  "INVARIANT NamesACause\n"))
+        for name, probe in (
+                ("secretfloorwitnessstarts.cfg", "NothingStarts"),
+                ("secretfloorwitnessrefused.cfg", "NothingIsRefused")):
+            held = _read(os.path.join(PROOFS, name))
+            self.assertTrue(held.startswith("\\* Expected to fail."), name)
+            self.assertTrue(held.endswith(
+                "SPECIFICATION Spec\nINVARIANT %s\n" % probe), name)
+
+
+STRONG = {key: hashlib.sha384(("v4 floor " + key).encode()).hexdigest()
+          for key in KEYS}
+WEAK = {"default": "abcabcabcabc", "extra1": "a" * 40, "extra2": "q7T!x"}
+
+
+def key_map_config(standing, forms, folder):
+    """The configuration a standing of the 3 keys reads as, each
+    present key given inline or from a file of its own."""
+    cfg = {}
+    for key, how, form in zip(KEYS, standing, forms):
+        if how == "absent":
+            continue
+        value = STRONG[key] if how == "strong" else WEAK[key]
+        path = os.path.join(folder, key + ".secret")
+        if form == "file":
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(value)
+            os.chmod(path, 0o600)
+        if key == "default":
+            cfg["shared_secret_file" if form == "file"
+                else "shared_secret"] = path if form == "file" else value
+        elif form == "file":
+            cfg.setdefault("additional_secrets_files", {})[key] = path
+        else:
+            cfg.setdefault("additional_secrets", {})[key] = value
+    return cfg
+
+
+class SecretFloorConformance(unittest.TestCase):
+    """The real build_secrets, on every standing of the 3 keys and
+    every way of giving each present key."""
+
+    @classmethod
+    def setUpClass(cls):
+        folder = tempfile.mkdtemp(prefix="hp-v4-floor-")
+        cls.addClassCleanup(shutil.rmtree, folder, True)
+        cls.runs = []
+        for standing in itertools.product(STANDING, repeat=len(KEYS)):
+            ways = [("-",) if how == "absent" else ("inline", "file")
+                    for how in standing]
+            for forms in itertools.product(*ways):
+                cfg = key_map_config(standing, forms, folder)
+                try:
+                    built, said = VERIFY.build_secrets(cfg), None
+                except RuntimeError as exc:
+                    built, said = None, str(exc)
+                cls.runs.append((standing, forms, built, said))
+
+    def test_the_start_is_the_model_s_on_every_configuration(self):
+        started = 0
+        for standing, forms, built, said in self.runs:
+            where = (standing, forms)
+            self.assertEqual(not causes(standing), built is not None, where)
+            if built is None:
+                self.assertTrue(said.startswith("config error: "), where)
+                continue
+            started += 1
+            # A key map that was built holds the default key under
+            # its 2 names and each additional key under its own,
+            # and nothing in it is under the floor.
+            names = {key for key, how in zip(KEYS[1:], standing[1:])
+                     if how != "absent"}
+            self.assertEqual(names | {""}, {
+                k for k in built if not k.startswith("k-")}, where)
+            for secret in built.values():
+                self.assertGreaterEqual(
+                    SECURITY._estimate_secret_entropy(secret), 128, where)
+        self.assertEqual((125, 18), (len(self.runs), started))
+        self.assertIn("125 configurations, 18 of them start and 107 are "
+                      "refused", _flat(RECORD))
+
+    def test_f5_a_weak_additional_key_is_refused_in_the_default_s_name(self):
+        # The refusal is right. The name in it is the default
+        # key's setting whichever key was weak, so when only an
+        # additional key is weak the error names a key that did
+        # not cost the start. P6 clause 4 asks that the error
+        # name the setting.
+        refused = [run for run in self.runs if run[2] is None]
+        wrong = 0
+        for standing, forms, _built, said in refused:
+            self.assertRegex(said, r"^config error: shared_secret is "
+                                   r"(too weak|required)", (standing, forms))
+            for key in KEYS[1:]:
+                self.assertNotIn(key, said)
+            self.assertNotIn("additional_secrets", said)
+            if "default" not in causes(standing):
+                wrong += 1
+        self.assertEqual((107, 32), (len(refused), wrong))
+        self.assertIn("32 of the 107 refusals", _flat(RECORD))
 
 
 if __name__ == "__main__":

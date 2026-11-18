@@ -9,7 +9,11 @@ This pass does the 3 things that need no checker, and the
 suite now does them on every run:
 `runner/tests/test_v4_models.py`.
 
-Nothing here changes the runner. The 4 findings below are
+The same pass then writes the model `v4-working.md` names
+as a small step for P13, the secret floor, and treats it the
+same way: `secretfloor.tla`, searched and held to the code.
+
+Nothing here changes the runner. The 5 findings below are
 stated, not fixed.
 
 ## The search
@@ -111,13 +115,59 @@ F2 and F3 are differences between the code and P7's own
 words, each held by a test as the tree stands today, so a
 change on either side shows as a change to that test.
 
+## The second model: the secret floor, P13
+
+`secretfloor.tla` is one decision, in the shape of
+`decision.tla`: a key map with a default key and 2 additional
+keys, each absent, strong, or weak, and the start that
+follows. The runner starts when nothing costs the start, and
+a start that is refused names a key that cost it. 2
+invariants: `P13Inv`, a runner that started holds its default
+key and no weak key, and `NamesACause`, which is P6 clause 4
+for this refusal. 2 witness configurations, each expected to
+fail.
+
+The search: 27 initial states, 67 distinct states. 4 key maps
+start, and the other 23 are refused once for every key that
+could be named, 36 refusals in all. Both invariants hold in
+every state. These counts are the prediction for the checker,
+as above.
+
+The conformance: the real `build_secrets` in
+`runner/wire/verify.py`, on every standing of the 3 keys and
+every way of giving each present key, inline or from a file
+of its own. That is 125 configurations, 18 of them start and
+107 are refused, and the start is the model's on every one. A
+key map that was built holds nothing under 128 estimated
+bits.
+
+P13 as written speaks of the shared secret. The code is
+stronger than the words: the floor is applied to every key in
+the map, the additional keys as much as the default, every
+time the map is built. The model states it that way.
+
+- **F5. A weak additional key is refused in the default
+  key's name.** The refusal says `shared_secret is too weak`
+  whichever key was weak. When only an additional key is
+  weak, the error names a key that did not cost the start,
+  and never names the one that did: 32 of the 107 refusals.
+  The refusal itself is right, so P13 holds. `NamesACause`
+  does not hold of the code, and P6 clause 4 asks that the
+  error name the setting. A relay on a chain holds its hop
+  secrets as additional keys, so this is the error an
+  operator setting up a relay would meet. The smallest
+  change that closes it is to hand the reader the setting's
+  name with the secret.
+
 ## What stands
 
 - **The checker run, step D.** Fetch the tools jar of the
   version the stage records name, run TLC on `diskguard.cfg`
   and the 2 witness configurations, and set its counts
   beside the prediction above.
-- **F1 to F3 are for the seat that carries the runner and
-  the model.** This pass changed neither.
-- **The models for P10 and P13**, which `v4-working.md` names
-  as small steps, are not begun here.
+- **The same run for `secretfloor.cfg`** and its 2 witness
+  configurations.
+- **F1 to F3 and F5 are for the seat that carries the runner
+  and the models.** This pass changed no runner code.
+- **The model for P10**, which `v4-working.md` names as a
+  small step, is not begun here.
