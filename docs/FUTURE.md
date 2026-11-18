@@ -5,4 +5,4 @@
 - cyber turret for a reverse 'skynet' protocol execution and your local network infra def
 - define host-network topology rules for local helper bots coordinated by Oracle - (repair, repair_patrols, hdd_patrols, security_patrols) [oracle key dist]
 - Prompts & Secret Agents "You may pull the shared secret & platform information from my mailbox." [HOMING-PIGEON] RUNNER_KEY Your-Shared-Secret
-- reduce global deps on centralize Internet PKI, delete public infra pki deps by performing self-hosted key management system via current attestation mech
+- reduce idea: global deps on centralize Internet PKI, delete public infra pki deps by performing self-hosted key management system via current attestation mech
