@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.29.10 - 2026-11-18
+
+- Docs: FUTURE.md carries wording updates from three edits by DRU (since 3.17.29.9)
+- Desk: the forum log notes the conductor and Claude at work on her accessibility filings
+- Desk: Q180 checked by the seat that asked it, and closed
+
 ## 3.17.29.9 - 2026-11-18
 
 - desk: Q180 carries its answer, the 5 asks in order
