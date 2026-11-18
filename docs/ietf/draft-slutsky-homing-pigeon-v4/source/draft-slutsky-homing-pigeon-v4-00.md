@@ -191,8 +191,8 @@ Witness configuration:
 Finding:
 : A recorded place where the implementation and a property's
   words, or a model and the implementation, differ. Findings
-  are numbered F1 to F7 and are stated, not resolved, by the
-  model work.
+  are numbered F1 to F7, and each is stated in the findings
+  section with the resolution that closed it.
 
 # The Method
 
@@ -319,9 +319,10 @@ A present but unusable value in the refuse class of
 settings stops the runner at startup, and the error names
 the setting that cost the start. The model is the decision
 model. Verdict: the invariants hold; the witness
-configurations fail as designed. Finding F5 records the
-one place the code's naming falls short of this property,
-at the secret floor.
+configurations fail as designed. Finding F5 recorded the
+one place the code's naming fell short of this property,
+at the secret floor; a weak additional key is now refused
+under its own setting's name, and the finding is closed.
 
 ## P7. The disk guard cannot stop the runner
 
@@ -334,12 +335,12 @@ the configuration, or the security event log. The model is
 the disk guard model: 160 distinct states under search, its
 invariants holding in every one, and TLC returns the same
 count with no error. The witness configurations fail as
-designed. Findings F1, F2, and F3 bound this property: the
-model ends a pass sooner than the code does, a removal of
-0 bytes leaves no record, and a measurement that fails in
-the middle of a pass is taken as over. F2 and F3 are
-differences from the property's own words, held by tests
-as the tree stands.
+designed. Findings F1, F2, and F3 bounded this property
+and are closed: the model now measures as the code does,
+a removal is recorded whatever it freed, and a measurement
+that fails ends the pass. F2 and F3 were differences from
+the property's own words, closed in the runner; F1 was a
+difference of the model, closed in the model.
 
 ## P8. A v3 session that can agree the hybrid group does so
 
@@ -382,23 +383,27 @@ starts the model stands in, and the gate's answer is the
 model's on every one. The witness configurations fail as
 designed.
 
-## P11. A result body never leaves over the cap
+## P11. A result body leaves within max_result_bytes, down to the fitting's floor
 
 When max_result_bytes is set to a non-zero value, the body
-that is signed and sent is at most that many bytes, and a
-cut is marked result_truncated. The model is the result
-fitting model: 12 distinct states under search, the
+that is signed and sent is at most that many bytes, down
+to the fitting's floor, and a cut is marked
+result_truncated; under a result's floor the body leaves
+at the floor, over the cap and marked. The model is the
+result fitting model: 12 distinct states under search, the
 marking and unlimited and fitting invariants holding in
-every one, and TLC returns the same count with no error.
-The configuration that states the property's own words is
-expected to fail, at exactly one class: finding F7. The
-fitting cannot cut below the size of its own last pass,
-the fixed envelope plus both streams at their first and
-last 2 KiB; for a result with 40000 bytes on each stream
-that floor is 4625 bytes, and a cap under the floor gets
-the body at the floor's size, over the cap, marked. The
-marking is honest and the signature covers what is sent;
-what fails is the cap itself.
+every one, the floor invariant with them, and TLC returns
+the same count with no error. The configuration that
+states the cap with no floor is expected to fail, at
+exactly one class: finding F7. The fitting cannot cut
+below the size of its own last pass, the fixed envelope
+plus both streams at their first and last 2 KiB; for a
+result with 40000 bytes on each stream that floor is 4625
+bytes, and a cap under the floor gets the body at the
+floor's size, over the cap, marked. The marking is honest
+and the signature covers what is sent. Finding F7 is
+closed by the floor standing in the property's words;
+nothing in the runner changed.
 
 ## P12. A local envelope over the cap is refused unread
 
@@ -415,10 +420,12 @@ real cap, counting the bytes read at the door itself and
 standing in for the verifier: nothing over the cap reaches
 it, and an envelope of exactly the cap goes through. The
 witness configurations fail as designed. Finding F6
-records that a file whose cut at the cap falls inside a
-character is refused with the reason that it is not UTF-8:
-the refusal is right, and the reason is true of what was
-read, not of the envelope.
+recorded that a file whose cut at the cap falls inside a
+character was refused with the reason that it is not
+UTF-8. The scan now reads the size of what it read before
+it decodes anything, and a file over the cap is refused
+as too large wherever its cut falls; the finding is
+closed.
 
 ## P13. The runner does not start on a weak secret
 
@@ -430,35 +437,46 @@ invariants holding in every one, and TLC returns the same
 count with no error. The conformance builds the real key
 map over every standing of 3 keys, 125 configurations, and
 the start is the model's on every one. The witness
-configurations fail as designed. Finding F5 records that a
-refusal caused by a weak additional key names the default
-key instead: the refusal is right, and the name is wrong,
-in 32 of the 107 refused configurations.
+configurations fail as designed. Finding F5 recorded that
+a refusal caused by a weak additional key named the
+default key instead: the refusal was right, and the name
+was wrong, in 32 of the 107 refused configurations. The
+refusal now names the key under its own setting's name,
+on all 107 refusals, and the finding is closed.
 
 # The Findings
 
-The model work states 7 findings. None is resolved by this
-document; each is held by a test as the tree stands, so a
-change on either side, the code's or the words', shows as a
-test change.
+The model work stated 7 findings. All 7 are closed, each
+in the place its difference lived: F2, F3, F5, and F6 in
+the runner, F1 and F4 in the model and its files, and F7
+in the property's words. Each remains held by a test as
+the tree stands, so a change on either side, the code's
+or the words', shows as a test change.
 
 F1:
-: The disk guard model ends a pass sooner than the code
+: The disk guard model ended a pass sooner than the code
   does. The code measures again at the door of the next
   class, and a pass can continue where the model stopped.
-  The property as worded holds; the model's reach is the
-  gap.
+  Closed in the model: it now measures as the code does,
+  before every action and again at the door of every
+  class, and every pass the real guard can make ends on
+  one of the model's finished passes.
 
 F2:
-: Material of 0 bytes is removed by the disk guard with no
-  record, against P7's clause that every acting pass
-  leaves an event.
+: Material of 0 bytes was removed by the disk guard with
+  no record, against P7's clause that every acting pass
+  leaves an event. Closed in the runner: the guard notes
+  a removal when the path is gone, whatever it freed, and
+  an event names exactly what a pass removed.
 
 F3:
 : A disk measurement that fails in the middle of a guard
-  pass is taken as over, and the pass continues giving up
-  material, against P7's clause that a later class is
+  pass was taken as over, and the pass continued giving
+  up material, against P7's clause that a later class is
   touched only while the disk measures at or over the
+  threshold. Closed in the runner: a measurement that
+  fails ends the pass, and nothing is given up without a
+  measurement that says the disk is at or over the
   threshold.
 
 F4:
@@ -466,21 +484,31 @@ F4:
   in its own files. Closed by adding them.
 
 F5:
-: A weak additional key is refused in the default key's
+: A weak additional key was refused in the default key's
   name, against P6's clause that the error names the
-  setting that cost the start.
+  setting that cost the start. Closed in the runner: the
+  key is refused under its own setting's name, and the
+  naming holds of the real key map on all 107 refusals.
 
 F6:
-: A file cut inside a character at the local cap is
+: A file cut inside a character at the local cap was
   refused as not UTF-8, though it is UTF-8 read whole and
   its fault is its size, against P12's clause that the
-  recorded reason is the envelope's.
+  recorded reason is the envelope's. Closed in the
+  runner: the scan reads the size of what it read before
+  it decodes anything, and a file over the cap is refused
+  as too large wherever its cut falls.
 
 F7:
 : A result cap under the fitting's floor sends the body
-  over the cap, marked, against P11's words. The floor is
-  a property of the fitting's last pass, not of any one
-  result.
+  over the cap, marked, against P11's words as they
+  stood. The floor is a property of the fitting's last
+  pass, not of any one result. Closed in the property's
+  words, by the owner's decision: P11 now holds down to
+  the fitting's floor, and under the floor the body
+  leaves at the floor, over the cap and marked; the
+  runner is unchanged, and a marked result over the cap
+  stands.
 
 # Operational Considerations
 
@@ -510,10 +538,9 @@ The security value of this document is the precision of its
 claims. A property that has been checked is stated with the
 model that checks it and the count of states the checker
 examined, and the findings state where the implementation
-falls short of a property's strongest reading, including
-the two places, F2 and F3, where it falls short of the
-property's own words, and F7, where a stated cap does not
-hold under a floor the fitting cannot go below. A reader
+fell short of a property's strongest reading, and how
+each such place was closed: in the runner, in the model,
+or in the property's own words. A reader
 deciding how much to trust the runner should weigh the
 findings as part of the protocol's security posture, not
 as footnotes to it.

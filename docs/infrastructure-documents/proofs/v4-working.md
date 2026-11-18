@@ -577,3 +577,41 @@ posted. Nothing in the draft's folder is changed here.
 With this, no finding of the v4 search stands open: F1 to F7
 are closed, F2, F3, F5 and F6 in the runner, F1 and F4 in
 the model and its files, and F7 in the property's words.
+
+## The checker again, on the 3 changed models
+
+Run 2026-11-18 with TLC 2.19 (the v1.7.4 tools jar) on
+Java 21, over the 9 configurations that wanted the checker
+again: the 3 main configurations whose models or
+invariants changed after step D's run, and their 6 witness
+configurations. The run was made on scratch copies of the
+shelf, each model copied to its module's name, as step D's
+run was. Nothing on the shelf changed for the run.
+
+Every main configuration reports no error, and each
+reports the distinct state count its record predicted.
+Every witness configuration reports the violation it
+exists to produce, of the invariant it names:
+
+- DiskGuard (P7): `diskguard.cfg` passes, 1,086 states,
+  the count the F1 record predicted. The witnesses
+  violate: `diskguardwitnessacts.cfg` (NeverActs),
+  `diskguardwitnessrecords.cfg` (NeverRecords),
+  `diskguardwitnessrefill.cfg` (NeverLeavesMaterial).
+- LocalGate (P12): `localgate.cfg` passes, 200 states,
+  the count the F6 record predicted. The witnesses
+  violate: `localgatewitnesssize.cfg`
+  (NothingIsRefusedForSize),
+  `localgatewitnessverifies.cfg`
+  (NothingReachesTheVerifier).
+- ResultFit (P11): `resultfit.cfg` passes, 12 states,
+  with `P11Floor` among its invariants, holding in all 12,
+  as the F7 record predicted. The witnesses violate:
+  `resultfitwitnessshrunk.cfg` (NothingIsShrunk), as
+  designed, and `resultfitwitnesscap.cfg` (P11Inv): the
+  cap with no floor still fails at the fixed class, the
+  class the floor is for.
+
+With this run the 3 models that changed after step D stand
+checked at their changed shapes, and no configuration of
+theirs wants the checker again.
