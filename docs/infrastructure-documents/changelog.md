@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.29.3 - 2026-11-18
+
+- Docs: FUTURE.md updated: wording edits to the IETF v4 line (provable security model), the volta line, and the cyber turret line (since 3.17.29.2)
+
 ## 3.17.29.2 - 2026-11-18
 
 - Docs: FUTURE.md notes banked: self-hosted key management to reduce public PKI dependencies, and generalize proof (since 3.17.29.1)
