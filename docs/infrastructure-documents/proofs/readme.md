@@ -268,9 +268,9 @@ A finding is most useful when it points at the file and the line
   states it, with the new properties P7 to P13 stated in
   full. `diskguard.tla` is the first model of that work,
   of P7. The checker run for every model on this shelf
-  stands recorded in `v4-working.md`, step D. `diskguard.tla`
-  and `localgate.tla` changed after that run, when findings
-  were closed, and want the checker again.
+  stands recorded in `v4-working.md`, step D. `diskguard.tla`,
+  `localgate.tla` and `resultfit.tla` changed after that run,
+  when findings were closed, and want the checker again.
 - `v4-search.md`: the first 4 models searched without a
   checker and held to the code. `diskguard.tla`,
   `secretfloor.tla`, the model of P13, `probegate.tla`, the
@@ -289,8 +289,8 @@ A finding is most useful when it points at the file and the line
   TLC run and its witness configurations; the real
   selection and the real fitting driven over their
   decision spaces, P9 pinned by reading the documents,
-  and finding F7. The same suite carries these searches
-  and this conformance too.
+  and finding F7, closed in P11's words. The same suite
+  carries these searches and this conformance too.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.

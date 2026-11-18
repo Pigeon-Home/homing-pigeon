@@ -1857,7 +1857,16 @@ def fits_asis(state):
     return not (decided and body == "fits") or sent == "asis"
 
 
+def p11_floor(state):
+    """P11Floor: P11 as it is worded, with its floor."""
+    cap, body, decided, sent, marked = state
+    return (not (decided and cap == "set")
+            or ((body == "fixed" or sent != "over")
+                and (sent != "over" or marked)))
+
+
 def p11_inv(state):
+    """P11Inv: the cap with no floor, the witness's probe."""
     cap, _body, decided, sent, _marked = state
     return not (decided and cap == "set") or sent != "over"
 
@@ -1871,15 +1880,20 @@ class ResultFitSearch(unittest.TestCase):
         cls.initial = list(fit_init())
         cls.reached, _steps = search(cls.initial, fit_next)
 
-    def test_the_3_kept_invariants_hold_in_every_reachable_state(self):
-        for holds in (marked_when_cut, cap_zero_asis, fits_asis):
+    def test_the_4_invariants_hold_in_every_reachable_state(self):
+        # The 3 the fitting keeps, and P11 as it is worded,
+        # the cap down to the fitting's floor.
+        for holds in (marked_when_cut, cap_zero_asis, fits_asis,
+                      p11_floor):
             self.assertIsNone(first_breaking(self.reached, holds),
                               holds.__name__)
 
-    def test_p11_s_own_words_break_at_exactly_the_fixed_class(self):
-        # The witness configuration's invariant: it fails, and
-        # every state it fails on is the fixed class under a
-        # set cap, and there is exactly 1 such decided state.
+    def test_the_cap_with_no_floor_breaks_at_exactly_the_fixed_class(self):
+        # The witness configuration's invariant, the cap with
+        # no floor: it fails, and every state it fails on is
+        # the fixed class under a set cap, and there is exactly
+        # 1 such decided state. That class is the floor P11's
+        # words name.
         breaking = [s for s in self.reached if not p11_inv(s)]
         self.assertEqual(1, len(breaking))
         cap, body, decided, sent, marked = breaking[0]
@@ -1905,10 +1919,16 @@ class ResultFitSearch(unittest.TestCase):
                 "              ELSE sent' = \"over\" /\\ marked' = TRUE",
                 "Not yet run with TLC."):
             self.assertIn(stated, text, stated)
+        self.assertIn(
+            "P11Floor ==\n"
+            "  (decided /\\ cap = \"set\") =>\n"
+            "    /\\ (body /= \"fixed\" => sent /= \"over\")\n"
+            "    /\\ (sent = \"over\" => marked)\n", text)
         self.assertTrue(_read(os.path.join(PROOFS, "resultfit.cfg"))
                         .endswith("INVARIANT MarkedWhenCut\n"
                                   "INVARIANT CapZeroAsIs\n"
-                                  "INVARIANT FitsAsIs\n"))
+                                  "INVARIANT FitsAsIs\n"
+                                  "INVARIANT P11Floor\n"))
         for name, probe in (
                 ("resultfitwitnessshrunk.cfg", "NothingIsShrunk"),
                 ("resultfitwitnesscap.cfg", "P11Inv")):
@@ -1984,18 +2004,37 @@ class ResultFitConformance(unittest.TestCase):
         self.assertIn("the floor is %s bytes" % _said(lo),
                       _flat(RECORD2))
 
-    def test_f7_a_cap_under_the_floor_sends_the_body_over_it(self):
-        # Finding F6, held as the tree stands: P11's words say
-        # no body leaves over a non-zero cap. At a cap under
-        # the fitted floor the body leaves at 4,625 bytes,
-        # over the cap, marked result_truncated, because the
-        # fitting has nothing left to cut. A change on either
-        # side, the property's words or the fitting's last
-        # pass, shows up here.
-        res, body = _fit(100)
-        self.assertGreater(len(body.encode("utf-8")), 100)
-        self.assertEqual("max_result_bytes",
-                         res["result_truncated"]["reason"])
+    def test_f7_the_cap_holds_down_to_the_floor_and_p11_says_so(self):
+        # Finding F7, closed in the property's words. P11 says
+        # the body leaves within the cap, down to the fitting's
+        # floor. Over a sweep of caps from 1 to past the floor,
+        # the real body is never over both the cap and the
+        # floor, a body at the floor is marked, and under the
+        # floor it leaves at the floor, over the cap. A change
+        # on either side, the property's words or the fitting's
+        # last pass, shows up here.
+        floor = 4625
+        caps = sorted(set(range(1, floor + 400, 37))
+                      | {floor - 1, floor, floor + 1, 9000, 20000})
+        self.assertEqual(140, len(caps))
+        under = 0
+        for cap in caps:
+            res, body = _fit(cap)
+            size = len(body.encode("utf-8"))
+            self.assertLessEqual(size, max(cap, floor), cap)
+            self.assertEqual("max_result_bytes",
+                             res["result_truncated"]["reason"], cap)
+            if cap < floor:
+                self.assertEqual(floor, size, cap)
+                under += 1
+            else:
+                self.assertLessEqual(size, cap, cap)
+        self.assertEqual(126, under)
+        words = _flat(os.path.join(PROOFS, "v4-properties.md"))
+        self.assertIn("P11. A result body leaves within "
+                      "`max_result_bytes`, down to the fitting's floor",
+                      words)
+        self.assertIn("larger than that result's floor", words)
         self.assertIn("Finding F7", _flat(RECORD2))
 
 

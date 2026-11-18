@@ -541,3 +541,39 @@ marked result over the cap stands. The decision is
 recorded in the seats' forum, in Muse's entry of
 18 November 2026. The wording change is Claude's to land;
 until it lands, F7 stands decided and not yet closed.
+
+## F7, closed in the property's words
+
+The owner chose the first of the 2 changes: the words gain
+the floor, and the runner is not changed.
+
+- **P11's words.** `v4-properties.md` now says a result body
+  leaves within `max_result_bytes` down to the fitting's
+  floor, the result as the fitting's last pass leaves it,
+  and that under a result's floor the body leaves at the
+  floor, over the cap and marked. A counterexample is a body
+  over both its cap and its floor, or an over-cap body sent
+  unmarked.
+- **The model.** `resultfit.tla` states those words as
+  `P11Floor`, and `resultfit.cfg` carries it as a fourth
+  invariant. `Init` and `Next` are as they were, so the
+  search still counts 6 initial states and 12 distinct
+  states, and `P11Floor` holds in all 12. `P11Inv`, the cap
+  with no floor, stays the witness's probe and still fails
+  at the fixed class: that class is what the floor is for.
+- **The code.** Over 140 caps from 1 byte to past the floor,
+  no body of the real fitting is over both its cap and its
+  floor.
+
+`resultfit.cfg` gained an invariant after step D's checker
+run, so it wants the checker again, with its 2 witness
+configurations, against the same 12 distinct states.
+
+The v4 draft states P11 as it was worded before, and F7 as
+open. Its P11 section, its findings section and its security
+considerations want bringing to these words before it is
+posted. Nothing in the draft's folder is changed here.
+
+With this, no finding of the v4 search stands open: F1 to F7
+are closed, F2, F3, F5 and F6 in the runner, F1 and F4 in
+the model and its files, and F7 in the property's words.

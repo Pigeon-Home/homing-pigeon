@@ -208,22 +208,29 @@ an audit-only run after the probe failed.
 
 ## Part 3: standing constraints no property stated
 
-### P11. A result body never leaves over `max_result_bytes`
+### P11. A result body leaves within `max_result_bytes`, down to the fitting's floor
 
 C3, stated by no property until now. For every result the
 runner delivers on the mail path, when `max_result_bytes`
 is set to a non-zero value, the body that is signed and sent
-is at most that many bytes: a body over the cap has its
-streams cut to head and tail before signing, is marked with
-`result_truncated` naming the bytes dropped, and the cut is
-logged (`runner/ops/mail.py`, the fit-before-signing step;
-`_fit_result_body` and `_max_result_bytes` in
-`runner/runner.py`). When the cap is 0, the property is
-vacuous and says so: unlimited is the owner's stated choice.
+is at most that many bytes, down to the fitting's floor: a
+body over the cap has its streams cut to head and tail
+before signing, is marked with `result_truncated` naming the
+bytes dropped, and the cut is logged (`runner/ops/mail.py`,
+the fit-before-signing step; `_fit_result_body` and
+`_max_result_bytes` in `runner/runner.py`). The floor is the
+result as the fitting's last pass leaves it, with both
+streams at their first and last 2 KiB: the streams are all
+the fitting cuts. A cap under a result's floor cannot be
+kept by cutting, and the body then leaves at the floor, over
+the cap and marked: the runner sends a marked result rather
+than none. When the cap is 0, the property is vacuous and
+says so: unlimited is the owner's stated choice.
 
 A counterexample to P11 is a signed result body larger than
 a non-zero `max_result_bytes` in the configuration the
-handling loaded, or an over-cap body sent unmarked.
+handling loaded and larger than that result's floor, or an
+over-cap body sent unmarked.
 
 ### P12. A local envelope over the cap is refused unread by the gate
 

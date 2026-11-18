@@ -335,14 +335,17 @@ the verifier on.
 
 ## What stands
 
-- **The checker, again, for 2 models.** Step D ran the
+- **The checker, again, for 3 models.** Step D ran the
   checker over every configuration, and its counts were the
   searches' (`v4-working.md`). `diskguard.tla` and
   `localgate.tla` changed after that run, when F1 and F6
-  were closed. Their configurations, 4 for the disk guard
-  and 3 for the local gate, want the checker again, against
-  1,086 and 200 distinct states. The verdicts on
-  `secretfloor.cfg` and `probegate.cfg` stand.
+  were closed, and `resultfit.tla` gained an invariant when
+  F7 was. Their configurations, 4 for the disk guard, 3 for
+  the local gate and 3 for the result fitting, want the
+  checker again, against 1,086, 200 and 12 distinct states.
+  The verdicts on `secretfloor.cfg`, `probegate.cfg` and
+  `hybridselect.cfg` stand.
 - **P8 and P11 have their models** in the record that
-  follows this one, `v4-search-2.md`, with finding F7.
+  follows this one, `v4-search-2.md`, with finding F7,
+  closed there.
 - **No finding of this record stands open.**
