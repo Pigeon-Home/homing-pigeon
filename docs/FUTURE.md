@@ -7,3 +7,4 @@
 - Prompts & Secret Agents "You may pull the shared secret & platform information from my mailbox." [HOMING-PIGEON] RUNNER_KEY Your-Shared-Secret
 - reduce idea: global deps on centralize Internet PKI, delete public infra pki deps by performing self-hosted key management system via current attestation mech
 - formalize proof
+- anna founding builder prog research & resp
