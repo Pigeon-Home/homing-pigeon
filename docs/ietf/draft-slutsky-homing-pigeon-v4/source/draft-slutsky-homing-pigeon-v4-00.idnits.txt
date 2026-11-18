@@ -1,0 +1,13 @@
+# idnits 3.3.0 (CLI run, offline: the RFC status lookups cannot leave this host).
+# 2026-11-18. Fresh run on the v4 -00 working draft, in submission mode, on the
+# text and on the XML. The one nit of the first run, the RFC 9147 reference
+# listed but not cited, was fixed by citing it at the DTLS 1.3 mention in the
+# Introduction, and the re-render was checked again: both files are nit-free,
+# 0 errors, 0 warnings, 0 comments. The draft has not been posted; the author
+# posts drafts himself.
+
+$ idnits --offline --no-progress --no-color --mode submission -o simple draft-slutsky-homing-pigeon-v4-00.txt
+PASS - Document draft-slutsky-homing-pigeon-v4-00.txt is nit-free. (mode: submission)
+
+$ idnits --offline --no-progress --no-color --mode submission -o simple draft-slutsky-homing-pigeon-v4-00.xml
+PASS - Document draft-slutsky-homing-pigeon-v4-00.xml is nit-free. (mode: submission)
