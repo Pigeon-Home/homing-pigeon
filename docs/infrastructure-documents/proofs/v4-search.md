@@ -18,8 +18,9 @@ the code.
 A later pass adds a fourth, for P12, the local envelope cap:
 `localgate.tla`, treated the same way.
 
-Nothing here changes the runner. The 6 findings below are
-stated, not fixed.
+The passes recorded here changed nothing in the runner, and
+stated 6 findings. A later change closes 2 of them in the
+runner, F5 and F6, and each is marked where it stands below.
 
 ## The search
 
@@ -151,18 +152,23 @@ stronger than the words: the floor is applied to every key in
 the map, the additional keys as much as the default, every
 time the map is built. The model states it that way.
 
-- **F5. A weak additional key is refused in the default
-  key's name.** The refusal says `shared_secret is too weak`
-  whichever key was weak. When only an additional key is
-  weak, the error names a key that did not cost the start,
-  and never names the one that did: 32 of the 107 refusals.
-  The refusal itself is right, so P13 holds. `NamesACause`
-  does not hold of the code, and P6 clause 4 asks that the
+- **F5. A weak additional key was refused in the default
+  key's name.** The refusal said `shared_secret is too weak`
+  whichever key was weak. When only an additional key was
+  weak, the error named a key that did not cost the start,
+  and never named the one that did: 32 of the 107 refusals.
+  The refusal itself was right, so P13 held. `NamesACause`
+  did not hold of the code, and P6 clause 4 asks that the
   error name the setting. A relay on a chain holds its hop
-  secrets as additional keys, so this is the error an
-  operator setting up a relay would meet. The smallest
-  change that closes it is to hand the reader the setting's
-  name with the secret.
+  secrets as additional keys, so this was the error an
+  operator setting up a relay would meet.
+
+  Closed. `build_secrets` puts each additional secret
+  through the floor under its own setting's name, and the
+  refusal carries it: `additional_secrets['hop1'] is too
+  weak`, or `additional_secrets_files['hop1']` for a key
+  given from a file. The default key is named as before.
+  `NamesACause` holds of the code on all 107 refusals.
 
 ## The third model: the probe gate, P10
 
@@ -227,14 +233,15 @@ reaches the verifier is at most the cap and is the whole
 envelope, never the head of a longer one; `SymlinkUnread`,
 nothing of a symlink's target is read; `ReadBounded`, the
 scan reads at most 1 byte past the cap and the listener at
-most 1 chunk past it; and `OverCapRefused`, an envelope over
-the cap is refused under a recorded reason. 2 witness
+most 1 chunk past it; and `OverCapRefusedForSize`, an
+envelope over the cap is refused for its size, whatever its
+bytes are and wherever the cut falls. 2 witness
 configurations, each expected to fail.
 
 The search: 96 initial states, 200 distinct states. A stream
 2 or more over the cap can stop on 2 totals, so 8 arrivals
 decide 2 ways: 104 decisions, 8 of them at the verifier and
-24 refused for size. All 4 invariants hold in every state.
+32 refused for size. All 4 invariants hold in every state.
 
 The conformance: the real doors at the real cap of 262,144
 bytes. 112 arrivals, 140 runs: 7 sizes from nothing to 1
@@ -256,28 +263,35 @@ every run. On the code:
 - **A symlink is refused unread.** Nothing is opened at the
   link, the target is as it was, the link is removed, and
   the refusal is logged. All 28, whatever the target's size.
-- **Every refusal over the cap is recorded**, 1 line at WARN
-  naming the door.
+- **Every refusal over the cap is recorded as its size**, 1
+  line at WARN naming the door, on all 48 runs.
 - **The comparison has teeth.** The same doors run with the
-  cap 1 byte higher part from the model on 22 runs, every
+  cap 1 byte higher part from the model on 24 runs, every
   one of them over the true cap.
 
-The reason recorded is where the code and P12's words part
-ways:
+The reason recorded is where the code and P12's words parted
+ways when the model was first held to the scan:
 
-- **F6. A file cut inside a character is refused as not
-  UTF-8.** The scan reads 1 byte past the cap and decodes
-  what it read before the size is checked. When the cut
-  falls inside a character, the file is dropped as
-  `envelope is not UTF-8`, though it is UTF-8 when read
-  whole and its fault is its size: 3 of the 8 files over the
-  cap that decode whole. The same bytes at the listener are
-  refused as too large. The refusal itself is right, so the
-  safety P12 states holds. The reason recorded is true of
-  what was read and not of the envelope, and P12 says an
-  over-cap envelope is rejected with the reason recorded.
-  The smallest change that closes it is to check the size of
-  what was read before decoding it.
+- **F6. A file cut inside a character was refused as not
+  UTF-8.** The scan read 1 byte past the cap and decoded
+  what it read before the size was checked. When the cut
+  fell inside a character, the file was dropped as
+  `envelope is not UTF-8`, though it was UTF-8 when read
+  whole and its fault was its size. The same bytes at the
+  listener were refused as too large. The refusal itself
+  was right, so the safety P12 states held. The reason
+  recorded was true of what was read and not of the
+  envelope, and P12 says an over-cap envelope is rejected
+  with the reason recorded.
+
+  Closed. The scan looks at the size of what it read before
+  it decodes anything, as the listener does, and says
+  `envelope too large`. The model states the gate that way.
+  The 3 files with a character astride the cut are refused
+  for their size, and `OverCapRefusedForSize` holds of the
+  model and of the code. P12's words name the ingest check.
+  The scan now refuses first, and the ingest check stands
+  behind both doors as before.
 
 1 observation for the index. P12 gives the scan's bound, 1
 byte past the cap. The listener's bound is 1 chunk past the
@@ -295,8 +309,8 @@ the verifier on.
   beside the prediction above.
 - **The same run for `secretfloor.cfg`, `probegate.cfg` and
   `localgate.cfg`** and their witness configurations.
-- **F1 to F3, F5 and F6 are for the seat that carries the
-  runner and the models.** This record changed no runner
-  code.
+- **F1 to F3 stand.** F2 and F3 are differences between the
+  disk guard and P7's words, and F1 is in the model's reach.
+  F4, F5 and F6 are closed.
 - **P8 and P11 have no model.** `v4-working.md` names each as
   more than a small step, and this record leaves them there.

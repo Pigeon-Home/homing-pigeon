@@ -731,6 +731,17 @@ def key_map_config(standing, forms, folder):
     return cfg
 
 
+def named_key(said):
+    """The key a refusal names and the setting it names it by."""
+    for key in KEYS[1:]:
+        for setting in ("additional_secrets", "additional_secrets_files"):
+            if said.startswith("config error: %s[%r] is " % (setting, key)):
+                return key, setting
+    if said.startswith("config error: shared_secret is "):
+        return "default", "shared_secret"
+    return None, None
+
+
 class SecretFloorConformance(unittest.TestCase):
     """The real build_secrets, on every standing of the 3 keys and
     every way of giving each present key."""
@@ -774,23 +785,29 @@ class SecretFloorConformance(unittest.TestCase):
         self.assertIn("125 configurations, 18 of them start and 107 are "
                       "refused", _flat(RECORD))
 
-    def test_f5_a_weak_additional_key_is_refused_in_the_default_s_name(self):
-        # The refusal is right. The name in it is the default
-        # key's setting whichever key was weak, so when only an
-        # additional key is weak the error names a key that did
-        # not cost the start. P6 clause 4 asks that the error
-        # name the setting.
+    def test_a_refusal_names_a_key_that_cost_the_start(self):
+        # F5, closed. NamesACause on the code: the refusal names
+        # the setting of a key that cost the start. The default
+        # key is named as shared_secret, and an additional key
+        # by its own setting, the inline one or the file one,
+        # whichever way it was given. P6 clause 4 asks that the
+        # error name the setting.
         refused = [run for run in self.runs if run[2] is None]
-        wrong = 0
+        its_own = 0
         for standing, forms, _built, said in refused:
-            self.assertRegex(said, r"^config error: shared_secret is "
-                                   r"(too weak|required)", (standing, forms))
-            for key in KEYS[1:]:
-                self.assertNotIn(key, said)
-            self.assertNotIn("additional_secrets", said)
-            if "default" not in causes(standing):
-                wrong += 1
-        self.assertEqual((107, 32), (len(refused), wrong))
+            where = (standing, forms, said)
+            named, setting = named_key(said)
+            self.assertIn(named, causes(standing), where)
+            if "default" in causes(standing):
+                self.assertEqual("default", named, where)
+                continue
+            its_own += 1
+            self.assertEqual(
+                "additional_secrets_files"
+                if forms[KEYS.index(named)] == "file"
+                else "additional_secrets", setting, where)
+            self.assertRegex(said, r" is too weak \(", where)
+        self.assertEqual((107, 32), (len(refused), its_own))
         self.assertIn("32 of the 107 refusals", _flat(RECORD))
 
 
@@ -1024,31 +1041,25 @@ def local_reads(arrival, cap=CAP, chunk=CHUNK):
     return range(size, size + 1) if form == "stream" else range(1)
 
 
-def garbled(arrival, read, cap=CAP):
+def garbled(arrival, read):
     """Garbled: the bytes read do not decode."""
-    form, size, decodes, cut = arrival
-    return read > 0 and (not decodes or (
-        form == "file" and size > cap + 1 and cut == "splits"))
+    return read > 0 and not arrival[2]
 
 
 def local_outcome(arrival, read, cap=CAP):
-    """Outcome: what the gate does with what it read."""
+    """Outcome: what the gate does with what it read. Each door
+    looks at the size of what it read before it decodes
+    anything."""
     form = arrival[0]
     if form == "directory":
         return "left"
     if form == "symlink":
         return "symlink"
-    if form == "file":
-        if garbled(arrival, read, cap):
-            return "not utf-8"
-        if read == 0:
-            return "empty"
-        return "too large" if read > cap else "verify"
     if read > cap:
         return "too large"
     if read == 0:
-        return "nothing"
-    return "not utf-8" if garbled(arrival, read, cap) else "verify"
+        return "empty" if form == "file" else "nothing"
+    return "not utf-8" if garbled(arrival, read) else "verify"
 
 
 def local_init():
@@ -1080,16 +1091,16 @@ def read_bounded(state):
     return read <= {"file": CAP + 1, "stream": CAP + CHUNK}.get(arrival[0], 0)
 
 
-def over_cap_refused(state):
+def over_cap_refused_for_size(state):
     arrival, decided, outcome, _read = state
     return (not (decided and arrival[1] > CAP
                  and arrival[0] in ("file", "stream"))
-            or outcome in ("too large", "not utf-8"))
+            or outcome == "too large")
 
 
 LOCAL_INVARIANTS = (("P12Inv", p12_inv), ("SymlinkUnread", symlink_unread),
                     ("ReadBounded", read_bounded),
-                    ("OverCapRefused", over_cap_refused))
+                    ("OverCapRefusedForSize", over_cap_refused_for_size))
 
 
 def tally(outcomes):
@@ -1121,7 +1132,7 @@ class LocalGateSearch(unittest.TestCase):
                                           len(self.reached),
                                           len(self.decided)))
         self.assertEqual(
-            {"verify": 8, "too large": 24, "not utf-8": 16, "empty": 4,
+            {"verify": 8, "too large": 32, "not utf-8": 8, "empty": 4,
              "nothing": 4, "symlink": 24, "left": 24},
             tally(s[2] for s in self.decided))
         self.assertEqual(
@@ -1144,25 +1155,20 @@ class LocalGateSearch(unittest.TestCase):
                 "    THEN (Cap + 1)..Min(a.size, Cap + Chunk)\n"
                 "  ELSE IF a.form = \"stream\" THEN {a.size}\n"
                 "  ELSE {0}\n",
-                "Garbled(a, r) ==\n  /\\ r > 0\n  /\\ \\/ ~a.decodes\n"
-                "     \\/ a.form = \"file\" /\\ a.size > Cap + 1 /\\ "
-                "a.cut = \"splits\"\n",
-                "    IF Garbled(a, r) THEN \"not utf-8\"\n"
-                "    ELSE IF r = 0 THEN \"empty\"\n"
-                "    ELSE IF r > Cap THEN \"too large\"\n"
-                "    ELSE \"verify\"\n"
-                "  ELSE\n"
-                "    IF r > Cap THEN \"too large\"\n"
-                "    ELSE IF r = 0 THEN \"nothing\"\n"
-                "    ELSE IF Garbled(a, r) THEN \"not utf-8\"\n"
-                "    ELSE \"verify\"\n",
+                "Garbled(a, r) == r > 0 /\\ ~a.decodes\n",
+                "  ELSE IF r > Cap THEN \"too large\"\n"
+                "  ELSE IF r = 0 THEN\n"
+                "    (IF a.form = \"file\" THEN \"empty\" ELSE "
+                "\"nothing\")\n"
+                "  ELSE IF Garbled(a, r) THEN \"not utf-8\"\n"
+                "  ELSE \"verify\"\n",
                 "This file has not been run with TLC."):
             self.assertIn(stated, text, stated)
         self.assertTrue(_read(os.path.join(PROOFS, "localgate.cfg"))
                         .endswith("SPECIFICATION Spec\nINVARIANT P12Inv\n"
                                   "INVARIANT SymlinkUnread\n"
                                   "INVARIANT ReadBounded\n"
-                                  "INVARIANT OverCapRefused\n"))
+                                  "INVARIANT OverCapRefusedForSize\n"))
         for name, probe in (
                 ("localgatewitnessverifies.cfg", "NothingReachesTheVerifier"),
                 ("localgatewitnesssize.cfg", "NothingIsRefusedForSize")):
@@ -1171,17 +1177,18 @@ class LocalGateSearch(unittest.TestCase):
             self.assertTrue(held.endswith(
                 "SPECIFICATION Spec\nINVARIANT %s\n" % probe), name)
 
-    def test_a_cut_inside_a_character_is_in_the_model(self):
-        # F6 as the model has it: a file over the cap that
-        # decodes when read whole, refused as not UTF-8. It is
-        # the cut that does it, and only past 1 byte over.
-        cut_short = [s[0] for s in self.decided
-                     if s[0][0] == "file" and s[0][2] and s[2] == "not utf-8"]
-        self.assertEqual([("file", 4, True, "splits"),
-                          ("file", 5, True, "splits")], sorted(cut_short))
-        self.assertEqual(6, sum(
-            1 for s in self.decided
-            if s[0][0] == "file" and s[0][2] and s[0][1] > CAP))
+    def test_where_the_cut_falls_changes_nothing_in_the_model(self):
+        # F6, closed. The cut is in the arrival and nothing the
+        # gate does depends on it: 2 arrivals that differ only
+        # in the cut decide the same way, read for read.
+        def decisions(cut):
+            return sorted((s[0][:3], s[2], s[3]) for s in self.decided
+                          if s[0][3] == cut)
+        self.assertEqual(decisions("clean"), decisions("splits"))
+        self.assertEqual(52, len(decisions("splits")))
+        over = [s for s in self.decided
+                if s[0][0] == "file" and s[0][1] > CAP]
+        self.assertEqual({"too large": 12}, tally(s[2] for s in over))
 
 
 # ---- The real doors, asked at the real cap
@@ -1373,7 +1380,7 @@ class LocalGateConformance(unittest.TestCase):
                                         len(self.of("directory")),
                                         len(self.of("stream"))))
         self.assertEqual(
-            {"verify": 4, "too large": 5, "not utf-8": 15, "empty": 4},
+            {"verify": 4, "too large": 16, "not utf-8": 4, "empty": 4},
             tally(asked.outcome for asked in self.of("file")))
         self.assertEqual(
             {"verify": 8, "too large": 32, "not utf-8": 8, "nothing": 8},
@@ -1428,18 +1435,20 @@ class LocalGateConformance(unittest.TestCase):
                 [("WARN", "local signal (file): arrival.json: "
                           "symlink refused")], asked.said)
 
-    def test_every_refusal_over_the_cap_is_recorded(self):
-        for asked in self.of("file", "stream"):
-            if asked.arrival[1] <= REAL_CAP:
-                continue
-            self.assertEqual(1, len(asked.said), asked.arrival)
-            level, line = asked.said[0]
-            self.assertEqual("WARN", level)
-            self.assertTrue(line.startswith(
-                "local signal (%s): " % (
-                    "file" if asked.arrival[0] == "file" else "socket")),
-                line)
-            self.assertIn(asked.outcome, ("too large", "not utf-8"))
+    def test_every_refusal_over_the_cap_is_recorded_as_its_size(self):
+        # OverCapRefusedForSize on the code: 1 line at WARN,
+        # naming the door and the size, whatever the bytes are
+        # and wherever the scan's cut falls.
+        said = {
+            "file": "local signal (file): arrival.json: envelope too "
+                    "large; dropped",
+            "stream": "local signal (socket): envelope too large; dropped"}
+        over = [asked for asked in self.of("file", "stream")
+                if asked.arrival[1] > REAL_CAP]
+        self.assertEqual(48, len(over))
+        for asked in over:
+            self.assertEqual("too large", asked.outcome, asked.arrival)
+            self.assertEqual([("WARN", said[asked.arrival[0]])], asked.said)
 
     def test_the_scan_removes_a_file_and_leaves_a_directory(self):
         for asked in self.of("file"):
@@ -1448,25 +1457,25 @@ class LocalGateConformance(unittest.TestCase):
             self.assertEqual((0, True, []), (asked.handled,
                                              asked.still_there, asked.said))
 
-    def test_a_cut_inside_a_character_is_refused_as_not_utf8(self):
-        # F6. A file over the cap that is UTF-8 when read whole.
-        # The scan's cut at 1 byte past the cap falls inside a
-        # character, and the refusal names the encoding, not
-        # the size. The same bytes at the listener are refused
-        # for their size.
-        whole = [asked for asked in self.of("file")
-                 if asked.arrival[1] > REAL_CAP and asked.arrival[2]]
-        cut_short = [asked for asked in whole
-                     if asked.outcome == "not utf-8"]
-        self.assertEqual((8, 3), (len(whole), len(cut_short)))
-        self.assertIn("3 of the 8 files over the cap", _flat(RECORD))
-        for asked in cut_short:
-            self.assertEqual("splits", asked.arrival[3])
+    def test_a_file_cut_inside_a_character_is_refused_for_its_size(self):
+        # F6, closed. A file over the cap that is UTF-8 when
+        # read whole, with a 2 byte character astride the
+        # scan's cut at 1 byte past the cap. What was read does
+        # not decode, and the scan does not ask: it looks at
+        # the size first. The file is refused as too large, as
+        # the same bytes are at the listener.
+        astride = [asked for asked in self.of("file")
+                   if asked.arrival[1] > REAL_CAP + 1 and asked.arrival[2]
+                   and asked.arrival[3] == "splits"]
+        self.assertEqual(3, len(astride))
+        self.assertIn("3 files with a character astride the cut",
+                      _flat(RECORD))
+        for asked in astride:
             self.assertEqual(len(asked.data),
                              len(asked.data.decode("utf-8").encode("utf-8")))
-            self.assertEqual(
-                [("WARN", "local signal (file): arrival.json: envelope "
-                          "is not UTF-8; dropped")], asked.said)
+            with self.assertRaises(UnicodeDecodeError):
+                asked.data[:REAL_CAP + 1].decode("utf-8")
+            self.assertEqual("too large", asked.outcome)
             for chunk in CHUNKINGS:
                 same_bytes = self.asked[("stream",) + asked.arrival[1:],
                                         chunk]
@@ -1476,18 +1485,17 @@ class LocalGateConformance(unittest.TestCase):
     def test_a_gate_with_its_cap_1_byte_higher_is_caught(self):
         # The comparison has teeth: run the real doors with the
         # cap 1 byte too high and the model at the true cap
-        # parts from them on 22 runs. Every file 2 or more over
-        # the cap, the 2 files of 1 byte over that decode, and
-        # every stream of 1 byte over. Nothing at or under the
-        # cap: the 2 gates agree there.
+        # parts from them on 24 runs. Every file over the cap
+        # and every stream of 1 byte over. Nothing at or under
+        # the cap: the 2 gates agree there.
         caught = sorted(
             (arrival, chunk) for (arrival, chunk) in self.asked
             if arrival[0] in ("file", "stream")
             and not self.agrees(arrival, Asked(arrival, chunk,
                                                cap=REAL_CAP + 1)))
-        self.assertEqual(22, len(caught))
+        self.assertEqual(24, len(caught))
         self.assertEqual(
-            {("file", 1): 2, ("file", 2): 4, ("file", REAL_CHUNK): 4,
+            {("file", 1): 4, ("file", 2): 4, ("file", REAL_CHUNK): 4,
              ("file", REAL_CHUNK + 1): 4, ("stream", 1): 8},
             tally((arrival[0], arrival[1] - REAL_CAP)
                   for arrival, _chunk in caught))

@@ -415,6 +415,17 @@ def policy_for(policies, secrets, key_id):
     return None
 
 
+def _floor(secret, setting):
+    """The entropy gate for an additional key. A refusal names the
+    setting that holds the secret, so a weak additional key is
+    not reported under the default key's name."""
+    try:
+        validate_shared_secret(secret)
+    except RuntimeError as exc:
+        raise RuntimeError(
+            str(exc).replace("shared_secret", setting, 1)) from None
+
+
 def build_secrets(cfg) -> dict:
     """key_id -> secret. Default key is "". Every secret passes entropy gate.
 
@@ -460,7 +471,7 @@ def build_secrets(cfg) -> dict:
             raise RuntimeError(f"config error: key id {kid} is the default "
                                "key's own name; another secret cannot "
                                "carry it")
-        validate_shared_secret(sec)
+        _floor(sec, f"additional_secrets[{kid!r}]")
         secrets[kid] = sec
     for kid, path in extra_files.items():
         if not isinstance(kid, str) or not isinstance(path, str):
@@ -475,7 +486,7 @@ def build_secrets(cfg) -> dict:
             raise RuntimeError(f"config error: key id {kid} is the default "
                                "key's own name; another secret cannot "
                                "carry it")
-        validate_shared_secret(sec)
+        _floor(sec, f"additional_secrets_files[{kid!r}]")
         secrets[kid] = sec
     # One secret under two additional names is two keys that would
     # share one fingerprint (Q98 item 15, the conductor's ruling):

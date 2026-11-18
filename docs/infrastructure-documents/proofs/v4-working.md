@@ -449,3 +449,34 @@ drafts himself.
 
 This branch stands as the deliverable. It is not
 merged, and no release is cut from it.
+
+## Findings F5 and F6, closed
+
+The work after the finishing pass took up the findings as
+that pass left them. 2 of them are closed in the runner, and
+each is marked in `v4-search.md` where it was stated:
+
+- **F5.** A weak additional key is refused under its own
+  setting's name. `NamesACause` holds of the real
+  `build_secrets` on all 107 refusals.
+- **F6.** The inbox scan looks at the size of what it read
+  before it decodes anything, and a file over the cap is
+  refused as too large wherever its cut falls.
+  `localgate.tla` states the gate that way, and
+  `OverCapRefusedForSize` takes the place of
+  `OverCapRefused`.
+
+`localgate.tla` changed after step D's checker run. The
+suite's search of the changed model counts 96 initial states
+and 200 distinct states, as it did before the change, and
+that count is the prediction: the 3 `localgate`
+configurations want the checker again. Every other verdict
+of step D stands, since no other model changed.
+
+The v4 draft states F5 and F6 as they stood when it was
+written. Its findings section, and the 2 property sections
+that cite them, want those 2 entries brought to the closed
+state, and the renders made again, before the draft is
+posted. Nothing in the draft's folder is changed here.
+
+F1 to F3 and F7 stand open.

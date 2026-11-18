@@ -21,6 +21,12 @@
 \*   cut  "clean"      the cut falls between 2 characters
 \*        "splits"     the cut falls inside a character
 \*
+\* Nothing the gate does depends on the cut: each door looks at
+\* the size of what it read before it decodes anything. The
+\* cut is in the arrival so that the model says so, and so
+\* that the conformance asks the real scan with a character
+\* astride it.
+\*
 \* The model is small on purpose. The cap is 2 and a chunk is
 \* 2, so the sizes 0 to 5 stand on both sides of every
 \* comparison the 2 doors make: nothing, under the cap, the
@@ -67,27 +73,19 @@ Reads(a) ==
   ELSE IF a.form = "stream" THEN {a.size}
   ELSE {0}
 
-\* The bytes read do not decode: the arrival never did, or the
-\* scan's cut fell inside a character.
-Garbled(a, r) ==
-  /\ r > 0
-  /\ \/ ~a.decodes
-     \/ a.form = "file" /\ a.size > Cap + 1 /\ a.cut = "splits"
+\* The bytes read do not decode.
+Garbled(a, r) == r > 0 /\ ~a.decodes
 
-\* What the gate does with what it read.
+\* What the gate does with what it read. Each door looks at the
+\* size of what it read before it decodes anything.
 Outcome(a, r) ==
   IF a.form = "directory" THEN "left"
   ELSE IF a.form = "symlink" THEN "symlink"
-  ELSE IF a.form = "file" THEN
-    IF Garbled(a, r) THEN "not utf-8"
-    ELSE IF r = 0 THEN "empty"
-    ELSE IF r > Cap THEN "too large"
-    ELSE "verify"
-  ELSE
-    IF r > Cap THEN "too large"
-    ELSE IF r = 0 THEN "nothing"
-    ELSE IF Garbled(a, r) THEN "not utf-8"
-    ELSE "verify"
+  ELSE IF r > Cap THEN "too large"
+  ELSE IF r = 0 THEN
+    (IF a.form = "file" THEN "empty" ELSE "nothing")
+  ELSE IF Garbled(a, r) THEN "not utf-8"
+  ELSE "verify"
 
 VARIABLES a, decided, outcome, read
 
@@ -131,11 +129,11 @@ ReadBounded ==
   /\ a.form = "stream" => read <= Cap + Chunk
   /\ a.form \in {"symlink", "directory"} => read = 0
 
-\* An envelope over the cap is refused, and the refusal is
-\* recorded under a reason that is true of what was read.
-OverCapRefused ==
+\* An envelope over the cap is refused for its size, whatever
+\* its bytes are and wherever the scan's cut falls.
+OverCapRefusedForSize ==
   (decided /\ a.size > Cap /\ a.form \in {"file", "stream"}) =>
-    outcome \in {"too large", "not utf-8"}
+    outcome = "too large"
 
 \* Witness probes. Both are expected to FAIL; their
 \* counterexamples are the evidence that the gate decides both

@@ -278,7 +278,7 @@ A finding is most useful when it points at the file and the line
   down every path its re-measuring allows, the real key map
   built over every standing of 3 keys, the real confinement
   gate asked on every start, the real local doors asked on
-  every arrival at the cap, and 6 findings.
+  every arrival at the cap, and 6 findings, 3 of them closed.
   `runner/tests/test_v4_models.py` is that search and that
   conformance, run with the suite.
 - `v4-search-2.md`: the last 2 models searched the same

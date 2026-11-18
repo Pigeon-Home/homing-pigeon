@@ -1722,9 +1722,9 @@ def check_local_inbox(entry):
     them -- scanned once by _scan_local_inbox. Contract: the scan
     never raises and answers how many .json entries it handled;
     every .json entry is handled once and removed either way, a
-    symlink or a file that is not UTF-8 without an ingest call, a
-    file that decodes with one call carrying its text (at most the
-    size cap plus one byte); anything not named .json is left
+    symlink, a file over the size cap or a file that is not UTF-8
+    without an ingest call, a file that decodes with one call
+    carrying its text; anything not named .json is left
     alone; the ingest answers a record or None and never raises;
     the store holds exactly the records the ingests answered, in
     inbox order, the neighbor's among them whatever came before."""
@@ -1773,8 +1773,13 @@ def _local_inbox_sequence(spec):
             if not name.endswith(".json"):
                 stays.add(name)
                 continue
+            if len(raw) > cap:
+                # Refused at the scan for its size, before anything
+                # is decoded.
+                expected[name] = None
+                continue
             try:
-                expected[name] = raw[:cap + 1].decode("utf-8")
+                expected[name] = raw.decode("utf-8")
             except UnicodeDecodeError:
                 expected[name] = None
         good = V.sign_payload(_stamp_issued_at(_alert(
