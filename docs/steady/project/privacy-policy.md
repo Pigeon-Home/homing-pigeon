@@ -1,5 +1,14 @@
 # Privacy Policy — Pigeon Home / Homing Pigeon
 
+**Where this text lives.** This document holds the privacy
+policy text for the hosted sign-in service operated at
+pigeon-home.ai. The service publishes the policy at
+https://home.pigeon-home.ai/privacy. The hosted service is
+separate from the Homing Pigeon open source project, whose
+code and documentation live in this repository. The text is
+kept here so it can be reviewed and versioned alongside the
+setup wizard that offers the sign-in.
+
 **Privacy Policy**
 
 Last updated: November 14, 2026
