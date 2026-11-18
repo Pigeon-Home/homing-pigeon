@@ -410,3 +410,42 @@ and pinned the draft's named values. What is left is
 the findings, F1 to F3 and F5 to F7, stated above; they
 are the next work on this branch, and the draft waits
 on DRU to post it.
+
+## The conversation behind the branch, and where it stands (18 November 2026)
+
+DRU's framing for this work, in his terms: legitimately
+lock down the constraints on the software suite, then
+prove to the IETF that the running software is secure.
+The computational power budget for the proofs is part
+of the design thinking, not an afterthought. Items 1
+and 2 of docs/FUTURE.md are the near term focus for the
+next day or two, and this branch is item 1.
+
+The finishing pass is complete. Steps A to G were done
+on this branch tonight, in order, and the pass opened
+with its supposition written before any measuring, in
+the section above.
+
+All 7 properties, P7 to P13, stand modelled, searched,
+and held to the shipped code. The last 2 models, for
+P8 and P11, landed in the finishing pass, and the
+hybridselect twin correction landed with them: the twin
+now states OnlyOffered as the model does. Constraints
+C28 to C31 were folded into the inventory in the same
+pass, and the inventory stands whole at C1 to C31.
+
+Step D stands recorded above: the checker run over
+every configuration, with the state counts matching
+the searches.
+
+The findings F1 to F6 stand stated in the search
+record, open and not fixed. Fixing them is later
+work, for a pass of its own.
+
+The v4 draft stands written with its named values
+pinned, steps E and G, and idnits clean per the
+finishing pass record. It is not submitted. DRU posts
+drafts himself.
+
+This branch stands as the deliverable. It is not
+merged, and no release is cut from it.
