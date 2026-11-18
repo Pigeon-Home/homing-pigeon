@@ -730,7 +730,7 @@ def unrestricted_extra_keys(cfg) -> list:
                   and policy_for(policies, secrets, k) is None)
 
 
-DOORS = ("query", "board", "v2", "cancel")
+DOORS = ("query", "board", "v2", "cancel", "chain")
 
 
 KEY_STATES = ("ordered", "generated", "distributed", "in_use",
@@ -896,7 +896,7 @@ def check_door_policy(cfg, secrets, key_id, door):
     too (Q98 item 13; PROTOCOL.md section 14.1): an additional key
     with no entry is refused when key_policies_default_deny is set,
     and a policy that lists `allowed_kinds` admits a door only when it
-    lists the door's name (`query`, `board`, `v2`). A policy without
+    lists the door's name (`query`, `board`, `v2`, `chain`). A policy without
     `allowed_kinds` passes. The owner's key, under any of its names,
     is exempt from the deny flag only: a `key_policies[""]` entry
     binds it at these doors as at the job's (Q103 item 2).
