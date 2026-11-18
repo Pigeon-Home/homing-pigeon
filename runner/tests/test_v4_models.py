@@ -1530,12 +1530,14 @@ def p8_inv(state):
 
 
 def only_offered(state):
-    offered, _profile, decided, outcome = state
+    offered, profile, decided, outcome = state
     if not decided:
         return True
+    selectable = ("x25519" in offered
+                  or (profile == "v3" and "hybrid" in offered))
     return ((outcome != "hybrid" or "hybrid" in offered)
             and (outcome != "x25519" or "x25519" in offered)
-            and ((outcome == "refused") == (len(offered) == 0)))
+            and ((outcome == "refused") == (not selectable)))
 
 
 class HybridSelectSearch(unittest.TestCase):
