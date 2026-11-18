@@ -126,6 +126,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_campaign_phase1.py",
     "runner/tests/test_canary_watch.py",
     "runner/tests/test_cancel.py",
+    "runner/tests/test_chain_relay.py",
     "runner/tests/test_change_kind.py",
     "runner/tests/test_cleartext_policy.py",
     "runner/tests/test_cli_options.py",

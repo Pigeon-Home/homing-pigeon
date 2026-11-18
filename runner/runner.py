@@ -1595,6 +1595,8 @@ def _raw_lines_allowed(view):
 _queries = _required_load_mod("runner.ops.queries", "ops.queries")
 answer_queries = _queries.answer_queries
 handle_query_mail = _queries.handle_query_mail
+_chain_mail = _required_load_mod("runner.ops.chain", "ops.chain")
+handle_chain_mail = _chain_mail.handle_chain_mail
 query_seen_key = _queries.query_seen_key
 _carriable = _queries._carriable
 _stream_text = _queries._stream_text
@@ -5400,6 +5402,9 @@ def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
         if handle_board_mail(cfg, imap, smtp, seq, raw, subject,
                              cfg["board"], secrets, opts, base_dir):
             return None
+    if handle_chain_mail(cfg, imap, smtp, seq, raw, subject,
+                         secrets, opts, base_dir, seen):
+        return None
     if handle_v2_mail(cfg, imap, smtp, seq, raw, subject, secrets, opts,
                       base_dir, seen):
         return None
