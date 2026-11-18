@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.29.7 - 2026-11-18
+
+- Docs: FUTURE.md carries the proof item wording as formalize proof and a new sketch line for the Anna Founding Builder Program research and response (since 3.17.29.6)
+
 ## 3.17.29.6 - 2026-11-18
 
 - Extensions: the nightly upstream pins refreshed for the osquery, softflowd and zeek feed senses, each pinned ref resolved to its current tip with the pinned files refetched and the drift tests green against them (since 3.17.29.5)
