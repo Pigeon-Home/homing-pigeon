@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.26.29 - 2026-11-18
+
+- Docs: FAQ.md updated (since 3.17.26.28)
+
 ## 3.17.26.28 - 2026-11-17
 
 - Docs: FUTURE.md updated (since 3.17.26.27)
