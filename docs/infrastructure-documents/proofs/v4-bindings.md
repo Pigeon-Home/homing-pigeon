@@ -544,6 +544,39 @@ protocol says of a subject:
    sender keeps a long id on 1 plain line. The runner's own
    sender would then write its subjects that way.
 
+What each way costs, measured here on 2026-11-19 on Python
+3.13:
+
+- **Where the subject is read.** The gate takes the id off
+  the subject before it asks for the signature. The id names
+  the job to the dispatcher and in the log, and a sealed
+  body is bound to it. So a decoder for the first way reads
+  a stranger's bytes in front of the MAC, on every mail that
+  carries the marker. `CorpusUpTheSizes` holds the order.
+- **What the library's decoders cost.** The standard library
+  has 2. On a subject made of many small encoded words,
+  `decode_header` took 0.04 seconds at 64,013 bytes, 0.49 at
+  256,009 and 7.63 at 1,000,011. The default policy's
+  reading took 0.17 seconds at 64,013 bytes and 2.05 at
+  256,009. Both grow about with the square of the subject.
+  C1 lets a mail be 4,194,304 bytes, and nothing holds a
+  subject under that. So the first way, as the library gives
+  it, would be a reader of F10's kind: in front of the MAC,
+  and slow at a stranger's word.
+- **The bound the first way needs.** An id of 128 characters
+  is 188 bytes of subject as the library writes it, and
+  1,811 bytes written 1 character to an encoded word, the
+  longest way to spell it. At 2,063 bytes the 2 decoders
+  took 0.0003 and 0.0012 seconds. So a subject refused past
+  2,048 bytes, before it is decoded, keeps every honest
+  spelling and bounds the cost.
+- **What the second way costs.** Nothing at the gate. A
+  sender that uses the library sets its lines to 998
+  characters, and the library then writes a subject with a
+  128 character id plain. The runner's own sender,
+  `send_mail` in `runner/wire/mailbox.py`, would take that
+  setting.
+
 ## What this pass does not show
 
 - A fuzz tie is reach, not proof. The proofs are the models

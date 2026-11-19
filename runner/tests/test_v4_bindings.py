@@ -1421,6 +1421,48 @@ class CorpusUpTheSizes(unittest.TestCase):
             job_id, text = self._named(length)
             self.runs_once(_octets(job_id, text), length)
 
+    def test_the_subject_s_id_is_read_before_the_signature_is_asked_for(
+            self):
+        # What a decoder of subjects would stand in front of. The
+        # gate names a job by its subject's id, to the dispatcher
+        # and in its log, before it asks for the signature. A mail
+        # whose signature fails shows the order.
+        _entry_id, _payload, subject, text = self.runners[0]
+        mark = text.rindex('"sig"')
+        digit = text.index('"', text.index(":", mark) + 1) + 1
+        turned = text[:digit] + ("0" if text[digit] != "0" else "1") \
+            + text[digit + 1:]
+        order = []
+        dispatch_as_it_is = RUNNER._early_dispatch
+        verify_as_it_is = RUNNER._verify_and_decrypt
+
+        def dispatch(*args, **kwargs):
+            order.append("the dispatcher")
+            return dispatch_as_it_is(*args, **kwargs)
+
+        def verify(*args, **kwargs):
+            order.append("the signature")
+            return verify_as_it_is(*args, **kwargs)
+
+        RUNNER._set_allow_cleartext_jobs(True)
+        try:
+            with tempfile.TemporaryDirectory() as folder, \
+                    mock.patch.object(RUNNER, "_early_dispatch", dispatch), \
+                    mock.patch.object(RUNNER, "_verify_and_decrypt", verify):
+                out = DOOR._run(raw=_octets(subject, turned),
+                                base_dir=folder, cfg_extra=dict(KEYS))
+        finally:
+            RUNNER._set_allow_cleartext_jobs(False)
+        self.assertEqual(["the dispatcher", "the signature"], order)
+        self.assertEqual([], out.executed)
+        named = [place for place, note in enumerate(out.notes)
+                 if "job %s submitted by" % subject in note]
+        refused = [place for place, note in enumerate(out.notes)
+                   if "bad signature" in note]
+        self.assertEqual(1, len(named))
+        self.assertEqual(1, len(refused))
+        self.assertLess(named[0], refused[0])
+
     def test_a_long_id_is_stopped_only_where_its_subject_was_rewritten(self):
         # Finding F11. The mail library writes a subject word too
         # long for 1 line as encoded words, and the gate reads a
