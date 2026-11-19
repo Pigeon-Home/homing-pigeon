@@ -44,3 +44,14 @@ PASS - Document draft-slutsky-homing-pigeon-v4-00.txt is nit-free. (mode: submis
 
 $ idnits --offline --no-progress --no-color --mode submission -o simple draft-slutsky-homing-pigeon-v4-00.xml
 PASS - Document draft-slutsky-homing-pigeon-v4-00.xml is nit-free. (mode: submission)
+
+# Fresh run 2026-11-18, on the re-render after the draft gained the
+# general statement's section, the guard's replay window in C28, and
+# P12's narrower sentence, and the findings were brought to 9: both
+# files are nit-free again, 0 errors, 0 warnings, 0 comments.
+
+$ idnits --offline --no-progress --no-color --mode submission -o simple draft-slutsky-homing-pigeon-v4-00.txt
+PASS - Document draft-slutsky-homing-pigeon-v4-00.txt is nit-free. (mode: submission)
+
+$ idnits --offline --no-progress --no-color --mode submission -o simple draft-slutsky-homing-pigeon-v4-00.xml
+PASS - Document draft-slutsky-homing-pigeon-v4-00.xml is nit-free. (mode: submission)

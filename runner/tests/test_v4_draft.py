@@ -5,7 +5,8 @@ docs/infrastructure-documents/proofs/v4-working.md.
 draft-slutsky-homing-pigeon-v4-00 binds versions 1, 2 and 3
 to the provable model and states values: the size caps, the
 caps and constants of C28 to C31, the hybrid group number,
-the state counts of the 6 v4 models' checker runs, and the
+the state counts of the 6 v4 models' checker runs and of
+the general model's, and the
 conformance counts of the search records. Every one of
 those values is pinned here against the code or against
 the working papers that measured it, so a change to a value
@@ -104,11 +105,22 @@ class DraftStructure(unittest.TestCase):
 
     def test_the_inventory_and_the_findings_are_named(self):
         self.assertIn("numbered C1 to C31", DRAFT_TEXT)
-        for n in range(1, 8):
+        for n in range(1, 10):
             self.assertIn("F%d:" % n, DRAFT_TEXT, "F%d" % n)
         self.assertIn("Finding F5", DRAFT_TEXT)
         self.assertIn("Finding F6", DRAFT_TEXT)
         self.assertIn("finding F7", DRAFT_TEXT)
+        self.assertIn("Finding F9", DRAFT_TEXT)
+
+    def test_the_general_statement_stands_in_the_draft(self):
+        raw = _read(DRAFT)
+        self.assertIn("# The General Statement", raw)
+        self.assertIn("passed its door at its own occasion",
+                      DRAFT_TEXT)
+        self.assertIn("no door's work has moved the state "
+                      "another door stands on", DRAFT_TEXT)
+        self.assertIn("v4-general.md in the proof shelf",
+                      DRAFT_TEXT)
 
 
 class DraftValuesAgainstTheCode(unittest.TestCase):
@@ -146,8 +158,11 @@ class DraftValuesAgainstTheCode(unittest.TestCase):
         self.assertEqual(RES.DISK_GUARD_LOG_KEEP_BYTES, 65536)
         self.assertEqual(RES.DISK_GUARD_WORK_MIN_AGE_SEC, 3600)
         self.assertEqual(RES.DISK_GUARD_MAX_ACTIONS, 512)
+        self.assertEqual(RES.DISK_GUARD_REPLAY_SKEW_SEC, 300)
         for stated in ("90 percent", "65536", "3600", "512"):
             self.assertIn(stated, DRAFT_TEXT, stated)
+        self.assertIn("no older than the freshness window "
+                      "plus 300 seconds", DRAFT_TEXT)
 
     def test_the_hybrid_group_and_the_replay_window(self):
         self.assertEqual(DTLS.GROUP_X25519MLKEM768, 4588)
@@ -170,6 +185,15 @@ class DraftCountsAgainstTheRecords(unittest.TestCase):
                           working, cfg)
             self.assertIn("%s distinct states" % count, DRAFT_TEXT,
                           cfg)
+
+    def test_the_general_model_checker_count(self):
+        general = _flat(os.path.join(PROOFS, "v4-general.md"))
+        self.assertIn("14,592 distinct states", general)
+        self.assertIn("32 initial states, 14,592 distinct "
+                      "states", general)
+        self.assertIn("14,592 distinct states", DRAFT_TEXT)
+        self.assertIn("32 initial states and 14,592 distinct "
+                      "states", DRAFT_TEXT)
 
     def test_the_conformance_counts(self):
         search1 = _flat(os.path.join(PROOFS, "v4-search.md"))

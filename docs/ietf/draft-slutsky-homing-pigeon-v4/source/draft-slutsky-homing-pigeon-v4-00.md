@@ -8,7 +8,7 @@
 #         submitted to the IETF datatracker. The author posts
 #         drafts himself; this file is the working text, dated
 #         2026-11-18. The text requests no IANA action
-#         (Section 9).
+#         (Section 10).
 title: "Homing Pigeon Message Protocol, Version 4: The Provable Model"
 abbrev: "Homing Pigeon v4"
 docname: draft-slutsky-homing-pigeon-v4-00
@@ -110,7 +110,9 @@ formal model of the running implementation: a constraint
 inventory harvested from the code, a set of numbered
 properties stated against that inventory, a TLA+ model of
 each property but P9, which is held by a pin on the
-documents instead, the models checked with the TLC model
+documents instead, and a further TLA+ model that states
+the 13 properties as instances of 1 general statement
+over a whole runner life, the models checked with the TLC model
 checker, and a conformance suite that holds every model
 to the code it models. The document states each property, the verdict the
 checker returned, and the findings where the implementation's
@@ -143,7 +145,7 @@ real decision over its whole input space. This document is
 that binding. It is a claim about one implementation, the
 reference runner, at the head its working record names. It
 is not a claim about every conforming implementation, and
-Section 10 says plainly what the checking does not reach.
+Section 11 says plainly what the checking does not reach.
 
 The model's working papers live with the implementation:
 the constraint inventory, the property files, the TLA+
@@ -192,7 +194,7 @@ Witness configuration:
 Finding:
 : A recorded place where the implementation and a property's
   words, or a model and the implementation, differ. Findings
-  are numbered F1 to F7, and each is stated in the findings
+  are numbered F1 to F9, and each is stated in the findings
   section with the resolution that closed it.
 
 # The Method
@@ -258,8 +260,10 @@ estimated entropy is at least 128 bits, a refuse-class
 startup condition (C6). The one AEAD is AES-256-GCM (C9).
 The disk guard acts at 90 percent full, keeps the newest
 65536 bytes of a truncated live log, gives up job
-workspaces untouched for at least 3600 seconds, and names
-at most 512 actions in the event a pass records (C28). The version 3 hybrid group is
+workspaces untouched for at least 3600 seconds, spares a
+recorded result no older than the freshness window plus
+300 seconds, and names at most 512 actions in the event
+a pass records (C28). The version 3 hybrid group is
 X25519MLKEM768, group 4588, beside X25519, group 29 (C29).
 Both ends of a DTLS session run the same side of the
 framing change, and the replay window is 32768 records
@@ -432,6 +436,18 @@ it decodes anything, and a file over the cap is refused
 as too large wherever its cut falls; the finding is
 closed.
 
+The local door is not the mail gate. After its bound it
+builds a key map, verifies the signature, and checks the
+contract version, the kind, the version and type, the
+age, and the key policy, then hands the alert to the 1
+ingest both paths share. It asks no cleartext decision,
+no audience clause, and no replay cache, and it files
+alerts and runs nothing. Finding F9 recorded that the
+local door had been described, in the working papers and
+in its model's header, as facing the same gate as the
+mail path; the words stand corrected, and the finding is
+closed.
+
 ## P13. The runner does not start on a weak secret
 
 For every start, every key in the key map, the default and
@@ -449,14 +465,58 @@ was wrong, in 32 of the 107 refused configurations. The
 refusal now names the key under its own setting's name,
 on all 107 refusals, and the finding is closed.
 
+# The General Statement
+
+The 13 properties each hold 1 door at 1 occasion, and
+each small model leaves the rest of the runner out. A
+further model binds them: it states 1 claim over a whole
+runner life, of which the 13 properties are the
+instances.
+
+The general statement, G: in every reachable state of a
+runner's life, every effect that has happened passed its
+door at its own occasion, with the guard read off the
+world as it stood at that step, and no door's work has
+moved the state another door stands on.
+
+The world is what no door owns and anything may move
+between 2 occasions: the configuration file, the secret
+files, whether the confinement backend can engage, the
+disk, and the clock against the freshness window. A
+counterexample to G is a life in which an effect's guard
+held when the code looked and did not hold when the
+effect happened, because the code decided at another
+occasion than the effect's, or a life in which 1 door's
+work moved the state another door stands on. Neither
+shape can be seen in a model of 1 door.
+
+The model is the general model: 1 runner life, a ledger
+with 1 mark for each of the 13 properties, and 5
+constants for the seams between doors, each seam a place
+where a door could have been built to decide at another
+occasion than its effect's or to move another door's
+state. Verdict: the main configuration holds with no
+error, 32 initial states and 14,592 distinct states
+under TLC, and the search twin in the conformance suite
+returns the same count with every mark true in every
+state. The 9 witness configurations fail as designed:
+the 5 that set a seam the other way break the property
+the seam carries, and the 4 probes fail on the behaviours
+they name. The pass that stated G found F8 at the seam
+between P5 and P7, closed in the runner, and F9 in P12's
+words. Its record, with the seams, the search, and the
+checker runs of 2 seats, is kept with the working papers
+as the general statement's record, v4-general.md in the
+proof shelf.
+
 # The Findings
 
-The model work stated 7 findings. All 7 are closed, each
-in the place its difference lived: F2, F3, F5, and F6 in
-the runner, F1 and F4 in the model and its files, and F7
-in the property's words. Each remains held by a test as
-the tree stands, so a change on either side, the code's
-or the words', shows as a test change.
+The model work stated 9 findings. All 9 are closed, each
+in the place its difference lived: F2, F3, F5, F6, and
+F8 in the runner, F1 and F4 in the model and its files,
+and F7 and F9 in the properties' words. Each remains
+held by a test as the tree stands, so a change on either
+side, the code's or the words', shows as a test change.
 
 F1:
 : The disk guard model ended a pass sooner than the code
@@ -514,6 +574,32 @@ F7:
   leaves at the floor, over the cap and marked; the
   runner is unchanged, and a marked result over the cap
   stands.
+
+F8:
+: The disk guard's third class of material is the
+  recorded results, the store a redelivery is answered
+  from once the replay cache has let its identifier go.
+  A guard pass took the oldest recorded result whatever
+  its age, and a redelivery still inside the freshness
+  window then ran the job a second time, with no crash,
+  no failed stash, and no priced window used, against
+  P5. Closed in the runner: a recorded result no older
+  than the freshness window plus 300 seconds is not
+  material for the guard, and past that age a redelivery
+  is refused as stale before it reaches the claim.
+
+F9:
+: The local door was described, in the working papers
+  and in its model's header, as standing in front of the
+  same gate the mail path faces. Its clauses are fewer:
+  after its bound it builds a key map, verifies the
+  signature, and checks the contract version, the kind,
+  the version and type, the age, and the key policy, and
+  it asks no cleartext decision, no audience clause, and
+  no replay cache. Nothing runs through it. Closed in
+  the property's words and in the model's header; the
+  checker run on the model as it stands returns 200
+  distinct states with no error.
 
 # Operational Considerations
 
