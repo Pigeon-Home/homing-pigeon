@@ -347,7 +347,7 @@ of calls and stops at the same place.
 - The reading is bounded by a count and not by a clock: a
   body in which every brace is a candidate is handed to the
   parser at most 16 times its length, at 3 sizes, in both
-  homes of the search.
+  Python homes of the search.
 - A look never settles against a sound object, cut at every
   length, and never against a string that runs off its end.
 - A body whose candidates each nest 30,000 arrays deep is
@@ -355,6 +355,17 @@ of calls and stops at the same place.
 
 The same change stands on main from 2026-11-18, where the
 desk carries it as Q203.
+
+A third copy of the search is not changed. The hosted
+queue's Worker has its own, `objectStart` in
+`runner/cloud/queues-worker/src/index.js`. It walks from
+every brace and reads each candidate whole, so it carries
+both costs: on the same shape of body, 24,107 bytes took it
+0.58 seconds under Node 22 in this seat's container. A
+request reaches it only behind a tenant's bearer token, and
+the platform bounds a request's time, so what it can cost is
+that tenant's own request. It is named here so the count is
+right: the search has 3 homes, and 2 are closed.
 
 ## What this pass does not show
 

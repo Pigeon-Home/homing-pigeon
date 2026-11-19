@@ -20,9 +20,11 @@ passes it over there when the parse has already failed for
 good. These tests hold 3 things: the answers are the old
 search's on every text tried, the reading is bounded by a
 count and not by a clock, and a parser that words its errors
-another way costs time and never an answer. Both homes of the
-search are held: runner/wire/verify.py and its copy in
-runner/cloud/send_job.py.
+another way costs time and never an answer. Both Python homes
+of the search are held: runner/wire/verify.py and its copy in
+runner/cloud/send_job.py. The hosted queue's Worker carries a
+third copy, in JavaScript, behind a tenant's bearer token. This
+change does not touch it and this module does not hold it.
 """
 import json
 import os
