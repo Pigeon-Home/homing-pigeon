@@ -300,6 +300,18 @@ A finding is most useful when it points at the file and the line
   witness configuration. Findings F8 and F9 are in that
   record, both closed. `runner/tests/test_v4_general.py` is
   the model's search and its hold on the code at each seam.
+- `v4-bindings.md`: the constraint spec. Every constraint,
+  C1 to C31, tied in 1 table to the properties that state
+  it, the code that enforces it, the tests that pin it and
+  the fuzz data that has reached its code, and every
+  property tied to its model, its conformance suite and its
+  steps in `general.tla`. `v4-bindings.json` is the table
+  itself, the registry. The page also records the fuzz
+  corpus taken to the real doors, the constraints no fuzz
+  data reaches, and finding F10, closed.
+  `runner/tests/test_v4_bindings.py` holds every tie and
+  drives the corpus through the doors, and
+  `runner/tests/test_opener_cost.py` holds F10's change.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.
