@@ -8093,6 +8093,49 @@ def t_duplicate(rng, text, corpus):
     return text[:k] + text[i:j] + text[k:]
 
 
+def _grow_rung(size, cap):
+    """The grow-to-cap rung an entry of `size` bytes grows to:
+    the first of the rungs at 3 quarters of the cap, 1 byte
+    under it and the cap itself that stands past `size`; None
+    when the entry already stands at or past the cap. An entry
+    at a lower rung grows to the next one; only the cap
+    itself stands."""
+    for rung in ((3 * cap) // 4, cap - 1, cap):
+        if size < rung:
+            return rung
+    return None
+
+
+def t_grow_to_cap(rng, text, corpus):
+    """The text grown toward the child cap (MAX_TEXT): its own
+    content repeated to the first rung above its size, as close
+    under the rung as whole characters allow. An entry at or
+    past a rung, and the empty text, stand as they are. The
+    growth is the entry's own bytes, so what the reader meets
+    at size is the entry itself, only longer."""
+    if not text:
+        return text
+    size = len(text.encode("utf-8", "surrogatepass"))
+    target = _grow_rung(size, MAX_TEXT)
+    if target is None or target == size:
+        return text
+    out = text
+    used = size
+    while used + size <= target:
+        out += text
+        used += size
+    i = 0
+    while used < target:
+        ch = text[i % len(text)]
+        w = len(ch.encode("utf-8", "surrogatepass"))
+        if used + w > target:
+            break
+        out += ch
+        used += w
+        i += 1
+    return out
+
+
 def t_splice(rng, text, corpus):
     others = [e["data"] for e in corpus if e["kind"] == "text"]
     if not others:
@@ -8335,8 +8378,9 @@ def p_grammar(rng, value, corpus):
 
 
 TEXT_MUTATORS = [t_truncate, t_drop, t_insert, t_replace_char, t_duplicate,
-                 t_splice, t_sig_tamper, t_fake_marker, t_wrap, t_crlf,
-                 t_control, t_case, t_number, t_brace, t_resign, t_grammar]
+                 t_grow_to_cap, t_splice, t_sig_tamper, t_fake_marker,
+                 t_wrap, t_crlf, t_control, t_case, t_number, t_brace,
+                 t_resign, t_grammar]
 
 _MAIL_DICT = ["Subject: ", "Content-Type: text/plain", "Content-Type: "
               "multipart/mixed; boundary=\"bm-boundary-0001\"",
@@ -8436,7 +8480,7 @@ def m_blank_line(rng, text, corpus):
 MAIL_MUTATORS = [m_drop_header, m_duplicate_header, m_insert_header,
                  m_mail_token, m_break_boundary, m_truncate_part,
                  m_fold_header, m_blank_line, t_truncate, t_duplicate,
-                 t_splice, t_control, t_case, t_crlf]
+                 t_grow_to_cap, t_splice, t_control, t_case, t_crlf]
 
 
 def d_flip_length(rng, text, corpus):
@@ -8771,8 +8815,65 @@ def p_swap(rng, value, corpus):
     return out
 
 
+def _grown_string(old, extra):
+    """`old` lengthened by its own repetition, as close to
+    `extra` more bytes of JSON as whole characters allow (a
+    character's JSON width is its escaped length). An empty
+    string grows from the word grown."""
+    if not old:
+        old = "grown"
+    if extra <= 0:
+        return old
+    unit = len(json.dumps(old, ensure_ascii=True)) - 2
+    out = old
+    used = 0
+    while used + unit <= extra:
+        out += old
+        used += unit
+    i = 0
+    while used < extra:
+        ch = old[i % len(old)]
+        w = len(json.dumps(ch, ensure_ascii=True)) - 2
+        if used + w > extra:
+            break
+        out += ch
+        used += w
+        i += 1
+    return out
+
+
+def p_grow_to_cap(rng, value, corpus):
+    """The payload grown toward the child cap (MAX_PAYLOAD,
+    the bytes of its JSON): its largest string grown by its
+    own repetition to the first rung above the payload's
+    size, the shape and the other members untouched. A
+    payload with no string grows a `grown` member instead.
+    A payload at or past a rung, and one that is not an
+    object with no string to grow, stands as it is."""
+    size = len(json.dumps(value, ensure_ascii=True))
+    target = _grow_rung(size, MAX_PAYLOAD)
+    if target is None or target == size:
+        return value
+    strings = [(p, v) for p, v in _paths(value)
+               if isinstance(v, str)]
+    if strings:
+        path, old = max(strings, key=lambda pv: len(pv[1]))
+        return _set_path(value, path,
+                         _grown_string(old, target - size))
+    if not isinstance(value, dict):
+        return value
+    out = dict(value)
+    out["grown"] = ""
+    base = len(json.dumps(out, ensure_ascii=True))
+    if base >= target:
+        return value
+    out["grown"] = _grown_string("grown", target - base)
+    return out
+
+
 PAYLOAD_MUTATORS = [p_replace, p_delete, p_add_key, p_rename_key, p_text,
-                    p_number, p_nest, p_splice, p_swap, p_grammar]
+                    p_number, p_nest, p_splice, p_swap, p_grammar,
+                    p_grow_to_cap]
 
 
 def p_mutate(rng, value, corpus):

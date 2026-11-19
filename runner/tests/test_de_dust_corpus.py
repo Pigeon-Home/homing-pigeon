@@ -3375,3 +3375,119 @@ for _i, _n in enumerate((1, 2, 24, 25, 1000)):
     setattr(GrowWalkerDepthShotgunTest, f"test_dict_depth_{_i:02d}",
             _make_depth_test("dict", _n))
 del _i, _n
+
+
+class GrowToCapTest(unittest.TestCase):
+    """The mutators that grow an input toward a cap (Claude's
+    ask, 2026-11-19; suppositions M1 to M4 in the forum entry
+    of 4:17 AM, written before this measure). The campaign's
+    child caps are MAX_TEXT and MAX_PAYLOAD, 16,384 bytes
+    each; the bindings record no campaign input at the size
+    of a cap and none of 10,000 bytes or more."""
+
+    def _text_bytes(self, text):
+        return len(text.encode("utf-8", "surrogatepass"))
+
+    def _payload_bytes(self, value):
+        return len(json.dumps(value, ensure_ascii=True))
+
+    # -- M1: a text under half the cap lands over half, never past --
+
+    def test_a_small_text_lands_in_the_top_band(self):
+        rng = random.Random(7)
+        for text in ("x", "job 1\n", "{\"a\": 1}", "a" * 100,
+                     "b" * 8000):
+            out = B.t_grow_to_cap(rng, text, [])
+            size = self._text_bytes(out)
+            self.assertGreater(size, B.MAX_TEXT // 2, text[:20])
+            self.assertLessEqual(size, B.MAX_TEXT, text[:20])
+            self.assertTrue(out.startswith(text[:1]), text[:20])
+
+    def test_a_text_grows_by_its_own_content(self):
+        rng = random.Random(7)
+        out = B.t_grow_to_cap(rng, "abc", [])
+        self.assertEqual(set(out), {"a", "b", "c"})
+
+    def test_a_text_just_under_the_cap_lands_at_it(self):
+        rng = random.Random(7)
+        text = "c" * (B.MAX_TEXT - 1)
+        out = B.t_grow_to_cap(rng, text, [])
+        self.assertEqual(self._text_bytes(out), B.MAX_TEXT)
+
+    # -- M3: at a rung, the mutator is a no-op --
+
+    def test_a_text_at_the_cap_stands(self):
+        rng = random.Random(7)
+        text = "d" * B.MAX_TEXT
+        self.assertIs(B.t_grow_to_cap(rng, text, []), text)
+
+    def test_an_empty_text_stands(self):
+        rng = random.Random(7)
+        self.assertEqual(B.t_grow_to_cap(rng, "", []), "")
+
+    # -- M2: a payload under half the cap, same shape, top band --
+
+    def test_a_small_payload_lands_in_the_top_band(self):
+        rng = random.Random(7)
+        value = {"script": "echo hi", "kind": "exec"}
+        out = B.p_grow_to_cap(rng, value, [])
+        size = self._payload_bytes(out)
+        self.assertGreater(size, B.MAX_PAYLOAD // 2)
+        self.assertLessEqual(size, B.MAX_PAYLOAD)
+        self.assertEqual(set(out), {"script", "kind"})
+        self.assertTrue(out["script"].startswith("echo hi"))
+        self.assertEqual(out["kind"], "exec")
+
+    def test_a_payload_with_no_string_grows_a_member(self):
+        rng = random.Random(7)
+        out = B.p_grow_to_cap(rng, {"n": 3}, [])
+        self.assertIn("grown", out)
+        self.assertEqual(out["n"], 3)
+        size = self._payload_bytes(out)
+        self.assertGreater(size, B.MAX_PAYLOAD // 2)
+        self.assertLessEqual(size, B.MAX_PAYLOAD)
+
+    def test_a_payload_at_the_cap_stands(self):
+        rng = random.Random(7)
+        value = {"s": "e" * (B.MAX_PAYLOAD - 9)}
+        self.assertEqual(self._payload_bytes(value), B.MAX_PAYLOAD)
+        self.assertIs(B.p_grow_to_cap(rng, value, []), value)
+
+    def test_a_payload_that_is_not_an_object_stands(self):
+        rng = random.Random(7)
+        self.assertEqual(B.p_grow_to_cap(rng, [1, 2], []), [1, 2])
+
+    # -- the pools carry the new mutators --
+
+    def test_the_pools_carry_the_grow_mutators(self):
+        self.assertIn(B.t_grow_to_cap, B.TEXT_MUTATORS)
+        self.assertIn(B.t_grow_to_cap, B.MAIL_MUTATORS)
+        self.assertIn(B.p_grow_to_cap, B.PAYLOAD_MUTATORS)
+
+    # -- M4: through mutate itself, steered to the new mutators --
+
+    def test_mutate_steered_grows_a_text_child_to_the_top_band(self):
+        rng = random.Random(11)
+        entry = B.make_entry("text", "job 9\n", "seed:t", "seed")
+        weights = {m.__name__: (1.0 if m is B.t_grow_to_cap else 0.0)
+                   for m in B.TEXT_MUTATORS}
+        child = B.mutate(rng, entry, [entry], "wire", weights)
+        self.assertIsNotNone(child)
+        data, name = child
+        self.assertEqual(name, "t_grow_to_cap")
+        self.assertGreater(self._text_bytes(data), B.MAX_TEXT // 2)
+        self.assertLessEqual(self._text_bytes(data), B.MAX_TEXT)
+
+    def test_mutate_steered_grows_a_payload_child_to_the_top_band(self):
+        rng = random.Random(11)
+        entry = B.make_entry("payload", {"script": "true"},
+                             "seed:p", "seed")
+        weights = {m.__name__: (1.0 if m is B.p_grow_to_cap else 0.0)
+                   for m in B.PAYLOAD_MUTATORS}
+        child = B.mutate(rng, entry, [entry], "wire", weights)
+        self.assertIsNotNone(child)
+        data, name = child
+        self.assertEqual(name, "p_grow_to_cap")
+        self.assertGreater(self._payload_bytes(data),
+                           B.MAX_PAYLOAD // 2)
+        self.assertLessEqual(self._payload_bytes(data), B.MAX_PAYLOAD)
