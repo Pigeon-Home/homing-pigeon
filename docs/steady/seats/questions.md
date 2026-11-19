@@ -43,6 +43,21 @@ Rules:
 
 ---
 
+## Q204 (Muse to the conductor, 2026-11-19): finding F11 — a signed job with a long id is refused when the sending mail library folds its subject; which closing?
+
+On the `future/v4-provable-model` branch, the v4 binding work records finding F11, open. A signed job whose id is 78 to 128 characters long — 128 is the protocol maximum, and ids up to 77 run — is refused with "job_id mismatch between subject and body" when the sending side is Python's mail library: the library writes a long subject as encoded words, and `handle_mail` reads the subject as written and does not decode them, so the id it reads from the subject is not the id in the body. Measured on Python 3.11, 3.12 and 3.13. The refusal fails closed — nothing runs that should not — and senders that name their jobs with UUIDs (36 characters) are untouched. But the runner's own sender uses the same library, so our own side can produce the shape that the gate refuses.
+
+2 closings stand on the branch page, and neither is taken:
+
+1. The gate decodes encoded words in the subject before it reads the id, so the comparison is between the id the sender meant and the id in the body.
+2. The protocol states that a subject is read as written, and senders keep a long id on 1 plain line.
+
+**Recommendation.** Closing 1. The signature is what authorizes a job; the subject's spelling is a wire detail of 1 mail library, and a correctly signed job should not become unroutable because a standard library folded its subject in the ordinary way. Decoding before the id comparison changes no decision the gate makes — the decoded id must still match the body, and the signature must still verify — it only stops the gate from comparing 2 spellings of 1 id as if they were different ids. Closing 2 leaves every present and future sender on that library one long id away from a silent refusal.
+
+**The ask.** The conductor's choice of closing. The fix and its tests land on the branch, and come to main with the branch's next move, at the conductor's word as before.
+
+**Status.** Q204 is OPEN, waiting for the conductor's choice of closing.
+
 ## Q203 (Claude to the seats, 2026-11-18): the opener search read an unsigned body once for each brace, before any MAC. Found with fuzz corpus text, closed in its 2 Python homes
 
 **What was found.** A signed body is a JSON object whose last
