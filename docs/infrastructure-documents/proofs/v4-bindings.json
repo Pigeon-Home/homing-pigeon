@@ -1,6 +1,6 @@
 {
  "about": "The v4 binding's constraint spec. Every constraint of constraints.md is tied here to the properties that state it, its code, its pins and its fuzz data, and every property to its model, its conformance suite and its steps in general.tla. runner/tests/test_v4_bindings.py holds each tie to the tree and re-measures the fuzz part.",
- "counted": "2026-11-18",
+ "counted": "2026-11-19",
  "properties": {
   "P1": {
    "title": "The acceptance gate",
@@ -309,7 +309,8 @@
    "fuzz": [],
    "unfuzzed": [
     "runner/ops/mail.py:handle_mail"
-   ]
+   ],
+   "reach": null
   },
   {
    "id": "C2",
@@ -326,7 +327,8 @@
    "fuzz": [],
    "unfuzzed": [
     "runner/ops/mail.py:handle_mail"
-   ]
+   ],
+   "reach": null
   },
   {
    "id": "C3",
@@ -346,7 +348,8 @@
    "unfuzzed": [
     "runner/runner.py:_max_result_bytes",
     "runner/runner.py:_fit_result_body"
-   ]
+   ],
+   "reach": null
   },
   {
    "id": "C4",
@@ -368,31 +371,74 @@
      "target": "local",
      "entries": 518,
      "traced": true,
-     "witness": "30d2ca7d8a662956"
+     "witness": "30d2ca7d8a662956",
+     "smallest": 0,
+     "largest": 772,
+     "bands": [
+      46,
+      472,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:_ingest_local_envelope_inner",
      "target": "query",
      "entries": 32,
      "traced": true,
-     "witness": "51d010a37d302eee"
+     "witness": "51d010a37d302eee",
+     "smallest": 763,
+     "largest": 1708,
+     "bands": [
+      0,
+      2,
+      30,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:_ingest_local_envelope_inner",
      "target": "local_inbox",
      "entries": 23,
      "traced": true,
-     "witness": "baeb7973bbe6a357"
+     "witness": "baeb7973bbe6a357",
+     "smallest": 13,
+     "largest": 4280,
+     "bands": [
+      8,
+      13,
+      2,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:_scan_local_inbox",
      "target": "local_inbox",
      "entries": 23,
      "traced": true,
-     "witness": "baeb7973bbe6a357"
+     "witness": "baeb7973bbe6a357",
+     "smallest": 13,
+     "largest": 4280,
+     "bands": [
+      8,
+      13,
+      2,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 573,
+    "smallest": 0,
+    "largest": 4280,
+    "bands": [
+     54,
+     487,
+     32,
+     0
+    ]
+   }
   },
   {
    "id": "C5",
@@ -416,19 +462,46 @@
      "target": "wire",
      "entries": 56,
      "traced": true,
-     "witness": "5cbb8bfb9b182f29"
+     "witness": "5cbb8bfb9b182f29",
+     "smallest": 1,
+     "largest": 380,
+     "bands": [
+      4,
+      52,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/wire/verify.py:verify_body_keyed",
      "target": "wire",
      "entries": 115,
      "traced": true,
-     "witness": "ed95e09208d241a4"
+     "witness": "ed95e09208d241a4",
+     "smallest": 0,
+     "largest": 3176,
+     "bands": [
+      4,
+      109,
+      2,
+      0
+     ]
     }
    ],
    "unfuzzed": [
     "runner/runner.py:_verify_and_decrypt"
-   ]
+   ],
+   "reach": {
+    "entries": 117,
+    "smallest": 0,
+    "largest": 3176,
+    "bands": [
+     5,
+     110,
+     2,
+     0
+    ]
+   }
   },
   {
    "id": "C6",
@@ -451,24 +524,59 @@
      "target": "secret",
      "entries": 26,
      "traced": true,
-     "witness": "3247f2976e0a3632"
+     "witness": "3247f2976e0a3632",
+     "smallest": 0,
+     "largest": 300,
+     "bands": [
+      23,
+      3,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/wire/verify.py:build_secrets",
      "target": "local",
      "entries": 518,
      "traced": false,
-     "witness": "30d2ca7d8a662956"
+     "witness": "30d2ca7d8a662956",
+     "smallest": 0,
+     "largest": 772,
+     "bands": [
+      46,
+      472,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/wire/verify.py:build_secrets",
      "target": "query",
      "entries": 183,
      "traced": false,
-     "witness": "e452a7e4ff7d7617"
+     "witness": "e452a7e4ff7d7617",
+     "smallest": 71,
+     "largest": 4754,
+     "bands": [
+      1,
+      145,
+      37,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 727,
+    "smallest": 0,
+    "largest": 4754,
+    "bands": [
+     70,
+     620,
+     37,
+     0
+    ]
+   }
   },
   {
    "id": "C7",
@@ -489,17 +597,44 @@
      "target": "local",
      "entries": 518,
      "traced": false,
-     "witness": "30d2ca7d8a662956"
+     "witness": "30d2ca7d8a662956",
+     "smallest": 0,
+     "largest": 772,
+     "bands": [
+      46,
+      472,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/guard/security.py:key_fingerprint",
      "target": "query",
      "entries": 183,
      "traced": false,
-     "witness": "e452a7e4ff7d7617"
+     "witness": "e452a7e4ff7d7617",
+     "smallest": 71,
+     "largest": 4754,
+     "bands": [
+      1,
+      145,
+      37,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 701,
+    "smallest": 0,
+    "largest": 4754,
+    "bands": [
+     47,
+     617,
+     37,
+     0
+    ]
+   }
   },
   {
    "id": "C8",
@@ -520,24 +655,59 @@
      "target": "query",
      "entries": 3,
      "traced": true,
-     "witness": "9cdec4dd4fb67530"
+     "witness": "9cdec4dd4fb67530",
+     "smallest": 826,
+     "largest": 857,
+     "bands": [
+      0,
+      3,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:_cleartext_jobs_allowed",
      "target": "v2_mail",
      "entries": 3,
      "traced": true,
-     "witness": "ecc78586a4f17852"
+     "witness": "ecc78586a4f17852",
+     "smallest": 233,
+     "largest": 344,
+     "bands": [
+      0,
+      3,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:_cleartext_jobs_allowed",
      "target": "board_mail",
      "entries": 2,
      "traced": true,
-     "witness": "d355a181ceef5629"
+     "witness": "d355a181ceef5629",
+     "smallest": 266,
+     "largest": 503,
+     "bands": [
+      0,
+      2,
+      0,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 8,
+    "smallest": 233,
+    "largest": 857,
+    "bands": [
+     0,
+     8,
+     0,
+     0
+    ]
+   }
   },
   {
    "id": "C9",
@@ -558,10 +728,29 @@
      "target": "crypto",
      "entries": 73,
      "traced": true,
-     "witness": "7af87be198fc141a"
+     "witness": "7af87be198fc141a",
+     "smallest": 50,
+     "largest": 4427,
+     "bands": [
+      2,
+      70,
+      1,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 73,
+    "smallest": 50,
+    "largest": 4427,
+    "bands": [
+     2,
+     70,
+     1,
+     0
+    ]
+   }
   },
   {
    "id": "C10",
@@ -582,31 +771,74 @@
      "target": "query",
      "entries": 176,
      "traced": false,
-     "witness": "e452a7e4ff7d7617"
+     "witness": "e452a7e4ff7d7617",
+     "smallest": 71,
+     "largest": 4754,
+     "bands": [
+      1,
+      138,
+      37,
+      0
+     ]
     },
     {
      "site": "runner/wire/verify.py:check_audience",
      "target": "board_mail",
      "entries": 95,
      "traced": false,
-     "witness": "fa7e80369e35d91d"
+     "witness": "fa7e80369e35d91d",
+     "smallest": 81,
+     "largest": 8583,
+     "bands": [
+      1,
+      91,
+      3,
+      0
+     ]
     },
     {
      "site": "runner/wire/verify.py:audience_allows",
      "target": "query",
      "entries": 176,
      "traced": false,
-     "witness": "e452a7e4ff7d7617"
+     "witness": "e452a7e4ff7d7617",
+     "smallest": 71,
+     "largest": 4754,
+     "bands": [
+      1,
+      138,
+      37,
+      0
+     ]
     },
     {
      "site": "runner/wire/verify.py:audience_allows",
      "target": "board_mail",
      "entries": 95,
      "traced": false,
-     "witness": "fa7e80369e35d91d"
+     "witness": "fa7e80369e35d91d",
+     "smallest": 81,
+     "largest": 8583,
+     "bands": [
+      1,
+      91,
+      3,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 271,
+    "smallest": 71,
+    "largest": 8583,
+    "bands": [
+     2,
+     229,
+     40,
+     0
+    ]
+   }
   },
   {
    "id": "C11",
@@ -630,20 +862,47 @@
      "target": "query",
      "entries": 176,
      "traced": false,
-     "witness": "e452a7e4ff7d7617"
+     "witness": "e452a7e4ff7d7617",
+     "smallest": 71,
+     "largest": 4754,
+     "bands": [
+      1,
+      138,
+      37,
+      0
+     ]
     },
     {
      "site": "runner/guard/security.py:sec_mode",
      "target": "board_mail",
      "entries": 95,
      "traced": false,
-     "witness": "fa7e80369e35d91d"
+     "witness": "fa7e80369e35d91d",
+     "smallest": 81,
+     "largest": 8583,
+     "bands": [
+      1,
+      91,
+      3,
+      0
+     ]
     }
    ],
    "unfuzzed": [
     "runner/guard/security.py:sec_decide",
     "runner/guard/security.py:validate_security_config"
-   ]
+   ],
+   "reach": {
+    "entries": 271,
+    "smallest": 71,
+    "largest": 8583,
+    "bands": [
+     2,
+     229,
+     40,
+     0
+    ]
+   }
   },
   {
    "id": "C12",
@@ -661,7 +920,8 @@
    "fuzz": [],
    "unfuzzed": [
     "runner/ops/mail.py:handle_mail"
-   ]
+   ],
+   "reach": null
   },
   {
    "id": "C13",
@@ -681,31 +941,74 @@
      "target": "local",
      "entries": 518,
      "traced": true,
-     "witness": "30d2ca7d8a662956"
+     "witness": "30d2ca7d8a662956",
+     "smallest": 0,
+     "largest": 772,
+     "bands": [
+      46,
+      472,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:_version_ok",
      "target": "query",
      "entries": 176,
      "traced": true,
-     "witness": "e452a7e4ff7d7617"
+     "witness": "e452a7e4ff7d7617",
+     "smallest": 71,
+     "largest": 4754,
+     "bands": [
+      1,
+      138,
+      37,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:_version_ok",
      "target": "board_mail",
      "entries": 95,
      "traced": true,
-     "witness": "fa7e80369e35d91d"
+     "witness": "fa7e80369e35d91d",
+     "smallest": 81,
+     "largest": 8583,
+     "bands": [
+      1,
+      91,
+      3,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:_version_ok",
      "target": "local_inbox",
      "entries": 23,
      "traced": true,
-     "witness": "baeb7973bbe6a357"
+     "witness": "baeb7973bbe6a357",
+     "smallest": 13,
+     "largest": 4280,
+     "bands": [
+      8,
+      13,
+      2,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 812,
+    "smallest": 0,
+    "largest": 8583,
+    "bands": [
+     56,
+     714,
+     42,
+     0
+    ]
+   }
   },
   {
    "id": "C14",
@@ -735,24 +1038,59 @@
      "target": "keydir",
      "entries": 35,
      "traced": true,
-     "witness": "5441473fdd8d940f"
+     "witness": "5441473fdd8d940f",
+     "smallest": 31,
+     "largest": 176,
+     "bands": [
+      15,
+      20,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/wire/verify.py:_build_key_policies",
      "target": "local",
      "entries": 518,
      "traced": false,
-     "witness": "30d2ca7d8a662956"
+     "witness": "30d2ca7d8a662956",
+     "smallest": 0,
+     "largest": 772,
+     "bands": [
+      46,
+      472,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/wire/verify.py:_build_key_policies",
      "target": "query",
      "entries": 163,
      "traced": false,
-     "witness": "e452a7e4ff7d7617"
+     "witness": "e452a7e4ff7d7617",
+     "smallest": 289,
+     "largest": 4754,
+     "bands": [
+      0,
+      126,
+      37,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 716,
+    "smallest": 0,
+    "largest": 4754,
+    "bands": [
+     61,
+     618,
+     37,
+     0
+    ]
+   }
   },
   {
    "id": "C15",
@@ -776,13 +1114,32 @@
      "target": "race_stash",
      "entries": 160,
      "traced": true,
-     "witness": "6bbe5748fa853d4e"
+     "witness": "6bbe5748fa853d4e",
+     "smallest": 132,
+     "largest": 4284,
+     "bands": [
+      0,
+      156,
+      4,
+      0
+     ]
     }
    ],
    "unfuzzed": [
     "runner/ops/mail.py:handle_mail",
     "runner/runner.py:load_sent_result"
-   ]
+   ],
+   "reach": {
+    "entries": 160,
+    "smallest": 132,
+    "largest": 4284,
+    "bands": [
+     0,
+     156,
+     4,
+     0
+    ]
+   }
   },
   {
    "id": "C16",
@@ -804,19 +1161,46 @@
      "target": "inbox",
      "entries": 29,
      "traced": true,
-     "witness": "dca50fbfe7abb91a"
+     "witness": "dca50fbfe7abb91a",
+     "smallest": 13,
+     "largest": 1822,
+     "bands": [
+      5,
+      23,
+      1,
+      0
+     ]
     },
     {
      "site": "runner/wire/transports.py:fetch_channel_messages",
      "target": "channels",
      "entries": 11,
      "traced": true,
-     "witness": "57100f4aed5662ef"
+     "witness": "57100f4aed5662ef",
+     "smallest": 40,
+     "largest": 143,
+     "bands": [
+      5,
+      6,
+      0,
+      0
+     ]
     }
    ],
    "unfuzzed": [
     "runner/transport_extensions/nats/__main__.py:__init__"
-   ]
+   ],
+   "reach": {
+    "entries": 40,
+    "smallest": 13,
+    "largest": 1822,
+    "bands": [
+     10,
+     29,
+     1,
+     0
+    ]
+   }
   },
   {
    "id": "C17",
@@ -842,10 +1226,29 @@
      "target": "queries",
      "entries": 132,
      "traced": true,
-     "witness": "879bb982e965c694"
+     "witness": "879bb982e965c694",
+     "smallest": 65,
+     "largest": 4661,
+     "bands": [
+      4,
+      123,
+      5,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 132,
+    "smallest": 65,
+    "largest": 4661,
+    "bands": [
+     4,
+     123,
+     5,
+     0
+    ]
+   }
   },
   {
    "id": "C18",
@@ -866,7 +1269,8 @@
    "unfuzzed": [
     "runner/guard/sandbox.py:build_bwrap_command",
     "runner/guard/sandbox.py:_confinement_cfg"
-   ]
+   ],
+   "reach": null
   },
   {
    "id": "C19",
@@ -884,7 +1288,8 @@
    "fuzz": [],
    "unfuzzed": [
     "runner/cloud/queues-worker/src/index.js:bearerMatches"
-   ]
+   ],
+   "reach": null
   },
   {
    "id": "C20",
@@ -909,26 +1314,61 @@
      "target": "dtls",
      "entries": 7,
      "traced": true,
-     "witness": "dfdcb85a26e22843"
+     "witness": "dfdcb85a26e22843",
+     "smallest": 566,
+     "largest": 1005,
+     "bands": [
+      0,
+      3,
+      4,
+      0
+     ]
     },
     {
      "site": "runner/wire/dtlsproto.py:feed_authenticated",
      "target": "dtls_session",
      "entries": 7,
      "traced": true,
-     "witness": "ec05df150700cbe9"
+     "witness": "ec05df150700cbe9",
+     "smallest": 191,
+     "largest": 309,
+     "bands": [
+      0,
+      7,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/wire/transports.py:service_channel",
      "target": "inbox",
      "entries": 29,
      "traced": true,
-     "witness": "dca50fbfe7abb91a"
+     "witness": "dca50fbfe7abb91a",
+     "smallest": 13,
+     "largest": 1822,
+     "bands": [
+      5,
+      23,
+      1,
+      0
+     ]
     }
    ],
    "unfuzzed": [
     "runner/transport_extensions/file/__main__.py:scan_jobs"
-   ]
+   ],
+   "reach": {
+    "entries": 43,
+    "smallest": 13,
+    "largest": 1822,
+    "bands": [
+     5,
+     33,
+     5,
+     0
+    ]
+   }
   },
   {
    "id": "C21",
@@ -949,17 +1389,44 @@
      "target": "keydir",
      "entries": 35,
      "traced": true,
-     "witness": "5441473fdd8d940f"
+     "witness": "5441473fdd8d940f",
+     "smallest": 31,
+     "largest": 176,
+     "bands": [
+      15,
+      20,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/wire/verify.py:load_key_directory",
      "target": "keydir",
      "entries": 38,
      "traced": true,
-     "witness": "5441473fdd8d940f"
+     "witness": "5441473fdd8d940f",
+     "smallest": 30,
+     "largest": 176,
+     "bands": [
+      18,
+      20,
+      0,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 38,
+    "smallest": 30,
+    "largest": 176,
+    "bands": [
+     18,
+     20,
+     0,
+     0
+    ]
+   }
   },
   {
    "id": "C22",
@@ -979,10 +1446,29 @@
      "target": "keydir",
      "entries": 35,
      "traced": true,
-     "witness": "5441473fdd8d940f"
+     "witness": "5441473fdd8d940f",
+     "smallest": 31,
+     "largest": 176,
+     "bands": [
+      15,
+      20,
+      0,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 35,
+    "smallest": 31,
+    "largest": 176,
+    "bands": [
+     15,
+     20,
+     0,
+     0
+    ]
+   }
   },
   {
    "id": "C23",
@@ -1006,66 +1492,149 @@
      "target": "race_state",
      "entries": 202,
      "traced": true,
-     "witness": "6205130f370a65a1"
+     "witness": "6205130f370a65a1",
+     "smallest": 63,
+     "largest": 1191,
+     "bands": [
+      1,
+      195,
+      6,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:seen_keep_sec",
      "target": "board_mail",
      "entries": 78,
      "traced": true,
-     "witness": "fa7e80369e35d91d"
+     "witness": "fa7e80369e35d91d",
+     "smallest": 81,
+     "largest": 8577,
+     "bands": [
+      1,
+      75,
+      2,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:seen_keep_sec",
      "target": "v2_mail",
      "entries": 32,
      "traced": true,
-     "witness": "165503227a4ac6d2"
+     "witness": "165503227a4ac6d2",
+     "smallest": 214,
+     "largest": 706,
+     "bands": [
+      0,
+      32,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:_write_seen_kept",
      "target": "race_state",
      "entries": 202,
      "traced": true,
-     "witness": "6205130f370a65a1"
+     "witness": "6205130f370a65a1",
+     "smallest": 63,
+     "largest": 1191,
+     "bands": [
+      1,
+      195,
+      6,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:_write_seen_kept",
      "target": "board_mail",
      "entries": 78,
      "traced": true,
-     "witness": "fa7e80369e35d91d"
+     "witness": "fa7e80369e35d91d",
+     "smallest": 81,
+     "largest": 8577,
+     "bands": [
+      1,
+      75,
+      2,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:_write_seen_kept",
      "target": "v2_mail",
      "entries": 32,
      "traced": true,
-     "witness": "165503227a4ac6d2"
+     "witness": "165503227a4ac6d2",
+     "smallest": 214,
+     "largest": 706,
+     "bands": [
+      0,
+      32,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:save_seen",
      "target": "race_state",
      "entries": 202,
      "traced": true,
-     "witness": "6205130f370a65a1"
+     "witness": "6205130f370a65a1",
+     "smallest": 63,
+     "largest": 1191,
+     "bands": [
+      1,
+      195,
+      6,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:save_seen",
      "target": "board_mail",
      "entries": 78,
      "traced": true,
-     "witness": "fa7e80369e35d91d"
+     "witness": "fa7e80369e35d91d",
+     "smallest": 81,
+     "largest": 8577,
+     "bands": [
+      1,
+      75,
+      2,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:save_seen",
      "target": "v2_mail",
      "entries": 32,
      "traced": true,
-     "witness": "165503227a4ac6d2"
+     "witness": "165503227a4ac6d2",
+     "smallest": 214,
+     "largest": 706,
+     "bands": [
+      0,
+      32,
+      0,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 312,
+    "smallest": 63,
+    "largest": 8577,
+    "bands": [
+     2,
+     302,
+     8,
+     0
+    ]
+   }
   },
   {
    "id": "C24",
@@ -1085,7 +1654,8 @@
    "unfuzzed": [
     "runner/ops/misc.py:_disk_owns",
     "runner/runner.py:_disk_release"
-   ]
+   ],
+   "reach": null
   },
   {
    "id": "C25",
@@ -1105,21 +1675,48 @@
     {
      "site": "runner/runner.py:deliver_stash",
      "target": "race_stash",
-     "entries": 160,
+     "entries": 159,
      "traced": true,
-     "witness": "6bbe5748fa853d4e"
+     "witness": "6bbe5748fa853d4e",
+     "smallest": 130,
+     "largest": 4284,
+     "bands": [
+      0,
+      155,
+      4,
+      0
+     ]
     },
     {
      "site": "runner/runner.py:resend_stashed",
      "target": "race_stash",
      "entries": 157,
      "traced": true,
-     "witness": "b1808bcfea5653ed"
+     "witness": "b1808bcfea5653ed",
+     "smallest": 130,
+     "largest": 4284,
+     "bands": [
+      0,
+      153,
+      4,
+      0
+     ]
     }
    ],
    "unfuzzed": [
     "runner/runner.py:prune_sent"
-   ]
+   ],
+   "reach": {
+    "entries": 162,
+    "smallest": 130,
+    "largest": 4284,
+    "bands": [
+     0,
+     158,
+     4,
+     0
+    ]
+   }
   },
   {
    "id": "C26",
@@ -1143,33 +1740,76 @@
      "target": "local",
      "entries": 518,
      "traced": false,
-     "witness": "30d2ca7d8a662956"
+     "witness": "30d2ca7d8a662956",
+     "smallest": 0,
+     "largest": 772,
+     "bands": [
+      46,
+      472,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/guard/confval.py:integer",
      "target": "race_state",
      "entries": 202,
      "traced": false,
-     "witness": "6205130f370a65a1"
+     "witness": "6205130f370a65a1",
+     "smallest": 63,
+     "largest": 1191,
+     "bands": [
+      1,
+      195,
+      6,
+      0
+     ]
     },
     {
      "site": "runner/guard/confval.py:number",
      "target": "local",
      "entries": 518,
      "traced": false,
-     "witness": "30d2ca7d8a662956"
+     "witness": "30d2ca7d8a662956",
+     "smallest": 0,
+     "largest": 772,
+     "bands": [
+      46,
+      472,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/guard/confval.py:number",
      "target": "race_state",
      "entries": 202,
      "traced": false,
-     "witness": "6205130f370a65a1"
+     "witness": "6205130f370a65a1",
+     "smallest": 63,
+     "largest": 1191,
+     "bands": [
+      1,
+      195,
+      6,
+      0
+     ]
     }
    ],
    "unfuzzed": [
     "runner/ops/attest.py:reload_hot_config"
-   ]
+   ],
+   "reach": {
+    "entries": 720,
+    "smallest": 0,
+    "largest": 1191,
+    "bands": [
+     47,
+     667,
+     6,
+     0
+    ]
+   }
   },
   {
    "id": "C27",
@@ -1189,7 +1829,8 @@
    "unfuzzed": [
     "runner/runner.py:_validate_size_caps",
     "runner/wire/mailbox.py:_port"
-   ]
+   ],
+   "reach": null
   },
   {
    "id": "C28",
@@ -1211,7 +1852,8 @@
    "unfuzzed": [
     "runner/oracle/resources.py:guard_disk",
     "runner/oracle/resources.py:disk_guard_enabled"
-   ]
+   ],
+   "reach": null
   },
   {
    "id": "C29",
@@ -1231,24 +1873,59 @@
      "target": "dtls_session",
      "entries": 42,
      "traced": true,
-     "witness": "91fd6a46a4d9e3cd"
+     "witness": "91fd6a46a4d9e3cd",
+     "smallest": 129,
+     "largest": 344,
+     "bands": [
+      0,
+      42,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/wire/dtlsproto.py:begin",
      "target": "dtls",
      "entries": 31,
      "traced": true,
-     "witness": "aef12dee4341911e"
+     "witness": "aef12dee4341911e",
+     "smallest": 416,
+     "largest": 1005,
+     "bands": [
+      0,
+      26,
+      5,
+      0
+     ]
     },
     {
      "site": "runner/wire/dtlsproto.py:begin",
      "target": "dtls_hostile",
      "entries": 14,
      "traced": true,
-     "witness": "45e646cc4bf9936b"
+     "witness": "45e646cc4bf9936b",
+     "smallest": 17,
+     "largest": 226,
+     "bands": [
+      7,
+      7,
+      0,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 87,
+    "smallest": 17,
+    "largest": 1005,
+    "bands": [
+     7,
+     75,
+     5,
+     0
+    ]
+   }
   },
   {
    "id": "C30",
@@ -1270,31 +1947,74 @@
      "target": "dtls",
      "entries": 61,
      "traced": true,
-     "witness": "d0c2beb3363783a1"
+     "witness": "d0c2beb3363783a1",
+     "smallest": 0,
+     "largest": 1005,
+     "bands": [
+      7,
+      49,
+      5,
+      0
+     ]
     },
     {
      "site": "runner/wire/dtlsproto.py:_split_records",
      "target": "dtls_session",
      "entries": 55,
      "traced": true,
-     "witness": "91fd6a46a4d9e3cd"
+     "witness": "91fd6a46a4d9e3cd",
+     "smallest": 117,
+     "largest": 344,
+     "bands": [
+      0,
+      55,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/wire/dtlsproto.py:_split_records",
      "target": "dtls_hostile",
      "entries": 38,
      "traced": true,
-     "witness": "45e646cc4bf9936b"
+     "witness": "45e646cc4bf9936b",
+     "smallest": 2,
+     "largest": 378,
+     "bands": [
+      10,
+      28,
+      0,
+      0
+     ]
     },
     {
      "site": "runner/wire/dtlsproto.py:_accept_seq",
      "target": "dtls_session",
      "entries": 19,
      "traced": true,
-     "witness": "91fd6a46a4d9e3cd"
+     "witness": "91fd6a46a4d9e3cd",
+     "smallest": 129,
+     "largest": 315,
+     "bands": [
+      0,
+      19,
+      0,
+      0
+     ]
     }
    ],
-   "unfuzzed": []
+   "unfuzzed": [],
+   "reach": {
+    "entries": 154,
+    "smallest": 0,
+    "largest": 1005,
+    "bands": [
+     17,
+     132,
+     5,
+     0
+    ]
+   }
   },
   {
    "id": "C31",
@@ -1316,7 +2036,8 @@
     "runner/guard/macos_confine.py:macos_confinement_problem",
     "runner/runner.py:_confinement_argv",
     "runner/ops/remediation_ops.py:confinement_startup_problem"
-   ]
+   ],
+   "reach": null
   }
  ],
  "fuzz": {
@@ -1328,7 +2049,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 46,
-   "bound": false
+   "bound": false,
+   "smallest": 0,
+   "largest": 255,
+   "bands": [
+    43,
+    3,
+    0,
+    0
+   ]
   },
   "board": {
    "runs": 1104,
@@ -1338,7 +2067,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 26,
-   "bound": false
+   "bound": false,
+   "smallest": 2,
+   "largest": 258,
+   "bands": [
+    7,
+    19,
+    0,
+    0
+   ]
   },
   "board_mail": {
    "runs": 874,
@@ -1348,7 +2085,15 @@
    "crash": 3,
    "slow": 0,
    "entries": 100,
-   "bound": true
+   "bound": true,
+   "smallest": 81,
+   "largest": 8583,
+   "bands": [
+    1,
+    96,
+    3,
+    0
+   ]
   },
   "board_ops": {
    "runs": 1127,
@@ -1358,7 +2103,15 @@
    "crash": 9,
    "slow": 1,
    "entries": 54,
-   "bound": false
+   "bound": false,
+   "smallest": 25,
+   "largest": 1787,
+   "bands": [
+    1,
+    45,
+    8,
+    0
+   ]
   },
   "channels": {
    "runs": 1138,
@@ -1368,7 +2121,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 11,
-   "bound": true
+   "bound": true,
+   "smallest": 40,
+   "largest": 143,
+   "bands": [
+    5,
+    6,
+    0,
+    0
+   ]
   },
   "cloud": {
    "runs": 1050,
@@ -1378,7 +2139,15 @@
    "crash": 2,
    "slow": 108,
    "entries": 113,
-   "bound": false
+   "bound": false,
+   "smallest": 0,
+   "largest": 3176,
+   "bands": [
+    5,
+    106,
+    2,
+    0
+   ]
   },
   "collect": {
    "runs": 1045,
@@ -1388,7 +2157,15 @@
    "crash": 117890,
    "slow": 1,
    "entries": 20,
-   "bound": false
+   "bound": false,
+   "smallest": 33,
+   "largest": 415,
+   "bands": [
+    16,
+    4,
+    0,
+    0
+   ]
   },
   "crypto": {
    "runs": 1059,
@@ -1398,7 +2175,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 73,
-   "bound": true
+   "bound": true,
+   "smallest": 50,
+   "largest": 4427,
+   "bands": [
+    2,
+    70,
+    1,
+    0
+   ]
   },
   "dtls": {
    "runs": 1855,
@@ -1408,7 +2193,15 @@
    "crash": 0,
    "slow": 1,
    "entries": 61,
-   "bound": true
+   "bound": true,
+   "smallest": 0,
+   "largest": 1005,
+   "bands": [
+    7,
+    49,
+    5,
+    0
+   ]
   },
   "dtls_hostile": {
    "runs": 1689,
@@ -1418,7 +2211,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 38,
-   "bound": true
+   "bound": true,
+   "smallest": 2,
+   "largest": 378,
+   "bands": [
+    10,
+    28,
+    0,
+    0
+   ]
   },
   "dtls_session": {
    "runs": 1545,
@@ -1428,7 +2229,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 58,
-   "bound": true
+   "bound": true,
+   "smallest": 2,
+   "largest": 344,
+   "bands": [
+    3,
+    55,
+    0,
+    0
+   ]
   },
   "edge_subject": {
    "runs": 45,
@@ -1438,7 +2247,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 20,
-   "bound": false
+   "bound": false,
+   "smallest": 2,
+   "largest": 227,
+   "bands": [
+    18,
+    2,
+    0,
+    0
+   ]
   },
   "inbox": {
    "runs": 971,
@@ -1448,7 +2265,15 @@
    "crash": 705,
    "slow": 0,
    "entries": 29,
-   "bound": true
+   "bound": true,
+   "smallest": 13,
+   "largest": 1822,
+   "bands": [
+    5,
+    23,
+    1,
+    0
+   ]
   },
   "keydir": {
    "runs": 1726,
@@ -1458,7 +2283,15 @@
    "crash": 1,
    "slow": 0,
    "entries": 38,
-   "bound": true
+   "bound": true,
+   "smallest": 30,
+   "largest": 176,
+   "bands": [
+    18,
+    20,
+    0,
+    0
+   ]
   },
   "local": {
    "runs": 785,
@@ -1468,7 +2301,15 @@
    "crash": 0,
    "slow": 54,
    "entries": 518,
-   "bound": true
+   "bound": true,
+   "smallest": 0,
+   "largest": 772,
+   "bands": [
+    46,
+    472,
+    0,
+    0
+   ]
   },
   "local_inbox": {
    "runs": 1123,
@@ -1478,7 +2319,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 23,
-   "bound": true
+   "bound": true,
+   "smallest": 13,
+   "largest": 4280,
+   "bands": [
+    8,
+    13,
+    2,
+    0
+   ]
   },
   "mail": {
    "runs": 1054,
@@ -1488,7 +2337,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 26,
-   "bound": false
+   "bound": false,
+   "smallest": 0,
+   "largest": 958,
+   "bands": [
+    2,
+    24,
+    0,
+    0
+   ]
   },
   "manifest": {
    "runs": 1018,
@@ -1498,7 +2355,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 129,
-   "bound": false
+   "bound": false,
+   "smallest": 4,
+   "largest": 4177,
+   "bands": [
+    3,
+    121,
+    5,
+    0
+   ]
   },
   "names": {
    "runs": 1007,
@@ -1508,7 +2373,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 84,
-   "bound": false
+   "bound": false,
+   "smallest": 0,
+   "largest": 1025,
+   "bands": [
+    74,
+    6,
+    4,
+    0
+   ]
   },
   "queries": {
    "runs": 649,
@@ -1518,7 +2391,15 @@
    "crash": 59,
    "slow": 3,
    "entries": 132,
-   "bound": true
+   "bound": true,
+   "smallest": 65,
+   "largest": 4661,
+   "bands": [
+    4,
+    123,
+    5,
+    0
+   ]
   },
   "query": {
    "runs": 674,
@@ -1528,7 +2409,15 @@
    "crash": 19,
    "slow": 0,
    "entries": 183,
-   "bound": true
+   "bound": true,
+   "smallest": 71,
+   "largest": 4754,
+   "bands": [
+    1,
+    145,
+    37,
+    0
+   ]
   },
   "race_board": {
    "runs": 1529,
@@ -1538,7 +2427,15 @@
    "crash": 19632,
    "slow": 0,
    "entries": 84,
-   "bound": false
+   "bound": false,
+   "smallest": 10,
+   "largest": 1569,
+   "bands": [
+    3,
+    79,
+    2,
+    0
+   ]
   },
   "race_stash": {
    "runs": 631,
@@ -1548,7 +2445,15 @@
    "crash": 1182,
    "slow": 0,
    "entries": 165,
-   "bound": true
+   "bound": true,
+   "smallest": 15,
+   "largest": 4284,
+   "bands": [
+    3,
+    158,
+    4,
+    0
+   ]
   },
   "race_state": {
    "runs": 672,
@@ -1558,7 +2463,15 @@
    "crash": 56684,
    "slow": 2,
    "entries": 212,
-   "bound": true
+   "bound": true,
+   "smallest": 8,
+   "largest": 1191,
+   "bands": [
+    3,
+    203,
+    6,
+    0
+   ]
   },
   "secret": {
    "runs": 1000,
@@ -1568,7 +2481,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 26,
-   "bound": true
+   "bound": true,
+   "smallest": 0,
+   "largest": 300,
+   "bands": [
+    23,
+    3,
+    0,
+    0
+   ]
   },
   "stage": {
    "runs": 924,
@@ -1578,7 +2499,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 35,
-   "bound": false
+   "bound": false,
+   "smallest": 16,
+   "largest": 4025,
+   "bands": [
+    31,
+    3,
+    1,
+    0
+   ]
   },
   "stash": {
    "runs": 1094,
@@ -1588,7 +2517,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 31,
-   "bound": false
+   "bound": false,
+   "smallest": 40,
+   "largest": 606,
+   "bands": [
+    3,
+    28,
+    0,
+    0
+   ]
   },
   "v2": {
    "runs": 1089,
@@ -1598,7 +2535,15 @@
    "crash": 0,
    "slow": 0,
    "entries": 68,
-   "bound": false
+   "bound": false,
+   "smallest": 1,
+   "largest": 729,
+   "bands": [
+    6,
+    62,
+    0,
+    0
+   ]
   },
   "v2_mail": {
    "runs": 867,
@@ -1608,7 +2553,15 @@
    "crash": 34,
    "slow": 0,
    "entries": 84,
-   "bound": true
+   "bound": true,
+   "smallest": 61,
+   "largest": 853,
+   "bands": [
+    3,
+    81,
+    0,
+    0
+   ]
   },
   "wire": {
    "runs": 1070,
@@ -1618,7 +2571,15 @@
    "crash": 0,
    "slow": 55,
    "entries": 117,
-   "bound": true
+   "bound": true,
+   "smallest": 0,
+   "largest": 3176,
+   "bands": [
+    5,
+    110,
+    2,
+    0
+   ]
   }
  }
 }

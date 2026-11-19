@@ -46,16 +46,17 @@ the registry to the tree and this page to the registry.
    seams whose turning breaks its mark, and no other.
 7. **Constraint to fuzz data.** The fuzz targets whose
    corpus enters the constraint's code, with the number of
-   entries that do and 1 entry named as witness. This tie
-   is measured, not written: see the next section. Held by
-   replaying the witness under a profiler on every suite
-   run.
+   entries that do, the sizes of those entries, and 1 entry
+   named as witness. This tie is measured, not written: see
+   the 2 sections on the fuzz data below. Held by replaying
+   the witness under a profiler on every suite run, and by
+   sizing it again.
 
 ## The counts
 
 The registry binds 31 constraints and 13 properties. It
 names 59 code sites and 74 named pins, and it carries 60
-fuzz ties. The fuzz part was counted on 2026-11-18.
+fuzz ties. The fuzz part was counted on 2026-11-19.
 
 ## Every constraint, tied
 
@@ -90,7 +91,7 @@ the constraint's functions.
 | C22 | Upgrade key arrangement | P4 clauses 5, 7, 8 and 11 | `check_key_policy` in `runner/wire/verify.py` | 1 | `keydir` 35 |
 | C23 | Replay-cache keep horizon | P5 clauses 5 and 8 | `seen_keep_sec` in `runner/runner.py`; `_write_seen_kept` in `runner/runner.py`; `save_seen` in `runner/runner.py` | 3 | `race_state` 202, `board_mail` 78, `v2_mail` 32 |
 | C24 | Claim stale rule | P5 clause 4 | `_disk_owns` in `runner/ops/misc.py`; `_disk_release` in `runner/runner.py` | 2 | none |
-| C25 | Record retention and delivery window | P5 clauses 9 and 10 | `prune_sent` in `runner/runner.py`; `deliver_stash` in `runner/runner.py`; `resend_stashed` in `runner/runner.py` | 1 | `race_stash` 160 |
+| C25 | Record retention and delivery window | P5 clauses 9 and 10 | `prune_sent` in `runner/runner.py`; `deliver_stash` in `runner/runner.py`; `resend_stashed` in `runner/runner.py` | 1 | `race_stash` 159 |
 | C26 | Default-class reader | P6 clauses 1, 2, 3 and 5 | `integer` in `runner/guard/confval.py`; `number` in `runner/guard/confval.py`; `reload_hot_config` in `runner/ops/attest.py` | 3 | `local` 518, `race_state` 202 |
 | C27 | Refuse class at startup | P6 clauses 4 and 6 | `_validate_size_caps` in `runner/runner.py`; `_port` in `runner/wire/mailbox.py` | 2 | none |
 | C28 | Disk guard | P7, the whole property | `guard_disk` in `runner/oracle/resources.py`; `disk_guard_enabled` in `runner/oracle/resources.py` | 4 | none |
@@ -182,6 +183,99 @@ already presses on which constraint, and where none does.
 Each bound target's corpus is replayed against its contract
 on every suite run by `CorpusReplayTest` in
 `runner/tests/test_de_dust_corpus.py`.
+
+## The sizes beside the reach
+
+A tie's count says how many corpus entries enter a function.
+This section says how large those entries are, so the reach
+and the sizes stand together beside each constraint.
+
+The size of an entry is the campaign's own count of it: a
+text entry's bytes as UTF-8, and a payload entry's bytes as
+the JSON the tool writes. The tool tries no child past its
+cap by that count, so a child is at most 16,384 bytes. The
+`Sizes` class in the test module holds the 2 counts together
+at the cap: a child of exactly the cap is tried, and a child
+1 byte past it is not.
+
+The sizes come from the same replay as the reach. For each
+tie the registry carries the smallest entry inside the
+function, the largest, and the number in each of 4 bands.
+For each constraint it carries the same over all its ties,
+and an entry that enters 2 of the constraint's functions is
+counted once. 21 of the 31 constraints have entries to size.
+
+| ID | Constraint | Entries inside | Smallest | Largest | Under 100 bytes | 100 to 999 | 1,000 to 9,999 | 10,000 and over |
+|----|------------|----------------|----------|---------|-----------------|------------|----------------|-----------------|
+| C1 | `max_job_bytes` | none |  |  |  |  |  |  |
+| C2 | `max_script_bytes` | none |  |  |  |  |  |  |
+| C3 | `max_result_bytes` | none |  |  |  |  |  |  |
+| C4 | `_LOCAL_ENVELOPE_MAX_BYTES` | 573 | 0 | 4,280 | 54 | 487 | 32 | 0 |
+| C5 | Signature | 117 | 0 | 3,176 | 5 | 110 | 2 | 0 |
+| C6 | Secret entropy floor | 727 | 0 | 4,754 | 70 | 620 | 37 | 0 |
+| C7 | Key fingerprint | 701 | 0 | 4,754 | 47 | 617 | 37 | 0 |
+| C8 | Cleartext | 8 | 233 | 857 | 0 | 8 | 0 | 0 |
+| C9 | AEAD | 73 | 50 | 4,427 | 2 | 70 | 1 | 0 |
+| C10 | Audience | 271 | 71 | 8,583 | 2 | 229 | 40 | 0 |
+| C11 | Seven security modes | 271 | 71 | 8,583 | 2 | 229 | 40 | 0 |
+| C12 | `max_job_age_sec` | none |  |  |  |  |  |  |
+| C13 | Protocol version | 812 | 0 | 8,583 | 56 | 714 | 42 | 0 |
+| C14 | Key policies | 716 | 0 | 4,754 | 61 | 618 | 37 | 0 |
+| C15 | Execution semantics | 160 | 132 | 4,284 | 0 | 156 | 4 | 0 |
+| C16 | Transport credentials | 40 | 13 | 1,822 | 10 | 29 | 1 | 0 |
+| C17 | Result-policy ceiling | 132 | 65 | 4,661 | 4 | 123 | 5 | 0 |
+| C18 | Sandbox shape | none |  |  |  |  |  |  |
+| C19 | Queues edge gates | none |  |  |  |  |  |  |
+| C20 | Transport gate postures | 43 | 13 | 1,822 | 5 | 33 | 5 | 0 |
+| C21 | Key directory precedence | 38 | 30 | 176 | 18 | 20 | 0 | 0 |
+| C22 | Upgrade key arrangement | 35 | 31 | 176 | 15 | 20 | 0 | 0 |
+| C23 | Replay-cache keep horizon | 312 | 63 | 8,577 | 2 | 302 | 8 | 0 |
+| C24 | Claim stale rule | none |  |  |  |  |  |  |
+| C25 | Record retention and delivery window | 162 | 130 | 4,284 | 0 | 158 | 4 | 0 |
+| C26 | Default-class reader | 720 | 0 | 1,191 | 47 | 667 | 6 | 0 |
+| C27 | Refuse class at startup | none |  |  |  |  |  |  |
+| C28 | Disk guard | none |  |  |  |  |  |  |
+| C29 | v3 hybrid group | 87 | 17 | 1,005 | 7 | 75 | 5 | 0 |
+| C30 | DTLS framing | 154 | 0 | 1,005 | 17 | 132 | 5 | 0 |
+| C31 | macOS confinement probe | none |  |  |  |  |  |  |
+
+What the sizes say:
+
+1. **The corpus is a corpus of small inputs.** Of the 2,604
+   corpus entries, 359 are under 100 bytes, 2,157 are of 100
+   to 999 bytes, 88 are of 1,000 to 9,999 bytes, and 0 are of
+   10,000 bytes or more. The largest is 8,583 bytes.
+2. **No fuzz input is the size of a size cap.** C1 to C4 are
+   caps on size: 4,194,304 bytes for a job, 1,048,576 for a
+   script, 5,242,880 for a result and 262,144 for a local
+   envelope. A child of the campaign is at most 16,384
+   bytes, which is under all 4. C4 is the 1 cap with fuzz
+   data at its code: 573 entries, and the largest of them is
+   4,280 bytes. So the edge of a cap is held by its pins,
+   and for C4 by the corpus grown 1 byte past the cap at the
+   local door, in the section on the doors below. Fuzz data
+   does not hold it, and with this cap on a child it cannot.
+3. **F10 is what a missing size looks like.** The opener
+   search's cost grew with the square of the body. The
+   largest entry at the signature's code is 3,176 bytes. A
+   body of that size in F10's shape cost the earlier search
+   0.07 seconds here on 2026-11-19, under the half second
+   from which the campaign files an input as slow. At 16,384
+   bytes the same shape cost it 1.9 seconds. That size was
+   inside the campaign's cap, and the corpus never grew
+   there.
+4. **An empty row is not a small row.** The 10 constraints
+   with no fuzz data have nothing to size, and the table
+   shows them empty.
+
+The run log counts the inputs tried and not their sizes. So
+the sizes here are those of the corpus the runs kept, and
+for the 594,073,949 inputs the cap on a child is the bound.
+
+Every entry counted in a band is replayed against its
+target's contract on every suite run, as the section above
+says. So a band's count is a count of inputs of that size
+whose contract holds on the tree as it stands.
 
 ## What the fuzz data does not reach
 
@@ -381,6 +475,9 @@ right: the search has 3 homes, and 2 are closed.
 - F10's bound is shown for the bodies tried and argued for
   the rest. The record gives no proof that no other body
   makes the search read more than 16 times its length.
+- A size is the entry's own bytes. Where a target's check
+  puts a signature or an envelope around an entry first,
+  the function reads more bytes than the entry has.
 - A seam is the general model's guard, set on or off whole.
   It shows a property rests on that guard being applied.
   The guard's inside is the small model's to prove, and the
@@ -391,5 +488,14 @@ right: the search has 3 homes, and 2 are closed.
 - A search for cost in the readers that run before a MAC.
   F10 came to light through a slow test and not through a
   search, and a reader's cost is a property like any other.
+- Size in the campaign. No corpus entry is of 10,000 bytes
+  or more, and a child is held under every size cap. A
+  mutator or a target that grows an input toward a cap, and
+  toward the sizes where a reader's cost shows, is the
+  campaign's to add.
+- The size caps at the gate. C1 and C2 are decided in
+  `handle_mail`, where no target enters. The corpus's fresh
+  jobs, grown step by step to each cap and 1 byte past it,
+  would put sizes beside the 2 caps that have none.
 - The 3 suppositions `v4-general.md` left stand as written
   there.

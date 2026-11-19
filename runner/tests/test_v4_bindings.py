@@ -18,9 +18,10 @@ reaches the function it is bound to: each fails here, by name.
 The fuzz part of the registry is measured, not written. `measure`
 replays every corpus entry of every target under a profiler and
 counts, for each constraint's code site, the entries that enter
-it. A suite run does not repeat the whole count. It replays 1
-witness entry for each tie and looks again only where the witness
-has gone.
+it, and it notes the size of each by the campaign's own count of
+an entry's bytes. A suite run does not repeat the whole count. It
+replays 1 witness entry for each tie and looks again only where
+the witness has gone.
 
     python3 runner/tests/test_v4_bindings.py measure
     python3 runner/tests/test_v4_bindings.py measure --write
@@ -56,6 +57,7 @@ if ROOT not in sys.path:
 from runner import runner as RUNNER  # noqa: E402
 from runner.guard import security as SECURITY  # noqa: E402
 from runner.tests import test_proof_conformance as DOOR  # noqa: E402
+from runner.tests import test_proof_constraints as PINS  # noqa: E402
 from runner.tests import test_v4_general as GENERAL  # noqa: E402
 from runner.tools import de_dust_corpus as DD  # noqa: E402
 from runner.wire import jobcrypto  # noqa: E402
@@ -164,6 +166,37 @@ def corpus(target):
             if isinstance(entry, dict) and "data" in entry]
 
 
+# The edges of the size bands, in bytes: under 100, 100 to 999,
+# 1,000 to 9,999, and 10,000 and over.
+BANDS = (100, 1000, 10000)
+
+
+def size_of(entry):
+    """The bytes of 1 corpus entry by the campaign's own count: a
+    text entry's UTF-8 bytes, a payload entry's JSON as the tool
+    writes it. The tool holds a child to its cap by this count."""
+    data = entry["data"]
+    if entry.get("kind") == "text":
+        return len(data.encode("utf-8", "surrogatepass"))
+    return len(json.dumps(data, ensure_ascii=True))
+
+
+def band_of(size):
+    return sum(1 for edge in BANDS if size >= edge)
+
+
+def sized(sizes):
+    """Sizes as the registry carries them: the smallest, the
+    largest, and how many fall in each band."""
+    bands = [0] * (len(BANDS) + 1)
+    for size in sizes:
+        bands[band_of(size)] += 1
+    return collections.OrderedDict([
+        ("smallest", min(sizes) if sizes else None),
+        ("largest", max(sizes) if sizes else None),
+        ("bands", bands)])
+
+
 def leave_no_trace(case):
     """The corpus tool keeps 1 temp folder for the process, and a
     check may add to the import path. A test that runs the tool's
@@ -235,45 +268,61 @@ def run_log():
 
 
 def measure():
-    """The registry's fuzz part as the tree gives it now:
-    (ties by constraint, sites no entry enters, targets)."""
+    """The registry's fuzz part as the tree gives it now: (ties
+    by constraint, sites no entry enters, targets, each
+    constraint's reach by size)."""
     reg = registry()
     sites = {site for row in reg["constraints"] for site in row["code"]}
-    counts = collections.defaultdict(collections.Counter)
+    # {target: {site: {place in the corpus: size}}}
+    inside = collections.defaultdict(
+        lambda: collections.defaultdict(collections.OrderedDict))
     witness = collections.defaultdict(dict)
-    sizes = {}
+    whole = {}
 
     def replay():
         for target in sorted(DD.TARGETS):
             entries = corpus(target)
-            sizes[target] = len(entries)
-            for entry in entries:
+            whole[target] = [size_of(entry) for entry in entries]
+            for place, entry in enumerate(entries):
                 for site in entered(target, entry) & sites:
-                    counts[target][site] += 1
+                    inside[target][site][place] = whole[target][place]
                     witness[target].setdefault(site, entry["id"])
 
     DD._with_rig(replay)
     ties, bare, bound = collections.OrderedDict(), {}, set()
+    reach = collections.OrderedDict()
     for row in reg["constraints"]:
         ties[row["id"]], bare[row["id"]] = [], []
+        within = {}
         for site in row["code"]:
-            reach = sorted(((target, hits[site])
-                            for target, hits in counts.items()
-                            if site in hits),
-                           key=lambda pair: (-pair[1], pair[0]))
-            own = [pair for pair in reach if traces(pair[0], site)]
+            reached = sorted(((target, len(hits[site]))
+                              for target, hits in inside.items()
+                              if site in hits),
+                             key=lambda pair: (-pair[1], pair[0]))
+            own = [pair for pair in reached if traces(pair[0], site)]
             # A target whose tracer follows the file is bound
             # first. Where none does, the 2 targets with the most
             # entries inside stand for the rest.
-            chosen = own or reach[:2]
+            chosen = own or reached[:2]
             if not chosen:
                 bare[row["id"]].append(site)
             for target, hits in chosen:
-                ties[row["id"]].append(collections.OrderedDict([
+                tie = collections.OrderedDict([
                     ("site", site), ("target", target), ("entries", hits),
                     ("traced", traces(target, site)),
-                    ("witness", witness[target][site])]))
+                    ("witness", witness[target][site])])
+                tie.update(sized(list(inside[target][site].values())))
+                ties[row["id"]].append(tie)
                 bound.add(target)
+                # An entry inside 2 of the constraint's functions
+                # is 1 entry of the constraint's reach.
+                for place, size in inside[target][site].items():
+                    within[(target, place)] = size
+        reach[row["id"]] = None
+        if within:
+            reach[row["id"]] = collections.OrderedDict(
+                [("entries", len(within))])
+            reach[row["id"]].update(sized(list(within.values())))
     log = run_log()
     targets = collections.OrderedDict()
     for target in sorted(DD.TARGETS):
@@ -282,8 +331,9 @@ def measure():
             ("runs", row["runs"]), ("tried", row["tried"]),
             ("accepted", row["accepted"]), ("refused", row["refused"]),
             ("crash", row["crash"]), ("slow", row["slow"]),
-            ("entries", sizes[target]), ("bound", target in bound)])
-    return ties, bare, targets
+            ("entries", len(whole[target])), ("bound", target in bound)])
+        targets[target].update(sized(whole[target]))
+    return ties, bare, targets, reach
 
 
 # ---- the page's tables, rendered from the registry
@@ -366,9 +416,30 @@ def render_gaps(reg):
     return "\n".join(lines)
 
 
+def render_sizes(reg):
+    lines = ["| ID | Constraint | Entries inside | Smallest | Largest | "
+             "Under 100 bytes | 100 to 999 | 1,000 to 9,999 | "
+             "10,000 and over |",
+             "|----|------------|----------------|----------|---------|"
+             "-----------------|------------|----------------|"
+             "-----------------|"]
+    for row in reg["constraints"]:
+        reach = row["reach"]
+        # A constraint with no fuzz data has nothing to size. Its
+        # row is empty, which is not the same as small.
+        cells = ["none"] + [""] * (len(BANDS) + 3)
+        if reach:
+            cells = [_n(reach["entries"]), _n(reach["smallest"]),
+                     _n(reach["largest"])] + [_n(count)
+                                              for count in reach["bands"]]
+        lines.append("| %s | %s | %s |" % (
+            row["id"], row["name"], " | ".join(cells)))
+    return "\n".join(lines)
+
+
 RENDERS = collections.OrderedDict([
     ("constraints", render_constraints), ("properties", render_properties),
-    ("fuzz", render_fuzz), ("gaps", render_gaps)])
+    ("fuzz", render_fuzz), ("sizes", render_sizes), ("gaps", render_gaps)])
 
 
 def totals(reg):
@@ -394,7 +465,17 @@ def totals(reg):
          sum(row["tried"] for row in bound)),
         ("corpus entries", sum(row["entries"] for row in fuzz)),
         ("corpus entries of bound targets",
-         sum(row["entries"] for row in bound))])
+         sum(row["entries"] for row in bound)),
+        ("constraints sized", sum(1 for row in rows if row["reach"])),
+        ("entries under 100 bytes", sum(row["bands"][0] for row in fuzz)),
+        ("entries of 100 to 999 bytes",
+         sum(row["bands"][1] for row in fuzz)),
+        ("entries of 1,000 to 9,999 bytes",
+         sum(row["bands"][2] for row in fuzz)),
+        ("entries of 10,000 bytes and over",
+         sum(row["bands"][3] for row in fuzz)),
+        ("largest entry", max(row["largest"] for row in fuzz
+                              if row["largest"] is not None))])
 
 
 # ---- the ties, held
@@ -643,6 +724,151 @@ class FuzzTies(unittest.TestCase):
                               if name.endswith(".crashes.jsonl")])
 
 
+class Sizes(unittest.TestCase):
+    """Constraint to fuzz data, by size: how large the entries
+    are that enter each constraint's code."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.reg = registry()
+
+    def test_a_size_is_the_campaign_s_own_count_of_an_entry(self):
+        # The tool tries a child or drops it by a count of the
+        # child's bytes. size_of is that count: the tool drops a
+        # child exactly when its size here is past the tool's cap.
+        def tried(kind, target, data):
+            def grown(_rng, _data, _corpus):
+                return data
+            parent = {"kind": kind, "data": "" if kind == "text" else {}}
+            with mock.patch.object(DD, "pick", return_value=grown):
+                return DD.mutate(None, parent, [], target) is not None
+
+        euro = "\u20ac"
+        text = euro * (DD.MAX_TEXT // 3) + "a" * (DD.MAX_TEXT % 3)
+        frame = len(json.dumps({"a": ""}, ensure_ascii=True))
+        for kind, target, cap, at, past in (
+                ("text", "wire", DD.MAX_TEXT, text, text + "a"),
+                ("text", "wire", DD.MAX_TEXT,
+                 "\ud800" * (DD.MAX_TEXT // 3) + "a" * (DD.MAX_TEXT % 3),
+                 "\ud800" * (DD.MAX_TEXT // 3 + 1)),
+                ("payload", "v2", DD.MAX_PAYLOAD,
+                 {"a": "b" * (DD.MAX_PAYLOAD - frame)},
+                 {"a": "b" * (DD.MAX_PAYLOAD - frame + 1)}),
+                ("payload", "v2", DD.MAX_PAYLOAD,
+                 {"a": euro * ((DD.MAX_PAYLOAD - frame) // 6)
+                  + "b" * ((DD.MAX_PAYLOAD - frame) % 6)},
+                 {"a": euro * ((DD.MAX_PAYLOAD - frame) // 6 + 1)})):
+            where = "%s %d" % (kind, cap)
+            self.assertEqual(cap, size_of({"kind": kind, "data": at}), where)
+            self.assertGreater(size_of({"kind": kind, "data": past}), cap,
+                               where)
+            self.assertTrue(tried(kind, target, at), where)
+            self.assertFalse(tried(kind, target, past), where)
+
+    def test_every_tie_carries_the_sizes_of_the_entries_inside(self):
+        for row in self.reg["constraints"]:
+            for tie in row["fuzz"]:
+                where = "%s %s %s" % (row["id"], tie["target"], tie["site"])
+                whole = self.reg["fuzz"][tie["target"]]
+                self.assertEqual(len(BANDS) + 1, len(tie["bands"]), where)
+                self.assertEqual(tie["entries"], sum(tie["bands"]), where)
+                self.assertLessEqual(tie["smallest"], tie["largest"], where)
+                for end in (tie["smallest"], tie["largest"]):
+                    self.assertGreater(tie["bands"][band_of(end)], 0, where)
+                # No entry inside is outside its target's corpus.
+                self.assertGreaterEqual(tie["smallest"], whole["smallest"],
+                                        where)
+                self.assertLessEqual(tie["largest"], whole["largest"], where)
+                for count, most in zip(tie["bands"], whole["bands"]):
+                    self.assertLessEqual(count, most, where)
+
+    def test_every_target_carries_the_sizes_of_its_corpus(self):
+        for target, row in self.reg["fuzz"].items():
+            self.assertEqual(row["entries"], sum(row["bands"]), target)
+            self.assertLessEqual(row["smallest"], row["largest"], target)
+            for end in (row["smallest"], row["largest"]):
+                self.assertGreater(row["bands"][band_of(end)], 0, target)
+
+    def test_a_constraint_s_reach_is_its_ties_taken_together(self):
+        for row in self.reg["constraints"]:
+            reach, ties = row["reach"], row["fuzz"]
+            if not ties:
+                self.assertIsNone(reach, row["id"])
+                continue
+            self.assertEqual(reach["entries"], sum(reach["bands"]), row["id"])
+            self.assertEqual(min(tie["smallest"] for tie in ties),
+                             reach["smallest"], row["id"])
+            self.assertEqual(max(tie["largest"] for tie in ties),
+                             reach["largest"], row["id"])
+            # An entry inside 2 of the constraint's functions is
+            # counted once: band by band the reach is no less than
+            # each target's fullest tie, and no more than every
+            # tie added up.
+            for band in range(len(BANDS) + 1):
+                fullest = collections.Counter()
+                for tie in ties:
+                    fullest[tie["target"]] = max(fullest[tie["target"]],
+                                                 tie["bands"][band])
+                self.assertGreaterEqual(reach["bands"][band],
+                                        sum(fullest.values()), row["id"])
+                self.assertLessEqual(reach["bands"][band],
+                                     sum(tie["bands"][band] for tie in ties),
+                                     row["id"])
+
+    def test_a_witness_still_in_the_corpus_is_of_a_size_its_tie_counts(self):
+        held = {}
+        for row in self.reg["constraints"]:
+            for tie in row["fuzz"]:
+                if tie["target"] not in held:
+                    held[tie["target"]] = {entry["id"]: size_of(entry)
+                                           for entry in corpus(tie["target"])}
+                size = held[tie["target"]].get(tie["witness"])
+                if size is not None:
+                    self.assertTrue(
+                        tie["smallest"] <= size <= tie["largest"],
+                        "%s %s" % (row["id"], tie["target"]))
+                    self.assertGreater(tie["bands"][band_of(size)], 0)
+
+    def test_the_campaign_s_cap_on_a_child_is_under_every_size_cap(self):
+        # C1 to C4 are caps on size. The tool tries no child past
+        # its own cap, so while that cap is under all 4, no input
+        # of the campaign is the size of 1 of them, and the page
+        # says so.
+        child = max(DD.MAX_TEXT, DD.MAX_PAYLOAD)
+        caps = collections.OrderedDict([
+            ("C1", PINS._mail_default("max_job_bytes")),
+            ("C2", PINS._mail_default("max_script_bytes")),
+            ("C3", RUNNER.MAX_RESULT_BYTES),
+            ("C4", RUNNER._LOCAL_ENVELOPE_MAX_BYTES)])
+        names = {row["id"]: row["name"] for row in self.reg["constraints"]}
+        flat = " ".join(_read(PAGE_PATH).split())
+        for cid, cap in caps.items():
+            self.assertIn("bytes", names[cid].lower(), cid)
+            self.assertLess(child, cap, cid)
+            self.assertIn(_n(cap), flat, cid)
+        self.assertIn("at most %s bytes" % _n(child), flat)
+        self.assertLessEqual(totals(self.reg)["largest entry"],
+                             min(caps.values()))
+        # Of the 4, the page names the caps that have entries at
+        # their code, and how large the largest of them is.
+        reach = {row["id"]: row["reach"] for row in self.reg["constraints"]}
+        self.assertEqual(["C4"], [cid for cid in caps if reach[cid]])
+        self.assertIn("%s entries, and the largest of them is %s bytes" % (
+            _n(reach["C4"]["entries"]), _n(reach["C4"]["largest"])), flat)
+
+    def test_the_page_sizes_the_signature_s_reach_as_the_registry_does(self):
+        # The page reads finding F10 against the largest entry
+        # that reaches the signature's code.
+        reach = {row["id"]: row["reach"] for row in self.reg["constraints"]}
+        names = {row["id"]: row["name"] for row in self.reg["constraints"]}
+        self.assertEqual("Signature", names["C5"])
+        flat = " ".join(_read(PAGE_PATH).split())
+        self.assertIn("The largest entry at the signature's code is %s bytes"
+                      % _n(reach["C5"]["largest"]), flat)
+        self.assertLess(reach["C5"]["largest"],
+                        max(DD.MAX_TEXT, DD.MAX_PAYLOAD))
+
+
 class Page(unittest.TestCase):
     """v4-bindings.md is the registry, and says what it counts."""
 
@@ -676,6 +902,17 @@ class Page(unittest.TestCase):
                 "%s of those inputs" % _n(
                     count["inputs tried by bound targets"]),
                 "%s corpus entries" % _n(count["corpus entries"]),
+                "%s are under 100 bytes" % _n(
+                    count["entries under 100 bytes"]),
+                "%s are of 100 to 999 bytes" % _n(
+                    count["entries of 100 to 999 bytes"]),
+                "%s are of 1,000 to 9,999 bytes" % _n(
+                    count["entries of 1,000 to 9,999 bytes"]),
+                "%s are of 10,000 bytes or more" % _n(
+                    count["entries of 10,000 bytes and over"]),
+                "The largest is %s bytes" % _n(count["largest entry"]),
+                "%d of the %d constraints have entries to size" % (
+                    count["constraints sized"], count["constraints"]),
                 "counted on %s" % self.reg["counted"]):
             self.assertIn(words, " ".join(self.page.split()), words)
 
@@ -1198,21 +1435,29 @@ def _steady(ties):
     threads, so the entries that enter a function, and the first
     of them, move from one count to the next: for those the tie
     is the target, the site and whether the file is traced."""
-    return [tie if not tie["target"].startswith("race_")
+    return [tie if not _races(tie)
             else {key: tie[key] for key in ("site", "target", "traced")}
             for tie in ties]
+
+
+def _races(tie):
+    return tie["target"].startswith("race_")
 
 
 def _main(argv):
     if argv[:1] == ["measure"]:
         reg = registry()
-        ties, bare, targets = measure()
+        ties, bare, targets, reach = measure()
         moved = []
         for row in reg["constraints"]:
+            # A reach that a race target feeds moves with it.
+            still = not any(_races(tie) for tie in ties[row["id"]])
             if _steady(row["fuzz"]) != _steady(ties[row["id"]]) \
-                    or row["unfuzzed"] != bare[row["id"]]:
+                    or row["unfuzzed"] != bare[row["id"]] \
+                    or (still and row.get("reach") != reach[row["id"]]):
                 moved.append(row["id"])
             row["fuzz"], row["unfuzzed"] = ties[row["id"]], bare[row["id"]]
+            row["reach"] = reach[row["id"]]
         if reg["fuzz"] != targets:
             moved.append("the targets' totals")
         reg["fuzz"] = targets
