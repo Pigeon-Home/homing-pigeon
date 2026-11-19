@@ -20,6 +20,7 @@ import copy
 import email.header
 import hmac
 import io
+import itertools
 import json
 import os
 import sys
@@ -38,6 +39,7 @@ from runner import runner as RUNNER  # noqa: E402
 from runner.guard import panic as PANIC  # noqa: E402
 from runner.tests import test_proof_conformance as DOOR  # noqa: E402
 from runner.tests import test_v4_bindings as BIND  # noqa: E402
+from runner.tests import test_v4_models as MODELS  # noqa: E402
 from runner.wire import jobcrypto  # noqa: E402
 
 SUBJECT_SIZES = (1000, 10000, 100000)
@@ -615,6 +617,438 @@ class ThePanicStepInFrontOfTheMac(unittest.TestCase):
                              (out.executed, out.sent, out.marks, out.seen),
                              name)
             PANIC._reset_for_tests()
+
+
+# ---- The model: premac.tla, P14
+
+PAGE = os.path.join(MODELS.PROOFS, "v4-before-the-mac.md")
+RUNGS = (50, 500, 5000)
+ID_MAX, SENDER_MAX, SUBJECT_MAX, REASON_MAX = 128, 254, 256, 512
+MARK, PANIC_MAX, PANIC_LONGEST = 24, 2048, 815
+BOUND = ID_MAX + SENDER_MAX + SUBJECT_MAX + REASON_MAX + 4 * MARK
+KINDS = ("panic", "job", "other")
+SIGS = ("good", "bad", "unknown key", "malformed")
+BOXES = ("armed", "stopped")
+UNDECIDED = ("none", 0, 0, 0, 0, 0)
+
+
+def model_arrivals():
+    """Arrivals: (kind, over, seen, sig, id, snd, sub, key)."""
+    for arrival in itertools.product(KINDS, (False, True), (False, True),
+                                     SIGS, RUNGS, RUNGS, RUNGS, RUNGS):
+        kind, sub, ident = arrival[0], arrival[6], arrival[4]
+        if sub >= ident and (kind != "panic" or sub <= PANIC_LONGEST):
+            yield arrival
+
+
+def shown(gate, length, limit):
+    """Shown: a text of `length` characters as a line carries it."""
+    if gate == "bounded" and length > limit:
+        return limit + MARK
+    return length
+
+
+def model_decoded(gate, arrival):
+    """Decoded: what the panic step hands to the decoder."""
+    sub = arrival[6]
+    return 0 if gate == "bounded" and sub > PANIC_MAX else sub
+
+
+def named(gate, arrival):
+    """Named: the stranger's characters in the naming line."""
+    return (shown(gate, arrival[4], ID_MAX)
+            + shown(gate, arrival[5], SENDER_MAX)
+            + shown(gate, arrival[6], SUBJECT_MAX))
+
+
+def reasoned(gate, arrival):
+    """Reasoned: the stranger's characters in the refusal."""
+    if arrival[3] == "unknown key":
+        return shown(gate, arrival[7], REASON_MAX)
+    return 0
+
+
+def sig_passes(arrival):
+    """SigPasses: the body's parse, and the MAC when there is 1."""
+    return 2 if arrival[3] in ("good", "bad") else 1
+
+
+def model_decision(gate, box, arrival):
+    """Decision: (outcome, marked, records, lines, copied,
+    passes)."""
+    kind, over, seen, sig = arrival[:4]
+    if kind == "panic":
+        return ("panic", 1, 1 if box == "armed" else 0, 1, 0, 1)
+    if box == "stopped":
+        return ("left", 0, 0, 0, 0, 1)
+    if kind == "job" and over:
+        return ("too large", 1, 0, 1, 0, 1)
+    if kind == "other":
+        return ("not a job", 1, 0, 0, 0, 1)
+    if seen:
+        return ("already seen", 1, 0, 0, 0, 1)
+    if sig == "good":
+        return ("verified", 0, 0, 1, named(gate, arrival), 3)
+    return ("refused", 1, 1, 2,
+            named(gate, arrival) + reasoned(gate, arrival),
+            1 + sig_passes(arrival))
+
+
+def model_init(gate):
+    """(a, box, g, decided, d, decoded, ran)."""
+    for arrival in model_arrivals():
+        for box in BOXES:
+            yield (arrival, box, gate, False, UNDECIDED, 0, False)
+
+
+def model_next(state):
+    arrival, box, gate, decided, decision, decoded, ran = state
+    if not decided:
+        yield (arrival, box, gate, True,
+               model_decision(gate, box, arrival),
+               model_decoded(gate, arrival), ran)
+    elif decision[0] == "verified" and not ran:
+        yield (arrival, box, gate, True, decision, decoded, True)
+
+
+def p14_inv(state):
+    arrival, box, _gate, decided, decision, _decoded, ran = state
+    outcome, marked, records, lines = decision[:4]
+    if ran and not (decided and outcome == "verified"
+                    and arrival[3] == "good" and arrival[0] == "job"
+                    and not arrival[1] and not arrival[2]
+                    and box == "armed"):
+        return False
+    if decided and outcome != "verified" and not (records <= 1
+                                                  and lines <= 2):
+        return False
+    return not (decided and outcome == "refused") \
+        or (marked == 1 and records == 1)
+
+
+def log_bounded(state):
+    return not state[3] or state[4][4] <= BOUND
+
+
+def decoder_bounded(state):
+    return state[5] <= PANIC_MAX
+
+
+def work_bounded(state):
+    decided, decision = state[3], state[4]
+    if decision[5] > 3:
+        return False
+    return not (decided and decision[0] not in ("verified", "refused")) \
+        or decision[5] == 1
+
+
+def panic_first(state):
+    return not (state[3] and state[0][0] == "panic") \
+        or state[4][0] == "panic"
+
+
+def stopped_leaves(state):
+    arrival, box, _gate, decided, decision = state[:5]
+    return not (decided and box == "stopped" and arrival[0] != "panic") \
+        or (decision[0], decision[1], decision[3]) == ("left", 0, 0)
+
+
+def cap_before_the_signature(state):
+    decided, decision = state[3], state[4]
+    return not (decided and decision[0] == "too large") \
+        or (decision[5], decision[4]) == (1, 0)
+
+
+MODEL_INVARIANTS = (
+    ("P14Inv", p14_inv), ("LogBounded", log_bounded),
+    ("DecoderBounded", decoder_bounded), ("WorkBounded", work_bounded),
+    ("PanicFirst", panic_first), ("StoppedLeaves", stopped_leaves),
+    ("CapBeforeTheSignature", cap_before_the_signature))
+
+
+class PreMacSearch(unittest.TestCase):
+    """premac.tla's Init and Next, searched to the fixed point,
+    at the bounded gate and at the gate as it was."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.initial = list(model_init("bounded"))
+        cls.reached, cls.steps = MODELS.search(cls.initial, model_next)
+        cls.decided = [s for s in cls.reached if s[3] and not s[6]]
+        cls.before, _ = MODELS.search(list(model_init("as it was")),
+                                      model_next)
+
+    def test_the_7_invariants_hold_in_every_reachable_state(self):
+        for name, holds in MODEL_INVARIANTS:
+            self.assertIsNone(MODELS.first_breaking(self.reached, holds),
+                              name)
+
+    def test_the_counts_are_the_prediction_for_the_checker(self):
+        # 2,160 arrivals on 2 boxes. Each decides 1 way, and the
+        # 54 whose signature verifies on an armed box may run.
+        self.assertEqual(2160, len(list(model_arrivals())))
+        self.assertEqual((4320, 8694, 4320),
+                         (len(self.initial), len(self.reached),
+                          len(self.decided)))
+        self.assertEqual(
+            {"panic": 864, "left": 1728, "too large": 432,
+             "not a job": 864, "already seen": 216, "verified": 54,
+             "refused": 162},
+            MODELS.tally(s[4][0] for s in self.decided))
+        self.assertEqual(54, sum(1 for s in self.reached if s[6]))
+        self.assertIn("4,320 initial states, 8,694 distinct states",
+                      MODELS._flat(PAGE))
+
+    def test_the_bound_is_met_and_never_passed(self):
+        most = max(s[4][4] for s in self.decided)
+        self.assertEqual((1246, 1246), (BOUND, most))
+        # At rung 50 nothing is cut: the line carries each text
+        # whole, as it did before the bound.
+        for state in self.decided:
+            arrival, decision = state[0], state[4]
+            if decision[0] == "refused" and max(arrival[4:]) == 50:
+                self.assertEqual(150 + reasoned("bounded", arrival),
+                                 decision[4])
+
+    def test_the_3_probes_are_false_somewhere_as_they_must_be(self):
+        probes = (
+            ("NothingIsRefused",
+             lambda s: not (s[3] and s[4][0] == "refused")),
+            ("NothingRuns", lambda s: not s[6]),
+            ("NothingIsCut",
+             lambda s: not (s[3] and s[4][0] == "refused"
+                            and s[4][4] < named("as it was", s[0])
+                            + reasoned("as it was", s[0]))))
+        for name, holds in probes:
+            self.assertIsNotNone(
+                MODELS.first_breaking(self.reached, holds), name)
+        # 154 of the 162 refusals carry a cut text. The other 8
+        # have every text the lines name within its limit: the
+        # 3 of the naming line at 50, and a key id that the
+        # refusal does not repeat or that stands under 512.
+        self.assertEqual((154, 162), (
+            sum(1 for s in self.decided if not probes[2][1](s)),
+            sum(1 for s in self.decided if s[4][0] == "refused")))
+
+    def test_as_it_was_the_2_findings_are_the_counterexamples(self):
+        # F12 and F13, kept stated. At the gate as it was the
+        # other 5 invariants hold, and these 2 fail: on the rungs
+        # past the limits, and never at 50.
+        failing = {"LogBounded": log_bounded,
+                   "DecoderBounded": decoder_bounded}
+        for name, holds in MODEL_INVARIANTS:
+            path = MODELS.first_breaking(self.before, holds)
+            self.assertEqual(name in failing, path is not None, name)
+        over = [s for s in self.before if not log_bounded(s)]
+        self.assertEqual(202, len(over))
+        self.assertEqual(
+            {"refused": 124, "verified": 39},
+            MODELS.tally(s[4][0] for s in over if not s[6]))
+        self.assertTrue(all(max(s[0][4:]) >= 500 for s in over))
+        self.assertEqual((1500, 20000), (min(s[4][4] for s in over),
+                                         max(s[4][4] for s in over)))
+        deep = [s for s in self.before if not decoder_bounded(s)]
+        self.assertEqual(1755, len(deep))
+        self.assertTrue(all(s[0][6] == 5000 for s in deep))
+        # A message whose texts all stand at 50 is under the bound
+        # either way: the finding needs a long text.
+        self.assertTrue(all(
+            log_bounded(s) and decoder_bounded(s) for s in self.before
+            if max(s[0][4:]) == 50))
+
+    def test_the_model_s_text_is_what_was_searched(self):
+        text = MODELS._read(os.path.join(MODELS.PROOFS, "premac.tla"))
+        for stated in (
+                "Rungs == {50, 500, 5000}\n",
+                "IdMax == 128\nSenderMax == 254\nSubjectMax == 256\n"
+                "ReasonMax == 512\nMark == 24\nPanicMax == 2048\n"
+                "PanicLongest == 815\n",
+                "Bound == IdMax + SenderMax + SubjectMax + ReasonMax "
+                "+ 4 * Mark\n",
+                "     /\\ x.sub >= x.id\n"
+                "     /\\ x.kind = \"panic\" => x.sub <= PanicLongest}\n",
+                "  IF gate = \"bounded\" /\\ n > limit THEN limit + Mark "
+                "ELSE n\n",
+                "  IF gate = \"bounded\" /\\ x.sub > PanicMax THEN 0 "
+                "ELSE x.sub\n",
+                "SigPasses(x) == IF x.sig \\in {\"good\", \"bad\"} "
+                "THEN 2 ELSE 1\n",
+                "  IF x.kind = \"panic\" THEN\n",
+                "  ELSE IF b = \"stopped\" THEN Quiet(\"left\", 0)\n"
+                "  ELSE IF x.kind = \"job\" /\\ x.over THEN\n",
+                "  ELSE IF x.kind = \"other\" THEN Quiet(\"not a job\", 1)\n"
+                "  ELSE IF x.seen THEN Quiet(\"already seen\", 1)\n"
+                "  ELSE IF x.sig = \"good\" THEN\n",
+                "    /\\ d.copied < Named(\"as it was\", a) "
+                "+ Reasoned(\"as it was\", a))\n",
+                "Spec == Init /\\ [][Next]_vars\n"
+                "SpecAsItWas == InitAsItWas /\\ [][Next]_vars\n"):
+            self.assertIn(stated, text, stated)
+        # The limits the model states are the code's own.
+        self.assertEqual(
+            (ID_MAX, SENDER_MAX, SUBJECT_MAX, REASON_MAX, PANIC_MAX),
+            (RUNNER.LOG_ID_MAX, RUNNER.LOG_SENDER_MAX,
+             RUNNER.LOG_SUBJECT_MAX, RUNNER.LOG_REASON_MAX,
+             PANIC.SUBJECT_MAX))
+        self.assertTrue(
+            MODELS._read(os.path.join(MODELS.PROOFS, "premac.cfg"))
+            .endswith("SPECIFICATION Spec\nINVARIANT P14Inv\n"
+                      "INVARIANT LogBounded\nINVARIANT DecoderBounded\n"
+                      "INVARIANT WorkBounded\nINVARIANT PanicFirst\n"
+                      "INVARIANT StoppedLeaves\n"
+                      "INVARIANT CapBeforeTheSignature\n"))
+        for name, spec, probe in (
+                ("premacwitnessrefused.cfg", "Spec", "NothingIsRefused"),
+                ("premacwitnessruns.cfg", "Spec", "NothingRuns"),
+                ("premacwitnesscut.cfg", "Spec", "NothingIsCut"),
+                ("premacwitnessf12.cfg", "SpecAsItWas", "LogBounded"),
+                ("premacwitnessf13.cfg", "SpecAsItWas",
+                 "DecoderBounded")):
+            held = MODELS._read(os.path.join(MODELS.PROOFS, name))
+            self.assertTrue(held.startswith("\\* Expected to fail."), name)
+            self.assertTrue(held.endswith(
+                "SPECIFICATION %s\nINVARIANT %s\n" % (spec, probe)), name)
+
+
+class TheGateDecidesAsTheModelDoes(unittest.TestCase):
+    """The real gate, asked on the model's arrivals: what
+    handle_mail does is what premac.tla's Decision says."""
+
+    WORD = ThePanicStepInFrontOfTheMac.WORD
+    TYPED = ThePanicStepInFrontOfTheMac.TYPED
+
+    @classmethod
+    def setUpClass(cls):
+        for entry_id, payload, job_id in BIND.fresh_jobs():
+            text = BIND._signed(payload)
+            if text is None:
+                continue
+            with tempfile.TemporaryDirectory() as folder:
+                if arrive(_mail(_subject(job_id), text), folder).executed:
+                    break
+        cls.payload, cls.job_id, cls.signed = payload, job_id, text
+
+    def tearDown(self):
+        PANIC._reset_for_tests()
+
+    def asked(self):
+        """The arrivals the real gate is asked on: every kind,
+        size, seen, signature and box at rung 50, and every rung
+        of every text where the gate reaches the signature."""
+        low = (50, 50, 50, 50)
+        for box in BOXES:
+            for kind, over, seen, sig in itertools.product(
+                    KINDS, (False, True), (False, True), SIGS):
+                yield box, (kind, over, seen, sig) + low
+        for arrival in model_arrivals():
+            kind, over, seen, sig = arrival[:4]
+            if kind != "job" or over or seen or arrival[4:] == low:
+                continue
+            if sig == "good" and arrival[4] != 50:
+                # A verified job's id is its own, and an id past
+                # 128 characters is refused behind the signature
+                # by the job's own rule: not this gate's step.
+                continue
+            yield "armed", arrival
+
+    def build(self, arrival):
+        """(raw mail, the id in its subject, the texts' real
+        lengths) for 1 arrival of the model."""
+        kind, _over, _seen, sig, ident, snd, sub, key = arrival
+        payload = copy.deepcopy(self.payload)
+        key_text = ""
+        if sig == "good":
+            job_id, body = self.job_id, self.signed
+        else:
+            job_id = self.job_id if ident == 50 else "i" * ident
+            if sig == "unknown key":
+                key_text = "k" * key
+                payload["key_id"] = key_text
+            body = RUNNER.sign_payload(payload, BIND.STRANGER)
+            if sig == "malformed":
+                body = "this is not a signed body"
+        if kind == "panic":
+            subject = self.TYPED.ljust(sub)
+        elif kind == "other":
+            subject = "weekly notes".ljust(sub, "w")
+        else:
+            subject = "[HOMING-PIGEON] job %s" % job_id
+            if sub > len(subject):
+                subject = "[HOMING-PIGEON] %s job %s" % (
+                    "x" * (sub - len(subject) - 1), job_id)
+        sender = "%s@example.com" % ("s" * (snd - 12))
+        real = (len(job_id), len(sender), len(subject), len(key_text))
+        return _mail(subject, body, sender), job_id, real
+
+    def ask(self, box, arrival):
+        """What the real gate did, counted as the model counts."""
+        raw, job_id, real = self.build(arrival)
+        kind, over, seen = arrival[:3]
+        with tempfile.TemporaryDirectory() as folder:
+            PANIC.arm(folder, self.WORD)
+            if box == "stopped":
+                PANIC.fire(folder)
+            extra = {"max_job_bytes": len(raw) - 1} if over else None
+            met = {job_id: True} if (seen and kind == "job") else {}
+            out = arrive(raw, folder, cfg_extra=extra, seen=dict(met))
+            events = os.path.join(folder, EVENTS)
+            records = 0
+            if os.path.exists(events):
+                with open(events, encoding="utf-8") as handle:
+                    records = handle.read().count("\n")
+            gained = len(out.seen) - len(met)
+        PANIC._reset_for_tests()
+        return out, records, gained, real
+
+    def test_the_gate_decides_as_the_model_does(self):
+        asked = 0
+        outcomes = {}
+        for box, arrival in self.asked():
+            out, records, gained, real = self.ask(box, arrival)
+            # The model at the texts' real lengths.
+            outcome, marked, said, lines, copied, _passes = \
+                model_decision("bounded", box, arrival[:4] + real)
+            name = (box, arrival)
+            ran = outcome == "verified"
+            self.assertEqual(1 if ran else 0, len(out.executed), name)
+            self.assertEqual(1 if ran else 0, len(out.sent), name)
+            self.assertEqual(1 if ran else 0, gained, name)
+            written = sum(len(note) for note in out.notes)
+            if ran:
+                self.assertGreaterEqual(len(out.notes), lines, name)
+                self.assertIn("job %s submitted by" % self.job_id,
+                              out.notes[0], name)
+            else:
+                self.assertEqual(marked, out.marks, name)
+                self.assertEqual(said, records, name)
+                self.assertEqual(lines, len(out.notes), name)
+                # The lines are the gate's own words and the
+                # stranger's characters the model counts: no
+                # more than 220 of the first, and the second
+                # within the 4 marks the model allows.
+                self.assertLessEqual(written, 220 + copied, name)
+                self.assertGreaterEqual(written, copied - 4 * MARK, name)
+            asked += 1
+            outcomes[outcome] = outcomes.get(outcome, 0) + 1
+        self.assertEqual(281, asked)
+        self.assertEqual(
+            {"panic", "left", "too large", "not a job", "already seen",
+             "verified", "refused"}, set(outcomes))
+
+    def test_the_gate_s_steps_stand_in_the_model_s_order(self):
+        # The order of the 6 steps, read off the gate's source:
+        # each step's first line stands after the step before it.
+        text = MODELS._read(os.path.join(ROOT, "runner", "ops", "mail.py"))
+        begin = text.index("def handle_mail(")
+        places = [text.index(mark, begin) for mark in (
+            "email.message_from_bytes(raw)",
+            "R._panic.matches(base_dir, subject)",
+            "R._panic.fired(base_dir)",
+            "reject(f\"mail exceeds max_job_bytes",
+            "._early_dispatch(",
+            "submitted by {shown_sender}",
+            "._verify_and_decrypt(msg, secrets, job_id)")]
+        self.assertEqual(sorted(places), places)
 
 
 if __name__ == "__main__":

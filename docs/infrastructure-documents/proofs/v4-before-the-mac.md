@@ -149,7 +149,13 @@ The log, for 1 refused message, by the size of its subject:
 - **S6 held.** No sealed body was opened before its
   signature.
 - **S7 held.** Each refused message was marked seen once.
-- **S8 is not tried yet.** The model is the next step.
+- **S8 stands in part.** The model is made: see "The model:
+  S8" below. It holds P14 and 6 more invariants, and the
+  suite searches it. Its witnesses are 3 probes and the 2
+  findings it has at the gate as it was. A witness for each
+  step moved out of its place is not made: the model states
+  the order as 1 decision, and the suite reads the order
+  off the gate's source.
 
 So clauses 1, 2 and 4 of the candidate hold on the gate as
 it stands, for every message tried. Clause 3 holds for what
@@ -410,13 +416,93 @@ the table.
 With the closing, clause 4 of the candidate holds with the
 panic step counted.
 
+## The model: S8
+
+`premac.tla` states the gate's 6 steps as 1 decision, in the
+shape of `decision.tla` and `localgate.tla`. An arrival is
+what a stranger chooses: the kind of subject (the panic
+word, a job, anything else), whether the message is over the
+size cap, whether its id was seen, what the signature step
+finds, and the lengths of the 4 texts the gate's lines name.
+The box it meets is armed or stopped.
+
+The lengths stand on 3 rungs: 50, 500 and 5,000. 50 is
+under every limit. 500 is past the limits of the id, the
+address and the subject. 5,000 is past every limit.
+
+The gate in the model is the bounded gate, or the gate as it
+was before F12 and F13 were closed. `Spec` is the bounded
+gate. `SpecAsItWas` is kept so that the 2 findings stay
+stated.
+
+**7 invariants, at the bounded gate.**
+
+| Invariant | What it says |
+|-----------|--------------|
+| `P14Inv` | Nothing runs but a job whose signature verified, on an armed box, under the cap, not seen before. A message that does not verify adds at most 1 record and 2 lines. One refused at the signature is marked and leaves exactly 1 record. |
+| `LogBounded` | The stranger's characters in the lines come to at most 1,246. |
+| `DecoderBounded` | The panic step hands the decoder at most 2,048 characters. |
+| `WorkBounded` | At most 3 passes over the message, and 1 when the gate decides in front of the signature. |
+| `PanicFirst` | A panic subject is a panic, whatever the size, the signature and the box. |
+| `StoppedLeaves` | A stopped box leaves everything else with no mark and no line. |
+| `CapBeforeTheSignature` | A job over the cap costs 1 pass, and none of its texts is copied. |
+
+**The search, in the suite.** The same model is written
+apart from the TLA+ file, in
+`runner/tests/test_v4_before_the_mac.py`, and searched to
+the fixed point on every suite run. Its counts are the
+prediction for the checker, written down before the checker
+ran: 2,160 arrivals on 2 boxes, which is 4,320 initial
+states, 8,694 distinct states. The 4,320 decisions:
+
+| Outcome | Decisions |
+|---------|----------:|
+| The box is stopped: left as it is | 1,728 |
+| The panic word | 864 |
+| Not a job | 864 |
+| Too large | 432 |
+| Already seen | 216 |
+| Refused at the signature | 162 |
+| Verified | 54 |
+
+All 7 invariants hold in every state. The most a stranger's
+characters come to is 1,246, which is the bound: it is met
+and never passed. 154 of the 162 refusals carry a cut text.
+
+**The 2 findings as counterexamples.** At the gate as it
+was, 5 invariants hold and 2 fail. `LogBounded` fails in 202
+states: 124 refusals, 39 verified jobs, and those 39 again
+once run. Every one has a text at 500 or more, and the most
+copied is 20,000 characters. `DecoderBounded` fails in 1,755
+states, every one under a subject of 5,000. A message whose
+texts all stand at 50 breaks neither: the findings need a
+long text.
+
+**The real gate, asked on the model's arrivals.** 281
+arrivals: every kind, size, seen, signature and box at rung
+50, and every rung of every text where the gate reaches the
+signature. On each, the real gate did what the model's
+decision says: what ran, what was sent, the mark, the
+records, the lines, and the lines' length to within the
+gate's own words. The order of the 6 steps is read off the
+gate's source.
+
+**The checker.** Not yet run on this model.
+
+**What the model leaves out.** A subject that is ours and
+names no job. The other kinds the dispatcher reads before
+their own signature checks. The log's minute budget, and a
+verbose run's third line. Everything from a verified
+signature on, which `general.tla` has.
+
 ## What is made, and what is next
 
 - Made: the suite, which holds S1 to S7 and the 2 closings
   on every suite run.
-- Next: a model of the 6 steps before the MAC, with the log
-  in its ledger, its configuration and its witnesses, and
-  its search in the suite. That is S8.
+- Made: the model of the 6 steps, `premac.tla`, with the log
+  in its ledger, 6 configurations, its search in the suite
+  and the real gate asked on its arrivals.
+- Next: the checker's run on the model.
 - Next: a row for the candidate in the registry, kept apart
   from the 31 until the owner's word.
 - F12 and F13 are closed on the branch. They reach main at
