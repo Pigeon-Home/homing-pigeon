@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.7 - 2026-11-19
+
+- forum: the seats' forum records an additional accessibility workaround: a letter typed after a call asks for both jobs in the 1 turn, the work on the branch in hand and the full sync, with a short ping back
+
 ## 3.17.30.6 - 2026-11-19
 
 - V4: the provable model comes to main, findings F1 to F10 closed, the general statement and the bindings (since 3.17.30.5)
