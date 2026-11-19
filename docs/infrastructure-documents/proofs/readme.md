@@ -351,6 +351,8 @@ A finding is most useful when it points at the file and the line
   data: what the constraints decide before a run, what the
   2 steps before it forecast, and what the run shows from
   inside. Its suppositions are written before the measure.
+  L1, the ratio table, was run, and it holds. L2 to L8
+  were not.
 - `v4-the-join.md`: the sentence between the two proofs. A
   message that fails C5 never reaches the machine M, and a
   message that passes C5 reaches M only with a script of at

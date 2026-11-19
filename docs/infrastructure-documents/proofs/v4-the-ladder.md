@@ -328,3 +328,33 @@ thing a run shows.
 - **J3. The ladder again.** With the change, every place and
   every unit of the first climb, and the 10 shapes to step
   22: supposed 0 raises.
+
+## L1, measured
+
+L1's figures are recorded here.
+
+The series was counted from 0. Step 30 is 832,040. Step 31
+is 1,346,269, past the cap, and it was not used.
+
+The ratio of a step to the sum of the 2 before it, at every
+step from 20 to 30:
+
+| The quantity | The ratio there | Furthest from the table |
+|--------------|----------------:|------------------------:|
+| fixed | 0.50, exactly | 0 |
+| in proportion to the size | 1, exactly | 0 |
+| grows with the square | 1.89443 | 0.00443 from 1.89 |
+| grows with the cube | 3.42705 | 0.00295 from 3.43 |
+
+All 4 are within 0.01 of the table's numbers. That is L1's
+first sentence, and it holds.
+
+The difference test, a step's value less the 2 values
+before it. A fixed 7 has difference -7 at every step from
+2 to 30. A quantity of 3 per character and 5 besides has
+difference -5 at every such step. Both exact, which is the
+second sentence, for the first 2 kinds. A square's
+difference grows at every step from 2 to 30: 0, then 2,
+then 4, then 12, and on. A cube's grows too.
+
+`runner/tests/test_v4_the_ladder.py` holds these figures.
