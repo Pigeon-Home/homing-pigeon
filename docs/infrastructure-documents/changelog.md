@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.16 - 2026-11-19
+
+- project: the incident note that SECURITY.md's spill response calls for, for a working name written on main on 19-NOV: the class, the clock, the 6 steps as they stand, the mechanism, and the name guard now on the push path of the seat that wrote it; forum: what every seat does if the history is purged
+
 ## 3.17.30.15 - 2026-11-19
 
 - Campaign: 2 mutators that grow an input toward a cap land and the forum records conclusions against M1 to M4; the v4 branch read sets the next step as the model on main; Q207 is filed with a friendly word on answer times (since 3.17.30.14)
