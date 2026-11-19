@@ -229,3 +229,63 @@ Read, and not run.
 
 B4(N) needs no supposition. The first rung counted it: 452
 scripts at every N from 50 to 3,999, and 453 from 4,000 up.
+
+## A finding on the way: F14, a quantity with no bar
+
+Found while the doors were being measured for G7, before
+that measure was done. A script of 1,048,576 line ends and
+nothing else went into the gate with a good signature, and
+the gate did not come back.
+
+**What was seen before anything here was written.** The gate
+was timed on a script of blank lines at 3 sizes.
+
+| Blank lines in the script | Seconds in the gate |
+|--------------------------:|--------------------:|
+| 5,000 | 0.24 |
+| 20,000 | 3.65 |
+| 80,000 | 54.7 |
+
+4 times the script, 15 times the seconds. A profile at
+12,000 lines put 1.38 of its 1.40 seconds in 1 place:
+`script_shape` in `runner/oracle/opinion.py`, the reader
+that says whether a script looks like PowerShell, bash or
+plain shell. 3 of its patterns begin at the start of a line
+and then take any white space, and a line end is white
+space. So at every blank line the pattern runs on through
+all the blank lines after it.
+
+Then 167 units were tried, each repeated to 20,000 bytes as
+the whole script: every character from 1 to 126, and 41
+short texts. The gate was slow on 5: the line end alone, and
+the line end with a space, a tab or a carriage return beside
+it. On the other 162 it took under a quarter of a second.
+
+**Where it stands.** Behind the signature and behind the
+size door, in front of the execution. It runs for every job
+that verifies and asks for a script to be run. The gate
+reads the script's hints before it asks whether the opinion
+is switched off, so that setting does not skip it. And no
+bar covers it: the time limit is the job's, and this is the
+gate's own time.
+
+**Suppositions, written before the change and its measure.**
+
+- **H1. The square.** The time on n blank lines is supposed
+  to be about 9 billionths of a second times n times n: 14
+  seconds at 40,000 lines, 35 minutes at 500,000, and 2.6
+  hours at the cap. At the owner's rungs it is supposed
+  harmless: nothing to see at 50 and at 500, and a quarter
+  of a second at 5,000. Only the figure at 40,000 is to be
+  run.
+- **H2. The change.** Each of the 3 patterns is to take the
+  white space of 1 line and no more. Supposed: the reader
+  gives the same answer as before on every script, because a
+  match that began some blank lines higher is also a match
+  that begins at the start of its own line. And the time on
+  blank lines is then in proportion to the script: 1,048,576
+  line ends pass the gate in about 1 second.
+- **H3. Nothing else in the sweep.** With the change, the
+  same 167 units at 20,000 bytes and again at 200,000:
+  supposed that no unit takes more than 10 times as long at
+  10 times the size.
