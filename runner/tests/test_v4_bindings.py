@@ -18,9 +18,10 @@ reaches the function it is bound to: each fails here, by name.
 The fuzz part of the registry is measured, not written. `measure`
 replays every corpus entry of every target under a profiler and
 counts, for each constraint's code site, the entries that enter
-it. A suite run does not repeat the whole count. It replays 1
-witness entry for each tie and looks again only where the witness
-has gone.
+it, and it notes the size of each by the campaign's own count of
+an entry's bytes. A suite run does not repeat the whole count. It
+replays 1 witness entry for each tie and looks again only where
+the witness has gone.
 
     python3 runner/tests/test_v4_bindings.py measure
     python3 runner/tests/test_v4_bindings.py measure --write
@@ -30,10 +31,11 @@ The second half takes the fuzz corpus to the doors themselves.
 No fuzz target enters handle_mail, the gate P1 is about, so the
 wire, crypto and mail corpora are sent through it here, and each
 run it allows is held to P1's clauses by this module's own
-reading of the bytes. The local corpus goes to the local door
-with a watch on the run, the secret corpus to the floor at each
-place that applies it, and corpus text through the result
-fitting.
+reading of the bytes. The corpus's jobs then climb the sizes at
+the gate, rung by rung, to the 2 size caps decided there and 1
+byte past each. The local corpus goes to the local door with a
+watch on the run, the secret corpus to the floor at each place
+that applies it, and corpus text through the result fitting.
 """
 import ast
 import collections
@@ -56,6 +58,7 @@ if ROOT not in sys.path:
 from runner import runner as RUNNER  # noqa: E402
 from runner.guard import security as SECURITY  # noqa: E402
 from runner.tests import test_proof_conformance as DOOR  # noqa: E402
+from runner.tests import test_proof_constraints as PINS  # noqa: E402
 from runner.tests import test_v4_general as GENERAL  # noqa: E402
 from runner.tools import de_dust_corpus as DD  # noqa: E402
 from runner.wire import jobcrypto  # noqa: E402
@@ -164,6 +167,37 @@ def corpus(target):
             if isinstance(entry, dict) and "data" in entry]
 
 
+# The edges of the size bands, in bytes: under 100, 100 to 999,
+# 1,000 to 9,999, and 10,000 and over.
+BANDS = (100, 1000, 10000)
+
+
+def size_of(entry):
+    """The bytes of 1 corpus entry by the campaign's own count: a
+    text entry's UTF-8 bytes, a payload entry's JSON as the tool
+    writes it. The tool holds a child to its cap by this count."""
+    data = entry["data"]
+    if entry.get("kind") == "text":
+        return len(data.encode("utf-8", "surrogatepass"))
+    return len(json.dumps(data, ensure_ascii=True))
+
+
+def band_of(size):
+    return sum(1 for edge in BANDS if size >= edge)
+
+
+def sized(sizes):
+    """Sizes as the registry carries them: the smallest, the
+    largest, and how many fall in each band."""
+    bands = [0] * (len(BANDS) + 1)
+    for size in sizes:
+        bands[band_of(size)] += 1
+    return collections.OrderedDict([
+        ("smallest", min(sizes) if sizes else None),
+        ("largest", max(sizes) if sizes else None),
+        ("bands", bands)])
+
+
 def leave_no_trace(case):
     """The corpus tool keeps 1 temp folder for the process, and a
     check may add to the import path. A test that runs the tool's
@@ -194,7 +228,11 @@ def entered(target, entry):
                     name[len(ROOT) + 1:].replace(os.sep, "/"),
                     code.co_name))
 
-    was, was_threads = sys.getprofile(), threading.getprofile()
+    # threading.getprofile came with Python 3.10. Before it the
+    # hook new threads start with cannot be read, and this module
+    # sets none of its own to put back.
+    was = sys.getprofile()
+    was_threads = getattr(threading, "getprofile", lambda: None)()
     threading.setprofile(watch)
     sys.setprofile(watch)
     try:
@@ -235,45 +273,61 @@ def run_log():
 
 
 def measure():
-    """The registry's fuzz part as the tree gives it now:
-    (ties by constraint, sites no entry enters, targets)."""
+    """The registry's fuzz part as the tree gives it now: (ties
+    by constraint, sites no entry enters, targets, each
+    constraint's reach by size)."""
     reg = registry()
     sites = {site for row in reg["constraints"] for site in row["code"]}
-    counts = collections.defaultdict(collections.Counter)
+    # {target: {site: {place in the corpus: size}}}
+    inside = collections.defaultdict(
+        lambda: collections.defaultdict(collections.OrderedDict))
     witness = collections.defaultdict(dict)
-    sizes = {}
+    whole = {}
 
     def replay():
         for target in sorted(DD.TARGETS):
             entries = corpus(target)
-            sizes[target] = len(entries)
-            for entry in entries:
+            whole[target] = [size_of(entry) for entry in entries]
+            for place, entry in enumerate(entries):
                 for site in entered(target, entry) & sites:
-                    counts[target][site] += 1
+                    inside[target][site][place] = whole[target][place]
                     witness[target].setdefault(site, entry["id"])
 
     DD._with_rig(replay)
     ties, bare, bound = collections.OrderedDict(), {}, set()
+    reach = collections.OrderedDict()
     for row in reg["constraints"]:
         ties[row["id"]], bare[row["id"]] = [], []
+        within = {}
         for site in row["code"]:
-            reach = sorted(((target, hits[site])
-                            for target, hits in counts.items()
-                            if site in hits),
-                           key=lambda pair: (-pair[1], pair[0]))
-            own = [pair for pair in reach if traces(pair[0], site)]
+            reached = sorted(((target, len(hits[site]))
+                              for target, hits in inside.items()
+                              if site in hits),
+                             key=lambda pair: (-pair[1], pair[0]))
+            own = [pair for pair in reached if traces(pair[0], site)]
             # A target whose tracer follows the file is bound
             # first. Where none does, the 2 targets with the most
             # entries inside stand for the rest.
-            chosen = own or reach[:2]
+            chosen = own or reached[:2]
             if not chosen:
                 bare[row["id"]].append(site)
             for target, hits in chosen:
-                ties[row["id"]].append(collections.OrderedDict([
+                tie = collections.OrderedDict([
                     ("site", site), ("target", target), ("entries", hits),
                     ("traced", traces(target, site)),
-                    ("witness", witness[target][site])]))
+                    ("witness", witness[target][site])])
+                tie.update(sized(list(inside[target][site].values())))
+                ties[row["id"]].append(tie)
                 bound.add(target)
+                # An entry inside 2 of the constraint's functions
+                # is 1 entry of the constraint's reach.
+                for place, size in inside[target][site].items():
+                    within[(target, place)] = size
+        reach[row["id"]] = None
+        if within:
+            reach[row["id"]] = collections.OrderedDict(
+                [("entries", len(within))])
+            reach[row["id"]].update(sized(list(within.values())))
     log = run_log()
     targets = collections.OrderedDict()
     for target in sorted(DD.TARGETS):
@@ -282,8 +336,9 @@ def measure():
             ("runs", row["runs"]), ("tried", row["tried"]),
             ("accepted", row["accepted"]), ("refused", row["refused"]),
             ("crash", row["crash"]), ("slow", row["slow"]),
-            ("entries", sizes[target]), ("bound", target in bound)])
-    return ties, bare, targets
+            ("entries", len(whole[target])), ("bound", target in bound)])
+        targets[target].update(sized(whole[target]))
+    return ties, bare, targets, reach
 
 
 # ---- the page's tables, rendered from the registry
@@ -366,9 +421,30 @@ def render_gaps(reg):
     return "\n".join(lines)
 
 
+def render_sizes(reg):
+    lines = ["| ID | Constraint | Entries inside | Smallest | Largest | "
+             "Under 100 bytes | 100 to 999 | 1,000 to 9,999 | "
+             "10,000 and over |",
+             "|----|------------|----------------|----------|---------|"
+             "-----------------|------------|----------------|"
+             "-----------------|"]
+    for row in reg["constraints"]:
+        reach = row["reach"]
+        # A constraint with no fuzz data has nothing to size. Its
+        # row is empty, which is not the same as small.
+        cells = ["none"] + [""] * (len(BANDS) + 3)
+        if reach:
+            cells = [_n(reach["entries"]), _n(reach["smallest"]),
+                     _n(reach["largest"])] + [_n(count)
+                                              for count in reach["bands"]]
+        lines.append("| %s | %s | %s |" % (
+            row["id"], row["name"], " | ".join(cells)))
+    return "\n".join(lines)
+
+
 RENDERS = collections.OrderedDict([
     ("constraints", render_constraints), ("properties", render_properties),
-    ("fuzz", render_fuzz), ("gaps", render_gaps)])
+    ("fuzz", render_fuzz), ("sizes", render_sizes), ("gaps", render_gaps)])
 
 
 def totals(reg):
@@ -394,7 +470,17 @@ def totals(reg):
          sum(row["tried"] for row in bound)),
         ("corpus entries", sum(row["entries"] for row in fuzz)),
         ("corpus entries of bound targets",
-         sum(row["entries"] for row in bound))])
+         sum(row["entries"] for row in bound)),
+        ("constraints sized", sum(1 for row in rows if row["reach"])),
+        ("entries under 100 bytes", sum(row["bands"][0] for row in fuzz)),
+        ("entries of 100 to 999 bytes",
+         sum(row["bands"][1] for row in fuzz)),
+        ("entries of 1,000 to 9,999 bytes",
+         sum(row["bands"][2] for row in fuzz)),
+        ("entries of 10,000 bytes and over",
+         sum(row["bands"][3] for row in fuzz)),
+        ("largest entry", max(row["largest"] for row in fuzz
+                              if row["largest"] is not None))])
 
 
 # ---- the ties, held
@@ -643,6 +729,151 @@ class FuzzTies(unittest.TestCase):
                               if name.endswith(".crashes.jsonl")])
 
 
+class Sizes(unittest.TestCase):
+    """Constraint to fuzz data, by size: how large the entries
+    are that enter each constraint's code."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.reg = registry()
+
+    def test_a_size_is_the_campaign_s_own_count_of_an_entry(self):
+        # The tool tries a child or drops it by a count of the
+        # child's bytes. size_of is that count: the tool drops a
+        # child exactly when its size here is past the tool's cap.
+        def tried(kind, target, data):
+            def grown(_rng, _data, _corpus):
+                return data
+            parent = {"kind": kind, "data": "" if kind == "text" else {}}
+            with mock.patch.object(DD, "pick", return_value=grown):
+                return DD.mutate(None, parent, [], target) is not None
+
+        euro = "\u20ac"
+        text = euro * (DD.MAX_TEXT // 3) + "a" * (DD.MAX_TEXT % 3)
+        frame = len(json.dumps({"a": ""}, ensure_ascii=True))
+        for kind, target, cap, at, past in (
+                ("text", "wire", DD.MAX_TEXT, text, text + "a"),
+                ("text", "wire", DD.MAX_TEXT,
+                 "\ud800" * (DD.MAX_TEXT // 3) + "a" * (DD.MAX_TEXT % 3),
+                 "\ud800" * (DD.MAX_TEXT // 3 + 1)),
+                ("payload", "v2", DD.MAX_PAYLOAD,
+                 {"a": "b" * (DD.MAX_PAYLOAD - frame)},
+                 {"a": "b" * (DD.MAX_PAYLOAD - frame + 1)}),
+                ("payload", "v2", DD.MAX_PAYLOAD,
+                 {"a": euro * ((DD.MAX_PAYLOAD - frame) // 6)
+                  + "b" * ((DD.MAX_PAYLOAD - frame) % 6)},
+                 {"a": euro * ((DD.MAX_PAYLOAD - frame) // 6 + 1)})):
+            where = "%s %d" % (kind, cap)
+            self.assertEqual(cap, size_of({"kind": kind, "data": at}), where)
+            self.assertGreater(size_of({"kind": kind, "data": past}), cap,
+                               where)
+            self.assertTrue(tried(kind, target, at), where)
+            self.assertFalse(tried(kind, target, past), where)
+
+    def test_every_tie_carries_the_sizes_of_the_entries_inside(self):
+        for row in self.reg["constraints"]:
+            for tie in row["fuzz"]:
+                where = "%s %s %s" % (row["id"], tie["target"], tie["site"])
+                whole = self.reg["fuzz"][tie["target"]]
+                self.assertEqual(len(BANDS) + 1, len(tie["bands"]), where)
+                self.assertEqual(tie["entries"], sum(tie["bands"]), where)
+                self.assertLessEqual(tie["smallest"], tie["largest"], where)
+                for end in (tie["smallest"], tie["largest"]):
+                    self.assertGreater(tie["bands"][band_of(end)], 0, where)
+                # No entry inside is outside its target's corpus.
+                self.assertGreaterEqual(tie["smallest"], whole["smallest"],
+                                        where)
+                self.assertLessEqual(tie["largest"], whole["largest"], where)
+                for count, most in zip(tie["bands"], whole["bands"]):
+                    self.assertLessEqual(count, most, where)
+
+    def test_every_target_carries_the_sizes_of_its_corpus(self):
+        for target, row in self.reg["fuzz"].items():
+            self.assertEqual(row["entries"], sum(row["bands"]), target)
+            self.assertLessEqual(row["smallest"], row["largest"], target)
+            for end in (row["smallest"], row["largest"]):
+                self.assertGreater(row["bands"][band_of(end)], 0, target)
+
+    def test_a_constraint_s_reach_is_its_ties_taken_together(self):
+        for row in self.reg["constraints"]:
+            reach, ties = row["reach"], row["fuzz"]
+            if not ties:
+                self.assertIsNone(reach, row["id"])
+                continue
+            self.assertEqual(reach["entries"], sum(reach["bands"]), row["id"])
+            self.assertEqual(min(tie["smallest"] for tie in ties),
+                             reach["smallest"], row["id"])
+            self.assertEqual(max(tie["largest"] for tie in ties),
+                             reach["largest"], row["id"])
+            # An entry inside 2 of the constraint's functions is
+            # counted once: band by band the reach is no less than
+            # each target's fullest tie, and no more than every
+            # tie added up.
+            for band in range(len(BANDS) + 1):
+                fullest = collections.Counter()
+                for tie in ties:
+                    fullest[tie["target"]] = max(fullest[tie["target"]],
+                                                 tie["bands"][band])
+                self.assertGreaterEqual(reach["bands"][band],
+                                        sum(fullest.values()), row["id"])
+                self.assertLessEqual(reach["bands"][band],
+                                     sum(tie["bands"][band] for tie in ties),
+                                     row["id"])
+
+    def test_a_witness_still_in_the_corpus_is_of_a_size_its_tie_counts(self):
+        held = {}
+        for row in self.reg["constraints"]:
+            for tie in row["fuzz"]:
+                if tie["target"] not in held:
+                    held[tie["target"]] = {entry["id"]: size_of(entry)
+                                           for entry in corpus(tie["target"])}
+                size = held[tie["target"]].get(tie["witness"])
+                if size is not None:
+                    self.assertTrue(
+                        tie["smallest"] <= size <= tie["largest"],
+                        "%s %s" % (row["id"], tie["target"]))
+                    self.assertGreater(tie["bands"][band_of(size)], 0)
+
+    def test_the_campaign_s_cap_on_a_child_is_under_every_size_cap(self):
+        # C1 to C4 are caps on size. The tool tries no child past
+        # its own cap, so while that cap is under all 4, no input
+        # of the campaign is the size of 1 of them, and the page
+        # says so.
+        child = max(DD.MAX_TEXT, DD.MAX_PAYLOAD)
+        caps = collections.OrderedDict([
+            ("C1", PINS._mail_default("max_job_bytes")),
+            ("C2", PINS._mail_default("max_script_bytes")),
+            ("C3", RUNNER.MAX_RESULT_BYTES),
+            ("C4", RUNNER._LOCAL_ENVELOPE_MAX_BYTES)])
+        names = {row["id"]: row["name"] for row in self.reg["constraints"]}
+        flat = " ".join(_read(PAGE_PATH).split())
+        for cid, cap in caps.items():
+            self.assertIn("bytes", names[cid].lower(), cid)
+            self.assertLess(child, cap, cid)
+            self.assertIn(_n(cap), flat, cid)
+        self.assertIn("at most %s bytes" % _n(child), flat)
+        self.assertLessEqual(totals(self.reg)["largest entry"],
+                             min(caps.values()))
+        # Of the 4, the page names the caps that have entries at
+        # their code, and how large the largest of them is.
+        reach = {row["id"]: row["reach"] for row in self.reg["constraints"]}
+        self.assertEqual(["C4"], [cid for cid in caps if reach[cid]])
+        self.assertIn("%s entries, and the largest of them is %s bytes" % (
+            _n(reach["C4"]["entries"]), _n(reach["C4"]["largest"])), flat)
+
+    def test_the_page_sizes_the_signature_s_reach_as_the_registry_does(self):
+        # The page reads finding F10 against the largest entry
+        # that reaches the signature's code.
+        reach = {row["id"]: row["reach"] for row in self.reg["constraints"]}
+        names = {row["id"]: row["name"] for row in self.reg["constraints"]}
+        self.assertEqual("Signature", names["C5"])
+        flat = " ".join(_read(PAGE_PATH).split())
+        self.assertIn("The largest entry at the signature's code is %s bytes"
+                      % _n(reach["C5"]["largest"]), flat)
+        self.assertLess(reach["C5"]["largest"],
+                        max(DD.MAX_TEXT, DD.MAX_PAYLOAD))
+
+
 class Page(unittest.TestCase):
     """v4-bindings.md is the registry, and says what it counts."""
 
@@ -676,6 +907,17 @@ class Page(unittest.TestCase):
                 "%s of those inputs" % _n(
                     count["inputs tried by bound targets"]),
                 "%s corpus entries" % _n(count["corpus entries"]),
+                "%s are under 100 bytes" % _n(
+                    count["entries under 100 bytes"]),
+                "%s are of 100 to 999 bytes" % _n(
+                    count["entries of 100 to 999 bytes"]),
+                "%s are of 1,000 to 9,999 bytes" % _n(
+                    count["entries of 1,000 to 9,999 bytes"]),
+                "%s are of 10,000 bytes or more" % _n(
+                    count["entries of 10,000 bytes and over"]),
+                "The largest is %s bytes" % _n(count["largest entry"]),
+                "%d of the %d constraints have entries to size" % (
+                    count["constraints sized"], count["constraints"]),
                 "counted on %s" % self.reg["counted"]):
             self.assertIn(words, " ".join(self.page.split()), words)
 
@@ -705,23 +947,33 @@ def _stamp(seconds=0):
             ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _octets(job_id, body, size=None):
+    """1 job mail as the octets a mailbox hands over, its subject
+    written out plain. With a size, a note below the body brings
+    the whole mail to that many bytes: a note above or below the
+    signed object is allowed."""
+    raw = (("Subject: [HOMING-PIGEON] job %s\r\nFrom: si@example.com\r\n"
+            "MIME-Version: 1.0\r\n"
+            "Content-Type: text/plain; charset=utf-8\r\n"
+            "Content-Transfer-Encoding: 8bit\r\n\r\n" % job_id
+            ).encode("ascii")
+           + body.encode("utf-8", "surrogatepass"))
+    if size is not None:
+        raw += b"\n" + b"." * (size - len(raw) - 1)
+    return raw
+
+
 def _as_mail(job_id, body):
-    """1 job mail. A body the mail library will not carry goes in
-    as the octets a mailbox could still hand over."""
-    subject = "[HOMING-PIGEON] job " + job_id
+    """1 job mail as the mail library writes it. A body the
+    library will not carry goes in as octets."""
     try:
         msg = EmailMessage()
-        msg["Subject"] = subject
+        msg["Subject"] = "[HOMING-PIGEON] job " + job_id
         msg["From"] = "si@example.com"
         msg.set_content(body)
         return msg.as_bytes()
     except (UnicodeError, ValueError):
-        return (("Subject: %s\r\nFrom: si@example.com\r\n"
-                 "MIME-Version: 1.0\r\n"
-                 "Content-Type: text/plain; charset=utf-8\r\n"
-                 "Content-Transfer-Encoding: 8bit\r\n\r\n" % subject
-                 ).encode("ascii")
-                + body.encode("utf-8", "surrogatepass"))
+        return _octets(job_id, body)
 
 
 def _subject_id(value):
@@ -755,9 +1007,12 @@ def recorded_arrivals():
         data = entry["data"]
         if entry["kind"] == "text":
             text = data
+            # A corpus text nested deeper than an older parser
+            # follows is no object to name a job by, like any
+            # text that does not parse.
             try:
                 inside = json.loads(text)
-            except ValueError:
+            except (ValueError, RecursionError):
                 inside = None
             name = inside.get("job_id") if isinstance(inside, dict) else None
         elif isinstance(data, dict):
@@ -961,6 +1216,273 @@ class CorpusAtTheGate(unittest.TestCase):
             with tempfile.TemporaryDirectory() as folder:
                 out = _at_the_gate(_as_mail(subject, body), False, folder)
             self.assertEqual([], out.executed, entry_id)
+
+
+# ---- the corpus up the sizes, at the mail gate
+
+# The proof climbs P1 by the size of the script: under 50
+# characters, then 500, 5,000, 50,000 and 500,000, then the cap's
+# own number (goals.md, stage 6). The corpus climbs the same rungs
+# here in bytes, which is what the cap counts.
+SCRIPT_RUNGS = (49, 500, 5000, 50000, 500000)
+MAIL_RUNGS = (1000, 10000, 100000, 1000000)
+# The longest id the protocol allows, and lengths on the way.
+ID_LENGTHS = (1, 36, 49, 64, 77, 78, 100, 128)
+
+
+def _climb(raw, folder, caps=None):
+    """1 arrival with cleartext allowed, under the default caps or
+    the ones given: (the run, how often the signature was asked
+    for, how often the dispatcher was)."""
+    cfg = dict(KEYS)
+    cfg.update(caps or {})
+    RUNNER._set_allow_cleartext_jobs(True)
+    try:
+        with mock.patch.object(
+                RUNNER, "_verify_and_decrypt",
+                wraps=RUNNER._verify_and_decrypt) as verify, \
+                mock.patch.object(
+                    RUNNER, "_early_dispatch",
+                    wraps=RUNNER._early_dispatch) as dispatch:
+            out = DOOR._run(raw=raw, base_dir=folder, cfg_extra=cfg)
+    finally:
+        RUNNER._set_allow_cleartext_jobs(False)
+    return out, verify.call_count, dispatch.call_count
+
+
+def _grown(payload, size, pad="#"):
+    """The payload with its script grown to `size` bytes of UTF-8
+    by a comment line, and signed again with the key it names."""
+    room = size - len(payload["script"].encode("utf-8")) - 1
+    width = len(pad.encode("utf-8"))
+    grown = dict(payload)
+    grown["script"] = payload["script"] + "\n" \
+        + pad * (room // width) + "#" * (room % width)
+    return grown, _signed(grown)
+
+
+def _why(out):
+    return [note for note in out.notes if "rejecting" in note]
+
+
+class CorpusUpTheSizes(unittest.TestCase):
+    """C1 and C2 on fuzz data, at handle_mail itself: the corpus's
+    fresh jobs grown rung by rung to each size cap, and 1 byte
+    past it."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.secrets = RUNNER.build_secrets(dict(KEYS))
+        cls.mail_cap = PINS._mail_default("max_job_bytes")
+        cls.script_cap = PINS._mail_default("max_script_bytes")
+        # The fresh jobs that run in the clear as octets.
+        cls.runners = []
+        for entry_id, payload, subject in fresh_jobs():
+            text = _signed(payload)
+            if text is None:
+                continue
+            with tempfile.TemporaryDirectory() as folder:
+                if _climb(_octets(subject, text), folder)[0].executed:
+                    cls.runners.append((entry_id, payload, subject, text))
+        cls.scripted = [job for job in cls.runners
+                        if isinstance(job[1].get("script"), str)]
+
+    def runs_once(self, raw, where, caps=None):
+        with tempfile.TemporaryDirectory() as folder:
+            out, verified, _ = _climb(raw, folder, caps)
+            self.assertEqual(1, len(out.executed), (where, _why(out)))
+            self.assertEqual(1, verified, where)
+            # A second delivery runs nothing. The largest mails
+            # are delivered once, which keeps the climb short.
+            if len(raw) < SCRIPT_RUNGS[-1]:
+                again, _, _ = _climb(raw, folder, caps)
+                self.assertEqual([], again.executed, where)
+        return out
+
+    def test_the_corpus_has_jobs_to_climb_with(self):
+        self.assertGreaterEqual(len(self.runners), 20)
+        self.assertGreaterEqual(len(self.scripted), 3)
+        for entry_id, _payload, subject, text in self.runners:
+            self.assertLess(len(_octets(subject, text)), MAIL_RUNGS[0],
+                            entry_id)
+
+    def test_a_job_s_mail_runs_at_every_rung_and_at_the_cap_itself(self):
+        # Every job climbs the lower rungs. Each 8th climbs the
+        # top rung and stands at the cap itself, 4 MiB of mail.
+        for place, (entry_id, payload, subject, text) in enumerate(
+                self.runners):
+            rungs = MAIL_RUNGS[:-1]
+            if place % 8 == 0:
+                rungs = MAIL_RUNGS + (self.mail_cap,)
+            for size in rungs:
+                raw = _octets(subject, text, size)
+                self.assertEqual(size, len(raw), entry_id)
+                self.runs_once(raw, (entry_id, size))
+                # The same mail under a cap of its own size runs
+                # too: the cap refuses what exceeds it.
+                if size < MAIL_RUNGS[-1]:
+                    self.runs_once(raw, (entry_id, size, "its own cap"),
+                                   {"max_job_bytes": size})
+            for clause, held in clauses(payload, text, subject,
+                                        self.secrets, True, False):
+                self.assertTrue(held, "%s ran: %s" % (entry_id, clause))
+
+    def test_a_mail_1_byte_past_the_cap_is_refused_before_any_signature_work(
+            self):
+        for entry_id, _payload, subject, text in self.runners:
+            edges = [(size, {"max_job_bytes": size})
+                     for size in MAIL_RUNGS[:-1]]
+            edges.append((self.mail_cap, None))
+            for cap, caps in edges:
+                raw = _octets(subject, text, cap + 1)
+                self.assertEqual(cap + 1, len(raw), entry_id)
+                with tempfile.TemporaryDirectory() as folder:
+                    out, verified, dispatched = _climb(raw, folder, caps)
+                where = (entry_id, cap)
+                self.assertEqual([], out.executed, where)
+                self.assertEqual(0, verified, where)
+                self.assertEqual(0, dispatched, where)
+                self.assertEqual(1, len(_why(out)), where)
+                self.assertIn("mail exceeds max_job_bytes (%d > %d)"
+                              % (cap + 1, cap), _why(out)[0], where)
+
+    def test_a_job_cap_of_0_lets_a_mail_past_the_default_run(self):
+        entry_id, _payload, subject, text = self.runners[0]
+        raw = _octets(subject, text, self.mail_cap + 1)
+        self.runs_once(raw, entry_id, {"max_job_bytes": 0})
+
+    def test_a_job_s_script_runs_at_every_rung_of_the_proof_s_ladder(self):
+        # Every scripted job climbs to 50,000 bytes. The first
+        # climbs on to 500,000 and stands at the cap itself.
+        for place, (entry_id, payload, subject, _text) in enumerate(
+                self.scripted):
+            rungs = SCRIPT_RUNGS[:-1]
+            if place == 0:
+                rungs = SCRIPT_RUNGS + (self.script_cap,)
+            for size in rungs:
+                grown, text = _grown(payload, size)
+                self.assertEqual(size, len(grown["script"].encode("utf-8")),
+                                 entry_id)
+                self.runs_once(_octets(subject, text), (entry_id, size))
+                for clause, held in clauses(grown, text, subject,
+                                            self.secrets, True, False):
+                    self.assertTrue(held, "%s at %d ran: %s"
+                                    % (entry_id, size, clause))
+
+    def test_a_script_1_byte_past_the_cap_is_refused_after_the_signature(
+            self):
+        # The cap counts UTF-8 bytes. A script grown with a 3 byte
+        # character is past a cap while it holds fewer characters
+        # than the cap has bytes.
+        for place, (entry_id, payload, subject, _text) in enumerate(
+                self.scripted):
+            edges = [(size, {"max_script_bytes": size}, pad)
+                     for size in SCRIPT_RUNGS[:-1] for pad in ("#", "\u20ac")]
+            if place == 0:
+                edges.append((self.script_cap, None, "#"))
+            for cap, caps, pad in edges:
+                where = (entry_id, cap, pad)
+                at, text = _grown(payload, cap, pad)
+                self.assertEqual(cap, len(at["script"].encode("utf-8")),
+                                 where)
+                if caps:
+                    self.runs_once(_octets(subject, text), where, caps)
+                past, text = _grown(payload, cap + 1, pad)
+                self.assertEqual(cap + 1,
+                                 len(past["script"].encode("utf-8")), where)
+                if pad != "#":
+                    self.assertLess(len(past["script"]), cap, where)
+                with tempfile.TemporaryDirectory() as folder:
+                    out, verified, _ = _climb(_octets(subject, text),
+                                              folder, caps)
+                self.assertEqual([], out.executed, where)
+                self.assertEqual(1, verified, where)
+                self.assertEqual(1, len(_why(out)), where)
+                self.assertIn("script exceeds max_script_bytes (%d > %d)"
+                              % (cap + 1, cap), _why(out)[0], where)
+
+    def test_a_script_cap_of_0_lets_a_script_past_the_default_run(self):
+        entry_id, payload, subject, _text = self.scripted[0]
+        _past, text = _grown(payload, self.script_cap + 1)
+        self.runs_once(_octets(subject, text), entry_id,
+                       {"max_script_bytes": 0})
+
+    def _named(self, length):
+        payload = dict(self.runners[0][1])
+        payload["job_id"] = "d" * length
+        payload["issued_at"] = _stamp()
+        return payload["job_id"], _signed(payload)
+
+    def test_a_job_runs_as_octets_whatever_the_length_of_its_id(self):
+        self.assertTrue(RUNNER._SAFE_JOB_ID.match("d" * ID_LENGTHS[-1]))
+        self.assertFalse(RUNNER._SAFE_JOB_ID.match(
+            "d" * (ID_LENGTHS[-1] + 1)))
+        for length in ID_LENGTHS:
+            job_id, text = self._named(length)
+            self.runs_once(_octets(job_id, text), length)
+
+    def test_the_subject_s_id_is_read_before_the_signature_is_asked_for(
+            self):
+        # What a decoder of subjects would stand in front of. The
+        # gate names a job by its subject's id, to the dispatcher
+        # and in its log, before it asks for the signature. A mail
+        # whose signature fails shows the order.
+        _entry_id, _payload, subject, text = self.runners[0]
+        mark = text.rindex('"sig"')
+        digit = text.index('"', text.index(":", mark) + 1) + 1
+        turned = text[:digit] + ("0" if text[digit] != "0" else "1") \
+            + text[digit + 1:]
+        order = []
+        dispatch_as_it_is = RUNNER._early_dispatch
+        verify_as_it_is = RUNNER._verify_and_decrypt
+
+        def dispatch(*args, **kwargs):
+            order.append("the dispatcher")
+            return dispatch_as_it_is(*args, **kwargs)
+
+        def verify(*args, **kwargs):
+            order.append("the signature")
+            return verify_as_it_is(*args, **kwargs)
+
+        RUNNER._set_allow_cleartext_jobs(True)
+        try:
+            with tempfile.TemporaryDirectory() as folder, \
+                    mock.patch.object(RUNNER, "_early_dispatch", dispatch), \
+                    mock.patch.object(RUNNER, "_verify_and_decrypt", verify):
+                out = DOOR._run(raw=_octets(subject, turned),
+                                base_dir=folder, cfg_extra=dict(KEYS))
+        finally:
+            RUNNER._set_allow_cleartext_jobs(False)
+        self.assertEqual(["the dispatcher", "the signature"], order)
+        self.assertEqual([], out.executed)
+        named = [place for place, note in enumerate(out.notes)
+                 if "job %s submitted by" % subject in note]
+        refused = [place for place, note in enumerate(out.notes)
+                   if "bad signature" in note]
+        self.assertEqual(1, len(named))
+        self.assertEqual(1, len(refused))
+        self.assertLess(named[0], refused[0])
+
+    def test_a_long_id_is_stopped_only_where_its_subject_was_rewritten(self):
+        # Finding F11. The mail library writes a subject word too
+        # long for 1 line as encoded words, and the gate reads a
+        # subject as it is written. So a job the library's mail
+        # does not run is stopped at its subject and nowhere else,
+        # and a subject left as it was runs.
+        for length in ID_LENGTHS:
+            job_id, text = self._named(length)
+            raw = _as_mail(job_id, text)
+            plain = ("job " + job_id).encode("ascii") in raw
+            with tempfile.TemporaryDirectory() as folder:
+                out, verified, _ = _climb(raw, folder)
+            if plain:
+                self.assertEqual(1, len(out.executed), length)
+            if not out.executed:
+                self.assertFalse(plain, length)
+                self.assertEqual(1, verified, length)
+                self.assertEqual(1, len(_why(out)), length)
+                self.assertIn("job_id mismatch between subject and body",
+                              _why(out)[0], length)
 
 
 # ---- the corpus at the local door
@@ -1198,21 +1720,29 @@ def _steady(ties):
     threads, so the entries that enter a function, and the first
     of them, move from one count to the next: for those the tie
     is the target, the site and whether the file is traced."""
-    return [tie if not tie["target"].startswith("race_")
+    return [tie if not _races(tie)
             else {key: tie[key] for key in ("site", "target", "traced")}
             for tie in ties]
+
+
+def _races(tie):
+    return tie["target"].startswith("race_")
 
 
 def _main(argv):
     if argv[:1] == ["measure"]:
         reg = registry()
-        ties, bare, targets = measure()
+        ties, bare, targets, reach = measure()
         moved = []
         for row in reg["constraints"]:
+            # A reach that a race target feeds moves with it.
+            still = not any(_races(tie) for tie in ties[row["id"]])
             if _steady(row["fuzz"]) != _steady(ties[row["id"]]) \
-                    or row["unfuzzed"] != bare[row["id"]]:
+                    or row["unfuzzed"] != bare[row["id"]] \
+                    or (still and row.get("reach") != reach[row["id"]]):
                 moved.append(row["id"])
             row["fuzz"], row["unfuzzed"] = ties[row["id"]], bare[row["id"]]
+            row["reach"] = reach[row["id"]]
         if reg["fuzz"] != targets:
             moved.append("the targets' totals")
         reg["fuzz"] = targets
