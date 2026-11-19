@@ -356,6 +356,13 @@ A finding is most useful when it points at the file and the line
   proof for that grammar, not for the shell, and not for
   every string the size door admits. No new constraint.
   `runner/tests/test_v4_the_grammar.py` holds it.
+- `v4-the-folder.md`: one atom that writes, `printf x > kept`,
+  and it is not one of the 22. Under C18, already defined,
+  the job's folder is the only writable mount when
+  confinement is enforce. A write to the host's `/tmp` does
+  not land there, and the same script with confinement off
+  does. Where the sandbox cannot engage, the job is refused.
+  `runner/tests/test_v4_the_folder.py` holds it.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.
