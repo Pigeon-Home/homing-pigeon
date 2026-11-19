@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The opener search reads a body a bounded number of times
-(finding F10, recorded in v4-bindings.md on the proofs shelf).
+(finding F10 of the v4 binding work, 2026-11-18).
 
 A signed body is a JSON object whose last brace was replaced by
 the signature. To find the object's first brace the verifier

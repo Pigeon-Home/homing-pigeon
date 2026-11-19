@@ -119,8 +119,8 @@ def _extract_signed(norm: str):
 
 
 # The opener search looks at a candidate's first characters before
-# it reads the candidate whole (finding F10 in the proofs shelf's
-# v4-bindings.md). The search tries every brace the walk passes, and
+# it reads the candidate whole (finding F10 of the v4 binding work,
+# 2026-11-18). The search tries every brace the walk passes, and
 # it used to copy, clean and parse the text from each one to the
 # marker: candidates times length. A body of `{\"` repeated makes
 # every brace a candidate that fails at its second character, so an

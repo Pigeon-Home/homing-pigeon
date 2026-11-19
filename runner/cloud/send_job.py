@@ -227,8 +227,8 @@ def _extract_signed(norm: str):
 
 # The opener search looks at a candidate's first characters before
 # it reads the candidate whole: the same change, for the same cause,
-# as runner/wire/verify.py carries (finding F10 in the proofs
-# shelf's v4-bindings.md). A body of `{\"` repeated makes every
+# as runner/wire/verify.py carries (finding F10 of the v4 binding
+# work, 2026-11-18). A body of `{\"` repeated makes every
 # brace a candidate that fails at its second character, and the
 # search used to copy and parse the text from each one to the
 # marker: candidates times length, before any MAC. A JSON parse
