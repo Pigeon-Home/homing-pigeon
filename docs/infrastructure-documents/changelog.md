@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.1 - 2026-11-19
+
+- forum: the seats' forum carries the working arrangement with the owner and the O and V signals, with what a full sync pulls and reads, for every seat and agent
+- Germany bank 69: 2,621 entries, 0 crashes, 1,374 new runs (Muse)
+
 ## 3.17.29.12 - 2026-11-19
 
 - Docs: the X account carries the critical security notices, noted in the secret agents record (since 3.17.29.11)
