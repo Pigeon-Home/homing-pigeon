@@ -1147,6 +1147,91 @@ class WaitTest(unittest.TestCase):
 
 
 
+class PollIntervalTest(unittest.TestCase):
+    """Q205 (2026-11-19): the train's polls sit on the owner's wait.
+
+    On the measured cycles (3.17.30.7 to 3.17.30.11, the hosted
+    record read first hand by the answering seat) the gate read
+    green 99 to 119 seconds after its build started, and the
+    cut-release run was created 22 to 60 seconds after gate green
+    at the old 45 second build poll; the cut job itself ran 22 to
+    27 seconds against a 20 second poll; and the publish jobs
+    ended 1 to 2 minutes after the release was out against a 60
+    second tag build poll. The intervals are pinned here so the
+    dead time cannot grow back unnoticed: the build at 15, the
+    cut at 10, the tag build at 20.
+    """
+
+    SHA = "e0c08446" + "0" * 32
+    VERSION = "3.17.30.12"
+
+    def _record(self, waits):
+        def fake_wait(label, probe, interval, limit):
+            waits.append((label, interval))
+            out = probe()
+            if out is None:
+                raise AssertionError("probe for %s had no verdict" % label)
+            return out
+        return fake_wait
+
+    def test_the_cut_polls_the_build_at_15_and_the_cut_at_10(self):
+        waits, watched = [], []
+        state = {"dispatched": False}
+
+        def fake_api(path, method="GET", body=None, raw=False):
+            if path.startswith("/git/ref/tags/"):
+                return None
+            if "cut-release.yml/dispatches" in path:
+                state["dispatched"] = True
+                return {}
+            if "cut-release.yml/runs" in path:
+                runs = [{"id": 8, "status": "completed", "conclusion": "success",
+                         "html_url": "https://example.invalid/cut/8"}] if state["dispatched"] else []
+                return {"workflow_runs": runs}
+            raise AssertionError(path)
+
+        args = mock.Mock(watch=False, sha=self.SHA, version=None, limit=5)
+        with mock.patch.object(rt, "latent_warning", lambda *a, **k: ""), \
+                mock.patch.object(rt, "red_main_warning", lambda *a, **k: ""), \
+                mock.patch.object(rt, "carriers", lambda root=None: {"pyproject.toml": self.VERSION}), \
+                mock.patch.object(rt, "_git", lambda *a, **k: self.SHA), \
+                mock.patch.object(rt, "api", fake_api), \
+                mock.patch.object(rt, "gate_verdict", lambda sha, version=None: ("green", "run 1: green")), \
+                mock.patch.object(rt.cut_gate, "need", lambda sha, version, api=None: (set(), "the legs alone")), \
+                mock.patch.object(rt, "watch_tag_build", lambda version, limit: watched.append((version, limit)) or 0), \
+                mock.patch.object(rt, "_wait", self._record(waits)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            rc = rt.cmd_cut(args)
+        self.assertEqual(rc, 0)
+        self.assertEqual(waits, [("the build", 15), ("the cut", 10)])
+        self.assertEqual(watched, [(self.VERSION, 5)])
+
+    def test_the_watch_polls_the_tag_build_at_20(self):
+        waits = []
+        jobs = [{"name": n, "id": i, "status": "completed", "conclusion": "success"}
+                for i, n in enumerate(("release", "pypi-publish", "sourceforge", "gitlab"))]
+
+        def fake_api(path, method="GET", body=None, raw=False):
+            if "/build.yml/runs?branch=" in path:
+                return {"workflow_runs": [{"id": 5, "status": "completed", "conclusion": "success"}]}
+            if "/runs/5/jobs" in path:
+                return {"jobs": jobs}
+            if "/logs" in path:
+                return b""
+            if path.startswith("/releases/tags/"):
+                return {"assets": [{"name": "homing-pigeon-windows-x86_64-3.17.30.12.zip"}]}
+            if "/docker.yml/runs" in path:
+                return {"workflow_runs": []}
+            raise AssertionError(path)
+
+        with mock.patch.object(rt, "api", fake_api), \
+                mock.patch.object(rt, "_wait", self._record(waits)), \
+                contextlib.redirect_stdout(io.StringIO()):
+            rc = rt.watch_tag_build(self.VERSION, 5)
+        self.assertEqual(rc, 0)
+        self.assertEqual(waits, [("the tag build", 20)])
+
+
 class CutWatchShaTest(unittest.TestCase):
     """The cut's --watch/--sha ordering, pinned (the fix of the
     5:29 PM PST landing, 2026-11-12).

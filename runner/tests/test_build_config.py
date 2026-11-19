@@ -554,6 +554,24 @@ class PipelineLiftsTest(unittest.TestCase):
             self.assertIn("refs/tags/v", block)
             self.assertIn("needs: [release]", block)
 
+    def test_scope_reads_history_only_where_a_diff_needs_it(self):
+        # Q205 (2026-11-19): scope sits in series before the gate
+        # legs and before the release job, and its checkout measured
+        # 8 to 13 seconds of its 12 to 18 seconds on the tag builds
+        # of 3.17.30.7 to 3.17.30.11. On a tag ref the job reads no
+        # history (ci_scope decides without a diff for a tag event,
+        # and the promote lookup is an API read), so its checkout is
+        # shallow there and full everywhere else: a branch push
+        # diffs before to after and needs the before commit, and the
+        # release and proofs jobs keep the full history the project
+        # snapshot and the proofs-due diff are made of.
+        workflow = _workflow()
+        scope = _uncommented(_job_block(workflow, "scope"))
+        self.assertIn("fetch-depth: ${{ startsWith(github.ref, 'refs/tags/') && 1 || 0 }}", scope)
+        for job in ("release", "proofs"):
+            block = _uncommented(_job_block(workflow, job))
+            self.assertIn("fetch-depth: 0", block, job)
+
     def test_the_briefing_whole_sweep_rides_the_nightly_soak(self):
         # The desk's Q166 answer (2026-11-12): the briefing
         # guard's whole bookended sweep runs nightly on the

@@ -114,9 +114,21 @@ jobs:
       promote: ${{ steps.scope.outputs.promote }}
       promote_run: ${{ steps.scope.outputs.promote_run }}
     steps:
+      # On a tag ref this job reads no history: ci_scope decides
+      # without a diff for a tag event (a dispatch is not a push,
+      # and a tag push's `before` is the zero sha, which
+      # changed_paths answers None for before any git run), and
+      # the promote lookup below is an API read. A shallow checkout
+      # is enough there, and scope sits in series before both the
+      # gate legs and the release job (Q205, 2026-11-19: its full
+      # checkout measured 8 to 13 seconds of a 12 to 18 second job
+      # on the tag builds of 3.17.30.7 to 3.17.30.11). A branch
+      # push keeps the full history: its diff of before to after
+      # needs the before commit, and a range git cannot read
+      # already falls back to a full build.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: ${{ startsWith(github.ref, 'refs/tags/') && 1 || 0 }}
       - id: gate
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         env:

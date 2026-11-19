@@ -80,6 +80,254 @@ runs the train and the legs. 2 places to look, from the figures: the
 
 **Status.** Q205 is OPEN, for Muse's seat.
 
+**Suppositions, recorded 2026-11-19 by the answering seat
+before the job level measurements and before any change.** The
+cycle level figures are this entry's own, extended by the same
+clock read for 3.17.30.11; the deciding measurements, the per
+job and per step timings on the hosted record, had not been run
+when these were written.
+
+- Q205-S1 (the gate segment, about 1.6 to 2.0 minutes from
+  build start to gate green on 3.17.30.7, .9, .10 and .11). The
+  gate for these cuts is the 8 artifact legs alone (the cut
+  gate's rule: no runner code since the previous release, and
+  main's suite verdict green), the legs run in parallel after
+  the scope job, so the segment is scope plus the longest leg,
+  with no suite time inside it. Predicted long pole: one of the
+  macOS or Windows legs at roughly 90 to 110 seconds, the other
+  legs under about 60 seconds.
+- Q205-S2 (gate green to the tag build's start, about 0.9 to
+  1.6 minutes). This segment is the train's poll, the
+  cut-release run and the tag build's start, in series. The
+  train polls the gate every 45 seconds, so the dispatch can
+  lag gate green by up to 45 seconds. Inside cut-release, the
+  predicted long poles are the full history checkout and the
+  gate step's own re-read of the gate rule, whose red main
+  reading walks main's builds fetching each build's jobs until
+  it finds a suite verdict. Predicted cut-release run length:
+  about 40 to 70 seconds.
+- Q205-S3 (the tag build to the release out, about 2.1 to 2.8
+  minutes). The critical path is scope, then the release job
+  alone: the legs and the suites are skipped on a promoted
+  build. Inside the release job the predicted long pole is the
+  snapshot step (build the project snapshot and inject it into
+  every archive), then the full history checkout and the
+  artifact download. The Sigstore wait, the attestation and
+  the upload are predicted small. None of those steps is
+  removable without changing what a release contains or
+  weakening its attestation.
+- Q205-S4 (scope on the tag build). On a tag build the scope
+  job's outputs need no git history: ci_scope decides without
+  a diff for a tag event, and the promote lookup in scope is
+  an API read. If scope's full history checkout measures
+  large, a shallower checkout for tag events is a safe cut,
+  because a branch push keeps the full checkout and a range
+  git cannot read already falls back to a full build.
+  Predicted scope job on a tag build: about 20 to 40 seconds,
+  most of it checkout.
+- Q205-S5 (the train's own run end, about 9 minutes, against
+  the release out at about 6). The train's watch polls the tag
+  build every 60 seconds and waits for all 4 publish jobs, so
+  the train's end lags the release by the mirrors, about 1 to
+  2 minutes, plus up to 60 seconds of poll. That lag is in the
+  train's report, not in the conductor's wait for the release
+  itself.
+- Q205-S6 (what must not be cut). The gate's 8 legs are the
+  only build proof a release with no runner code gets before
+  tagging; the suites join the gate only when runner code
+  changed or main is red. Removing a leg, or the cut-release
+  gate re-read, or the promotion check, would weaken the
+  gate. Predicted conclusion shape: the safe cuts, if the
+  measurements bear them out, are poll intervals and
+  redundant checkout depth, worth tens of seconds in total,
+  not minutes; the remaining wait is parallel build work and
+  the release job's own serial work.
+
+**The measurements (Muse, 2026-11-19).** Read first hand
+from the hosted record: the train's own clock for the 4
+cycles, and the per job and per step timings of their gate
+builds, cut-release runs and tag builds.
+
+The cycle, all 4 cuts in the same shape:
+
+| Segment | Measured |
+|---------|----------|
+| Release commit to gate green | 1.6 to 2.0 minutes |
+| Gate green to the cut-release run's creation | 22 to 60 seconds |
+| The cut-release job itself | 22 to 27 seconds |
+| Tag placed to the tag build's start | 3 to 4 seconds |
+| Tag build's start to the release out | 2.1 to 2.8 minutes |
+| Release commit to the release out | 5.3 to 6.0 minutes |
+
+The gate segment, job by job. Scope runs first, in series:
+12 to 18 seconds, its full history checkout 8 to 13 of them.
+The 8 legs then run in parallel. Their lengths across the 4
+gate builds: build-windows-arm64 80 to 81 seconds in every
+cycle; build-macos-x86_64 60 to 93; build-windows 50 to 73;
+build-linux 54 to 64; build-linux-arm64 50 to 63;
+build-pi-light 42 to 52; build-macos 48 to 51; build-python
+12 to 16. Gate green is scope plus the longest leg plus 2 to
+5 seconds of queue, and it is the longest leg that sets it in
+every cycle: build-windows-arm64 in 3 of the 4, and
+build-macos-x86_64 in 3.17.30.7. Inside the longest leg
+(build-windows-arm64 on 3.17.30.11, 81 seconds): checkout 12,
+the pip install 15, the 2 PyInstaller builds 15 and 10, the
+smoke 10, the no Python check 7, packaging 1, the artifact
+upload 2, and the post steps 6. No step in it is idle and no
+step duplicates another leg: each leg builds a different
+platform's binaries.
+
+The cut segment, job by job. The cut-release run was created
+22, 41, 55 and 60 seconds after gate green on the 4 cycles:
+that is the dispatch lag, and it is the segment's biggest
+single piece. The cut job itself ran 22 to 27 seconds:
+checkout 7 to 11, the gate step 7 to 11, the tag step 2 to 3,
+and the rest setup. The gate step's re-read, the red main
+walk included, is short because the suite verdict it looks
+for stands in the first builds it reads.
+
+The tag segment, job by job. Scope again runs first: 13 to
+17 seconds, its checkout 8 to 12 of them. The release job
+then runs alone for 112 to 147 seconds, and the release is
+out at its end. Its steps across the 4 tag builds: the
+snapshot step 38 to 60 seconds; the release upload 25 to 28;
+pinning the extension sources 19 to 26; the full history
+checkout 7 to 12; the attestation 3 to 11; the download of
+the promoted artifacts 2 to 4; the promotion check 2 to 3;
+the Sigstore wait 2 to 3; the sums and the SBOM about 2. The
+mirrors run after the release and beside each other: PyPI
+done 0.4 to 0.6 minutes after the release out, SourceForge
+0.8 to 1.4, GitLab last at 1.8 to 2.4 minutes after it. The
+full build on main for the same commits ran 16.3 to 27.5
+minutes whole; the train never waits for it, and neither
+does the release.
+
+**Conclusions, against the suppositions.**
+
+- Q205-S1 stands in shape and is corrected in its long pole.
+  The gate is scope plus the longest leg, with no suite time
+  in it. The standing long pole is build-windows-arm64 at 80
+  to 81 seconds in every cycle, not the 90 to 110 predicted,
+  and the other legs run 42 to 73 seconds, not under 60 as
+  predicted; build-macos-x86_64 took the pole once, at 93
+  seconds on 3.17.30.7. There is no serial waste in the
+  segment to cut: what would shorten it is a faster longest
+  leg, and its steps are the build itself.
+- Q205-S2 stands in shape and is corrected in its parts. The
+  series is real, and the dispatch lag of 22 to 60 seconds is
+  its biggest piece, at and past the 45 second poll's own
+  length once the probe's own reads are counted. The
+  cut-release run is 22 to 27 seconds, not the 40 to 70
+  predicted, and its gate re-read is 7 to 11 seconds, not a
+  long pole: the walk finds its verdict at once.
+- Q205-S3 stands. The snapshot step is the release job's long
+  pole at 38 to 60 seconds, and the upload and the source
+  pinning stand behind it at 25 to 28 and 19 to 26, both
+  larger than predicted; the checkout and the download are
+  small, as predicted. Nothing in the job is removable: the
+  snapshot and the pinning lock are release content (the lock
+  rides inside the snapshot, so the pinning must finish
+  first), the attestation is the release's proof, and the
+  upload is the release itself.
+- Q205-S4 stands, smaller than predicted. Scope on a tag
+  build is 13 to 17 seconds whole, its checkout 8 to 12 of
+  them. A local measure of the clone puts the history at 24
+  of the pack's 44 megabytes, so a shallow checkout saves
+  part of that step, a few seconds, not the whole of it. The
+  cut is taken for tag refs only, in the shape the
+  supposition names.
+- Q205-S5 stands. The mirrors end 1.8 to 2.4 minutes after
+  the release is out, and the old 60 second watch poll added
+  up to a minute more before the train could report them.
+- Q205-S6 stands. No leg, no gate re-read and no promotion
+  check is removed by this answer, and no suite rule moves.
+  The cuts taken are the poll intervals and the one checkout
+  depth, and they are worth tens of seconds, as predicted.
+
+**What was changed.** 2 cuts, both in the applying landing:
+
+1. The train's polls stop adding dead time
+   (runner/tools/release_train.py). The build poll goes from
+   45 seconds to 15, the cut poll from 20 to 10, and the tag
+   build watch poll from 60 to 20. The build poll is the one
+   on the conductor's wait: at 45 seconds it cost the
+   measured 22 to 60 seconds of dispatch lag after a verdict
+   the gate had already reached. The probes are a handful of
+   API list reads each, so the tighter polls cost little.
+2. Scope checks out shallow on a tag ref
+   (.github/workflows/build.yml). Its fetch depth is 1 on
+   refs/tags and 0 everywhere else, on the S4 reasoning: a
+   tag event's scope reads no history, a branch push keeps
+   the full history its diff needs, and the release and
+   proofs jobs keep the full history the snapshot and the
+   proofs-due diff are made of.
+
+**What was not cut, and why.** The 8 gate legs (the only
+build proof of a release with no runner code; their lengths
+are the build's own work, step by step above). The
+cut-release gate re-read (7 to 11 seconds, and it is the
+enforcement a dispatch by hand relies on; the train's wait
+is not a gate). The promotion check (2 to 3 seconds, and it
+is what makes a promoted tag build a checked one). The
+release job's checkout depth (the snapshot bundles the full
+history; that is release content, not overhead). The
+cut-release checkout depth (its steps read the tag list and
+the last tag's workflow tree; 7 to 11 seconds, and a shallow
+checkout risks the tag machinery for seconds). The snapshot,
+the source pinning, the attestation and the upload (release
+content and its proof, in series because each feeds the
+next).
+
+**The expected effect, stated as an expectation and not a
+result.** The dispatch lag should fall from the measured 22
+to 60 seconds to about one 15 second poll plus the probe's
+own seconds; the tag build's scope should give back a few
+seconds; the train's own end should come up to about 40
+seconds sooner. In total, tens of seconds off a wait of 5.3
+to 6.0 minutes, leaving a floor of about 5 minutes that is
+build work and release work: scope and the longest leg
+(about 100 seconds), the cut run (about 25 seconds), and
+scope plus the release job on the tag (about 2 to 2.7
+minutes). A wait materially under that floor would have to
+ship less in the release or check less before it, and this
+answer recommends neither.
+
+**Proof of work.** The deciding suites on the applying tree:
+test_release_train runs 71 tests, OK (2 new, pinning the 3
+poll intervals at 15, 10 and 20 through the cut's and the
+watch's own seams); test_build_config runs 79 tests, OK (1
+new, pinning scope's conditional depth and the full depth of
+the release and proofs jobs); test_cut_gate runs 25 tests,
+OK, beside them; 175 in total, OK. The shrink guard handed
+the working tree names no file. No new skip reason is added.
+
+**Answer (Muse, 2026-11-19).** The wait can be cut, by
+tens of seconds and not by minutes, and the cuts the
+measurements support are landed: the train's 3 poll
+intervals, and scope's checkout depth on a tag ref. The
+rest of the wait is the longest artifact leg building in
+parallel, the release job assembling and attesting the
+release in series, and the mirrors publishing after it, and
+none of that can come out without the release shipping less
+or being checked less. The hosted effect of the cuts can
+only be read on the next release cycles, and under rule 8 a
+second seat's re-test is owed: Claude's seat, which runs the
+cuts, is to read the clocks of the next 2 releases against
+the figures above (the dispatch lag against 22 to 60
+seconds, the tag scope against 13 to 17) and record the
+verdict here. This seat does not re-test its own fix.
+
+**Applied in.** The commit that carries this answer, with
+the subject "train: the polls and the tag scope checkout
+stop adding dead time to a release (Q205)", for the 2 cuts,
+their tests and this record.
+
+**Status.** Q205 stays OPEN, for the re-test named in the
+answer: the cuts are landed and unit tested, and closure
+waits on the second seat's reading of the next 2 release
+clocks, which is the first evidence the hosted wait itself
+moved.
+
 ## Q204 (Muse to the conductor, 2026-11-19): finding F11 — a signed job with a long id is refused when the sending mail library folds its subject; which closing?
 
 On the `future/v4-provable-model` branch, the v4 binding work records finding F11, open. A signed job whose id is 78 to 128 characters long — 128 is the protocol maximum, and ids up to 77 run — is refused with "job_id mismatch between subject and body" when the sending side is Python's mail library: the library writes a long subject as encoded words, and `handle_mail` reads the subject as written and does not decode them, so the id it reads from the subject is not the id in the body. Measured on Python 3.11, 3.12 and 3.13. The refusal fails closed — nothing runs that should not — and senders that name their jobs with UUIDs (36 characters) are untouched. But the runner's own sender uses the same library, so our own side can produce the shape that the gate refuses.

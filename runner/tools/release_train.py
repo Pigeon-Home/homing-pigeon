@@ -814,7 +814,14 @@ def cmd_cut(args, sha=None):
         if state == "red":
             raise RuntimeError("the build is red: " + detail)
         return None
-    _say(_wait("the build", probe, 45, args.limit))
+    # 15 seconds, not 45 (Q205, 2026-11-19): the gate itself is
+    # about 100 seconds of parallel leg work, and at a 45 second
+    # poll the cut-release dispatch lagged gate green by 22 to 60
+    # seconds on the measured cycles (3.17.30.7 to 3.17.30.11) --
+    # dead time after the verdict, on the owner's wait. The probe
+    # is a handful of API reads; polling it 3 times as often over a
+    # 2 minute wait costs little and returns most of the lag.
+    _say(_wait("the build", probe, 15, args.limit))
     if (api("/git/ref/tags/v%s" % version) or {}).get("object"):
         placed = tag_commit(version)
         if placed == sha:
@@ -853,7 +860,11 @@ def cmd_cut(args, sha=None):
         if new and len(done) == len(new):
             return done[0]
         return None
-    cut = _wait("the cut", cut_probe, 20, 15)
+    # 10 seconds (Q205): the cut job itself runs 22 to 27 seconds
+    # on the measured cycles, and this probe is one list read, so
+    # a 20 second poll added up to a job's length of dead time
+    # before the train turned to the tag build.
+    cut = _wait("the cut", cut_probe, 10, 15)
     if cut["conclusion"] != "success" and tag_commit(version) == sha:
         # a run this train did not start placed the tag on this very
         # commit before this one's turn came: the cut is made
@@ -913,7 +924,11 @@ def watch_tag_build(version, limit):
         if all(jobs.get(n, {}).get("status") == "completed" for n in publish):
             return runs[0], jobs
         return None
-    tag_build, jobs = _wait("the tag build", tag_probe, 60, limit)
+    # 20 seconds, not 60 (Q205): the publish jobs end 1 to 2
+    # minutes after the release is out, and a 60 second poll added
+    # up to a minute more before the train could report them. The
+    # probe is 2 list reads.
+    tag_build, jobs = _wait("the tag build", tag_probe, 20, limit)
     state = tag_build["conclusion"] or "%s (publish jobs done)" % tag_build["status"]
     report = ["tag build %s: %s" % (tag_build["id"], state)]
     for name in publish:
