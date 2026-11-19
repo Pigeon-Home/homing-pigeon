@@ -336,6 +336,10 @@ A finding is most useful when it points at the file and the line
   of them and the real runner asked on every step, with the
   fuzz data at 50, 500 and 5,000 bytes beside it.
   `runner/tests/test_v4_at_a_bound.py` holds it.
+- `v4-at-a-limit.md` writes the same claim with the size
+  left open, as a number N: why the proof holds at every N,
+  what grows with N, and the bars a script meets as N
+  grows. Its suppositions are written before the measure.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.
