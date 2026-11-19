@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.4 - 2026-11-19
+
+- Docs: FUTURE.md carries DRU's own edit trimming the Anna Founding Builder Program line, and the forum carries the plan for how the conductor, Muse and Claude talk (since 3.17.30.3)
+
 ## 3.17.30.3 - 2026-11-19
 
 - verify: the opener search looks at a candidate's first characters before it reads the candidate whole, in runner/wire/verify.py and runner/cloud/send_job.py; an unsigned body of 48,107 bytes that held the verifier 15.3 seconds before any MAC is refused in 0.055, and the answers are the old search's (Q203)
