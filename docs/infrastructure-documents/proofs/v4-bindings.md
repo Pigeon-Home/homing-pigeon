@@ -37,9 +37,13 @@ the registry to the tree and this page to the registry.
    real code against the property. Held by parsing: the
    suite is there and has tests.
 6. **Property to the general model.** The steps of
-   `general.tla` that mark the property in the ledger. Held
-   by reading `general.tla`: the steps that write each mark
-   are the steps listed.
+   `general.tla` that mark the property in the ledger, and
+   the seams that carry it: the constants of `general.tla`
+   that, set the other way, make the checker break the
+   property. Held by reading `general.tla` for the steps,
+   and by the search in `runner/tests/test_v4_general.py`
+   for the seams: the registry lists for each property the
+   seams whose turning breaks its mark, and no other.
 7. **Constraint to fuzz data.** The fuzz targets whose
    corpus enters the constraint's code, with the number of
    entries that do and 1 entry named as witness. This tie
@@ -96,24 +100,32 @@ the constraint's functions.
 
 ## Every property, tied
 
-| Property | Stated in | Model | Checked invariants | Conformance | Steps in `general.tla` |
-|----------|-----------|-------|--------------------|-------------|-------------------------|
-| P1 | `properties.md` | `gate.tla` | `P1Inv`, `SensorInv`, `AudienceWasRequired` | `test_proof_conformance.py` | `Handle`, `Local` |
-| P2 | `properties.md` | `confine.tla` | `P2Inv`, `EffViewExact`, `EffBudgetExact` | `test_proof_conformance_p2.py` | `Handle` |
-| P3 | `properties.md` | `transgate.tla` | `P3Inv`, `GateBlocks`, `PresentedExact`, `AcceptedExact` | `test_proof_conformance_p3.py` | `Handle` |
-| P4 | `properties.md` | `keypolicy.tla` | `P4Inv`, `PinBinds`, `PolicyExact` | `test_proof_conformance_p4.py` | `Handle` |
-| P5 | `properties.md` | `replay.tla` | `P5Inv`, `SeenImpliesRecord`, `DeliveredImpliesRecord` | `test_proof_conformance_p5.py` | `Handle`, `Local` |
-| P6 | `properties.md` | `decision.tla` | `P6Inv` | `test_proof_conformance_p6.py` | `Start` |
-| P7 | `v4-properties.md` | `diskguard.tla` | `NeverStops`, `OrderRespected`, `RecordedFaithfully` | `test_v4_models.py::Conformance`, `test_disk_guard.py` | `Guard` |
-| P8 | `v4-properties.md` | `hybridselect.tla` | `P8Inv`, `OnlyOffered` | `test_v4_models.py::HybridSelectConformance` | `Agree` |
-| P9 | `v4-properties.md` | none | none | `test_v4_models.py::FramingScopePin` | `Agree` |
-| P10 | `v4-properties.md` | `probegate.tla` | `P10Inv`, `RefusesOnlyItsOwn` | `test_v4_models.py::ProbeGateConformance` | `Start`, `Handle` |
-| P11 | `v4-properties.md` | `resultfit.tla` | `MarkedWhenCut`, `CapZeroAsIs`, `FitsAsIs`, `P11Floor` | `test_v4_models.py::ResultFitConformance` | `Commit` |
-| P12 | `v4-properties.md` | `localgate.tla` | `P12Inv`, `SymlinkUnread`, `ReadBounded`, `OverCapRefusedForSize` | `test_v4_models.py::LocalGateConformance` | `Local` |
-| P13 | `v4-properties.md` | `secretfloor.tla` | `P13Inv`, `NamesACause` | `test_v4_models.py::SecretFloorConformance` | `Start`, `PollBegin`, `Local` |
+| Property | Stated in | Model | Checked invariants | Conformance | Steps in `general.tla` | Seams that carry it |
+|----------|-----------|-------|--------------------|-------------|-------------------------|---------------------|
+| P1 | `properties.md` | `gate.tla` | `P1Inv`, `SensorInv`, `AudienceWasRequired` | `test_proof_conformance.py` | `Handle`, `Local` | `LocalFilesOnly`, `GateVerifies`, `GateFresh` |
+| P2 | `properties.md` | `confine.tla` | `P2Inv`, `EffViewExact`, `EffBudgetExact` | `test_proof_conformance_p2.py` | `Handle` | `SpawnProbes` |
+| P3 | `properties.md` | `transgate.tla` | `P3Inv`, `GateBlocks`, `PresentedExact`, `AcceptedExact` | `test_proof_conformance_p3.py` | `Handle` | `TransportGates` |
+| P4 | `properties.md` | `keypolicy.tla` | `P4Inv`, `PinBinds`, `PolicyExact` | `test_proof_conformance_p4.py` | `Handle` | `GatePolicy` |
+| P5 | `properties.md` | `replay.tla` | `P5Inv`, `SeenImpliesRecord`, `DeliveredImpliesRecord` | `test_proof_conformance_p5.py` | `Handle`, `Local` | `GuardSparesFresh`, `LocalFilesOnly`, `GateFresh` |
+| P6 | `properties.md` | `decision.tla` | `P6Inv` | `test_proof_conformance_p6.py` | `Start` | `StartValidates` |
+| P7 | `v4-properties.md` | `diskguard.tla` | `NeverStops`, `OrderRespected`, `RecordedFaithfully` | `test_v4_models.py::Conformance`, `test_disk_guard.py` | `Guard` | `GuardSparesCache` |
+| P8 | `v4-properties.md` | `hybridselect.tla` | `P8Inv`, `OnlyOffered` | `test_v4_models.py::HybridSelectConformance` | `Agree` | `PrefersHybrid` |
+| P9 | `v4-properties.md` | none | none | `test_v4_models.py::FramingScopePin` | `Agree` | `SameSideOnly` |
+| P10 | `v4-properties.md` | `probegate.tla` | `P10Inv`, `RefusesOnlyItsOwn` | `test_v4_models.py::ProbeGateConformance` | `Start`, `Handle` | `SpawnProbes` |
+| P11 | `v4-properties.md` | `resultfit.tla` | `MarkedWhenCut`, `CapZeroAsIs`, `FitsAsIs`, `P11Floor` | `test_v4_models.py::ResultFitConformance` | `Commit` | `FitMarks` |
+| P12 | `v4-properties.md` | `localgate.tla` | `P12Inv`, `SymlinkUnread`, `ReadBounded`, `OverCapRefusedForSize` | `test_v4_models.py::LocalGateConformance` | `Local` | `LocalBounds` |
+| P13 | `v4-properties.md` | `secretfloor.tla` | `P13Inv`, `NamesACause` | `test_v4_models.py::SecretFloorConformance` | `Start`, `PollBegin`, `Local` | `PollRebuilds` |
 
 P9 has no model. It is a statement of scope, held by its
 pin, and `v4-working.md` records why it admits none.
+
+Every property has at least 1 seam. With all 14 seams as the
+code has them, every mark holds in every reachable state of
+the general model. Each seam, set the other way, breaks the
+properties listed against it, and its witness configuration
+shows the checker doing so. `v4-general.md` has the counts,
+the checker's run, and what holds each seam to the real
+code.
 
 ## The fuzz data
 
@@ -341,6 +353,9 @@ of calls and stops at the same place.
 - A body whose candidates each nest 30,000 arrays deep is
   read less than 2 times its length.
 
+The same change stands on main from 2026-11-18, where the
+desk carries it as Q203.
+
 ## What this pass does not show
 
 - A fuzz tie is reach, not proof. The proofs are the models
@@ -355,14 +370,13 @@ of calls and stops at the same place.
 - F10's bound is shown for the bodies tried and argued for
   the rest. The record gives no proof that no other body
   makes the search read more than 16 times its length.
-- The general model is as `v4-general.md` left it. 7 of its
-  13 marks still cannot be false in it.
+- A seam is the general model's guard, set on or off whole.
+  It shows a property rests on that guard being applied.
+  The guard's inside is the small model's to prove, and the
+  seam's hold on the code is in `v4-general.md`.
 
 ## For the next pass
 
-- `general.tla` carries a seam constant for 6 of the 13
-  marks. A constant and a witness for each of the other 7
-  would make every mark one the checker can break.
 - A search for cost in the readers that run before a MAC.
   F10 came to light through a slow test and not through a
   search, and a reader's cost is a property like any other.

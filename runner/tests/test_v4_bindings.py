@@ -56,6 +56,7 @@ if ROOT not in sys.path:
 from runner import runner as RUNNER  # noqa: E402
 from runner.guard import security as SECURITY  # noqa: E402
 from runner.tests import test_proof_conformance as DOOR  # noqa: E402
+from runner.tests import test_v4_general as GENERAL  # noqa: E402
 from runner.tools import de_dust_corpus as DD  # noqa: E402
 from runner.wire import jobcrypto  # noqa: E402
 
@@ -318,17 +319,20 @@ def render_constraints(reg):
 
 def render_properties(reg):
     lines = ["| Property | Stated in | Model | Checked invariants | "
-             "Conformance | Steps in `general.tla` |",
+             "Conformance | Steps in `general.tla` | "
+             "Seams that carry it |",
              "|----------|-----------|-------|--------------------|"
-             "-------------|-------------------------|"]
+             "-------------|-------------------------|"
+             "---------------------|"]
     for pid, row in reg["properties"].items():
-        lines.append("| %s | `%s` | %s | %s | %s | %s |" % (
+        lines.append("| %s | `%s` | %s | %s | %s | %s | %s |" % (
             pid, row["stated"],
             "`%s`" % row["model"] if row["model"] else "none",
             ", ".join("`%s`" % name for name in row["holds"]) or "none",
             ", ".join("`%s`" % name.split("/")[-1]
                       for name in row["conformance"]),
-            ", ".join("`%s`" % step for step in row["general"])))
+            ", ".join("`%s`" % step for step in row["general"]),
+            ", ".join("`%s`" % seam for seam in row["seams"])))
     return "\n".join(lines)
 
 
@@ -532,6 +536,24 @@ class Ties(unittest.TestCase):
         self.assertEqual(set(self.reg["properties"]), set(marks))
         for pid, row in self.reg["properties"].items():
             self.assertEqual(marks[pid], row["general"], pid)
+
+    def test_every_property_is_carried_by_a_seam_the_checker_can_break(self):
+        # The seams are general.tla's constants. The search in
+        # test_v4_general.py says which marks break with each
+        # the other way, and the registry must say the same.
+        model = _read(os.path.join(PROOFS, "general.tla"))
+        declared = re.search(r"(?s)\nCONSTANTS (.*?)\n\n", model).group(1)
+        constants = [name.strip() for name in declared.split(",")]
+        self.assertEqual(constants, [seam[0] for seam in GENERAL.SEAMS])
+        for pid, row in self.reg["properties"].items():
+            carried = [name for name, _cfg, _inv, props in GENERAL.SEAMS
+                       if pid in props]
+            self.assertEqual(carried, row["seams"], pid)
+            self.assertTrue(row["seams"], pid)
+        for name, cfg, invariant, props in GENERAL.SEAMS:
+            held = _read(os.path.join(PROOFS, cfg))
+            self.assertIn("  %s = FALSE\n" % name, held)
+            self.assertIn(invariant[:-3], props)
 
 
 class FuzzTies(unittest.TestCase):

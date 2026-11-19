@@ -508,3 +508,79 @@ constants first and searched to the fixed point.
   once its record and the cache have gone it runs a second
   time past P5. The freshness window is what bounds a
   replay.
+
+### The run
+
+Run 2026-11-18 with TLC 2.19 of 08 August 2024, the v1.7.4
+tools jar at revision 5a47802, on OpenJDK 21, in this seat's
+container, on the model as the commit after the suppositions
+leaves it. Each configuration ran in a fresh folder, with the
+model copied to its module's name.
+
+- `general.cfg`: no error. 32 initial states, 145,248 states
+  generated, 14,592 distinct states. The state graph is 17
+  deep.
+- The 9 new witnesses each violate the invariant they name,
+  and each run stops on that invariant:
+  `generalwitnessverifies.cfg` violates P1Inv,
+  `generalwitnessfresh.cfg` violates P5Inv,
+  `generalwitnesspolicy.cfg` violates P4Inv,
+  `generalwitnesstransport.cfg` violates P3Inv,
+  `generalwitnessstart.cfg` violates P6Inv,
+  `generalwitnessprefers.cfg` violates P8Inv,
+  `generalwitnessframing.cfg` violates P9Inv,
+  `generalwitnessmarks.cfg` violates P11Inv, and
+  `generalwitnessbounds.cfg` violates P12Inv.
+- The 9 earlier witnesses, each with the 9 new constants
+  TRUE, violate what they violated before: P13Inv, P10Inv,
+  P5Inv, P7Inv, P1Inv, NothingExecutes, NoSecondRun,
+  NoAlertFiled and NoHybridSession.
+
+### Conclusions against the suppositions
+
+T1 holds as written: the main configuration's counts are the
+first pass's and the second seat's, met exactly, the states
+generated among them. T2 holds as written: all 9 new
+witnesses violate the invariant they name and none stops on
+any other. T3 holds as written.
+
+T4, T5 and T6 are the search's, and the suite holds them on
+every run: `GeneralSeams` in
+`runner/tests/test_v4_general.py` searches the model whole
+with each of the 14 constants the other way, pins each
+count, and pins the marks that break.
+
+So the general model now shows 2 things. With the 14 facts
+as the code has them, every mark holds in every reachable
+state. And each of the 14, taken away, breaks a mark, and
+between them they break all 13. No mark is true only
+because nothing in the model could make it false.
+
+### Each new constant, held to the code
+
+| Constant | What the real code does | Held by |
+|----------|-------------------------|---------|
+| GateVerifies | `handle_mail` refuses a body under a signature the runner cannot check | `SeamGate`; on the fuzz corpus, `CorpusAtTheGate` in `test_v4_bindings.py` |
+| GateFresh | `handle_mail` reads the clock at each arrival: the same bytes run when fresh and are refused 3,700 seconds on | `SeamGate` |
+| GatePolicy | the key's policy is asked at the gate, and a kind outside it does not run | `SeamGate` |
+| TransportGates | the NATS pipe does not start without its credential | `SeamTransport` |
+| StartValidates | the start exits 2 on a size cap it cannot use, and names the setting | `SeamStart` |
+| PrefersHybrid | the real DTLS cores, both carrying the hybrid group, agree it | `SeamSession` |
+| SameSideOnly | a statement of scope, as P9 is: the framing record says no session is supported across the break | `SeamSession` |
+| FitMarks | `_fit_result_body` marks a body it leaves over its cap | `SeamFit`; on fuzz text, `CorpusThroughTheFitting` |
+| LocalBounds | the local door refuses an envelope over the cap before any key work, and does not read a symlink | `SeamLocalBounds`; on the fuzz corpus, `CorpusAtTheLocalDoor` |
+
+### What the third pass does not show
+
+- A constant set FALSE takes its guard away whole. That
+  shows the mark rests on the guard. It does not search the
+  ways a guard could be applied in part: those are inside
+  each door's own model.
+- SameSideOnly is held by a document, as P9 is. No code
+  refuses a session for its framing, and none claims one.
+- TransportGates is held at 1 transport's start. The other
+  transports' postures are held by P3's own conformance
+  suite.
+- The general model is still not a refinement of the small
+  models, it still follows 1 job, and the 3 suppositions for
+  the next pass stand as written above.

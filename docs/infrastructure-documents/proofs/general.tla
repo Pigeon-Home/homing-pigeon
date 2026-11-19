@@ -37,12 +37,16 @@
 \* cache at its cap at any time, the record only once the job is
 \* stale, the ordinary configuration those clauses name.
 \*
-\* 5 constants state what the code does at the seams, 1 for each
-\* place where a door could have been built to decide at another
-\* occasion than its effect's, or to move another door's state.
-\* The main configuration sets all 5 TRUE. Each has a witness
+\* 14 constants state what the code does at the seams. The main
+\* configuration sets all 14 TRUE. Each has a witness
 \* configuration that sets it FALSE, and the checker then breaks
-\* the property the seam carries:
+\* the property the seam carries. So every mark of the ledger is
+\* one the checker can break, and each by a fact of the code
+\* that is named here and held to the code.
+\*
+\* 5 are seams between doors, 1 for each place where a door could
+\* have been built to decide at another occasion than its
+\* effect's, or to move another door's state:
 \*
 \*   PollRebuilds      every poll builds the key map, and a
 \*                     poll whose map fails the floor reads
@@ -58,24 +62,46 @@
 \*   LocalFilesOnly    the local door files alerts and runs
 \*                     nothing (P1, P5)
 \*
-\* The marks at the start, at a session, at the gate's own
-\* clauses and at the signing are decided at the step that makes
-\* them, so in this model they cannot be false: their doors are
-\* proved in gate.tla, transgate.tla, keypolicy.tla,
-\* decision.tla, hybridselect.tla, resultfit.tla, localgate.tla
-\* and secretfloor.tla. They stand here to place each door in
-\* the life.
+\* 9 are the doors' own guards. Each says a door applies its
+\* guard at the step that makes its effect. The inside of each
+\* guard is proved in its own model: gate.tla, transgate.tla,
+\* keypolicy.tla, decision.tla, hybridselect.tla, resultfit.tla
+\* and localgate.tla. What stands here is that a life cannot
+\* reach the effect around the guard:
+\*
+\*   GateVerifies      the gate admits an arrival only with its
+\*                     signature and the rest of its clauses
+\*                     (P1)
+\*   GateFresh         the gate admits only a job inside the
+\*                     freshness window, which is also what
+\*                     bounds a replay (P1, P5)
+\*   GatePolicy        the key's policy is asked at the gate
+\*                     (P4)
+\*   TransportGates    an arrival by a transport that has a
+\*                     credential shows it (P3)
+\*   StartValidates    a start refuses a configuration it
+\*                     cannot use (P6)
+\*   PrefersHybrid     a session that can agree the hybrid
+\*                     group agrees it (P8)
+\*   SameSideOnly      no session is agreed across the framing
+\*                     break (P9)
+\*   FitMarks          a body that leaves over its cap leaves
+\*                     marked (P11)
+\*   LocalBounds       the local door bounds an envelope
+\*                     before it reads it (P12)
 \*
 \* This file was run with TLC on 2026-11-18, and the checker
 \* found the count the search had predicted. The model it
 \* states is searched by runner/tests/test_v4_general.py, which
-\* also holds each of the 5 constants to the real code. The
+\* also holds each of the 14 constants to the real code. The
 \* counts and the checker's verdicts are in v4-general.md.
 
 EXTENDS Integers
 
 CONSTANTS PollRebuilds, SpawnProbes, GuardSparesFresh, GuardSparesCache,
-          LocalFilesOnly
+          LocalFilesOnly, GateVerifies, GateFresh, GatePolicy,
+          TransportGates, StartValidates, PrefersHybrid, SameSideOnly,
+          FitMarks, LocalBounds
 
 Props == {"P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10",
           "P11", "P12", "P13"}
@@ -153,7 +179,8 @@ CacheLeaves ==
 
 Start ==
   /\ ~up
-  /\ cfgfile = "usable" /\ secret = "strong" /\ Confined
+  /\ StartValidates => cfgfile = "usable"
+  /\ secret = "strong" /\ Confined
   /\ up' = TRUE
   /\ held' = [held EXCEPT !["P6"] = @ /\ cfgfile = "usable",
                           !["P13"] = @ /\ secret = "strong",
@@ -191,8 +218,10 @@ PollEnd ==
 \* framing break.
 
 Agree(offer, support, same) ==
-  /\ up /\ same
-  /\ session' = IF offer /\ support THEN "hybrid" ELSE "x25519"
+  /\ up
+  /\ SameSideOnly => same
+  /\ session' = IF offer /\ support /\ PrefersHybrid
+                 THEN "hybrid" ELSE "x25519"
   /\ held' = [held EXCEPT
        !["P9"] = @ /\ same,
        !["P8"] = @ /\ ((offer /\ support) => session' = "hybrid")]
@@ -204,10 +233,11 @@ Agree(offer, support, same) ==
 \* which group a session agreed.
 
 Admitted(door, cred, sig, rest, policy) ==
-  /\ door = "transport" => cred
+  /\ (door = "transport" /\ TransportGates) => cred
   /\ door = "v3" => session /= "none"
-  /\ sig /\ rest /\ policy
-  /\ age = "fresh"
+  /\ GateVerifies => (sig /\ rest)
+  /\ GatePolicy => policy
+  /\ GateFresh => age = "fresh"
 
 \* Past the gate: the cache turns a duplicate away, the record
 \* answers a redelivery and runs nothing, and what is left is
@@ -238,7 +268,7 @@ Handle(door, cred, sig, rest, policy) ==
 \* or the body leaves at its floor, marked.
 
 Left(body) == IF body = "floor" THEN "over" ELSE "within"
-Marked(body) == body /= "fits"
+Marked(body) == body = "cut" \/ (body = "floor" /\ FitMarks)
 
 Commit(body) ==
   /\ up /\ stage = "ran"
@@ -292,7 +322,7 @@ Guard(reach) ==
 
 Local(form, size, sig, kind, policy) ==
   /\ up
-  /\ form = "file" /\ size = "within"
+  /\ LocalBounds => (form = "file" /\ size = "within")
   /\ secret = "strong"
   /\ sig /\ policy /\ age = "fresh"
   /\ \/ /\ kind = "alert"

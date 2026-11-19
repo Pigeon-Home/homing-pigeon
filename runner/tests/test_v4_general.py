@@ -13,10 +13,13 @@ models, on every run of the suite:
                     reachable state, every mark of the ledger in
                     each. The counts were this module's
                     prediction for the checker.
-  the seams         general.tla has 5 constants, 1 for each place
-                    where a door could have been built to decide
-                    at another occasion than its effect's, or to
-                    move another door's state. Each is searched
+  the seams         general.tla has 14 constants. 5 are seams
+                    between doors, 1 for each place where a door
+                    could have been built to decide at another
+                    occasion than its effect's, or to move
+                    another door's state. 9 are the doors' own
+                    guards, so that every mark of the ledger is
+                    one the checker can break. Each is searched
                     the other way, where it must break the
                     property it carries, and each is held to the
                     real code, which must stand where the main
@@ -36,6 +39,7 @@ import tempfile
 import time
 import unittest
 from argparse import Namespace
+from datetime import datetime, timedelta
 from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -43,9 +47,13 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
 sys.path.insert(0, ROOT)
 
 from runner import runner as RUNNER  # noqa: E402
+from runner.ops import mail as MAIL  # noqa: E402
 from runner.ops import remediation_ops as GATE  # noqa: E402
 from runner.oracle import resources as RES  # noqa: E402
 from runner.tests import test_proof_conformance as DOOR  # noqa: E402
+from runner.tests import test_proof_conformance_p6 as START  # noqa: E402
+from runner.tests import test_v4_models as MODELS  # noqa: E402
+from runner.transport_extensions.nats import __main__ as NATS  # noqa: E402
 
 PROOFS = os.path.join(ROOT, "docs", "infrastructure-documents", "proofs")
 RECORD = os.path.join(PROOFS, "v4-general.md")
@@ -56,7 +64,10 @@ BOOL = (False, True)
 # What the code does at each seam: the main configuration.
 CODE = {"PollRebuilds": True, "SpawnProbes": True,
         "GuardSparesFresh": True, "GuardSparesCache": True,
-        "LocalFilesOnly": True}
+        "LocalFilesOnly": True, "GateVerifies": True, "GateFresh": True,
+        "GatePolicy": True, "TransportGates": True, "StartValidates": True,
+        "PrefersHybrid": True, "SameSideOnly": True, "FitMarks": True,
+        "LocalBounds": True}
 
 # The property the checker must break when a seam is built the
 # other way, and the witness configuration that says so.
@@ -66,6 +77,17 @@ SEAMS = (
     ("GuardSparesFresh", "generalwitnessreap.cfg", "P5Inv", {"P5"}),
     ("GuardSparesCache", "generalwitnesscache.cfg", "P7Inv", {"P7"}),
     ("LocalFilesOnly", "generalwitnesslocal.cfg", "P1Inv", {"P1", "P5"}),
+    # The doors' own guards: each door applies its guard at the
+    # step that makes its effect.
+    ("GateVerifies", "generalwitnessverifies.cfg", "P1Inv", {"P1"}),
+    ("GateFresh", "generalwitnessfresh.cfg", "P5Inv", {"P1", "P5"}),
+    ("GatePolicy", "generalwitnesspolicy.cfg", "P4Inv", {"P4"}),
+    ("TransportGates", "generalwitnesstransport.cfg", "P3Inv", {"P3"}),
+    ("StartValidates", "generalwitnessstart.cfg", "P6Inv", {"P6"}),
+    ("PrefersHybrid", "generalwitnessprefers.cfg", "P8Inv", {"P8"}),
+    ("SameSideOnly", "generalwitnessframing.cfg", "P9Inv", {"P9"}),
+    ("FitMarks", "generalwitnessmarks.cfg", "P11Inv", {"P11"}),
+    ("LocalBounds", "generalwitnessbounds.cfg", "P12Inv", {"P12"}),
 )
 
 PROBES = (
@@ -147,7 +169,8 @@ def general_steps(state, code=None):
         yield "CacheLeaves", put(cache=False)
 
     if not up:
-        if cfgfile == "usable" and secret == "strong" and confined:
+        if (cfgfile == "usable" or not code["StartValidates"]) \
+                and secret == "strong" and confined:
             yield "Start", put(up=True, broken=marked(
                 broken, P6=cfgfile == "usable", P13=secret == "strong",
                 P10=confined))
@@ -164,23 +187,39 @@ def general_steps(state, code=None):
 
     for offer in BOOL:
         for support in BOOL:
-            group = "hybrid" if offer and support else "x25519"
-            yield "Agree", put(session=group, broken=marked(
-                broken, P9=True,
-                P8=not (offer and support) or group == "hybrid"))
+            for same in ((True,) if code["SameSideOnly"] else BOOL):
+                group = "hybrid" if offer and support \
+                    and code["PrefersHybrid"] else "x25519"
+                yield "Agree", put(session=group, broken=marked(
+                    broken, P9=same,
+                    P8=not (offer and support) or group == "hybrid"))
 
-    if inpoll and stage == "idle" and age == "fresh" and not cache:
+    # An arrival is admitted past the gate's clauses. With the
+    # seams as the code has them only 1 arrival passes: signed,
+    # with its transport's credential, inside its key's policy,
+    # and fresh. A seam the other way lets its failing twin in.
+    if inpoll and stage == "idle" and not cache \
+            and (age == "fresh" or not code["GateFresh"]):
         if record != "none":
             yield "Handle", put(cache=True)
         elif execs < 3 and (mode != "enforce" or not code["SpawnProbes"]
                             or engage):
-            yield "Handle", put(stage="ran", execs=execs + 1, broken=marked(
-                broken, P1=True, P3=True, P4=True, P5=execs <= bought,
-                P2=confined, P10=confined))
+            for signed in ((True,) if code["GateVerifies"] else BOOL):
+                for cred in ((True,) if code["TransportGates"] else BOOL):
+                    for policy in ((True,) if code["GatePolicy"] else BOOL):
+                        yield "Handle", put(
+                            stage="ran", execs=execs + 1, broken=marked(
+                                broken, P1=signed and age == "fresh",
+                                P3=cred, P4=policy, P5=execs <= bought,
+                                P2=confined, P10=confined))
 
     if stage == "ran":
         yield "Commit", put(stage="idle", record="pending", cache=True,
                             broken=marked(broken, P11=True))
+        if not code["FitMarks"]:
+            # A body at its floor, over the cap, left unmarked.
+            yield "Commit", put(stage="idle", record="pending", cache=True,
+                                broken=marked(broken, P11=False))
         if disk == "over" and bought == 0:
             yield "StashFails", put(stage="idle", bought=1)
     if inpoll and record == "pending":
@@ -197,12 +236,14 @@ def general_steps(state, code=None):
                                broken=marked(broken, P7=kept == cache))
 
     if secret == "strong" and age == "fresh":
-        yield "Local", put(filed=True, broken=marked(
-            broken, P12=True, P13=secret == "strong"))
-        if not code["LocalFilesOnly"] and stage == "idle" and execs < 3:
-            yield "Local", put(stage="ran", execs=execs + 1, broken=marked(
-                broken, P1=False, P5=execs <= bought, P12=True,
-                P13=secret == "strong"))
+        for bounded in ((True,) if code["LocalBounds"] else BOOL):
+            yield "Local", put(filed=True, broken=marked(
+                broken, P12=bounded, P13=secret == "strong"))
+            if not code["LocalFilesOnly"] and stage == "idle" and execs < 3:
+                yield "Local", put(
+                    stage="ran", execs=execs + 1, broken=marked(
+                        broken, P1=False, P5=execs <= bought, P12=bounded,
+                        P13=secret == "strong"))
 
 
 def reach(code=None):
@@ -356,7 +397,51 @@ class GeneralSeams(unittest.TestCase):
         self.assertEqual({"PollRebuilds": 29184, "SpawnProbes": 21312,
                           "GuardSparesFresh": 39936,
                           "GuardSparesCache": 26112,
-                          "LocalFilesOnly": 62208}, counts)
+                          "LocalFilesOnly": 62208,
+                          "GateVerifies": 28032, "GateFresh": 33984,
+                          "GatePolicy": 28032, "TransportGates": 28032,
+                          "StartValidates": 29184, "PrefersHybrid": 14592,
+                          "SameSideOnly": 24320, "FitMarks": 26112,
+                          "LocalBounds": 21888}, counts)
+
+    def test_every_mark_can_be_broken_and_every_seam_breaks_one(self):
+        # Sufficient: with all 14 as the code has them, no mark
+        # is false (GeneralSearch). Necessary: each of the 14,
+        # built the other way, breaks a mark, and between them
+        # they break all 13.
+        breakable = set()
+        for name, _cfg, _inv, props in SEAMS:
+            self.assertTrue(props, name)
+            breakable |= self.broken_in(name)
+        self.assertEqual(set(PROPS), breakable)
+        self.assertEqual(14, len(SEAMS))
+        self.assertEqual(list(CODE), [name for name, *_rest in SEAMS])
+        # A door's own guard carries that door's property and no
+        # other. The freshness window is the 1 that carries 2.
+        own = {name: props for name, _cfg, _inv, props in SEAMS[5:]}
+        self.assertEqual(["GateFresh"],
+                         [name for name, props in own.items()
+                          if len(props) != 1])
+
+    def test_a_stale_job_let_in_runs_past_p1_and_then_a_second_time(self):
+        reached = self.other["GateFresh"]
+        first = first_breaking(reached, lambda s: "P1" not in get(s, "broken"))
+        self.assertEqual("Handle", first[-1][0])
+        self.assertEqual(("stale", 1), (get(first[-1][1], "age"),
+                                        get(first[-1][1], "execs")))
+        second = first_breaking(reached,
+                                lambda s: "P5" not in get(s, "broken"))
+        actions = [action for action, _state in second
+                   if action and action != "WorldMoves"]
+        # The record leaves, as it may once the job is stale, the
+        # cache lets the id go, and the gate takes the job again.
+        self.assertEqual("Handle", actions[-1])
+        self.assertIn("RecordLeaves", actions)
+        last = second[-1][1]
+        self.assertEqual((2, 0, "stale"), (get(last, "execs"),
+                                           get(last, "bought"),
+                                           get(last, "age")))
+        self.assertFalse({"Crash", "StashFails", "Guard"} & set(actions))
 
     def test_f8_s_counterexample_is_the_life_the_record_tells(self):
         # The guard as it stood: a shortest life to a broken P5.
@@ -409,7 +494,21 @@ class GeneralText(unittest.TestCase):
         text = _read(os.path.join(PROOFS, "general.tla"))
         for stated in (
                 "CONSTANTS PollRebuilds, SpawnProbes, GuardSparesFresh, "
-                "GuardSparesCache,\n          LocalFilesOnly",
+                "GuardSparesCache,\n          LocalFilesOnly, GateVerifies, "
+                "GateFresh, GatePolicy,\n          TransportGates, "
+                "StartValidates, PrefersHybrid, SameSideOnly,\n"
+                "          FitMarks, LocalBounds\n",
+                "  /\\ StartValidates => cfgfile = \"usable\"\n",
+                "  /\\ SameSideOnly => same\n",
+                "  /\\ session' = IF offer /\\ support /\\ PrefersHybrid\n",
+                "  /\\ (door = \"transport\" /\\ TransportGates) => cred\n",
+                "  /\\ GateVerifies => (sig /\\ rest)\n",
+                "  /\\ GatePolicy => policy\n",
+                "  /\\ GateFresh => age = \"fresh\"\n",
+                "Marked(body) == body = \"cut\" \\/ "
+                "(body = \"floor\" /\\ FitMarks)\n",
+                "  /\\ LocalBounds => (form = \"file\" /\\ "
+                "size = \"within\")\n",
                 "Confined == mode = \"enforce\" => engage",
                 "  /\\ up /\\ ~inpoll\n"
                 "  /\\ PollRebuilds => secret = \"strong\"\n"
@@ -444,13 +543,13 @@ class GeneralText(unittest.TestCase):
             held = _read(os.path.join(PROOFS, cfg))
             self.assertTrue(held.startswith("\\* Expected to fail."), cfg)
             self.assertIn("  %s = FALSE\n" % name, held)
-            self.assertEqual(4, held.count(" = TRUE\n"), cfg)
+            self.assertEqual(len(CODE) - 1, held.count(" = TRUE\n"), cfg)
             self.assertTrue(held.endswith(
                 "SPECIFICATION Spec\nINVARIANT %s\n" % invariant), cfg)
         for cfg, probe in PROBES:
             held = _read(os.path.join(PROOFS, cfg))
             self.assertTrue(held.startswith("\\* Expected to fail."), cfg)
-            self.assertEqual(5, held.count(" = TRUE\n"), cfg)
+            self.assertEqual(len(CODE), held.count(" = TRUE\n"), cfg)
             self.assertTrue(held.endswith(
                 "SPECIFICATION Spec\nINVARIANT %s\n" % probe), cfg)
 
@@ -828,6 +927,164 @@ class SeamLocal(unittest.TestCase):
         for absent in ("audience_allows", "_cleartext_jobs_allowed",
                        "seen", "execute_job", "_disk_owns"):
             self.assertNotIn(absent, body, absent)
+
+
+# ---- The doors' own guards, held to the real code
+
+class _Later(datetime):
+    """The gate's clock, 3,700 seconds on."""
+
+    @classmethod
+    def now(cls, tz=None):
+        return datetime.now(tz) + timedelta(seconds=3700)
+
+
+class SeamGate(DOOR._GateCase):
+    """GateVerifies, GateFresh and GatePolicy: the real gate asks
+    each at the arrival, and a job runs only past all 3."""
+
+    def test_a_job_runs_only_under_a_signature_the_runner_can_check(self):
+        self.assertEqual(1, len(DOOR._run(job=DOOR._job2("g-gate-1")).executed))
+        stranger = hashlib.sha384(b"v4 general, a key not held").hexdigest()
+        self.refused(DOOR._run(job=DOOR._job2("g-gate-2"), secret=stranger),
+                     "bad signature")
+
+    def test_a_job_runs_only_inside_the_window(self):
+        inside = DOOR._job2("g-gate-3", issued_at=DOOR._issued(seconds=-3500))
+        self.assertEqual(1, len(DOOR._run(job=inside).executed))
+        outside = DOOR._job2("g-gate-4",
+                             issued_at=DOOR._issued(seconds=-3700))
+        self.refused(DOOR._run(job=outside),
+                     "issued_at outside allowed window")
+
+    def test_the_window_is_read_off_the_clock_at_each_arrival(self):
+        # The same bytes, fresh at the first arrival and stale at
+        # the next, each at a runner with no record of the job:
+        # the first runs and the second does not.
+        raw = DOOR._wire2(DOOR._job2("g-gate-5"))
+        self.assertEqual(1, len(DOOR._run(raw=raw).executed))
+        with mock.patch.object(MAIL, "datetime", _Later):
+            self.refused(DOOR._run(raw=raw),
+                         "issued_at outside allowed window")
+
+    def test_a_key_runs_only_what_its_policy_allows(self):
+        fence = {"": {"allowed_kinds": ["ping"]}}
+        self.assertEqual(1, len(DOOR._run(
+            job=DOOR._job2("g-gate-6"), policies=fence).executed))
+        self.refused(DOOR._run(
+            job=DOOR._job2("g-gate-7", kind="exec", script="echo no"),
+            policies=fence), "key policy")
+
+
+class SeamTransport(unittest.TestCase):
+    """TransportGates: a transport that has a credential does not
+    open without it."""
+
+    def test_the_nats_pipe_does_not_start_without_its_credential(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with self.assertRaises(NATS.TransportError):
+                NATS.NatsPipe({}, folder)
+            self.assertIsNotNone(NATS.NatsPipe({"token": "tok-abc"}, folder))
+
+
+class SeamStart(unittest.TestCase):
+    """StartValidates: the real start refuses a configuration it
+    cannot use, and names the setting."""
+
+    def test_a_start_on_an_unusable_cap_stops_and_names_it(self):
+        code, said, _logs = START._startup({"max_job_bytes": "lots"})
+        self.assertEqual(2, code)
+        self.assertIn("max_job_bytes", said)
+        self.assertEqual(0, START._startup({})[0])
+
+
+class SeamSession(unittest.TestCase):
+    """PrefersHybrid and SameSideOnly."""
+
+    def test_a_session_that_can_agree_the_hybrid_group_agrees_it(self):
+        dtls = MODELS.DTLS
+        server = dtls.DtlsServerCore(
+            secret_lookup=dtls.make_secret_lookup(MODELS.DTLS_SECRET),
+            hybrid=True)
+        client = dtls.DtlsClientCore(MODELS.DTLS_SECRET, hybrid=True)
+        MODELS.dtls_pump(client, server, addr=("127.0.0.1", 50002),
+                         now=1000.0)
+        sessions = list(server.sessions.values())
+        self.assertEqual(1, len(sessions))
+        self.assertEqual(dtls.GROUP_X25519MLKEM768,
+                         sessions[0].negotiated_group)
+        self.assertEqual(dtls.GROUP_X25519MLKEM768, client.negotiated_group)
+
+    def test_no_document_claims_a_session_across_the_framing_break(self):
+        # P9 is a statement of scope, so its seam is held as P9
+        # is: by what the shelf's framing record says.
+        text = _flat(os.path.join(PROOFS,
+                                  "dtls-record-layer-and-framing.md"))
+        self.assertIn("Mixed-version DTLS interoperability is not "
+                      "supported across this landing", text)
+        self.assertIn("Both ends must run the same side of it", text)
+
+
+class SeamFit(unittest.TestCase):
+    """FitMarks: a body the fitting leaves over its cap is marked."""
+
+    def test_a_body_left_over_its_cap_carries_the_mark(self):
+        result = {"v": 1, "type": "result", "job_id": "g-fit-2",
+                  "exit_code": 0, "stdout": "o" * 20000,
+                  "stderr": "e" * 20000, "timed_out": False}
+        fitted, body = RUNNER._fit_result_body(
+            dict(result), DOOR.SECRET, False, "g-fit-2", "", 1)
+        self.assertGreater(len(body.encode("utf-8")), 1)
+        self.assertEqual("max_result_bytes",
+                         fitted["result_truncated"]["reason"])
+        self.assertGreater(fitted["result_truncated"]["dropped"], 0)
+        whole, _body = RUNNER._fit_result_body(
+            dict(result), DOOR.SECRET, False, "g-fit-2", "", 10 ** 9)
+        self.assertNotIn("result_truncated", whole)
+
+
+class SeamLocalBounds(unittest.TestCase):
+    """LocalBounds: the local door bounds an envelope before it
+    reads it."""
+
+    def test_an_envelope_over_the_cap_is_refused_before_any_key_work(self):
+        over = "x" * (RUNNER._LOCAL_ENVELOPE_MAX_BYTES + 1)
+        with tempfile.TemporaryDirectory() as folder:
+            cfg = {"base_dir": folder, "shared_secret": DOOR.SECRET}
+            with mock.patch.object(RUNNER, "build_secrets") as keys, \
+                    mock.patch.object(RUNNER, "verify_body_keyed") as verify, \
+                    mock.patch.object(RUNNER, "log", lambda *a, **k: None):
+                self.assertIsNone(RUNNER._ingest_local_envelope(
+                    cfg, folder, over, "file"))
+            keys.assert_not_called()
+            verify.assert_not_called()
+
+    def test_a_symlinked_envelope_is_not_read(self):
+        if not hasattr(os, "symlink"):
+            self.skipTest("symlinks unavailable")
+        with tempfile.TemporaryDirectory() as folder, \
+                tempfile.TemporaryDirectory() as outside:
+            cfg = {"base_dir": folder, "shared_secret": DOOR.SECRET}
+            inbox = os.path.join(folder, RUNNER.LOCAL_INBOX_DIRNAME)
+            os.makedirs(inbox)
+            target = os.path.join(outside, "signed.json")
+            _put(target, DOOR.sign_payload(
+                DOOR._job2("g-link-1", kind="sensor_alert", api_version=1),
+                DOOR.SECRET))
+            try:
+                os.symlink(target, os.path.join(inbox, "arrival.json"))
+            except OSError:
+                self.skipTest("symlinks unavailable")
+            notes = []
+            with mock.patch.object(RUNNER, "_ingest_local_envelope") as read, \
+                    mock.patch.object(RUNNER, "log",
+                                      lambda msg, level="INFO":
+                                      notes.append(msg)):
+                RUNNER._scan_local_inbox(cfg, folder)
+            read.assert_not_called()
+            self.assertTrue(any("symlink refused" in note for note in notes),
+                            notes)
+            self.assertTrue(os.path.exists(target))
 
 
 if __name__ == "__main__":

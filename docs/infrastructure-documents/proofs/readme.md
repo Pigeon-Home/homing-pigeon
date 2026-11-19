@@ -296,10 +296,12 @@ A finding is most useful when it points at the file and the line
   statement, G, and the record of the pass that states it.
   `general.tla` is the model of G: 1 runner life, every door
   at its own occasion, a world that moves between occasions,
-  and 5 constants for the seams between doors, each with a
-  witness configuration. Findings F8 and F9 are in that
-  record, both closed. `runner/tests/test_v4_general.py` is
-  the model's search and its hold on the code at each seam.
+  and 14 constants, 5 for the seams between doors and 9 for
+  the doors' own guards, each with a witness configuration,
+  so that every one of the 13 marks is one the checker can
+  break. Findings F8 and F9 are in that record, both closed.
+  `runner/tests/test_v4_general.py` is the model's search
+  and its hold on the code at each seam.
 - `v4-bindings.md`: the constraint spec. Every constraint,
   C1 to C31, tied in 1 table to the properties that state
   it, the code that enforces it, the tests that pin it and
