@@ -316,6 +316,13 @@ A finding is most useful when it points at the file and the line
   `runner/tests/test_v4_bindings.py` holds every tie and
   drives the corpus through the doors, and
   `runner/tests/test_opener_cost.py` holds F10's change.
+- `v4-f11-both-closings.md`: the research record for
+  Q204, the conductor's question on finding F11. Both
+  closings are expanded against the published literature,
+  and the record states why the conductor's decision,
+  both closings together, is the sound position and why
+  the conjunction is what candidate constraint C32 and
+  candidate property P14 need from it.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.

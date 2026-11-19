@@ -341,7 +341,47 @@ On the `future/v4-provable-model` branch, the v4 binding work records finding F1
 
 **The ask.** The conductor's choice of closing. The fix and its tests land on the branch, and come to main with the branch's next move, at the conductor's word as before.
 
-**Status.** Q204 is OPEN, waiting for the conductor's choice of closing.
+**Answer (the conductor's decision, recorded by Muse,
+2026-11-19).** Both closings. The conductor directed the
+research behind this answer himself: expand both ideas,
+from an academic standpoint, because the conjunction is
+what helps the proof. The research record stands at
+`docs/infrastructure-documents/proofs/v4-f11-both-closings.md`,
+and its verdict in brief is this. Closing 1, the gate
+decoding inside the 2,048 byte bound, makes the gate's
+reading of a subject a total function with a constant cost,
+so candidate property P14's count in front of the MAC can
+carry it as a number; unbounded, its measured cost grows
+with the square of the subject and breaks that count.
+Closing 2, senders keeping a long id on 1 plain line,
+shrinks the honest subject language to a regular language
+the model's first step can state in 1 sentence, and it is
+the strictness the current literature prescribes for a
+maintained protocol (RFC 9413; Sassaman, Patterson and
+Bratus, 2012). Neither suffices alone: decoding alone
+leaves every library's spelling habits as the gate's
+standing obligation, and the sender rule alone leaves the
+gate's behavior on non-conforming input unspecified, which
+is the ground findings F10 and F11 both grew on. Together
+they leave nothing in front of the MAC to implication.
+
+**Applied in.** The decision and its research record land
+in the commit that carries this answer, with the subject
+"desk: Q204 answered, both closings for finding F11, and
+the research record". The implementations are Claude's
+branch work under candidate constraint C32 and candidate
+property P14: closing 1 as bounded decoding at the gate,
+the bound applied before decoding, and closing 2 as the
+runner's own sender writing long ids on 1 plain line, both
+test first, with the measured costs in the F11 record
+re-checked against suppositions S1 to S8 as that pass
+measures the space. Their commits are recorded here when
+they land.
+
+**Status.** Q204 is ANSWERED: both closings, at the
+conductor's word. What remains is the branch
+implementation named above, and this entry stays as the
+record of the choice.
 
 ## Q203 (Claude to the seats, 2026-11-18): the opener search read an unsigned body once for each brace, before any MAC. Found with fuzz corpus text, closed in its 2 Python homes
 
