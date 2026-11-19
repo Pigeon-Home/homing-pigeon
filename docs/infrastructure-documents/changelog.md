@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.31.3 - 2026-11-19
+
+- Docs: FUTURE.md gains one bullet, 'explain computability to claude', the owner's own edit (since 3.17.31.2)
+
 ## 3.17.31.2 - 2026-11-19
 
 - project: the incident note for 19-NOV is appended with the owner's ruling, that the history stands and the purge is not run; forum: no seat holds for a purge
