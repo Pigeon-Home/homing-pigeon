@@ -133,6 +133,7 @@ peer on the wire reaches first.
 | 25 | `race_state` | `runner/runner.py` under threads: lanes over the pool's seen and retained files; the seen file loses no key a thread marked, and a retained id reads back as one complete write (a second save of the same id replaces the first) | in the corpus (de_dust2, technique `race`) |
 | 26 | `dtls_hostile` | `runner/wire/dtlsproto.py`, stateful: the client against a server that does not hold its key, the wire mutated in flight; no key, no session: the client never establishes and never surfaces a server message, raising only `DtlsError` (`docs/steady/project/de_dust2.md` section 7) | in the corpus (de_dust2, technique `protocol`) |
 | 27 | `edge_subject` | `runner/wire/transports.py` vs the hosted queue's Worker (`runner/cloud/queues-worker/src/index.js`): one subject line, and the gate's `jobIdOf`/`resultIdOf` must read the same job and result id as the runner's `_JOB_ID_RE`/`_RESULT_ID_RE`, over a node bridge; skipped when node is absent (`docs/steady/project/de_dust2.md` section 7, Q121) | in the corpus (de_dust2, technique `parity`) |
+| 28 | `gate` | `runner/ops/mail.py` `handle_mail`, the gate itself, driven through a rig that counts executions, sends, log lines, parser characters, MACs and body openings: one raw message (its subject, the object a sender chose to sign or seal, under a key) against the 6 steps in front of the MAC; what an arrival whose signature does not verify may make the runner spend, keep, log or send, held to the candidate constraint C32 of the v4 proofs (the work in front of the MAC); a valid sealed job runs once and its copy runs nothing; the cap refusal in front of the MAC spends no MAC at all | in the corpus |
 
 The `dtls` target's core holds three resumption tickets on every
 replay (de_dust2, P5): one issued under the key in its map, one
@@ -288,6 +289,77 @@ never files a refusal as a crash.
   local default; an answer message is filed once under its
   question id and a second answer to the same question does not
   replace it; a determination sends nothing and files nothing.
+- **The gate** (`gate`). One raw message arrives at the whole
+  gate, `handle_mail`, with the runner's counters watched: what
+  a job executes, what the runner sends, what it logs, how much
+  text the parser is given, how many MACs are computed and how
+  many sealed bodies are opened. A dispatched arrival whose
+  signature chain does not verify runs nothing and sends
+  nothing, adds nothing to the seen set, and leaves exactly 1
+  refusal record of bounded size in the security events file,
+  on the first arrival and on a copy; it is marked seen in the
+  mailbox exactly once per arrival. An accepted arrival (a
+  sealed job under a key the runner holds) runs exactly once,
+  sends exactly 1 result and adds exactly 1 key to the seen
+  set; its copy runs nothing, sends nothing and adds nothing.
+  A refusal after the MAC (a valid signature the gate still
+  refuses, as a cleartext job is refused by default) keeps at
+  most 1 refusal record. An arrival over the size cap is
+  refused in front of the MAC: no MAC is computed, no
+  submission line is logged, no refusal record is kept. An
+  arrival that is not dispatched (no job marker, a result or
+  bounce subject, a panic shaped subject in a base where the
+  word is not armed) runs nothing and sends at most 1 mail.
+  The firing of the panic word itself is the panic suite's
+  ground; this target does not fire it, because the fired
+  state is process wide and would poison every later check
+  in the campaign process.
+
+**Suppositions for the gate target, written before the
+measure (2026-11-19).** The v4 seat measured the gate's 6
+steps in front of the MAC over 492 arrivals
+(`docs/infrastructure-documents/proofs/v4-before-the-mac.md`,
+on the v4 branch) and left the campaign target to this seat.
+The suppositions below are this seat's guesses for what the
+campaign's own rig will find, written before the target ran
+once. The gate fixture sets the job age window wide, because
+the corpus's jobs are issued at the corpus's fixed time; the
+age window sits past the MAC and is not what this target
+measures.
+
+- **G1.** Nothing runs and nothing is sent for an arrival
+  whose signature chain does not verify, on the first arrival
+  and on a copy of it.
+- **G2.** Such an arrival adds nothing to the seen set on
+  either arrival. An accepted arrival adds exactly 1 key, and
+  its copy adds nothing and runs nothing.
+- **G3.** A refused arrival keeps exactly 1 file under the
+  runner's folder, the security events file, and adds exactly
+  1 record to it. The record's size stays under 200 bytes
+  however large the message grows, up to the corpus cap.
+- **G4.** A refused arrival adds at most 12 log lines, at
+  most 1 of them carrying the subject, and log text of at
+  most 6 times the message's length plus 1,024 characters.
+  The submission line's growth with the subject itself is
+  finding F12, pinned as it stands by the v4 suite; this
+  supposition is the campaign level tripwire around it, not
+  a second pin.
+- **G5.** The parser is given at most 16 times the message's
+  length in characters, the bound finding F10 recorded, and
+  the MAC is computed at most twice for each key the runner
+  holds.
+- **G6.** A sealed body whose envelope signature does not
+  verify is never opened: the body decryption is not called
+  for it.
+- **G7.** A refused job arrival is marked seen in the mailbox
+  exactly once per arrival, so the same mail is not read
+  twice.
+- **G8.** With the size cap set small (1,024 bytes), a marker
+  mail longer than the cap is refused in front of the MAC:
+  no MAC is computed, no submission line is logged, no
+  refusal record is kept, and the mark is still set.
+- **G9.** A panic shaped subject in a base where the word is
+  not armed neither fires nor runs nor sends anything.
 
 A contract added later replays over every entry already kept; an
 old entry that fails a new contract is a crash file and a Q, never
