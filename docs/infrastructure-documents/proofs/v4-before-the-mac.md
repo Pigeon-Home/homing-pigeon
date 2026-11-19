@@ -185,6 +185,44 @@ suite pins the gap as it stands, in
 `test_s4_the_log_gains_the_subject_as_it_is_written`, and a
 change that bounds the line turns that pin.
 
+## Closing F12: suppositions, written before the measure
+
+The closing was taken up on 2026-11-19, at the owner's word.
+These were written before any field but the subject was
+grown, and before the gate's code was changed.
+
+- **K1. The subject is not the only field.** 4 texts that a
+  stranger chooses reach the log in front of the signature,
+  each whole: the subject; the id, which is 1 token of the
+  subject and is written a second time beside it; the
+  sender's address; and the key id of the body, which the
+  refusal's line repeats. The measure so far grew only the
+  subject. Supposed: each of the 4 grows the log in step
+  with its size, and the id grows it twice over.
+- **K2. The refusal's line stands outside the minute
+  budget.** It is written as a warning, and warnings always
+  pass. Supposed: a stranger who grows the key id is not
+  held to 50 lines a minute.
+- **K3. A stranger can break a line.** Only the subject is
+  written quoted. Supposed: a control character in the id
+  or in the sender's address reaches the log file as it is.
+- **K4. With every such text bounded, 1 refused message adds
+  a fixed amount.** Supposed: under 4,096 bytes, whatever
+  field is grown, up to the C1 cap.
+- **K5. An honest job's lines do not change.** Supposed: for
+  an id of up to 128 characters, an address of up to 254
+  and a subject of up to 256, the gate writes the same
+  bytes as before.
+- **K6. Nothing is lost that the gate needs.** Supposed: the
+  id the gate works with is the whole id, not the cut copy.
+  Only the log's copy is cut, and the cut says the full
+  length.
+
+Outside this closing: the other kinds of message the
+dispatcher reads before their own signature checks (a
+cancel, a query, the board, a chain, a version 2 message, a
+bounce). Supposed to have the same shape. Not measured here.
+
 ## What is made, and what is next
 
 - Made: the suite, which holds S1 to S7 on every suite run.
