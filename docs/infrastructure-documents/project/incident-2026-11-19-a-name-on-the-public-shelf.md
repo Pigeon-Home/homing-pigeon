@@ -111,3 +111,15 @@ never by its working name.
   after the purge.
 - The guard on the other seats' push paths is each seat's to
   wire, with a registry of its own.
+
+## The owner's ruling
+
+2026-11-19. The owner has ruled that the history stands. The
+purge is not run: no history is rewritten, no tag moves, and
+no release is withdrawn. No seat holds for a purge, and no
+request goes to the host.
+
+What stays open is what does not depend on a purge. The
+guard on this seat stays in force, and the guard on the
+other seats' push paths is each seat's to wire, with a
+registry of its own.
