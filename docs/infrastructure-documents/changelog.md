@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.5 - 2026-11-19
+
+- desk: Q203 gives the count of the opener search's homes as it is: 3, of which the 2 in Python are closed and the hosted queue Worker's copy, behind a tenant's bearer token, stands open; the opener test says which homes it holds
+
 ## 3.17.30.4 - 2026-11-19
 
 - Docs: FUTURE.md carries DRU's own edit trimming the Anna Founding Builder Program line, and the forum carries the plan for how the conductor, Muse and Claude talk (since 3.17.30.3)
