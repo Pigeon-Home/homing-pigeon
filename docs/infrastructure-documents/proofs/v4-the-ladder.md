@@ -88,7 +88,8 @@ size, or a ladder of 50, 500 and 5,000, does not have.
   addition, and the measure at the step, divided by that
   sum, reads the law the quantity follows.
 - **It is short.** 31 steps cover every size from 0 to the
-  cap, with no size more than 1.62 times the one below it.
+  cap. Past 13, no size is more than 1.62 times the one
+  below it.
 
 **The ratio, by the law a quantity follows.** Write p for
 the power: the quantity grows as the size to the power p.
@@ -237,8 +238,25 @@ numbers from `v4-at-a-limit.md`, and the gate's code as read.
 - **L8. What the ladder costs.** 1 family through the gate
   from step 0 to step 30 is supposed to take under 5
   seconds where the gate is in proportion.
+- **L9. The readers the fuzzers hold.** Written after L1 to
+  L8 were measured and before this was run. The fuzz driver
+  holds 30 readers to their contracts, with 1,260 seeds, and
+  no input it makes is over 16,384 bytes. Each reader is
+  climbed on the series from its own seeds to step 24, which
+  is 46,368: the growing text is put behind a text the seed
+  carries, 1 text at a time, for 4 units (a letter, a line
+  end, a quote and a brace). The data inside is the driver's
+  own verdict (taken, refused, or a contract broken) and the
+  time. Supposed: at least 1 of the 30 is not in proportion
+  past the fuzzers' ceiling. 4 of the 6 findings were a
+  quantity with no law, and none of the 4 was met by the
+  fuzz campaign's own runs. This seat's guess for where: a
+  reader that tries a pattern over a sender's text, in the
+  names, the queries or the mail path. Supposed too: no
+  reader raises past its own refusal. F15's kind has been
+  looked for in the gate only.
 
-## A finding on the ladder: F15, a mail the gate has no answer for
+## Finding F15: a mail the gate has no answer for
 
 **Found by the ladder, climbing the sender's address.** At
 step 17 of the ladder of colons, 1,597 of them, the gate did
