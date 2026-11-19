@@ -291,6 +291,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_negative_oracle_and_extensions.py",
     "runner/tests/test_noniterable_queries_and_concurrency.py",
     "runner/tests/test_notable_access.py",
+    "runner/tests/test_opener_cost.py",
     "runner/tests/test_oracle.py",
     "runner/tests/test_oracle_ab.py",
     "runner/tests/test_oracle_agent_stall.py",

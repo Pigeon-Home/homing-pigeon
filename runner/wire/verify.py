@@ -118,6 +118,73 @@ def _extract_signed(norm: str):
     return norm[start:i] + "}", sig
 
 
+# The opener search looks at a candidate's first characters before
+# it reads the candidate whole (finding F10 in the proofs shelf's
+# v4-bindings.md). The search tries every brace the walk passes, and
+# it used to copy, clean and parse the text from each one to the
+# marker: candidates times length. A body of `{\"` repeated makes
+# every brace a candidate that fails at its second character, so an
+# unsigned 48 KB body held the verifier 15 seconds, and one at the
+# 4 MiB cap would have held the mail loop for about a day, before
+# any MAC. A JSON parse reads left to right, so an error well inside
+# a look is the whole text's error too, and the candidate is passed
+# over for the cost of the look. A look that ends in doubt (the
+# error sits at its edge, or a string runs off its end) grows and
+# is read again, and what is never settled goes to the full parse
+# as before. The answers are the same, brace for brace.
+_OPENER_FIRST_LOOK = 32
+_OPENER_LOOK_GROWTH = 4
+_OPENER_EDGE = 16
+# The parse errors that more text cannot mend. Any other message is
+# left to the full parse, so a parser that words one differently
+# costs time and never an answer.
+_OPENER_SETTLED = ("Expecting ", "Invalid ", "Extra data",
+                   "Illegal trailing comma")
+_RAW_CONTROLS = re.compile("[\x00-\x08\x0a-\x1f]")
+
+
+def _opens_object(norm: str, start: int, sig_at: int) -> bool:
+    """True when the text from `start` to the marker, closed, parses
+    as a JSON object, as received or with raw control characters
+    removed (a transport may have inserted them; the verifier checks
+    the cleaned form too).
+
+    The looks come first. Each is cleaned as `_strip_controls`
+    cleans: text that parses as received parses cleaned too, so an
+    error in a cleaned look rules out both forms. A look nested past
+    what the parser will follow rules the candidate out as well: the
+    full parse below runs at this same depth of calls and would stop
+    at the same place."""
+    size = _OPENER_FIRST_LOOK
+    while size < sig_at - start:
+        look = _RAW_CONTROLS.sub("", norm[start:start + size])
+        try:
+            json.loads(look)
+        except RecursionError:
+            return False
+        except ValueError as exc:
+            at = getattr(exc, "pos", None)
+            if isinstance(at, int) and at < len(look) - _OPENER_EDGE \
+                    and str(getattr(exc, "msg", "")).startswith(
+                        _OPENER_SETTLED):
+                return False
+        else:
+            break
+        size *= _OPENER_LOOK_GROWTH
+    text = norm[start:sig_at] + "}"
+    try:
+        return isinstance(json.loads(text), dict)
+    except (ValueError, RecursionError):
+        pass
+    cleaned = _RAW_CONTROLS.sub("", text)
+    if cleaned == text:
+        return False
+    try:
+        return isinstance(json.loads(cleaned), dict)
+    except (ValueError, RecursionError):
+        return False
+
+
 def _object_start(norm: str, sig_at: int) -> int:
     """Index of the `{` that opens the object ending at the sig marker.
 
@@ -143,18 +210,8 @@ def _object_start(norm: str, sig_at: int) -> int:
     for start in _root_candidates(norm, sig_at):
         if first_walk is None:
             first_walk = start
-        text = norm[start:sig_at] + "}"
-        # A transport may have inserted raw control characters; the
-        # verifier below checks the cleaned form too, so the opener
-        # search accepts what parses once they are stripped.
-        for form in (text, _strip_controls(text)):
-            try:
-                candidate = json.loads(form)
-            except (ValueError, RecursionError):
-                continue
-            if isinstance(candidate, dict):
-                return start
-            break
+        if _opens_object(norm, start, sig_at):
+            return start
     if first_walk is not None:
         # Nothing parses: hand the newest whole-object candidate on,
         # so the verifier names the real fault (invalid JSON, a
