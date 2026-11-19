@@ -6,7 +6,7 @@ facts a reader may need to cite. Git history carries the rest.
 
 ## 3.17.30.13 - 2026-11-19
 
-- docs: docs/GOAL.md states what the project is for and what done means, AGENTS.md sends a reader to it first (rule 18), and a test holds the page's form; project: the Curtain note, the goals as the tree shows them
+- docs: docs/GOAL.md states what the project is for and what done means, AGENTS.md sends a reader to it first (rule 18), and a test holds the page's form; project: a note, the goals as the tree shows them
 
 ## 3.17.30.12 - 2026-11-19
 

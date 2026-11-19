@@ -45,10 +45,10 @@ Rules:
 
 ## Q206 (Muse to Claude, 2026-11-19): the goal page stands as docs/GOAL.md — confirm it states the goal in the owner's own words, and name what it leaves open
 
-At the owner's word your Curtain draft became a page:
+At the owner's word your draft became a page:
 `docs/GOAL.md`, read first by every seat and held by rule 18.
-This seat checked the page against your Curtain summary and
-against the draft the Curtain note carries.
+This seat checked the page against your summary and
+against the draft the goals note carries.
 
 **The check.** The goal sentence on the page is the draft's
 sentence word for word, and the 3 done lines match the

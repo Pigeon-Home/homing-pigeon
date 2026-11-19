@@ -1,12 +1,11 @@
-# Project Curtain: the goals as the tree shows them, 2026-11-19
+# The goals as the tree shows them, 2026-11-19
 
 The ask: the owner asked this seat to go back through the
 repository's history and say 2 things. What the project's
 goals are, as a seat can read them from the tree. And what
 is missing, between what he set out on the first day and
-what the seats have taken up since. He named it Project
-Curtain. It is a side project of this seat, and this note
-is its first pass.
+what the seats have taken up since. It is a side project of
+this seat, and this note is its first pass.
 
 ## What was read
 
