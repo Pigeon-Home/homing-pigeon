@@ -95,7 +95,7 @@ def functions_in(path):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))}
 
 
-def tests_in(path):
+def methods_by_class_in(path):
     """{class: [test methods]} of a test module."""
     out = {}
     for node in ast.parse(_read(os.path.join(ROOT, path))).body:
@@ -469,7 +469,7 @@ class Ties(unittest.TestCase):
             for pin in row["pins"]:
                 path, _, rest = pin.partition("::")
                 if path not in seen:
-                    seen[path] = tests_in(path)
+                    seen[path] = methods_by_class_in(path)
                 if not rest:
                     self.assertTrue(any(seen[path].values()), pin)
                     continue
@@ -485,7 +485,7 @@ class Ties(unittest.TestCase):
         # registry carries every one of them.
         for path in ("runner/tests/test_proof_constraints.py",
                      "runner/tests/test_v4_binding.py"):
-            for name, methods in tests_in(path).items():
+            for name, methods in methods_by_class_in(path).items():
                 for method in methods:
                     hit = re.match(r"test_c(\d+)_", method)
                     if hit:
@@ -524,7 +524,7 @@ class Ties(unittest.TestCase):
             for suite in row["conformance"]:
                 path, _, name = suite.partition("::")
                 if path not in seen:
-                    seen[path] = tests_in(path)
+                    seen[path] = methods_by_class_in(path)
                 if name:
                     self.assertTrue(seen[path].get(name), suite)
                 else:
@@ -632,7 +632,7 @@ class FuzzTies(unittest.TestCase):
     def test_every_bound_target_s_corpus_is_replayed_by_the_suite(self):
         # The contract of a target the registry leans on is held
         # on every suite run, entry by entry, by the replay class.
-        replayed = tests_in(REPLAY)["CorpusReplayTest"]
+        replayed = methods_by_class_in(REPLAY)["CorpusReplayTest"]
         for target, row in self.reg["fuzz"].items():
             if row["bound"]:
                 self.assertIn("test_" + target, replayed)
