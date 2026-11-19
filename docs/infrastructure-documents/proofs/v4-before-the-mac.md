@@ -312,6 +312,59 @@ log counted: the seen mark, 1 refusal record of 84 bytes,
 and 2 lines of at most 4,096 bytes together. In a verbose
 run a third line repeats the reason, under the same limit.
 
+## Finding F13: the panic step decodes the whole subject
+
+**Found in writing the model for S8, 2026-11-19.**
+
+The second step in front of the MAC is the panic word. To
+read it, the gate hands the subject to the mail library's
+decoder for encoded words: the whole subject, before the
+size cap and before the dispatcher. On a subject made of
+encoded words, the decoder's time grows with the square of
+the subject.
+
+| Subject, bytes | The panic step, seconds |
+|---------------:|------------------------:|
+| 15,992 | 0.003 |
+| 63,984 | 0.034 |
+| 255,980 | 0.486 |
+| 1,000,008 | 8.55 |
+
+The whole gate spent 0.557 seconds on a refused message
+under the subject of 255,980 bytes. By that curve a subject
+at the C1 cap costs about 150 seconds. That last figure is
+not measured. None of it needs a key.
+
+Clause 4 of the candidate is what names this. The work is to
+be bounded by a count of the message's length, and the
+square of the length is not that. Supposition S5 held on its
+own count, which read the parser and the MAC and did not
+read this step. So S5 is corrected: it holds for the 2 it
+counted, and the panic step stood outside its count.
+
+A panic subject is short. As typed it is 51 characters. In
+1 base64 word it is 80. In its longest spelling, 1 character
+to an encoded word and each escaped, it is 815.
+
+### Closing F13: suppositions, written before the change
+
+- **N1. A bound on what the step reads closes it.**
+  Supposed: with a subject over 2,048 characters never
+  handed to the decoder, the gate's time on the refused
+  message of 255,980 bytes falls under 0.05 seconds, and
+  from there it grows no faster than the message.
+- **N2. Every honest panic subject still fires.** Supposed:
+  the 3 spellings match as before, and so does a typed word
+  padded with white space up to 2,048 characters. At 2,049
+  it is not a panic.
+- **N3. No other step in front of the signature uses that
+  decoder.** Supposed from a search of the code: the panic
+  step is its only caller in the gate.
+
+Outside this closing: the DTLS mailbox reads its mail under
+the mail library's default policy, which decodes headers as
+it reads them. Not measured here.
+
 ## What is made, and what is next
 
 - Made: the suite, which holds S1 to S7 on every suite run.
