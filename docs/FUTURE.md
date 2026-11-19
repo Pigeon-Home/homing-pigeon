@@ -1,5 +1,4 @@
 - homing pigeon ietf v4 binds the listed "generalized" HP-software constraints based on protocol v1v2v3 for in a provable security model (also do proof)
-- Prompts & Secret Agents "You may pull the shared secret & platform information from my mailbox." [HOMING-PIGEON] RUNNER_KEY Your-Shared-Secret
+- Anna AI OS Founding Builder Program 2026 research (https://luma.com/kmc1ddf9) [funding secured?] Registration has been confirmed :)
 - cyber turret for auditing frameworks "security firmness tests"
 - define host-network topology rules for local helper bots coordinated by Oracle - (repair, repair_patrols, hdd_patrols, security_patrols) [oracle key dist]
-- Anna AI OS Founding Builder Program 2026 research (https://luma.com/kmc1ddf9) [funding secured?] Registration has been confirmed :)
