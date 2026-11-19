@@ -363,6 +363,13 @@ A finding is most useful when it points at the file and the line
   not land there, and the same script with confinement off
   does. Where the sandbox cannot engage, the job is refused.
   `runner/tests/test_v4_the_folder.py` holds it.
+- `v4-the-place.md`: where M stands when confinement is on.
+  The bound was measured with confinement off, and `pwd`
+  then prints the host folder. Under enforce the folder M
+  is given is the work mount, `/work`, and `HOME` is the
+  `HOME` the runner passes in. The other 19 atoms do not
+  read the place. No new atom and no new constraint.
+  `runner/tests/test_v4_the_place.py` holds it.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.
