@@ -377,7 +377,9 @@ A finding is most useful when it points at the file and the line
   `HOME` the runner passes in. All 22 atoms were run, on and
   off. The other 19 do not read the place. Every step of M,
   352 of them, was run under enforce and matches M at
-  `/work`. No new atom and no new constraint.
+  `/work`. So do 8 rows of 50 characters, 8 of 500 and 4 of
+  5,000, drawn from the 22 atoms. No new atom and no new
+  constraint.
   `runner/tests/test_v4_the_place.py` holds it.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against

@@ -9,6 +9,7 @@ no new constraint.
 """
 import hashlib
 import os
+import random
 import re
 import sys
 import unittest
@@ -20,8 +21,10 @@ if ROOT not in sys.path:
 
 from runner.guard.sandbox import WORK_MOUNT  # noqa: E402
 from runner.tests import test_v4_at_a_bound as BOUND  # noqa: E402
+from runner.tests import test_v4_at_a_limit as LIMIT  # noqa: E402
 from runner.tests import test_v4_models as MODELS  # noqa: E402
 from runner.tests import test_v4_the_folder as FOLDER  # noqa: E402
+from runner.tests import test_v4_the_grammar as GRAMMAR  # noqa: E402
 
 PAGE = os.path.join(MODELS.PROOFS, "v4-the-place.md")
 
@@ -96,6 +99,33 @@ class ThePlace(unittest.TestCase):
             self.assertEqual((state, joiners[-1], atoms[-1]),
                              walked[-1], script)
 
+    def test_long_rows_under_enforce_are_m_at_the_work_mount(self):
+        if not FOLDER.ENGAGES:
+            self.skipTest("the sandbox does not engage here")
+        exact = LIMIT.exact_counts(5000)
+        rng = random.Random(20261119)
+        table = BOUND.denotation(WORK_MOUNT, self.home)
+        drawn = []
+        for size, count in ((50, 8), (500, 8), (5000, 4)):
+            for _draw in range(count):
+                atoms, joiners = LIMIT.draw_exact(size, exact, rng)
+                script = BOUND.text(atoms, joiners)
+                self.assertEqual(size, len(script))
+                self.assertEqual((atoms, joiners), GRAMMAR.cut(script))
+                drawn.append((atoms, joiners, script))
+        self.assertEqual(20, len(drawn))
+        for atoms, joiners, script in drawn:
+            result, notes, _files = FOLDER.run(
+                self.payload, self.job_id, script, "enforce")
+            out, status = BOUND.run(atoms, joiners, table)
+            self.assertLessEqual(len(out), LIMIT.KEPT, script[:40])
+            self.assertIsNotNone(result, script[:40])
+            self.assertEqual(
+                (status, digest(out), "attested"),
+                (result.get("exit_code"), result.get("output_digest"),
+                 result.get("view")),
+                script[:40])
+
     def test_off_the_host_folder_differs_only_for_pwd(self):
         for atom in BOUND.ATOMS:
             result, notes, _files = FOLDER.run(
@@ -124,6 +154,7 @@ class ThePlace(unittest.TestCase):
                 "The other 19 atoms do not read the place.",
                 "All 22 atoms were run, on and off.",
                 "There are 352.",
+                "8 of 50 characters, 8 of 500, and 4 of 5,000.",
                 "The default cap stays 1,048,576."):
             self.assertIn(stated, page, stated)
 

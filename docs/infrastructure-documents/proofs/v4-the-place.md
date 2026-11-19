@@ -32,6 +32,13 @@ All 22 atoms were run, on and off.
   joiner and one atom. There are 352. Each result is M's,
   with the folder set to `/work` and `HOME` set to the
   host's.
+- **The long rows, enforce.** Not only the short steps. Rows
+  drawn from all 22 atoms and all 4 joiners, each as likely
+  as any other of its length, the same rows on every run:
+  8 of 50 characters, 8 of 500, and 4 of 5,000. Each result
+  is M's, at `/work`. Each cuts back into the atoms and the
+  joiners it was built from, in the one way the grammar
+  allows.
 - **Off.** Every atom is M's with the host folder. The 19 atoms
   that do not read the place have the same result as under
   enforce. `pwd` does not: it prints the host folder. The two
