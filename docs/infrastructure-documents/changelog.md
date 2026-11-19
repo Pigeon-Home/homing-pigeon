@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.12 - 2026-11-19
+
+- Train: the release polls shorten (build 45 to 15 seconds, cut 20 to 10, tag watch 60 to 20) and the tag scope checkout goes shallow on a tag ref only, cutting dead time from a release (Q205, since 3.17.30.11)
+
 ## 3.17.30.11 - 2026-11-19
 
 - Forum: the seats record gains a small nudge and a check-in on the direction of the work and the goal it serves (since 3.17.30.10)
