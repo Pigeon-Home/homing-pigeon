@@ -821,13 +821,16 @@ refuse-class setting it stops the runner before any job is read.
 - **Value:** `DISK_GUARD_THRESHOLD` 0.90;
   `DISK_GUARD_LOG_KEEP_BYTES` 65536;
   `DISK_GUARD_WORK_MIN_AGE_SEC` 3600;
-  `DISK_GUARD_MAX_ACTIONS` 512, all constants in
+  `DISK_GUARD_MAX_ACTIONS` 512;
+  `DISK_GUARD_REPLAY_SKEW_SEC` 300, all constants in
   `runner/oracle/resources.py`. The order: rolled log
   backups, oldest first; the live logs (`runner.log`,
   `oracle.log`, `oracle-chat.jsonl`) truncated, keeping
   the newest 65536 bytes of each; recorded results and
   retained outputs (`sent/`, `retained/`,
-  `outbox/failed/`), oldest first; job workspaces
+  `outbox/failed/`), oldest first, a recorded result in
+  `sent/` no older than `max_job_age_sec` plus 300
+  seconds staying; job workspaces
   untouched for at least 3600 seconds. A symlink is never
   followed; the pending outbox, the configuration, and
   `security-events.jsonl` are never touched, and every
@@ -926,7 +929,7 @@ refuse-class setting it stops the runner before any job is read.
 | C25 | Record retention and delivery window | sent ages at `output_retention_days` (7; 0 never); stash given up at `result_stash_retention_sec` 86,400, backoff 60 | default class; the shape is code |
 | C26 | Default-class reader | unusable reads as the documented default and is named; absent is not named; a bool is not a number | default class |
 | C27 | Refuse class at startup | exit 2, the error names the key; those keys are not in the live-reload set | refuse class |
-| C28 | Disk guard | threshold 0.90; live logs keep 65536 bytes; workspaces at 3600 sec; 512 actions; opt out `no_90_disk_truncation`, literal `true` only | constants are code; the opt out is read default class in reverse |
+| C28 | Disk guard | threshold 0.90; live logs keep 65536 bytes; recorded results inside `max_job_age_sec` plus 300 sec stay; workspaces at 3600 sec; 512 actions; opt out `no_90_disk_truncation`, literal `true` only | constants are code; the opt out is read default class in reverse |
 | C29 | v3 hybrid group | X25519MLKEM768, 4588 (0x11EC); X25519 29 (0x001D) | not a setting |
 | C30 | DTLS framing | both ends the same side; replay window 32,768 | not a setting |
 | C31 | macOS confinement probe | tool present; profile parses; trial spawn works | refuse at enforce |

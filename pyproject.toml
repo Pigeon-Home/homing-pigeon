@@ -454,6 +454,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_v31_verify.py",
     "runner/tests/test_v4_binding.py",
     "runner/tests/test_v4_draft.py",
+    "runner/tests/test_v4_general.py",
     "runner/tests/test_v4_models.py",
     "runner/tests/test_version.py",
     "runner/tests/test_version4.py",

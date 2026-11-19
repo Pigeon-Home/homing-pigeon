@@ -56,6 +56,11 @@ def _write(path, nbytes, mtime=None):
     return path
 
 
+# A recorded result older than the replay window at its default:
+# 3600 seconds of freshness and the 300 second future bound.
+OLD = 5000
+
+
 def _write_log(path, lines):
     """A log of numbered 32-byte lines."""
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -156,9 +161,9 @@ class OrderTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             now = time.time()
             old = _write(os.path.join(d, "sent", "old.json"), 100000,
-                         mtime=now - 5000)
+                         mtime=now - 9000)
             new = _write(os.path.join(d, "sent", "new.json"), 100000,
-                         mtime=now - 100)
+                         mtime=now - OLD)
             with mock.patch.object(RS, "_disk_fraction", FakeDisk(d, 210000)):
                 event = RS.guard_disk({}, d)
             self.assertIsNotNone(event)
@@ -171,11 +176,79 @@ class OrderTest(unittest.TestCase):
             retained = _write(os.path.join(d, "retained", "r.json"), 100000,
                               mtime=now - 9000)
             sent = _write(os.path.join(d, "sent", "s.json"), 100000,
-                          mtime=now - 100)
+                          mtime=now - OLD)
             with mock.patch.object(RS, "_disk_fraction", FakeDisk(d, 210000)):
                 RS.guard_disk({}, d)
             self.assertFalse(os.path.exists(retained))
             self.assertTrue(os.path.exists(sent))
+
+    def test_a_recorded_result_inside_the_replay_window_stays(self):
+        # It is the layer that answers a redelivery the door would
+        # still take once the replay cache has let the id go, so it
+        # is not the guard's to give up.
+        with tempfile.TemporaryDirectory() as d:
+            now = time.time()
+            fresh = _write(os.path.join(d, "sent", "fresh.json"), 100000,
+                           mtime=now - 100)
+            with mock.patch.object(RS, "_disk_fraction", lambda p: 0.99):
+                event = RS.guard_disk({}, d, now=now)
+            self.assertIsNone(event)
+            self.assertTrue(os.path.exists(fresh))
+
+    def test_the_replay_window_is_the_freshness_window_and_its_bound(self):
+        self.assertEqual(RS._guard_replay_window({}), 3600 + 300)
+        self.assertEqual(RS._guard_replay_window(None), 3900)
+        self.assertEqual(
+            RS._guard_replay_window({"max_job_age_sec": 60}), 360)
+        # An unusable value reads as the documented default, as at
+        # the door.
+        for bad in (0, -5, True, "soon", None, []):
+            self.assertEqual(
+                RS._guard_replay_window({"max_job_age_sec": bad}), 3900,
+                bad)
+
+    def test_a_recorded_result_goes_only_once_past_the_window(self):
+        with tempfile.TemporaryDirectory() as d:
+            now = 2000000.0
+            window = RS._guard_replay_window({})
+            at_edge = _write(os.path.join(d, "sent", "edge.json"), 1000,
+                             mtime=now - window)
+            past = _write(os.path.join(d, "sent", "past.json"), 1000,
+                          mtime=now - window - 1)
+            with mock.patch.object(RS, "_disk_fraction", lambda p: 0.99):
+                event = RS.guard_disk({}, d, now=now)
+            self.assertEqual([a["path"] for a in event["actions"]],
+                             [os.path.join("sent", "past.json")])
+            self.assertTrue(os.path.exists(at_edge))
+            self.assertFalse(os.path.exists(past))
+
+    def test_the_window_follows_max_job_age_sec(self):
+        with tempfile.TemporaryDirectory() as d:
+            now = 2000000.0
+            record = _write(os.path.join(d, "sent", "r.json"), 1000,
+                            mtime=now - 5000)
+            with mock.patch.object(RS, "_disk_fraction", lambda p: 0.99):
+                wide = RS.guard_disk({"max_job_age_sec": 86400}, d, now=now)
+                self.assertIsNone(wide)
+                self.assertTrue(os.path.exists(record))
+                narrow = RS.guard_disk({"max_job_age_sec": 3600}, d,
+                                       now=now + 1000)
+            self.assertIsNotNone(narrow)
+            self.assertFalse(os.path.exists(record))
+
+    def test_only_recorded_results_have_a_replay_window(self):
+        # A retained output and a given up stash answer no
+        # redelivery: fresh ones go like any other.
+        with tempfile.TemporaryDirectory() as d:
+            now = time.time()
+            retained = _write(os.path.join(d, "retained", "r.json"), 1000,
+                              mtime=now - 10)
+            failed = _write(os.path.join(d, "outbox", "failed", "f.json"),
+                            1000, mtime=now - 10)
+            with mock.patch.object(RS, "_disk_fraction", lambda p: 0.99):
+                RS.guard_disk({}, d, now=now)
+            self.assertFalse(os.path.exists(retained))
+            self.assertFalse(os.path.exists(failed))
 
     def test_pending_outbox_kept_failed_stash_given_up(self):
         with tempfile.TemporaryDirectory() as d:
@@ -200,7 +273,8 @@ class ScopeTest(unittest.TestCase):
             seen = _write(os.path.join(base, "seen.json"), 50000)
             events = _write(os.path.join(base, "security-events.jsonl"),
                             50000)
-            sent = _write(os.path.join(base, "sent", "a.json"), 10000)
+            sent = _write(os.path.join(base, "sent", "a.json"), 10000,
+                          mtime=time.time() - OLD)
             outside = _write(os.path.join(d, "other-app.bin"), 50000)
             with mock.patch.object(RS, "_disk_fraction", FakeDisk(base, 55000)):
                 event = RS.guard_disk({}, base)
@@ -220,7 +294,8 @@ class ScopeTest(unittest.TestCase):
                 os.symlink(target, link)
             except (OSError, NotImplementedError):
                 return  # the platform cannot make the link; nothing to pin
-            real = _write(os.path.join(sent_dir, "real.json"), 100000)
+            real = _write(os.path.join(sent_dir, "real.json"), 100000,
+                          mtime=time.time() - OLD)
             with mock.patch.object(RS, "_disk_fraction", FakeDisk(d, 210000)):
                 RS.guard_disk({}, d)
             self.assertTrue(os.path.exists(target))
@@ -245,7 +320,8 @@ class LogTruncationTest(unittest.TestCase):
     def test_small_log_is_left_alone(self):
         with tempfile.TemporaryDirectory() as d:
             log = _write_log(os.path.join(d, "runner.log"), 100)
-            sent = _write(os.path.join(d, "sent", "a.json"), 100000)
+            sent = _write(os.path.join(d, "sent", "a.json"), 100000,
+                          mtime=time.time() - OLD)
             with mock.patch.object(RS, "_disk_fraction", FakeDisk(d, 110000)):
                 RS.guard_disk({}, d)
             self.assertEqual(os.path.getsize(log), 3200)
@@ -316,12 +392,14 @@ class CooldownTest(unittest.TestCase):
     def test_still_over_pass_holds_off_the_next_one(self):
         with tempfile.TemporaryDirectory() as d:
             now = 1000000.0
-            _write(os.path.join(d, "sent", "a.json"), 10000)
+            _write(os.path.join(d, "sent", "a.json"), 10000,
+                   mtime=now - OLD)
             with mock.patch.object(RS, "_disk_fraction", lambda p: 0.99):
                 first = RS.guard_disk({}, d, now=now)
                 self.assertIsNotNone(first)
                 self.assertTrue(first["still_over"])
-                _write(os.path.join(d, "sent", "b.json"), 10000)
+                _write(os.path.join(d, "sent", "b.json"), 10000,
+                       mtime=now - OLD)
                 self.assertIsNone(RS.guard_disk({}, d, now=now + 60))
                 self.assertTrue(
                     os.path.exists(os.path.join(d, "sent", "b.json")))

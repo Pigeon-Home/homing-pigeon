@@ -116,7 +116,9 @@ names it.*
   nothing of its own is left to give up. Its logs go first (rolled backups,
   then the oldest lines of the live logs), then recorded results and retained
   outputs, oldest first, then given up result stashes, then leftover job
-  workspaces no job can still be running in. Every pass that frees anything
+  workspaces no job can still be running in. A recorded result that a
+  redelivery could still ask for stays: one no older than `max_job_age_sec`
+  plus 300 seconds. Every pass that frees anything
   files a `disk_truncation` security event naming each action and the bytes
   freed, and a pass that cannot get back under 90% says so in its event and
   waits out the `resources` cooldown before acting again. The guard touches

@@ -292,6 +292,14 @@ A finding is most useful when it points at the file and the line
   decision spaces, P9 pinned by reading the documents,
   and finding F7, closed in P11's words. The same suite
   carries these searches and this conformance too.
+- `v4-general.md`: the 13 properties as instances of 1
+  statement, G, and the record of the pass that states it.
+  `general.tla` is the model of G: 1 runner life, every door
+  at its own occasion, a world that moves between occasions,
+  and 5 constants for the seams between doors, each with a
+  witness configuration. Findings F8 and F9 are in that
+  record, both closed. `runner/tests/test_v4_general.py` is
+  the model's search and its hold on the code at each seam.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.

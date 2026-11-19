@@ -44,8 +44,8 @@
 \* What the model leaves out: an envelope that is only white
 \* space, the local_signals switch, and everything from the
 \* verifier on. A local envelope that reaches the verifier
-\* faces the same gate the mail path faces, and that gate has
-\* its own models.
+\* faces the local door's own clauses, which general.tla
+\* places in the runner's life, and files an alert at most.
 \*
 \* This file was run with TLC on 2026-11-18, and the checker
 \* found the count the search had predicted. The model it
