@@ -228,7 +228,11 @@ def entered(target, entry):
                     name[len(ROOT) + 1:].replace(os.sep, "/"),
                     code.co_name))
 
-    was, was_threads = sys.getprofile(), threading.getprofile()
+    # threading.getprofile came with Python 3.10. Before it the
+    # hook new threads start with cannot be read, and this module
+    # sets none of its own to put back.
+    was = sys.getprofile()
+    was_threads = getattr(threading, "getprofile", lambda: None)()
     threading.setprofile(watch)
     sys.setprofile(watch)
     try:
@@ -1003,9 +1007,12 @@ def recorded_arrivals():
         data = entry["data"]
         if entry["kind"] == "text":
             text = data
+            # A corpus text nested deeper than an older parser
+            # follows is no object to name a job by, like any
+            # text that does not parse.
             try:
                 inside = json.loads(text)
-            except ValueError:
+            except (ValueError, RecursionError):
                 inside = None
             name = inside.get("job_id") if isinstance(inside, dict) else None
         elif isinstance(data, dict):
