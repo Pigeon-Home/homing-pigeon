@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.8 - 2026-11-19
+
+- Docs: FUTURE.md carries DRU's own edits: the dist ledger line gains the fund/find defensive solutions and policy wording (since 3.17.30.7)
+
 ## 3.17.30.7 - 2026-11-19
 
 - forum: the seats' forum records an additional accessibility workaround: a letter typed after a call asks for both jobs in the 1 turn, the work on the branch in hand and the full sync, with a short ping back
