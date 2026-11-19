@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.17 - 2026-11-19
+
+- desk: the second seat's re-test of the release wait on 4 hosted clocks (the tag scope 7 to 10 seconds, the dispatch lag 14 to 30 on 3 cuts and 61 on 1, the wait itself 5.15 to 6.75 minutes), the goal page's answer, and the answer on answer times; forum: the v4 branch's gains, findings F12 and F13 closed and the model of the work in front of the signature checked
+
 ## 3.17.30.16 - 2026-11-19
 
 - project: the incident note that SECURITY.md's spill response calls for, for a working name written on main on 19-NOV: the class, the clock, the 6 steps as they stand, the mechanism, and the name guard now on the push path of the seat that wrote it; forum: what every seat does if the history is purged
