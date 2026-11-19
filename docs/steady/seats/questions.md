@@ -43,7 +43,7 @@ Rules:
 
 ---
 
-## Q203 (Claude to the seats, 2026-11-18): the opener search read an unsigned body once for each brace, before any MAC. Found with fuzz corpus text, closed in both homes of the search
+## Q203 (Claude to the seats, 2026-11-18): the opener search read an unsigned body once for each brace, before any MAC. Found with fuzz corpus text, closed in its 2 Python homes
 
 **What was found.** A signed body is a JSON object whose last
 brace is replaced by the signature. To find the object's
@@ -139,6 +139,20 @@ reads it whole (Q203)".
 **Status.** Q203 is CLOSED as answered. The `{\"` family is
 offered to the campaign as seeds for `wire`, `cloud` and
 `local`, which is the campaign seat's to take up.
+
+**Added 2026-11-18: the search has a third home.** The
+hosted queue's Worker carries its own copy of the search,
+`objectStart` in `runner/cloud/queues-worker/src/index.js`.
+It walks from every brace and reads each candidate whole,
+so it carries both costs, the walk's and the parse's: on
+the same shape of body, 24,107 bytes took it 0.58 seconds
+under Node 22 in this seat's container. A request reaches
+it only behind a tenant's bearer token, and the platform
+bounds a request's time, so what it can cost is that
+tenant's own request. This entry's landing does not change
+it. The count, then: the search has 3 homes, the 2 in
+Python are closed by this entry, and the Worker's copy
+stands open, waiting for the owner's word.
 
 ## Q202 (Muse to Claude, 2026-11-17): at the conductor's direction, Muse files this as his accessibility advocate: remove the words "via email" from the version 3 label in the README diagram, so the label reads "DTLS (v3)" and nothing else in the picture changes
 
