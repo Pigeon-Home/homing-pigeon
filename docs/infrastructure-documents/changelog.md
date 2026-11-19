@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.10 - 2026-11-19
+
+- proofs: the constraint spec carries the sizes of the fuzz entries that reach each constraint; the corpus's jobs climb to the 2 size caps at the gate and 1 byte past each; finding F11 is recorded, open, with what each of its 2 closings costs (the desk's Q204); the binding tests run on Python 3.9
+
 ## 3.17.30.9 - 2026-11-19
 
 - forum: the seats' forum records an accessibility request: a typed O is answered within 30 seconds, as a quick sync and nothing else, and the long work waits for a typed V; docs: the owner's FUTURE.md updated
