@@ -365,16 +365,62 @@ Outside this closing: the DTLS mailbox reads its mail under
 the mail library's default policy, which decodes headers as
 it reads them. Not measured here.
 
+### The measure for the closing of F13
+
+The same refused message as in the finding, under a subject
+of encoded words, at the gate.
+
+| Subject, bytes | The gate before, seconds | The gate after, seconds |
+|---------------:|-------------------------:|------------------------:|
+| 15,992 | 0.005 | 0.0021 |
+| 63,984 | 0.043 | 0.0071 |
+| 255,980 | 0.557 | 0.0256 |
+| 999,982 | not measured | 0.1034 |
+| 3,999,986 | not measured | 0.4142 |
+
+Before the change the panic step alone took 8.55 seconds at
+1,000,008 bytes. After it, the gate spends about 0.0001
+seconds for each 1,000 bytes of message, at every size in
+the table.
+
+### Conclusions against N1 to N3
+
+- **N1 stands.** The gate's time on the message of 255,980
+  bytes is 0.0256 seconds. From 63,984 bytes to 3,999,986
+  the subject is 62.5 times as long and the time is 58
+  times as long. Past the limit the decoder is handed 0
+  characters, at the step and at the gate.
+- **N2 stands.** The 3 spellings fire as before. A typed
+  word padded with white space to 2,048 characters fires,
+  and at 2,049 it does not.
+- **N3 stands.** In the runner's code outside its tests the
+  decoder is named in 1 file, the panic word's.
+
+### What was changed for F13
+
+- The panic step reads a subject of at most 2,048
+  characters. A longer subject is not a panic, and the
+  decoder never sees it. 2,048 is 2.5 times the longest
+  honest spelling.
+- 7 tests hold the step in the suite. On the code as it was,
+  5 of them fail. The other 2 hold both ways: the decoder
+  has 1 caller, and the panic word fires in front of the
+  size cap and in front of the signature.
+
+With the closing, clause 4 of the candidate holds with the
+panic step counted.
+
 ## What is made, and what is next
 
-- Made: the suite, which holds S1 to S7 on every suite run.
+- Made: the suite, which holds S1 to S7 and the 2 closings
+  on every suite run.
 - Next: a model of the 6 steps before the MAC, with the log
   in its ledger, its configuration and its witnesses, and
   its search in the suite. That is S8.
 - Next: a row for the candidate in the registry, kept apart
   from the 31 until the owner's word.
-- F12 is closed on the branch. It reaches main at the
-  owner's word.
+- F12 and F13 are closed on the branch. They reach main at
+  the owner's word.
 - F11's 2 closings are decided on the desk. They are not yet
   made.
 - Not measured: the other kinds of message the dispatcher

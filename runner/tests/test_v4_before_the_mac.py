@@ -14,8 +14,10 @@ Every message here fails at the signature: a corpus job signed by a
 key the runner does not hold, the same job with 1 digit of its
 signature turned, and those 2 grown in the subject and in the body.
 """
+import base64
 import contextlib
 import copy
+import email.header
 import hmac
 import io
 import json
@@ -33,6 +35,7 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from runner import runner as RUNNER  # noqa: E402
+from runner.guard import panic as PANIC  # noqa: E402
 from runner.tests import test_proof_conformance as DOOR  # noqa: E402
 from runner.tests import test_v4_bindings as BIND  # noqa: E402
 from runner.wire import jobcrypto  # noqa: E402
@@ -87,11 +90,12 @@ class _Count:
         self.opened = 0
 
 
-def arrive(raw, folder, log_file=None):
+def arrive(raw, folder, log_file=None, cfg_extra=None, seen=None):
     """1 arrival at handle_mail with cleartext allowed: what ran,
     what was sent, the seen set, the mailbox marks, the log's
     lines, and the counts of work. With a log file the runner's
-    own log writes to it."""
+    own log writes to it. `cfg_extra` adds to the configuration,
+    and `seen` is the seen set the arrival meets."""
     count = _Count()
     executed, sent, notes = [], [], []
     parse, mac, opener = json.loads, hmac.new, jobcrypto.decrypt_body
@@ -119,7 +123,8 @@ def arrive(raw, folder, log_file=None):
     cfg = {"mailbox_user": "t@example.com", "base_dir": folder,
            "oracle_opinion_mode": "off"}
     cfg.update(BIND.KEYS)
-    imap, seen = DOOR._IMAP2(), {}
+    cfg.update(cfg_extra or {})
+    imap, seen = DOOR._IMAP2(), ({} if seen is None else seen)
     patches = [mock.patch.object(RUNNER, "execute_job", execute),
                mock.patch.object(RUNNER, "send_mail", send),
                mock.patch.object(json, "loads", loads),
@@ -474,6 +479,142 @@ class TheLogInFrontOfTheMac(unittest.TestCase):
             RUNNER._SAFE_JOB_ID.match("a" * RUNNER.LOG_ID_MAX))
         self.assertIsNone(
             RUNNER._SAFE_JOB_ID.match("a" * (RUNNER.LOG_ID_MAX + 1)))
+
+
+class ThePanicStepInFrontOfTheMac(unittest.TestCase):
+    """Finding F13, closed: the panic step reads a subject of a
+    bounded length, and every honest panic subject still fires."""
+
+    WORD = " ".join(PANIC.WORDLIST[-6:])
+    TYPED = "[HOMING-PIGEON] panic " + WORD
+    ENCODED_WORD = "=?utf-8?q?x?= "
+
+    def tearDown(self):
+        PANIC._reset_for_tests()
+
+    def spellings(self):
+        typed = self.TYPED
+        yield "as typed", typed
+        yield "1 base64 word", "=?utf-8?b?%s?=" % base64.b64encode(
+            typed.encode("ascii")).decode("ascii")
+        yield "1 character a word", " ".join(
+            "=?utf-8?q?=%02X?=" % ord(char) for char in typed)
+
+    def encoded(self, size, job_id="j-1"):
+        """A job's subject of about `size` bytes, made of encoded
+        words: the shape the decoder is slowest on."""
+        words = self.ENCODED_WORD * ((size - 40) // len(self.ENCODED_WORD))
+        return "[HOMING-PIGEON] %sjob %s" % (words, job_id)
+
+    def handed(self, act):
+        """How many characters the decoder for encoded words is
+        given while `act` runs."""
+        given = []
+        real = email.header.decode_header
+
+        def decode(text):
+            given.append(len(str(text)))
+            return real(text)
+
+        with mock.patch.object(email.header, "decode_header", decode):
+            result = act()
+        return sum(given), result
+
+    def test_f13_the_longest_honest_spelling_is_well_inside_the_limit(self):
+        self.assertEqual(2048, PANIC.SUBJECT_MAX)
+        self.assertEqual({"as typed": 51, "1 base64 word": 80,
+                          "1 character a word": 815},
+                         {name: len(text) for name, text in self.spellings()})
+
+    def test_f13_every_honest_panic_subject_still_fires(self):
+        with tempfile.TemporaryDirectory() as folder:
+            PANIC.arm(folder, self.WORD)
+            for name, subject in self.spellings():
+                self.assertTrue(PANIC.matches(folder, subject), name)
+            # A typed word padded with white space, to the limit.
+            padded = self.TYPED + " " * (PANIC.SUBJECT_MAX - len(self.TYPED))
+            self.assertEqual(PANIC.SUBJECT_MAX, len(padded))
+            self.assertTrue(PANIC.matches(folder, padded))
+            # 1 character past the limit it is not a panic.
+            self.assertFalse(PANIC.matches(folder, padded + " "))
+
+    def test_f13_a_subject_past_the_limit_never_reaches_the_decoder(self):
+        for size in (2049, 16000, 256000, 1000000):
+            subject = self.encoded(size).ljust(size)
+            given, word = self.handed(
+                lambda: PANIC.word_in_subject(subject))
+            self.assertEqual((0, None), (given, word), size)
+        inside = self.encoded(PANIC.SUBJECT_MAX)
+        self.assertLessEqual(len(inside), PANIC.SUBJECT_MAX)
+        given, word = self.handed(lambda: PANIC.word_in_subject(inside))
+        self.assertEqual((len(inside), None), (given, word))
+
+    def test_f13_the_gate_hands_the_decoder_a_bounded_subject(self):
+        # At the gate itself: a job signed by a key the runner
+        # does not hold, under a subject of encoded words.
+        payload = next(job[1] for job in BIND.fresh_jobs()
+                       if BIND._signed(job[1]) is not None)
+        body = RUNNER.sign_payload(payload, BIND.STRANGER)
+        for size in (1000, 100000, 1000000):
+            raw = _mail(self.encoded(size), body)
+            with tempfile.TemporaryDirectory() as folder:
+                given, out = self.handed(lambda: arrive(raw, folder))
+            self.assertEqual([], out.executed, size)
+            self.assertLessEqual(given, PANIC.SUBJECT_MAX, size)
+
+    def test_f13_the_gate_s_time_grows_no_faster_than_the_message(self):
+        payload = next(job[1] for job in BIND.fresh_jobs()
+                       if BIND._signed(job[1]) is not None)
+        body = RUNNER.sign_payload(payload, BIND.STRANGER)
+        spent = {}
+        for size in (50000, 1000000):
+            raw = _mail(self.encoded(size), body)
+            with tempfile.TemporaryDirectory() as folder:
+                began = time.perf_counter()
+                out = arrive(raw, folder)
+                spent[size] = time.perf_counter() - began
+            self.assertEqual([], out.executed, size)
+        # 20 times the subject, 20 times the time, and half a
+        # second of grace. Under the decoder's square it was
+        # 400 times: 8.55 seconds where this run takes 0.1.
+        self.assertLessEqual(spent[1000000], 20 * spent[50000] + 0.5)
+
+    def test_f13_the_decoder_has_1_caller_in_the_runner(self):
+        callers = []
+        top = os.path.join(ROOT, "runner")
+        for base, _dirs, names in os.walk(top):
+            if os.sep + "tests" in base:
+                continue
+            for name in names:
+                if not name.endswith(".py"):
+                    continue
+                path = os.path.join(base, name)
+                with open(path, encoding="utf-8") as handle:
+                    if "decode_header" in handle.read():
+                        callers.append(os.path.relpath(path, ROOT))
+        self.assertEqual([os.path.join("runner", "guard", "panic.py")],
+                         callers)
+
+    def test_the_panic_word_fires_in_front_of_the_cap_and_the_signature(self):
+        # The 1 effect a message may have with no key. It is read
+        # first: over the size cap, and with a body no key signed,
+        # the word still stops the box. Nothing runs, nothing is
+        # sent, and the message is marked.
+        payload = next(job[1] for job in BIND.fresh_jobs()
+                       if BIND._signed(job[1]) is not None)
+        body = RUNNER.sign_payload(payload, BIND.STRANGER)
+        for name, subject in self.spellings():
+            raw = _mail(subject, body)
+            with tempfile.TemporaryDirectory() as folder:
+                PANIC.arm(folder, self.WORD)
+                out = arrive(raw, folder,
+                             cfg_extra={"max_job_bytes": len(raw) - 1})
+                self.assertTrue(PANIC.fired(folder), name)
+                self.assertIsNotNone(PANIC.flag(folder), name)
+            self.assertEqual(([], [], 1, {}),
+                             (out.executed, out.sent, out.marks, out.seen),
+                             name)
+            PANIC._reset_for_tests()
 
 
 if __name__ == "__main__":
