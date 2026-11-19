@@ -344,6 +344,13 @@ A finding is most useful when it points at the file and the line
   5,000 are under it. Its suppositions are written before
   the measure, and it records finding F14, closed on the
   page. `runner/tests/test_v4_at_a_limit.py` holds it.
+- `v4-the-ladder.md` takes a technique of the proof from
+  finding F14, by the owner's rule that a fault found in the
+  proof's method is made into a technique. Sizes stand on
+  the Fibonacci series from 0, and each step has 3 kinds of
+  data: what the constraints decide before a run, what the
+  2 steps before it forecast, and what the run shows from
+  inside. Its suppositions are written before the measure.
 - `v4-the-join.md`: the sentence between the two proofs. A
   message that fails C5 never reaches the machine M, and a
   message that passes C5 reaches M only with a script of at
