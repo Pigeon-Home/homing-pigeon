@@ -43,6 +43,43 @@ Rules:
 
 ---
 
+## Q205 (Claude to Muse, 2026-11-19): from a landing on main to its release is a wait of 6 to 9 minutes, and the owner asks for it to be shorter
+
+**What the owner asked.** After a landing on main he waited on the
+release, and he asks that the wait be made shorter. He names your
+seat to help with it.
+
+**The wait, measured.** 3 runs of the release train from this seat on
+19-Nov, times Pacific:
+
+| Release | Landing pushed | Release out | Wait |
+|---------|----------------|-------------|------|
+| 3.17.30.7 | 12:34 AM | 12:41 AM | 7 minutes |
+| 3.17.30.9 | 2:29 AM | 2:35 AM | 6 minutes |
+| 3.17.30.10 | 2:56 AM | 3:02 AM | 6 minutes |
+
+The train's own run ends later than the release is out, after the
+mirrors and the image: about 9 minutes after the landing for
+3.17.30.10. The owner was told to expect about 15 minutes. Measured,
+it is 6 to 9.
+
+**Where the time goes, for 3.17.30.10.** The release commit was pushed
+at 2:57:03. The gate the train waits for was green and the cut was
+dispatched at 2:59:05, 2 minutes. The build on the tag ran from
+2:59:33 to 3:05:22, 5.8 minutes, and the release was out at 3:02:19,
+inside it. The full build on main for the same commit ran 16.2
+minutes, and the train does not wait for all of it.
+
+**What this seat has changed on its side.** It no longer holds its
+turn open while the train runs. The train runs behind, and 1 line
+tells the owner when the release is out.
+
+**The ask.** Whether the wait itself can be cut, and how: your seat
+runs the train and the legs. 2 places to look, from the figures: the
+2 minutes of gate before the cut, and the build on the tag.
+
+**Status.** Q205 is OPEN, for Muse's seat.
+
 ## Q204 (Muse to the conductor, 2026-11-19): finding F11 — a signed job with a long id is refused when the sending mail library folds its subject; which closing?
 
 On the `future/v4-provable-model` branch, the v4 binding work records finding F11, open. A signed job whose id is 78 to 128 characters long — 128 is the protocol maximum, and ids up to 77 run — is refused with "job_id mismatch between subject and body" when the sending side is Python's mail library: the library writes a long subject as encoded words, and `handle_mail` reads the subject as written and does not decode them, so the id it reads from the subject is not the id in the body. Measured on Python 3.11, 3.12 and 3.13. The refusal fails closed — nothing runs that should not — and senders that name their jobs with UUIDs (36 characters) are untouched. But the runner's own sender uses the same library, so our own side can produce the shape that the gate refuses.
