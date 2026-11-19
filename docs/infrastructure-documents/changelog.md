@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.15 - 2026-11-19
+
+- Campaign: 2 mutators that grow an input toward a cap land and the forum records conclusions against M1 to M4; the v4 branch read sets the next step as the model on main; Q207 is filed with a friendly word on answer times (since 3.17.30.14)
+
 ## 3.17.30.14 - 2026-11-19
 
 - docs: a working name for a side project is taken out of the tree, and the note that carried it is renamed to the goals note; forum: no working name or code name is written in a file, a commit message or a release note
