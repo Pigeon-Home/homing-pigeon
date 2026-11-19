@@ -75,6 +75,27 @@ class ThePlace(unittest.TestCase):
         self.expect(result, notes, ("pwd", "printf x"), ("; ",),
                     WORK_MOUNT)
 
+    def test_every_step_of_m_under_enforce(self):
+        if not FOLDER.ENGAGES:
+            self.skipTest("the sandbox does not engage here")
+        table = BOUND.denotation(WORK_MOUNT, self.home)
+        asked = list(BOUND.step_rows())
+        self.assertEqual(352, len(asked))
+        for state, (atoms, joiners) in asked:
+            script = BOUND.text(atoms, joiners)
+            result, notes, _files = FOLDER.run(
+                self.payload, self.job_id, script, "enforce")
+            out, status = BOUND.run(atoms, joiners, table)
+            self.assertIsNotNone(result, script)
+            self.assertEqual(
+                (status, digest(out), "attested"),
+                (result.get("exit_code"), result.get("output_digest"),
+                 result.get("view")),
+                script)
+            walked, _result = BOUND.steps(atoms, joiners, table)
+            self.assertEqual((state, joiners[-1], atoms[-1]),
+                             walked[-1], script)
+
     def test_off_the_host_folder_differs_only_for_pwd(self):
         for atom in BOUND.ATOMS:
             result, notes, _files = FOLDER.run(
@@ -102,6 +123,7 @@ class ThePlace(unittest.TestCase):
                 "`pwd`, `echo $HOME` and `echo ${HOME}`",
                 "The other 19 atoms do not read the place.",
                 "All 22 atoms were run, on and off.",
+                "There are 352.",
                 "The default cap stays 1,048,576."):
             self.assertIn(stated, page, stated)
 

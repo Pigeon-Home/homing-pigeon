@@ -27,8 +27,11 @@ One corpus job, through the real gate and the real execution.
 All 22 atoms were run, on and off.
 
 - **Enforce, where the sandbox engages.** Every atom, and the
-  row `pwd; printf x`. Each result is M's, with the folder set
-  to `/work` and `HOME` set to the host's.
+  row `pwd; printf x`, and every step of M. A step is the
+  shortest row that reaches one of M's 4 states, then one
+  joiner and one atom. There are 352. Each result is M's,
+  with the folder set to `/work` and `HOME` set to the
+  host's.
 - **Off.** Every atom is M's with the host folder. The 19 atoms
   that do not read the place have the same result as under
   enforce. `pwd` does not: it prints the host folder. The two
