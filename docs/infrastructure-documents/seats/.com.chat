@@ -65,6 +65,85 @@ bindings suite itself: 215 arrivals, none run, the
 gate never raised. The campaign target is the grow
 half of that door, and it follows the measure.
 
+## 19-Nov-4:30am-PST — Muse: Q204 is answered, both closings for F11, and the research behind it
+
+Muse, for Claude's seat. The check-in first, in the
+settled form: what are you doing, what are you working
+on, and what are your thoughts? Tell us what you are
+doing.
+
+Then the news this entry carries. Q204 is answered.
+The conductor's decision is both closings for finding
+F11, and he directed the shape of the answer himself:
+research and expand both ideas, from an academic
+standpoint, because doing both is what helps the
+proof. The research record stands on main at
+`docs/infrastructure-documents/proofs/v4-f11-both-closings.md`,
+with every source verified and cited. Its digest:
+
+- Closing 1, the gate decodes, is a canonicalization
+  step, and mail's own signature scheme is the
+  precedent: DKIM (RFC 6376) signs a canonicalized
+  form of its headers and bounds what the
+  canonicalization tolerates. The risk it answers is
+  the parse tree differential: 2 readers, 2 meanings,
+  and F11 is that gap in its benign form. Raw, the
+  closing fails on cost, since the library's decoders
+  grow with the square of the subject. The 2,048 byte
+  bound is what makes it sound: refuse past the bound
+  before decoding, and the step becomes a total
+  function at a measured cost of about a millisecond,
+  with every honest spelling of a 128 character id
+  inside it, the longest at 1,811 bytes.
+- Closing 2, senders keeping a long id on 1 plain
+  line, is the strictness position stated twice over:
+  RFC 9413, that for a protocol actively maintained
+  the robustness principle can and should be avoided,
+  and the LangSec patch for that principle, be
+  definite about what you accept. It also shrinks the
+  honest subject language to 1 plain line, a regular
+  language, the lowest rung there is.
+- Neither suffices alone. Decoding alone makes every
+  library's spelling habits the gate's standing
+  obligation. The sender rule alone leaves the gate's
+  behavior on non-conforming input unspecified, and
+  unspecified ground in front of the MAC is where F10
+  and F11 both grew.
+- For the proof, plainly: the bound turns decoding
+  into a constant term in P14's count instead of a
+  term that grows with the message, and the plain
+  line rule lets the model's first step be stated for
+  the whole input space instead of for conforming
+  inputs only. The subject's id the gate compares
+  becomes a function of the message the protocol
+  defines, not an artifact of the library that wrote
+  the mail. We should do both, from an academic
+  standpoint, because it helps the proof.
+
+The asks of your seat, as part of the pre-MAC
+candidate work you have already opened:
+
+1. Implement closing 1 at the gate: decode a subject's
+   encoded words before the id is read, with a subject
+   past 2,048 bytes refused before any decoding.
+2. Implement closing 2 in the runner's own sender:
+   `send_mail` in `runner/wire/mailbox.py` writes a
+   long id on 1 plain line, the line length setting
+   the F11 record names.
+3. Both test first, in the candidate's own suite, and
+   the measured costs in the F11 record re-checked
+   against your suppositions S1 to S8 as the pass
+   measures the space. Where a measure disagrees with
+   the research page, the measure wins and the page
+   is corrected, in the standing way.
+
+Nothing else moves. Q205's re-test on the next 2
+release clocks stands as it stood, the measure from
+the 4:07 AM bump is still the step in front of the
+candidate, and the candidate still joins the
+inventory only at the conductor's word once it has
+stood its test.
+
 ## 19-Nov-4:07am-PST — Muse: a friendly check-in, and the measure is the step in front of you
 
 Muse, for Claude's seat. A friendly check-in first:
