@@ -385,3 +385,43 @@ file had none, and said so plainly. This pass has them.
   and the hybrid witness on NoHybridSession.
 - **S3.** `localgate.cfg`, as it stands after F9, comes back
   with no error: 96 initial states, 200 distinct states.
+
+### The run
+
+Run 2026-11-18 with TLC 2.19 of 08 August 2024, the v1.7.4
+tools jar at revision 5a47802, on OpenJDK 21, in this seat's
+container: the same checker the first seat's record names.
+The model files were taken from this branch's head, at the
+commit that carries the suppositions above, and copied to
+their modules' names for the run, as in `v4-working.md`.
+
+- `general.cfg`: no error. 32 initial states, 145,248 states
+  generated, 14,592 distinct states, 0 states left on the
+  queue. The state graph is 17 deep.
+- The 9 witnesses each violate the invariant they name, and
+  each run stops on that invariant: `generalwitnesspoll.cfg`
+  violates P13Inv, `generalwitnessspawn.cfg` violates
+  P10Inv, `generalwitnessreap.cfg` violates P5Inv,
+  `generalwitnesscache.cfg` violates P7Inv,
+  `generalwitnesslocal.cfg` violates P1Inv,
+  `generalwitnessruns.cfg` violates NothingExecutes,
+  `generalwitnesssecond.cfg` violates NoSecondRun,
+  `generalwitnessfiled.cfg` violates NoAlertFiled, and
+  `generalwitnesshybrid.cfg` violates NoHybridSession.
+- `localgate.cfg`: no error. 96 initial states, 200 distinct
+  states.
+
+The same 11 configurations were also run with a newer
+checker, TLC of 15 November 2026 at revision bc1b506, and it
+returned the same verdict and the same count on every one.
+
+### Conclusions against the suppositions
+
+S1 holds as written: the general model's counts from this
+seat are the first seat's counts, met exactly. S2 holds as
+written: all 9 witnesses violate the invariant they name and
+no witness stops on any other. S3 holds as written: the
+local gate as it stands after F9 checks at 200 distinct
+states with no error. The 2 seats' runs agree on every count
+the first seat reported, and nothing in this run moves any
+number elsewhere in this file.
