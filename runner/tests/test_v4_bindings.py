@@ -31,10 +31,11 @@ The second half takes the fuzz corpus to the doors themselves.
 No fuzz target enters handle_mail, the gate P1 is about, so the
 wire, crypto and mail corpora are sent through it here, and each
 run it allows is held to P1's clauses by this module's own
-reading of the bytes. The local corpus goes to the local door
-with a watch on the run, the secret corpus to the floor at each
-place that applies it, and corpus text through the result
-fitting.
+reading of the bytes. The corpus's jobs then climb the sizes at
+the gate, rung by rung, to the 2 size caps decided there and 1
+byte past each. The local corpus goes to the local door with a
+watch on the run, the secret corpus to the floor at each place
+that applies it, and corpus text through the result fitting.
 """
 import ast
 import collections
@@ -942,23 +943,33 @@ def _stamp(seconds=0):
             ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _octets(job_id, body, size=None):
+    """1 job mail as the octets a mailbox hands over, its subject
+    written out plain. With a size, a note below the body brings
+    the whole mail to that many bytes: a note above or below the
+    signed object is allowed."""
+    raw = (("Subject: [HOMING-PIGEON] job %s\r\nFrom: si@example.com\r\n"
+            "MIME-Version: 1.0\r\n"
+            "Content-Type: text/plain; charset=utf-8\r\n"
+            "Content-Transfer-Encoding: 8bit\r\n\r\n" % job_id
+            ).encode("ascii")
+           + body.encode("utf-8", "surrogatepass"))
+    if size is not None:
+        raw += b"\n" + b"." * (size - len(raw) - 1)
+    return raw
+
+
 def _as_mail(job_id, body):
-    """1 job mail. A body the mail library will not carry goes in
-    as the octets a mailbox could still hand over."""
-    subject = "[HOMING-PIGEON] job " + job_id
+    """1 job mail as the mail library writes it. A body the
+    library will not carry goes in as octets."""
     try:
         msg = EmailMessage()
-        msg["Subject"] = subject
+        msg["Subject"] = "[HOMING-PIGEON] job " + job_id
         msg["From"] = "si@example.com"
         msg.set_content(body)
         return msg.as_bytes()
     except (UnicodeError, ValueError):
-        return (("Subject: %s\r\nFrom: si@example.com\r\n"
-                 "MIME-Version: 1.0\r\n"
-                 "Content-Type: text/plain; charset=utf-8\r\n"
-                 "Content-Transfer-Encoding: 8bit\r\n\r\n" % subject
-                 ).encode("ascii")
-                + body.encode("utf-8", "surrogatepass"))
+        return _octets(job_id, body)
 
 
 def _subject_id(value):
@@ -1198,6 +1209,231 @@ class CorpusAtTheGate(unittest.TestCase):
             with tempfile.TemporaryDirectory() as folder:
                 out = _at_the_gate(_as_mail(subject, body), False, folder)
             self.assertEqual([], out.executed, entry_id)
+
+
+# ---- the corpus up the sizes, at the mail gate
+
+# The proof climbs P1 by the size of the script: under 50
+# characters, then 500, 5,000, 50,000 and 500,000, then the cap's
+# own number (goals.md, stage 6). The corpus climbs the same rungs
+# here in bytes, which is what the cap counts.
+SCRIPT_RUNGS = (49, 500, 5000, 50000, 500000)
+MAIL_RUNGS = (1000, 10000, 100000, 1000000)
+# The longest id the protocol allows, and lengths on the way.
+ID_LENGTHS = (1, 36, 49, 64, 77, 78, 100, 128)
+
+
+def _climb(raw, folder, caps=None):
+    """1 arrival with cleartext allowed, under the default caps or
+    the ones given: (the run, how often the signature was asked
+    for, how often the dispatcher was)."""
+    cfg = dict(KEYS)
+    cfg.update(caps or {})
+    RUNNER._set_allow_cleartext_jobs(True)
+    try:
+        with mock.patch.object(
+                RUNNER, "_verify_and_decrypt",
+                wraps=RUNNER._verify_and_decrypt) as verify, \
+                mock.patch.object(
+                    RUNNER, "_early_dispatch",
+                    wraps=RUNNER._early_dispatch) as dispatch:
+            out = DOOR._run(raw=raw, base_dir=folder, cfg_extra=cfg)
+    finally:
+        RUNNER._set_allow_cleartext_jobs(False)
+    return out, verify.call_count, dispatch.call_count
+
+
+def _grown(payload, size, pad="#"):
+    """The payload with its script grown to `size` bytes of UTF-8
+    by a comment line, and signed again with the key it names."""
+    room = size - len(payload["script"].encode("utf-8")) - 1
+    width = len(pad.encode("utf-8"))
+    grown = dict(payload)
+    grown["script"] = payload["script"] + "\n" \
+        + pad * (room // width) + "#" * (room % width)
+    return grown, _signed(grown)
+
+
+def _why(out):
+    return [note for note in out.notes if "rejecting" in note]
+
+
+class CorpusUpTheSizes(unittest.TestCase):
+    """C1 and C2 on fuzz data, at handle_mail itself: the corpus's
+    fresh jobs grown rung by rung to each size cap, and 1 byte
+    past it."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.secrets = RUNNER.build_secrets(dict(KEYS))
+        cls.mail_cap = PINS._mail_default("max_job_bytes")
+        cls.script_cap = PINS._mail_default("max_script_bytes")
+        # The fresh jobs that run in the clear as octets.
+        cls.runners = []
+        for entry_id, payload, subject in fresh_jobs():
+            text = _signed(payload)
+            if text is None:
+                continue
+            with tempfile.TemporaryDirectory() as folder:
+                if _climb(_octets(subject, text), folder)[0].executed:
+                    cls.runners.append((entry_id, payload, subject, text))
+        cls.scripted = [job for job in cls.runners
+                        if isinstance(job[1].get("script"), str)]
+
+    def runs_once(self, raw, where, caps=None):
+        with tempfile.TemporaryDirectory() as folder:
+            out, verified, _ = _climb(raw, folder, caps)
+            self.assertEqual(1, len(out.executed), (where, _why(out)))
+            self.assertEqual(1, verified, where)
+            # A second delivery runs nothing. The largest mails
+            # are delivered once, which keeps the climb short.
+            if len(raw) < SCRIPT_RUNGS[-1]:
+                again, _, _ = _climb(raw, folder, caps)
+                self.assertEqual([], again.executed, where)
+        return out
+
+    def test_the_corpus_has_jobs_to_climb_with(self):
+        self.assertGreaterEqual(len(self.runners), 20)
+        self.assertGreaterEqual(len(self.scripted), 3)
+        for entry_id, _payload, subject, text in self.runners:
+            self.assertLess(len(_octets(subject, text)), MAIL_RUNGS[0],
+                            entry_id)
+
+    def test_a_job_s_mail_runs_at_every_rung_and_at_the_cap_itself(self):
+        # Every job climbs the lower rungs. Each 8th climbs the
+        # top rung and stands at the cap itself, 4 MiB of mail.
+        for place, (entry_id, payload, subject, text) in enumerate(
+                self.runners):
+            rungs = MAIL_RUNGS[:-1]
+            if place % 8 == 0:
+                rungs = MAIL_RUNGS + (self.mail_cap,)
+            for size in rungs:
+                raw = _octets(subject, text, size)
+                self.assertEqual(size, len(raw), entry_id)
+                self.runs_once(raw, (entry_id, size))
+                # The same mail under a cap of its own size runs
+                # too: the cap refuses what exceeds it.
+                if size < MAIL_RUNGS[-1]:
+                    self.runs_once(raw, (entry_id, size, "its own cap"),
+                                   {"max_job_bytes": size})
+            for clause, held in clauses(payload, text, subject,
+                                        self.secrets, True, False):
+                self.assertTrue(held, "%s ran: %s" % (entry_id, clause))
+
+    def test_a_mail_1_byte_past_the_cap_is_refused_before_any_signature_work(
+            self):
+        for entry_id, _payload, subject, text in self.runners:
+            edges = [(size, {"max_job_bytes": size})
+                     for size in MAIL_RUNGS[:-1]]
+            edges.append((self.mail_cap, None))
+            for cap, caps in edges:
+                raw = _octets(subject, text, cap + 1)
+                self.assertEqual(cap + 1, len(raw), entry_id)
+                with tempfile.TemporaryDirectory() as folder:
+                    out, verified, dispatched = _climb(raw, folder, caps)
+                where = (entry_id, cap)
+                self.assertEqual([], out.executed, where)
+                self.assertEqual(0, verified, where)
+                self.assertEqual(0, dispatched, where)
+                self.assertEqual(1, len(_why(out)), where)
+                self.assertIn("mail exceeds max_job_bytes (%d > %d)"
+                              % (cap + 1, cap), _why(out)[0], where)
+
+    def test_a_job_cap_of_0_lets_a_mail_past_the_default_run(self):
+        entry_id, _payload, subject, text = self.runners[0]
+        raw = _octets(subject, text, self.mail_cap + 1)
+        self.runs_once(raw, entry_id, {"max_job_bytes": 0})
+
+    def test_a_job_s_script_runs_at_every_rung_of_the_proof_s_ladder(self):
+        # Every scripted job climbs to 50,000 bytes. The first
+        # climbs on to 500,000 and stands at the cap itself.
+        for place, (entry_id, payload, subject, _text) in enumerate(
+                self.scripted):
+            rungs = SCRIPT_RUNGS[:-1]
+            if place == 0:
+                rungs = SCRIPT_RUNGS + (self.script_cap,)
+            for size in rungs:
+                grown, text = _grown(payload, size)
+                self.assertEqual(size, len(grown["script"].encode("utf-8")),
+                                 entry_id)
+                self.runs_once(_octets(subject, text), (entry_id, size))
+                for clause, held in clauses(grown, text, subject,
+                                            self.secrets, True, False):
+                    self.assertTrue(held, "%s at %d ran: %s"
+                                    % (entry_id, size, clause))
+
+    def test_a_script_1_byte_past_the_cap_is_refused_after_the_signature(
+            self):
+        # The cap counts UTF-8 bytes. A script grown with a 3 byte
+        # character is past a cap while it holds fewer characters
+        # than the cap has bytes.
+        for place, (entry_id, payload, subject, _text) in enumerate(
+                self.scripted):
+            edges = [(size, {"max_script_bytes": size}, pad)
+                     for size in SCRIPT_RUNGS[:-1] for pad in ("#", "\u20ac")]
+            if place == 0:
+                edges.append((self.script_cap, None, "#"))
+            for cap, caps, pad in edges:
+                where = (entry_id, cap, pad)
+                at, text = _grown(payload, cap, pad)
+                self.assertEqual(cap, len(at["script"].encode("utf-8")),
+                                 where)
+                if caps:
+                    self.runs_once(_octets(subject, text), where, caps)
+                past, text = _grown(payload, cap + 1, pad)
+                self.assertEqual(cap + 1,
+                                 len(past["script"].encode("utf-8")), where)
+                if pad != "#":
+                    self.assertLess(len(past["script"]), cap, where)
+                with tempfile.TemporaryDirectory() as folder:
+                    out, verified, _ = _climb(_octets(subject, text),
+                                              folder, caps)
+                self.assertEqual([], out.executed, where)
+                self.assertEqual(1, verified, where)
+                self.assertEqual(1, len(_why(out)), where)
+                self.assertIn("script exceeds max_script_bytes (%d > %d)"
+                              % (cap + 1, cap), _why(out)[0], where)
+
+    def test_a_script_cap_of_0_lets_a_script_past_the_default_run(self):
+        entry_id, payload, subject, _text = self.scripted[0]
+        _past, text = _grown(payload, self.script_cap + 1)
+        self.runs_once(_octets(subject, text), entry_id,
+                       {"max_script_bytes": 0})
+
+    def _named(self, length):
+        payload = dict(self.runners[0][1])
+        payload["job_id"] = "d" * length
+        payload["issued_at"] = _stamp()
+        return payload["job_id"], _signed(payload)
+
+    def test_a_job_runs_as_octets_whatever_the_length_of_its_id(self):
+        self.assertTrue(RUNNER._SAFE_JOB_ID.match("d" * ID_LENGTHS[-1]))
+        self.assertFalse(RUNNER._SAFE_JOB_ID.match(
+            "d" * (ID_LENGTHS[-1] + 1)))
+        for length in ID_LENGTHS:
+            job_id, text = self._named(length)
+            self.runs_once(_octets(job_id, text), length)
+
+    def test_a_long_id_is_stopped_only_where_its_subject_was_rewritten(self):
+        # Finding F11. The mail library writes a subject word too
+        # long for 1 line as encoded words, and the gate reads a
+        # subject as it is written. So a job the library's mail
+        # does not run is stopped at its subject and nowhere else,
+        # and a subject left as it was runs.
+        for length in ID_LENGTHS:
+            job_id, text = self._named(length)
+            raw = _as_mail(job_id, text)
+            plain = ("job " + job_id).encode("ascii") in raw
+            with tempfile.TemporaryDirectory() as folder:
+                out, verified, _ = _climb(raw, folder)
+            if plain:
+                self.assertEqual(1, len(out.executed), length)
+            if not out.executed:
+                self.assertFalse(plain, length)
+                self.assertEqual(1, verified, length)
+                self.assertEqual(1, len(_why(out)), length)
+                self.assertIn("job_id mismatch between subject and body",
+                              _why(out)[0], length)
 
 
 # ---- the corpus at the local door

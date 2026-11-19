@@ -310,8 +310,9 @@ A finding is most useful when it points at the file and the line
   steps in `general.tla`. `v4-bindings.json` is the table
   itself, the registry. The page also records the sizes of
   the entries that reach each constraint, the fuzz corpus
-  taken to the real doors, the constraints no fuzz data
-  reaches, and finding F10, closed.
+  taken to the real doors and up the sizes to the caps, the
+  constraints no fuzz data reaches, finding F10, closed, and
+  finding F11, open.
   `runner/tests/test_v4_bindings.py` holds every tie and
   drives the corpus through the doors, and
   `runner/tests/test_opener_cost.py` holds F10's change.

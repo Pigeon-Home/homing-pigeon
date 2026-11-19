@@ -304,7 +304,10 @@
     "runner/ops/mail.py:handle_mail"
    ],
    "pins": [
-    "runner/tests/test_proof_constraints.py::SizeCapPins.test_c1_max_job_bytes_default"
+    "runner/tests/test_proof_constraints.py::SizeCapPins.test_c1_max_job_bytes_default",
+    "runner/tests/test_v4_bindings.py::CorpusUpTheSizes.test_a_job_s_mail_runs_at_every_rung_and_at_the_cap_itself",
+    "runner/tests/test_v4_bindings.py::CorpusUpTheSizes.test_a_mail_1_byte_past_the_cap_is_refused_before_any_signature_work",
+    "runner/tests/test_v4_bindings.py::CorpusUpTheSizes.test_a_job_cap_of_0_lets_a_mail_past_the_default_run"
    ],
    "fuzz": [],
    "unfuzzed": [
@@ -322,7 +325,10 @@
     "runner/ops/mail.py:handle_mail"
    ],
    "pins": [
-    "runner/tests/test_proof_constraints.py::SizeCapPins.test_c2_max_script_bytes_default"
+    "runner/tests/test_proof_constraints.py::SizeCapPins.test_c2_max_script_bytes_default",
+    "runner/tests/test_v4_bindings.py::CorpusUpTheSizes.test_a_job_s_script_runs_at_every_rung_of_the_proof_s_ladder",
+    "runner/tests/test_v4_bindings.py::CorpusUpTheSizes.test_a_script_1_byte_past_the_cap_is_refused_after_the_signature",
+    "runner/tests/test_v4_bindings.py::CorpusUpTheSizes.test_a_script_cap_of_0_lets_a_script_past_the_default_run"
    ],
    "fuzz": [],
    "unfuzzed": [
@@ -363,7 +369,8 @@
    ],
    "pins": [
     "runner/tests/test_proof_constraints.py::SizeCapPins.test_c4_local_envelope_max_bytes",
-    "runner/tests/test_v4_binding.py::StandingGapPins.test_c4_local_envelope_cap"
+    "runner/tests/test_v4_binding.py::StandingGapPins.test_c4_local_envelope_cap",
+    "runner/tests/test_v4_bindings.py::CorpusAtTheLocalDoor.test_an_entry_grown_past_the_cap_is_refused_before_any_key_work"
    ],
    "fuzz": [
     {

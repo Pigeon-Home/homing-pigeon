@@ -55,7 +55,7 @@ the registry to the tree and this page to the registry.
 ## The counts
 
 The registry binds 31 constraints and 13 properties. It
-names 59 code sites and 74 named pins, and it carries 60
+names 59 code sites and 81 named pins, and it carries 60
 fuzz ties. The fuzz part was counted on 2026-11-19.
 
 ## Every constraint, tied
@@ -67,10 +67,10 @@ the constraint's functions.
 
 | ID | Constraint | Stated by | Code | Pins | Fuzz data |
 |----|------------|-----------|------|------|-----------|
-| C1 | `max_job_bytes` | P1 clause 1 | `handle_mail` in `runner/ops/mail.py` | 1 | none |
-| C2 | `max_script_bytes` | P1 clause 5 | `handle_mail` in `runner/ops/mail.py` | 1 | none |
+| C1 | `max_job_bytes` | P1 clause 1 | `handle_mail` in `runner/ops/mail.py` | 4 | none |
+| C2 | `max_script_bytes` | P1 clause 5 | `handle_mail` in `runner/ops/mail.py` | 4 | none |
 | C3 | `max_result_bytes` | P11, the whole property | `_max_result_bytes` in `runner/runner.py`; `_fit_result_body` in `runner/runner.py` | 2 | none |
-| C4 | `_LOCAL_ENVELOPE_MAX_BYTES` | P12, the whole property | `_ingest_local_envelope_inner` in `runner/runner.py`; `_scan_local_inbox` in `runner/runner.py` | 2 | `local` 518, `query` 32, `local_inbox` 23 |
+| C4 | `_LOCAL_ENVELOPE_MAX_BYTES` | P12, the whole property | `_ingest_local_envelope_inner` in `runner/runner.py`; `_scan_local_inbox` in `runner/runner.py` | 3 | `local` 518, `query` 32, `local_inbox` 23 |
 | C5 | Signature | P1 clause 2 | `sign_payload` in `runner/wire/verify.py`; `verify_body_keyed` in `runner/wire/verify.py`; `_verify_and_decrypt` in `runner/runner.py` | 3 | `wire` 115 |
 | C6 | Secret entropy floor | P13, the whole property | `validate_shared_secret` in `runner/guard/security.py`; `build_secrets` in `runner/wire/verify.py` | 3 | `secret` 26, `local` 518, `query` 183 |
 | C7 | Key fingerprint | P1 clause 2; P4 clause 1 | `key_fingerprint` in `runner/guard/security.py` | 1 | `local` 518, `query` 183 |
@@ -251,10 +251,11 @@ What the sizes say:
    envelope. A child of the campaign is at most 16,384
    bytes, which is under all 4. C4 is the 1 cap with fuzz
    data at its code: 573 entries, and the largest of them is
-   4,280 bytes. So the edge of a cap is held by its pins,
-   and for C4 by the corpus grown 1 byte past the cap at the
-   local door, in the section on the doors below. Fuzz data
-   does not hold it, and with this cap on a child it cannot.
+   4,280 bytes. So the campaign's data does not hold the
+   edge of a cap, and with this cap on a child it cannot. The
+   edge is held by pins, and by the corpus grown to the cap
+   at the doors, in the section below: C1 and C2 at the gate,
+   and C4 at the local door.
 3. **F10 is what a missing size looks like.** The opener
    search's cost grew with the square of the body. The
    largest entry at the signature's code is 3,176 bytes. A
@@ -353,6 +354,44 @@ and signed by a key the runner does not hold. None of the
 120 runs. Dated 3,700 seconds old or 400 seconds ahead, none
 runs. Dated 3,500 seconds old or 200 seconds ahead, all run.
 Sealed under a key the runner does not hold, none runs.
+
+A 41st of the 54 runs when its mail is written out as plain
+octets and not by the mail library. That is finding F11,
+below.
+
+**The size caps at the gate (C1, C2).** No fuzz target enters
+`handle_mail`, so the 2 caps decided there have no entry to
+size. `CorpusUpTheSizes` takes the corpus's fresh jobs up the
+sizes instead. The counts are from 2026-11-19. Written out as
+plain octets, 41 of the jobs run, and 5 of the 41 carry a
+script.
+
+Each of the 41 mails was grown, by a note below its body, to
+1,000, 10,000 and 100,000 bytes, and every 8th of them on to
+1,000,000 bytes and to the cap itself, 4,194,304 bytes. At
+every rung the job runs, and P1's clauses hold. 1 byte past
+the cap, at 4,194,305 bytes, none of the 41 runs, and the
+gate has asked for no signature and made no dispatch: the
+refusal comes before any signature work, as C1 says. With
+the cap set at each lower rung the same holds: the mail of
+that size runs, and 1 byte more is refused.
+
+Each of the 5 scripts was grown, by a comment line, up the
+proof's own ladder for P1 in `goals.md`: 49, 500, 5,000 and
+50,000 bytes, and 1 of them on to 500,000 bytes and to the
+cap itself, 1,048,576 bytes. At every rung the job runs, and
+P1's clauses hold. 1 byte past the cap the job does not run,
+and the gate has verified its signature first, as C2 says.
+With the cap set at each lower rung the same holds, and it
+holds by bytes: a script grown with a 3 byte character is
+refused 1 byte past a cap while it holds fewer characters
+than the cap has bytes. With either cap set to 0, a mail or
+a script 1 byte past the default runs.
+
+So C1 and C2 have the corpus at their edges, though no
+target of the campaign does. The registry binds these tests
+to the 2 constraints as pins, and the local door's test of
+its cap to C4.
 
 **The local door (P12, and finding F9).** All 518 entries of
 the local corpus went through the local door with a watch on
@@ -461,6 +500,50 @@ the platform bounds a request's time, so what it can cost is
 that tenant's own request. It is named here so the count is
 right: the search has 3 homes, and 2 are closed.
 
+## Finding F11: a mail library's subject stops a job with a long id
+
+**Found with the corpus at the gate, in 2 forms of mail. Open:
+the way to close it is the owner's to choose.**
+
+The wire corpus holds a job whose id is 128 characters long,
+the longest the protocol allows. Written out as plain octets
+it runs. Written by Python's mail library it does not: the
+gate refuses it with `job_id mismatch between subject and
+body`, after its signature has verified, and no result is
+sent to say why.
+
+The library does this to the subject. A word too long for 1
+header line is written as encoded words (`=?utf-8?q?...?=`)
+over several lines. `handle_mail` reads a subject as it is
+written and does not decode such words, so the id it reads
+off the subject is not the id in the signed body.
+
+Measured here on 2026-11-19, on Python 3.11, 3.12 and 3.13:
+an id of up to 77 characters is written plain and the job
+runs, and an id of 78 to 128 characters is written as encoded
+words and the job is refused. The sender's helper names a job
+by a UUID, 36 characters, so its own mails are not touched.
+The runner's sender writes its subjects with the same
+library, so a result for a job with a long id leaves under
+an encoded subject too.
+
+It fails closed: nothing runs that should not. What is lost
+is a signed, fresh job that the protocol allows.
+`CorpusUpTheSizes` holds the shape of it: as octets a job
+runs at every length of id, and a job that the library's
+mail does not run is stopped at its subject and nowhere
+else. That test passes whichever way the finding is closed.
+
+There are 2 ways to close it, and each changes what the
+protocol says of a subject:
+
+1. The gate decodes a subject's encoded words before it reads
+   the id. That is 1 more reader in front of the MAC, with a
+   cost and a surface of its own.
+2. A subject is read as written, the protocol says so, and a
+   sender keeps a long id on 1 plain line. The runner's own
+   sender would then write its subjects that way.
+
 ## What this pass does not show
 
 - A fuzz tie is reach, not proof. The proofs are the models
@@ -493,9 +576,10 @@ right: the search has 3 homes, and 2 are closed.
   mutator or a target that grows an input toward a cap, and
   toward the sizes where a reader's cost shows, is the
   campaign's to add.
-- The size caps at the gate. C1 and C2 are decided in
-  `handle_mail`, where no target enters. The corpus's fresh
-  jobs, grown step by step to each cap and 1 byte past it,
-  would put sizes beside the 2 caps that have none.
+- The result cap. C3 is the 1 size cap whose default, at
+  5,242,880 bytes, no corpus text has been grown to. The
+  fitting is held on corpus text at smaller caps.
+- Finding F11 waits for the owner's choice between its 2
+  ways.
 - The 3 suppositions `v4-general.md` left stand as written
   there.
