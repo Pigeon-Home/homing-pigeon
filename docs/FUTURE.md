@@ -6,5 +6,5 @@
 - define host-network topology rules for local helper bots coordinated by Oracle - (repair, repair_patrols, hdd_patrols, security_patrols) [oracle key dist]
 - reduce idea: global deps on centralize Internet PKI, delete public infra pki deps by performing self-hosted key management system via current attestation mech
 - generalize and then formalize my Proof
-- dist ledger file flow boards, encrypted task boards, confidentialCompute-enc-async answers, via onion rev prox v2. do not embed throw away wallets or dist knet (fund find defensive solutions and ideas through policy, politics.)
+- dist ledger file flow boards, encrypted task boards, confidentialCompute-enc-async answers, via onion rev prox v2. do not embed throw away wallets or dist knet (fund/find defensive solutions and ideas through policy, politics.)
 - Anna AI OS Founding Builder Program 2026 research (https://luma.com/kmc1ddf9) [funding secured?] Registration has been confirmed :)
