@@ -296,6 +296,10 @@ it can write a file, hold a value, or loop, and none of the
 So the ladder that does work is a ladder of atoms as much
 as of sizes, and the first rung is the place to add them.
 
+`v4-at-a-limit.md` writes this page's claim with the size
+left open, and finds what a row of these atoms meets above
+the 3 rungs.
+
 ## What comes next, in order
 
 1. **Atoms that write inside the job's own folder.** They

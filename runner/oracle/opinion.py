@@ -179,15 +179,22 @@ _PREFIX_WORDS = frozenset(
 #   - process substitution:        <(cmd)  >(cmd)
 #   - substring expansion:         ${x:0:1}   (not ${x:-default})
 #   - bash-only builtins:          declare / mapfile / readarray
+# The white space in front of a line's first word is the white
+# space of that line: [^\S\n] is any white space but the line
+# end. A pattern that may cross line ends there reads a run of
+# blank lines again from each of its lines, and the time grows
+# with the square of the run.
 _BASH_ONLY_RE = re.compile(
     r"(?m)"
-    r"^\s*[A-Za-z_]\w*\+?=\("          # array literal assignment
+    r"^[^\S\n]*[A-Za-z_]\w*\+?=\("     # array literal assignment
     r"|\$\{\#?[A-Za-z_]\w*\["          # ${a[..]} / ${#a[..]}
     r"|<<<"                            # here-string
     r"|<\("                            # process substitution
     r"|>\("
     r"|\$\{[A-Za-z_]\w*:[0-9]"         # ${x:0} / ${x:0:1}
-    r"|^\s*(?:declare|mapfile|readarray)\b")
+    r"|^[^\S\n]*(?:declare|mapfile|readarray)\b")
+_EXPORT_RE = re.compile(
+    r"(?m)^[^\S\n]*export\s+[A-Za-z_][A-Za-z0-9_]*=")
 
 
 def script_shape(script):
@@ -221,7 +228,7 @@ def script_shape(script):
         return "bash"
     if first.startswith("#!") and "sh" in first.lower():
         return "posix"
-    if re.search(r"(?m)^\s*export\s+[A-Za-z_][A-Za-z0-9_]*=", script):
+    if _EXPORT_RE.search(script):
         return "posix"
     return "neutral"
 

@@ -73,6 +73,17 @@ REGISTERED = {
         "the test_linux_* modules; run in the ubuntu test job",
     "POSIX installer path": "run on ubuntu and macOS; Windows has its own",
     "POSIX only": "run on ubuntu and macOS",
+    "the shell's 2 bars are measured on Linux":
+        "test_v4_at_a_limit: the bars are bash's grammar stack and "
+        "the stack the system gives the shell, measured on Linux; "
+        "run in the ubuntu test job. The system bash of macOS is "
+        "another build with its own numbers",
+    "this bash reads a pipeline of 20,000 commands":
+        "test_v4_at_a_limit: the grammar's bar is found by asking "
+        "bash. The bash the page names refuses a pipeline of 3,334 "
+        "commands, so the ubuntu test job runs these; a bash built "
+        "with a deeper grammar stack has no bar under 20,000 to "
+        "hold the claim against",
     "POSIX mode bits only":
         "test_personal_docs_shelter: the shelter folder's 0o700 pin "
         "reads POSIX stat mode bits, which Windows stat does not "

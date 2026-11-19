@@ -338,8 +338,12 @@ A finding is most useful when it points at the file and the line
   `runner/tests/test_v4_at_a_bound.py` holds it.
 - `v4-at-a-limit.md` writes the same claim with the size
   left open, as a number N: why the proof holds at every N,
-  what grows with N, and the bars a script meets as N
-  grows. Its suppositions are written before the measure.
+  what grows with N, and the bars a row meets as N grows,
+  each as a number. On bash 5.2.21 the first bar is at
+  13,332 characters, and the owner's rungs of 50, 500 and
+  5,000 are under it. Its suppositions are written before
+  the measure, and it records finding F14, closed on the
+  page. `runner/tests/test_v4_at_a_limit.py` holds it.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.
