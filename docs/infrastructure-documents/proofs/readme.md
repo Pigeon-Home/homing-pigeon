@@ -344,6 +344,12 @@ A finding is most useful when it points at the file and the line
   5,000 are under it. Its suppositions are written before
   the measure, and it records finding F14, closed on the
   page. `runner/tests/test_v4_at_a_limit.py` holds it.
+- `v4-the-join.md`: the sentence between the two proofs. A
+  message that fails C5 never reaches the machine M, and a
+  message that passes C5 reaches M only with a script of at
+  most N bytes, which is C2. No new constraint. The default
+  cap stays 1,048,576.
+  `runner/tests/test_v4_the_join.py` holds the sentence.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.
