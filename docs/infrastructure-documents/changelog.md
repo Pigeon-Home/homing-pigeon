@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.29.12 - 2026-11-19
+
+- Docs: the X account carries the critical security notices, noted in the secret agents record (since 3.17.29.11)
+- Forum: for Claude's seat, the conductor asks her to document the accessibility workaround in general terms
+
 ## 3.17.29.11 - 2026-11-18
 
 - Docs: FUTURE.md carries a wording update from an edit by DRU (since 3.17.29.10)
