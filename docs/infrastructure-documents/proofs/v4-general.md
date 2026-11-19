@@ -425,3 +425,86 @@ local gate as it stands after F9 checks at 200 distinct
 states with no error. The 2 seats' runs agree on every count
 the first seat reported, and nothing in this run moves any
 number elsewhere in this file.
+
+## The third pass: a seam for every mark
+
+The first pass left 7 marks that cannot be false in the
+model: P3, P4, P6, P8, P9, P11 and P12. Each is decided at
+the step that makes it, so the checker has nothing to break
+there. A mark that cannot be false shows where a door stands
+in the life and nothing more.
+
+This pass gives each door's own guard a constant, as the
+seams between doors have. 9 more, 14 in all:
+
+| Constant | The door applies its guard at its own step | Carries |
+|----------|--------------------------------------------|---------|
+| GateVerifies | the gate admits an arrival only with its signature and the rest of its clauses | P1 |
+| GateFresh | the gate admits only a job inside the freshness window | P1, P5 |
+| GatePolicy | the key's policy is asked at the gate | P4 |
+| TransportGates | an arrival by a transport that has a credential shows it | P3 |
+| StartValidates | a start refuses a configuration it cannot use | P6 |
+| PrefersHybrid | a session that can agree the hybrid group agrees it | P8 |
+| SameSideOnly | no session is agreed across the framing break | P9 |
+| FitMarks | a body that leaves over its cap leaves marked | P11 |
+| LocalBounds | the local door bounds an envelope before it reads it | P12 |
+
+The inside of each guard is proved in its own model. What
+the general model adds is that a life cannot reach the
+effect around the guard, and with these constants the
+checker can be shown the life that does when the guard is
+not applied.
+
+### Suppositions, written before the checker's run
+
+Written 2026-11-18, before TLC was run on the model as this
+pass leaves it. The counts are the search's: the model
+written apart from the TLA+ file, extended with the 9
+constants first and searched to the fixed point.
+
+- **T1.** `general.cfg`, with all 14 constants TRUE, is the
+  model the first pass checked. A constant that is TRUE
+  leaves its guard as it was. So the checker comes back
+  with no error, 32 initial states, 145,248 states
+  generated, 14,592 distinct states, and a state graph 17
+  deep: the 2 seats' counts, met exactly.
+- **T2.** Each of the 9 new witnesses violates the invariant
+  it names, and its run stops on that invariant:
+  `generalwitnessverifies.cfg` on P1Inv,
+  `generalwitnessfresh.cfg` on P5Inv,
+  `generalwitnesspolicy.cfg` on P4Inv,
+  `generalwitnesstransport.cfg` on P3Inv,
+  `generalwitnessstart.cfg` on P6Inv,
+  `generalwitnessprefers.cfg` on P8Inv,
+  `generalwitnessframing.cfg` on P9Inv,
+  `generalwitnessmarks.cfg` on P11Inv, and
+  `generalwitnessbounds.cfg` on P12Inv.
+- **T3.** The 9 earlier witnesses, each now with the 9 new
+  constants TRUE, violate what they violated before.
+- **T4.** With 1 constant FALSE the search reaches the
+  counts below, and the marks that break are the ones
+  listed and no other. The checker stops at the first
+  violation, so these counts are the search's alone.
+
+| Constant set FALSE | Distinct states | Marks that break |
+|--------------------|-----------------|------------------|
+| GateVerifies | 28,032 | P1 |
+| GateFresh | 33,984 | P1, P5 |
+| GatePolicy | 28,032 | P4 |
+| TransportGates | 28,032 | P3 |
+| StartValidates | 29,184 | P6 |
+| PrefersHybrid | 14,592 | P8 |
+| SameSideOnly | 24,320 | P9 |
+| FitMarks | 26,112 | P11 |
+| LocalBounds | 21,888 | P12 |
+
+- **T5.** The 5 seams of the first pass keep their counts
+  with the 9 new constants TRUE: 29,184, 21,312, 39,936,
+  26,112 and 62,208.
+- **T6.** With these 14, every one of the 13 marks is broken
+  by at least 1 constant, and each constant breaks at
+  least 1 mark. GateFresh is the 1 new constant that
+  breaks 2: a stale job that is admitted runs past P1, and
+  once its record and the cache have gone it runs a second
+  time past P5. The freshness window is what bounds a
+  replay.
