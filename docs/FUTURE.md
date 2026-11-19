@@ -1,3 +1,3 @@
 - Anna AI OS Founding Builder Program 2026 research (https://luma.com/kmc1ddf9) [funding secured?] Registration has been confirmed :)
 - cyber turret for auditing frameworks to enhance or extend audit security testing
-- define host-network topology Oracle dispatch: repair, repair_patrols, hdd_patrols, security_patrols [oracle key dist]
+- define host-network topology Oracle dispatch: repair_patrols, hdd_patrols, security_patrols [oracle decides key distribution]
