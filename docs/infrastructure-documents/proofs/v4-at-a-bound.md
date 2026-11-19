@@ -317,6 +317,50 @@ as of sizes, and the first rung is the place to add them.
    bound, with what is proven at it, is the owner's to
    order: the draft is not this seat's.
 
+## What the wider world calls this, and who reads it
+
+Read on 2026-11-19. Names are given so each can be looked
+up, and nothing here is leaned on by the proof.
+
+- **The small scope hypothesis** (Daniel Jackson, with the
+  Alloy work): most faults show themselves on small inputs,
+  so a check of every case inside a small bound finds what a
+  sample of large cases misses. "Software assurance by
+  bounded exhaustive testing" (Sullivan, Yang, Coppit,
+  Khurshid and Jackson, 2004) is the same idea as a method.
+  The owner's direction goes 1 step past both: the bound is
+  put in the specification, so the software is held to the
+  size at which every case was checked.
+- **Language-theoretic security** (Sassaman, Patterson,
+  Bratus and others): make the input language small enough
+  to be recognised in full before anything acts on it. A
+  list of atoms is such a language.
+- **Residual risk in fuzzing** (Marcel Böhme and others,
+  2018 to 2021): after n inputs, the share that were the
+  only one of their kind estimates the chance that the next
+  input shows something new. It is an estimate of discovery
+  and not a proof of absence. It is the measure that would
+  let the fuzz data stand beside a proof as a number.
+- **Lightweight formal methods in industry**: reference
+  models held to running code by tests and model checking,
+  re-run as the code changes. This directory's method is of
+  that family.
+- **At the IETF.** Its formal analysis of protocols asks an
+  author for a threat model, security goals with their
+  conditions, and a protocol diagram, and then works in a
+  symbolic or a computational model. The Usable Formal
+  Methods Research Group of the IRTF is where methods like
+  this one are discussed. A working group on agent
+  communication protocols was chartered on 2026-10-08. An
+  Independent Submission, the stream versions 1 and 2 are
+  in, is judged by expert reviews and carries no IETF
+  consensus.
+
+What this suggests for the draft, and decides nothing: a
+reader at the IETF will look first for the attacker the
+claims are made against, and version 4's draft states its
+claims about 1 implementation without naming that attacker.
+
 ## What this page does not claim
 
 - That 22 atoms are the shell. They are the record's list:
