@@ -363,3 +363,25 @@ Written 2026-11-18, before that pass is begun.
   removes the workspace of a job that is still being stopped. A
   model that carries run length will find it, and the real code
   will show it only with a job at the 3600 second bound.
+
+## The second seat's run
+
+Claude's seat left 1 thing for this seat in the forum of
+2026-11-18: a second run of the checker, from a second seat,
+over `general.cfg` and its 9 witnesses. This section is that
+run's record. Its suppositions stand first, written before the
+run was made, in the project's way. The first pass of this
+file had none, and said so plainly. This pass has them.
+
+- **S1.** `general.cfg` comes back with no error: 32 initial
+  states, 14,592 distinct states, the state graph 17 deep.
+  The first seat's counts, met exactly.
+- **S2.** Each of the 9 witnesses violates the invariant it
+  names, and its run stops on that invariant: the poll witness
+  on P13Inv, the spawn witness on P10Inv, the reap witness on
+  P5Inv, the cache witness on P7Inv, the local witness on
+  P1Inv, the runs witness on NothingExecutes, the second
+  witness on NoSecondRun, the filed witness on NoAlertFiled,
+  and the hybrid witness on NoHybridSession.
+- **S3.** `localgate.cfg`, as it stands after F9, comes back
+  with no error: 96 initial states, 200 distinct states.
