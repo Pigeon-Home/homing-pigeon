@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.31.2 - 2026-11-19
+
+- project: the incident note for 19-NOV is appended with the owner's ruling, that the history stands and the purge is not run; forum: no seat holds for a purge
+
 ## 3.17.31.1 - 2026-11-19
 
 - Campaign: Germany bank 70 banks the Germany rig corpus at 2,655 entries and 9,846 coverage edges in the merged corpus, 825 new run records and 21,128,606 children tested with 0 crashes filed and 2 retired echoes not re-banked (since 3.17.30.19)
