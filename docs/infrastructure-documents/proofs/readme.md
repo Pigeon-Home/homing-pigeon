@@ -320,7 +320,9 @@ A finding is most useful when it points at the file and the line
   candidate property, P14, for what the gate does with a
   message before its signature verifies, the place where
   findings F10 and F11 both lie. Its suppositions are
-  written before the measure.
+  written before the measure, and the measure and its
+  conclusions follow them, with finding F12, open.
+  `runner/tests/test_v4_before_the_mac.py` is the measure.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.

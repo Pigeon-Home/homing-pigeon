@@ -97,14 +97,100 @@ wrong.
   holds P14 as an invariant, and for each step taken out of
   its place a witness breaks it.
 
-## What the pass will make
+## The measure
 
-- A suite, `runner/tests/test_v4_before_the_mac.py`, that
-  sends the corpus and its hostile growths to the gate under
-  signatures that do not verify, and counts what ran, what
-  was sent, what was kept and how much was read.
-- A model of the steps before the MAC, its configuration and
-  its witnesses, and its search in the suite.
-- A row for the candidate in the registry, kept apart from
-  the 31 until the owner's word.
-- The conclusions against S1 to S8, on this page.
+`runner/tests/test_v4_before_the_mac.py`, run on 2026-11-19.
+The wire corpus's 41 fresh jobs that run under a key the
+runner holds were each made to fail at the signature 2 ways:
+signed by a key the runner does not hold, and with 1 digit
+of the signature turned. That is 82 messages. Each went to
+`handle_mail` as it is, with its subject grown to 1,000,
+10,000 and 100,000 bytes, and with its body grown to 10,000
+and 100,000 bytes: 492 arrivals, of 336 to 100,602 bytes.
+
+| What was counted | Over the 492 arrivals |
+|------------------|-----------------------|
+| Jobs run | 0 |
+| Mails sent | 0 |
+| Entries added to the seen set | 0 |
+| Files left under the runner's folder | 1, the security events file |
+| Records added to it | 1 for each arrival, of 84 bytes every time |
+| Seen marks set in the mailbox | 1 for each arrival |
+| Characters given to the parser | at most 1.42 times the message |
+| MACs computed | 1 for each arrival, with 6 keys held |
+| Bytes given to the MAC | at most 0.58 times the message |
+
+The 41 messages under a strange key were also sealed, as
+they were and with 1 digit of the envelope's signature
+turned. None of the 82 was opened before its signature.
+
+The log, for 1 refused message, by the size of its subject:
+
+| Subject | The mail | Added to the log file | Printed |
+|---------|----------|-----------------------|---------|
+| as it is | 393 bytes | 195 bytes | 195 characters |
+| 1,000 bytes | 1,361 | 1,163 | 1,163 |
+| 10,000 bytes | 10,361 | 10,163 | 10,163 |
+| 100,000 bytes | 100,361 | 100,163 | 100,163 |
+| 4,000,000 bytes | 4,000,361 | 4,000,163 | 4,000,163 |
+
+## Conclusions against the suppositions
+
+- **S1 held.** Nothing ran and nothing was sent, on all 492.
+- **S2 held.** The seen set gained nothing, and no record of
+  a job was left.
+- **S3 held.** 1 refusal record for each arrival, of 84
+  bytes whatever the message's size.
+- **S4 held, and it is a finding.** It is F12, below.
+- **S5 held, with room.** The parser was given at most 1.42
+  times the message, against the 16 supposed. The MAC was
+  computed once, and not twice for each key: the runner
+  asks only for the key a message names.
+- **S6 held.** No sealed body was opened before its
+  signature.
+- **S7 held.** Each refused message was marked seen once.
+- **S8 is not tried yet.** The model is the next step.
+
+So clauses 1, 2 and 4 of the candidate hold on the gate as
+it stands, for every message tried. Clause 3 holds for what
+is kept under the runner's folder, and it fails for the log.
+
+## Finding F12: a refused message writes its whole subject to the log
+
+**Found by supposition S4 and the measure. Open.**
+
+Before it asks for the signature, the gate logs 1 line that
+names the job and carries the subject as it is written. The
+line is as long as the subject, and a subject is bounded
+only by C1. A refused message with a subject of 4,000,000
+bytes added 4,000,163 bytes to the log file, and as many
+characters to the console.
+
+The log file is bounded: 33,554,432 bytes, with 4 older
+files kept, 167,772,160 bytes in all. So this does not fill
+a disk. What it does is turn the log over. 42 such messages
+are more than the log holds. None of them needs a key, and
+all 42 fit inside the 50 lines a minute that the log lets
+through. After them, the log's history is their subjects.
+
+The security events file is another file, and this does not
+touch it: the 84 byte record of each refusal stands.
+
+Clause 3 of the candidate is what names this. 1 way to close
+it: the line is bounded. The subject is logged up to a fixed
+length, with its full length as a number. A subject that
+carries a job needs at most 1,811 bytes in its longest
+spelling, by finding F11's measure on the binding page. The
+suite pins the gap as it stands, in
+`test_s4_the_log_gains_the_subject_as_it_is_written`, and a
+change that bounds the line turns that pin.
+
+## What is made, and what is next
+
+- Made: the suite, which holds S1 to S7 on every suite run.
+- Next: a model of the 6 steps before the MAC, with the log
+  in its ledger, its configuration and its witnesses, and
+  its search in the suite. That is S8.
+- Next: a row for the candidate in the registry, kept apart
+  from the 31 until the owner's word.
+- F12 waits for the owner's word, as F11 does.
