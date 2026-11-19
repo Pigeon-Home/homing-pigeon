@@ -1,0 +1,395 @@
+# The v4 binding: the constraint spec
+
+`v4-properties.md` gives every constraint its property.
+`v4-general.md` states the 13 properties as 1 statement. This
+file is the next step: every constraint tied, in 1 table, to
+everything that keeps it. A constraint here is bound to the
+properties that state it, the code that enforces it, the
+tests that pin its value, the model that proves its property,
+and the fuzz data that has reached its code. Each tie is held
+by a test, so a tie that breaks fails by name.
+
+The table is `v4-bindings.json` on this shelf, the registry.
+This file is the registry as a page, with the record of the
+pass that built it. `runner/tests/test_v4_bindings.py` holds
+the registry to the tree and this page to the registry.
+
+## What a tie is, and what holds it
+
+1. **Constraint to property.** The properties that state the
+   constraint, with the clauses, as Part 1 of
+   `v4-properties.md` gives them. Held by reading that table
+   again: the registry and the index must agree, constraint
+   by constraint.
+2. **Constraint to code.** The functions that enforce it, as
+   `path:function`. Held by parsing each file: the function
+   must be there.
+3. **Constraint to pins.** The tests that pin its value or
+   its behaviour, by name. Held by parsing each test file:
+   the test must be there, and a test named for a constraint
+   (`test_c14_...`) must be bound to it.
+4. **Property to model.** The model file, its
+   configurations, and the invariants they check. Held by
+   reading each configuration: the invariants listed here
+   are the ones the checker is asked for, and each is
+   defined in the model.
+5. **Property to conformance.** The suite that drives the
+   real code against the property. Held by parsing: the
+   suite is there and has tests.
+6. **Property to the general model.** The steps of
+   `general.tla` that mark the property in the ledger, and
+   the seams that carry it: the constants of `general.tla`
+   that, set the other way, make the checker break the
+   property. Held by reading `general.tla` for the steps,
+   and by the search in `runner/tests/test_v4_general.py`
+   for the seams: the registry lists for each property the
+   seams whose turning breaks its mark, and no other.
+7. **Constraint to fuzz data.** The fuzz targets whose
+   corpus enters the constraint's code, with the number of
+   entries that do and 1 entry named as witness. This tie
+   is measured, not written: see the next section. Held by
+   replaying the witness under a profiler on every suite
+   run.
+
+## The counts
+
+The registry binds 31 constraints and 13 properties. It
+names 59 code sites and 74 named pins, and it carries 60
+fuzz ties. The fuzz part was counted on 2026-11-18.
+
+## Every constraint, tied
+
+The Pins column is the number of tests bound by name. The
+Fuzz data column names each target bound to the constraint
+and the largest number of its corpus entries that enter 1 of
+the constraint's functions.
+
+| ID | Constraint | Stated by | Code | Pins | Fuzz data |
+|----|------------|-----------|------|------|-----------|
+| C1 | `max_job_bytes` | P1 clause 1 | `handle_mail` in `runner/ops/mail.py` | 1 | none |
+| C2 | `max_script_bytes` | P1 clause 5 | `handle_mail` in `runner/ops/mail.py` | 1 | none |
+| C3 | `max_result_bytes` | P11, the whole property | `_max_result_bytes` in `runner/runner.py`; `_fit_result_body` in `runner/runner.py` | 2 | none |
+| C4 | `_LOCAL_ENVELOPE_MAX_BYTES` | P12, the whole property | `_ingest_local_envelope_inner` in `runner/runner.py`; `_scan_local_inbox` in `runner/runner.py` | 2 | `local` 518, `query` 32, `local_inbox` 23 |
+| C5 | Signature | P1 clause 2 | `sign_payload` in `runner/wire/verify.py`; `verify_body_keyed` in `runner/wire/verify.py`; `_verify_and_decrypt` in `runner/runner.py` | 3 | `wire` 115 |
+| C6 | Secret entropy floor | P13, the whole property | `validate_shared_secret` in `runner/guard/security.py`; `build_secrets` in `runner/wire/verify.py` | 3 | `secret` 26, `local` 518, `query` 183 |
+| C7 | Key fingerprint | P1 clause 2; P4 clause 1 | `key_fingerprint` in `runner/guard/security.py` | 1 | `local` 518, `query` 183 |
+| C8 | Cleartext | P1 clause 3 | `_cleartext_jobs_allowed` in `runner/runner.py` | 2 | `query` 3, `v2_mail` 3, `board_mail` 2 |
+| C9 | AEAD | P1 clause 3 | `decrypt_body` in `runner/wire/jobcrypto.py` | 2 | `crypto` 73 |
+| C10 | Audience | P1 clause 4 | `check_audience` in `runner/wire/verify.py`; `audience_allows` in `runner/wire/verify.py` | 1 | `query` 176, `board_mail` 95 |
+| C11 | Seven security modes | P1 clauses 4 and 8; P4 clause 11 | `sec_mode` in `runner/guard/security.py`; `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` | 2 | `query` 176, `board_mail` 95 |
+| C12 | `max_job_age_sec` | P1 clause 7 | `handle_mail` in `runner/ops/mail.py` | 2 | none |
+| C13 | Protocol version | P1 clause 6 | `_version_ok` in `runner/runner.py` | 1 | `local` 518, `query` 176, `board_mail` 95, `local_inbox` 23 |
+| C14 | Key policies | P1 clause 8; P4, the whole property | `check_key_policy` in `runner/wire/verify.py`; `_build_key_policies` in `runner/wire/verify.py` | 9 | `keydir` 35, `local` 518, `query` 163 |
+| C15 | Execution semantics | P1 clause 9; P5, the whole property | `handle_mail` in `runner/ops/mail.py`; `stash_result` in `runner/runner.py`; `load_sent_result` in `runner/runner.py` | 2 | `race_stash` 160 |
+| C16 | Transport credentials | P3, the whole property | `__init__` in `runner/transport_extensions/nats/__main__.py`; `fetch_channel_messages` in `runner/wire/transports.py` | 2 | `inbox` 29, `channels` 11 |
+| C17 | Result-policy ceiling | P2 clauses 5, 6 and 8 | `apply_result_policy` in `runner/ops/policy.py` | 7 | `queries` 132 |
+| C18 | Sandbox shape | P2 clauses 1 to 4 | `build_bwrap_command` in `runner/guard/sandbox.py`; `_confinement_cfg` in `runner/guard/sandbox.py` | 3 | none |
+| C19 | Queues edge gates | P3 clause 8 | `bearerMatches` in `runner/cloud/queues-worker/src/index.js` | 2 | none |
+| C20 | Transport gate postures | P3 clauses 4 to 8 | `scan_jobs` in `runner/transport_extensions/file/__main__.py`; `feed_authenticated` in `runner/wire/dtlsproto.py`; `service_channel` in `runner/wire/transports.py` | 4 | `dtls` 7, `dtls_session` 7, `inbox` 29 |
+| C21 | Key directory precedence | P4 clauses 2 and 9 | `key_directory_verdict` in `runner/wire/verify.py`; `load_key_directory` in `runner/wire/verify.py` | 1 | `keydir` 38 |
+| C22 | Upgrade key arrangement | P4 clauses 5, 7, 8 and 11 | `check_key_policy` in `runner/wire/verify.py` | 1 | `keydir` 35 |
+| C23 | Replay-cache keep horizon | P5 clauses 5 and 8 | `seen_keep_sec` in `runner/runner.py`; `_write_seen_kept` in `runner/runner.py`; `save_seen` in `runner/runner.py` | 3 | `race_state` 202, `board_mail` 78, `v2_mail` 32 |
+| C24 | Claim stale rule | P5 clause 4 | `_disk_owns` in `runner/ops/misc.py`; `_disk_release` in `runner/runner.py` | 2 | none |
+| C25 | Record retention and delivery window | P5 clauses 9 and 10 | `prune_sent` in `runner/runner.py`; `deliver_stash` in `runner/runner.py`; `resend_stashed` in `runner/runner.py` | 1 | `race_stash` 160 |
+| C26 | Default-class reader | P6 clauses 1, 2, 3 and 5 | `integer` in `runner/guard/confval.py`; `number` in `runner/guard/confval.py`; `reload_hot_config` in `runner/ops/attest.py` | 3 | `local` 518, `race_state` 202 |
+| C27 | Refuse class at startup | P6 clauses 4 and 6 | `_validate_size_caps` in `runner/runner.py`; `_port` in `runner/wire/mailbox.py` | 2 | none |
+| C28 | Disk guard | P7, the whole property | `guard_disk` in `runner/oracle/resources.py`; `disk_guard_enabled` in `runner/oracle/resources.py` | 4 | none |
+| C29 | v3 hybrid group | P8, the whole property | `begin` in `runner/wire/dtlsproto.py` | 1 | `dtls_session` 42, `dtls` 31, `dtls_hostile` 14 |
+| C30 | DTLS framing | P9, the whole property | `_split_records` in `runner/wire/dtlsproto.py`; `_accept_seq` in `runner/wire/dtlsproto.py` | 2 | `dtls` 61, `dtls_session` 55, `dtls_hostile` 38 |
+| C31 | macOS confinement probe | P10, the whole property | `macos_confinement_problem` in `runner/guard/macos_confine.py`; `_confinement_argv` in `runner/runner.py`; `confinement_startup_problem` in `runner/ops/remediation_ops.py` | 2 | none |
+
+## Every property, tied
+
+| Property | Stated in | Model | Checked invariants | Conformance | Steps in `general.tla` | Seams that carry it |
+|----------|-----------|-------|--------------------|-------------|-------------------------|---------------------|
+| P1 | `properties.md` | `gate.tla` | `P1Inv`, `SensorInv`, `AudienceWasRequired` | `test_proof_conformance.py` | `Handle`, `Local` | `LocalFilesOnly`, `GateVerifies`, `GateFresh` |
+| P2 | `properties.md` | `confine.tla` | `P2Inv`, `EffViewExact`, `EffBudgetExact` | `test_proof_conformance_p2.py` | `Handle` | `SpawnProbes` |
+| P3 | `properties.md` | `transgate.tla` | `P3Inv`, `GateBlocks`, `PresentedExact`, `AcceptedExact` | `test_proof_conformance_p3.py` | `Handle` | `TransportGates` |
+| P4 | `properties.md` | `keypolicy.tla` | `P4Inv`, `PinBinds`, `PolicyExact` | `test_proof_conformance_p4.py` | `Handle` | `GatePolicy` |
+| P5 | `properties.md` | `replay.tla` | `P5Inv`, `SeenImpliesRecord`, `DeliveredImpliesRecord` | `test_proof_conformance_p5.py` | `Handle`, `Local` | `GuardSparesFresh`, `LocalFilesOnly`, `GateFresh` |
+| P6 | `properties.md` | `decision.tla` | `P6Inv` | `test_proof_conformance_p6.py` | `Start` | `StartValidates` |
+| P7 | `v4-properties.md` | `diskguard.tla` | `NeverStops`, `OrderRespected`, `RecordedFaithfully` | `test_v4_models.py::Conformance`, `test_disk_guard.py` | `Guard` | `GuardSparesCache` |
+| P8 | `v4-properties.md` | `hybridselect.tla` | `P8Inv`, `OnlyOffered` | `test_v4_models.py::HybridSelectConformance` | `Agree` | `PrefersHybrid` |
+| P9 | `v4-properties.md` | none | none | `test_v4_models.py::FramingScopePin` | `Agree` | `SameSideOnly` |
+| P10 | `v4-properties.md` | `probegate.tla` | `P10Inv`, `RefusesOnlyItsOwn` | `test_v4_models.py::ProbeGateConformance` | `Start`, `Handle` | `SpawnProbes` |
+| P11 | `v4-properties.md` | `resultfit.tla` | `MarkedWhenCut`, `CapZeroAsIs`, `FitsAsIs`, `P11Floor` | `test_v4_models.py::ResultFitConformance` | `Commit` | `FitMarks` |
+| P12 | `v4-properties.md` | `localgate.tla` | `P12Inv`, `SymlinkUnread`, `ReadBounded`, `OverCapRefusedForSize` | `test_v4_models.py::LocalGateConformance` | `Local` | `LocalBounds` |
+| P13 | `v4-properties.md` | `secretfloor.tla` | `P13Inv`, `NamesACause` | `test_v4_models.py::SecretFloorConformance` | `Start`, `PollBegin`, `Local` | `PollRebuilds` |
+
+P9 has no model. It is a statement of scope, held by its
+pin, and `v4-working.md` records why it admits none.
+
+Every property has at least 1 seam. With all 14 seams as the
+code has them, every mark holds in every reachable state of
+the general model. Each seam, set the other way, breaks the
+properties listed against it, and its witness configuration
+shows the checker doing so. `v4-general.md` has the counts,
+the checker's run, and what holds each seam to the real
+code.
+
+## The fuzz data
+
+The fuzz campaign's log (`runner/tests/de_dust/runs.jsonl`)
+records 32,163 grow runs over 30 targets. Together they tried
+594,073,949 inputs against the readers' contracts. The
+corpus those runs kept stands at 2,604 corpus entries, and no
+crash stands open in it.
+
+A fuzz target is bound to a constraint when its corpus
+enters a function the constraint names. The count is made by
+replaying every corpus entry of every target under a
+profiler, through the target's own check, and noting which of
+the registry's functions the entry enters. Where a target's
+own tracer follows the function's file, that target is
+bound. Where none does, the 2 targets with the most entries
+inside the function are bound, and the registry marks the
+tie as not traced. 3 targets, `race_board`, `race_stash` and
+`race_state`, interleave threads, so the number of their
+entries that enter a function moves by a few from one count
+to the next. The registry carries 1 count of them.
+
+17 of the 30 targets are bound to at least 1 constraint.
+188,981,601 of those inputs were tried by the bound targets.
+
+| Target | Grow runs | Inputs tried | Refused | Accepted | Corpus entries | Constraints it reaches |
+|--------|-----------|--------------|---------|----------|----------------|------------------------|
+| `board_mail` | 874 | 1,936,675 | 1,585,434 | 437,838 | 100 | C8, C10, C11, C13, C23 |
+| `channels` | 1,138 | 3,422,319 | 2,261,454 | 1,173,409 | 11 | C16 |
+| `crypto` | 1,059 | 8,982,539 | 8,856,828 | 199,419 | 73 | C9 |
+| `dtls` | 1,855 | 28,500,436 | 15,493,224 | 13,112,009 | 61 | C20, C29, C30 |
+| `dtls_hostile` | 1,689 | 3,371,043 | 91,061 | 3,343,258 | 38 | C29, C30 |
+| `dtls_session` | 1,545 | 1,885,975 | 1,356,428 | 604,821 | 58 | C20, C29, C30 |
+| `inbox` | 971 | 3,151,116 | 719,918 | 2,458,517 | 29 | C16, C20 |
+| `keydir` | 1,726 | 78,509,596 | 54,125,973 | 24,449,176 | 38 | C14, C21, C22 |
+| `local` | 785 | 18,065,947 | 18,257,578 | 84,748 | 518 | C4, C6, C7, C13, C14, C26 |
+| `local_inbox` | 1,123 | 3,935,397 | 3,325,484 | 635,675 | 23 | C4, C13 |
+| `queries` | 649 | 2,328,901 | 709,394 | 1,688,147 | 132 | C17 |
+| `query` | 674 | 1,714,209 | 848,426 | 980,778 | 183 | C4, C6, C7, C8, C10, C11, C13, C14 |
+| `race_stash` | 631 | 11,989,510 | 3,453,418 | 8,593,529 | 165 | C15, C25 |
+| `race_state` | 672 | 12,082,749 | 1,982,948 | 10,133,896 | 212 | C23, C26 |
+| `secret` | 1,000 | 3,106,333 | 1,751,566 | 1,380,765 | 26 | C6 |
+| `v2_mail` | 867 | 1,958,468 | 1,800,443 | 230,721 | 84 | C8, C23 |
+| `wire` | 1,070 | 4,040,388 | 2,075,879 | 2,085,124 | 117 | C5 |
+
+A tie says that this target's inputs run through this
+function, under a contract the target checks on every input.
+It does not say the inputs prove the constraint. The log
+counts inputs by target, not by function, so an input
+counted for a target may have been refused before it reached
+the function. What a tie gives is direction: which data
+already presses on which constraint, and where none does.
+
+Each bound target's corpus is replayed against its contract
+on every suite run by `CorpusReplayTest` in
+`runner/tests/test_de_dust_corpus.py`.
+
+## What the fuzz data does not reach
+
+21 of the 31 constraints have fuzz data at their code. 10
+constraints have none: C1, C2, C3, C12, C18, C19, C24, C27,
+C28 and C31. Across all 31 there are 26 code sites that no
+corpus entry enters.
+
+| ID | Constraint | Code no corpus entry enters |
+|----|------------|-----------------------------|
+| C1 | `max_job_bytes` | `handle_mail` in `runner/ops/mail.py` |
+| C2 | `max_script_bytes` | `handle_mail` in `runner/ops/mail.py` |
+| C3 | `max_result_bytes` | `_max_result_bytes` in `runner/runner.py`; `_fit_result_body` in `runner/runner.py` |
+| C5 | Signature | `_verify_and_decrypt` in `runner/runner.py` |
+| C11 | Seven security modes | `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` |
+| C12 | `max_job_age_sec` | `handle_mail` in `runner/ops/mail.py` |
+| C15 | Execution semantics | `handle_mail` in `runner/ops/mail.py`; `load_sent_result` in `runner/runner.py` |
+| C16 | Transport credentials | `__init__` in `runner/transport_extensions/nats/__main__.py` |
+| C18 | Sandbox shape | `build_bwrap_command` in `runner/guard/sandbox.py`; `_confinement_cfg` in `runner/guard/sandbox.py` |
+| C19 | Queues edge gates | `bearerMatches` in `runner/cloud/queues-worker/src/index.js` |
+| C20 | Transport gate postures | `scan_jobs` in `runner/transport_extensions/file/__main__.py` |
+| C24 | Claim stale rule | `_disk_owns` in `runner/ops/misc.py`; `_disk_release` in `runner/runner.py` |
+| C25 | Record retention and delivery window | `prune_sent` in `runner/runner.py` |
+| C26 | Default-class reader | `reload_hot_config` in `runner/ops/attest.py` |
+| C27 | Refuse class at startup | `_validate_size_caps` in `runner/runner.py`; `_port` in `runner/wire/mailbox.py` |
+| C28 | Disk guard | `guard_disk` in `runner/oracle/resources.py`; `disk_guard_enabled` in `runner/oracle/resources.py` |
+| C31 | macOS confinement probe | `macos_confinement_problem` in `runner/guard/macos_confine.py`; `_confinement_argv` in `runner/runner.py`; `confinement_startup_problem` in `runner/ops/remediation_ops.py` |
+
+The largest gap is the first row. No fuzz target enters
+`handle_mail`, the acceptance gate that P1 is about. The
+targets fuzz the readers the gate calls, and the query,
+board and version 2 handlers beside it, and not the gate.
+So the 2 size caps, the freshness window and the at most
+once clause had no fuzz data at the place where they are
+decided. The next section is this pass's answer for the
+gate. The disk guard, the result fitting, the confinement
+gates and the claim's stale rule are held by their models
+and their conformance suites, and have no fuzz target.
+
+2 targets, `stage` and `collect`, are not bound to any
+constraint, and `CorpusReplayTest` has no test named for
+either.
+
+## The corpus at the doors
+
+The second half of `runner/tests/test_v4_bindings.py` takes
+the corpus to the doors themselves. Nothing was added to the
+corpus. The entries are read as they stand, and where a
+door needs a fresh date the entry is given the present and
+signed with the key it names. The counts below are from
+2026-11-18.
+
+**The mail gate (P1, P5).** The wire, crypto and mail corpora
+make 215 arrivals at `handle_mail`: 116 wire, 73 crypto, 26
+mail. Each was delivered twice with cleartext refused, and
+twice with cleartext allowed. None ran and the gate never
+raised.
+81 of them got as far as the freshness window and stopped
+there, since the corpus is dated 2026-10-26.
+
+The wire corpus holds 55 job payloads. Given the present for
+their `issued_at`, 54 can be signed. With cleartext allowed,
+40 run, each exactly once: a second delivery runs nothing,
+with the replay cache or without it. For each of the 40 the
+test reads P1's clauses off the payload and the bytes with
+its own hands (the key is held, its own HMAC verifies, the
+version and type, the subject's id, the window, the script's
+cap), and every clause holds. With cleartext refused, none
+of the 54 runs. Sealed under the key they name, the same 40
+run under the default and no other.
+
+Each of the 40 was then turned 3 ways: 1 digit of its
+signature changed, its body changed under its signature,
+and signed by a key the runner does not hold. None of the
+120 runs. Dated 3,700 seconds old or 400 seconds ahead, none
+runs. Dated 3,500 seconds old or 200 seconds ahead, all run.
+Sealed under a key the runner does not hold, none runs.
+
+**The local door (P12, and finding F9).** All 518 entries of
+the local corpus went through the local door with a watch on
+the run: 3 were filed as alerts, 515 were turned away, and
+nothing ran. The 54 fresh jobs went to the local door as
+well: the mail gate runs 40 of them and the local door runs
+none. 433 text entries were grown to 1 byte over the cap,
+and each was refused before a key map was built or a
+signature was read.
+
+**The floor (P13).** The 26 candidate secrets of the secret
+corpus were given to the start's check and to the key map a
+poll builds, as the default key and as an additional key.
+18 are refused and 8 pass, and the 3 places agree on every
+one.
+
+**The result fitting (P11).** No fuzz target enters the
+fitting, so corpus text was used as a result's streams: 6
+corpora, 6 caps each, unsealed, and 2 more sealed. Of the
+48 fits, 8 left the body as it was, 29 cut it to fit, and
+11 left it at its floor, over the cap and marked. No body
+left over its cap and over its floor, none left over its
+cap unmarked, and every body sent verified as signed.
+
+## Finding F10: the opener search read a body once for each brace
+
+The fitting test was slow in a way the fitting could not
+explain. The time went to the verifier, and it grew faster
+than the text. That led to this finding.
+
+A signed body is a JSON object whose last brace is replaced
+by the signature. To find the object's first brace the
+verifier tries every brace that passes a brace walk, newest
+first, and takes the first whose text parses
+(`_object_start` in `runner/wire/verify.py`, and its copy in
+`runner/cloud/send_job.py`). The walk was made 1 pass on
+2026-10-30. The parse was not: for each candidate the search
+copied the text from that brace to the marker, cleaned it,
+and parsed it.
+
+A body made of `{\"` repeated makes every brace a candidate.
+From any of its braces the walk reads the backslash as plain
+text and the quote as the start of a string that runs to the
+end, so every brace passes. Each candidate then fails the
+parse at its second character, after the copy and the
+cleaning. The cost is candidates times length, and it is paid
+before any MAC, so the sender needs no key.
+
+Measured on 2026-11-18, in this seat's container:
+
+| Body | Before: time | Before: characters parsed | After: time | After: characters parsed |
+|------|--------------|---------------------------|-------------|--------------------------|
+| 3,107 bytes | 0.06 s | 3,007,000 (968 times the body) | 0.005 s | 31,865 (10 times) |
+| 12,107 bytes | 1.1 s | 48,028,000 (3,967 times) | 0.013 s | 127,865 (11 times) |
+| 48,107 bytes | 15.3 s | 768,112,000 (15,967 times) | 0.055 s | 511,865 (11 times) |
+| 3,000,107 bytes | not run | not run | 3.5 s | not counted |
+
+The time before grew 4 times for each doubling of the body.
+By that law a body at the 4 MiB cap of `max_job_bytes` would
+have held the verifier about 32 hours. That figure is a
+projection from the 3 measurements, not a measurement.
+
+The change: the search now looks at a candidate's first 32
+characters before it reads the candidate whole
+(`_opens_object`). A JSON parse reads left to right, so an
+error well inside a look is the whole text's error too, and
+the candidate is passed over for the cost of the look. A
+look that ends in doubt, with the error within 16 characters
+of its edge or a string running off its end, is made 4 times
+longer and read again. What is never settled goes to the
+full parse as before. Only parse errors that more text cannot
+mend are taken as settled, by their wording, and any other
+wording is left to the full parse: a parser that words an
+error differently costs time and never an answer. A look
+nested deeper than the parser will follow settles the
+candidate too, since the full parse runs at the same depth
+of calls and stops at the same place.
+
+`runner/tests/test_opener_cost.py` holds the change:
+
+- The answers are the old search's. The old search stands in
+  the test as written before, and the 2 agree on 20,000
+  random hostile texts with the look's size moved, on every
+  corpus text that carries a marker, and on a signed job
+  whose script is the hostile units.
+- The reading is bounded by a count and not by a clock: a
+  body in which every brace is a candidate is handed to the
+  parser at most 16 times its length, at 3 sizes, in both
+  Python homes of the search.
+- A look never settles against a sound object, cut at every
+  length, and never against a string that runs off its end.
+- A body whose candidates each nest 30,000 arrays deep is
+  read less than 2 times its length.
+
+The same change stands on main from 2026-11-18, where the
+desk carries it as Q203.
+
+A third copy of the search is not changed. The hosted
+queue's Worker has its own, `objectStart` in
+`runner/cloud/queues-worker/src/index.js`. It walks from
+every brace and reads each candidate whole, so it carries
+both costs: on the same shape of body, 24,107 bytes took it
+0.58 seconds under Node 22 in this seat's container. A
+request reaches it only behind a tenant's bearer token, and
+the platform bounds a request's time, so what it can cost is
+that tenant's own request. It is named here so the count is
+right: the search has 3 homes, and 2 are closed.
+
+## What this pass does not show
+
+- A fuzz tie is reach, not proof. The proofs are the models
+  and the conformance suites the property table names.
+- The reach count follows calls into functions. A constraint
+  kept by a line inside a larger function, as the 4 that
+  name `handle_mail` are, is counted by that function.
+- The corpus at the doors is the corpus as it stands, 215
+  arrivals and 55 payloads. It is not a campaign: nothing
+  grows it against the gate. A fuzz target for the gate is
+  the campaign's to add.
+- F10's bound is shown for the bodies tried and argued for
+  the rest. The record gives no proof that no other body
+  makes the search read more than 16 times its length.
+- A seam is the general model's guard, set on or off whole.
+  It shows a property rests on that guard being applied.
+  The guard's inside is the small model's to prove, and the
+  seam's hold on the code is in `v4-general.md`.
+
+## For the next pass
+
+- A search for cost in the readers that run before a MAC.
+  F10 came to light through a slow test and not through a
+  search, and a reader's cost is a property like any other.
+- The 3 suppositions `v4-general.md` left stand as written
+  there.

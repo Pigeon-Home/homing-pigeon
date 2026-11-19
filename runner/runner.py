@@ -4723,13 +4723,23 @@ def _scan_local_inbox(cfg, base_dir) -> int:
                 else:
                     with open(path, "rb") as fh:
                         raw = fh.read(_LOCAL_ENVELOPE_MAX_BYTES + 1)
-                    try:
-                        text = raw.decode("utf-8")
-                    except UnicodeDecodeError:
-                        log(f"local signal (file): {name}: envelope is "
-                            f"not UTF-8; dropped", "WARN")
+                    if len(raw) > _LOCAL_ENVELOPE_MAX_BYTES:
+                        # Refused for its size before anything is
+                        # decoded: the read stops 1 byte past the
+                        # cap, and that cut can fall inside a
+                        # character of an envelope that is UTF-8
+                        # when read whole.
+                        log(f"local signal (file): {name}: envelope "
+                            f"too large; dropped", "WARN")
                     else:
-                        _ingest_local_envelope(cfg, base_dir, text, "file")
+                        try:
+                            text = raw.decode("utf-8")
+                        except UnicodeDecodeError:
+                            log(f"local signal (file): {name}: envelope "
+                                f"is not UTF-8; dropped", "WARN")
+                        else:
+                            _ingest_local_envelope(cfg, base_dir, text,
+                                                   "file")
             except Exception as e:
                 log(f"local signal (file): {name}: failed: {e}", "WARN")
             finally:

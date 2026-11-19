@@ -22,6 +22,14 @@ sys.path.insert(0, REPO)
 from runner import runner as RR  # noqa: E402
 from runner.oracle.dri import parse_dri  # noqa: E402
 from runner.oracle.resources import parse_resources  # noqa: E402
+
+# Loaded here, not inside the 2 tests that read them: each puts
+# its own folder on sys.path when first loaded, and a test
+# leaves the path as it found it.
+DTLS = importlib.import_module(  # noqa: E402
+    "runner.transport_extensions.dtls.__main__")
+NATS = importlib.import_module(  # noqa: E402
+    "runner.transport_extensions.nats.__main__")
 from runner.tests.decision1_startup_support import (  # noqa: E402
     STRONG_SECRET)
 
@@ -65,7 +73,7 @@ class RefuseReaderTest(unittest.TestCase):
             lambda: RR.build_secrets(
                 {"shared_secret": STRONG_SECRET,
                  "additional_secrets": {"k2": "weak"}}),
-            "shared_secret", "too weak")
+            "additional_secrets['k2']", "too weak")
 
     # -- resources: the paging threshold and its companions --
     def test_resources_threshold_not_a_number(self):
@@ -127,8 +135,7 @@ class RefuseReaderTest(unittest.TestCase):
         self.assertEqual(dtls.listen_port({"port": 20221}), 20221)
 
     def test_transport_dtls_bind(self):
-        dtls = importlib.import_module(
-            "runner.transport_extensions.dtls.__main__")
+        dtls = DTLS
         self._refuses(
             lambda: dtls.bind_address({"bind": "not-an-address"}),
             "transport_dtls.bind")
@@ -139,8 +146,7 @@ class RefuseReaderTest(unittest.TestCase):
                          "127.0.0.1")
 
     def test_transport_nats_url_port(self):
-        nats = importlib.import_module(
-            "runner.transport_extensions.nats.__main__")
+        nats = NATS
         self._refuses(
             lambda: nats.url_port("nats://127.0.0.1:2O220"),
             "transport_nats.url")

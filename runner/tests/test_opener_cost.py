@@ -346,19 +346,19 @@ class TheLook(unittest.TestCase):
         self.assertEqual(0, RUNNER_SIDE._object_start(norm, sig_at))
         self.assertFalse(SENDER._opens_object(norm, 0, sig_at))
 
-    def test_a_candidate_nested_past_the_parser_is_settled_by_its_look(self):
-        # Each unit opens an object and nests arrays deeper than
-        # the parser follows, then hides the next unit in a
-        # string. Every brace is a candidate, and none is read
-        # whole.
+    def test_a_candidate_nested_30000_deep_costs_its_looks_and_no_more(self):
+        # Each unit opens an object and nests 30,000 arrays, then
+        # hides the next unit in a string. Every brace is a
+        # candidate. A parser that stops short of that depth
+        # settles the candidate where it stops. A parser that
+        # follows it settles on the character after the nest.
+        # Either way no candidate is read whole.
         deep = 30000
         unit = '{"a":' + "[" * deep + '\\"'
         norm = unit * 6 + '"' + MARK
         sig_at = norm.rfind(',"sig":"')
         self.assertEqual(6, sum(1 for _ in RUNNER_SIDE._root_candidates(
             norm, sig_at)))
-        with self.assertRaises(RecursionError):
-            json.loads(unit[:-2] + "]" * deep + "}")
         for module, both_forms in HOMES:
             self.assertEqual(
                 answer(old_search, module, norm, sig_at, both_forms),
@@ -366,6 +366,44 @@ class TheLook(unittest.TestCase):
             read = characters_read(module._object_start, module, norm,
                                    sig_at)
             self.assertLess(read, 2 * len(norm), module.__name__)
+
+    @staticmethod
+    def _stops_at():
+        """A nesting depth this interpreter's parser will not
+        follow, or None when it follows the deepest tried. The
+        depth is the interpreter's: 1 release stops near 1,000
+        levels and another follows more than 30,000."""
+        for deep in (2000, 30000, 300000):
+            try:
+                json.loads("[" * deep + "]" * deep)
+            except RecursionError:
+                return deep
+        return None
+
+    def test_a_candidate_nested_to_where_the_parser_stops_is_not_read_whole(
+            self):
+        # The same shape, nested to a depth this interpreter's
+        # parser will not follow, where it has one: the look that
+        # reaches that depth settles the candidate. Where the
+        # parser follows the deepest nesting tried, the units are
+        # nested that deep and the look settles after the nest.
+        stops_at = self._stops_at()
+        deep = stops_at or 300000
+        unit = '{"a":' + "[" * deep + '\\"'
+        if stops_at:
+            with self.assertRaises(RecursionError):
+                json.loads(unit[:-2] + "]" * deep + "}")
+        norm = unit * 3 + '"' + MARK
+        sig_at = norm.rfind(',"sig":"')
+        self.assertEqual(3, sum(1 for _ in RUNNER_SIDE._root_candidates(
+            norm, sig_at)))
+        for module, both_forms in HOMES:
+            self.assertEqual(
+                answer(old_search, module, norm, sig_at, both_forms),
+                answer(module._object_start, norm, sig_at))
+            read = characters_read(module._object_start, module, norm,
+                                   sig_at)
+            self.assertLessEqual(read, 16 * len(norm), module.__name__)
 
 
 if __name__ == "__main__":

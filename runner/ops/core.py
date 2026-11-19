@@ -54,8 +54,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 70,057 lines,
-63,510 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 70,130 lines,
+63,576 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -624,11 +624,36 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # relay's door into dispatch). The relay's own two
 # modules are not on the canonical list yet; their
 # admission is a later, separate recording.
+# Re-measured again that day after the local inbox
+# scan came to look at the size of what it read
+# before it decodes anything, growing
+# runner/runner.py by 10 lines, and after the key
+# map came to put each additional secret through
+# the entropy gate under its own setting's name,
+# growing runner/wire by 11 lines (findings F5 and
+# F6 of the v4 search).
+# Re-measured again that day after the disk guard
+# came to note every removal, whatever it freed,
+# and to end a pass at a measurement that fails,
+# growing runner/oracle by 30 lines (findings F2
+# and F3 of the v4 search).
+# Re-measured again that day after the disk guard
+# came to leave a recorded result standing while a
+# redelivery the door would take could still ask
+# for it, growing runner/oracle by 22 lines
+# (finding F8 of the general statement).
 # Re-measured again that day after the opener search
 # came to look at a candidate's first characters
 # before it reads the candidate whole, growing
 # runner/wire by 57 lines and runner/cloud by 45
-# (finding F10 of the v4 binding work).
+# (finding F10 of the constraint spec).
+# Re-measured on 2026-11-18 after the v4 provable
+# model work came to main in a merge: the branch had
+# carried every core change of main's and its own
+# findings' growth on top, so the line figures stand
+# as the branch recorded them, checked live against
+# the merged tree, and the zip figure moves by 1 byte
+# for the version lines the merge brought from main.
 # Recorded constants: they describe the as-assembled set (the
 # canonical list as first recorded -- 132 files -- plus the 3 suite runners named in
 # the module docstring; the list itself stands at 137 since
@@ -641,18 +666,18 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 140
-AS_ASSEMBLED_ZIP_BYTES = 903142
-AS_ASSEMBLED_LINES = 70057
-AS_ASSEMBLED_NONBLANK_LINES = 63510
+AS_ASSEMBLED_ZIP_BYTES = 904123
+AS_ASSEMBLED_LINES = 70130
+AS_ASSEMBLED_NONBLANK_LINES = 63576
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
     "runner/ops": 23966,
     "runner/tools": 10092,
-    "runner/wire": 9104,
-    "runner/runner.py": 7302,
-    "runner/oracle": 5359,
+    "runner/wire": 9115,
+    "runner/runner.py": 7312,
+    "runner/oracle": 5411,
     "runner/transport_extensions": 2775,
     "runner/guard": 7597,
     "runner/cloud": 2125,

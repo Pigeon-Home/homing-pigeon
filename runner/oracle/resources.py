@@ -251,7 +251,9 @@ def check_resources(cfg, base_dir, now=None):
 # runner's own material under base_dir: its logs first (rolled
 # backups, then the oldest lines of the live logs), then recorded
 # results and retained outputs, oldest first, then given up result
-# stashes, then job workspaces no job can still be running in. It
+# stashes, then job workspaces no job can still be running in. A
+# recorded result a redelivery could still ask for stays: one no
+# older than the freshness window and its future bound. It
 # never touches anything outside base_dir, and it never stops the
 # runner: it stops the growth, records what it did, and the poll
 # carries on. The one opt out is the top level setting
@@ -266,6 +268,9 @@ DISK_GUARD_WORK_MIN_AGE_SEC = 3600
 DISK_GUARD_MAX_ACTIONS = 512
 _DISK_GUARD_LOG_NAMES = ("runner.log", "oracle.log", "oracle-chat.jsonl")
 _DISK_GUARD_OLD_DIRS = ("sent", "retained", os.path.join("outbox", "failed"))
+# The door takes a job dated up to this far ahead of the clock
+# (the freshness check in runner/ops/mail.py).
+DISK_GUARD_REPLAY_SKEW_SEC = 300
 
 
 def disk_guard_enabled(cfg) -> bool:
@@ -341,14 +346,28 @@ def _guard_oldest_files(d):
     return out
 
 
+def _guard_replay_window(cfg):
+    """Seconds for which a recorded result can still be asked
+    for by a redelivery the door would take: the freshness
+    window, max_job_age_sec, and its future bound. A record in
+    sent/ no older than this is the layer that answers a
+    redelivery once the replay cache has let the id go, so the
+    guard does not give it up: the job would run again."""
+    raw = cfg.get("max_job_age_sec") if isinstance(cfg, dict) else None
+    return _confval.integer(raw, 3600, lo=1) + DISK_GUARD_REPLAY_SKEW_SEC
+
+
 def _guard_remove_file(path):
+    """Remove one file. Returns the bytes freed, 0 for an empty
+    file, or None when nothing was removed: a removal is an
+    action whatever it freed."""
     size = _guard_size(path)
     if size is None:
-        return 0
+        return None
     try:
         os.remove(path)
     except OSError:
-        return 0
+        return None
     return size
 
 
@@ -389,13 +408,27 @@ def _guard_oldest_workspaces(base_dir, now):
     return out
 
 
+def _guard_tree_entries(path):
+    return sum(len(dirs) + len(files)
+               for _root, dirs, files in os.walk(path))
+
+
 def _guard_remove_tree(path):
+    """Remove one workspace. Returns the bytes freed, 0 for an
+    empty one, or None when it stands as it stood. A removal
+    that stopped part way freed what it freed, and is an action
+    too."""
     size = _guard_tree_bytes(path)
+    held = _guard_tree_entries(path)
     try:
         shutil.rmtree(path)
     except OSError:
-        return 0
-    return size if not os.path.exists(path) else 0
+        pass
+    if not os.path.lexists(path):
+        return size
+    if _guard_tree_entries(path) == held:
+        return None
+    return max(0, size - _guard_tree_bytes(path))
 
 
 def _guard_log_backups(base_dir):
@@ -471,9 +504,22 @@ def guard_disk(cfg, base_dir, now=None):
                 "path": os.path.relpath(path, base_dir),
                 "action": action, "bytes": nbytes})
 
+    blind = False
+
     def under():
+        # True when the pass gives up nothing more: the disk
+        # measures under the threshold, or it cannot be measured.
+        # Nothing is given up without a measurement that says the
+        # disk is at or over the threshold, so a measurement that
+        # fails ends the pass, and no later one is asked for.
+        nonlocal blind
+        if blind:
+            return True
         frac = _disk_fraction(base_dir)
-        return frac is not None and frac < DISK_GUARD_THRESHOLD
+        if frac is None:
+            blind = True
+            return True
+        return frac < DISK_GUARD_THRESHOLD
 
     # Stage 1: the logs. Rolled backups go first, oldest first;
     # then the live logs give up their oldest lines, keeping the
@@ -482,7 +528,7 @@ def guard_disk(cfg, base_dir, now=None):
         if under():
             break
         n = _guard_remove_file(path)
-        if n:
+        if n is not None:
             note(path, "remove", n)
     if not under():
         for name in _DISK_GUARD_LOG_NAMES:
@@ -493,17 +539,23 @@ def guard_disk(cfg, base_dir, now=None):
             if n:
                 note(path, "truncate", n)
     # Stage 2: recorded results, retained outputs and given up
-    # stashes, oldest first across all three.
+    # stashes, oldest first across all three. A recorded result
+    # still inside the replay window is not material: it stays.
     if not under():
         old = []
+        window = _guard_replay_window(cfg)
         for sub in _DISK_GUARD_OLD_DIRS:
-            old.extend(_guard_oldest_files(os.path.join(base_dir, sub)))
+            found = _guard_oldest_files(os.path.join(base_dir, sub))
+            if sub == "sent":
+                found = [item for item in found
+                         if now - item[0] > window]
+            old.extend(found)
         old.sort()
         for _mtime, path, _size in old:
             if under():
                 break
             n = _guard_remove_file(path)
-            if n:
+            if n is not None:
                 note(path, "remove", n)
     # Stage 3: leftover job workspaces old enough that no job can
     # still be running in them.
@@ -512,7 +564,7 @@ def guard_disk(cfg, base_dir, now=None):
             if under():
                 break
             n = _guard_remove_tree(path)
-            if n:
+            if n is not None:
                 note(path, "remove", n)
 
     after = _disk_fraction(base_dir)

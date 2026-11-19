@@ -63,7 +63,8 @@ poll cycle (`runner/ops/poll.py`, line 59). Constants in that
 module: `DISK_GUARD_THRESHOLD` is 0.90;
 `DISK_GUARD_LOG_KEEP_BYTES` is 65536;
 `DISK_GUARD_WORK_MIN_AGE_SEC` is 3600;
-`DISK_GUARD_MAX_ACTIONS` is 512. The guard is on by default;
+`DISK_GUARD_MAX_ACTIONS` is 512;
+`DISK_GUARD_REPLAY_SKEW_SEC` is 300. The guard is on by default;
 the one opt out is the top level setting
 `no_90_disk_truncation`, and only a literal `true` turns it
 off (`disk_guard_enabled`: an absent key, `false`, or an
@@ -77,7 +78,11 @@ and stopping as soon as the disk is under the threshold:
    `oracle-chat.jsonl`) truncated, keeping the newest 65536
    bytes of each.
 3. Recorded results and retained outputs (`sent/`,
-   `retained/`, `outbox/failed/`), oldest first, removed.
+   `retained/`, `outbox/failed/`), oldest first, removed. A
+   recorded result in `sent/` no older than `max_job_age_sec`
+   plus 300 seconds is not material and stays: a redelivery
+   the gate would still take could need it (P5 clause 5;
+   finding F8 in `v4-general.md`).
 4. Job workspaces untouched for at least 3600 seconds,
    removed.
 
@@ -208,22 +213,29 @@ an audit-only run after the probe failed.
 
 ## Part 3: standing constraints no property stated
 
-### P11. A result body never leaves over `max_result_bytes`
+### P11. A result body leaves within `max_result_bytes`, down to the fitting's floor
 
 C3, stated by no property until now. For every result the
 runner delivers on the mail path, when `max_result_bytes`
 is set to a non-zero value, the body that is signed and sent
-is at most that many bytes: a body over the cap has its
-streams cut to head and tail before signing, is marked with
-`result_truncated` naming the bytes dropped, and the cut is
-logged (`runner/ops/mail.py`, the fit-before-signing step;
-`_fit_result_body` and `_max_result_bytes` in
-`runner/runner.py`). When the cap is 0, the property is
-vacuous and says so: unlimited is the owner's stated choice.
+is at most that many bytes, down to the fitting's floor: a
+body over the cap has its streams cut to head and tail
+before signing, is marked with `result_truncated` naming the
+bytes dropped, and the cut is logged (`runner/ops/mail.py`,
+the fit-before-signing step; `_fit_result_body` and
+`_max_result_bytes` in `runner/runner.py`). The floor is the
+result as the fitting's last pass leaves it, with both
+streams at their first and last 2 KiB: the streams are all
+the fitting cuts. A cap under a result's floor cannot be
+kept by cutting, and the body then leaves at the floor, over
+the cap and marked: the runner sends a marked result rather
+than none. When the cap is 0, the property is vacuous and
+says so: unlimited is the owner's stated choice.
 
 A counterexample to P11 is a signed result body larger than
 a non-zero `max_result_bytes` in the configuration the
-handling loaded, or an over-cap body sent unmarked.
+handling loaded and larger than that result's floor, or an
+over-cap body sent unmarked.
 
 ### P12. A local envelope over the cap is refused unread by the gate
 
@@ -234,9 +246,14 @@ before any verification work: the file scan reads at most
 one byte past the cap, a symlink is refused unread, and the
 ingest check rejects an over-cap envelope with the reason
 recorded (`runner/runner.py`, `_LOCAL_ENVELOPE_MAX_BYTES`
-and `_ingest_local_envelope_inner`). The local path's bound
-stands in front of the same gate the mail path faces; it is
-not a second, weaker door.
+and `_ingest_local_envelope_inner`). Behind its bound the
+local door applies the signature, the version and type, the
+age and the key policy as the mail gate applies them, and
+then the 1 alert ingest both paths share. It files alerts and
+runs nothing. It applies no cleartext decision, no audience
+clause and no replay cache, so it is a narrower door for
+alerts, and it is no second way to a run (finding F9 in
+`v4-general.md`).
 
 A counterexample to P12 is a local envelope over the cap
 that reaches signature verification, or a symlinked envelope
@@ -255,3 +272,14 @@ a weak secret costs the start, never a warning and a run.
 
 A counterexample to P13 is a runner that starts and reads a
 job while its shared secret estimates under 128 bits.
+
+## Part 4: the 13 together
+
+Parts 1 to 3 give each constraint its property, and each
+property its own model. `v4-general.md` states the 13 as
+instances of 1 statement, G: every effect passed its door at
+its own occasion, and no door's work moved the state another
+door stands on. `general.tla` is the model of G, 1 runner life
+with all 13 as marks of 1 ledger, and
+`runner/tests/test_v4_general.py` is its search and its hold
+on the code.

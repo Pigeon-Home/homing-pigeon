@@ -90,15 +90,15 @@ set. A change aimed at core is aimed at those 136 files and
 no others, and a result reported for core covers exactly
 them.
 
-The runner proper is 7,302 lines; the core around it is
-62,755. The set as assembled, part by part (re-measured
-2026-11-19):
+The runner proper is 7,312 lines; the core around it is
+62,818. The set as assembled, part by part (re-measured
+2026-11-18):
 
 - runner/ops: 23,966 lines
 - runner/tools: 10,092
-- runner/wire: 9,104
-- runner/runner.py: 7,302
-- runner/oracle: 5,359
+- runner/wire: 9,115
+- runner/runner.py: 7,312
+- runner/oracle: 5,411
 - runner/transport_extensions: 2,775
 - runner/guard: 7,597
 - runner/cloud: 2,125

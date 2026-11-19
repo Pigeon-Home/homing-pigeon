@@ -6,66 +6,108 @@
 \* backups, the live logs, the recorded results and retained
 \* outputs, job workspaces past their age floor), each class
 \* present or absent on the disk as it stands, and the disk
-\* re-measured after every action, which the model states as a
-\* nondeterministic over flag after each action. File level
-\* multiplicity inside a class, the annotation's 512 action
-\* cap, and the still-over cooldown are outside this model;
-\* the claims checked are the order, the threshold, the
-\* recording, and that the runner is never stopped.
+\* measured before every action and again at the door of every
+\* class.
+\*
+\* A measurement comes out one of 3 ways: at or over the
+\* threshold, under it, or not at all. The model lets every
+\* measurement come out any of the 3, whatever the last one
+\* said: a disk can fill up again between 2 measurements with
+\* no action between them, and the pass then goes on to a
+\* later class with an earlier one's material still standing.
+\* A measurement that fails ends the pass: nothing is given up
+\* without a measurement that says the disk is at or over the
+\* threshold.
+\*
+\* File level multiplicity inside a class, the annotation's
+\* 512 action cap, and the still-over cooldown are outside
+\* this model; the claims checked are the order, the
+\* threshold, the recording, and that the runner is never
+\* stopped.
+\*
+\* This file was run with TLC on 2026-11-18 in this shape, and
+\* the checker found the count the search had predicted. The
+\* model it states is searched by
+\* runner/tests/test_v4_models.py; the state counts in
+\* v4-search.md are that search's, and the checker's verdicts
+\* are in v4-working.md.
 
 EXTENDS Integers, Sequences
 
-VARIABLES over, present, acted, phase, recorded, alive
+VARIABLES reading, present, acted, at, phase, recorded, alive
 
-vars == <<over, present, acted, phase, recorded, alive>>
+vars == <<reading, present, acted, at, phase, recorded, alive>>
 
 Classes == {1, 2, 3, 4}
+Readings == {"over", "under", "failed"}
 
-\* The smallest class with material that has not been acted on
-\* yet, or 0 when there is none. acted is a sequence of classes
-\* in the order the pass acted on them.
-NextClass ==
-  LET done == {acted[i] : i \in DOMAIN acted}
-  IN  IF \E c \in present : c \notin done
-        THEN CHOOSE c \in present : c \notin done
-               /\ \A d \in present : d \notin done => c <= d
-        ELSE 0
-
+\* at is the class whose turn it is: 0 before the first
+\* measurement is acted on, 5 past the last class. acted is a
+\* sequence of classes in the order the pass acted on them.
 Init ==
-  /\ over \in {TRUE, FALSE}
+  /\ reading \in Readings
   /\ present \in SUBSET Classes
   /\ acted = <<>>
+  /\ at = 0
   /\ phase = "run"
   /\ recorded = FALSE
   /\ alive = TRUE
 
-\* One action of the pass: the disk measures at or over the
-\* threshold, and the pass acts on the next class in the
-\* order. After the action the disk is re-measured; the model
-\* lets the re-measurement come out either way.
+\* The first measurement reads at or over the threshold: the
+\* pass opens at the first class, and measures again there.
+Open ==
+  /\ phase = "run"
+  /\ at = 0
+  /\ reading = "over"
+  /\ at' = 1
+  /\ reading' \in Readings
+  /\ UNCHANGED <<present, acted, phase, recorded, alive>>
+
+\* One action of the pass: the class whose turn it is has
+\* material and the disk measures at or over the threshold.
+\* The pass acts on the class, and measures again at the door
+\* of the next one.
 Act ==
   /\ phase = "run"
-  /\ over = TRUE
-  /\ NextClass /= 0
-  /\ acted' = Append(acted, NextClass)
-  /\ over' \in {TRUE, FALSE}
+  /\ at \in Classes
+  /\ at \in present
+  /\ reading = "over"
+  /\ acted' = Append(acted, at)
+  /\ at' = at + 1
+  /\ reading' \in Readings
   /\ UNCHANGED <<present, phase, recorded, alive>>
 
-\* The pass ends: the disk is under the threshold, or every
-\* class with material has been acted on. A pass that acted
-\* records its disk_truncation event; a pass that acted on
-\* nothing records none, as the code returns no event then.
-\* Ending the pass never touches alive: no outcome of a pass
-\* stops the runner.
+\* The pass leaves a class as it stands: the class has no
+\* material, or the disk measures under the threshold. It
+\* measures again at the door of the next class.
+Leave ==
+  /\ phase = "run"
+  /\ at \in Classes
+  /\ reading /= "failed"
+  /\ (at \notin present \/ reading = "under")
+  /\ at' = at + 1
+  /\ reading' \in Readings
+  /\ UNCHANGED <<present, acted, phase, recorded, alive>>
+
+\* The pass ends: the first measurement did not read at or
+\* over the threshold, or a later measurement failed, or the
+\* last class has had its turn. A pass that acted records its
+\* disk_truncation event; a pass that acted on nothing records
+\* none, as the code returns no event then. Ending the pass
+\* never touches alive: no outcome of a pass stops the runner.
 End ==
   /\ phase = "run"
-  /\ (~over \/ NextClass = 0)
+  /\ \/ at = 0 /\ reading /= "over"
+     \/ at \in Classes /\ reading = "failed"
+     \/ at = 5
   /\ phase' = "done"
   /\ recorded' = (acted /= <<>>)
-  /\ UNCHANGED <<over, present, acted, alive>>
+  /\ UNCHANGED <<reading, present, acted, at, alive>>
 
 Next ==
+  \/ Open
   \/ Act
+  \/ Leave
   \/ End
   \/ /\ phase = "done"
      /\ UNCHANGED vars
@@ -86,5 +128,24 @@ OrderRespected ==
 RecordedFaithfully ==
   /\ (phase = "done" /\ acted /= <<>>) => recorded = TRUE
   /\ recorded = TRUE => acted /= <<>>
+
+\* Witness probes. All 3 are expected to FAIL; their
+\* counterexamples are the evidence that the model moves.
+\* NeverActs says no pass ever acts: its counterexample is a
+\* disk over the threshold with material in a class, and 1
+\* action on it.
+NeverActs == acted = <<>>
+
+\* NeverRecords says no pass ever records an event: its
+\* counterexample is a pass that acted and ended.
+NeverRecords == recorded = FALSE
+
+\* NeverLeavesMaterial says a pass never acts on a class while
+\* an earlier class with material was left as it stood: its
+\* counterexample is a disk that read under at the earlier
+\* class and over again at the later one.
+NeverLeavesMaterial ==
+  \A i \in DOMAIN acted : \A c \in present :
+    c < acted[i] => \E j \in DOMAIN acted : acted[j] = c
 
 =============================================================================

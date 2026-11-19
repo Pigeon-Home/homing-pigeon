@@ -1,0 +1,1624 @@
+{
+ "about": "The v4 binding's constraint spec. Every constraint of constraints.md is tied here to the properties that state it, its code, its pins and its fuzz data, and every property to its model, its conformance suite and its steps in general.tla. runner/tests/test_v4_bindings.py holds each tie to the tree and re-measures the fuzz part.",
+ "counted": "2026-11-18",
+ "properties": {
+  "P1": {
+   "title": "The acceptance gate",
+   "stated": "properties.md",
+   "model": "gate.tla",
+   "configurations": [
+    "gateenforce.cfg",
+    "gatedefault.cfg",
+    "gateaudit.cfg"
+   ],
+   "holds": [
+    "P1Inv",
+    "SensorInv",
+    "AudienceWasRequired"
+   ],
+   "conformance": [
+    "runner/tests/test_proof_conformance.py"
+   ],
+   "general": [
+    "Handle",
+    "Local"
+   ],
+   "seams": [
+    "LocalFilesOnly",
+    "GateVerifies",
+    "GateFresh"
+   ]
+  },
+  "P2": {
+   "title": "Result policies cannot widen confinement",
+   "stated": "properties.md",
+   "model": "confine.tla",
+   "configurations": [
+    "confineceiling.cfg"
+   ],
+   "holds": [
+    "P2Inv",
+    "EffViewExact",
+    "EffBudgetExact"
+   ],
+   "conformance": [
+    "runner/tests/test_proof_conformance_p2.py"
+   ],
+   "general": [
+    "Handle"
+   ],
+   "seams": [
+    "SpawnProbes"
+   ]
+  },
+  "P3": {
+   "title": "A transport's credentials are a required second gate",
+   "stated": "properties.md",
+   "model": "transgate.tla",
+   "configurations": [
+    "transgate.cfg"
+   ],
+   "holds": [
+    "P3Inv",
+    "GateBlocks",
+    "PresentedExact",
+    "AcceptedExact"
+   ],
+   "conformance": [
+    "runner/tests/test_proof_conformance_p3.py"
+   ],
+   "general": [
+    "Handle"
+   ],
+   "seams": [
+    "TransportGates"
+   ]
+  },
+  "P4": {
+   "title": "A named key can do only what its policy allows",
+   "stated": "properties.md",
+   "model": "keypolicy.tla",
+   "configurations": [
+    "keypolicy.cfg"
+   ],
+   "holds": [
+    "P4Inv",
+    "PinBinds",
+    "PolicyExact"
+   ],
+   "conformance": [
+    "runner/tests/test_proof_conformance_p4.py"
+   ],
+   "general": [
+    "Handle"
+   ],
+   "seams": [
+    "GatePolicy"
+   ]
+  },
+  "P5": {
+   "title": "Replay cannot re-execute",
+   "stated": "properties.md",
+   "model": "replay.tla",
+   "configurations": [
+    "replay.cfg"
+   ],
+   "holds": [
+    "P5Inv",
+    "SeenImpliesRecord",
+    "DeliveredImpliesRecord"
+   ],
+   "conformance": [
+    "runner/tests/test_proof_conformance_p5.py"
+   ],
+   "general": [
+    "Handle",
+    "Local"
+   ],
+   "seams": [
+    "GuardSparesFresh",
+    "LocalFilesOnly",
+    "GateFresh"
+   ]
+  },
+  "P6": {
+   "title": "Refuse-class configuration behaves as Decision 1 requires",
+   "stated": "properties.md",
+   "model": "decision.tla",
+   "configurations": [
+    "decision.cfg"
+   ],
+   "holds": [
+    "P6Inv"
+   ],
+   "conformance": [
+    "runner/tests/test_proof_conformance_p6.py"
+   ],
+   "general": [
+    "Start"
+   ],
+   "seams": [
+    "StartValidates"
+   ]
+  },
+  "P7": {
+   "title": "The disk guard cannot stop the runner, and touches only its own material",
+   "stated": "v4-properties.md",
+   "model": "diskguard.tla",
+   "configurations": [
+    "diskguard.cfg"
+   ],
+   "holds": [
+    "NeverStops",
+    "OrderRespected",
+    "RecordedFaithfully"
+   ],
+   "conformance": [
+    "runner/tests/test_v4_models.py::Conformance",
+    "runner/tests/test_disk_guard.py"
+   ],
+   "general": [
+    "Guard"
+   ],
+   "seams": [
+    "GuardSparesCache"
+   ]
+  },
+  "P8": {
+   "title": "A v3 session that can agree the hybrid group does so",
+   "stated": "v4-properties.md",
+   "model": "hybridselect.tla",
+   "configurations": [
+    "hybridselect.cfg"
+   ],
+   "holds": [
+    "P8Inv",
+    "OnlyOffered"
+   ],
+   "conformance": [
+    "runner/tests/test_v4_models.py::HybridSelectConformance"
+   ],
+   "general": [
+    "Agree"
+   ],
+   "seams": [
+    "PrefersHybrid"
+   ]
+  },
+  "P9": {
+   "title": "No session is claimed across the framing break",
+   "stated": "v4-properties.md",
+   "model": null,
+   "configurations": [],
+   "holds": [],
+   "conformance": [
+    "runner/tests/test_v4_models.py::FramingScopePin"
+   ],
+   "general": [
+    "Agree"
+   ],
+   "seams": [
+    "SameSideOnly"
+   ]
+  },
+  "P10": {
+   "title": "On macOS, enforce means the probe passed, or there is no run",
+   "stated": "v4-properties.md",
+   "model": "probegate.tla",
+   "configurations": [
+    "probegate.cfg"
+   ],
+   "holds": [
+    "P10Inv",
+    "RefusesOnlyItsOwn"
+   ],
+   "conformance": [
+    "runner/tests/test_v4_models.py::ProbeGateConformance"
+   ],
+   "general": [
+    "Start",
+    "Handle"
+   ],
+   "seams": [
+    "SpawnProbes"
+   ]
+  },
+  "P11": {
+   "title": "A result body leaves within max_result_bytes, down to the fitting's floor",
+   "stated": "v4-properties.md",
+   "model": "resultfit.tla",
+   "configurations": [
+    "resultfit.cfg"
+   ],
+   "holds": [
+    "MarkedWhenCut",
+    "CapZeroAsIs",
+    "FitsAsIs",
+    "P11Floor"
+   ],
+   "conformance": [
+    "runner/tests/test_v4_models.py::ResultFitConformance"
+   ],
+   "general": [
+    "Commit"
+   ],
+   "seams": [
+    "FitMarks"
+   ]
+  },
+  "P12": {
+   "title": "A local envelope over the cap is refused unread by the gate",
+   "stated": "v4-properties.md",
+   "model": "localgate.tla",
+   "configurations": [
+    "localgate.cfg"
+   ],
+   "holds": [
+    "P12Inv",
+    "SymlinkUnread",
+    "ReadBounded",
+    "OverCapRefusedForSize"
+   ],
+   "conformance": [
+    "runner/tests/test_v4_models.py::LocalGateConformance"
+   ],
+   "general": [
+    "Local"
+   ],
+   "seams": [
+    "LocalBounds"
+   ]
+  },
+  "P13": {
+   "title": "The runner does not start on a secret under the entropy floor",
+   "stated": "v4-properties.md",
+   "model": "secretfloor.tla",
+   "configurations": [
+    "secretfloor.cfg"
+   ],
+   "holds": [
+    "P13Inv",
+    "NamesACause"
+   ],
+   "conformance": [
+    "runner/tests/test_v4_models.py::SecretFloorConformance"
+   ],
+   "general": [
+    "Start",
+    "PollBegin",
+    "Local"
+   ],
+   "seams": [
+    "PollRebuilds"
+   ]
+  }
+ },
+ "constraints": [
+  {
+   "id": "C1",
+   "name": "`max_job_bytes`",
+   "properties": {
+    "P1": "clause 1"
+   },
+   "code": [
+    "runner/ops/mail.py:handle_mail"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::SizeCapPins.test_c1_max_job_bytes_default"
+   ],
+   "fuzz": [],
+   "unfuzzed": [
+    "runner/ops/mail.py:handle_mail"
+   ]
+  },
+  {
+   "id": "C2",
+   "name": "`max_script_bytes`",
+   "properties": {
+    "P1": "clause 5"
+   },
+   "code": [
+    "runner/ops/mail.py:handle_mail"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::SizeCapPins.test_c2_max_script_bytes_default"
+   ],
+   "fuzz": [],
+   "unfuzzed": [
+    "runner/ops/mail.py:handle_mail"
+   ]
+  },
+  {
+   "id": "C3",
+   "name": "`max_result_bytes`",
+   "properties": {
+    "P11": "the whole property"
+   },
+   "code": [
+    "runner/runner.py:_max_result_bytes",
+    "runner/runner.py:_fit_result_body"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::SizeCapPins.test_c3_max_result_bytes_default_is_5_mib_not_unlimited",
+    "runner/tests/test_v4_binding.py::StandingGapPins.test_c3_result_cap_default"
+   ],
+   "fuzz": [],
+   "unfuzzed": [
+    "runner/runner.py:_max_result_bytes",
+    "runner/runner.py:_fit_result_body"
+   ]
+  },
+  {
+   "id": "C4",
+   "name": "`_LOCAL_ENVELOPE_MAX_BYTES`",
+   "properties": {
+    "P12": "the whole property"
+   },
+   "code": [
+    "runner/runner.py:_ingest_local_envelope_inner",
+    "runner/runner.py:_scan_local_inbox"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::SizeCapPins.test_c4_local_envelope_max_bytes",
+    "runner/tests/test_v4_binding.py::StandingGapPins.test_c4_local_envelope_cap"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/runner.py:_ingest_local_envelope_inner",
+     "target": "local",
+     "entries": 518,
+     "traced": true,
+     "witness": "30d2ca7d8a662956"
+    },
+    {
+     "site": "runner/runner.py:_ingest_local_envelope_inner",
+     "target": "query",
+     "entries": 32,
+     "traced": true,
+     "witness": "51d010a37d302eee"
+    },
+    {
+     "site": "runner/runner.py:_ingest_local_envelope_inner",
+     "target": "local_inbox",
+     "entries": 23,
+     "traced": true,
+     "witness": "baeb7973bbe6a357"
+    },
+    {
+     "site": "runner/runner.py:_scan_local_inbox",
+     "target": "local_inbox",
+     "entries": 23,
+     "traced": true,
+     "witness": "baeb7973bbe6a357"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C5",
+   "name": "Signature",
+   "properties": {
+    "P1": "clause 2"
+   },
+   "code": [
+    "runner/wire/verify.py:sign_payload",
+    "runner/wire/verify.py:verify_body_keyed",
+    "runner/runner.py:_verify_and_decrypt"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::SignaturePins.test_c5_signature_is_hmac_sha384",
+    "runner/tests/test_proof_constraints.py::SignaturePins.test_c5_tampered_body_is_refused",
+    "runner/tests/test_proof_constraints.py::SignaturePins.test_c5_unknown_and_nonstring_key_ids_are_refused"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/wire/verify.py:sign_payload",
+     "target": "wire",
+     "entries": 56,
+     "traced": true,
+     "witness": "5cbb8bfb9b182f29"
+    },
+    {
+     "site": "runner/wire/verify.py:verify_body_keyed",
+     "target": "wire",
+     "entries": 115,
+     "traced": true,
+     "witness": "ed95e09208d241a4"
+    }
+   ],
+   "unfuzzed": [
+    "runner/runner.py:_verify_and_decrypt"
+   ]
+  },
+  {
+   "id": "C6",
+   "name": "Secret entropy floor",
+   "properties": {
+    "P13": "the whole property"
+   },
+   "code": [
+    "runner/guard/security.py:validate_shared_secret",
+    "runner/wire/verify.py:build_secrets"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::GateShapePins.test_c6_secret_entropy_floor",
+    "runner/tests/test_v4_binding.py::StandingGapPins.test_c6_entropy_floor_refuses_a_weak_secret",
+    "runner/tests/test_v4_binding.py::StandingGapPins.test_c6_entropy_floor_admits_a_strong_secret"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/guard/security.py:validate_shared_secret",
+     "target": "secret",
+     "entries": 26,
+     "traced": true,
+     "witness": "3247f2976e0a3632"
+    },
+    {
+     "site": "runner/wire/verify.py:build_secrets",
+     "target": "local",
+     "entries": 518,
+     "traced": false,
+     "witness": "30d2ca7d8a662956"
+    },
+    {
+     "site": "runner/wire/verify.py:build_secrets",
+     "target": "query",
+     "entries": 183,
+     "traced": false,
+     "witness": "e452a7e4ff7d7617"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C7",
+   "name": "Key fingerprint",
+   "properties": {
+    "P1": "clause 2",
+    "P4": "clause 1"
+   },
+   "code": [
+    "runner/guard/security.py:key_fingerprint"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::SignaturePins.test_c7_key_fingerprint_form_and_label"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/guard/security.py:key_fingerprint",
+     "target": "local",
+     "entries": 518,
+     "traced": false,
+     "witness": "30d2ca7d8a662956"
+    },
+    {
+     "site": "runner/guard/security.py:key_fingerprint",
+     "target": "query",
+     "entries": 183,
+     "traced": false,
+     "witness": "e452a7e4ff7d7617"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C8",
+   "name": "Cleartext",
+   "properties": {
+    "P1": "clause 3"
+   },
+   "code": [
+    "runner/runner.py:_cleartext_jobs_allowed"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::CleartextAndEncryptionPins.test_c8_cleartext_refused_by_default",
+    "runner/tests/test_proof_constraints.py::CleartextAndEncryptionPins.test_c8_no_config_key_enables_cleartext"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/runner.py:_cleartext_jobs_allowed",
+     "target": "query",
+     "entries": 3,
+     "traced": true,
+     "witness": "9cdec4dd4fb67530"
+    },
+    {
+     "site": "runner/runner.py:_cleartext_jobs_allowed",
+     "target": "v2_mail",
+     "entries": 3,
+     "traced": true,
+     "witness": "ecc78586a4f17852"
+    },
+    {
+     "site": "runner/runner.py:_cleartext_jobs_allowed",
+     "target": "board_mail",
+     "entries": 2,
+     "traced": true,
+     "witness": "d355a181ceef5629"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C9",
+   "name": "AEAD",
+   "properties": {
+    "P1": "clause 3"
+   },
+   "code": [
+    "runner/wire/jobcrypto.py:decrypt_body"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::CleartextAndEncryptionPins.test_c9_the_one_aead",
+    "runner/tests/test_proof_constraints.py::CleartextAndEncryptionPins.test_c9_encrypted_round_trip_and_wrong_alg_refused"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/wire/jobcrypto.py:decrypt_body",
+     "target": "crypto",
+     "entries": 73,
+     "traced": true,
+     "witness": "7af87be198fc141a"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C10",
+   "name": "Audience",
+   "properties": {
+    "P1": "clause 4"
+   },
+   "code": [
+    "runner/wire/verify.py:check_audience",
+    "runner/wire/verify.py:audience_allows"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::AudienceAndModePins.test_c10_audience_check"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/wire/verify.py:check_audience",
+     "target": "query",
+     "entries": 176,
+     "traced": false,
+     "witness": "e452a7e4ff7d7617"
+    },
+    {
+     "site": "runner/wire/verify.py:check_audience",
+     "target": "board_mail",
+     "entries": 95,
+     "traced": false,
+     "witness": "fa7e80369e35d91d"
+    },
+    {
+     "site": "runner/wire/verify.py:audience_allows",
+     "target": "query",
+     "entries": 176,
+     "traced": false,
+     "witness": "e452a7e4ff7d7617"
+    },
+    {
+     "site": "runner/wire/verify.py:audience_allows",
+     "target": "board_mail",
+     "entries": 95,
+     "traced": false,
+     "witness": "fa7e80369e35d91d"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C11",
+   "name": "Seven security modes",
+   "properties": {
+    "P1": "clauses 4 and 8",
+    "P4": "clause 11"
+   },
+   "code": [
+    "runner/guard/security.py:sec_mode",
+    "runner/guard/security.py:sec_decide",
+    "runner/guard/security.py:validate_security_config"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::AudienceAndModePins.test_c11_the_nine_features_and_three_modes",
+    "runner/tests/test_proof_constraints.py::AudienceAndModePins.test_c11_modes_default_enforce_and_bad_block_refused"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/guard/security.py:sec_mode",
+     "target": "query",
+     "entries": 176,
+     "traced": false,
+     "witness": "e452a7e4ff7d7617"
+    },
+    {
+     "site": "runner/guard/security.py:sec_mode",
+     "target": "board_mail",
+     "entries": 95,
+     "traced": false,
+     "witness": "fa7e80369e35d91d"
+    }
+   ],
+   "unfuzzed": [
+    "runner/guard/security.py:sec_decide",
+    "runner/guard/security.py:validate_security_config"
+   ]
+  },
+  {
+   "id": "C12",
+   "name": "`max_job_age_sec`",
+   "properties": {
+    "P1": "clause 7"
+   },
+   "code": [
+    "runner/ops/mail.py:handle_mail"
+   ],
+   "pins": [
+    "runner/tests/test_proof_conformance.py::P1FreshnessTest.test_stale_job_refused",
+    "runner/tests/test_proof_conformance.py::P1FreshnessTest.test_the_future_bound_is_exactly_300_seconds"
+   ],
+   "fuzz": [],
+   "unfuzzed": [
+    "runner/ops/mail.py:handle_mail"
+   ]
+  },
+  {
+   "id": "C13",
+   "name": "Protocol version",
+   "properties": {
+    "P1": "clause 6"
+   },
+   "code": [
+    "runner/runner.py:_version_ok"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::GateShapePins.test_c13_protocol_version_is_integer_1_only"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/runner.py:_version_ok",
+     "target": "local",
+     "entries": 518,
+     "traced": true,
+     "witness": "30d2ca7d8a662956"
+    },
+    {
+     "site": "runner/runner.py:_version_ok",
+     "target": "query",
+     "entries": 176,
+     "traced": true,
+     "witness": "e452a7e4ff7d7617"
+    },
+    {
+     "site": "runner/runner.py:_version_ok",
+     "target": "board_mail",
+     "entries": 95,
+     "traced": true,
+     "witness": "fa7e80369e35d91d"
+    },
+    {
+     "site": "runner/runner.py:_version_ok",
+     "target": "local_inbox",
+     "entries": 23,
+     "traced": true,
+     "witness": "baeb7973bbe6a357"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C14",
+   "name": "Key policies",
+   "properties": {
+    "P1": "clause 8",
+    "P4": "the whole property"
+   },
+   "code": [
+    "runner/wire/verify.py:check_key_policy",
+    "runner/wire/verify.py:_build_key_policies"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::KeyPolicyPins.test_c14_pinning_refuses_url_missing_and_beside",
+    "runner/tests/test_proof_constraints.py::KeyPolicyPins.test_c14_kinds_fence_refuses_every_other_kind",
+    "runner/tests/test_proof_constraints.py::KeyPolicyPins.test_c14_timeout_cap_binds_the_pinned_key",
+    "runner/tests/test_proof_constraints.py::KeyPolicyPins.test_c14_no_entry_unrestricted_unless_default_deny",
+    "runner/tests/test_proof_constraints.py::KeyPolicyPins.test_c14_policy_is_the_keys_not_the_names",
+    "runner/tests/test_proof_constraints.py::KeyPolicyPins.test_c14_recipes_and_interpreters_fences",
+    "runner/tests/test_proof_constraints.py::KeyPolicyPins.test_c14_build_validates_and_lowercases",
+    "runner/tests/test_proof_constraints.py::KeyPolicyPins.test_c14_build_refuses_one_key_entered_twice",
+    "runner/tests/test_proof_constraints.py::KeyPolicyPins.test_c14_door_policy_binds_the_other_doors"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/wire/verify.py:check_key_policy",
+     "target": "keydir",
+     "entries": 35,
+     "traced": true,
+     "witness": "5441473fdd8d940f"
+    },
+    {
+     "site": "runner/wire/verify.py:_build_key_policies",
+     "target": "local",
+     "entries": 518,
+     "traced": false,
+     "witness": "30d2ca7d8a662956"
+    },
+    {
+     "site": "runner/wire/verify.py:_build_key_policies",
+     "target": "query",
+     "entries": 163,
+     "traced": false,
+     "witness": "e452a7e4ff7d7617"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C15",
+   "name": "Execution semantics",
+   "properties": {
+    "P1": "clause 9",
+    "P5": "the whole property"
+   },
+   "code": [
+    "runner/ops/mail.py:handle_mail",
+    "runner/runner.py:stash_result",
+    "runner/runner.py:load_sent_result"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::ReplayPins.test_c15_record_answers_only_its_own_job",
+    "runner/tests/test_proof_constraints.py::ReplayPins.test_c15_received_digest_excludes_only_the_signature"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/runner.py:stash_result",
+     "target": "race_stash",
+     "entries": 160,
+     "traced": true,
+     "witness": "6bbe5748fa853d4e"
+    }
+   ],
+   "unfuzzed": [
+    "runner/ops/mail.py:handle_mail",
+    "runner/runner.py:load_sent_result"
+   ]
+  },
+  {
+   "id": "C16",
+   "name": "Transport credentials",
+   "properties": {
+    "P3": "the whole property"
+   },
+   "code": [
+    "runner/transport_extensions/nats/__main__.py:__init__",
+    "runner/wire/transports.py:fetch_channel_messages"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::TransportGatePins.test_c20_nats_credentials_required_unless_literal_true",
+    "runner/tests/test_proof_conformance_p3.py::NatsGateTest"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/wire/transports.py:fetch_channel_messages",
+     "target": "inbox",
+     "entries": 29,
+     "traced": true,
+     "witness": "dca50fbfe7abb91a"
+    },
+    {
+     "site": "runner/wire/transports.py:fetch_channel_messages",
+     "target": "channels",
+     "entries": 11,
+     "traced": true,
+     "witness": "57100f4aed5662ef"
+    }
+   ],
+   "unfuzzed": [
+    "runner/transport_extensions/nats/__main__.py:__init__"
+   ]
+  },
+  {
+   "id": "C17",
+   "name": "Result-policy ceiling",
+   "properties": {
+    "P2": "clauses 5, 6 and 8"
+   },
+   "code": [
+    "runner/ops/policy.py:apply_result_policy"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::ResultPolicyCeilingPins.test_c17_view_order",
+    "runner/tests/test_proof_constraints.py::ResultPolicyCeilingPins.test_c17_a_job_cannot_widen_past_the_ceiling",
+    "runner/tests/test_proof_constraints.py::ResultPolicyCeilingPins.test_c17_narrowing_takes_effect",
+    "runner/tests/test_proof_constraints.py::ResultPolicyCeilingPins.test_c17_absent_and_unrecognised_views_read_as_attested",
+    "runner/tests/test_proof_constraints.py::ResultPolicyCeilingPins.test_c17_query_budget_is_the_smaller_of_the_two",
+    "runner/tests/test_proof_constraints.py::ResultPolicyCeilingPins.test_c17_job_redact_patterns_are_never_read",
+    "runner/tests/test_proof_constraints.py::ResultPolicyCeilingPins.test_c17_confined_attestation_reports_the_runners_value"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/ops/policy.py:apply_result_policy",
+     "target": "queries",
+     "entries": 132,
+     "traced": true,
+     "witness": "879bb982e965c694"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C18",
+   "name": "Sandbox shape",
+   "properties": {
+    "P2": "clauses 1 to 4"
+   },
+   "code": [
+    "runner/guard/sandbox.py:build_bwrap_command",
+    "runner/guard/sandbox.py:_confinement_cfg"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::SandboxShapePins.test_c18_work_mount_and_fixed_flags",
+    "runner/tests/test_proof_constraints.py::SandboxShapePins.test_c18_interpreter_prefix_rule",
+    "runner/tests/test_proof_constraints.py::SandboxShapePins.test_c18_no_job_field_names_a_confinement_setting"
+   ],
+   "fuzz": [],
+   "unfuzzed": [
+    "runner/guard/sandbox.py:build_bwrap_command",
+    "runner/guard/sandbox.py:_confinement_cfg"
+   ]
+  },
+  {
+   "id": "C19",
+   "name": "Queues edge gates",
+   "properties": {
+    "P3": "clause 8"
+   },
+   "code": [
+    "runner/cloud/queues-worker/src/index.js:bearerMatches"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::TransportGatePins.test_c19_queues_extension_refuses_to_start_tokenless",
+    "runner/tests/test_proof_constraints.py::TransportGatePins.test_c19_queues_edge_checks_bearer_before_signature"
+   ],
+   "fuzz": [],
+   "unfuzzed": [
+    "runner/cloud/queues-worker/src/index.js:bearerMatches"
+   ]
+  },
+  {
+   "id": "C20",
+   "name": "Transport gate postures",
+   "properties": {
+    "P3": "clauses 4 to 8"
+   },
+   "code": [
+    "runner/transport_extensions/file/__main__.py:scan_jobs",
+    "runner/wire/dtlsproto.py:feed_authenticated",
+    "runner/wire/transports.py:service_channel"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::TransportGatePins.test_c20_nats_credentials_required_unless_literal_true",
+    "runner/tests/test_proof_constraints.py::TransportGatePins.test_c20_file_extension_has_no_credential_of_its_own",
+    "runner/tests/test_proof_constraints.py::TransportGatePins.test_c20_dtls_no_secret_no_start_and_established_only",
+    "runner/tests/test_proof_constraints.py::TransportGatePins.test_c20_channel_envelopes_face_the_core_gate"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/wire/dtlsproto.py:feed_authenticated",
+     "target": "dtls",
+     "entries": 7,
+     "traced": true,
+     "witness": "dfdcb85a26e22843"
+    },
+    {
+     "site": "runner/wire/dtlsproto.py:feed_authenticated",
+     "target": "dtls_session",
+     "entries": 7,
+     "traced": true,
+     "witness": "ec05df150700cbe9"
+    },
+    {
+     "site": "runner/wire/transports.py:service_channel",
+     "target": "inbox",
+     "entries": 29,
+     "traced": true,
+     "witness": "dca50fbfe7abb91a"
+    }
+   ],
+   "unfuzzed": [
+    "runner/transport_extensions/file/__main__.py:scan_jobs"
+   ]
+  },
+  {
+   "id": "C21",
+   "name": "Key directory precedence",
+   "properties": {
+    "P4": "clauses 2 and 9"
+   },
+   "code": [
+    "runner/wire/verify.py:key_directory_verdict",
+    "runner/wire/verify.py:load_key_directory"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::KeyPolicyPins.test_c21_directory_speaks_before_the_policy"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/wire/verify.py:key_directory_verdict",
+     "target": "keydir",
+     "entries": 35,
+     "traced": true,
+     "witness": "5441473fdd8d940f"
+    },
+    {
+     "site": "runner/wire/verify.py:load_key_directory",
+     "target": "keydir",
+     "entries": 38,
+     "traced": true,
+     "witness": "5441473fdd8d940f"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C22",
+   "name": "Upgrade key arrangement",
+   "properties": {
+    "P4": "clauses 5, 7, 8 and 11"
+   },
+   "code": [
+    "runner/wire/verify.py:check_key_policy"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::KeyPolicyPins.test_c22_upgrade_key_accepts_only_the_pinned_script"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/wire/verify.py:check_key_policy",
+     "target": "keydir",
+     "entries": 35,
+     "traced": true,
+     "witness": "5441473fdd8d940f"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C23",
+   "name": "Replay-cache keep horizon",
+   "properties": {
+    "P5": "clauses 5 and 8"
+   },
+   "code": [
+    "runner/runner.py:seen_keep_sec",
+    "runner/runner.py:_write_seen_kept",
+    "runner/runner.py:save_seen"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::ReplayPins.test_c23_seen_keep_horizon_outlasts_freshness",
+    "runner/tests/test_proof_constraints.py::ReplayPins.test_c23_seen_cap",
+    "runner/tests/test_proof_constraints.py::ReplayPins.test_c23_seen_write_drops_entries_past_the_horizon"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/runner.py:seen_keep_sec",
+     "target": "race_state",
+     "entries": 202,
+     "traced": true,
+     "witness": "6205130f370a65a1"
+    },
+    {
+     "site": "runner/runner.py:seen_keep_sec",
+     "target": "board_mail",
+     "entries": 78,
+     "traced": true,
+     "witness": "fa7e80369e35d91d"
+    },
+    {
+     "site": "runner/runner.py:seen_keep_sec",
+     "target": "v2_mail",
+     "entries": 32,
+     "traced": true,
+     "witness": "165503227a4ac6d2"
+    },
+    {
+     "site": "runner/runner.py:_write_seen_kept",
+     "target": "race_state",
+     "entries": 202,
+     "traced": true,
+     "witness": "6205130f370a65a1"
+    },
+    {
+     "site": "runner/runner.py:_write_seen_kept",
+     "target": "board_mail",
+     "entries": 78,
+     "traced": true,
+     "witness": "fa7e80369e35d91d"
+    },
+    {
+     "site": "runner/runner.py:_write_seen_kept",
+     "target": "v2_mail",
+     "entries": 32,
+     "traced": true,
+     "witness": "165503227a4ac6d2"
+    },
+    {
+     "site": "runner/runner.py:save_seen",
+     "target": "race_state",
+     "entries": 202,
+     "traced": true,
+     "witness": "6205130f370a65a1"
+    },
+    {
+     "site": "runner/runner.py:save_seen",
+     "target": "board_mail",
+     "entries": 78,
+     "traced": true,
+     "witness": "fa7e80369e35d91d"
+    },
+    {
+     "site": "runner/runner.py:save_seen",
+     "target": "v2_mail",
+     "entries": 32,
+     "traced": true,
+     "witness": "165503227a4ac6d2"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C24",
+   "name": "Claim stale rule",
+   "properties": {
+    "P5": "clause 4"
+   },
+   "code": [
+    "runner/ops/misc.py:_disk_owns",
+    "runner/runner.py:_disk_release"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::ReplayPins.test_c24_claim_stale_constant",
+    "runner/tests/test_proof_constraints.py::ReplayPins.test_c24_disk_claim_live_dead_and_unreadable"
+   ],
+   "fuzz": [],
+   "unfuzzed": [
+    "runner/ops/misc.py:_disk_owns",
+    "runner/runner.py:_disk_release"
+   ]
+  },
+  {
+   "id": "C25",
+   "name": "Record retention and delivery window",
+   "properties": {
+    "P5": "clauses 9 and 10"
+   },
+   "code": [
+    "runner/runner.py:prune_sent",
+    "runner/runner.py:deliver_stash",
+    "runner/runner.py:resend_stashed"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::ReplayPins.test_c25_retention_and_stash_window_defaults"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/runner.py:deliver_stash",
+     "target": "race_stash",
+     "entries": 160,
+     "traced": true,
+     "witness": "6bbe5748fa853d4e"
+    },
+    {
+     "site": "runner/runner.py:resend_stashed",
+     "target": "race_stash",
+     "entries": 157,
+     "traced": true,
+     "witness": "b1808bcfea5653ed"
+    }
+   ],
+   "unfuzzed": [
+    "runner/runner.py:prune_sent"
+   ]
+  },
+  {
+   "id": "C26",
+   "name": "Default-class reader",
+   "properties": {
+    "P6": "clauses 1, 2, 3 and 5"
+   },
+   "code": [
+    "runner/guard/confval.py:integer",
+    "runner/guard/confval.py:number",
+    "runner/ops/attest.py:reload_hot_config"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::DecisionPins.test_a_bool_is_not_a_number_and_an_absent_key_is_not_named",
+    "runner/tests/test_proof_constraints.py::DecisionPins.test_valid_hot_rejects_booleans",
+    "runner/tests/test_proof_constraints.py::DecisionPins.test_a_live_reload_defaults_a_tunable_and_leaves_a_port"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/guard/confval.py:integer",
+     "target": "local",
+     "entries": 518,
+     "traced": false,
+     "witness": "30d2ca7d8a662956"
+    },
+    {
+     "site": "runner/guard/confval.py:integer",
+     "target": "race_state",
+     "entries": 202,
+     "traced": false,
+     "witness": "6205130f370a65a1"
+    },
+    {
+     "site": "runner/guard/confval.py:number",
+     "target": "local",
+     "entries": 518,
+     "traced": false,
+     "witness": "30d2ca7d8a662956"
+    },
+    {
+     "site": "runner/guard/confval.py:number",
+     "target": "race_state",
+     "entries": 202,
+     "traced": false,
+     "witness": "6205130f370a65a1"
+    }
+   ],
+   "unfuzzed": [
+    "runner/ops/attest.py:reload_hot_config"
+   ]
+  },
+  {
+   "id": "C27",
+   "name": "Refuse class at startup",
+   "properties": {
+    "P6": "clauses 4 and 6"
+   },
+   "code": [
+    "runner/runner.py:_validate_size_caps",
+    "runner/wire/mailbox.py:_port"
+   ],
+   "pins": [
+    "runner/tests/test_proof_constraints.py::SizeCapPins.test_size_caps_startup_validation",
+    "runner/tests/test_proof_constraints.py::DecisionPins.test_a_bad_size_cap_and_a_bad_port_name_themselves"
+   ],
+   "fuzz": [],
+   "unfuzzed": [
+    "runner/runner.py:_validate_size_caps",
+    "runner/wire/mailbox.py:_port"
+   ]
+  },
+  {
+   "id": "C28",
+   "name": "Disk guard",
+   "properties": {
+    "P7": "the whole property"
+   },
+   "code": [
+    "runner/oracle/resources.py:guard_disk",
+    "runner/oracle/resources.py:disk_guard_enabled"
+   ],
+   "pins": [
+    "runner/tests/test_v4_binding.py::DiskGuardConstantPins",
+    "runner/tests/test_v4_binding.py::DiskGuardOptOutPins",
+    "runner/tests/test_v4_binding.py::DiskGuardOrderPins",
+    "runner/tests/test_disk_guard.py"
+   ],
+   "fuzz": [],
+   "unfuzzed": [
+    "runner/oracle/resources.py:guard_disk",
+    "runner/oracle/resources.py:disk_guard_enabled"
+   ]
+  },
+  {
+   "id": "C29",
+   "name": "v3 hybrid group",
+   "properties": {
+    "P8": "the whole property"
+   },
+   "code": [
+    "runner/wire/dtlsproto.py:begin"
+   ],
+   "pins": [
+    "runner/tests/test_v4_binding.py::HybridGroupPins"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/wire/dtlsproto.py:begin",
+     "target": "dtls_session",
+     "entries": 42,
+     "traced": true,
+     "witness": "91fd6a46a4d9e3cd"
+    },
+    {
+     "site": "runner/wire/dtlsproto.py:begin",
+     "target": "dtls",
+     "entries": 31,
+     "traced": true,
+     "witness": "aef12dee4341911e"
+    },
+    {
+     "site": "runner/wire/dtlsproto.py:begin",
+     "target": "dtls_hostile",
+     "entries": 14,
+     "traced": true,
+     "witness": "45e646cc4bf9936b"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C30",
+   "name": "DTLS framing",
+   "properties": {
+    "P9": "the whole property"
+   },
+   "code": [
+    "runner/wire/dtlsproto.py:_split_records",
+    "runner/wire/dtlsproto.py:_accept_seq"
+   ],
+   "pins": [
+    "runner/tests/test_v4_binding.py::DocStatementPins.test_framing_ratification_stands",
+    "runner/tests/test_v4_models.py::FramingScopePin"
+   ],
+   "fuzz": [
+    {
+     "site": "runner/wire/dtlsproto.py:_split_records",
+     "target": "dtls",
+     "entries": 61,
+     "traced": true,
+     "witness": "d0c2beb3363783a1"
+    },
+    {
+     "site": "runner/wire/dtlsproto.py:_split_records",
+     "target": "dtls_session",
+     "entries": 55,
+     "traced": true,
+     "witness": "91fd6a46a4d9e3cd"
+    },
+    {
+     "site": "runner/wire/dtlsproto.py:_split_records",
+     "target": "dtls_hostile",
+     "entries": 38,
+     "traced": true,
+     "witness": "45e646cc4bf9936b"
+    },
+    {
+     "site": "runner/wire/dtlsproto.py:_accept_seq",
+     "target": "dtls_session",
+     "entries": 19,
+     "traced": true,
+     "witness": "91fd6a46a4d9e3cd"
+    }
+   ],
+   "unfuzzed": []
+  },
+  {
+   "id": "C31",
+   "name": "macOS confinement probe",
+   "properties": {
+    "P10": "the whole property"
+   },
+   "code": [
+    "runner/guard/macos_confine.py:macos_confinement_problem",
+    "runner/runner.py:_confinement_argv",
+    "runner/ops/remediation_ops.py:confinement_startup_problem"
+   ],
+   "pins": [
+    "runner/tests/test_v4_binding.py::DocStatementPins.test_macos_backend_states_fail_closed",
+    "runner/tests/test_v4_models.py::ProbeGateConformance"
+   ],
+   "fuzz": [],
+   "unfuzzed": [
+    "runner/guard/macos_confine.py:macos_confinement_problem",
+    "runner/runner.py:_confinement_argv",
+    "runner/ops/remediation_ops.py:confinement_startup_problem"
+   ]
+  }
+ ],
+ "fuzz": {
+  "address": {
+   "runs": 1749,
+   "tried": 204327133,
+   "accepted": 1196730,
+   "refused": 203210857,
+   "crash": 0,
+   "slow": 0,
+   "entries": 46,
+   "bound": false
+  },
+  "board": {
+   "runs": 1104,
+   "tried": 4338204,
+   "accepted": 1496785,
+   "refused": 2870027,
+   "crash": 0,
+   "slow": 0,
+   "entries": 26,
+   "bound": false
+  },
+  "board_mail": {
+   "runs": 874,
+   "tried": 1936675,
+   "accepted": 437838,
+   "refused": 1585434,
+   "crash": 3,
+   "slow": 0,
+   "entries": 100,
+   "bound": true
+  },
+  "board_ops": {
+   "runs": 1127,
+   "tried": 4757494,
+   "accepted": 3348802,
+   "refused": 1468626,
+   "crash": 9,
+   "slow": 1,
+   "entries": 54,
+   "bound": false
+  },
+  "channels": {
+   "runs": 1138,
+   "tried": 3422319,
+   "accepted": 1173409,
+   "refused": 2261454,
+   "crash": 0,
+   "slow": 0,
+   "entries": 11,
+   "bound": true
+  },
+  "cloud": {
+   "runs": 1050,
+   "tried": 5662841,
+   "accepted": 2709014,
+   "refused": 3066693,
+   "crash": 2,
+   "slow": 108,
+   "entries": 113,
+   "bound": false
+  },
+  "collect": {
+   "runs": 1045,
+   "tried": 15245750,
+   "accepted": 2685950,
+   "refused": 12462490,
+   "crash": 117890,
+   "slow": 1,
+   "entries": 20,
+   "bound": false
+  },
+  "crypto": {
+   "runs": 1059,
+   "tried": 8982539,
+   "accepted": 199419,
+   "refused": 8856828,
+   "crash": 0,
+   "slow": 0,
+   "entries": 73,
+   "bound": true
+  },
+  "dtls": {
+   "runs": 1855,
+   "tried": 28500436,
+   "accepted": 13112009,
+   "refused": 15493224,
+   "crash": 0,
+   "slow": 1,
+   "entries": 61,
+   "bound": true
+  },
+  "dtls_hostile": {
+   "runs": 1689,
+   "tried": 3371043,
+   "accepted": 3343258,
+   "refused": 91061,
+   "crash": 0,
+   "slow": 0,
+   "entries": 38,
+   "bound": true
+  },
+  "dtls_session": {
+   "runs": 1545,
+   "tried": 1885975,
+   "accepted": 604821,
+   "refused": 1356428,
+   "crash": 0,
+   "slow": 0,
+   "entries": 58,
+   "bound": true
+  },
+  "edge_subject": {
+   "runs": 45,
+   "tried": 23679,
+   "accepted": 3071,
+   "refused": 21508,
+   "crash": 0,
+   "slow": 0,
+   "entries": 20,
+   "bound": false
+  },
+  "inbox": {
+   "runs": 971,
+   "tried": 3151116,
+   "accepted": 2458517,
+   "refused": 719918,
+   "crash": 705,
+   "slow": 0,
+   "entries": 29,
+   "bound": true
+  },
+  "keydir": {
+   "runs": 1726,
+   "tried": 78509596,
+   "accepted": 24449176,
+   "refused": 54125973,
+   "crash": 1,
+   "slow": 0,
+   "entries": 38,
+   "bound": true
+  },
+  "local": {
+   "runs": 785,
+   "tried": 18065947,
+   "accepted": 84748,
+   "refused": 18257578,
+   "crash": 0,
+   "slow": 54,
+   "entries": 518,
+   "bound": true
+  },
+  "local_inbox": {
+   "runs": 1123,
+   "tried": 3935397,
+   "accepted": 635675,
+   "refused": 3325484,
+   "crash": 0,
+   "slow": 0,
+   "entries": 23,
+   "bound": true
+  },
+  "mail": {
+   "runs": 1054,
+   "tried": 18845037,
+   "accepted": 7868925,
+   "refused": 11003497,
+   "crash": 0,
+   "slow": 0,
+   "entries": 26,
+   "bound": false
+  },
+  "manifest": {
+   "runs": 1018,
+   "tried": 40131721,
+   "accepted": 1460850,
+   "refused": 38800296,
+   "crash": 0,
+   "slow": 0,
+   "entries": 129,
+   "bound": false
+  },
+  "names": {
+   "runs": 1007,
+   "tried": 3546810,
+   "accepted": 749904,
+   "refused": 2881446,
+   "crash": 0,
+   "slow": 0,
+   "entries": 84,
+   "bound": false
+  },
+  "queries": {
+   "runs": 649,
+   "tried": 2328901,
+   "accepted": 1688147,
+   "refused": 709394,
+   "crash": 59,
+   "slow": 3,
+   "entries": 132,
+   "bound": true
+  },
+  "query": {
+   "runs": 674,
+   "tried": 1714209,
+   "accepted": 980778,
+   "refused": 848426,
+   "crash": 19,
+   "slow": 0,
+   "entries": 183,
+   "bound": true
+  },
+  "race_board": {
+   "runs": 1529,
+   "tried": 13493383,
+   "accepted": 4796537,
+   "refused": 8784810,
+   "crash": 19632,
+   "slow": 0,
+   "entries": 84,
+   "bound": false
+  },
+  "race_stash": {
+   "runs": 631,
+   "tried": 11989510,
+   "accepted": 8593529,
+   "refused": 3453418,
+   "crash": 1182,
+   "slow": 0,
+   "entries": 165,
+   "bound": true
+  },
+  "race_state": {
+   "runs": 672,
+   "tried": 12082749,
+   "accepted": 10133896,
+   "refused": 1982948,
+   "crash": 56684,
+   "slow": 2,
+   "entries": 212,
+   "bound": true
+  },
+  "secret": {
+   "runs": 1000,
+   "tried": 3106333,
+   "accepted": 1380765,
+   "refused": 1751566,
+   "crash": 0,
+   "slow": 0,
+   "entries": 26,
+   "bound": true
+  },
+  "stage": {
+   "runs": 924,
+   "tried": 38196293,
+   "accepted": 15322185,
+   "refused": 22906432,
+   "crash": 0,
+   "slow": 0,
+   "entries": 35,
+   "bound": false
+  },
+  "stash": {
+   "runs": 1094,
+   "tried": 8933389,
+   "accepted": 1672039,
+   "refused": 7294129,
+   "crash": 0,
+   "slow": 0,
+   "entries": 31,
+   "bound": false
+  },
+  "v2": {
+   "runs": 1089,
+   "tried": 47590614,
+   "accepted": 3505761,
+   "refused": 44155863,
+   "crash": 0,
+   "slow": 0,
+   "entries": 68,
+   "bound": false
+  },
+  "v2_mail": {
+   "runs": 867,
+   "tried": 1958468,
+   "accepted": 230721,
+   "refused": 1800443,
+   "crash": 34,
+   "slow": 0,
+   "entries": 84,
+   "bound": true
+  },
+  "wire": {
+   "runs": 1070,
+   "tried": 4040388,
+   "accepted": 2085124,
+   "refused": 2075879,
+   "crash": 0,
+   "slow": 55,
+   "entries": 117,
+   "bound": true
+  }
+ }
+}

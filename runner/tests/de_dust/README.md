@@ -163,9 +163,9 @@ A `local_inbox` entry's data is `{"files"}` in the same shapes as
 since a stored alert needs a fresh `issued_at`). The checker adds
 a known-good alert sorted last and scans once. Accepted means an
 alert of the entry's own was filed. After the scan every `.json`
-entry was handled once and is gone -- a symlink or a file that is
-not UTF-8 without an ingest call, a file that decodes with one
-call carrying its text up to the size cap plus one byte --
+entry was handled once and is gone -- a symlink, a file over the
+size cap or a file that is not UTF-8 without an ingest call, a
+file that decodes with one call carrying its text --
 anything not named `.json`, a directory among them, is left
 alone, no ingest raised, and the store holds exactly the records
 the ingests answered, in inbox order, the neighbor's among them.

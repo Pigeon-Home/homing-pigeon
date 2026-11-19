@@ -267,7 +267,53 @@ A finding is most useful when it points at the file and the line
   constraint, C1 to C31, mapped to the numbered property that
   states it, with the new properties P7 to P13 stated in
   full. `diskguard.tla` is the first model of that work,
-  of P7; its checker run is recorded as still owed there.
+  of P7. The checker run for every model on this shelf
+  stands recorded in `v4-working.md`, step D. `diskguard.tla`,
+  `localgate.tla` and `resultfit.tla` changed after that run,
+  when findings were closed, and the checker ran on them
+  again, twice, as that record says.
+- `v4-search.md`: the first 4 models searched without a
+  checker and held to the code. `diskguard.tla`,
+  `secretfloor.tla`, the model of P13, `probegate.tla`, the
+  model of P10, and `localgate.tla`, the model of P12, each
+  with its states counted as the prediction for the TLC run
+  and its witness configurations; the real disk guard driven
+  down every path its re-measuring allows, the real key map
+  built over every standing of 3 keys, the real confinement
+  gate asked on every start, the real local doors asked on
+  every arrival at the cap, and 6 findings, all closed.
+  `runner/tests/test_v4_models.py` is that search and that
+  conformance, run with the suite.
+- `v4-search-2.md`: the last 2 models searched the same
+  way. `hybridselect.tla` (P8) and `resultfit.tla` (P11),
+  each with its states counted as the prediction for the
+  TLC run and its witness configurations; the real
+  selection and the real fitting driven over their
+  decision spaces, P9 pinned by reading the documents,
+  and finding F7, closed in P11's words. The same suite
+  carries these searches and this conformance too.
+- `v4-general.md`: the 13 properties as instances of 1
+  statement, G, and the record of the pass that states it.
+  `general.tla` is the model of G: 1 runner life, every door
+  at its own occasion, a world that moves between occasions,
+  and 14 constants, 5 for the seams between doors and 9 for
+  the doors' own guards, each with a witness configuration,
+  so that every one of the 13 marks is one the checker can
+  break. Findings F8 and F9 are in that record, both closed.
+  `runner/tests/test_v4_general.py` is the model's search
+  and its hold on the code at each seam.
+- `v4-bindings.md`: the constraint spec. Every constraint,
+  C1 to C31, tied in 1 table to the properties that state
+  it, the code that enforces it, the tests that pin it and
+  the fuzz data that has reached its code, and every
+  property tied to its model, its conformance suite and its
+  steps in `general.tla`. `v4-bindings.json` is the table
+  itself, the registry. The page also records the fuzz
+  corpus taken to the real doors, the constraints no fuzz
+  data reaches, and finding F10, closed.
+  `runner/tests/test_v4_bindings.py` holds every tie and
+  drives the corpus through the doors, and
+  `runner/tests/test_opener_cost.py` holds F10's change.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.

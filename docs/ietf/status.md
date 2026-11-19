@@ -20,6 +20,8 @@ the cover sheet and the full record for all 3.
 - `draft-slutsky-homing-pigeon-v3/` — version 3; its -00 revision
   was posted on 15 November 2026, and its folder now holds a
   `submitted/` set for that revision
+- `draft-slutsky-homing-pigeon-v4/` — version 4, the provable
+  model; a working draft only, not posted (see Version 4 below)
 - `notes/` — the records that cover more than 1 draft (the deltas,
   the trim list and the -04 checklist's applied record)
 
@@ -204,6 +206,19 @@ The `.xml` and `.html` beside the source were last rendered on
 flight-subject grammar: they read `1*gap` where the source, the
 `.txt` beside it and the posted set read `gap`. The posted set in
 `submitted/` is the current render of the text.
+
+## Version 4
+
+Version 4's -00 revision is a working draft, dated 2026-11-18,
+and has NOT been posted: the author posts drafts himself, and
+this one is ready for him to post. It binds versions 1, 2 and 3
+to the provable model on the proofs shelf: the constraint
+inventory C1 to C31, the properties P1 to P13, their TLA+
+models with their TLC verdicts, and the findings F1 to F7. Its
+idnits check, submission mode on the text and the XML, is
+nit-free: 0 errors, 0 warnings, 0 comments, recorded in the
+`.idnits.txt` beside its source. Its folder holds no
+`submitted/` set.
 
 ## Discussion
 
