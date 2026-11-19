@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.14 - 2026-11-19
+
+- docs: a working name for a side project is taken out of the tree, and the note that carried it is renamed to the goals note; forum: no working name or code name is written in a file, a commit message or a release note
+
 ## 3.17.30.13 - 2026-11-19
 
 - docs: docs/GOAL.md states what the project is for and what done means, AGENTS.md sends a reader to it first (rule 18), and a test holds the page's form; project: a note, the goals as the tree shows them
