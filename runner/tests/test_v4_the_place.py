@@ -24,7 +24,6 @@ from runner.tests import test_v4_models as MODELS  # noqa: E402
 from runner.tests import test_v4_the_folder as FOLDER  # noqa: E402
 
 PAGE = os.path.join(MODELS.PROOFS, "v4-the-place.md")
-PLACE = ("pwd", "echo $HOME", "echo ${HOME}", "printf x")
 
 
 def digest(text):
@@ -58,39 +57,42 @@ class ThePlace(unittest.TestCase):
         self.assertEqual("/work", WORK_MOUNT)
 
     def test_under_enforce_the_place_is_the_work_mount(self):
-        for atom in PLACE:
+        if not FOLDER.ENGAGES:
+            result, notes, _files = FOLDER.run(
+                self.payload, self.job_id, "pwd", "enforce")
+            self.assertIsNone(result)
+            self.assertTrue(
+                any("cannot engage" in note or "unavailable" in note
+                    for note in notes),
+                notes)
+            return
+        for atom in BOUND.ATOMS:
             result, notes, _files = FOLDER.run(
                 self.payload, self.job_id, atom, "enforce")
-            if not FOLDER.ENGAGES:
-                self.assertIsNone(result, atom)
-                self.assertTrue(
-                    any("cannot engage" in note or "unavailable" in note
-                        for note in notes),
-                    notes)
-                continue
             self.expect(result, notes, (atom,), (), WORK_MOUNT)
-        if not FOLDER.ENGAGES:
-            return
         result, notes, _files = FOLDER.run(
             self.payload, self.job_id, "pwd; printf x", "enforce")
         self.expect(result, notes, ("pwd", "printf x"), ("; ",),
                     WORK_MOUNT)
 
-    def test_off_pwd_is_the_host_folder_and_not_the_mount(self):
-        result, notes, _files = FOLDER.run(
-            self.payload, self.job_id, "pwd", "off")
-        where = None
-        for note in notes:
-            found = re.search(r"cwd=(\S+)", note)
-            if found:
-                where = os.path.realpath(found.group(1))
-        self.assertIsNotNone(where, notes)
-        self.expect(result, notes, ("pwd",), (), where)
-        self.assertNotEqual(where, WORK_MOUNT)
-        _status, host = machine(("pwd",), (), where, self.home)
-        _status, mount = machine(("pwd",), (), WORK_MOUNT, self.home)
-        self.assertNotEqual(host, mount)
-        self.assertEqual(host, result.get("output_digest"))
+    def test_off_the_host_folder_differs_only_for_pwd(self):
+        for atom in BOUND.ATOMS:
+            result, notes, _files = FOLDER.run(
+                self.payload, self.job_id, atom, "off")
+            where = None
+            for note in notes:
+                found = re.search(r"cwd=(\S+)", note)
+                if found:
+                    where = os.path.realpath(found.group(1))
+            self.assertIsNotNone(where, notes)
+            self.expect(result, notes, (atom,), (), where)
+            _status, host = machine((atom,), (), where, self.home)
+            _status, mount = machine((atom,), (), WORK_MOUNT, self.home)
+            self.assertEqual(host, result.get("output_digest"), atom)
+            if atom == "pwd":
+                self.assertNotEqual(host, mount)
+            else:
+                self.assertEqual(host, mount, atom)
 
     def test_the_page_states_the_place(self):
         page = MODELS._flat(PAGE)
@@ -99,6 +101,7 @@ class ThePlace(unittest.TestCase):
                 "the work mount, `/work`",
                 "`pwd`, `echo $HOME` and `echo ${HOME}`",
                 "The other 19 atoms do not read the place.",
+                "All 22 atoms were run, on and off.",
                 "The default cap stays 1,048,576."):
             self.assertIn(stated, page, stated)
 

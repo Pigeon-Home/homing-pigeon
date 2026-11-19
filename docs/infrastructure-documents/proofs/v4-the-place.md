@@ -24,13 +24,15 @@ the same on or off.
 ## What was asked
 
 One corpus job, through the real gate and the real execution.
+All 22 atoms were run, on and off.
 
-- **Enforce, where the sandbox engages.** `pwd`, `echo $HOME`,
-  `echo ${HOME}` and `printf x`, and the row `pwd; printf x`.
-  Each result is M's, with the folder set to `/work` and
-  `HOME` set to the host's.
-- **Off.** `pwd` is M's with the host folder. That result is
-  not the sandbox's.
+- **Enforce, where the sandbox engages.** Every atom, and the
+  row `pwd; printf x`. Each result is M's, with the folder set
+  to `/work` and `HOME` set to the host's.
+- **Off.** Every atom is M's with the host folder. The 19 atoms
+  that do not read the place have the same result as under
+  enforce. `pwd` does not: it prints the host folder. The two
+  `HOME` atoms do, because `HOME` is passed in either way.
 - **Enforce, where the sandbox cannot engage.** The job is
   refused.
 

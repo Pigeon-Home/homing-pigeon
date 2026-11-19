@@ -367,8 +367,9 @@ A finding is most useful when it points at the file and the line
   The bound was measured with confinement off, and `pwd`
   then prints the host folder. Under enforce the folder M
   is given is the work mount, `/work`, and `HOME` is the
-  `HOME` the runner passes in. The other 19 atoms do not
-  read the place. No new atom and no new constraint.
+  `HOME` the runner passes in. All 22 atoms were run, on and
+  off. The other 19 do not read the place. No new atom and
+  no new constraint.
   `runner/tests/test_v4_the_place.py` holds it.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
