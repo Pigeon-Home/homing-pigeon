@@ -3644,6 +3644,72 @@ def _preview(text, n=80) -> str:
     return line
 
 
+# What 1 log line carries of a text a stranger chose (finding F12,
+# docs/infrastructure-documents/proofs/v4-before-the-mac.md). In front
+# of the signature the gate names what arrived. It names it; it does
+# not keep it. A text within its limit is written as it always was.
+# Past its limit it is cut, and its full length is written as a
+# number, so 1 refused message adds a fixed amount to the log
+# whatever its size. The limits are the longest an honest message
+# needs: an id of 128 characters (the job's own rule), an address of
+# 254 (the longest a mail path carries), and a subject of 256.
+LOG_ID_MAX = 128
+LOG_SENDER_MAX = 254
+LOG_SUBJECT_MAX = 256
+LOG_REASON_MAX = 512
+
+
+def _log_quoted(text, limit) -> str:
+    """`text` for a log line, quoted. Its repr when the text is
+    within `limit` characters and so is what the repr writes of it.
+    Past that: the repr of the longest start of the text that the
+    repr writes in `limit` characters, and the text's full length.
+    The repr leaves no control character as it is, and an escape it
+    writes counts against the limit, so the written copy never
+    passes `limit` characters between its quotes. Only the first
+    `limit` characters of the text are ever read."""
+    if not isinstance(text, str):
+        text = _as_str(text)
+    head = text[:limit]
+    shown = repr(head)
+    if len(text) <= limit and len(shown) <= limit + 2:
+        return shown
+    low, high = 0, len(head)
+    while low < high:
+        middle = (low + high + 1) // 2
+        if len(repr(head[:middle])) <= limit + 2:
+            low = middle
+        else:
+            high = middle - 1
+    return "%s... (%d characters)" % (repr(head[:low]), len(text))
+
+
+def _log_plain(text, limit) -> str:
+    """`text` for a log line, bare when it is plain: within `limit`
+    characters, printable, and with no space in it. Anything else is
+    quoted, so a stranger's control character or line break never
+    reaches the log as it is."""
+    if not isinstance(text, str):
+        text = _as_str(text)
+    if 0 < len(text) <= limit and text.isprintable() and " " not in text:
+        return text
+    return _log_quoted(text, limit)
+
+
+def _log_reason(why, limit=LOG_REASON_MAX) -> str:
+    """A refusal's reason for a log line. The reason may repeat a
+    stranger's text (an unknown key id is named in it), so it is cut
+    at `limit` characters with its full length said, and a reason
+    that is not printable is written quoted, under the same limit."""
+    if not isinstance(why, str):
+        why = _as_str(why)
+    if len(why) <= limit and why.isprintable():
+        return why
+    if why[:limit].isprintable():
+        return "%s... (%d characters)" % (why[:limit], len(why))
+    return _log_quoted(why, limit)
+
+
 def log(msg: str, level: str = "INFO"):
     if level == "DEBUG" and not _VERBOSE:
         return
@@ -5435,7 +5501,8 @@ def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
         _mark(imap, seq, opts)
         return None
     if _protocol_v2 is not None and _protocol_v2.answer_only(cfg):
-        log(f"answer-only: not executing job {m.group(1)}")
+        log(f"answer-only: not executing job "
+            f"{_log_plain(m.group(1), LOG_ID_MAX)}")
         _mark(imap, seq, opts)
         return None
     job_id = m.group(1)

@@ -157,7 +157,8 @@ is kept under the runner's folder, and it fails for the log.
 
 ## Finding F12: a refused message writes its whole subject to the log
 
-**Found by supposition S4 and the measure. Open.**
+**Found by supposition S4 and the measure. Closed on the
+branch, 2026-11-19: see the closing below.**
 
 Before it asks for the signature, the gate logs 1 line that
 names the job and carries the subject as it is written. The
@@ -181,9 +182,8 @@ it: the line is bounded. The subject is logged up to a fixed
 length, with its full length as a number. A subject that
 carries a job needs at most 1,811 bytes in its longest
 spelling, by finding F11's measure on the binding page. The
-suite pins the gap as it stands, in
-`test_s4_the_log_gains_the_subject_as_it_is_written`, and a
-change that bounds the line turns that pin.
+suite pinned the gap as it stood, and the closing below
+turned that pin.
 
 ## Closing F12: suppositions, written before the measure
 
@@ -223,6 +223,95 @@ dispatcher reads before their own signature checks (a
 cancel, a query, the board, a chain, a version 2 message, a
 bounce). Supposed to have the same shape. Not measured here.
 
+### The measure for the closing
+
+1 job from the fuzz corpus, signed by a key the runner does
+not hold, with 1 text grown at a time. The log file is the
+runner's own. The message as it is sent adds 195 bytes, in
+2 lines: the line that names the job, and the refusal. The
+table is what a grown text adds over those 195.
+
+| Text grown to 1,000,000 | Before, bytes | After, bytes |
+|-------------------------|--------------:|-------------:|
+| The subject | 999,968 | 248 |
+| The id | 1,999,976 | 390 |
+| The sender's address | 999,998 | 266 |
+| The key id | 1,000,004 | 508 |
+| A key id that is not a string | 999,994 | 508 |
+| The body, elsewhere | 0 | 0 |
+
+After the change, grown to 1,000 and to 100,000, each text
+adds the same as at 1,000,000, less 1 or 2 digits.
+
+Every text grown at once, in the characters the quoting
+writes longest (an escape in the 2 headers, a 4 byte letter
+in the key id): 2,788 bytes of log at 1,000 characters each,
+and 2,796 at 100,000 each, where the message is 700,392
+bytes. At 1,000,000 each the message is past the C1 cap, and
+the gate's line for that is 91 bytes.
+
+### Conclusions against K1 to K6
+
+- **K1 stands, and it is the larger part of the finding.**
+  Each of the 4 texts reached the log whole. The id reached
+  it twice, as supposed: 1,999,976 bytes for 1,000,000. A
+  key id that is a list reached it as a string does. The
+  rest of the body never reached it.
+- **K2 stands.** 60 refused messages inside 1 minute wrote
+  60 refusal lines and 25 of the 60 lines that name the
+  job. The budget counted 50 lines and then let only the
+  warnings through. So the key id was the wider door: no
+  count of lines held it, only the size of each line.
+- **K3 stands for the id, and is corrected for the
+  address.** An escape character in the id reached the log
+  file as it is. From the sender's address it did not, in
+  the 2 shapes tried, and a folded address added no line:
+  the mail library's address reader did not hand them on.
+- **K4 stands.** No text adds more than 508 bytes, and every
+  text at once adds 2,796 at the most. The suite holds 1
+  refused message to 4,096 bytes of log.
+- **K5 stands.** The message as it is sent writes the same
+  195 bytes as before, byte for byte. At each limit the
+  text is written whole, and 1 character past it the cut
+  begins.
+- **K6 stands.** A job the runner holds the key for, under
+  a subject of 1,000 bytes, ran. Its result named the whole
+  id. Its line in the log named the whole id, and cut only
+  the subject, saying 1,000.
+
+1 correction came in the making. The quoting can grow a
+text: an escape is written as 4 characters. A cut that
+counts the text's characters let a text of control
+characters write 4 times its limit. The cut counts what is
+written, and reads only the first characters of the text to
+do it: on a text of 4,000,000 characters it took 0.00001
+seconds.
+
+### What was changed
+
+- The gate writes each text a stranger chooses at a bounded
+  length, in the 2 lines it writes in front of the
+  signature and in the 1 line of the answer-only mode: the
+  id up to 128 characters, the sender's address up to 254,
+  the subject up to 256, the refusal's reason up to 512.
+  Past its limit a text is cut and its full length is
+  written as a number. A text with a control character in
+  it is written quoted.
+- The limits are the longest an honest message needs: 128 is
+  the job's own rule for an id, 254 is the longest address
+  a mail path carries, and a subject with the longest id
+  is 148 characters as it is sent.
+- The gate works with the whole id. Only the log's copy is
+  cut.
+- The suite turned its pin. 8 tests hold the closing, in
+  `runner/tests/test_v4_before_the_mac.py`. On the code as
+  it was, all 8 fail.
+
+With the closing, clause 3 of the candidate holds with the
+log counted: the seen mark, 1 refusal record of 84 bytes,
+and 2 lines of at most 4,096 bytes together. In a verbose
+run a third line repeats the reason, under the same limit.
+
 ## What is made, and what is next
 
 - Made: the suite, which holds S1 to S7 on every suite run.
@@ -231,4 +320,9 @@ bounce). Supposed to have the same shape. Not measured here.
   its search in the suite. That is S8.
 - Next: a row for the candidate in the registry, kept apart
   from the 31 until the owner's word.
-- F12 waits for the owner's word, as F11 does.
+- F12 is closed on the branch. It reaches main at the
+  owner's word.
+- F11's 2 closings are decided on the desk. They are not yet
+  made.
+- Not measured: the other kinds of message the dispatcher
+  reads before their own signature checks.

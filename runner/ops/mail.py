@@ -31,6 +31,10 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     subject = str(msg["Subject"] or "")
     from_header = str(msg["From"] or "")
     def reject(why: str):
+        # A reason may repeat a stranger's text, and this line is a
+        # warning, which the minute budget always lets through: it is
+        # written at a bounded length (finding F12).
+        why = R._log_reason(why)
         _runner().vlog(f"ingest: seq {seq}: rejected: {why}")
         R.log(f"rejecting seq {seq}: {why}", "WARN")
         # Dry-run is fully non-mutating: observe, change nothing.
@@ -79,8 +83,15 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # may submit jobs; only a valid signature authorizes execution.
     # The sender address is logged for audit but never trusted.
     from_addr = _runner().parseaddr(from_header)[1].strip()
-    R.log(f"seq {seq}: job {job_id} submitted by {from_addr or '(no sender)'} "
-        f"subject={subject!r}")
+    # This line is written before the signature is asked for, so every
+    # text in it is a stranger's until proven otherwise. Each is
+    # written at a bounded length (finding F12): the gate goes on
+    # with the whole id, and only the log's copy is cut.
+    shown_sender = (R._log_plain(from_addr, R.LOG_SENDER_MAX)
+                    if from_addr else "(no sender)")
+    R.log(f"seq {seq}: job {R._log_plain(job_id, R.LOG_ID_MAX)} "
+          f"submitted by {shown_sender} "
+          f"subject={R._log_quoted(subject, R.LOG_SUBJECT_MAX)}")
 
 
     try:

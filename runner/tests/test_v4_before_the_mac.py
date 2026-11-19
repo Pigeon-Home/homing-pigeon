@@ -15,12 +15,14 @@ key the runner does not hold, the same job with 1 digit of its
 signature turned, and those 2 grown in the subject and in the body.
 """
 import contextlib
+import copy
 import hmac
 import io
 import json
 import os
 import sys
 import tempfile
+import time
 import unittest
 from argparse import Namespace
 from unittest import mock
@@ -38,14 +40,21 @@ from runner.wire import jobcrypto  # noqa: E402
 SUBJECT_SIZES = (1000, 10000, 100000)
 BODY_SIZES = (10000, 100000)
 EVENTS = "security-events.jsonl"
+# Finding F12, closed: what 1 refused message may add to the log,
+# in bytes, whatever is grown; the sizes each text is grown to; and
+# the texts a stranger chooses that the gate's lines name.
+LOG_BOUND = 4096
+GROWN = (1000, 100000, 1000000)
+FIELDS = ("the subject", "the id", "the sender", "the key id",
+          "a key id that is not a string", "the body, elsewhere")
 
 
-def _mail(subject, body):
-    """1 mail as octets, under a subject given whole."""
-    return (("Subject: %s\r\nFrom: si@example.com\r\n"
+def _mail(subject, body, sender="si@example.com"):
+    """1 mail as octets, under a subject and a sender given whole."""
+    return (("Subject: %s\r\nFrom: %s\r\n"
              "MIME-Version: 1.0\r\n"
              "Content-Type: text/plain; charset=utf-8\r\n"
-             "Content-Transfer-Encoding: 8bit\r\n\r\n" % subject
+             "Content-Transfer-Encoding: 8bit\r\n\r\n" % (subject, sender)
              ).encode("ascii")
             + body.encode("utf-8", "surrogatepass"))
 
@@ -262,35 +271,209 @@ class InFrontOfTheMac(unittest.TestCase):
 
 
 class TheLogInFrontOfTheMac(unittest.TestCase):
-    """S4: what 1 refused message adds to the runner's own log."""
+    """S4 and finding F12, closed: what 1 refused message adds to
+    the runner's own log is a fixed amount, whatever is grown."""
 
-    def added(self, subject_size):
-        entry_id, payload, job_id = next(
-            job for job in BIND.fresh_jobs()
-            if BIND._signed(job[1]) is not None)
-        text = RUNNER.sign_payload(payload, BIND.STRANGER)
-        raw = _mail(_subject(job_id, subject_size), text)
-        with tempfile.TemporaryDirectory() as folder:
+    @classmethod
+    def setUpClass(cls):
+        # The corpus's first fresh job that runs when it is signed
+        # by the key it names.
+        for entry_id, payload, job_id in BIND.fresh_jobs():
+            text = BIND._signed(payload)
+            if text is None:
+                continue
+            with tempfile.TemporaryDirectory() as folder:
+                if arrive(_mail(_subject(job_id), text), folder).executed:
+                    break
+        cls.entry_id, cls.payload, cls.job_id = entry_id, payload, job_id
+
+    def stranger(self, field=None, size=0, subject=None,
+                 sender="si@example.com"):
+        """A job signed by a key the runner does not hold, with 1
+        of the texts a stranger chooses grown to `size`."""
+        payload = copy.deepcopy(self.payload)
+        if subject is None:
+            subject = _subject(self.job_id)
+        if field == "the subject":
+            subject = _subject(self.job_id, size)
+        elif field == "the id":
+            subject = "[HOMING-PIGEON] job %s" % ("A" * size)
+        elif field == "the sender":
+            sender = "%s@example.com" % ("s" * (size - 12))
+        elif field == "the key id":
+            payload["key_id"] = "K" * size
+        elif field == "a key id that is not a string":
+            payload["key_id"] = ["K" * 10] * (size // 14)
+        elif field == "the body, elsewhere":
+            payload["pad"] = "P" * size
+        return _mail(subject,
+                     RUNNER.sign_payload(payload, BIND.STRANGER), sender)
+
+    def logged(self, raw):
+        """(the log file's bytes, the arrival) for 1 arrival, at
+        the start of a minute of the log's budget."""
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.object(RUNNER, "_LOG_MINUTE", time.time()), \
+                mock.patch.object(RUNNER, "_LOG_COUNT", 0), \
+                mock.patch.object(RUNNER, "_LOG_DROPPED", 0):
             log_file = os.path.join(folder, "runner.log")
-            out = arrive(raw, os.path.join(folder, "base"), log_file)
-            written = os.path.getsize(log_file)
-        return written, out.printed, len(raw)
+            base = os.path.join(folder, "base")
+            os.mkdir(base)
+            out = arrive(raw, base, log_file)
+            with open(log_file, "rb") as handle:
+                data = handle.read()
+        return data, out
 
-    def test_s4_the_log_gains_the_subject_as_it_is_written(self):
-        # A standing gap, pinned as it stands. The gate logs the
-        # subject before the signature, so a refused message adds
-        # to the log in step with its subject. A change that
-        # bounds the line turns this pin, and the page with it.
-        small, _, _ = self.added(None)
-        for size in SUBJECT_SIZES:
-            written, printed, _raw = self.added(size)
-            self.assertGreaterEqual(written - small, size - 200, size)
-            self.assertGreaterEqual(printed, size, size)
+    def lines(self, raw):
+        """The log's lines for 1 arrival, without their dates."""
+        data, _out = self.logged(raw)
+        return [line[20:] for line in data.decode("utf-8").split("\n")
+                if line]
 
-    def test_s4_what_it_gains_is_no_more_than_the_message_and_a_line(self):
-        for size in (None,) + SUBJECT_SIZES:
-            written, _printed, raw = self.added(size)
-            self.assertLessEqual(written, raw + 2000, size)
+    def test_f12_a_refused_message_adds_a_fixed_amount(self):
+        plain, _ = self.logged(self.stranger())
+        for field in FIELDS:
+            at = {}
+            for size in GROWN:
+                data, out = self.logged(self.stranger(field, size))
+                self.assertEqual([], out.executed, (field, size))
+                self.assertLessEqual(len(data), LOG_BOUND, (field, size))
+                self.assertLessEqual(out.printed, LOG_BOUND, (field, size))
+                self.assertEqual(plain.count(b"\n"), data.count(b"\n"),
+                                 (field, size))
+                at[size] = len(data)
+            # Past the limit the line holds the cut text and the
+            # length as a number: 10 times the text adds 1 digit to
+            # each place the length is written, and nothing else.
+            self.assertLessEqual(at[GROWN[-1]] - at[GROWN[0]], 8, field)
+
+    def test_f12_the_most_it_adds_with_every_text_grown_at_once(self):
+        # Every text grown in 1 message, in the characters the
+        # quoting writes longest: an escape in the 2 headers, and a
+        # 4 byte letter in the key id, which the refusal repeats.
+        escape, wide = "\x1b", "\U0001d538"
+        most = 0
+        for size in (1000, 100000):
+            payload = copy.deepcopy(self.payload)
+            payload["key_id"] = wide * size
+            raw = _mail("[HOMING-PIGEON] %s job %s"
+                        % (escape * size, escape * size),
+                        RUNNER.sign_payload(payload, BIND.STRANGER),
+                        "%s@example.com" % (escape * size))
+            data, out = self.logged(raw)
+            self.assertEqual([], out.executed, size)
+            self.assertNotIn(b"\x1b", data, size)
+            self.assertEqual(2, data.count(b"\n"), size)
+            self.assertLessEqual(len(data), LOG_BOUND, size)
+            most = max(most, len(data))
+        # The bound is not slack by much: this message comes
+        # within half of it.
+        self.assertGreater(most, LOG_BOUND // 2)
+
+    def test_f12_the_cut_says_the_full_length(self):
+        for field, where in (("the subject", "subject="),
+                             ("the id", "job "),
+                             ("the sender", "submitted by "),
+                             ("the key id", "unknown key_id ")):
+            lines = self.lines(self.stranger(field, 1000))
+            named = [line for line in lines if where in line]
+            self.assertEqual(1, len(named), field)
+            self.assertIn("characters)", named[0], field)
+            said = [int(part.split(" ")[0])
+                    for part in named[0].split("... (")[1:]]
+            self.assertTrue(said and min(said) >= 1000, (field, said))
+
+    def test_f12_an_honest_job_s_lines_are_as_they_were(self):
+        # The 2 lines of a job as it is sent, byte for byte the
+        # lines the gate wrote before the bound.
+        self.assertEqual(
+            ["[INFO] seq 3: job %s submitted by si@example.com "
+             "subject=%r" % (self.job_id, _subject(self.job_id)),
+             "[WARN] rejecting seq 3: bad signature: bad signature"],
+            self.lines(self.stranger()))
+        # At each limit the text is still written whole.
+        longest = "a" * RUNNER.LOG_ID_MAX
+        subject = "[HOMING-PIGEON] job %s" % longest
+        self.assertIn("job %s submitted by" % longest,
+                      self.lines(self.stranger(subject=subject))[0])
+        sender = "%s@example.com" % ("s" * (RUNNER.LOG_SENDER_MAX - 12))
+        self.assertEqual(RUNNER.LOG_SENDER_MAX, len(sender))
+        self.assertIn("submitted by %s subject=" % sender,
+                      self.lines(self.stranger(sender=sender))[0])
+        subject = _subject(self.job_id, RUNNER.LOG_SUBJECT_MAX)
+        self.assertEqual(RUNNER.LOG_SUBJECT_MAX, len(subject))
+        self.assertTrue(self.lines(self.stranger(subject=subject))[0]
+                        .endswith("subject=%r" % subject))
+        # 1 character past a limit, the cut begins.
+        for field, limit in (("the subject", RUNNER.LOG_SUBJECT_MAX),
+                             ("the id", RUNNER.LOG_ID_MAX),
+                             ("the sender", RUNNER.LOG_SENDER_MAX)):
+            line = self.lines(self.stranger(field, limit + 1))[0]
+            self.assertIn("... (%d characters)" % (limit + 1), line, field)
+
+    def test_f12_no_control_character_of_a_stranger_s_reaches_the_log(self):
+        escape = "\x1b[2J"
+        for name, raw in (
+                ("the id", self.stranger(
+                    subject="[HOMING-PIGEON] job ab%scd" % escape)),
+                ("the subject", self.stranger(
+                    subject="[HOMING-PIGEON] %s job %s"
+                    % (escape, self.job_id))),
+                ("the sender", self.stranger(
+                    sender="x%sy@example.com" % escape)),
+                ("a folded sender", self.stranger(
+                    sender="a@example.com,\r\n b 2026-11-19 05:00:00 "
+                           "[INFO] forged@example.com")),
+                ("the key id", self.stranger("the key id", 0,
+                                             subject=None))):
+            data, out = self.logged(raw)
+            self.assertEqual([], out.executed, name)
+            self.assertNotIn(b"\x1b", data, name)
+            self.assertEqual(2, data.count(b"\n"), name)
+
+    def test_f12_the_refusal_s_line_is_bounded_outside_the_budget(self):
+        # A warning always passes the minute budget, so it is the
+        # line's own length that holds a stranger here.
+        raw = self.stranger("the key id", 100000)
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.object(RUNNER, "_LOG_MINUTE", time.time()), \
+                mock.patch.object(RUNNER, "_LOG_COUNT", 0), \
+                mock.patch.object(RUNNER, "_LOG_DROPPED", 0):
+            log_file = os.path.join(folder, "runner.log")
+            for turn in range(60):
+                arrive(raw, os.path.join(folder, "base%d" % turn),
+                       log_file)
+            with open(log_file, "rb") as handle:
+                data = handle.read()
+        refusals = [line for line in data.split(b"\n")
+                    if b"[WARN] rejecting" in line]
+        self.assertEqual(60, len(refusals))
+        self.assertLessEqual(max(len(line) for line in refusals), 1024)
+        self.assertLessEqual(len(data), 60 * LOG_BOUND)
+
+    def test_f12_the_gate_goes_on_with_the_whole_id(self):
+        # A job the runner holds the key for, under a subject past
+        # the limit: it runs, its result names the whole id, and
+        # only the log's copy of the subject is cut.
+        text = BIND._signed(self.payload)
+        raw = _mail(_subject(self.job_id, 1000), text)
+        data, out = self.logged(raw)
+        self.assertEqual(1, len(out.executed))
+        self.assertEqual(1, len(out.sent))
+        self.assertIn(self.job_id, out.sent[0])
+        line = data.decode("utf-8").split("\n")[0]
+        self.assertIn("job %s submitted by" % self.job_id, line)
+        self.assertIn("... (1000 characters)", line)
+
+    def test_the_limits_are_the_longest_an_honest_message_needs(self):
+        self.assertEqual((128, 254, 256, 512),
+                         (RUNNER.LOG_ID_MAX, RUNNER.LOG_SENDER_MAX,
+                          RUNNER.LOG_SUBJECT_MAX, RUNNER.LOG_REASON_MAX))
+        # The id's limit is the job's own rule for an id.
+        self.assertIsNotNone(
+            RUNNER._SAFE_JOB_ID.match("a" * RUNNER.LOG_ID_MAX))
+        self.assertIsNone(
+            RUNNER._SAFE_JOB_ID.match("a" * (RUNNER.LOG_ID_MAX + 1)))
 
 
 if __name__ == "__main__":
