@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.6 - 2026-11-19
+
+- V4: the provable model comes to main, findings F1 to F10 closed, the general statement and the bindings (since 3.17.30.5)
+
 ## 3.17.30.5 - 2026-11-19
 
 - desk: Q203 gives the count of the opener search's homes as it is: 3, of which the 2 in Python are closed and the hosted queue Worker's copy, behind a tenant's bearer token, stands open; the opener test says which homes it holds
