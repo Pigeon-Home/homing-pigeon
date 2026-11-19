@@ -855,9 +855,12 @@ class Sizes(unittest.TestCase):
         self.assertLessEqual(totals(self.reg)["largest entry"],
                              min(caps.values()))
         # Of the 4, the page names the caps that have entries at
-        # their code, and how large the largest of them is.
+        # their code, and how large the largest of them is. The
+        # gate target put C1, C2 and C3 on this list beside C4
+        # (Q208, open for the v4 seat's re-test).
         reach = {row["id"]: row["reach"] for row in self.reg["constraints"]}
-        self.assertEqual(["C4"], [cid for cid in caps if reach[cid]])
+        self.assertEqual(["C1", "C2", "C3", "C4"],
+                         [cid for cid in caps if reach[cid]])
         self.assertIn("%s entries, and the largest of them is %s bytes" % (
             _n(reach["C4"]["entries"]), _n(reach["C4"]["largest"])), flat)
 

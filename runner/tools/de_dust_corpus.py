@@ -9051,7 +9051,7 @@ def mutate(rng, entry, corpus, target, weights=None):
     exactly what the corpus file will carry. `weights`, when given,
     steer the choice within the text and payload pools."""
     if entry["kind"] == "text":
-        if target == "mail":
+        if target in ("mail", "gate"):
             pool = MAIL_MUTATORS
         elif target == "dtls":
             pool = DTLS_MUTATORS
@@ -9098,6 +9098,387 @@ def mutate(rng, entry, corpus, target, weights=None):
     if data == entry["data"]:
         return None
     return data, name
+
+
+# ------------------------------------------------------------------
+# gate: the whole gate, and the work in front of the MAC
+# ------------------------------------------------------------------
+
+_GATE_CFG = {
+    "shared_secret": SECRET,
+    "additional_secrets": {"canary-key": SENSE, "ops": OPS},
+    "mailbox_user": "runner@example.com",
+    "oracle_opinion_mode": "off",
+    # The corpus's jobs are issued at the corpus's fixed time; the
+    # age window sits past the MAC and is not what this target
+    # measures, so the fixture sets it wide enough to reach the
+    # acceptance path at all.
+    "max_job_age_sec": 10 ** 9,
+}
+_GATE_CAP = 1024          # the small cap of the in-front-of-the-MAC probe
+_GATE_EVENT_MAX = 200     # one refusal record's supposed size bound
+_GATE_LOG_LINES = 12      # one refused arrival's supposed log bound
+_GATE_PARSE_FACTOR = 16   # the parser bound finding F10 recorded
+
+
+class _GateRig:
+    """One gate's counters, watched across its arrivals: what ran,
+    what was sent, what was logged, and the work in front of the
+    MAC (characters handed to the parser, MACs computed, sealed
+    bodies opened). The seams are the runner's own: execute_job
+    and send_mail are replaced on the runner module, the logs are
+    captured, and the parser, MAC and decryption entry points are
+    counted as they are called."""
+
+    def __init__(self):
+        self.ran = []
+        self.sent = []
+        self.lines = []
+        self.parse_chars = 0
+        self.macs = 0
+        self.opens = 0
+
+    def log(self, msg, level="INFO", *a, **k):
+        self.lines.append(str(msg))
+
+    def vlog(self, msg, *a, **k):
+        self.lines.append(str(msg))
+
+    def execute_job(self, cfg, job, base_dir):
+        self.ran.append(job)
+        return {"exit_code": 0, "timed_out": False, "stdout": "ok",
+                "stderr": "", "duration_sec": 0.0}
+
+    def send_mail(self, smtp, cfg, subject, body, to=None):
+        self.sent.append((subject, body, to))
+
+    def snapshot(self):
+        return (len(self.ran), len(self.sent), len(self.lines),
+                self.parse_chars, self.macs, self.opens)
+
+
+def _gate_events(base):
+    """The refusal records kept under a base: the raw lines of the
+    security events file, or none when the file was never made."""
+    path = os.path.join(base, "security-events.jsonl")
+    if not os.path.exists(path):
+        return []
+    with open(path, "rb") as fh:
+        return [ln for ln in fh.read().split(b"\n") if ln.strip()]
+
+
+def _gate_kept(base):
+    """Every file left under a base, relative to it."""
+    out = []
+    for root, _dirs, files in os.walk(base):
+        for name in files:
+            out.append(os.path.relpath(os.path.join(root, name), base))
+    return sorted(out)
+
+
+def _gate_classify(raw):
+    """The message read on its own, with no rig in place:
+    (subject, job_id or None, outer_verifies, is_envelope,
+    chain_verifies). The chain is the gate's own question, read
+    the gate's own way: the outer object verified keyed, a sealed
+    body opened and its inner object verified keyed."""
+    import email
+    msg, exc = _call(email.message_from_bytes, raw)
+    if exc is not None:
+        return "", None, False, False, False
+    subject = str(msg["Subject"] or "")
+    m = SUBJ.JOB_ID_RE.search(subject)
+    job_id = m.group(1) if m else None
+    body, exc = _call(R.get_text_body, msg)
+    if exc is not None or not isinstance(body, str):
+        return subject, job_id, False, False, False
+    got, exc = _call(V.verify_body_keyed, body, SECRETS)
+    if exc is not None:
+        return subject, job_id, False, False, False
+    outer, key_id = got
+    if not (isinstance(outer, dict) and JC.is_envelope(outer)):
+        return subject, job_id, True, False, True
+    if job_id is None:
+        return subject, job_id, True, True, False
+    secret = SECRETS.get(key_id, SECRET) if isinstance(key_id, str) \
+        else SECRET
+    inner_text, exc = _call(lambda: JC.decrypt_body(
+        outer, secret, job_id=job_id, key_id=key_id or ""))
+    if exc is not None:
+        return subject, job_id, True, True, False
+    _inner, exc = _call(V.verify_body_keyed, inner_text, SECRETS)
+    return subject, job_id, True, True, exc is None
+
+
+def _gate_arrive(rig, cfg, raw, base, seen, seq):
+    """One arrival at the gate under the rig. Returns the fake
+    mailbox (its marks are the arrival's), and raises Crash on
+    anything the handler raised."""
+    import hmac
+    imap = _FakeImap()
+    smtp = _FakeSmtp()
+    real_loads = json.loads
+    real_new = hmac.new
+    real_decrypt = JC.decrypt_body
+
+    def loads(s, *a, **k):
+        if isinstance(s, (str, bytes, bytearray)):
+            rig.parse_chars += len(s)
+        return real_loads(s, *a, **k)
+
+    def new(*a, **k):
+        rig.macs += 1
+        return real_new(*a, **k)
+
+    def decrypt(*a, **k):
+        rig.opens += 1
+        return real_decrypt(*a, **k)
+
+    with mock.patch.object(R, "execute_job", rig.execute_job), \
+            mock.patch.object(R, "send_mail", rig.send_mail), \
+            mock.patch.object(R, "log", rig.log), \
+            mock.patch.object(R, "vlog", rig.vlog), \
+            mock.patch.object(json, "loads", loads), \
+            mock.patch.object(hmac, "new", new), \
+            mock.patch.object(JC, "decrypt_body", decrypt):
+        _got, exc = _call(R.handle_mail, cfg, imap, smtp, seq, raw,
+                          base, seen, R.build_secrets(cfg),
+                          _mail_opts({}))
+    if exc is not None:
+        raise Crash("exception", "handle_mail raised "
+                    f"{type(exc).__name__}: {_short(exc)}")
+    return imap
+
+
+def _gate_refusal(rig, base, seen, raw, snap, events_before, marks,
+                  chain_ok, outer_ok, envelope, secrets_count, when):
+    """The refusal contract, checked on one arrival's deltas: the
+    suppositions G1 to G7 of docs/steady/project/de_dust.md."""
+    ran, sent, lines, parse, macs, opens = (
+        now - then for now, then in zip(rig.snapshot(), snap))
+    if ran:
+        raise Crash("forgery", f"a refused arrival executed {ran} "
+                    f"job(s) ({when})")
+    if sent:
+        raise Crash("contract", f"a refused arrival sent {sent} "
+                    f"mail(s) ({when})")
+    if seen:
+        raise Crash("contract", f"a refused arrival changed the seen "
+                    f"set ({when})")
+    if marks != 1:
+        raise Crash("contract", f"a refused arrival was marked "
+                    f"{marks} times ({when})")
+    events = _gate_events(base)
+    added = events[len(events_before):]
+    if chain_ok:
+        if len(added) > 1:
+            raise Crash("contract", f"a refusal after the MAC kept "
+                        f"{len(added)} records ({when})")
+    else:
+        if len(added) != 1:
+            raise Crash("contract", f"a refusal in front of the MAC "
+                        f"kept {len(added)} records ({when})")
+        if len(added[0]) > _GATE_EVENT_MAX:
+            raise Crash("contract", f"a refusal record is "
+                        f"{len(added[0])} bytes, over the supposed "
+                        f"{_GATE_EVENT_MAX} ({when})")
+    kept = _gate_kept(base)
+    if kept != ["security-events.jsonl"]:
+        raise Crash("contract", f"a refused arrival kept {kept!r} "
+                    f"under its base ({when})")
+    new_lines = rig.lines[snap[2]:]
+    if len(new_lines) > _GATE_LOG_LINES:
+        raise Crash("contract", f"a refused arrival logged "
+                    f"{len(new_lines)} lines ({when})")
+    carrying = [ln for ln in new_lines if "subject=" in ln]
+    if len(carrying) > 1:
+        raise Crash("contract", f"a refused arrival logged the "
+                    f"subject on {len(carrying)} lines ({when})")
+    chars = sum(len(ln) for ln in new_lines)
+    if chars > 6 * len(raw) + 1024:
+        raise Crash("contract", f"a refused arrival logged {chars} "
+                    f"characters for a {len(raw)} byte message "
+                    f"({when})")
+    if parse > _GATE_PARSE_FACTOR * max(1, len(raw)):
+        raise Crash("contract", f"the parser was given {parse} "
+                    f"characters for a {len(raw)} byte message "
+                    f"({when})")
+    if macs > 2 * secrets_count:
+        raise Crash("contract", f"{macs} MACs were computed for "
+                    f"{secrets_count} keys held ({when})")
+    if outer_ok and envelope:
+        if opens > 1:
+            raise Crash("contract", f"a sealed body was opened "
+                        f"{opens} times ({when})")
+    elif opens:
+        raise Crash("forgery", f"a sealed body was opened {opens} "
+                    f"time(s) before its signature verified ({when})")
+
+
+def check_gate(entry):
+    """gate: one raw message -- its subject, the object a sender
+    chose to sign or seal, under a key -- at the whole gate,
+    handle_mail, through the gate rig, twice, and a third time
+    under a small size cap when the message is a long marker mail.
+    Contract (the candidate constraint C32 of the v4 proofs, the
+    work in front of the MAC): the handler never raises; a job
+    runs only when its signature chain verifies, and then exactly
+    once, with exactly one result sent and exactly one key added
+    to the seen set, its copy running and sending nothing; a
+    dispatched arrival whose chain does not verify runs nothing,
+    sends nothing, adds nothing to the seen set, is marked seen
+    exactly once, and keeps exactly one refusal record of bounded
+    size as the only file under its base, on both arrivals; the
+    parser is given at most 16 times the message's length, the
+    MAC is computed at most twice per key held, a sealed body
+    whose envelope signature does not verify is never opened, and
+    the log a refusal adds stays within the tripwire of
+    supposition G4 (the submission line's own growth with the
+    subject is finding F12, pinned by the v4 suite); a refusal
+    after the MAC keeps at most one record; an arrival over the
+    small cap is refused in front of the MAC, with no MAC
+    computed, no submission line logged, no record kept and the
+    mark still set; an arrival that is not dispatched runs
+    nothing and sends at most one mail. Accepted when a job ran."""
+    raw = _raw_bytes(entry["data"])
+    _subject, job_id, outer_ok, envelope, chain_ok = _gate_classify(raw)
+    base = _tmpdir(prefix="hp-de_dust-gate-")
+    cfg = dict(_GATE_CFG, base_dir=base)
+    secrets_count = len(R.build_secrets(cfg))
+    seen = {}
+    rig = _GateRig()
+    snap = rig.snapshot()
+    imap = _gate_arrive(rig, cfg, raw, base, seen, 3)
+    submitted = any(" submitted by " in ln for ln in rig.lines)
+    ran = len(rig.ran)
+    if ran:
+        if not chain_ok:
+            raise Crash("forgery", "a job executed whose signature "
+                        "chain does not verify")
+        if ran != 1:
+            raise Crash("contract", f"{ran} jobs executed for one "
+                        "arrival")
+        if rig.ran[0].get("job_id") != job_id:
+            raise Crash("contract", "the job that ran is not the "
+                        "subject's job")
+        if len(rig.sent) != 1:
+            raise Crash("contract", f"an accepted arrival sent "
+                        f"{len(rig.sent)} results")
+        if len(seen) != 1:
+            raise Crash("contract", f"an accepted arrival left "
+                        f"{len(seen)} keys in the seen set")
+        if envelope and rig.opens != 1:
+            raise Crash("contract", f"an accepted sealed job was "
+                        f"opened {rig.opens} times")
+        outcome = "accepted"
+    elif submitted:
+        _gate_refusal(rig, base, seen, raw, snap, [], len(imap.marked),
+                      chain_ok, outer_ok, envelope, secrets_count,
+                      "first arrival")
+        outcome = "refused"
+    else:
+        if len(rig.sent) > 1:
+            raise Crash("contract", "an arrival that was not "
+                        f"dispatched sent {len(rig.sent)} mails")
+        if entry["from"].startswith("seed:") and rig.sent:
+            # A seed that is not dispatched sends nothing at all;
+            # the allowance of 1 is for a child a mutator turned
+            # into a question the runner answers (G9's shape).
+            raise Crash("contract", "a seed that was not dispatched "
+                        f"sent {len(rig.sent)} mails")
+        outcome = "refused"
+    note("gate", outcome, _digest(rig.lines))
+    if submitted:
+        # A copy of the message: an accepted job runs nothing
+        # more, a refused one refuses the same way again.
+        snap = rig.snapshot()
+        events_before = _gate_events(base)
+        seen_before = dict(seen)
+        imap = _gate_arrive(rig, cfg, raw, base, seen, 4)
+        if outcome == "accepted":
+            if len(rig.ran) != 1 or len(rig.sent) != 1:
+                raise Crash("contract", "a copy of an accepted job "
+                            "ran or sent again")
+            if seen != seen_before:
+                raise Crash("contract", "a copy of an accepted job "
+                            "changed the seen set")
+            if len(imap.marked) != 1:
+                raise Crash("contract", "a copy of an accepted job "
+                            f"was marked {len(imap.marked)} times")
+        else:
+            _gate_refusal(rig, base, seen, raw, snap, events_before,
+                          len(imap.marked), chain_ok, outer_ok,
+                          envelope, secrets_count, "the copy")
+    if job_id is not None and len(raw) > _GATE_CAP:
+        # The cap in front of the MAC (G8): the same message under
+        # a small cap is refused before any of the measured work.
+        cap_base = _tmpdir(prefix="hp-de_dust-gate-cap-")
+        cap_cfg = dict(cfg, base_dir=cap_base, max_job_bytes=_GATE_CAP)
+        cap_rig = _GateRig()
+        cap_imap = _gate_arrive(cap_rig, cap_cfg, raw, cap_base, {}, 3)
+        if cap_rig.ran or cap_rig.sent:
+            raise Crash("contract", "an over-cap arrival ran or sent")
+        if cap_rig.macs != 0:
+            raise Crash("contract", f"an over-cap arrival computed "
+                        f"{cap_rig.macs} MACs")
+        if any(" submitted by " in ln for ln in cap_rig.lines):
+            raise Crash("contract", "an over-cap arrival was logged "
+                        "as submitted")
+        if _gate_events(cap_base):
+            raise Crash("contract", "an over-cap arrival kept a "
+                        "refusal record")
+        if len(cap_imap.marked) != 1:
+            raise Crash("contract", "an over-cap arrival was marked "
+                        f"{len(cap_imap.marked)} times")
+    return outcome
+
+
+def _gate_flip_sig(text):
+    """One hex digit of the trailing signature turned: the last
+    hex digit of the signed text becomes a different one."""
+    for i in range(len(text) - 1, -1, -1):
+        ch = text[i]
+        if ch in "0123456789abcdef":
+            return text[:i] + ("0" if ch != "0" else "1") + text[i + 1:]
+    return text + "0"
+
+
+def seeds_gate():
+    job = _job(script="echo gate")
+    subject = "[HOMING-PIGEON] job bm-exec-0001"
+    signed = V.sign_payload(job, SECRET)
+    sealed = _sealed_mail(subject, "bm-exec-0001", job, "").decode(
+        "utf-8", "surrogateescape")
+    big = _sealed_mail(subject, "bm-exec-0001",
+                       _job(script="echo " + "y" * 8000), "").decode(
+        "utf-8", "surrogateescape")
+    out = [
+        ("sealed_valid", sealed),
+        ("sealed_ops", _sealed_mail(subject, "bm-exec-0001", job,
+                                    "ops").decode("utf-8",
+                                                  "surrogateescape")),
+        ("sealed_sig_turned", _gate_flip_sig(sealed)),
+        ("sealed_body_turned",
+         sealed[:len(sealed) // 2] + "A" + sealed[len(sealed) // 2 + 1:]),
+        ("sealed_big_sig_turned", _gate_flip_sig(big)),
+        ("cleartext_valid", _mail(subject, signed)),
+        ("cleartext_wrong_key", _mail(subject, V.sign_payload(job, WRONG))),
+        ("job_subject_plain_body",
+         _mail(subject, "echo hello, no signed object here")),
+        ("subject_grown_sig_fails",
+         _mail(subject + " " + "x" * 10000, V.sign_payload(job, WRONG))),
+        ("result_subject",
+         _mail("[HOMING-PIGEON] result bm-exec-0001", signed)),
+        ("bounce_subject",
+         _mail("Undeliverable: [HOMING-PIGEON] result bm-exec-0001",
+               "The message could not be delivered.")),
+        ("no_marker", _mail("a perfectly ordinary subject", "hello")),
+        ("panic_shaped",
+         _mail("PANIC stop everything now", "the word, unarmed")),
+        ("not_mail", "just some text, no headers at all"),
+        ("empty", ""),
+    ]
+    return [make_entry("text", t, "seed:" + n, "seed") for n, t in out]
 
 
 # ------------------------------------------------------------------
@@ -9416,6 +9797,11 @@ TARGETS = {
     "edge_subject": {"files": [_src("wire", "transports.py")],
                      "check": check_edge_subject, "seeds": seeds_edge_subject,
                      "technique": "parity"},
+    # The gate itself: one raw message at handle_mail, held to the
+    # work in front of the MAC (the v4 proofs' candidate C32).
+    "gate": {"files": [_src("runner.py"), _src("ops", "mail.py"),
+                        _src("wire", "mailbox.py")],
+             "check": check_gate, "seeds": seeds_gate},
 }
 
 

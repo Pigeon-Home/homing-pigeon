@@ -212,6 +212,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_fuzz_guided.py",
     "runner/tests/test_fuzz_parsers.py",
     "runner/tests/test_fuzz_surfaces.py",
+    "runner/tests/test_gate_bounds.py",
     "runner/tests/test_graceful_failure.py",
     "runner/tests/test_harness.py",
     "runner/tests/test_harness_gaps.py",

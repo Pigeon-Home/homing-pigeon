@@ -55,7 +55,7 @@ the registry to the tree and this page to the registry.
 ## The counts
 
 The registry binds 31 constraints and 13 properties. It
-names 59 code sites and 81 named pins, and it carries 60
+names 59 code sites and 81 named pins, and it carries 76
 fuzz ties. The fuzz part was counted on 2026-11-19.
 
 ## Every constraint, tied
@@ -67,21 +67,21 @@ the constraint's functions.
 
 | ID | Constraint | Stated by | Code | Pins | Fuzz data |
 |----|------------|-----------|------|------|-----------|
-| C1 | `max_job_bytes` | P1 clause 1 | `handle_mail` in `runner/ops/mail.py` | 4 | none |
-| C2 | `max_script_bytes` | P1 clause 5 | `handle_mail` in `runner/ops/mail.py` | 4 | none |
-| C3 | `max_result_bytes` | P11, the whole property | `_max_result_bytes` in `runner/runner.py`; `_fit_result_body` in `runner/runner.py` | 2 | none |
+| C1 | `max_job_bytes` | P1 clause 1 | `handle_mail` in `runner/ops/mail.py` | 4 | `gate` 15 |
+| C2 | `max_script_bytes` | P1 clause 5 | `handle_mail` in `runner/ops/mail.py` | 4 | `gate` 15 |
+| C3 | `max_result_bytes` | P11, the whole property | `_max_result_bytes` in `runner/runner.py`; `_fit_result_body` in `runner/runner.py` | 2 | `gate` 2 |
 | C4 | `_LOCAL_ENVELOPE_MAX_BYTES` | P12, the whole property | `_ingest_local_envelope_inner` in `runner/runner.py`; `_scan_local_inbox` in `runner/runner.py` | 3 | `local` 518, `query` 32, `local_inbox` 23 |
-| C5 | Signature | P1 clause 2 | `sign_payload` in `runner/wire/verify.py`; `verify_body_keyed` in `runner/wire/verify.py`; `_verify_and_decrypt` in `runner/runner.py` | 3 | `wire` 115 |
+| C5 | Signature | P1 clause 2 | `sign_payload` in `runner/wire/verify.py`; `verify_body_keyed` in `runner/wire/verify.py`; `_verify_and_decrypt` in `runner/runner.py` | 3 | `wire` 115, `gate` 9 |
 | C6 | Secret entropy floor | P13, the whole property | `validate_shared_secret` in `runner/guard/security.py`; `build_secrets` in `runner/wire/verify.py` | 3 | `secret` 26, `local` 518, `query` 183 |
 | C7 | Key fingerprint | P1 clause 2; P4 clause 1 | `key_fingerprint` in `runner/guard/security.py` | 1 | `local` 518, `query` 183 |
-| C8 | Cleartext | P1 clause 3 | `_cleartext_jobs_allowed` in `runner/runner.py` | 2 | `query` 3, `v2_mail` 3, `board_mail` 2 |
+| C8 | Cleartext | P1 clause 3 | `_cleartext_jobs_allowed` in `runner/runner.py` | 2 | `query` 3, `v2_mail` 3, `board_mail` 2, `gate` 1 |
 | C9 | AEAD | P1 clause 3 | `decrypt_body` in `runner/wire/jobcrypto.py` | 2 | `crypto` 73 |
 | C10 | Audience | P1 clause 4 | `check_audience` in `runner/wire/verify.py`; `audience_allows` in `runner/wire/verify.py` | 1 | `query` 176, `board_mail` 95 |
 | C11 | Seven security modes | P1 clauses 4 and 8; P4 clause 11 | `sec_mode` in `runner/guard/security.py`; `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` | 2 | `query` 176, `board_mail` 95 |
-| C12 | `max_job_age_sec` | P1 clause 7 | `handle_mail` in `runner/ops/mail.py` | 2 | none |
-| C13 | Protocol version | P1 clause 6 | `_version_ok` in `runner/runner.py` | 1 | `local` 518, `query` 176, `board_mail` 95, `local_inbox` 23 |
+| C12 | `max_job_age_sec` | P1 clause 7 | `handle_mail` in `runner/ops/mail.py` | 2 | `gate` 15 |
+| C13 | Protocol version | P1 clause 6 | `_version_ok` in `runner/runner.py` | 1 | `local` 518, `query` 176, `board_mail` 95, `local_inbox` 23, `gate` 2 |
 | C14 | Key policies | P1 clause 8; P4, the whole property | `check_key_policy` in `runner/wire/verify.py`; `_build_key_policies` in `runner/wire/verify.py` | 9 | `keydir` 35, `local` 518, `query` 163 |
-| C15 | Execution semantics | P1 clause 9; P5, the whole property | `handle_mail` in `runner/ops/mail.py`; `stash_result` in `runner/runner.py`; `load_sent_result` in `runner/runner.py` | 2 | `race_stash` 168 |
+| C15 | Execution semantics | P1 clause 9; P5, the whole property | `handle_mail` in `runner/ops/mail.py`; `stash_result` in `runner/runner.py`; `load_sent_result` in `runner/runner.py` | 2 | `gate` 15, `race_stash` 168 |
 | C16 | Transport credentials | P3, the whole property | `__init__` in `runner/transport_extensions/nats/__main__.py`; `fetch_channel_messages` in `runner/wire/transports.py` | 2 | `inbox` 29, `channels` 11 |
 | C17 | Result-policy ceiling | P2 clauses 5, 6 and 8 | `apply_result_policy` in `runner/ops/policy.py` | 7 | `queries` 133 |
 | C18 | Sandbox shape | P2 clauses 1 to 4 | `build_bwrap_command` in `runner/guard/sandbox.py`; `_confinement_cfg` in `runner/guard/sandbox.py` | 3 | none |
@@ -89,9 +89,9 @@ the constraint's functions.
 | C20 | Transport gate postures | P3 clauses 4 to 8 | `scan_jobs` in `runner/transport_extensions/file/__main__.py`; `feed_authenticated` in `runner/wire/dtlsproto.py`; `service_channel` in `runner/wire/transports.py` | 4 | `dtls` 7, `dtls_session` 7, `inbox` 29 |
 | C21 | Key directory precedence | P4 clauses 2 and 9 | `key_directory_verdict` in `runner/wire/verify.py`; `load_key_directory` in `runner/wire/verify.py` | 1 | `keydir` 38 |
 | C22 | Upgrade key arrangement | P4 clauses 5, 7, 8 and 11 | `check_key_policy` in `runner/wire/verify.py` | 1 | `keydir` 35 |
-| C23 | Replay-cache keep horizon | P5 clauses 5 and 8 | `seen_keep_sec` in `runner/runner.py`; `_write_seen_kept` in `runner/runner.py`; `save_seen` in `runner/runner.py` | 3 | `race_state` 209, `board_mail` 78, `v2_mail` 32 |
-| C24 | Claim stale rule | P5 clause 4 | `_disk_owns` in `runner/ops/misc.py`; `_disk_release` in `runner/runner.py` | 2 | none |
-| C25 | Record retention and delivery window | P5 clauses 9 and 10 | `prune_sent` in `runner/runner.py`; `deliver_stash` in `runner/runner.py`; `resend_stashed` in `runner/runner.py` | 1 | `race_stash` 168 |
+| C23 | Replay-cache keep horizon | P5 clauses 5 and 8 | `seen_keep_sec` in `runner/runner.py`; `_write_seen_kept` in `runner/runner.py`; `save_seen` in `runner/runner.py` | 3 | `race_state` 209, `board_mail` 78, `v2_mail` 32, `gate` 2 |
+| C24 | Claim stale rule | P5 clause 4 | `_disk_owns` in `runner/ops/misc.py`; `_disk_release` in `runner/runner.py` | 2 | `gate` 2 |
+| C25 | Record retention and delivery window | P5 clauses 9 and 10 | `prune_sent` in `runner/runner.py`; `deliver_stash` in `runner/runner.py`; `resend_stashed` in `runner/runner.py` | 1 | `race_stash` 168, `gate` 2 |
 | C26 | Default-class reader | P6 clauses 1, 2, 3 and 5 | `integer` in `runner/guard/confval.py`; `number` in `runner/guard/confval.py`; `reload_hot_config` in `runner/ops/attest.py` | 3 | `local` 518, `race_state` 209 |
 | C27 | Refuse class at startup | P6 clauses 4 and 6 | `_validate_size_caps` in `runner/runner.py`; `_port` in `runner/wire/mailbox.py` | 2 | none |
 | C28 | Disk guard | P7, the whole property | `guard_disk` in `runner/oracle/resources.py`; `disk_guard_enabled` in `runner/oracle/resources.py` | 4 | none |
@@ -131,9 +131,9 @@ code.
 ## The fuzz data
 
 The fuzz campaign's log (`runner/tests/de_dust/runs.jsonl`)
-records 33,537 grow runs over 30 targets. Together they tried
+records 33,537 grow runs over 31 targets. Together they tried
 620,457,512 inputs against the readers' contracts. The
-corpus those runs kept stands at 2,621 corpus entries, and no
+corpus those runs kept stands at 2,636 corpus entries, and no
 crash stands open in it.
 
 A fuzz target is bound to a constraint when its corpus
@@ -149,7 +149,7 @@ tie as not traced. 3 targets, `race_board`, `race_stash` and
 entries that enter a function moves by a few from one count
 to the next. The registry carries 1 count of them.
 
-17 of the 30 targets are bound to at least 1 constraint.
+18 of the 31 targets are bound to at least 1 constraint.
 197,899,597 of those inputs were tried by the bound targets.
 
 | Target | Grow runs | Inputs tried | Refused | Accepted | Corpus entries | Constraints it reaches |
@@ -160,6 +160,7 @@ to the next. The registry carries 1 count of them.
 | `dtls` | 1,975 | 30,145,823 | 16,367,812 | 13,890,128 | 61 | C20, C29, C30 |
 | `dtls_hostile` | 1,815 | 3,622,525 | 97,845 | 3,592,744 | 38 | C29, C30 |
 | `dtls_session` | 1,677 | 2,020,301 | 1,454,252 | 648,979 | 58 | C20, C29, C30 |
+| `gate` | 0 | 0 | 0 | 0 | 15 | C1, C2, C3, C5, C8, C12, C13, C15, C23, C24, C25 |
 | `inbox` | 1,002 | 3,160,472 | 721,817 | 2,466,873 | 29 | C16, C20 |
 | `keydir` | 1,855 | 84,599,011 | 58,326,438 | 26,343,028 | 38 | C14, C21, C22 |
 | `local` | 812 | 18,065,977 | 18,271,512 | 84,830 | 518 | C4, C6, C7, C13, C14, C26 |
@@ -203,25 +204,25 @@ tie the registry carries the smallest entry inside the
 function, the largest, and the number in each of 4 bands.
 For each constraint it carries the same over all its ties,
 and an entry that enters 2 of the constraint's functions is
-counted once. 21 of the 31 constraints have entries to size.
+counted once. 26 of the 31 constraints have entries to size.
 
 | ID | Constraint | Entries inside | Smallest | Largest | Under 100 bytes | 100 to 999 | 1,000 to 9,999 | 10,000 and over |
 |----|------------|----------------|----------|---------|-----------------|------------|----------------|-----------------|
-| C1 | `max_job_bytes` | none |  |  |  |  |  |  |
-| C2 | `max_script_bytes` | none |  |  |  |  |  |  |
-| C3 | `max_result_bytes` | none |  |  |  |  |  |  |
+| C1 | `max_job_bytes` | 15 | 0 | 11,642 | 2 | 11 | 0 | 2 |
+| C2 | `max_script_bytes` | 15 | 0 | 11,642 | 2 | 11 | 0 | 2 |
+| C3 | `max_result_bytes` | 2 | 708 | 743 | 0 | 2 | 0 | 0 |
 | C4 | `_LOCAL_ENVELOPE_MAX_BYTES` | 573 | 0 | 4,280 | 54 | 487 | 32 | 0 |
-| C5 | Signature | 117 | 0 | 3,176 | 5 | 110 | 2 | 0 |
+| C5 | Signature | 126 | 0 | 11,642 | 5 | 117 | 2 | 2 |
 | C6 | Secret entropy floor | 727 | 0 | 4,754 | 70 | 620 | 37 | 0 |
 | C7 | Key fingerprint | 701 | 0 | 4,754 | 47 | 617 | 37 | 0 |
-| C8 | Cleartext | 8 | 233 | 857 | 0 | 8 | 0 | 0 |
+| C8 | Cleartext | 9 | 233 | 857 | 0 | 9 | 0 | 0 |
 | C9 | AEAD | 73 | 50 | 4,427 | 2 | 70 | 1 | 0 |
 | C10 | Audience | 271 | 71 | 8,583 | 2 | 229 | 40 | 0 |
 | C11 | Seven security modes | 271 | 71 | 8,583 | 2 | 229 | 40 | 0 |
-| C12 | `max_job_age_sec` | none |  |  |  |  |  |  |
-| C13 | Protocol version | 812 | 0 | 8,583 | 56 | 714 | 42 | 0 |
+| C12 | `max_job_age_sec` | 15 | 0 | 11,642 | 2 | 11 | 0 | 2 |
+| C13 | Protocol version | 814 | 0 | 8,583 | 56 | 716 | 42 | 0 |
 | C14 | Key policies | 716 | 0 | 4,754 | 61 | 618 | 37 | 0 |
-| C15 | Execution semantics | 168 | 132 | 4,284 | 0 | 164 | 4 | 0 |
+| C15 | Execution semantics | 183 | 0 | 11,642 | 2 | 175 | 4 | 2 |
 | C16 | Transport credentials | 40 | 13 | 1,822 | 10 | 29 | 1 | 0 |
 | C17 | Result-policy ceiling | 133 | 65 | 4,661 | 4 | 124 | 5 | 0 |
 | C18 | Sandbox shape | none |  |  |  |  |  |  |
@@ -229,9 +230,9 @@ counted once. 21 of the 31 constraints have entries to size.
 | C20 | Transport gate postures | 43 | 13 | 1,822 | 5 | 33 | 5 | 0 |
 | C21 | Key directory precedence | 38 | 30 | 176 | 18 | 20 | 0 | 0 |
 | C22 | Upgrade key arrangement | 35 | 31 | 176 | 15 | 20 | 0 | 0 |
-| C23 | Replay-cache keep horizon | 319 | 63 | 8,577 | 2 | 308 | 9 | 0 |
-| C24 | Claim stale rule | none |  |  |  |  |  |  |
-| C25 | Record retention and delivery window | 170 | 130 | 4,284 | 0 | 166 | 4 | 0 |
+| C23 | Replay-cache keep horizon | 321 | 63 | 8,577 | 2 | 310 | 9 | 0 |
+| C24 | Claim stale rule | 2 | 708 | 743 | 0 | 2 | 0 | 0 |
+| C25 | Record retention and delivery window | 172 | 130 | 4,284 | 0 | 168 | 4 | 0 |
 | C26 | Default-class reader | 727 | 0 | 1,191 | 47 | 673 | 7 | 0 |
 | C27 | Refuse class at startup | none |  |  |  |  |  |  |
 | C28 | Disk guard | none |  |  |  |  |  |  |
@@ -241,31 +242,35 @@ counted once. 21 of the 31 constraints have entries to size.
 
 What the sizes say:
 
-1. **The corpus is a corpus of small inputs.** Of the 2,621
-   corpus entries, 359 are under 100 bytes, 2,173 are of 100
-   to 999 bytes, 89 are of 1,000 to 9,999 bytes, and 0 are of
-   10,000 bytes or more. The largest is 8,583 bytes.
+1. **The corpus is a corpus of small inputs.** Of the 2,636
+   corpus entries, 361 are under 100 bytes, 2,184 are of 100
+   to 999 bytes, 89 are of 1,000 to 9,999 bytes, and 2 are of
+   10,000 bytes or more. The largest is 11,642 bytes.
 2. **No fuzz input is the size of a size cap.** C1 to C4 are
    caps on size: 4,194,304 bytes for a job, 1,048,576 for a
    script, 5,242,880 for a result and 262,144 for a local
    envelope. A child of the campaign is at most 16,384
-   bytes, which is under all 4. C4 is the 1 cap with fuzz
-   data at its code: 573 entries, and the largest of them is
-   4,280 bytes. So the campaign's data does not hold the
-   edge of a cap, and with this cap on a child it cannot. The
+   bytes, which is under all 4. All 4 caps now have fuzz
+   data at their code: the gate target's 15 entries enter
+   the gate for C1 and C2, 2 of them reach the result
+   fitting for C3, and C4 keeps 573 entries, and the
+   largest of them is 4,280 bytes. The gate's largest entry
+   is 11,642 bytes, far under every cap, so the campaign's
+   data does not hold the edge of a cap, and with this cap
+   on a child it cannot. The
    edge is held by pins, and by the corpus grown to the cap
    at the doors, in the section below: C1 and C2 at the gate,
    and C4 at the local door.
 3. **F10 is what a missing size looks like.** The opener
    search's cost grew with the square of the body. The
-   largest entry at the signature's code is 3,176 bytes. A
-   body of that size in F10's shape cost the earlier search
+   largest entry at the signature's code is 11,642 bytes. A
+   body of 3,176 bytes in F10's shape cost the earlier search
    0.07 seconds here on 2026-11-19, under the half second
    from which the campaign files an input as slow. At 16,384
    bytes the same shape cost it 1.9 seconds. That size was
    inside the campaign's cap, and the corpus never grew
    there.
-4. **An empty row is not a small row.** The 10 constraints
+4. **An empty row is not a small row.** The 5 constraints
    with no fuzz data have nothing to size, and the table
    shows them empty.
 
@@ -280,41 +285,37 @@ whose contract holds on the tree as it stands.
 
 ## What the fuzz data does not reach
 
-21 of the 31 constraints have fuzz data at their code. 10
-constraints have none: C1, C2, C3, C12, C18, C19, C24, C27,
-C28 and C31. Across all 31 there are 26 code sites that no
-corpus entry enters.
+26 of the 31 constraints have fuzz data at their code. 5
+constraints have none: C18, C19, C27, C28 and C31. Across
+all 31 there are 17 code sites that no corpus entry enters.
 
 | ID | Constraint | Code no corpus entry enters |
 |----|------------|-----------------------------|
-| C1 | `max_job_bytes` | `handle_mail` in `runner/ops/mail.py` |
-| C2 | `max_script_bytes` | `handle_mail` in `runner/ops/mail.py` |
-| C3 | `max_result_bytes` | `_max_result_bytes` in `runner/runner.py`; `_fit_result_body` in `runner/runner.py` |
-| C5 | Signature | `_verify_and_decrypt` in `runner/runner.py` |
 | C11 | Seven security modes | `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` |
-| C12 | `max_job_age_sec` | `handle_mail` in `runner/ops/mail.py` |
-| C15 | Execution semantics | `handle_mail` in `runner/ops/mail.py`; `load_sent_result` in `runner/runner.py` |
 | C16 | Transport credentials | `__init__` in `runner/transport_extensions/nats/__main__.py` |
 | C18 | Sandbox shape | `build_bwrap_command` in `runner/guard/sandbox.py`; `_confinement_cfg` in `runner/guard/sandbox.py` |
 | C19 | Queues edge gates | `bearerMatches` in `runner/cloud/queues-worker/src/index.js` |
 | C20 | Transport gate postures | `scan_jobs` in `runner/transport_extensions/file/__main__.py` |
-| C24 | Claim stale rule | `_disk_owns` in `runner/ops/misc.py`; `_disk_release` in `runner/runner.py` |
+| C24 | Claim stale rule | `_disk_release` in `runner/runner.py` |
 | C25 | Record retention and delivery window | `prune_sent` in `runner/runner.py` |
 | C26 | Default-class reader | `reload_hot_config` in `runner/ops/attest.py` |
 | C27 | Refuse class at startup | `_validate_size_caps` in `runner/runner.py`; `_port` in `runner/wire/mailbox.py` |
 | C28 | Disk guard | `guard_disk` in `runner/oracle/resources.py`; `disk_guard_enabled` in `runner/oracle/resources.py` |
 | C31 | macOS confinement probe | `macos_confinement_problem` in `runner/guard/macos_confine.py`; `_confinement_argv` in `runner/runner.py`; `confinement_startup_problem` in `runner/ops/remediation_ops.py` |
 
-The largest gap is the first row. No fuzz target enters
-`handle_mail`, the acceptance gate that P1 is about. The
-targets fuzz the readers the gate calls, and the query,
-board and version 2 handlers beside it, and not the gate.
-So the 2 size caps, the freshness window and the at most
-once clause had no fuzz data at the place where they are
-decided. The next section is this pass's answer for the
-gate. The disk guard, the result fitting, the confinement
-gates and the claim's stale rule are held by their models
-and their conformance suites, and have no fuzz target.
+The gate itself is no longer the gap it was. The
+campaign's `gate` target enters `handle_mail` on every
+suite run, and reaches 11 constraints by that road: the 2
+size caps, the freshness window, the signature, the
+cleartext refusal, the execution semantics and the replay
+cache among them, at the place where they are decided.
+What stands in the table is narrower now: a site inside a
+reached constraint (the claim's release, the retention
+prune, the hot config reload), and the 5 constraints no
+entry reaches at all, the disk guard, the sandbox shape,
+the queues edge gates, the startup refuse class and the
+macOS confinement probe, held by their models and their
+conformance suites, with no fuzz target.
 
 2 targets, `stage` and `collect`, are not bound to any
 constraint, and `CorpusReplayTest` has no test named for
@@ -359,9 +360,9 @@ A 41st of the 54 runs when its mail is written out as plain
 octets and not by the mail library. That is finding F11,
 below.
 
-**The size caps at the gate (C1, C2).** No fuzz target enters
-`handle_mail`, so the 2 caps decided there have no entry to
-size. `CorpusUpTheSizes` takes the corpus's fresh jobs up the
+**The size caps at the gate (C1, C2).** No fuzz target then
+entered `handle_mail`, so the 2 caps decided there had no
+entry to size. `CorpusUpTheSizes` takes the corpus's fresh jobs up the
 sizes instead. The counts are from 2026-11-19. Written out as
 plain octets, 41 of the jobs run, and 5 of the 41 carry a
 script.
@@ -388,10 +389,11 @@ refused 1 byte past a cap while it holds fewer characters
 than the cap has bytes. With either cap set to 0, a mail or
 a script 1 byte past the default runs.
 
-So C1 and C2 have the corpus at their edges, though no
-target of the campaign does. The registry binds these tests
-to the 2 constraints as pins, and the local door's test of
-its cap to C4.
+So C1 and C2 have the corpus at their edges. The gate
+target in the fuzz count above has since put a target of
+the campaign at the same door. The registry binds these
+tests to the 2 constraints as pins, and the local door's
+test of its cap to C4.
 
 **The local door (P12, and finding F9).** All 518 entries of
 the local corpus went through the local door with a watch on
@@ -586,8 +588,9 @@ What each way costs, measured here on 2026-11-19 on Python
   name `handle_mail` are, is counted by that function.
 - The corpus at the doors is the corpus as it stands, 215
   arrivals and 55 payloads. It is not a campaign: nothing
-  grows it against the gate. A fuzz target for the gate is
-  the campaign's to add.
+  grows it against the gate. Beside it, the campaign now
+  has a gate target of its own, counted in the fuzz
+  sections above.
 - F10's bound is shown for the bodies tried and argued for
   the rest. The record gives no proof that no other body
   makes the search read more than 16 times its length.
@@ -604,11 +607,13 @@ What each way costs, measured here on 2026-11-19 on Python
 - A search for cost in the readers that run before a MAC.
   F10 came to light through a slow test and not through a
   search, and a reader's cost is a property like any other.
-- Size in the campaign. No corpus entry is of 10,000 bytes
-  or more, and a child is held under every size cap. A
-  mutator or a target that grows an input toward a cap, and
-  toward the sizes where a reader's cost shows, is the
-  campaign's to add.
+- Size in the campaign. 2 corpus entries are now of 10,000
+  bytes or more, both of them the gate target's, and a
+  child is still held under every size cap. The mutators
+  that grow an input toward a cap have landed in the
+  campaign, and the gate target stands at the gate; what
+  is left is to grow the other targets' inputs toward the
+  sizes where a reader's cost shows.
 - The result cap. C3 is the 1 size cap whose default, at
   5,242,880 bytes, no corpus text has been grown to. The
   fitting is held on corpus text at smaller caps.

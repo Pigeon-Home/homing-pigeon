@@ -361,6 +361,32 @@ measures.
 - **G9.** A panic shaped subject in a base where the word is
   not armed neither fires nor runs nor sends anything.
 
+**Conclusions against the suppositions, from the measure of
+2026-11-19.** The target stands in the corpus with 15 seeds
+(2 accepted, 13 refused, 0 crashes, 760 arcs), and a growth
+run of 460 rounds against a scratch copy of the corpus
+banked 10 further entries with 0 crashes. G1 to G3 and G5
+to G9 held as written, at the seeds, across the growth, and
+across the bounds family below. G4 held as the tripwire it
+was written to be: no refused arrival in any of those runs
+logged past it, and finding F12 itself stands open, pinned
+as it stands by the v4 suite on the branch. The bounds
+family (`runner/tests/test_gate_bounds.py`, 7 tests and 74
+cases derived at run time from its tables: subject growths
+to the 4,000,000 bytes of F12's measure, body growths past
+the script cap's rungs, bookend wrappings of every ASCII
+punctuation character, signature shapes, and the size cap's
+own rungs at 1,023, 1,024, 1,025 and 2,048 bytes) pins the
+bounded bundle on main. The bindings registry, refreshed
+by its own measure, ties the gate's entries to 11
+constraints (C1, C2, C3, C5, C8, C12, C13, C15, C23, C24,
+C25): the target is bound, and the 4 size caps have fuzz
+data at their code for the first time. One assertion moved
+with that (Q208). The candidate C32 the target is held to
+joins the inventory only at the conductor's word; the
+small model of the 6 steps (the v4 seat's S8) is that
+seat's next step, and the checker re-run waits on it.
+
 A contract added later replays over every entry already kept; an
 old entry that fails a new contract is a crash file and a Q, never
 a hand edit.

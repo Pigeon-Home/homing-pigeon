@@ -165,6 +165,9 @@ class CorpusReplayTest(unittest.TestCase):
     def test_edge_subject(self):
         self._check("edge_subject")
 
+    def test_gate(self):
+        self._check("gate")
+
     def test_race_stash(self):
         self._check("race_stash")
 

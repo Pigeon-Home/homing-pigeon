@@ -309,11 +309,35 @@
     "runner/tests/test_v4_bindings.py::CorpusUpTheSizes.test_a_mail_1_byte_past_the_cap_is_refused_before_any_signature_work",
     "runner/tests/test_v4_bindings.py::CorpusUpTheSizes.test_a_job_cap_of_0_lets_a_mail_past_the_default_run"
    ],
-   "fuzz": [],
-   "unfuzzed": [
-    "runner/ops/mail.py:handle_mail"
+   "fuzz": [
+    {
+     "site": "runner/ops/mail.py:handle_mail",
+     "target": "gate",
+     "entries": 15,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 0,
+     "largest": 11642,
+     "bands": [
+      2,
+      11,
+      0,
+      2
+     ]
+    }
    ],
-   "reach": null
+   "unfuzzed": [],
+   "reach": {
+    "entries": 15,
+    "smallest": 0,
+    "largest": 11642,
+    "bands": [
+     2,
+     11,
+     0,
+     2
+    ]
+   }
   },
   {
    "id": "C2",
@@ -330,11 +354,35 @@
     "runner/tests/test_v4_bindings.py::CorpusUpTheSizes.test_a_script_1_byte_past_the_cap_is_refused_after_the_signature",
     "runner/tests/test_v4_bindings.py::CorpusUpTheSizes.test_a_script_cap_of_0_lets_a_script_past_the_default_run"
    ],
-   "fuzz": [],
-   "unfuzzed": [
-    "runner/ops/mail.py:handle_mail"
+   "fuzz": [
+    {
+     "site": "runner/ops/mail.py:handle_mail",
+     "target": "gate",
+     "entries": 15,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 0,
+     "largest": 11642,
+     "bands": [
+      2,
+      11,
+      0,
+      2
+     ]
+    }
    ],
-   "reach": null
+   "unfuzzed": [],
+   "reach": {
+    "entries": 15,
+    "smallest": 0,
+    "largest": 11642,
+    "bands": [
+     2,
+     11,
+     0,
+     2
+    ]
+   }
   },
   {
    "id": "C3",
@@ -350,12 +398,50 @@
     "runner/tests/test_proof_constraints.py::SizeCapPins.test_c3_max_result_bytes_default_is_5_mib_not_unlimited",
     "runner/tests/test_v4_binding.py::StandingGapPins.test_c3_result_cap_default"
    ],
-   "fuzz": [],
-   "unfuzzed": [
-    "runner/runner.py:_max_result_bytes",
-    "runner/runner.py:_fit_result_body"
+   "fuzz": [
+    {
+     "site": "runner/runner.py:_max_result_bytes",
+     "target": "gate",
+     "entries": 2,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 708,
+     "largest": 743,
+     "bands": [
+      0,
+      2,
+      0,
+      0
+     ]
+    },
+    {
+     "site": "runner/runner.py:_fit_result_body",
+     "target": "gate",
+     "entries": 2,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 708,
+     "largest": 743,
+     "bands": [
+      0,
+      2,
+      0,
+      0
+     ]
+    }
    ],
-   "reach": null
+   "unfuzzed": [],
+   "reach": {
+    "entries": 2,
+    "smallest": 708,
+    "largest": 743,
+    "bands": [
+     0,
+     2,
+     0,
+     0
+    ]
+   }
   },
   {
    "id": "C4",
@@ -493,20 +579,33 @@
       2,
       0
      ]
+    },
+    {
+     "site": "runner/runner.py:_verify_and_decrypt",
+     "target": "gate",
+     "entries": 9,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 282,
+     "largest": 11642,
+     "bands": [
+      0,
+      7,
+      0,
+      2
+     ]
     }
    ],
-   "unfuzzed": [
-    "runner/runner.py:_verify_and_decrypt"
-   ],
+   "unfuzzed": [],
    "reach": {
-    "entries": 117,
+    "entries": 126,
     "smallest": 0,
-    "largest": 3176,
+    "largest": 11642,
     "bands": [
      5,
-     110,
+     117,
      2,
-     0
+     2
     ]
    }
   },
@@ -701,16 +800,31 @@
       0,
       0
      ]
+    },
+    {
+     "site": "runner/runner.py:_cleartext_jobs_allowed",
+     "target": "gate",
+     "entries": 1,
+     "traced": true,
+     "witness": "9c6af21ec97eb260",
+     "smallest": 468,
+     "largest": 468,
+     "bands": [
+      0,
+      1,
+      0,
+      0
+     ]
     }
    ],
    "unfuzzed": [],
    "reach": {
-    "entries": 8,
+    "entries": 9,
     "smallest": 233,
     "largest": 857,
     "bands": [
      0,
-     8,
+     9,
      0,
      0
     ]
@@ -924,11 +1038,35 @@
     "runner/tests/test_proof_conformance.py::P1FreshnessTest.test_stale_job_refused",
     "runner/tests/test_proof_conformance.py::P1FreshnessTest.test_the_future_bound_is_exactly_300_seconds"
    ],
-   "fuzz": [],
-   "unfuzzed": [
-    "runner/ops/mail.py:handle_mail"
+   "fuzz": [
+    {
+     "site": "runner/ops/mail.py:handle_mail",
+     "target": "gate",
+     "entries": 15,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 0,
+     "largest": 11642,
+     "bands": [
+      2,
+      11,
+      0,
+      2
+     ]
+    }
    ],
-   "reach": null
+   "unfuzzed": [],
+   "reach": {
+    "entries": 15,
+    "smallest": 0,
+    "largest": 11642,
+    "bands": [
+     2,
+     11,
+     0,
+     2
+    ]
+   }
   },
   {
    "id": "C13",
@@ -1002,16 +1140,31 @@
       2,
       0
      ]
+    },
+    {
+     "site": "runner/runner.py:_version_ok",
+     "target": "gate",
+     "entries": 2,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 708,
+     "largest": 743,
+     "bands": [
+      0,
+      2,
+      0,
+      0
+     ]
     }
    ],
    "unfuzzed": [],
    "reach": {
-    "entries": 812,
+    "entries": 814,
     "smallest": 0,
     "largest": 8583,
     "bands": [
      56,
-     714,
+     716,
      42,
      0
     ]
@@ -1117,6 +1270,21 @@
    ],
    "fuzz": [
     {
+     "site": "runner/ops/mail.py:handle_mail",
+     "target": "gate",
+     "entries": 15,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 0,
+     "largest": 11642,
+     "bands": [
+      2,
+      11,
+      0,
+      2
+     ]
+    },
+    {
      "site": "runner/runner.py:stash_result",
      "target": "race_stash",
      "entries": 168,
@@ -1130,21 +1298,48 @@
       4,
       0
      ]
+    },
+    {
+     "site": "runner/runner.py:stash_result",
+     "target": "gate",
+     "entries": 2,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 708,
+     "largest": 743,
+     "bands": [
+      0,
+      2,
+      0,
+      0
+     ]
+    },
+    {
+     "site": "runner/runner.py:load_sent_result",
+     "target": "gate",
+     "entries": 2,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 708,
+     "largest": 743,
+     "bands": [
+      0,
+      2,
+      0,
+      0
+     ]
     }
    ],
-   "unfuzzed": [
-    "runner/ops/mail.py:handle_mail",
-    "runner/runner.py:load_sent_result"
-   ],
+   "unfuzzed": [],
    "reach": {
-    "entries": 168,
-    "smallest": 132,
-    "largest": 4284,
+    "entries": 183,
+    "smallest": 0,
+    "largest": 11642,
     "bands": [
-     0,
-     164,
+     2,
+     175,
      4,
-     0
+     2
     ]
    }
   },
@@ -1540,6 +1735,21 @@
      ]
     },
     {
+     "site": "runner/runner.py:seen_keep_sec",
+     "target": "gate",
+     "entries": 2,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 708,
+     "largest": 743,
+     "bands": [
+      0,
+      2,
+      0,
+      0
+     ]
+    },
+    {
      "site": "runner/runner.py:_write_seen_kept",
      "target": "race_state",
      "entries": 209,
@@ -1585,6 +1795,21 @@
      ]
     },
     {
+     "site": "runner/runner.py:_write_seen_kept",
+     "target": "gate",
+     "entries": 2,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 708,
+     "largest": 743,
+     "bands": [
+      0,
+      2,
+      0,
+      0
+     ]
+    },
+    {
      "site": "runner/runner.py:save_seen",
      "target": "race_state",
      "entries": 209,
@@ -1625,6 +1850,21 @@
      "bands": [
       0,
       32,
+      0,
+      0
+     ]
+    },
+    {
+     "site": "runner/runner.py:save_seen",
+     "target": "gate",
+     "entries": 2,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 708,
+     "largest": 743,
+     "bands": [
+      0,
+      2,
       0,
       0
      ]
@@ -1632,12 +1872,12 @@
    ],
    "unfuzzed": [],
    "reach": {
-    "entries": 319,
+    "entries": 321,
     "smallest": 63,
     "largest": 8577,
     "bands": [
      2,
-     308,
+     310,
      9,
      0
     ]
@@ -1657,12 +1897,37 @@
     "runner/tests/test_proof_constraints.py::ReplayPins.test_c24_claim_stale_constant",
     "runner/tests/test_proof_constraints.py::ReplayPins.test_c24_disk_claim_live_dead_and_unreadable"
    ],
-   "fuzz": [],
+   "fuzz": [
+    {
+     "site": "runner/ops/misc.py:_disk_owns",
+     "target": "gate",
+     "entries": 2,
+     "traced": false,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 708,
+     "largest": 743,
+     "bands": [
+      0,
+      2,
+      0,
+      0
+     ]
+    }
+   ],
    "unfuzzed": [
-    "runner/ops/misc.py:_disk_owns",
     "runner/runner.py:_disk_release"
    ],
-   "reach": null
+   "reach": {
+    "entries": 2,
+    "smallest": 708,
+    "largest": 743,
+    "bands": [
+     0,
+     2,
+     0,
+     0
+    ]
+   }
   },
   {
    "id": "C25",
@@ -1695,6 +1960,21 @@
      ]
     },
     {
+     "site": "runner/runner.py:deliver_stash",
+     "target": "gate",
+     "entries": 2,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 708,
+     "largest": 743,
+     "bands": [
+      0,
+      2,
+      0,
+      0
+     ]
+    },
+    {
      "site": "runner/runner.py:resend_stashed",
      "target": "race_stash",
      "entries": 165,
@@ -1714,12 +1994,12 @@
     "runner/runner.py:prune_sent"
    ],
    "reach": {
-    "entries": 170,
+    "entries": 172,
     "smallest": 130,
     "largest": 4284,
     "bands": [
      0,
-     166,
+     168,
      4,
      0
     ]
@@ -2262,6 +2542,24 @@
     2,
     0,
     0
+   ]
+  },
+  "gate": {
+   "runs": 0,
+   "tried": 0,
+   "accepted": 0,
+   "refused": 0,
+   "crash": 0,
+   "slow": 0,
+   "entries": 15,
+   "bound": true,
+   "smallest": 0,
+   "largest": 11642,
+   "bands": [
+    2,
+    11,
+    0,
+    2
    ]
   },
   "inbox": {
