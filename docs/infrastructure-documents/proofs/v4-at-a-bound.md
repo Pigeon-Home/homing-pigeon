@@ -167,6 +167,156 @@ what prompted them. Nothing else was measured first, but for
   a script of at most 50 bytes, and fewer than 1 in 20 carry
   a script of more than 500.
 
+## The measure
+
+**The shell, on M.** bash 5.2.21. Each script ran in a
+subshell of its own, in an empty folder, with HOME set to a
+fixed text.
+
+| Scripts run in the real shell | How many | Disagreements with M |
+|-------------------------------|---------:|---------------------:|
+| Every script of up to 3 atoms | 164,358 | 0 |
+| Every script of at most 25 characters | 252,747 | 0 |
+| A sample of the longer rows: 4 to 9 atoms, 26 to 49 characters | 200,000 | 0 |
+| A sample of the deep rows: 10 to 13 atoms | 100,000 | 0 |
+| Every script of 15 atoms or more | 169,832 | 0 |
+| In all, each script counted once | 858,319 | 0 |
+
+28,618 scripts are in both of the first 2 sets. The family
+of 15 atoms or more is whole: 168,533 scripts of 15 atoms,
+1,298 of 16, and the 1 of 17, which is the deepest row the
+bound holds.
+
+So: 858,319 scripts, 0 disagreements. Between them the
+scripts took all 352 of M's steps. 1,500 of them were run
+again, each as a process of its own, and 500 as a staged
+file with no line end: the same results.
+
+**The runner, on M.** Every script of up to 2 atoms, 1,954
+of them, went through the real gate and the real execution,
+with bash as the interpreter and confinement set to off.
+0 results differ from M, in exit code or in output digest.
+Each result left at the default view: the exit code and the
+digest of the output left, and the output stayed home. The
+runner spent 5 thousandths of a second on each. The job saw
+the runner's own HOME.
+
+Under the default, on this machine, the runner did not run
+the job at all. Confinement cannot engage here, and the
+result said so: exit code -2, "confinement cannot engage
+for this job".
+
+**The door.** At bounds of 50, 500 and 5,000 bytes, every
+length from 1 to the bound plus 1 was given to the gate:
+51, 501 and 5,001 scripts. 0 wrong decisions. The refusal
+names the constraint: "script exceeds max_script_bytes (51 >
+50)". Characters of 2, 3 and 4 bytes at each edge, and a
+script of as many characters as the bound and 1 byte more:
+the bytes decided every one. An empty script passes the
+size door, and the execution refuses it for being empty.
+
+**The fuzz data.** The corpus on this branch is 2,634
+entries in 30 files. 453 entries carry a script.
+
+| The script is | Corpus entries |
+|---------------|---------------:|
+| At most 50 bytes | 452 |
+| 51 to 500 bytes | 0 |
+| 501 to 5,000 bytes | 1 |
+| More | 0 |
+
+The middle script is 5 bytes long. The 1 large script is
+4,000 bytes. The run log counts the 620,457,512 inputs the
+campaign tried, and not their sizes.
+
+**The same atoms on the upper rungs.** At 500 characters
+the atoms build a number of scripts that is 114 digits
+long, and at 5,000 characters a number 1,139 digits long.
+20,000 rows of 498 to 500 characters (32 to 54 atoms) and
+2,000 rows of 4,998 to 5,000 characters (381 to 443 atoms)
+ran in the real shell: 0 disagreements with M.
+
+## Conclusions against R1 to R5
+
+- **R1 stands, and it was run further than supposed.** 0
+  disagreements on the 388,487 scripts R1 named, and 0 on
+  469,832 more.
+- **R2 stands.** 352 of 352 steps.
+- **R3 stands, with confinement off.** 1,954 of 1,954. The
+  default refused to run, as supposed.
+- **R4 stands.** 0 wrong decisions on 5,553 lengths, and the
+  bytes decide.
+- **R5 stands, more sharply than supposed.** 452 of the 453
+  scripts are at most 50 bytes. The second rung has none.
+
+## What is proven at the first rung, and how
+
+Each line says what kind of support it has.
+
+1. **Counted.** The atoms build 74,072,330,493 scripts of
+   at most 49 characters. This is arithmetic.
+2. **Run, every case.** Each of M's 352 steps is what the
+   real shell does. So is every script of up to 3 atoms,
+   every script of at most 25 characters, and every script
+   of 15 atoms or more.
+3. **Carried by 2 premises.** Every script in the closure
+   has the result M gives it. P-a is pinned in the suite as
+   a fact about the 22 atoms. P-b is the shell's own
+   definition of a list, and nothing that was run disagreed
+   with it: 858,319 scripts at the first rung, and 22,000
+   more on the 2 rungs above it.
+4. **Run, every step.** The real runner returns M's result:
+   the suite sends each of the 352 steps, and each of the 22
+   atoms, through the real gate and the real execution on
+   every suite run.
+5. **Run, every length.** The door holds the bound, at 50,
+   500 and 5,000 bytes.
+
+What it rests on that it does not prove: the shell reads a
+long row as it reads a short one (P-b); the signature and
+the cipher, as `readme.md` assumes them; the machine under
+the runner; and, for line 4, a run with confinement off.
+
+## What the 3 rungs look like now
+
+| | 50 bytes | 500 bytes | 5,000 bytes |
+|---|---|---|---|
+| The door | every length run | every length run | every length run |
+| The operations, for the 22 atoms | proven as above | the same proof, and a sample of 20,000 | the same proof, and a sample of 2,000 |
+| The answer | every step, through the runner | not run | not run |
+| Fuzz scripts at this size | 452 | 0 | 1 |
+
+M does not grow with the rung. A longer row is a longer
+walk through the same 352 steps. So for these 22 atoms the
+rung is not what limits the proof. What limits a rung's use
+is the list of atoms: a script of 500 bytes is useful when
+it can write a file, hold a value, or loop, and none of the
+22 atoms does.
+
+So the ladder that does work is a ladder of atoms as much
+as of sizes, and the first rung is the place to add them.
+
+## What comes next, in order
+
+1. **Atoms that write inside the job's own folder.** They
+   keep state, so M's state grows from 2 facts to the facts
+   and the files. This is where confinement enters the
+   proof: an atom that tries to write outside, run in a
+   real confinement, with the denial as its result.
+2. **A fuzz target for B2.** Rows drawn from the atoms and
+   run against M, in the campaign, so the run log holds
+   evidence for the operations and not only for the door.
+   The corpus has no script between 51 and 500 bytes, so
+   the second rung has no evidence to stand beside a proof.
+3. **Sizes in the run log.** It counts inputs and not their
+   sizes, so the evidence cannot yet be offered at 50, 500
+   and 5,000 bytes for the inputs tried, only for the
+   entries kept.
+4. **The bound in the specification.** Version 4's draft
+   states the constraint C2 at its default. A line for the
+   bound, with what is proven at it, is the owner's to
+   order: the draft is not this seat's.
+
 ## What this page does not claim
 
 - That 22 atoms are the shell. They are the record's list:

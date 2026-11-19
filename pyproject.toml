@@ -453,6 +453,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_v2_consult.py",
     "runner/tests/test_v2_replay.py",
     "runner/tests/test_v31_verify.py",
+    "runner/tests/test_v4_at_a_bound.py",
     "runner/tests/test_v4_before_the_mac.py",
     "runner/tests/test_v4_binding.py",
     "runner/tests/test_v4_bindings.py",
