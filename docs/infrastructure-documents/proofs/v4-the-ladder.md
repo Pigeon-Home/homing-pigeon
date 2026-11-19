@@ -237,3 +237,76 @@ numbers from `v4-at-a-limit.md`, and the gate's code as read.
 - **L8. What the ladder costs.** 1 family through the gate
   from step 0 to step 30 is supposed to take under 5
   seconds where the gate is in proportion.
+
+## A finding on the ladder: F15, a mail the gate has no answer for
+
+**Found by the ladder, climbing the sender's address.** At
+step 17 of the ladder of colons, 1,597 of them, the gate did
+not return. It raised.
+
+**What was seen before anything here was written.** 3 shapes
+of a mail make the gate raise, all in front of the
+signature.
+
+| The shape | The most the gate takes | It raises at | The mail is then |
+|-----------|------------------------:|-------------:|-----------------:|
+| Colons in the sender's address | 988 | 989 | about 1,400 bytes |
+| Comments nested in the sender's address, `((( )))` | 495 | 496 | 1,386 bytes |
+| Parts nested inside parts | 983 | 984 | 68,943 bytes |
+
+Each is the same error, `RecursionError`. A reader in
+Python's mail library calls itself once or twice for each
+level, and Python stops a chain of calls at 1,000. The first
+2 are raised where the gate reads the sender's address for
+its log line. The third is raised by the gate's first
+statement, the parse of the mail.
+
+Nothing in the message has been judged when this happens. No
+signature has been asked for, so anyone can send it. And
+nothing is left behind. The gate marks a message as seen
+when it decides, and here it does not decide. The runner
+asks the mailbox for unseen mail, so it reads the same
+message again at the next poll, and raises again.
+
+5 whole polls were run over a mailbox of 3 mails, the middle
+one with 1,200 colons in its sender's address. The 2 good
+mails were fetched once each, ran, and were marked. The
+middle mail was fetched 5 times and raised 5 times. It was
+never marked, and each poll left 1 line in the log: "worker
+raised: RecursionError".
+
+The other units in the sender's address, and 7 other shapes
+of a mail (parts in a row, headers in a row, a folded
+header, a header repeated, senders in a row, the parameters
+of a content type, and a body in base64), climbed to step
+22, which is 17,711. The gate returned at every step, in
+proportion.
+
+**What kind of fault.** Not the kind this page set out for.
+The work is small, a thousandth of a second. It is a text
+for which the gate has no answer at all. So the 1 quantity
+that should be 1 for every message, the number of times the
+message is read, has no bar. The ladder met it because the
+data inside is everything a run shows, and a raise is a
+thing a run shows.
+
+**Suppositions, written before the change and its measure.**
+
+- **J1. The cause is depth and nothing else.** With Python's
+  limit on calls raised from 1,000 to 3,000, each bar is
+  supposed to move by what its reader spends on a level:
+  the colons to about 2,988, the nested comments to about
+  1,495, and the nested parts to about 2,983.
+- **J2. The change.** A mail whose shape the library cannot
+  follow is refused where it stands. For nested parts the
+  gate logs 1 line, marks the message and returns. On a box
+  stopped by the panic word it leaves the message as it is,
+  as it leaves every other. For the address the job goes on,
+  because the address is for the log only, and the log's
+  line says the sender could not be read. Supposed: after
+  the change the 5 polls fetch the middle mail once and mark
+  it, no worker raises, and a good job with 1,200 colons in
+  its sender's address runs.
+- **J3. The ladder again.** With the change, every place and
+  every unit of the first climb, and the 10 shapes to step
+  22: supposed 0 raises.
