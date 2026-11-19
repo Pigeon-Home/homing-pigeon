@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.13 - 2026-11-19
+
+- docs: docs/GOAL.md states what the project is for and what done means, AGENTS.md sends a reader to it first (rule 18), and a test holds the page's form; project: the Curtain note, the goals as the tree shows them
+
 ## 3.17.30.12 - 2026-11-19
 
 - Train: the release polls shorten (build 45 to 15 seconds, cut 20 to 10, tag watch 60 to 20) and the tag scope checkout goes shallow on a tag ref only, cutting dead time from a release (Q205, since 3.17.30.11)
