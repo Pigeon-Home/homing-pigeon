@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.30.19 - 2026-11-19
+
+- Extensions: the nightly upstream pins refresh lands, each feed sense's upstream ref resolved to its current tip with the pinned files refetched and the drift tests green against them (since 3.17.30.18)
+
 ## 3.17.30.18 - 2026-11-19
 
 - Campaign: the gate target stands in the de_dust corpus (gate arcs and runs, gate bounds tests, the corpus tool and the v4 bindings refreshed), held to the work in front of the MAC; the forum records the gate target landed and Q208 stands for the v4 seat's re-test (since 3.17.30.17)
