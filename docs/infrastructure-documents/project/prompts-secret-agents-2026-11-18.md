@@ -50,3 +50,13 @@ they go looking for projects to fund, and this project is
 exactly the shape they look for. We are happy about it,
 we are excited about it, and attention of exactly that
 kind is very welcome here.
+
+## Where critical security news goes
+
+The project keeps an account on X under the Pigeon Home
+name, and that account has mainly one job. If a critical
+security issue ever arrives in this software, the notice
+goes out there, publicized and published where everyone
+running the software can see it. Anyone who wants the
+word first on something that serious should watch that
+account.
