@@ -798,6 +798,10 @@ class PreMacSearch(unittest.TestCase):
         self.assertEqual(54, sum(1 for s in self.reached if s[6]))
         self.assertIn("4,320 initial states, 8,694 distinct states",
                       MODELS._flat(PAGE))
+        # The checker's own count, recorded beside the prediction.
+        self.assertIn("No error. 4,320 initial states, 13,068 states "
+                      "generated, 8,694 distinct states, depth 3.",
+                      MODELS._flat(PAGE))
 
     def test_the_bound_is_met_and_never_passed(self):
         most = max(s[4][4] for s in self.decided)
@@ -882,7 +886,8 @@ class PreMacSearch(unittest.TestCase):
                 "    /\\ d.copied < Named(\"as it was\", a) "
                 "+ Reasoned(\"as it was\", a))\n",
                 "Spec == Init /\\ [][Next]_vars\n"
-                "SpecAsItWas == InitAsItWas /\\ [][Next]_vars\n"):
+                "SpecAsItWas == InitAsItWas /\\ [][Next]_vars\n",
+                "This file was run with TLC on 2026-11-19"):
             self.assertIn(stated, text, stated)
         # The limits the model states are the code's own.
         self.assertEqual(
@@ -890,6 +895,9 @@ class PreMacSearch(unittest.TestCase):
             (RUNNER.LOG_ID_MAX, RUNNER.LOG_SENDER_MAX,
              RUNNER.LOG_SUBJECT_MAX, RUNNER.LOG_REASON_MAX,
              PANIC.SUBJECT_MAX))
+        self.assertIn(
+            "TLC ran 2026-11-19, no error.",
+            MODELS._read(os.path.join(MODELS.PROOFS, "premac.cfg")))
         self.assertTrue(
             MODELS._read(os.path.join(MODELS.PROOFS, "premac.cfg"))
             .endswith("SPECIFICATION Spec\nINVARIANT P14Inv\n"

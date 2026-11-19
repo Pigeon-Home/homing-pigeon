@@ -84,11 +84,14 @@
 \* minute budget of the log; a verbose run's third line; and
 \* everything from a verified signature on.
 \*
-\* The model it states is searched by
+\* This file was run with TLC on 2026-11-19, and the checker
+\* found the counts the search had predicted. The model it
+\* states is searched by
 \* runner/tests/test_v4_before_the_mac.py, which also asks the
 \* real gate on the model's arrivals. The state counts in
 \* v4-before-the-mac.md are that search's, written down before
-\* the checker ran.
+\* the checker ran, and the checker's verdicts stand beside
+\* them there.
 
 EXTENDS Integers
 

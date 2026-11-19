@@ -487,7 +487,20 @@ records, the lines, and the lines' length to within the
 gate's own words. The order of the 6 steps is read off the
 gate's source.
 
-**The checker.** Not yet run on this model.
+**The checker.** TLC, version 2.19, ran on `premac.tla` on
+2026-11-19, with each of the 6 configurations.
+
+| Configuration | The checker's verdict |
+|---------------|-----------------------|
+| `premac.cfg` | No error. 4,320 initial states, 13,068 states generated, 8,694 distinct states, depth 3. |
+| `premacwitnessrefused.cfg` | Fails, as it must. A job at rung 50 with a bad signature is refused: 1 record, 2 lines, 150 characters copied. |
+| `premacwitnessruns.cfg` | Fails, as it must. A job at rung 50 whose signature verified is run. |
+| `premacwitnesscut.cfg` | Fails, as it must. A refused job under a subject of 500 has 380 characters copied: 50, 50, and the subject cut to 256 with its mark of 24. |
+| `premacwitnessf12.cfg` | Fails, as it must. At the gate as it was, a job under a subject of 5,000 has 5,100 characters copied in 1 line. That is F12. |
+| `premacwitnessf13.cfg` | Fails, as it must. At the gate as it was, the decoder is handed a subject of 5,000 whole. That is F13. |
+
+The checker found the counts the search had predicted: 4,320
+initial states and 8,694 distinct states.
 
 **What the model leaves out.** A subject that is ours and
 names no job. The other kinds the dispatcher reads before
@@ -502,7 +515,8 @@ signature on, which `general.tla` has.
 - Made: the model of the 6 steps, `premac.tla`, with the log
   in its ledger, 6 configurations, its search in the suite
   and the real gate asked on its arrivals.
-- Next: the checker's run on the model.
+- Made: the checker's run on the model, with no error and
+  the predicted counts.
 - Next: a row for the candidate in the registry, kept apart
   from the 31 until the owner's word.
 - F12 and F13 are closed on the branch. They reach main at
