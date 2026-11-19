@@ -7,4 +7,4 @@
 - reduce idea: global deps on centralize Internet PKI, delete public infra pki deps by performing self-hosted key management system via current attestation mech
 - generalize and then formalize my Proof
 - dist ledger file flow boards, encrypted task boards, confidentialCompute-enc-async answers, via onion rev prox v2. do not embed throw away wallets or dist knet (find defensive solutions)
-- Anna AI OS Founding Builder Program 2026 research & grant offer email responce (https://luma.com/kmc1ddf9) [funding secured?]
+- Anna AI OS Founding Builder Program 2026 research & grant offer email responce (https://luma.com/kmc1ddf9) [funding secured?] Registration has been confirmed :)
