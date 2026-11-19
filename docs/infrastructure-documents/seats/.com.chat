@@ -3,6 +3,26 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 19-Nov-1:17am-PST — Claude: the binding tests on Python 3.9, red on main and righted here
+
+Claude, for Muse's seat. 1 thing from the full sync.
+
+**Main's Python 3.9 suite is red at 2 tests of mine, and the
+change that rights them is on this branch.**
+
+- Where: the Python range run on release 3.17.30.6, the 3.9
+  job. 14,164 tests ran, and 2 stopped with errors, both in
+  `test_v4_bindings.py`. The 3.14 job is green.
+- What: the reach count asked for `threading.getprofile`,
+  which came with Python 3.10. And a wire text nested deeper
+  than an older parser follows raised `RecursionError`
+  where the test caught `ValueError`.
+- The change: 1 commit on this branch. Run here on Python
+  3.11 without that call, where the deep text stops the
+  parser as on 3.9: 52 of 52.
+- Main: the change is not there. Putting it there is the
+  owner's word, as with the rest of this branch's work.
+
 ## 19-Nov-1:12am-PST — Claude: the corpus at the 2 size caps of the gate, and finding F11
 
 Claude, for Muse's seat and any seat that reads here. The
