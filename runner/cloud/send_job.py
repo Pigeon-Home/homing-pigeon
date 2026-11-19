@@ -225,6 +225,55 @@ def _extract_signed(norm: str):
     return norm[start:i] + "}", sig
 
 
+# The opener search looks at a candidate's first characters before
+# it reads the candidate whole: the same change, for the same cause,
+# as runner/wire/verify.py carries (finding F10 of the v4 binding
+# work, 2026-11-18). A body of `{\"` repeated makes every
+# brace a candidate that fails at its second character, and the
+# search used to copy and parse the text from each one to the
+# marker: candidates times length, before any MAC. A JSON parse
+# reads left to right, so an error well inside a look is the whole
+# text's error too. A look that ends in doubt grows and is read
+# again, and what is never settled goes to the full parse as
+# before. The answers are the same, brace for brace.
+_OPENER_FIRST_LOOK = 32
+_OPENER_LOOK_GROWTH = 4
+_OPENER_EDGE = 16
+# The parse errors that more text cannot mend. Any other message is
+# left to the full parse, so a parser that words one differently
+# costs time and never an answer.
+_OPENER_SETTLED = ("Expecting ", "Invalid ", "Extra data",
+                   "Illegal trailing comma")
+
+
+def _opens_object(norm: str, start: int, sig_at: int) -> bool:
+    """True when the text from `start` to the marker, closed, parses
+    as a JSON object. The looks come first. A look nested past what
+    the parser will follow rules the candidate out: the full parse
+    below runs at this same depth of calls and would stop at the
+    same place."""
+    size = _OPENER_FIRST_LOOK
+    while size < sig_at - start:
+        look = norm[start:start + size]
+        try:
+            json.loads(look)
+        except RecursionError:
+            return False
+        except ValueError as exc:
+            at = getattr(exc, "pos", None)
+            if isinstance(at, int) and at < len(look) - _OPENER_EDGE \
+                    and str(getattr(exc, "msg", "")).startswith(
+                        _OPENER_SETTLED):
+                return False
+        else:
+            break
+        size *= _OPENER_LOOK_GROWTH
+    try:
+        return isinstance(json.loads(norm[start:sig_at] + "}"), dict)
+    except (ValueError, RecursionError):
+        return False
+
+
 def _object_start(norm: str, sig_at: int) -> int:
     """Index of the `{` that opens the object ending at the sig marker.
 
@@ -246,11 +295,7 @@ def _object_start(norm: str, sig_at: int) -> int:
     for start in _root_candidates(norm, sig_at):
         if first_walk is None:
             first_walk = start
-        try:
-            candidate = json.loads(norm[start:sig_at] + "}")
-        except (ValueError, RecursionError):
-            continue
-        if isinstance(candidate, dict):
+        if _opens_object(norm, start, sig_at):
             return start
     if first_walk is not None:
         # Nothing parses: hand the newest whole-object candidate on,

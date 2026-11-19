@@ -43,6 +43,103 @@ Rules:
 
 ---
 
+## Q203 (Claude to the seats, 2026-11-18): the opener search read an unsigned body once for each brace, before any MAC. Found with fuzz corpus text, closed in both homes of the search
+
+**What was found.** A signed body is a JSON object whose last
+brace is replaced by the signature. To find the object's
+first brace the verifier tries every brace that passes the
+brace walk, newest first, and takes the first whose text
+parses: `_object_start` in `runner/wire/verify.py`, and its
+copy in `runner/cloud/send_job.py`. Q116's answer made the
+walk 1 pass. The parse after it stayed 1 full read for each
+candidate: the search copied the text from that brace to
+the marker, cleaned it, and parsed it.
+
+A body made of `{\"` repeated makes every brace a candidate.
+From any of its braces the walk reads the backslash as plain
+text and the quote as the start of a string that runs to the
+end, so every brace passes. Each candidate then fails the
+parse at its second character, after the copy and the
+cleaning. The cost was candidates times length, and it was
+paid before any MAC, so the sender needed no key.
+
+**The measurements.** Taken on 2026-11-18 in this seat's
+container, on an unsigned body of that shape:
+
+| Body | Before: time | Before: characters parsed | After: time | After: characters parsed |
+|------|--------------|---------------------------|-------------|--------------------------|
+| 3,107 bytes | 0.06 s | 3,007,000 (968 times the body) | 0.005 s | 31,865 (10 times) |
+| 12,107 bytes | 1.1 s | 48,028,000 (3,967 times) | 0.013 s | 127,865 (11 times) |
+| 48,107 bytes | 15.3 s | 768,112,000 (15,967 times) | 0.055 s | 511,865 (11 times) |
+| 3,000,107 bytes | not run | not run | 3.5 s | not counted |
+
+The time before grew 4 times for each doubling of the body.
+By that law a body at the 4 MiB cap of `max_job_bytes` would
+have held the mail loop about 32 hours. That figure is a
+projection from the 3 measurements, not a measurement.
+
+**How it came to light.** Fuzz corpus text was used as a
+result's streams to test the result fitting, and the
+verifier's time grew faster than the text. The campaign's
+slow class had not met this family: its cost rides on the
+number of candidates, not on depth.
+
+**The change.** The search now looks at a candidate's first
+32 characters before it reads the candidate whole
+(`_opens_object`, in both files). A JSON parse reads left to
+right, so an error well inside a look is the whole text's
+error too, and the candidate is passed over for the cost of
+the look. A look that ends in doubt, with the error within
+16 characters of its edge or a string running off its end,
+is made 4 times longer and read again. What is never
+settled goes to the full parse as before. Only parse errors
+that more text cannot mend are taken as settled, by their
+wording, and any other wording is left to the full parse: a
+parser that words an error differently costs time and never
+an answer. A look nested deeper than the parser will follow
+settles the candidate too, since the looks and the full
+parse run in 1 helper at 1 depth of calls. The answers are
+the old search's, brace for brace. The draft's step 6 picks
+the same brace as before.
+
+**What holds it.** `runner/tests/test_opener_cost.py`, 14
+tests. The old search stands in the test as written before,
+and the 2 agree on 20,000 random hostile texts with the
+look's size moved, on every corpus text that carries a
+marker, and on a signed job whose script is the hostile
+units. A body in which every brace is a candidate is handed
+to the parser at most 16 times its length, counted and not
+timed, at 3 sizes, in both homes. A look never settles
+against a sound object cut at every length, nor against a
+string that runs off its end. With no error taken as
+settled, the answers stand and the old cost returns.
+200,000 more random texts were compared outside the suite,
+with no difference.
+
+**What it does not show.** The bound is shown for the bodies
+tried and argued for the rest. This entry gives no proof
+that no other body makes the search read more than 16 times
+its length.
+
+**Where it came from.** The change was made first on the
+`future/v4-provable-model` branch, as finding F10 of the v4
+binding work, and its fuller record stands there in the
+proofs shelf's `v4-bindings.md`. It is on main at the
+owner's word of 2026-11-18. The 2 files read the same in
+both places.
+
+**Answer (Claude, 2026-11-18).** Closed in this landing. The
+core record is re-measured for the 2 files: `runner/wire`
+grows by 57 lines and `runner/cloud` by 45.
+
+**Applied in.** This landing, the commit with the subject
+"verify: the opener search looks at a candidate before it
+reads it whole (Q203)".
+
+**Status.** Q203 is CLOSED as answered. The `{\"` family is
+offered to the campaign as seeds for `wire`, `cloud` and
+`local`, which is the campaign seat's to take up.
+
 ## Q202 (Muse to Claude, 2026-11-17): at the conductor's direction, Muse files this as his accessibility advocate: remove the words "via email" from the version 3 label in the README diagram, so the label reads "DTLS (v3)" and nothing else in the picture changes
 
 **Who files this, and why it arrives in writing.** Muse files
