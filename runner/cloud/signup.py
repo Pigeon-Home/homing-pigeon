@@ -30,8 +30,21 @@ from __future__ import annotations
 import json
 import os
 import re
-import tempfile
 from datetime import datetime, timezone
+
+_RUNNER_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from runner.guard import atomicio as _atomicio
+except ImportError:  # run by path: the one writer of a state file
+    import importlib.util
+    _io_path = os.path.join(_RUNNER_DIR, "guard", "atomicio.py")
+    _io_spec = importlib.util.spec_from_file_location(
+        "hp_atomicio", _io_path)
+    if _io_spec is None or _io_spec.loader is None:
+        raise ImportError("runner/guard/atomicio.py not loadable")
+    _atomicio = importlib.util.module_from_spec(_io_spec)
+    _io_spec.loader.exec_module(_atomicio)
 
 PIGEON_DOMAIN = "pigeon-home.ai"
 SIGNUP_PATH = "/signup"
@@ -98,18 +111,8 @@ class SignupBook:
     def _save(self):
         folder = os.path.dirname(os.path.abspath(self.path))
         os.makedirs(folder, exist_ok=True)
-        fd, tmp = tempfile.mkstemp(dir=folder, suffix=".tmp")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                json.dump({"signups": self.records}, fh, indent=2)
-                fh.write("\n")
-            os.replace(tmp, self.path)
-        except BaseException:
-            try:
-                os.unlink(tmp)
-            except OSError:
-                pass
-            raise
+        _atomicio.write_json(self.path, {"signups": self.records},
+                             indent=2, newline=True)
 
     def _find(self, gmail):
         for record in self.records:

@@ -129,6 +129,49 @@ class BookTest(unittest.TestCase):
             record["pigeon_address"]))
 
 
+class SaveShapeTest(unittest.TestCase):
+    """The book's save goes through the one atomic writer
+    (runner/guard/atomicio.py): the pin in test_atomicio failed
+    the first slice for hand-rolling its temp file, and these
+    tests hold the shape the helper leaves on disk."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.path = os.path.join(self.tmp.name, "signups.json")
+        self.book = SG.SignupBook(self.path)
+
+    def test_the_saved_file_is_indented_json_with_a_trailing_newline(self):
+        self.book.signup(OWNER)
+        with open(self.path, "r", encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertTrue(text.endswith("\n"))
+        self.assertIn('\n  "signups": [', text)
+        import json
+        self.assertEqual(OWNER, json.loads(text)["signups"][0]["gmail"])
+
+    def test_a_save_leaves_no_temp_file_behind(self):
+        self.book.signup(OWNER)
+        self.book.signup(SECOND)
+        self.assertEqual(["signups.json"], sorted(os.listdir(self.tmp.name)))
+
+    def test_a_save_into_a_nested_folder_creates_it(self):
+        deep = os.path.join(self.tmp.name, "a", "b", "signups.json")
+        book = SG.SignupBook(deep)
+        book.signup(OWNER)
+        self.assertTrue(os.path.exists(deep))
+        self.assertEqual(OWNER, SG.SignupBook(deep).record_for(OWNER)["gmail"])
+
+    def test_every_state_change_is_saved(self):
+        self.book.signup(OWNER)
+        self.book.approve(OWNER)
+        self.assertEqual(SG.APPROVED,
+                         SG.SignupBook(self.path).record_for(OWNER)["state"])
+        self.book.refuse(OWNER)
+        self.assertEqual(SG.REFUSED,
+                         SG.SignupBook(self.path).record_for(OWNER)["state"])
+
+
 class PageTest(unittest.TestCase):
     def test_the_page_has_one_box_and_the_google_sign_in(self):
         page = SG.signup_page()
