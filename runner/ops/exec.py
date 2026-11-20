@@ -856,14 +856,25 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
                 script_path, before_files)
         except Exception:
             monitor = None
+    # Finding F17: the job's 2 streams are read to their end as
+    # communicate() reads them, with a bar on what the runner
+    # holds of each. A confined spawn that wraps the process
+    # lends it to the same reader.
+    held = _runner()._held_for_job(max_out)
+
+    def collect(wait):
+        if getattr(type(proc), "communicate_held", None) is not None:
+            return proc.communicate_held(held, wait)
+        return held(proc, wait)
+
     try:
-        outs, errs = proc.communicate(timeout=timeout)
+        outs, errs = collect(timeout)
         timed_out = False
     except subprocess.TimeoutExpired:
         R.log(f"job {job['job_id']} timed out after {timeout}s; killing tree", "WARN")
         _runner().kill_tree(proc)
         try:
-            outs, errs = proc.communicate(timeout=15)
+            outs, errs = collect(15)
         except subprocess.TimeoutExpired:
             # The tree kill did not reap the pipes (a Windows
             # taskkill that misses the grandchild, then a
@@ -876,9 +887,10 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
             except Exception:
                 pass
             try:
-                outs, errs = proc.communicate(timeout=5)
+                outs, errs = collect(5)
             except subprocess.TimeoutExpired:
                 outs, errs = b"", b""
+                held.let_go()
         timed_out = True
     finally:
         _runner()._panic.unregister(proc)
@@ -907,13 +919,30 @@ def _execute_job_body(cfg, job, base_dir, work, root, job_id):
 
     stdout = outs.decode("utf-8", errors="replace") if isinstance(outs, (bytes, bytearray)) else ""
     stderr = errs.decode("utf-8", errors="replace") if isinstance(errs, (bytes, bytearray)) else ""
+    # The bytes are not needed past this line, and with a job that
+    # wrote up to the bar they are large.
+    outs = errs = None
+    # A stream the reader cut at its bar is a truncated stream,
+    # and its held text may end inside a secret: the preview and
+    # the log's record leave the end of it out. The preview is of
+    # the stream's first words, so a short first part serves it.
+    cut_out, cut_err = held.cut("stdout"), held.cut("stderr")
     shown, _families = _runner().redact_text(stdout, _runner()._redact_patterns(cfg))
+    if cut_out:
+        tail = _runner().HELD_TAIL
+        shown = shown[:max(0, min(len(shown) - tail, tail))]
     R.log(f"job {job['job_id']} process finished exit={proc.returncode} "
         f"stdout={_runner()._preview(shown)!r}")
-    # The full output goes to runner.log before the bounded copies
-    # below are cut for the result email.
-    _runner()._log_job_output(job_id, kind, stdout, stderr, cfg)
-    trunc_out, trunc_err = False, False
+    shown = None
+    for name, cut in (("stdout", cut_out), ("stderr", cut_err)):
+        if cut:
+            R.log(f"job {job['job_id']} wrote {held.seen[name]} bytes on "
+                f"{name}; the runner held the first {held.kept[name]}",
+                "WARN")
+    # The output as the runner holds it goes to runner.log before
+    # the bounded copies below are cut for the result email.
+    _runner()._log_job_output(job_id, kind, stdout, stderr, cfg, held=held)
+    trunc_out, trunc_err = cut_out, cut_err
     if len(stdout) > max_out:
         stdout, trunc_out = stdout[:max_out], True
     if len(stderr) > max_out:

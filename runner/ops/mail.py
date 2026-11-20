@@ -4,6 +4,7 @@ Extracted from runner.py.
 """
 from datetime import datetime, timezone, timedelta
 import email
+import email.header
 import hashlib
 import json
 import os
@@ -24,13 +25,92 @@ except ImportError:  # running from inside runner/ as __main__
     from ops.live import _runner  # type: ignore
 import email
 
+# Finding F15. The mail library follows a comment, a colon or a
+# nested part by calling itself, and Python stops a chain of calls
+# at 1,000. Past that the gate raised and the message was never
+# marked, so the next poll read it again. These bars are far above
+# any mail a person sends and far below that raise. The address is
+# for the log only, so a deep address is unread and the job goes
+# on. A deep shape of the mail itself is refused where it stands.
+# Neither bar is a new row in the constraint inventory.
+ADDRESS_COLON_BAR = 64
+COMMENT_DEPTH_BAR = 8
+
+
+# Finding F11, closing 1. A mail library writes a subject word
+# too long for 1 header line as encoded words, and a job whose
+# id is 78 to 128 characters was refused for the mismatch
+# between the subject as written and the signed body. The gate
+# now decodes a subject's encoded words before it reads the id
+# off it. The decoder's time grows with the square of what it
+# is handed (findings F11 and F13), so a subject past this many
+# bytes is never handed to it and is read as written: every
+# honest spelling of a job subject fits well inside the bound
+# (an id of 128 spelled 1 character to an encoded word is 1,811
+# bytes of subject). The panic step in front of this one keeps
+# reading the subject as written, under its own bound.
+SUBJECT_DECODE_MAX = 2048
+
+
+def _decoded_subject(subject: str) -> str:
+    """The subject with its encoded words decoded, as the sender
+    meant it. A subject with no encoded words, one past
+    SUBJECT_DECODE_MAX bytes, or one that does not decode is
+    taken as it stands."""
+    if "=?" not in subject:
+        return subject
+    if len(subject.encode("utf-8", "surrogatepass")) \
+            > SUBJECT_DECODE_MAX:
+        return subject
+    try:
+        return str(email.header.make_header(
+            email.header.decode_header(subject)))
+    except Exception:
+        return subject
+
+
+def _sender_is_deep(header):
+    """True when the sender header is past a bar the gate chose.
+    Counted in one pass, with no call to the mail library."""
+    colons = 0
+    depth = 0
+    for ch in header:
+        if ch == ":":
+            colons += 1
+            if colons > ADDRESS_COLON_BAR:
+                return True
+        elif ch == "(":
+            depth += 1
+            if depth > COMMENT_DEPTH_BAR:
+                return True
+        elif ch == ")" and depth:
+            depth -= 1
+    return False
+
+
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 seen: dict, secrets: dict, opts=None, key_policies=None):
     R = _runner()
-    msg = email.message_from_bytes(raw)
+    try:
+        msg = email.message_from_bytes(raw)
+    except RecursionError:
+        # The shape was followed until Python stopped the calls.
+        # A box already stopped leaves the mail, as it leaves every
+        # other. Otherwise the mail is decided: one line, marked.
+        if R._panic.fired(base_dir):
+            R.vlog(f"ingest: seq {seq}: the box is stopped (panic); "
+                   f"left as it is")
+            return
+        R.log(f"seq {seq}: the mail's shape could not be read", "WARN")
+        _runner()._mark(imap, seq, opts)
+        return
     subject = str(msg["Subject"] or "")
     from_header = str(msg["From"] or "")
     def reject(why: str):
+        # A reason may repeat a stranger's text, and this line is a
+        # warning, which the minute budget always lets through: it is
+        # written at a bounded length (finding F12).
+        why = R._log_reason(why)
         _runner().vlog(f"ingest: seq {seq}: rejected: {why}")
         R.log(f"rejecting seq {seq}: {why}", "WARN")
         # Dry-run is fully non-mutating: observe, change nothing.
@@ -69,6 +149,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject(f"mail exceeds max_job_bytes ({len(raw)} > {max_job_bytes})")
         return
 
+    # Finding F11, closing 1: from here the subject is read with
+    # its encoded words decoded, bounded by SUBJECT_DECODE_MAX.
+    # The panic step above read it as written, as it always has.
+    subject = _decoded_subject(subject)
+
     dispatched = _runner()._early_dispatch(
         cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir, seen)
     if dispatched is None:
@@ -78,9 +163,26 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # The HMAC signature is the sole authentication gate. Any sender
     # may submit jobs; only a valid signature authorizes execution.
     # The sender address is logged for audit but never trusted.
-    from_addr = _runner().parseaddr(from_header)[1].strip()
-    R.log(f"seq {seq}: job {job_id} submitted by {from_addr or '(no sender)'} "
-        f"subject={subject!r}")
+    from_addr = ""
+    unreadable = _sender_is_deep(from_header)
+    if not unreadable:
+        try:
+            from_addr = _runner().parseaddr(from_header)[1].strip()
+        except RecursionError:
+            unreadable = True
+    if unreadable:
+        shown_sender = "(sender could not be read)"
+    elif from_addr:
+        shown_sender = (R._log_plain(from_addr, R.LOG_SENDER_MAX))
+    else:
+        shown_sender = "(no sender)"
+    # This line is written before the signature is asked for, so every
+    # text in it is a stranger's until proven otherwise. Each is
+    # written at a bounded length (finding F12): the gate goes on
+    # with the whole id, and only the log's copy is cut.
+    R.log(f"seq {seq}: job {R._log_plain(job_id, R.LOG_ID_MAX)} "
+          f"submitted by {shown_sender} "
+          f"subject={R._log_quoted(subject, R.LOG_SUBJECT_MAX)}")
 
 
     try:
@@ -93,6 +195,19 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject(f"bad signature: {e}")
         _runner()._auth_reject_event(base_dir, "bad_signature")
         return
+    # C13, in its place: first behind the signature (finding F16,
+    # docs/infrastructure-documents/proofs/v4-behind-the-mac.md).
+    # The signature covers the body and not the subject, so the id
+    # in hand is still the subject's, a stranger's text, and the
+    # body is not yet known to be a version 1 job. Until these 3
+    # pass, nothing else in the body is acted on and no record
+    # names the job. Past them the job has 1 name, the signer's.
+    if not _runner()._version_ok(job.get("v")) or job.get("type") != "job":
+        reject("unsupported version/type")
+        return
+    if job.get("job_id") != job_id:
+        reject("job_id mismatch between subject and body")
+        return
     if not job_was_encrypted:
         if _runner()._cleartext_jobs_allowed():
             # This process was started with
@@ -100,7 +215,12 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # gated admission (cleartext never means
             # unauthenticated), and the readable arrival is
             # worth its line in the log, as it always was.
-            R.log(f"job {job_id}: received in clear text (not "
+            # The id is the signer's by now (C13, above). Its
+            # shape is checked later, where the job is run, so
+            # it is still written at a bounded length here, as
+            # the line above writes it (finding F12).
+            R.log(f"job {R._log_plain(job_id, R.LOG_ID_MAX)}: "
+                f"received in clear text (not "
                 f"encrypted); accepted under "
                 f"--allow-cleartext")
         else:
@@ -152,12 +272,6 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             and len(script.encode("utf-8")) > max_script_bytes:
         reject(f"script exceeds max_script_bytes "
                f"({len(script.encode('utf-8'))} > {max_script_bytes})")
-        return
-    if not _runner()._version_ok(job.get("v")) or job.get("type") != "job":
-        reject("unsupported version/type")
-        return
-    if job.get("job_id") != job_id:
-        reject("job_id mismatch between subject and body")
         return
     try:
         issued = _runner()._fromiso(job["issued_at"])

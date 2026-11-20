@@ -650,6 +650,9 @@ def judge_job(cfg, job):
 _helpers = _required_load_mod("runner.ops.helpers", "ops.helpers")
 snapshot_outside = _helpers.snapshot_outside
 append_bounded_log = _helpers.append_bounded_log
+Held = _helpers.Held
+held_bound = _helpers.held_bound
+HELD_TAIL = _helpers.HELD_TAIL
 
 
 def check_protected_paths(before, after, protected):
@@ -3651,6 +3654,72 @@ def _preview(text, n=80) -> str:
     return line
 
 
+# What 1 log line carries of a text a stranger chose (finding F12,
+# docs/infrastructure-documents/proofs/v4-before-the-mac.md). In front
+# of the signature the gate names what arrived. It names it; it does
+# not keep it. A text within its limit is written as it always was.
+# Past its limit it is cut, and its full length is written as a
+# number, so 1 refused message adds a fixed amount to the log
+# whatever its size. The limits are the longest an honest message
+# needs: an id of 128 characters (the job's own rule), an address of
+# 254 (the longest a mail path carries), and a subject of 256.
+LOG_ID_MAX = 128
+LOG_SENDER_MAX = 254
+LOG_SUBJECT_MAX = 256
+LOG_REASON_MAX = 512
+
+
+def _log_quoted(text, limit) -> str:
+    """`text` for a log line, quoted. Its repr when the text is
+    within `limit` characters and so is what the repr writes of it.
+    Past that: the repr of the longest start of the text that the
+    repr writes in `limit` characters, and the text's full length.
+    The repr leaves no control character as it is, and an escape it
+    writes counts against the limit, so the written copy never
+    passes `limit` characters between its quotes. Only the first
+    `limit` characters of the text are ever read."""
+    if not isinstance(text, str):
+        text = _as_str(text)
+    head = text[:limit]
+    shown = repr(head)
+    if len(text) <= limit and len(shown) <= limit + 2:
+        return shown
+    low, high = 0, len(head)
+    while low < high:
+        middle = (low + high + 1) // 2
+        if len(repr(head[:middle])) <= limit + 2:
+            low = middle
+        else:
+            high = middle - 1
+    return "%s... (%d characters)" % (repr(head[:low]), len(text))
+
+
+def _log_plain(text, limit) -> str:
+    """`text` for a log line, bare when it is plain: within `limit`
+    characters, printable, and with no space in it. Anything else is
+    quoted, so a stranger's control character or line break never
+    reaches the log as it is."""
+    if not isinstance(text, str):
+        text = _as_str(text)
+    if 0 < len(text) <= limit and text.isprintable() and " " not in text:
+        return text
+    return _log_quoted(text, limit)
+
+
+def _log_reason(why, limit=LOG_REASON_MAX) -> str:
+    """A refusal's reason for a log line. The reason may repeat a
+    stranger's text (an unknown key id is named in it), so it is cut
+    at `limit` characters with its full length said, and a reason
+    that is not printable is written quoted, under the same limit."""
+    if not isinstance(why, str):
+        why = _as_str(why)
+    if len(why) <= limit and why.isprintable():
+        return why
+    if why[:limit].isprintable():
+        return "%s... (%d characters)" % (why[:limit], len(why))
+    return _log_quoted(why, limit)
+
+
 def log(msg: str, level: str = "INFO"):
     if level == "DEBUG" and not _VERBOSE:
         return
@@ -3973,28 +4042,83 @@ def _oracle_log_exchange(endpoint, model, payload, started,
         record["error_body"] = error_body
     _oracle_log_record(record)
 
-def _log_job_output(job_id, kind, stdout, stderr, cfg):
-    """Write a job's complete stdout/stderr to runner.log.
+# A job's share of the log (the owner's word, 2026-11-20): the
+# most of each stream of a job that the log's record of the job
+# carries, in characters. A named constant, not a setting.
+# Before it, a job's record could be as large as the log, and
+# the runner held that much of a stream to write it.
+JOB_LOG_SHARE = 1_048_576
 
-    The result email carries a bounded copy; the log keeps the whole
-    output so a debugging session can read what the job actually
-    said. Redaction still applies (the log never carries cleartext
-    secrets, same as the one-line preview in execute_job). Written
-    straight through append_bounded_log, not log(): the per-minute
-    cap must not drop exactly the record a debugging session needs,
-    and a chatty job must not flood the console.
+
+def _job_log_share():
+    """What the log's record carries of each stream of a job at
+    most: the share, or the log's own size where the log is the
+    smaller."""
+    return min(_LOG_MAX_BYTES, JOB_LOG_SHARE)
+
+
+def _held_for_job(max_out):
+    """The reader of 1 job's streams, with the bar this runner
+    keeps (finding F17): what the output cap needs, or what the
+    log's record carries of a stream where a log is kept."""
+    return Held(held_bound(max_out, _job_log_share() if _LOG_FILE else 0))
+
+
+def _log_job_output(job_id, kind, stdout, stderr, cfg, held=None):
+    """Write a job's stdout/stderr to runner.log.
+
+    The result email carries a bounded copy; the log keeps more
+    of the output, so a debugging session can read what the job
+    actually said: a stream whole where it is at most the job's
+    share of the log, and the first part of a longer one.
+    Redaction still applies (the log never carries cleartext
+    secrets, same as the one-line preview in execute_job).
+    Written straight through append_bounded_log, not log(): the
+    per-minute cap must not drop exactly the record a debugging
+    session needs, and a chatty job must not flood the console.
+
+    `held` is the reader the streams came through. A stream it cut
+    at its bar is written as what was held, less its last
+    HELD_TAIL characters: the bar can cut a secret in 2, and the
+    held half would not match the pattern that redacts the whole.
+    A stream is then cut to the share, after it was redacted
+    whole, so that cut can fall in a mark and never in a secret.
+    Where the record leaves some of a stream out it says that it
+    is the first part, and how many bytes the job wrote.
     """
     if not _LOG_FILE:
         return
     patterns = _redact_patterns(cfg)
     out_text, _f1 = redact_text(stdout, patterns)
     err_text, _f2 = redact_text(stderr, patterns)
+    share = _job_log_share()
+    cut_out = held is not None and held.cut("stdout")
+    cut_err = held is not None and held.cut("stderr")
+    end_out = len(out_text) - (HELD_TAIL if cut_out else 0)
+    end_err = len(err_text) - (HELD_TAIL if cut_err else 0)
+    said = "full output"
+    if cut_out or cut_err or end_out > share or end_err > share:
+        wrote = ""
+        if held is not None:
+            wrote = ("the job wrote %d bytes on stdout and %d on "
+                     "stderr; " % (held.seen["stdout"],
+                                   held.seen["stderr"]))
+        said = ("output, its first part (%sthe record carries at "
+                "most %d characters of a stream)" % (wrote, share))
+    end_out, end_err = min(end_out, share), min(end_err, share)
+    # The record is cut to the log's size in bytes when it is
+    # written. A character is at least 1 byte, so what stands past
+    # that many characters is never written: it is let go here,
+    # before the record is built around it.
+    out_text = out_text[:max(0, min(end_out, _LOG_MAX_BYTES))]
+    err_text = err_text[:max(0, min(end_err,
+                                    _LOG_MAX_BYTES - len(out_text)))]
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     record = (
-        f"{stamp} [INFO] job {job_id} (kind={kind}) full output:\n"
+        f"{stamp} [INFO] job {job_id} (kind={kind}) {said}:\n"
         f"--- stdout ---\n{out_text}\n"
         f"--- stderr ---\n{err_text}\n"
-        f"--- end of job {job_id} output ---")
+        f"--- end of job {job_id} output ---\n")
     append_bounded_log(_LOG_FILE, record, _LOG_MAX_BYTES, _LOG_BACKUPS)
 
 # Two locks, on purpose. This one covers the seen-set and
@@ -5442,7 +5566,8 @@ def _early_dispatch(cfg, imap, smtp, seq, raw, subject, secrets, opts,
         _mark(imap, seq, opts)
         return None
     if _protocol_v2 is not None and _protocol_v2.answer_only(cfg):
-        log(f"answer-only: not executing job {m.group(1)}")
+        log(f"answer-only: not executing job "
+            f"{_log_plain(m.group(1), LOG_ID_MAX)}")
         _mark(imap, seq, opts)
         return None
     job_id = m.group(1)

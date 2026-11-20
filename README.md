@@ -447,7 +447,7 @@ The runner is fully inspectable, so audit what it would do before it does it, an
   [the statistics record](docs/infrastructure-documents/project/statistics.md);
   the chart itself:
 
-![What the security-token count is made of: one fuzz run log and everything else](assets/security-tokens-split-2026-11-16.svg)
+![What the security-token count is made of: one fuzz run log and everything else](assets/security-tokens-split-2026-11-19.svg)
 
 ## Questions people ask
 

@@ -110,10 +110,25 @@ def _subject_text(subject) -> str:
     return " ".join(text.split())
 
 
+# The longest subject the panic step reads (finding F13,
+# docs/infrastructure-documents/proofs/v4-before-the-mac.md). This
+# step stands in front of the size cap and in front of every
+# signature, and it hands the subject to the mail library's decoder
+# for encoded words, whose time grows with the square of what it is
+# given. A panic subject is 51 characters as typed and 815 in its
+# longest spelling (1 character to an encoded word, each escaped), so
+# a subject past this limit is not a panic, and the decoder never
+# sees it.
+SUBJECT_MAX = 2048
+
+
 def word_in_subject(subject) -> str | None:
     """The normalized word when the subject is exactly
     ``[HOMING-PIGEON] panic <word>`` (case-insensitive), else None.
-    A reply or a forward (``Re:``, ``Fwd:``) is not a panic."""
+    A reply or a forward (``Re:``, ``Fwd:``) is not a panic, and
+    neither is a subject of more than SUBJECT_MAX characters."""
+    if len(str(subject or "")) > SUBJECT_MAX:
+        return None
     text = _subject_text(subject)
     low = text.lower()
     if not low.startswith(PREFIX):

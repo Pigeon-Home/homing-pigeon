@@ -32,9 +32,19 @@ import smtplib
 import ssl
 import sys
 import threading
+from email import policy
 from email.message import EmailMessage
 
 _MAIL_LOCK = threading.RLock()
+
+# Finding F11, closing 2. A subject is read as written, and a
+# sender keeps a long id on 1 plain line: with the library's
+# default line length of 78 a word too long for the line is
+# written as encoded words instead, which is how this runner's
+# own results for jobs with long ids used to leave. Its lines
+# are set to 998, the longest a mail line may be, so a subject
+# with an id of 128 characters goes out plain, on 1 line.
+_PLAIN_LINE_POLICY = policy.default.clone(max_line_length=998)
 
 
 def log(msg, level="INFO"):
@@ -393,7 +403,7 @@ def send_mail(smtp, cfg, subject: str, body: str, to: str | None = None):
     # vertical tab, the separators at 0x1c-0x1e, U+0085, U+2028 and
     # U+2029 as much as CR and LF). That must not retry the job
     # forever, so the subject is one line by that rule.
-    msg = EmailMessage()
+    msg = EmailMessage(policy=_PLAIN_LINE_POLICY)
     try:
         msg["From"] = str(cfg.get("mailbox_user") or "")
         msg["To"] = to or str(cfg.get("mailbox_user") or "")

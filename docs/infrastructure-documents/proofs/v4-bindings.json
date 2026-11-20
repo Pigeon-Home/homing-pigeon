@@ -1,6 +1,6 @@
 {
  "about": "The v4 binding's constraint spec. Every constraint of constraints.md is tied here to the properties that state it, its code, its pins and its fuzz data, and every property to its model, its conformance suite and its steps in general.tla. runner/tests/test_v4_bindings.py holds each tie to the tree and re-measures the fuzz part.",
- "counted": "2026-11-19",
+ "counted": "2026-11-20",
  "properties": {
   "P1": {
    "title": "The acceptance gate",
@@ -9,15 +9,19 @@
    "configurations": [
     "gateenforce.cfg",
     "gatedefault.cfg",
-    "gateaudit.cfg"
+    "gateaudit.cfg",
+    "gatecleartext.cfg"
    ],
    "holds": [
     "P1Inv",
     "SensorInv",
-    "AudienceWasRequired"
+    "AudienceWasRequired",
+    "NamedByTheSignedId",
+    "OneVersionBeforeTheBody"
    ],
    "conformance": [
-    "runner/tests/test_proof_conformance.py"
+    "runner/tests/test_proof_conformance.py",
+    "runner/tests/test_v4_behind_the_mac.py"
    ],
    "general": [
     "Handle",
@@ -568,14 +572,14 @@
     {
      "site": "runner/wire/verify.py:verify_body_keyed",
      "target": "wire",
-     "entries": 115,
+     "entries": 116,
      "traced": true,
      "witness": "ed95e09208d241a4",
      "smallest": 0,
      "largest": 3176,
      "bands": [
       4,
-      109,
+      110,
       2,
       0
      ]
@@ -598,12 +602,12 @@
    ],
    "unfuzzed": [],
    "reach": {
-    "entries": 126,
+    "entries": 127,
     "smallest": 0,
     "largest": 11642,
     "bands": [
      5,
-     117,
+     118,
      2,
      2
     ]
@@ -1075,10 +1079,14 @@
     "P1": "clause 6"
    },
    "code": [
-    "runner/runner.py:_version_ok"
+    "runner/runner.py:_version_ok",
+    "runner/ops/mail.py:handle_mail"
    ],
    "pins": [
-    "runner/tests/test_proof_constraints.py::GateShapePins.test_c13_protocol_version_is_integer_1_only"
+    "runner/tests/test_proof_constraints.py::GateShapePins.test_c13_protocol_version_is_integer_1_only",
+    "runner/tests/test_v4_behind_the_mac.py::TheRealGateBindsFirst.test_c13_stands_first_behind_the_signature_in_the_source",
+    "runner/tests/test_v4_behind_the_mac.py::TheRealGateBindsFirst.test_c13_a_body_of_another_version_is_read_for_nothing_else",
+    "runner/tests/test_v4_behind_the_mac.py::TheRealGateBindsFirst.test_c13_a_body_under_another_subject_is_named_in_no_record"
    ],
    "fuzz": [
     {
@@ -1144,29 +1152,44 @@
     {
      "site": "runner/runner.py:_version_ok",
      "target": "gate",
-     "entries": 2,
+     "entries": 3,
      "traced": true,
      "witness": "b2c77d65f0e60104",
-     "smallest": 708,
+     "smallest": 468,
      "largest": 743,
      "bands": [
       0,
-      2,
+      3,
       0,
       0
+     ]
+    },
+    {
+     "site": "runner/ops/mail.py:handle_mail",
+     "target": "gate",
+     "entries": 15,
+     "traced": true,
+     "witness": "b2c77d65f0e60104",
+     "smallest": 0,
+     "largest": 11642,
+     "bands": [
+      2,
+      11,
+      0,
+      2
      ]
     }
    ],
    "unfuzzed": [],
    "reach": {
-    "entries": 814,
+    "entries": 827,
     "smallest": 0,
-    "largest": 8583,
+    "largest": 11642,
     "bands": [
-     56,
-     716,
+     58,
+     725,
      42,
-     0
+     2
     ]
    }
   },
@@ -1287,16 +1310,16 @@
     {
      "site": "runner/runner.py:stash_result",
      "target": "race_stash",
-     "entries": 168,
+     "entries": 180,
      "traced": true,
      "witness": "6bbe5748fa853d4e",
      "smallest": 132,
-     "largest": 4284,
+     "largest": 12288,
      "bands": [
       0,
-      164,
+      175,
       4,
-      0
+      1
      ]
     },
     {
@@ -1332,14 +1355,14 @@
    ],
    "unfuzzed": [],
    "reach": {
-    "entries": 183,
+    "entries": 195,
     "smallest": 0,
-    "largest": 11642,
+    "largest": 12288,
     "bands": [
      2,
-     175,
+     186,
      4,
-     2
+     3
     ]
    }
   },
@@ -1426,29 +1449,29 @@
     {
      "site": "runner/ops/policy.py:apply_result_policy",
      "target": "queries",
-     "entries": 133,
+     "entries": 134,
      "traced": true,
      "witness": "879bb982e965c694",
      "smallest": 65,
-     "largest": 4661,
+     "largest": 12565,
      "bands": [
       4,
       124,
       5,
-      0
+      1
      ]
     }
    ],
    "unfuzzed": [],
    "reach": {
-    "entries": 133,
+    "entries": 134,
     "smallest": 65,
-    "largest": 4661,
+    "largest": 12565,
     "bands": [
      4,
      124,
      5,
-     0
+     1
     ]
    }
   },
@@ -1692,15 +1715,15 @@
     {
      "site": "runner/runner.py:seen_keep_sec",
      "target": "race_state",
-     "entries": 209,
+     "entries": 217,
      "traced": true,
      "witness": "6205130f370a65a1",
      "smallest": 63,
      "largest": 1191,
      "bands": [
       1,
-      201,
-      7,
+      208,
+      8,
       0
      ]
     },
@@ -1752,15 +1775,15 @@
     {
      "site": "runner/runner.py:_write_seen_kept",
      "target": "race_state",
-     "entries": 209,
+     "entries": 217,
      "traced": true,
      "witness": "6205130f370a65a1",
      "smallest": 63,
      "largest": 1191,
      "bands": [
       1,
-      201,
-      7,
+      208,
+      8,
       0
      ]
     },
@@ -1812,15 +1835,15 @@
     {
      "site": "runner/runner.py:save_seen",
      "target": "race_state",
-     "entries": 209,
+     "entries": 217,
      "traced": true,
      "witness": "6205130f370a65a1",
      "smallest": 63,
      "largest": 1191,
      "bands": [
       1,
-      201,
-      7,
+      208,
+      8,
       0
      ]
     },
@@ -1872,13 +1895,13 @@
    ],
    "unfuzzed": [],
    "reach": {
-    "entries": 321,
+    "entries": 329,
     "smallest": 63,
     "largest": 8577,
     "bands": [
      2,
-     310,
-     9,
+     317,
+     10,
      0
     ]
    }
@@ -1947,16 +1970,16 @@
     {
      "site": "runner/runner.py:deliver_stash",
      "target": "race_stash",
-     "entries": 168,
+     "entries": 179,
      "traced": true,
      "witness": "6bbe5748fa853d4e",
      "smallest": 130,
-     "largest": 4284,
+     "largest": 12288,
      "bands": [
       0,
-      164,
+      174,
       4,
-      0
+      1
      ]
     },
     {
@@ -1977,16 +2000,16 @@
     {
      "site": "runner/runner.py:resend_stashed",
      "target": "race_stash",
-     "entries": 165,
+     "entries": 177,
      "traced": true,
      "witness": "b1808bcfea5653ed",
      "smallest": 130,
-     "largest": 4284,
+     "largest": 12288,
      "bands": [
       0,
-      161,
+      172,
       4,
-      0
+      1
      ]
     }
    ],
@@ -1994,14 +2017,14 @@
     "runner/runner.py:prune_sent"
    ],
    "reach": {
-    "entries": 172,
+    "entries": 184,
     "smallest": 130,
-    "largest": 4284,
+    "largest": 12288,
     "bands": [
      0,
-     168,
+     179,
      4,
-     0
+     1
     ]
    }
   },
@@ -2040,15 +2063,15 @@
     {
      "site": "runner/guard/confval.py:integer",
      "target": "race_state",
-     "entries": 209,
+     "entries": 217,
      "traced": false,
      "witness": "6205130f370a65a1",
      "smallest": 63,
      "largest": 1191,
      "bands": [
       1,
-      201,
-      7,
+      208,
+      8,
       0
      ]
     },
@@ -2070,15 +2093,15 @@
     {
      "site": "runner/guard/confval.py:number",
      "target": "race_state",
-     "entries": 209,
+     "entries": 217,
      "traced": false,
      "witness": "6205130f370a65a1",
      "smallest": 63,
      "largest": 1191,
      "bands": [
       1,
-      201,
-      7,
+      208,
+      8,
       0
      ]
     }
@@ -2087,13 +2110,13 @@
     "runner/ops/attest.py:reload_hot_config"
    ],
    "reach": {
-    "entries": 727,
+    "entries": 735,
     "smallest": 0,
     "largest": 1191,
     "bands": [
      47,
-     673,
-     7,
+     680,
+     8,
      0
     ]
    }
@@ -2262,16 +2285,16 @@
     {
      "site": "runner/wire/dtlsproto.py:_split_records",
      "target": "dtls_hostile",
-     "entries": 38,
+     "entries": 39,
      "traced": true,
      "witness": "45e646cc4bf9936b",
      "smallest": 2,
-     "largest": 378,
+     "largest": 12550,
      "bands": [
       10,
       28,
       0,
-      0
+      1
      ]
     },
     {
@@ -2292,14 +2315,14 @@
    ],
    "unfuzzed": [],
    "reach": {
-    "entries": 154,
+    "entries": 155,
     "smallest": 0,
-    "largest": 1005,
+    "largest": 12550,
     "bands": [
      17,
      132,
      5,
-     0
+     1
     ]
    }
   },
@@ -2329,10 +2352,10 @@
  ],
  "fuzz": {
   "address": {
-   "runs": 1863,
-   "tried": 218913397,
-   "accepted": 1281740,
-   "refused": 217717355,
+   "runs": 2012,
+   "tried": 235893213,
+   "accepted": 1381713,
+   "refused": 234604052,
    "crash": 0,
    "slow": 0,
    "entries": 46,
@@ -2347,10 +2370,10 @@
    ]
   },
   "board": {
-   "runs": 1138,
-   "tried": 4367380,
-   "accepted": 1506985,
-   "refused": 2889887,
+   "runs": 1186,
+   "tried": 4408765,
+   "accepted": 1520093,
+   "refused": 2919412,
    "crash": 0,
    "slow": 0,
    "entries": 26,
@@ -2365,10 +2388,10 @@
    ]
   },
   "board_mail": {
-   "runs": 893,
-   "tried": 1936814,
-   "accepted": 438548,
-   "refused": 1586763,
+   "runs": 924,
+   "tried": 1937096,
+   "accepted": 439695,
+   "refused": 1588998,
    "crash": 3,
    "slow": 0,
    "entries": 100,
@@ -2383,10 +2406,10 @@
    ]
   },
   "board_ops": {
-   "runs": 1159,
-   "tried": 4774634,
-   "accepted": 3361923,
-   "refused": 1474373,
+   "runs": 1212,
+   "tried": 4804259,
+   "accepted": 3384299,
+   "refused": 1484484,
    "crash": 9,
    "slow": 1,
    "entries": 54,
@@ -2401,10 +2424,10 @@
    ]
   },
   "channels": {
-   "runs": 1173,
-   "tried": 3435014,
-   "accepted": 1177307,
-   "refused": 2270636,
+   "runs": 1216,
+   "tried": 3450021,
+   "accepted": 1182071,
+   "refused": 2281352,
    "crash": 0,
    "slow": 0,
    "entries": 11,
@@ -2419,30 +2442,30 @@
    ]
   },
   "cloud": {
-   "runs": 1079,
-   "tried": 5708367,
-   "accepted": 2732390,
-   "refused": 3092120,
+   "runs": 1090,
+   "tried": 5719299,
+   "accepted": 2738137,
+   "refused": 3098554,
    "crash": 2,
    "slow": 108,
-   "entries": 113,
+   "entries": 114,
    "bound": false,
    "smallest": 0,
    "largest": 3176,
    "bands": [
     5,
-    106,
+    107,
     2,
     0
    ]
   },
   "collect": {
-   "runs": 1068,
-   "tried": 15327638,
-   "accepted": 2699526,
-   "refused": 12531262,
+   "runs": 1114,
+   "tried": 15422593,
+   "accepted": 2716198,
+   "refused": 12610298,
    "crash": 117890,
-   "slow": 1,
+   "slow": 168,
    "entries": 20,
    "bound": false,
    "smallest": 33,
@@ -2455,10 +2478,10 @@
    ]
   },
   "crypto": {
-   "runs": 1091,
-   "tried": 9083731,
-   "accepted": 201276,
-   "refused": 8958499,
+   "runs": 1132,
+   "tried": 9205640,
+   "accepted": 203412,
+   "refused": 9081265,
    "crash": 0,
    "slow": 0,
    "entries": 73,
@@ -2473,10 +2496,10 @@
    ]
   },
   "dtls": {
-   "runs": 1975,
-   "tried": 30145823,
-   "accepted": 13890128,
-   "refused": 16367812,
+   "runs": 2127,
+   "tried": 32116176,
+   "accepted": 14821119,
+   "refused": 17416446,
    "crash": 0,
    "slow": 1,
    "entries": 61,
@@ -2491,28 +2514,28 @@
    ]
   },
   "dtls_hostile": {
-   "runs": 1815,
-   "tried": 3622525,
-   "accepted": 3592744,
-   "refused": 97845,
+   "runs": 1942,
+   "tried": 3893108,
+   "accepted": 3861172,
+   "refused": 104845,
    "crash": 0,
    "slow": 0,
-   "entries": 38,
+   "entries": 39,
    "bound": true,
    "smallest": 2,
-   "largest": 378,
+   "largest": 12550,
    "bands": [
     10,
     28,
     0,
-    0
+    1
    ]
   },
   "dtls_session": {
-   "runs": 1677,
-   "tried": 2020301,
-   "accepted": 648979,
-   "refused": 1454252,
+   "runs": 1815,
+   "tried": 2159718,
+   "accepted": 694169,
+   "refused": 1556483,
    "crash": 0,
    "slow": 0,
    "entries": 58,
@@ -2563,10 +2586,10 @@
    ]
   },
   "inbox": {
-   "runs": 1002,
-   "tried": 3160472,
-   "accepted": 2466873,
-   "refused": 721817,
+   "runs": 1040,
+   "tried": 3171454,
+   "accepted": 2476677,
+   "refused": 724097,
    "crash": 705,
    "slow": 0,
    "entries": 29,
@@ -2581,10 +2604,10 @@
    ]
   },
   "keydir": {
-   "runs": 1855,
-   "tried": 84599011,
-   "accepted": 26343028,
-   "refused": 58326438,
+   "runs": 2018,
+   "tried": 91662364,
+   "accepted": 28544435,
+   "refused": 63194578,
    "crash": 1,
    "slow": 0,
    "entries": 38,
@@ -2599,10 +2622,10 @@
    ]
   },
   "local": {
-   "runs": 812,
-   "tried": 18065977,
-   "accepted": 84830,
-   "refused": 18271512,
+   "runs": 832,
+   "tried": 18066031,
+   "accepted": 84890,
+   "refused": 18281866,
    "crash": 0,
    "slow": 54,
    "entries": 518,
@@ -2617,10 +2640,10 @@
    ]
   },
   "local_inbox": {
-   "runs": 1150,
-   "tried": 3946681,
-   "accepted": 637338,
-   "refused": 3335726,
+   "runs": 1196,
+   "tried": 3964993,
+   "accepted": 640161,
+   "refused": 3352273,
    "crash": 0,
    "slow": 0,
    "entries": 23,
@@ -2635,10 +2658,10 @@
    ]
   },
   "mail": {
-   "runs": 1086,
-   "tried": 19111945,
-   "accepted": 7979744,
-   "refused": 11160418,
+   "runs": 1112,
+   "tried": 19292144,
+   "accepted": 8054846,
+   "refused": 11266191,
    "crash": 0,
    "slow": 0,
    "entries": 26,
@@ -2653,10 +2676,10 @@
    ]
   },
   "manifest": {
-   "runs": 1054,
-   "tried": 40757380,
-   "accepted": 1483526,
-   "refused": 39407923,
+   "runs": 1085,
+   "tried": 41292298,
+   "accepted": 1500921,
+   "refused": 39929445,
    "crash": 0,
    "slow": 0,
    "entries": 129,
@@ -2671,10 +2694,10 @@
    ]
   },
   "names": {
-   "runs": 1043,
-   "tried": 3646587,
-   "accepted": 771683,
-   "refused": 2962468,
+   "runs": 1086,
+   "tried": 3772534,
+   "accepted": 796809,
+   "refused": 3066901,
    "crash": 0,
    "slow": 0,
    "entries": 84,
@@ -2689,28 +2712,28 @@
    ]
   },
   "queries": {
-   "runs": 654,
-   "tried": 2340360,
-   "accepted": 1693915,
-   "refused": 715748,
+   "runs": 662,
+   "tried": 2346312,
+   "accepted": 1697059,
+   "refused": 719626,
    "crash": 59,
    "slow": 3,
-   "entries": 133,
+   "entries": 134,
    "bound": true,
    "smallest": 65,
-   "largest": 4661,
+   "largest": 12565,
    "bands": [
     4,
     124,
     5,
-    0
+    1
    ]
   },
   "query": {
-   "runs": 693,
-   "tried": 1714228,
-   "accepted": 983200,
-   "refused": 849500,
+   "runs": 700,
+   "tried": 1714235,
+   "accepted": 984092,
+   "refused": 849896,
    "crash": 19,
    "slow": 0,
    "entries": 183,
@@ -2725,64 +2748,64 @@
    ]
   },
   "race_board": {
-   "runs": 1623,
-   "tried": 13788625,
-   "accepted": 4912490,
-   "refused": 8972070,
+   "runs": 1808,
+   "tried": 14393391,
+   "accepted": 5149876,
+   "refused": 9355210,
    "crash": 19632,
    "slow": 0,
-   "entries": 85,
+   "entries": 87,
    "bound": false,
    "smallest": 10,
    "largest": 1569,
    "bands": [
     3,
-    80,
+    82,
     2,
     0
    ]
   },
   "race_stash": {
-   "runs": 657,
-   "tried": 12341789,
-   "accepted": 8842496,
-   "refused": 3561110,
+   "runs": 706,
+   "tried": 12967212,
+   "accepted": 9288089,
+   "refused": 3749748,
    "crash": 1182,
    "slow": 0,
-   "entries": 173,
+   "entries": 185,
    "bound": true,
    "smallest": 15,
-   "largest": 4284,
+   "largest": 12288,
    "bands": [
     3,
-    166,
+    177,
     4,
-    0
+    1
    ]
   },
   "race_state": {
-   "runs": 709,
-   "tried": 12284343,
-   "accepted": 10320102,
-   "refused": 2006273,
+   "runs": 817,
+   "tried": 12608745,
+   "accepted": 10630018,
+   "refused": 2045106,
    "crash": 56684,
    "slow": 2,
-   "entries": 219,
+   "entries": 229,
    "bound": true,
    "smallest": 8,
    "largest": 1191,
    "bands": [
     3,
-    209,
-    7,
+    218,
+    8,
     0
    ]
   },
   "secret": {
-   "runs": 1031,
-   "tried": 3180936,
-   "accepted": 1413592,
-   "refused": 1794148,
+   "runs": 1066,
+   "tried": 3268013,
+   "accepted": 1449729,
+   "refused": 1845998,
    "crash": 0,
    "slow": 0,
    "entries": 26,
@@ -2797,10 +2820,10 @@
    ]
   },
   "stage": {
-   "runs": 955,
-   "tried": 38869531,
-   "accepted": 15591525,
-   "refused": 23311415,
+   "runs": 996,
+   "tried": 39495162,
+   "accepted": 15818192,
+   "refused": 23711814,
    "crash": 0,
    "slow": 0,
    "entries": 35,
@@ -2815,10 +2838,10 @@
    ]
   },
   "stash": {
-   "runs": 1122,
-   "tried": 9033371,
-   "accepted": 1690997,
-   "refused": 7376021,
+   "runs": 1158,
+   "tried": 9145590,
+   "accepted": 1712877,
+   "refused": 7467476,
    "crash": 0,
    "slow": 0,
    "entries": 31,
@@ -2833,10 +2856,10 @@
    ]
   },
   "v2": {
-   "runs": 1117,
-   "tried": 48235381,
-   "accepted": 3552534,
-   "refused": 44755761,
+   "runs": 1146,
+   "tried": 48867433,
+   "accepted": 3594070,
+   "refused": 45348249,
    "crash": 0,
    "slow": 0,
    "entries": 68,
@@ -2851,10 +2874,10 @@
    ]
   },
   "v2_mail": {
-   "runs": 896,
-   "tried": 1958811,
-   "accepted": 231676,
-   "refused": 1802267,
+   "runs": 916,
+   "tried": 1958927,
+   "accepted": 232325,
+   "refused": 1803414,
    "crash": 34,
    "slow": 0,
    "entries": 84,
@@ -2869,19 +2892,19 @@
    ]
   },
   "wire": {
-   "runs": 1102,
-   "tried": 4062781,
-   "accepted": 2097931,
-   "refused": 2089209,
+   "runs": 1111,
+   "tried": 4066314,
+   "accepted": 2100192,
+   "refused": 2091537,
    "crash": 0,
    "slow": 55,
-   "entries": 117,
+   "entries": 118,
    "bound": true,
    "smallest": 0,
    "largest": 3176,
    "bands": [
     5,
-    110,
+    111,
     2,
     0
    ]

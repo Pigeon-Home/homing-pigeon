@@ -312,7 +312,7 @@ A finding is most useful when it points at the file and the line
   the entries that reach each constraint, the fuzz corpus
   taken to the real doors and up the sizes to the caps, the
   constraints no fuzz data reaches, finding F10, closed, and
-  finding F11, open.
+  finding F11, closed both ways.
   `runner/tests/test_v4_bindings.py` holds every tie and
   drives the corpus through the doors, and
   `runner/tests/test_opener_cost.py` holds F10's change.
@@ -323,6 +323,145 @@ A finding is most useful when it points at the file and the line
   both closings together, is the sound position and why
   the conjunction is what candidate constraint C32 and
   candidate property P14 need from it.
+- `v4-before-the-mac.md`: a candidate constraint, C32, and a
+  candidate property, P14, for what the gate does with a
+  message before its signature verifies, the place where
+  findings F10 and F11 both lie. Its suppositions are
+  written before the measure, and the measure and its
+  conclusions follow them, with findings F12 and F13, both
+  closed on the page. `premac.tla` is its model, the gate's
+  6 steps as 1 decision, with 6 configurations.
+  `runner/tests/test_v4_before_the_mac.py` is the measure,
+  the model's search, and the real gate asked on the
+  model's arrivals.
+- `v4-at-a-bound.md` takes up the owner's direction of
+  2026-11-19 at the first rung: a bound on the script as a
+  constraint of the specification, and proof at that size.
+  It counts what the first rung's 22 atoms build, which is
+  74,072,330,493 scripts, gives each its result by a machine
+  of 352 steps, and records the real shell asked on 858,319
+  of them and the real runner asked on every step, with the
+  fuzz data at 50, 500 and 5,000 bytes beside it.
+  `runner/tests/test_v4_at_a_bound.py` holds it.
+- `v4-at-a-limit.md` writes the same claim with the size
+  left open, as a number N: why the proof holds at every N,
+  what grows with N, and the bars a row meets as N grows,
+  each as a number. On bash 5.2.21 the first bar is at
+  13,332 characters, and the owner's rungs of 50, 500 and
+  5,000 are under it. Its suppositions are written before
+  the measure, and it records finding F14, closed on the
+  page. `runner/tests/test_v4_at_a_limit.py` holds it.
+- `v4-the-ladder.md` takes a technique of the proof from
+  finding F14, by the owner's rule that a fault found in the
+  proof's method is made into a technique. Sizes stand on
+  the Fibonacci series from 0, and each step has 3 kinds of
+  data: what the constraints decide before a run, what the
+  2 steps before it forecast, and what the run shows from
+  inside. Its suppositions are written before the measure.
+  L1, the ratio table, was run, and it holds. L2, the
+  join of M's tables, was run, and it holds: 31,460 rows,
+  0 differences, and 14 kinds of row where 20 were
+  supposed. L3 was run in bash 5.2.15: 19,360 rows, the
+  output, the status and the commands that ran, 0
+  differences. The order of a pipe's 2 sides is not
+  claimed. J2 of finding F15 is in the gate: a deep address
+  is unread and the job goes on, and a mail whose shape
+  raises is marked once. No new constraint.
+  `runner/tests/test_v4_the_ladder.py` and
+  `runner/tests/test_v4_the_answer.py` hold those runs. A
+  second seat ran L1, L2 and L3 apart, in bash 5.2.21 for
+  L3, and the 2 runs agree. That seat ran the whole ladder:
+  bash shows the joined result on 44,588 rows, the gate is
+  climbed in 12 places to 2,178,309 bytes, finding F15 was
+  met there, and F14 was found again with nobody pointing
+  at it. `runner/tests/test_v4_the_ladder_run.py` holds it.
+- `v4-the-curve.md` proves that the count of security
+  tokens has an upper limit under 1 rule: each day the
+  count may grow by at most a fixed share of what is left
+  to a limit. Something is then always left, the count
+  settles, and with the allowance used it settles at that
+  limit. It is Newton's law of cooling. No limit on the
+  page is named first. Each follows from a rule on the
+  steps that the counts have kept: 17.6 million for
+  everything but the run log, 28.4 million for the run log
+  if it keeps the same rule, and 46.0 million for the
+  whole. The page says what each coming week may add, so
+  1 count can show a number wrong. The count of tokens
+  does not level off yet, and what the fuzz campaign finds
+  does. Its second half: the test for a limit is of the
+  second degree, the count is 2 lines that each need a
+  limit of their own, a rule on the steps gives the limit
+  as a result, and a chart cannot prove a limit.
+  `runner/tests/test_v4_the_curve.py` holds it.
+- `v4-the-bars.md` solves the small case, scripts of at
+  most 100 bytes. All 61 constructs of the shell's grammar
+  are present there, so no cap on a script's size is a bar
+  on what a job uses. What is solved is the list of
+  quantities, each with the shortest script that asks for
+  it without end and its bar on each system. Finding F17
+  is on it, with its closing: the runner held all that a
+  job wrote, and it holds a fixed number of bytes of each
+  stream now. Findings F18 and F19 are on it, open: the
+  Oracle's run tool and the reading of a change job's diff
+  hold all that a process writes. No new constraint.
+  `runner/tests/test_v4_the_bars.py` holds it.
+  `held.tla` is the model of the rule that closes F17, the
+  reader of a job's stream with its bar, and
+  `runner/tests/test_v4_the_held_output.py` holds that.
+- `v4-the-join.md`: the sentence between the two proofs. A
+  message that fails C5 never reaches the machine M, and a
+  message that passes C5 reaches M only with a script of at
+  most N bytes, which is C2. No new constraint. The default
+  cap stays 1,048,576.
+  `runner/tests/test_v4_the_join.py` holds the sentence.
+- `v4-the-grammar.md`: the grammar the induction covers. A
+  script of the rung is 1 of 22 atoms, or a script of the
+  rung, 1 of 4 joiners, and an atom. The induction is a
+  proof for that grammar, not for the shell, and not for
+  every string the size door admits. No new constraint.
+  `runner/tests/test_v4_the_grammar.py` holds it.
+- `v4-the-folder.md`: one atom that writes, `printf x > kept`,
+  and it is not one of the 22. Under C18, already defined,
+  the job's folder is the only writable mount when
+  confinement is enforce. A write to the host's `/tmp` does
+  not land there, and the same script with confinement off
+  does. Where the sandbox cannot engage, the job is refused.
+  `runner/tests/test_v4_the_folder.py` holds it.
+- `v4-the-place.md`: where M stands when confinement is on.
+  The bound was measured with confinement off, and `pwd`
+  then prints the host folder. Under enforce the folder M
+  is given is the work mount, `/work`, and `HOME` is the
+  `HOME` the runner passes in. All 22 atoms were run, on and
+  off. The other 19 do not read the place. Every step of M,
+  352 of them, was run under enforce and matches M at
+  `/work`. So do 8 rows of 50 characters, 8 of 500 and 4 of
+  5,000, drawn from the 22 atoms. No new atom and no new
+  constraint.
+  `runner/tests/test_v4_the_place.py` holds it.
+- `v4-behind-the-mac.md`: whose text is it. The signature
+  covers the body and nothing around it, so a text from
+  outside the signature is a stranger's until the gate has
+  set it equal to a signed text. The page gives every text
+  1 of 3 labels and every use 1 of 3 kinds, reads the
+  findings F10 to F16 by them, and states finding F16: the
+  gate named a job by the subject's id before it had set
+  that id against the body's. The rule is C13 with its
+  place: version, type and id are checked first behind the
+  signature. The gate binds first now. `gate.tla` holds the
+  order with 2 invariants and a seam that turns it back,
+  the real gate answers as the model does on 384 arrivals,
+  and a walk of the gate's own source finds no use of a
+  stranger's text that is not cut or bound. On main's gate
+  the same walk names findings F12 and F16 with nobody
+  pointing at them. `runner/tests/test_v4_behind_the_mac.py`
+  holds it.
+- `v4-the-motor.md`: the branch's work named as 1 motion.
+  The join is what carries a claim from the smallest pieces
+  to a tree of any size: the kinds of row were counted,
+  there are 14, and they are closed. The page lists each
+  turn made on this branch, in the order it was made, and
+  what has not turned. No new atom and no new constraint.
+  `runner/tests/test_v4_the_ladder.py` holds its sentences.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.

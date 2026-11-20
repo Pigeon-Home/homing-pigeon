@@ -73,6 +73,48 @@ REGISTERED = {
         "the test_linux_* modules; run in the ubuntu test job",
     "POSIX installer path": "run on ubuntu and macOS; Windows has its own",
     "POSIX only": "run on ubuntu and macOS",
+    "the shell's 2 bars are measured on Linux":
+        "test_v4_at_a_limit: the bars are bash's grammar stack and "
+        "the stack the system gives the shell, measured on Linux; "
+        "run in the ubuntu test job. The system bash of macOS is "
+        "another build with its own numbers",
+    "this bash reads a pipeline of 20,000 commands":
+        "test_v4_at_a_limit: the grammar's bar is found by asking "
+        "bash. The bash the page names refuses a pipeline of 3,334 "
+        "commands, so the ubuntu test job runs these; a bash built "
+        "with a deeper grammar stack has no bar under 20,000 to "
+        "hold the claim against",
+    "the shells and the runner's memory are read on Linux":
+        "test_v4_the_bars and test_v4_the_held_output: the census "
+        "is read by the syntax checks of bash and dash, and a "
+        "process's memory at its highest is read in kilobytes as "
+        "Linux reports it; run in the ubuntu test job. The other "
+        "systems report that reading in units of their own",
+    "the job's tree is counted on Linux here":
+        "test_v4_the_bars, finding F20: a job that holds 70 "
+        "processes is killed by the runner's watch and 1 that "
+        "holds 60 is not, run through the real gate with bash; run "
+        "in the ubuntu test job. The watch's count itself is held "
+        "on every system by the tests beside it, with a count "
+        "handed in",
+    "the Windows backend's pumps are read on Windows":
+        "test_v4_the_held_output: 1 test starts a real process "
+        "under the Windows backend's Job Object and reads it with "
+        "the backend's own pumps; run in the windows test jobs. "
+        "The lines of the pumps are held on every system by the "
+        "test beside it",
+    "the place and the folder are the Linux sandbox's":
+        "test_v4_the_place and test_v4_the_folder: the work mount "
+        "and the job's folder under enforce are the Linux "
+        "sandbox's; run in the ubuntu test job. macOS and Windows "
+        "confine a job with backends of their own, which these "
+        "pages do not measure",
+    "the sandbox does not engage here":
+        "test_v4_the_place: the rows are run under enforce, and "
+        "the runner refuses a job under enforce where its sandbox "
+        "reports a startup problem; these run on a host where the "
+        "sandbox engages, and the same module's other tests hold "
+        "the refusal where it does not",
     "POSIX mode bits only":
         "test_personal_docs_shelter: the shelter folder's 0o700 pin "
         "reads POSIX stat mode bits, which Windows stat does not "
