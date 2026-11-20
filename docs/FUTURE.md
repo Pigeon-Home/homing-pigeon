@@ -2,5 +2,5 @@
 - Ubunutu Snap Store (Linux)
 - Microsoft Store (Windows)
 - Apple Store (macOS)
-- Consume and analyze app store "requirements" & analyze/understand legal requirements for public companies etc & notify SI vendors
+- Consume and analyze app store "requirements" & analyze/understand legal requirements for public companies etc & notify SI vendors (and info@abdulforsenate.com)
 - define runner HOST boundry for Oracle to dispatch patrols: repair, hdd, audit, security_patrols (oracle key distribution)
