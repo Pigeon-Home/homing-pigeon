@@ -379,7 +379,22 @@ read 456 kilobytes above its base.
 | H4 | Timed out, with its first characters, and the runner under the bar | So it came back, and the runner read 456 kilobytes. Held |
 | H5 | The bar is 33,816,576 bytes with the log at its default, and a record under the bar is what it was | Held |
 | H6 | A stream over the bar is recorded without its last 65,536 characters, and the record says what the job wrote | Held. Half a secret at the cut is not written |
-| H7 | The other 3 systems | Not measured here. The suite holds each backend's lines on every system, and the reader's 2 ways both run on this seat's Linux. The server's legs are asked with this push |
+| H7 | The other 3 systems | Not measured here: the server's word is under this table. Held, with 1 test of this suite to mend |
+
+**H7, the server's word.** It was asked on the head that
+carries the closing, and this paragraph was added when it
+came. macOS: the whole suite is green, and so is the
+backend's live proof on 2 Macs. FreeBSD: the backend's
+live proof is green in 3 guests, with a job through the
+runner in its jail. The suite's own leg on FreeBSD was
+still running when this was written. Windows: 1 of the 2
+legs is green. In the other, 1 test of this suite stopped
+at a limit of its own: its helper put 57,692 characters on
+a command line, and Windows takes 32,767. The reader's
+other tests passed there, by threads. The backend's pumps
+held the first part of a live process. And every job the 2
+legs run came back. So H7 held, and that 1 test is mended
+with the next change.
 
 **4 things were not supposed.**
 
@@ -433,6 +448,56 @@ read 456 kilobytes above its base.
   They are not all walked here. 2 were met that read what the
   runner did not choose: findings F18 and F19, below.
 - **A second seat's test.** This closing is 1 seat's word.
+
+## The log's share: the rule, and what is expected
+
+This section was written and pushed before the code was
+changed. It takes up the first of the things left open
+above.
+
+**The owner's word, 20 November.** A job's share of the log
+is 1 megabyte for each of its streams.
+
+**The rule.** The log's record of a job carries a stream
+whole where the stream is at most 1,048,576 bytes. Of a
+longer stream it carries the first 1,048,576 bytes at
+least, and the first 1,048,576 characters at most. Where it
+leaves some of a stream out, it says that it is the first
+part. Where the log itself is smaller than the share, the
+log's size is the share, as it was.
+
+**The bar that follows.** The runner holds the share of a
+stream, and the tail that the record leaves out: 1,310,720
+bytes a stream, where it was 33,816,576. The bar never
+stands under what the output cap needs, so a result is
+what it was. The share is a constant in the code. It is no
+new setting.
+
+**What is expected.**
+
+- **L1. The bar.** 1,310,720 bytes a stream at the default
+  log size, and at any log of 1,048,576 bytes or more. For
+  a smaller log, what it was.
+- **L2. The runner's memory.** For the costliest kind of
+  output found, the table above reads 682,860 kilobytes. I
+  expect about 35,000, and under 50,000. For plain text on
+  1 stream it reads 164,088. I expect under 10,000.
+- **L3. Every result is what it was.** The same jobs
+  again: 0 differ.
+- **L4. A stream of at most 1,048,576 bytes** is in the
+  log whole, byte for byte as before.
+- **L5. A longer stream** is in the log as its first
+  1,048,576 bytes at least and its first 1,048,576
+  characters at most. The record says that it is the first
+  part, and how many bytes the job wrote. A secret that
+  the share's cut falls in is written as its mark, or as
+  part of its mark, and never as the secret.
+- **L6. What 1 job adds to the log.** A job that wrote
+  63,245,986 bytes of text on each stream added 33,554,432
+  bytes. I expect 2,097,152, and a frame of under 400.
+- **L7. The time after the job,** with the log kept. For
+  the costliest kind it was over 1 second. I expect under
+  0.2.
 
 ## Finding F18: the Oracle's run tool reads the same way
 
