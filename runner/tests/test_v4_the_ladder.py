@@ -8,7 +8,10 @@ walk through the atoms, and it equals the walk. No shell and
 no gate.
 """
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -272,6 +275,156 @@ def compose_kind(left, right, mid):
             else:
                 cells.append((got[0], other[1], other[2]))
     return tuple(cells)
+
+
+# ---- L3. The shell.
+
+TRACE = {
+    "(echo a)": ("echo a",),
+    "echo $(:)": ("echo $(:)", ":"),
+    "if true; then echo a; fi": ("true", "echo a"),
+}
+
+
+def commands_of(atoms, joiners):
+    """The commands M says run, in the order a walk sees them.
+    A pipe starts its two sides together, so this order is not
+    the shell's trace order across a pipe."""
+    ran = list(TRACE.get(atoms[0], (atoms[0],)))
+    status, running = DEN[atoms[0]][1], True
+    for joiner, atom in zip(joiners, atoms[1:]):
+        if joiner == SEMI or joiner == PIPE and running \
+                or joiner in (AND, OR) and (status == 0) == (joiner == AND):
+            ran.extend(TRACE.get(atom, (atom,)))
+        if joiner == SEMI:
+            status, running = DEN[atom][1], True
+        elif joiner == PIPE and running:
+            status = DEN[atom][1]
+        elif joiner in (AND, OR):
+            if (status == 0) == (joiner == AND):
+                status, running = DEN[atom][1], True
+            else:
+                running = False
+    return ran
+
+
+def shell_batch(scripts, cwd):
+    """Each script in a subshell of its own, with the shell's
+    trace of the commands that ran. [(output, status, commands)]."""
+    lines = []
+    for index, script in enumerate(scripts):
+        lines.append("printf '\\036%d\\037' %d\n" % (index, index))
+        lines.append("printf '\\036%d\\037' %d >&2\n" % (index, index))
+        lines.append("(\nset -T\n"
+                     "trap 'printf \"CMD:%%s\\n\" \"$BASH_COMMAND\" >&2' DEBUG\n"
+                     "%s\n)\n" % script)
+        lines.append("code=$?\nprintf '\\035%d\\034' \"$code\"\n")
+        lines.append("printf '\\035%d\\034' %d >&2\n" % (index, index))
+    path = os.path.join(os.path.dirname(cwd), "driver.sh")
+    with open(path, "w", encoding="utf-8", newline="\n") as handle:
+        handle.writelines(lines)
+    done = subprocess.run(BOUND.BASH + [path], cwd=cwd, env=BOUND.ENV,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if done.returncode != 0:
+        raise AssertionError(done.stderr[:300])
+    out, err = {}, {}
+    for part in done.stdout.decode("utf-8").split("\036")[1:]:
+        index, rest = part.split("\037", 1)
+        body, tail = rest.rsplit("\035", 1)
+        out[int(index)] = (body, int(tail.rstrip("\034")))
+    for part in done.stderr.decode("utf-8").split("\036")[1:]:
+        index, rest = part.split("\037", 1)
+        body, _tail = rest.rsplit("\035", 1)
+        err[int(index)] = [line[4:] for line in body.splitlines()
+                           if line.startswith("CMD:")]
+    return [(out[i][0], out[i][1], err[i]) for i in range(len(scripts))]
+
+
+def ladder_rows(last, families=None):
+    """(atoms, joiners) for each family at each step from 3 to
+    `last`. Families are every 2 atoms and the 5 ways, in that
+    order, or the first `families` of them."""
+    made = []
+    count = 0
+    for first in BOUND.ATOMS:
+        for second in BOUND.ATOMS:
+            for way in list(BOUND.JOINERS) + ["turn"]:
+                count += 1
+                if families is not None and count > families:
+                    return made
+                atoms = [None, (first,), (second,)]
+                joiners = [None, (), ()]
+                for step in range(3, last + 1):
+                    mid = (BOUND.JOINERS[(step - 3) % 4]
+                           if way == "turn" else way)
+                    atoms.append(atoms[step - 1] + atoms[step - 2])
+                    joiners.append(joiners[step - 1] + (mid,)
+                                   + joiners[step - 2])
+                    made.append((atoms[step], joiners[step]))
+    return made
+
+
+class TheShell(unittest.TestCase):
+    """L3. The output, the status, and the commands that ran.
+    Not the order of a pipe's two sides."""
+
+    def setUp(self):
+        if os.name == "nt":
+            self.skipTest("POSIX only")
+        self.folder = tempfile.mkdtemp()
+        self.cwd = os.path.join(self.folder, "cwd")
+        os.mkdir(self.cwd)
+        self.den = BOUND.denotation(
+            os.path.realpath(self.cwd), BOUND.ENV["HOME"])
+
+    def tearDown(self):
+        folder = getattr(self, "folder", None)
+        if folder and os.path.isdir(folder):
+            shutil.rmtree(folder)
+
+    def agree(self, atoms, joiners, got):
+        out, status = BOUND.run(atoms, joiners, self.den)
+        ran = commands_of(atoms, joiners)
+        self.assertEqual((out, status), (got[0], got[1]),
+                         BOUND.text(atoms, joiners)[:60])
+        self.assertEqual(sorted(ran), sorted(got[2]),
+                         BOUND.text(atoms, joiners)[:60])
+
+    def test_every_atom(self):
+        got = shell_batch(list(BOUND.ATOMS), self.cwd)
+        for atom, row in zip(BOUND.ATOMS, got):
+            self.agree((atom,), (), row)
+            self.assertEqual(list(TRACE.get(atom, (atom,))), row[2], atom)
+
+    def test_every_row_of_2_atoms(self):
+        rows = [( (first, second), (joiner,) )
+                for first in BOUND.ATOMS
+                for second in BOUND.ATOMS
+                for joiner in BOUND.JOINERS]
+        self.assertEqual(1936, len(rows))
+        got = shell_batch([BOUND.text(*row) for row in rows], self.cwd)
+        for row, result in zip(rows, got):
+            self.agree(row[0], row[1], result)
+
+    def test_the_first_20_families_at_step_17(self):
+        rows = [row for row in ladder_rows(17, families=20)
+                if len(row[0]) == 1597]
+        self.assertEqual(20, len(rows))
+        got = shell_batch([BOUND.text(*row) for row in rows], self.cwd)
+        for row, result in zip(rows, got):
+            self.agree(row[0], row[1], result)
+
+    def test_the_page_records_l3(self):
+        with open(PAGE, encoding="utf-8") as handle:
+            page = " ".join(handle.read().split())
+        for stated in (
+                "L3 was run in the shell, bash 5.2.15.",
+                "19,360 rows, the longest 55 atoms.",
+                "| The output and the status, against M | 0 |",
+                "| The commands that ran, against M | 0 |",
+                "The order is not claimed.",
+                "1,597 atoms."):
+            self.assertIn(stated, page, stated)
 
 
 if __name__ == "__main__":

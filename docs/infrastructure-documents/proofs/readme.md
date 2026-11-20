@@ -354,7 +354,10 @@ A finding is most useful when it points at the file and the line
   L1, the ratio table, was run, and it holds. L2, the
   join of M's tables, was run, and it holds: 31,460 rows,
   0 differences, and 14 kinds of row where 20 were
-  supposed. The shell was not asked.
+  supposed. The shell was not asked. L3 was run in bash
+  5.2.15: 19,360 rows, the output, the status and the
+  commands that ran, 0 differences. The order of a pipe's
+  two sides is not claimed.
 - `v4-the-join.md`: the sentence between the two proofs. A
   message that fails C5 never reaches the machine M, and a
   message that passes C5 reaches M only with a script of at

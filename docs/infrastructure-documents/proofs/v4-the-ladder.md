@@ -392,3 +392,40 @@ So every row, of any length, is one of the 14. The
 supposition said 20 at most. The number is 14.
 
 `runner/tests/test_v4_the_ladder.py` holds these figures.
+
+## L3, measured
+
+L3 was run in the shell, bash 5.2.15. The gate was not
+asked. Confinement was not asked. The place is the shell's
+own folder and `HOME`, which was set to `/home/pigeon-proof`.
+
+The same 2,420 families as L2, at every step from 3 to 10.
+19,360 rows, the longest 55 atoms. For each row, the
+shell's output, its status, and the commands that ran.
+
+| What was checked | Differences |
+|------------------|------------:|
+| The output and the status, against M | 0 |
+| The commands that ran, against M | 0 |
+
+The commands are the shell's own trace: a trap on each
+command, before it runs. Three atoms trace as more than
+their own text, or as a different text. `(echo a)` traces
+as `echo a`. `echo $(:)` traces as itself and as `:`.
+`if true; then echo a; fi` traces as `true` and as `echo a`.
+An atom that M does not run leaves nothing in the trace.
+
+The order of that trace is not a fact of M. The two sides
+of a pipe are started together. On one run, 1,169 rows
+traced in a different order than the walk, and on the run
+before, 1,173. The same commands, in an order the shell
+does not promise. The order is not claimed.
+
+20 families were climbed to step 17, which is 1,597 atoms.
+They are the first 20: `true` joined to `true`, to `:`, to
+`pwd` and to `false`, in each of the 5 ways. The output,
+the status and the commands: 0 differences.
+
+`runner/tests/test_v4_the_ladder.py` holds the atoms, every
+row of 2 atoms, and these 20 families at step 17. The
+19,360 are the measure recorded here.
