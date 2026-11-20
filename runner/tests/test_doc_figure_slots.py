@@ -449,6 +449,32 @@ class TestFifthSnapshot(unittest.TestCase):
         self.assertIn("the series passes %s million by 2026-12-02"
                       % whole[:-1], " ".join(lines))
 
+    CLOSING_CHART = "security-tokens-2-lines-that-close-2026-11-20.svg"
+
+    def test_the_closing_chart_of_20_november_stands_in_the_tree(self):
+        # The owner's drawing of 2026-11-20 closes this view:
+        # a ceiling for the run log at 21.0 million, closing
+        # by 0.61 a week onto the line of everything else at
+        # 17.6 million, the gap between the 2 lines closing
+        # to 0, and the whole at 35.2 million where they meet.
+        # The chart was drawn with numbers by the research
+        # zipped in the archive, and it carries the drawing's
+        # own figures.
+        text = _read(STATISTICS)
+        self.assertIn(self.CLOSING_CHART, text)
+        path = os.path.join(REPO, "assets", self.CLOSING_CHART)
+        self.assertTrue(os.path.isfile(path), self.CLOSING_CHART)
+        chart = _read(path)
+        for stated in ("21.0M: your red line",
+                       "17.6M: your yellow line",
+                       "3.39M", "35.2M"):
+            self.assertIn(stated, chart, stated)
+        lines = text.splitlines()
+        section = "\n".join(lines[lines.index(self.HEADING):
+                                  lines.index("## Where the project stands")])
+        self.assertIn("The gap between the 2 lines is 3,393,230", section)
+        self.assertIn("the whole tree at 35.2 million", section)
+
 
 class TestRecordSlots(unittest.TestCase):
     """The record's own list answers to its facts, as the
