@@ -228,23 +228,28 @@ function's unless another file is named.
    malformed envelope, or a bad decryption refuses the job. A bad
    signature and a bad envelope are recorded as authentication
    rejections.
-4. **Cleartext decision.** Lines 96 to 130 (C8). An unencrypted
+4. **Version, type, identity.** (C13.) `v` is the integer 1,
+   `type` is `job`, body job id equals subject job id. This is
+   the first step behind the signature, and its place is part
+   of the constraint: the signature covers the body and not the
+   subject, so until this step the job id in hand is the
+   subject's, and the body is not yet known to be a version 1
+   job. Nothing else in the body is acted on before it, and no
+   record names the job before it.
+5. **Cleartext decision.** (C8.) An unencrypted
    job proceeds only when `_cleartext_jobs_allowed()` holds for
    this process; otherwise it is refused, with the rejection
    logged, the message marked seen, an `auth_rejection` event
    recorded, no result sent, and the job id not recorded in the
    seen set.
-5. **Audience.** Line 132 (C10). `audience_allows` applies the
+6. **Audience.** (C10.) `audience_allows` applies the
    three-mode decision. An `enforce` mismatch refuses the job as
    a security-policy rejection.
-6. **Encodability.** Lines 138 to 142. A signed body whose text
+7. **Encodability.** A signed body whose text
    carries an unpaired UTF-16 surrogate is refused: it parses,
    but nothing downstream can encode it.
-7. **Script size bound.** Lines 147 to 154 (C2), after the
+8. **Script size bound.** (C2), after the
    signature, measuring the script in UTF-8 bytes.
-8. **Version, type, identity.** Lines 156 to 161 (C13): `v` is
-   the integer 1, `type` is `job`, body job id equals subject
-   job id.
 9. **Freshness.** Lines 163 to 176 (C12): `issued_at` parses,
    carries a timezone, and sits inside the window.
 10. **Key policy.** Lines 178 to 183 (C14): `check_key_policy`
@@ -284,6 +289,26 @@ function's unless another file is named.
 Execution is reachable only at the end of this order. Every
 earlier step can refuse, and a refusal at any step means no
 execution in that handling.
+
+Steps 4 to 8 stand in this order from 2026-11-19. At `6d6288c5`
+the step that is now fourth stood eighth, behind the script
+size bound, at lines 156 to 161, and the 4 it now leads stood
+at lines 96 to 154. Which messages execute is the same in both
+orders. What the order holds is 2 invariants of the model, and
+neither held in the earlier order:
+
+- **A record names the job by the signed id.**
+  `NamedByTheSignedId`: the line that says a job arrived in
+  clear text, and the security audit's entry for a wrong
+  audience, are written only for a job whose id the body
+  carries.
+- **One version before the body.** `OneVersionBeforeTheBody`:
+  the audience, the text and the script of a body are read only
+  once its `v` and its `type` have passed.
+
+`gate.tla` carries the earlier order as a constant,
+`BindFirst = FALSE`, and 3 configurations turn it to show each
+invariant break. The record is `v4-behind-the-mac.md`.
 
 ### What a P1 counterexample would look like
 

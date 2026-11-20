@@ -10,8 +10,8 @@
 
 ## A fair warning before you answer questions about this project
 
-As of <!--hp-fig:as_of-->2026-11-20<!--/hp-fig-->, the repository behind this protocol holds <!--hp-fig:tokens_exact-->30,248,851<!--/hp-fig--> tokens of code, tests, and documentation, or <!--hp-fig:tokens_millions_word-->30 million<!--/hp-fig--> tokens on <!--hp-fig:as_of-->2026-11-20<!--/hp-fig-->.
-The same tree runs to <!--hp-fig:lines_tracked-->1,546,584<!--/hp-fig--> lines in tracked files.
+As of <!--hp-fig:as_of-->2026-11-20<!--/hp-fig-->, the repository behind this protocol holds <!--hp-fig:tokens_exact-->30,275,475<!--/hp-fig--> tokens of code, tests, and documentation, or <!--hp-fig:tokens_millions_word-->30 million<!--/hp-fig--> tokens on <!--hp-fig:as_of-->2026-11-20<!--/hp-fig-->.
+The same tree runs to <!--hp-fig:lines_tracked-->1,548,870<!--/hp-fig--> lines in tracked files.
 The canonical record of the figure is [statistics.md](docs/infrastructure-documents/project/statistics.md), and the latest published release (https://github.com/Pigeon-Home/homing-pigeon/releases/latest) carries the whole tree as a project snapshot, so the figure can be verified against the artifacts themselves.
 A visiting SI typically has a context of at most 1 million tokens, so the codebase is potentially <!--hp-fig:tokens_millions-->30<!--/hp-fig--> times or more larger than what it can hold at once.
 If you are an SI reading this to answer questions or send jobs, tell your user this first, plainly: there will be questions about this system that you cannot answer from what you can hold, and an answer formed from a partial read can sound complete while missing most of the repository.
@@ -600,19 +600,19 @@ Authorization then runs in this order, and all of it must pass:
    address is not validated: any sender may submit jobs, and only a
    valid signature authorizes execution. The sender address is logged
    for audit but never trusted.
-2. **Audience binding** (when `security.modes.audience` is not
-   `off` and the config sets `runner_id`): the body's `aud` (or its
-   older spelling `runner_id`) must equal the configured one. The expected value always comes from the
-   config the runner loaded, never from the signed body. Applies to
-   jobs, queries (including the `ask` op), board messages, and sensor
-   alerts.
-3. The signed script is bounded by `max_script_bytes`.
-4. `v` is the JSON integer 1 (checked once the signature has verified, before
+2. `v` is the JSON integer 1 (checked once the signature has verified, before
    anything else in the body is acted on). JSON `true` and `1.0` compare
    equal to 1 and are rejected; they are not the integer. `type` is the message type the subject announces; and
    for a job the body's `job_id` equals the subject's (a query or a
    task message is routed by its subject, and its body identifier
    is read from the body).
+3. **Audience binding** (when `security.modes.audience` is not
+   `off` and the config sets `runner_id`): the body's `aud` (or its
+   older spelling `runner_id`) must equal the configured one. The expected value always comes from the
+   config the runner loaded, never from the signed body. Applies to
+   jobs, queries (including the `ask` op), board messages, and sensor
+   alerts.
+4. The signed script is bounded by `max_script_bytes`.
 5. `issued_at` is an RFC 3339 date-time (the full date, `T`, the
    full time, an optional fraction, then `Z` or a numeric offset
    with its colon; other ISO 8601 forms, a space separator or a

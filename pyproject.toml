@@ -456,6 +456,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_v4_at_a_bound.py",
     "runner/tests/test_v4_at_a_limit.py",
     "runner/tests/test_v4_before_the_mac.py",
+    "runner/tests/test_v4_behind_the_mac.py",
     "runner/tests/test_v4_binding.py",
     "runner/tests/test_v4_bindings.py",
     "runner/tests/test_v4_draft.py",

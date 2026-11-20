@@ -350,11 +350,18 @@ refuse-class setting it stops the runner before any job is read.
   check is a type check as well as a value check, so JSON `true`
   and `1.0`, which compare equal to 1, are refused — and its
   `type` MUST be `job`, and the body's `job_id` MUST equal the
-  subject's `job_id`.
+  subject's `job_id`. These 3 MUST be checked first behind the
+  signature: until they pass, nothing else in the body is acted
+  on, and no record names the job. The signature covers the
+  body and not the subject, so before this check the id in hand
+  is a text the signer did not sign.
 - **Value:** `PROTOCOL_VERSION = 1`.
-- **Where:** `runner/runner.py`, line 281, and `_version_ok`,
-  line 283. The checks run in `runner/ops/mail.py`, `handle_mail`,
-  lines 156 to 161, after the script cap and before freshness.
+- **Where:** `runner/runner.py`, `PROTOCOL_VERSION` and
+  `_version_ok`. The checks run in `runner/ops/mail.py`,
+  `handle_mail`, as the 2 statements that follow the call to
+  `_verify_and_decrypt`, before the cleartext decision. Until
+  2026-11-19 they stood after the script cap and before
+  freshness.
 - **Class:** not a configuration setting. Protocol version 2 is a
   configuration-gated overlay on version 1 jobs (a separate
   surface, handled in its own dispatch before this path); it does

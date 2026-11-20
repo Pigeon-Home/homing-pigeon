@@ -9,15 +9,19 @@
    "configurations": [
     "gateenforce.cfg",
     "gatedefault.cfg",
-    "gateaudit.cfg"
+    "gateaudit.cfg",
+    "gatecleartext.cfg"
    ],
    "holds": [
     "P1Inv",
     "SensorInv",
-    "AudienceWasRequired"
+    "AudienceWasRequired",
+    "NamedByTheSignedId",
+    "OneVersionBeforeTheBody"
    ],
    "conformance": [
-    "runner/tests/test_proof_conformance.py"
+    "runner/tests/test_proof_conformance.py",
+    "runner/tests/test_v4_behind_the_mac.py"
    ],
    "general": [
     "Handle",
@@ -937,10 +941,14 @@
     "P1": "clause 6"
    },
    "code": [
-    "runner/runner.py:_version_ok"
+    "runner/runner.py:_version_ok",
+    "runner/ops/mail.py:handle_mail"
    ],
    "pins": [
-    "runner/tests/test_proof_constraints.py::GateShapePins.test_c13_protocol_version_is_integer_1_only"
+    "runner/tests/test_proof_constraints.py::GateShapePins.test_c13_protocol_version_is_integer_1_only",
+    "runner/tests/test_v4_behind_the_mac.py::TheRealGateBindsFirst.test_c13_stands_first_behind_the_signature_in_the_source",
+    "runner/tests/test_v4_behind_the_mac.py::TheRealGateBindsFirst.test_c13_a_body_of_another_version_is_read_for_nothing_else",
+    "runner/tests/test_v4_behind_the_mac.py::TheRealGateBindsFirst.test_c13_a_body_under_another_subject_is_named_in_no_record"
    ],
    "fuzz": [
     {
@@ -1004,7 +1012,9 @@
      ]
     }
    ],
-   "unfuzzed": [],
+   "unfuzzed": [
+    "runner/ops/mail.py:handle_mail"
+   ],
    "reach": {
     "entries": 812,
     "smallest": 0,

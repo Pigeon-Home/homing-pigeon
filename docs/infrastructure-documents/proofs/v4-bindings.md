@@ -55,7 +55,7 @@ the registry to the tree and this page to the registry.
 ## The counts
 
 The registry binds 31 constraints and 13 properties. It
-names 59 code sites and 81 named pins, and it carries 60
+names 60 code sites and 84 named pins, and it carries 60
 fuzz ties. The fuzz part was counted on 2026-11-19.
 
 ## Every constraint, tied
@@ -79,7 +79,7 @@ the constraint's functions.
 | C10 | Audience | P1 clause 4 | `check_audience` in `runner/wire/verify.py`; `audience_allows` in `runner/wire/verify.py` | 1 | `query` 176, `board_mail` 95 |
 | C11 | Seven security modes | P1 clauses 4 and 8; P4 clause 11 | `sec_mode` in `runner/guard/security.py`; `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` | 2 | `query` 176, `board_mail` 95 |
 | C12 | `max_job_age_sec` | P1 clause 7 | `handle_mail` in `runner/ops/mail.py` | 2 | none |
-| C13 | Protocol version | P1 clause 6 | `_version_ok` in `runner/runner.py` | 1 | `local` 518, `query` 176, `board_mail` 95, `local_inbox` 23 |
+| C13 | Protocol version | P1 clause 6 | `_version_ok` in `runner/runner.py`; `handle_mail` in `runner/ops/mail.py` | 4 | `local` 518, `query` 176, `board_mail` 95, `local_inbox` 23 |
 | C14 | Key policies | P1 clause 8; P4, the whole property | `check_key_policy` in `runner/wire/verify.py`; `_build_key_policies` in `runner/wire/verify.py` | 9 | `keydir` 35, `local` 518, `query` 163 |
 | C15 | Execution semantics | P1 clause 9; P5, the whole property | `handle_mail` in `runner/ops/mail.py`; `stash_result` in `runner/runner.py`; `load_sent_result` in `runner/runner.py` | 2 | `race_stash` 160 |
 | C16 | Transport credentials | P3, the whole property | `__init__` in `runner/transport_extensions/nats/__main__.py`; `fetch_channel_messages` in `runner/wire/transports.py` | 2 | `inbox` 29, `channels` 11 |
@@ -103,7 +103,7 @@ the constraint's functions.
 
 | Property | Stated in | Model | Checked invariants | Conformance | Steps in `general.tla` | Seams that carry it |
 |----------|-----------|-------|--------------------|-------------|-------------------------|---------------------|
-| P1 | `properties.md` | `gate.tla` | `P1Inv`, `SensorInv`, `AudienceWasRequired` | `test_proof_conformance.py` | `Handle`, `Local` | `LocalFilesOnly`, `GateVerifies`, `GateFresh` |
+| P1 | `properties.md` | `gate.tla` | `P1Inv`, `SensorInv`, `AudienceWasRequired`, `NamedByTheSignedId`, `OneVersionBeforeTheBody` | `test_proof_conformance.py`, `test_v4_behind_the_mac.py` | `Handle`, `Local` | `LocalFilesOnly`, `GateVerifies`, `GateFresh` |
 | P2 | `properties.md` | `confine.tla` | `P2Inv`, `EffViewExact`, `EffBudgetExact` | `test_proof_conformance_p2.py` | `Handle` | `SpawnProbes` |
 | P3 | `properties.md` | `transgate.tla` | `P3Inv`, `GateBlocks`, `PresentedExact`, `AcceptedExact` | `test_proof_conformance_p3.py` | `Handle` | `TransportGates` |
 | P4 | `properties.md` | `keypolicy.tla` | `P4Inv`, `PinBinds`, `PolicyExact` | `test_proof_conformance_p4.py` | `Handle` | `GatePolicy` |
@@ -282,7 +282,7 @@ whose contract holds on the tree as it stands.
 
 21 of the 31 constraints have fuzz data at their code. 10
 constraints have none: C1, C2, C3, C12, C18, C19, C24, C27,
-C28 and C31. Across all 31 there are 26 code sites that no
+C28 and C31. Across all 31 there are 27 code sites that no
 corpus entry enters.
 
 | ID | Constraint | Code no corpus entry enters |
@@ -293,6 +293,7 @@ corpus entry enters.
 | C5 | Signature | `_verify_and_decrypt` in `runner/runner.py` |
 | C11 | Seven security modes | `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` |
 | C12 | `max_job_age_sec` | `handle_mail` in `runner/ops/mail.py` |
+| C13 | Protocol version | `handle_mail` in `runner/ops/mail.py` |
 | C15 | Execution semantics | `handle_mail` in `runner/ops/mail.py`; `load_sent_result` in `runner/runner.py` |
 | C16 | Transport credentials | `__init__` in `runner/transport_extensions/nats/__main__.py` |
 | C18 | Sandbox shape | `build_bwrap_command` in `runner/guard/sandbox.py`; `_confinement_cfg` in `runner/guard/sandbox.py` |

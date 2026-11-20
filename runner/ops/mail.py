@@ -195,6 +195,19 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
         reject(f"bad signature: {e}")
         _runner()._auth_reject_event(base_dir, "bad_signature")
         return
+    # C13, in its place: first behind the signature (finding F16,
+    # docs/infrastructure-documents/proofs/v4-behind-the-mac.md).
+    # The signature covers the body and not the subject, so the id
+    # in hand is still the subject's, a stranger's text, and the
+    # body is not yet known to be a version 1 job. Until these 3
+    # pass, nothing else in the body is acted on and no record
+    # names the job. Past them the job has 1 name, the signer's.
+    if not _runner()._version_ok(job.get("v")) or job.get("type") != "job":
+        reject("unsupported version/type")
+        return
+    if job.get("job_id") != job_id:
+        reject("job_id mismatch between subject and body")
+        return
     if not job_was_encrypted:
         if _runner()._cleartext_jobs_allowed():
             # This process was started with
@@ -202,11 +215,10 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # gated admission (cleartext never means
             # unauthenticated), and the readable arrival is
             # worth its line in the log, as it always was.
-            # The id here is still the subject's. The signature
-            # covers the body, and the body's id is set against
-            # the subject's further down. Until then it is a
-            # stranger's text, and it is written as the line
-            # above writes it, at a bounded length (finding F12).
+            # The id is the signer's by now (C13, above). Its
+            # shape is checked later, where the job is run, so
+            # it is still written at a bounded length here, as
+            # the line above writes it (finding F12).
             R.log(f"job {R._log_plain(job_id, R.LOG_ID_MAX)}: "
                 f"received in clear text (not "
                 f"encrypted); accepted under "
@@ -260,12 +272,6 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             and len(script.encode("utf-8")) > max_script_bytes:
         reject(f"script exceeds max_script_bytes "
                f"({len(script.encode('utf-8'))} > {max_script_bytes})")
-        return
-    if not _runner()._version_ok(job.get("v")) or job.get("type") != "job":
-        reject("unsupported version/type")
-        return
-    if job.get("job_id") != job_id:
-        reject("job_id mismatch between subject and body")
         return
     try:
         issued = _runner()._fromiso(job["issued_at"])

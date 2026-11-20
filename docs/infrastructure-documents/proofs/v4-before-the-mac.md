@@ -336,36 +336,32 @@ The signature covers the body and not the subject. A body
 this runner's own key signed, sent again under a subject
 that names another id, passes the signature. It is refused
 when the 2 ids are set side by side. In between, the gate
-holds the subject's id as the job's name. With clear text
+held the subject's id as the job's name. With clear text
 allowed it wrote 1 line with that id, whole:
 
-| The subject's id | That line, before | After |
-|-----------------:|------------------:|------:|
-| 128 characters | 206 | 206 |
-| 300 | 378 | 228 |
-| 100,000 | 100,078 | 231 |
-| 100,000 escape characters | 100,078, each escape as it is | 231, and no escape |
+| The subject's id | That line, as it was |
+|-----------------:|---------------------:|
+| 128 characters | 206 |
+| 300 | 378 |
+| 100,000 | 100,078 |
+| 100,000 escape characters | 100,078, each escape as it is |
 
-Who can send it: anyone who holds 1 mail that this runner's
-key signed. They need not hold the key. The runner must
-have been started with clear text allowed, which is not the
-default.
+Who could send it: anyone who holds 1 mail that this
+runner's key signed. They need not hold the key. The runner
+must have been started with clear text allowed, which is
+not the default.
 
-The line now writes the id as the first line does. 2 tests
-hold it, in the same suite, and 1 of them fails on the code
-as it was. An honest job's line is as it was, byte for
-byte.
+The line was first cut, as the first line is: 231
+characters for an id of 100,000. Then the cause was closed
+the same day, at the owner's word, and it is the subject of
+`v4-behind-the-mac.md`. The gate now sets the 2 ids side by
+side first behind the signature, which is C13 in its place.
+A body under another subject never reaches the line. It
+adds the first line, cut, and the refusal, and nothing
+else. The line keeps its cut, for an id the signer chose.
 
-The cause is left, and it is said here. The body's id is
-set against the subject's after the clear text line, and
-after the audience check. The audience check is handed the
-subject's id too, and it writes that id into the security
-audit when the audience does not match. That second place
-was read and not measured. Setting the 2 ids side by side
-first, straight after the signature, would leave no use of
-the subject's id as a job's name. It would also change the
-order of the gate's refusals, so it waits for the owner's
-word.
+2 tests hold it in this suite. An honest job's line is as
+it was, byte for byte.
 
 ## Finding F13: the panic step decodes the whole subject
 

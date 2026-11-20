@@ -416,8 +416,14 @@ A finding is most useful when it points at the file and the line
   gate named a job by the subject's id before it had set
   that id against the body's. The rule is C13 with its
   place: version, type and id are checked first behind the
-  signature. Its suppositions are written before the
-  measure.
+  signature. The gate binds first now. `gate.tla` holds the
+  order with 2 invariants and a seam that turns it back,
+  the real gate answers as the model does on 384 arrivals,
+  and a walk of the gate's own source finds no use of a
+  stranger's text that is not cut or bound. On main's gate
+  the same walk names findings F12 and F16 with nobody
+  pointing at them. `runner/tests/test_v4_behind_the_mac.py`
+  holds it.
 - `v4-the-motor.md`: the branch's work named as 1 motion.
   The join is what carries a claim from the smallest pieces
   to a tree of any size: the kinds of row were counted,

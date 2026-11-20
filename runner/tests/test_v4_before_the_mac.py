@@ -422,12 +422,13 @@ class TheLogInFrontOfTheMac(unittest.TestCase):
     def test_f12_a_signed_body_under_another_subject_adds_a_fixed_amount(self):
         # The signature covers the body and not the subject. A
         # body this runner's own key signed, sent under a subject
-        # that names another id, passes the signature and is
-        # refused when the 2 ids are set side by side. In between
-        # the id in hand is the subject's, a stranger's text, and
-        # the line written there cuts it as the first line does.
-        # Before the audit of 2026-11-19 that line wrote it whole:
-        # 100,078 characters for an id of 100,000.
+        # that names another id, passes the signature. Before the
+        # audit of 2026-11-19 the gate then wrote a line that
+        # named the job by the subject's id, whole: 100,078
+        # characters for an id of 100,000. The gate now sets the
+        # 2 ids side by side first behind the signature (C13 in
+        # its place, finding F16), so that line is never reached:
+        # the mail adds the first line, cut, and the refusal.
         text = BIND._signed(self.payload)
         for unit in ("A", "\x1b"):
             at = {}
@@ -437,19 +438,20 @@ class TheLogInFrontOfTheMac(unittest.TestCase):
                 self.assertEqual([], out.executed, (unit, size))
                 self.assertEqual(1, out.marks, (unit, size))
                 self.assertNotIn(b"\x1b", data, (unit, size))
-                self.assertEqual(3, data.count(b"\n"), (unit, size))
+                self.assertNotIn(b"received in clear text", data,
+                                 (unit, size))
+                self.assertEqual(2, data.count(b"\n"), (unit, size))
                 self.assertLessEqual(len(data), LOG_BOUND, (unit, size))
                 at[size] = len(data)
-            # The length is written in 3 places, and 1,000 times
+            # The length is written in 2 places, and 1,000 times
             # the text adds 3 digits to each.
-            self.assertEqual(9, at[GROWN[-1]] - at[GROWN[0]], unit)
+            self.assertEqual(6, at[GROWN[-1]] - at[GROWN[0]], unit)
         lines = self.lines(_mail(
             "[HOMING-PIGEON] job %s" % ("A" * 1000), text))
-        self.assertEqual(3, len(lines))
-        self.assertIn("... (1000 characters): received in clear text",
-                      lines[1])
+        self.assertEqual(2, len(lines))
+        self.assertIn("... (1000 characters) submitted by", lines[0])
         self.assertEqual("[WARN] rejecting seq 3: job_id mismatch "
-                         "between subject and body", lines[2])
+                         "between subject and body", lines[1])
 
     def test_f12_an_honest_job_s_line_in_clear_text_is_as_it_was(self):
         lines = self.lines(_mail(_subject(self.job_id),
