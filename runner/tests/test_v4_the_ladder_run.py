@@ -1205,7 +1205,12 @@ class TheFuzzersReadersOnTheLadder(unittest.TestCase):
     def test_the_driver_s_ceiling_is_under_the_doors(self):
         from runner.tools import de_dust_corpus as dust
         self.assertEqual((16384, 16384), (dust.MAX_TEXT, dust.MAX_PAYLOAD))
-        self.assertEqual(30, len(dust.TARGETS))
+        # The gate target joined the corpus with the v4 work, so
+        # the driver now holds 31 targets. The count is pinned
+        # together with the exact set in the family below, so a
+        # target that arrives or leaves without moving this pin
+        # fails by name instead of by a bare number.
+        self.assertEqual(31, len(dust.TARGETS))
         steps = series(CAP)
         # The ceiling lies between steps 21 and 22, so the 9
         # steps from 22 to 30 are sizes under the cap that the
@@ -1217,6 +1222,35 @@ class TheFuzzersReadersOnTheLadder(unittest.TestCase):
                                 if dust.MAX_TEXT < size <= CAP))
         self.assertEqual(64, CAP // dust.MAX_TEXT)
         self.assertEqual(256, JOB_DOOR // dust.MAX_TEXT)
+
+    def test_the_target_set_is_exactly_the_named_31(self):
+        from runner.tools import de_dust_corpus as dust
+        self.assertEqual(
+            {"address", "board", "board_mail", "board_ops", "channels",
+             "cloud", "collect", "crypto", "dtls", "dtls_hostile",
+             "dtls_session", "edge_subject", "gate", "inbox", "keydir",
+             "local", "local_inbox", "mail", "manifest", "names",
+             "queries", "query", "race_board", "race_stash", "race_state",
+             "secret", "stage", "stash", "v2", "v2_mail", "wire"},
+            set(dust.TARGETS))
+
+    def test_every_target_carries_files_a_check_and_seeds(self):
+        from runner.tools import de_dust_corpus as dust
+        for name, target in dust.TARGETS.items():
+            with self.subTest(target=name):
+                self.assertTrue(target["files"])
+                self.assertTrue(callable(target["check"]))
+                self.assertTrue(callable(target["seeds"]))
+
+    def test_the_gate_target_stands_in_the_corpus(self):
+        import os
+        from runner.tools import de_dust_corpus as dust
+        gate = dust.TARGETS["gate"]
+        self.assertEqual("check_gate", gate["check"].__name__)
+        self.assertEqual("seeds_gate", gate["seeds"].__name__)
+        self.assertEqual(
+            ["mail.py", "mailbox.py", "runner.py"],
+            sorted(os.path.basename(path) for path in gate["files"]))
 
     def test_4_readers_that_bar_a_long_text_decide_at_every_step(self):
         from runner.tools import de_dust_corpus as dust
