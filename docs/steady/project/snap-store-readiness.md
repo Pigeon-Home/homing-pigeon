@@ -204,6 +204,9 @@ parts:
     stage-packages:
       - python3-venv
       - bubblewrap
+    override-build: |
+      craftctl default
+      craftctl set version="$($CRAFT_PART_INSTALL/bin/python -c "import importlib.metadata; print(importlib.metadata.version('pigeon-home-runner'))")"
 ```
 
 Notes on the choices inside it:
@@ -226,9 +229,14 @@ Notes on the choices inside it:
   runner finds bwrap by name on its PATH, and a snap app's PATH
   covers the snap's own staged bin folders, so the snap does not
   depend on the host having bubblewrap installed.
-- adopt-info takes the snap's version from the Python part's package
-  metadata, so the snap never carries a second copy of the version
-  number to drift.
+- adopt-info names the runner part as the source of the snap's
+  version, so the snap never carries a second copy of the version
+  number to drift. The adoption needs a hand from the part itself:
+  Snapcraft takes a part's metadata only through parse-info or a
+  craftctl set call, so the part's override-build runs the plugin's
+  own build and then sets the version from the package metadata pip
+  installed. The build spike below found the draft missing that
+  hand; without it a build fails at the prime step.
 - The five apps are the five console scripts pyproject.toml already
   declares. The runner itself is declared with `daemon: simple`,
   which makes snapd run it as a service that starts at boot and is
@@ -261,6 +269,61 @@ Notes on the choices inside it:
   the rig batteries already test, at the price of a second packaging
   logic to keep in step. The Python path above is the recommended
   first attempt; the frozen path is the fallback if it fights back.
+
+## The build spike, 2026-11-20
+
+The first build spike ran on Muse's own Ubuntu 24.04 machine, and
+its results stand here so the next attempt starts from them.
+
+A real snapcraft build was attempted first, with every tool
+installed in the open. The bubblewrap package installed from the
+Ubuntu archive without incident. Apt then installed snapd 2.78 and
+the snap tool itself runs, but installing the core24 base or the
+snapcraft snap both stopped at the same wall: the machine cannot
+mount squashfs images, and snapd reported that the system does not
+fully support it for exactly that reason. No snap build, and no
+LXD or Multipass build either, can run on that machine. A full
+snapcraft pack remains untried, and wants a machine that can mount
+squashfs: an ordinary Ubuntu desktop or server, or a CI leg with
+that privilege.
+
+The fallback was a staged build of the exact layout the draft
+declares, in a scratch folder: the runner and certifi installed by
+pip into lib/python3.12/site-packages (the installed metadata
+carries version 3.17.32.3 as of 2026-11-20, the number adopt-info
+reads), the five
+console scripts in bin, bubblewrap and the Python interpreter in
+usr/bin where the staged packages put them, and a meta/snap.yaml
+rendered from the draft with the adopted version in place. From
+that tree, 18 checks ran and all 18 passed:
+
+- All five apps stand in bin and are executable, and each of the
+  five answers its help text with exit code 0.
+- Certifi imports from the staged tree and names its bundle inside
+  it, so verified TLS has its footing inside the snap layout.
+- The runner's own confinement startup trial, run with the staged
+  bubblewrap first on the path, reports no problem.
+- One bubblewrap trial job, built by the runner's own command
+  builder and run from the staged tree, printed its marker, found
+  its working directory at the /work mount, could not see the
+  home folder's contents, could write to its private /tmp, and
+  exited 0.
+
+The spike also found one defect in the draft, now fixed. The
+draft's adopt-info named the runner part, but the part carried no
+parse-info and no craftctl set call, and Snapcraft's own
+troubleshooting page states that such a build fails at the prime
+step when it tries to generate the snap metadata. The part now
+sets the version in override-build, read from the installed
+package metadata, and tests in runner/tests/test_store_packaging.py
+pin the shape so the hand cannot be dropped quietly.
+
+What the spike could not try, stated plainly: the snapcraft pack
+itself, installing a built snap, the daemon running under snapd,
+and the arm64 build. It also confirmed by search that no part of
+the runner yet notices snapd's SNAP environment, so the
+installer's systemd step still needs the stand down described
+above before a snapped install can be offered.
 
 ## The steps, split by who takes them
 

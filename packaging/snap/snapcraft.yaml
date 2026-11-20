@@ -19,6 +19,19 @@
 # This draft sits in the packaging folder, so the runner part's
 # source points at the tree root from here; in the standard
 # layout the same line reads source: .
+#
+# Build spike, 2026-11-20: a staged build of this exact layout
+# passed the runner's own checks, including a bubblewrap trial
+# job (the record stands in the readiness page). The spike also
+# found that adopt-info alone adopts nothing: Snapcraft takes a
+# part's metadata only through parse-info or a craftctl set
+# call, and this part had neither, so a build would have failed
+# at the prime step for want of a version. The override-build
+# below sets the version from the installed package metadata,
+# which is the single source adopt-info was always meant to
+# read. A full snapcraft build itself remains untried; the
+# machine the spike ran on cannot mount squashfs images, so
+# snapd could not install snapcraft or the core24 base there.
 
 name: homing-pigeon
 base: core24
@@ -58,3 +71,6 @@ parts:
     stage-packages:
       - python3-venv
       - bubblewrap
+    override-build: |
+      craftctl default
+      craftctl set version="$($CRAFT_PART_INSTALL/bin/python -c "import importlib.metadata; print(importlib.metadata.version('pigeon-home-runner'))")"

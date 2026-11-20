@@ -79,6 +79,29 @@ class SnapDraftTest(unittest.TestCase):
         self.assertIn("- bubblewrap", self.text)
         self.assertIn("- certifi", self.text)
 
+    def test_adopt_info_names_the_runner_part(self):
+        # The snap carries no version of its own; adopt-info is
+        # the promise that the runner part supplies it.
+        self.assertEqual("runner", _top_level(self.text, "adopt-info"))
+        self.assertIsNone(_top_level(self.text, "version"))
+
+    def test_part_sets_the_version_adopt_info_reads(self):
+        # The 2026-11-20 build spike's finding: Snapcraft adopts
+        # a part's metadata only through parse-info or a craftctl
+        # set call, and the draft had neither, so a build would
+        # have failed at the prime step for want of a version.
+        # The part now sets it in override-build, after the
+        # plugin's own build step runs.
+        self.assertIn("craftctl default", self.text)
+        self.assertIn("craftctl set version=", self.text)
+
+    def test_version_comes_from_the_installed_metadata(self):
+        # The version is read from the metadata pip installed
+        # for the project itself, never from a second copy of
+        # the number typed into the packaging.
+        self.assertIn("importlib.metadata", self.text)
+        self.assertIn("pigeon-home-runner", self.text)
+
 
 class MsixDraftTest(unittest.TestCase):
 
@@ -121,6 +144,12 @@ class DesignNotesTest(unittest.TestCase):
     def test_notes_give_the_confinement_verdict(self):
         self.assertIn("Strict confinement cannot hold the runner",
                       _read(DOC))
+
+    def test_readiness_page_records_the_build_spike(self):
+        text = _read(os.path.join("docs", "steady", "project",
+                                  "snap-store-readiness.md"))
+        self.assertIn("The build spike, 2026-11-20", text)
+        self.assertIn("18 checks", text)
 
 
 if __name__ == "__main__":

@@ -83,6 +83,17 @@ This page does not repeat it. The short form:
   readiness page records the layout question (that folder, or
   the standard snap folder at the root) as the conductor's
   decision. Nothing is registered, built or uploaded yet.
+- The first build spike ran on 2026-11-20 and its record stands
+  in the readiness page. A staged build of the draft's exact
+  layout passed 18 checks from the staged tree, including a
+  bubblewrap trial job run by the runner's own command builder.
+  A real snapcraft build could not run on that machine, because
+  it cannot mount squashfs images and snapd therefore could not
+  install snapcraft or the core24 base; the pack itself awaits a
+  machine with that privilege. The spike found and fixed one
+  defect in the draft: adopt-info had no part metadata to adopt,
+  and the runner part now sets the version from the installed
+  package metadata through craftctl in its override-build.
 
 ## The Microsoft Store
 
