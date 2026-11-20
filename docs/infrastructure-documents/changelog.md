@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.31.11 - 2026-11-20
+
+- Since 3.17.31.10: Germany bank 71 adds 2,664 entries with 0 crashes and 908 new runs to the de_dust campaign data, and DRU's own edit removes the computability bullet from docs/FUTURE.md
+
 ## 3.17.31.10 - 2026-11-20
 
 - Docs: the README try-it prompt mailbox line now reads Runner mailbox is your@email.com in its generic form, and the AGENTS.md reply-to-self quote plus its pin in test_readme_prompt_quote.py follow it exactly (since 3.17.31.9)
