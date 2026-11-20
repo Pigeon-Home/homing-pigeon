@@ -26,9 +26,15 @@ solved has to mean.
 - **The list has holes.** Time has a bar on every system.
   Processes, memory and disk have bars on some systems, and
   none in the Linux sandbox.
-- **Finding F17.** The runner holds all that a job writes
-  before it cuts it: 3 bytes of the runner's own memory for
-  each byte written. No system sets a bar on that.
+- **Finding F17, closed on this branch.** The runner held
+  all that a job wrote before it cut it: 3 bytes of the
+  runner's own memory for each byte written. It holds a
+  fixed number of bytes of each stream now, and every
+  result is what it was. The number follows the log's
+  size, and at the default it is not small.
+- **Findings F18 and F19, open.** 2 more readers hold all
+  that a process writes: the Oracle's run tool, and the
+  reading of a change job's diff.
 
 ## What solved can mean
 
@@ -140,7 +146,7 @@ confinement are for a runner at `enforce`.
 |----------|-------|---------|-------|---------|
 | Time | 3,600 seconds at most | the same | the same | the same |
 | What a result carries | 100,000 characters for each stream | the same | the same | the same |
-| What the runner holds while the job runs | no bar | no bar | no bar | no bar |
+| What the runner holds while the job runs | 33,816,576 bytes of a stream: the log's default size sets it, and 400,004 where no log is kept | the same | the same | the same, and at most 67,108,864 in the backend's own pumps |
 | Processes | no bar | 256: for a job's user, or for the jail on a host with RACCT | no bar | no bar |
 | Memory | no bar | 512 MiB a process; 2 GiB a job on a host with RACCT | 512 MiB a process, above what it starts with | 512 MiB a process, and a job |
 | Disk, the job's `/tmp` | no bar of the runner's | 512 MiB | no bar | no bar |
@@ -172,6 +178,9 @@ confinement are for a runner at `enforce`.
   no property and no model stands on them.
 
 ## Finding F17: the runner holds all that a job writes
+
+This section is the finding as it was measured, before the
+reader had a bar. The 2 sections after it close it.
 
 **What is there.** The executor reads both of a job's
 streams to their end, turns each into text, and only then
@@ -213,8 +222,7 @@ memory does not count them.
 **What it calls for.** A rule, and not a mend only: the
 runner holds at most a fixed number of bytes of what a job
 writes, on every system, whatever the job writes. It is
-candidate 2 below. It is not closed here: this page
-changes no running code.
+candidate 2 below. It is closed below.
 
 ## Closing F17: the rule, the model, and what is expected
 
@@ -290,6 +298,216 @@ stand under the cap.
   own, which gets a bar of its own. None of the 3 runs on
   this seat's machine. The server's legs are their measure.
 
+## F17 closed: the measure, and what held
+
+**What changed.** The executor read a job's 2 streams with the
+standard library's `communicate()`. It reads them with a
+reader of its own now: `Held`, in `runner/ops/helpers.py`. The
+reader reads as that call reads: in the calling thread on
+Linux, macOS and FreeBSD, and by a thread for each stream on
+Windows. So it starts no thread where the call started none.
+It holds the first bytes of each stream, up to the bar. Past
+the bar it counts what it reads and lets it go.
+
+**A running runner's bar is the log's.** A running runner
+keeps a log. Its record of a job's output may be as large as
+the log, so the log's size sets the bar: 33,816,576 bytes a
+stream at the default. The 400,004 bytes of the output cap are
+the bar where no log is kept. An owner who wants a lower bar
+lowers `log_max_bytes`. That is no new setting.
+
+**The measure.** As for the ladder: 1 job through the real
+gate and the real executor, in a runner of its own. The
+reading is that runner's memory at its highest, in kilobytes
+above a runner whose job wrote nothing. The job writes
+63,245,986 bytes, on 1 stream or on each of the 2.
+
+The ladder had 2 kinds of output: text, and bytes that are not
+text. This measure has 2 more: each of them behind 1 character
+of 4 bytes. The runner turns a stream into text, and 1 such
+character makes every character of that text 4 bytes wide in
+memory. It is the costliest kind found.
+
+With no log, and the bar at 400,004 bytes:
+
+| The job writes | Before, on 1 stream | Now, on 1 stream | Now, on both streams |
+|----------------|--------------------:|-----------------:|---------------------:|
+| Text | 185,632 | 500 | 1,280 |
+| Bytes that are not text | 246,772 | 1,320 | 2,964 |
+| Text behind 1 character of 4 bytes | not measured | 2,164 | 4,840 |
+| Not text, behind such a character | not measured | 2,092 | 4,076 |
+
+It is flat. The costliest cell read 4,056 for a job writing
+1,346,269 bytes on each stream, and 4,172 for 14,930,352. The
+time the runner spends after the job has ended was 0.44
+seconds for text, and 1.01 for bytes that are not text. It is
+0.007 and 0.011 now.
+
+With a log kept:
+
+| The log's size | The job writes | On 1 stream | On both streams |
+|---------------:|----------------|------------:|----------------:|
+| 33,554,432, the default | Text | 164,088 | 229,096 |
+|  | Bytes that are not text | 328,088 | 415,940 |
+|  | Text behind 1 character of 4 bytes | 492,972 | 682,860 |
+|  | Not text, behind such a character | 558,480 | 657,300 |
+| 2,097,152 | Text | 10,584 | 13,776 |
+|  | Bytes that are not text | 21,864 | 26,824 |
+|  | Text behind 1 character of 4 bytes | 32,492 | 44,360 |
+|  | Not text, behind such a character | 36,476 | 48,720 |
+
+At the default that is 5 to 17 times the bar for 1 stream, and
+up to 21 times for both. The runner turns the held bytes into
+text, redacts the text and builds the log's record from it,
+and each pass holds a copy of its own. It is a fixed figure
+all the same. The costliest cell read 674,788 for a job
+writing 40,000,000 bytes on each stream, and 673,408 for
+200,000,000.
+
+**A job that writes until its time is up.** A job wrote
+300,000,000 bytes and then waited for its limit of 3 seconds,
+with no log. It came back marked as timed out, and the runner
+read 456 kilobytes above its base.
+
+**What held.**
+
+| | Supposed | Found |
+|---|----------|-------|
+| H1 | No difference on any job | 72 jobs around a cap of 1,000 characters, 5 at the default cap, and 5 with a log kept: 0 differ. Held |
+| H2 | Under 4,000 kilobytes at every step | On the ladder's own 2 kinds, at most 1,320. Held. A kind the ladder did not have, text made wide on both streams, reads 4,840: flat, and over the 4,000 |
+| H3 | Under 0.1 seconds after the job | 0.007 seconds at the top step. Held |
+| H4 | Timed out, with its first characters, and the runner under the bar | So it came back, and the runner read 456 kilobytes. Held |
+| H5 | The bar is 33,816,576 bytes with the log at its default, and a record under the bar is what it was | Held |
+| H6 | A stream over the bar is recorded without its last 65,536 characters, and the record says what the job wrote | Held. Half a secret at the cut is not written |
+| H7 | The other 3 systems | Not measured here. The suite holds each backend's lines on every system, and the reader's 2 ways both run on this seat's Linux. The server's legs are asked with this push |
+
+**4 things were not supposed.**
+
+1. **The log's bar is the bar that counts.** H5 has it as 1
+   case among others. It is the bar of every running runner.
+   And the runner's memory at its highest is 5 to 21 times
+   that bar, as the table shows. Both figures are fixed.
+   Neither is small.
+2. **The 4 bytes more settle nothing.** The section above says
+   they settle whether a stream goes on past the cap. The
+   reader's own count settles that: it counts every byte it
+   reads, held or let go. The 4 bytes are a margin, and
+   nothing rests on them.
+3. **A reader made of threads leaves something behind.** The
+   reader's first form read each stream by a thread on every
+   system. It was set aside before it was pushed. Where
+   `communicate()` starts no thread, it would have started 2
+   for each job. And a job that is given up would have left a
+   thread waiting on a pipe that a left-behind process holds.
+   The reader as pushed reads in the calling thread there, and
+   closes both pipes when a job is given up.
+4. **1 character makes a whole stream wide.** The runner's
+   text of a stream holds every character at the width of its
+   widest. So with a log kept, plain letters behind 1
+   character of 4 bytes cost 3 times what the letters cost
+   alone. The ladder had no such kind, and H2 was written for
+   the ladder. Every table above has it now.
+
+**Left open.**
+
+- **The log's share of the bar.** A job's record in the log
+  could have a bar of its own, under the log's size. That
+  changes what the log keeps, so it is the owner's to weigh.
+- **The Windows backend's pumps.** They start with the
+  process, before the executor can name its bar. So they hold
+  at most 67,108,864 bytes of a stream, whatever the log's
+  size. With a log set larger than that, a record on that
+  backend keeps less of a stream than it did.
+- **The reader's threads on Windows.** When a job is given up
+  they end at their next read, as the standard library's own
+  do.
+- **A block longer than the tail.** The log's record of a cut
+  stream leaves out its last 65,536 characters. A redaction
+  that needs a block's end would still miss a longer block
+  that the bar cuts. The output cap cuts a result the same
+  way, before this change and after it.
+- **The runner's other readers.** The runner starts other
+  processes too, and reads what they write with the standard
+  library's calls, which hold all of it. Most run a command
+  the runner chose: its install's trials, git, its scanners.
+  They are not all walked here. 2 were met that read what the
+  runner did not choose: findings F18 and F19, below.
+- **A second seat's test.** This closing is 1 seat's word.
+
+## Finding F18: the Oracle's run tool reads the same way
+
+F17's question, asked of the rest of the runner: who else
+holds all that a process writes? That walk is not done. The
+first reader it met that runs a command the runner did not
+choose is the Oracle's run tool.
+
+**What is there.** Where a model is set up, the Oracle's chat
+may run a command with its run tool. The owner's tool mode
+gates the tool, and the default mode allows it. The tool reads
+all that the command writes, for up to 120 seconds, and then
+keeps the first 8,000 characters. So what it hands back is
+bounded, and what it holds on the way is not. The command is
+the model's choice, and the code counts the model as untrusted
+input.
+
+**The measure.** The tool itself, and a command that writes a
+fixed number of bytes and stops. The reading is the memory at
+its highest of the process that ran the tool, in kilobytes
+above the same process running a command that writes nothing.
+
+| Bytes the command wrote | Held, in kilobytes | For each byte | Held, where the bytes are not text | For each byte |
+|------------------------:|-------------------:|--------------:|-----------------------------------:|--------------:|
+| 14,930,352 | 29,408 | 2.02 | 58,532 | 4.01 |
+| 24,157,817 | 47,412 | 2.01 | 94,460 | 4.00 |
+| 39,088,169 | 76,656 | 2.01 | 152,868 | 4.00 |
+| 63,245,986 | 123,876 | 2.01 | 246,960 | 4.00 |
+
+The law: 2 bytes held for each byte of text, and 4 for each
+byte that is not text. What the tool hands back was 8,022
+characters on every row.
+
+**Why F17's reader does not close it as it stands.** The tool
+joins the 2 streams and strips the white space at both ends,
+and only then cuts. A command that opens with more white space
+than a bar holds would come back changed. So closing it takes
+a choice about what the tool hands back. It is filed, and not
+closed here.
+
+## Finding F19: the diff of a change job is held whole
+
+The second reader the same question met. It reads what a job
+made.
+
+**What is there.** A change job runs a recipe in a checkout of
+a repository the owner has named for it. After the run, the
+runner asks git for the diff of the tree against the commit.
+It reads all of that diff, and then writes it to the job's
+`change.diff`. What the run wrote into the tree is in the
+diff. Git has 60 seconds for it. And no bar stands on a job's
+own folder, on any system.
+
+**The measure.** The runner's own function, and a tree into
+which a fixed number of bytes was written after the commit.
+The bytes are random, so git cannot press them small. The
+reading is the memory at its highest of the process, in
+kilobytes above the same process with nothing written.
+
+| Bytes written into the tree | The diff, in bytes | Held, in kilobytes | For each byte written |
+|----------------------------:|-------------------:|-------------------:|----------------------:|
+| 14,930,352 | 19,243,277 | 38,192 | 2.62 |
+| 24,157,817 | 31,136,139 | 61,940 | 2.63 |
+| 39,088,169 | 50,379,194 | 100,060 | 2.62 |
+| 63,245,986 | 81,515,114 | 161,980 | 2.62 |
+
+The law: 2.6 bytes held for each byte written. The same
+63,245,986 bytes written as zeros made a diff of 79,428 bytes,
+and the runner held 1,092 kilobytes. What counts is what git
+cannot press.
+
+**What it calls for.** Git can write the diff into the file
+itself, and then the runner holds none of it. It is filed, and
+not closed here.
+
 ## Candidates
 
 These are candidates. They have no number in the
@@ -300,7 +518,10 @@ constraint inventory, and they are in no draft.
    in the code. Where a system has no bar, the row says
    none.
 2. **The runner holds at most a fixed number of bytes of
-   what a job writes.** Finding F17.
+   what a job writes.** Finding F17. The branch's code
+   keeps it for a job's 2 streams since the closing above.
+   Findings F18 and F19 are the same rule, not yet kept,
+   for the Oracle's run tool and for a change job's diff.
 3. **A bar is set on the quantity, and never on the text.**
 4. **P2, said for how much.** P2 holds the ceiling on what
    a job may touch and on what its result may show: the
@@ -330,9 +551,13 @@ rows and no more.
   some 5 constructs do not fit in 100 bytes.
 - A bar in the running code that the table reads as none.
   The suite holds the lines the table was read from.
-- A system on which a runner's memory does not grow with
-  what its job writes.
+- A job whose result is not what it was before the reader
+  had its bar.
+- A job that makes a runner's memory grow with what the job
+  writes.
 - A quantity that a job can use up and that is on no
   kernel's list.
 
-`runner/tests/test_v4_the_bars.py` holds this page.
+`runner/tests/test_v4_the_bars.py` holds this page, and
+`runner/tests/test_v4_the_held_output.py` holds the closing
+of F17.

@@ -85,11 +85,17 @@ REGISTERED = {
         "with a deeper grammar stack has no bar under 20,000 to "
         "hold the claim against",
     "the shells and the runner's memory are read on Linux":
-        "test_v4_the_bars: the census is read by the syntax checks "
-        "of bash and dash, and the runner's memory at its highest "
-        "is read in kilobytes as Linux reports it; run in the "
-        "ubuntu test job. The other systems report that reading "
-        "in units of their own",
+        "test_v4_the_bars and test_v4_the_held_output: the census "
+        "is read by the syntax checks of bash and dash, and a "
+        "process's memory at its highest is read in kilobytes as "
+        "Linux reports it; run in the ubuntu test job. The other "
+        "systems report that reading in units of their own",
+    "the Windows backend's pumps are read on Windows":
+        "test_v4_the_held_output: 1 test starts a real process "
+        "under the Windows backend's Job Object and reads it with "
+        "the backend's own pumps; run in the windows test jobs. "
+        "The lines of the pumps are held on every system by the "
+        "test beside it",
     "the place and the folder are the Linux sandbox's":
         "test_v4_the_place and test_v4_the_folder: the work mount "
         "and the job's folder under enforce are the Linux "

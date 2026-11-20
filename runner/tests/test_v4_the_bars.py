@@ -11,7 +11,11 @@ the bar that stops it, and that list has no size in it.
 This module holds the page's census of the shell's constructs,
 the 5 quantities with the shortest script that asks for each
 without end, the bars as the running code sets them on each
-system, and finding F17: the runner holds all that a job writes.
+system, and finding F17: the runner held all that a job wrote.
+The closing of F17 is held by test_v4_the_held_output.py. And
+findings F18 and F19, open: the Oracle's run tool holds all
+that a command writes, and the runner holds the whole diff of a
+change job.
 
 No script that asks without end is handed to a shell here, not
 even to a shell's syntax check. Each of them is built only of
@@ -133,10 +137,11 @@ QUANTITIES = (
     ("disk", "yes>f", ("a command", "output")),
 )
 
-# The ladder of finding F17, as measured for the page: the bytes
-# a job wrote, and how far the runner's memory at its highest
-# stood above a runner whose job wrote nothing, in kilobytes.
-# Plain letters, then a byte that is not text.
+# The ladder of finding F17, as measured for the page before the
+# reader had a bar: the bytes a job wrote, and how far the
+# runner's memory at its highest stood above a runner whose job
+# wrote nothing, in kilobytes. Plain letters, then a byte that
+# is not text.
 LADDER = {
     "a": ((14930352, 43412), (24157817, 70488), (39088169, 114216),
           (63245986, 185632)),
@@ -170,6 +175,104 @@ def held(size, byte="a"):
     (VmHWM), which starts again when the runner starts."""
     done = subprocess.run(
         [sys.executable, "-c", HELD % {"root": ROOT}, str(size), byte],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300,
+        env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
+    return json.loads(done.stdout.decode("utf-8").strip().split("\n")[-1])
+
+
+# The ladder of finding F18, as measured for the page: the bytes
+# a command wrote through the Oracle's run tool, and how far the
+# memory at its highest of the process that ran the tool stood
+# above the same process running a command that wrote nothing,
+# in kilobytes. Plain letters, then a byte that is not text.
+TOOL_LADDER = {
+    "a": ((14930352, 29408), (24157817, 47412), (39088169, 76656),
+          (63245986, 123876)),
+    "\\377": ((14930352, 58532), (24157817, 94460), (39088169, 152868),
+              (63245986, 246960)),
+}
+
+TOOL = r"""
+import json, re, sys, tempfile
+sys.path.insert(0, %(root)r)
+from runner import runner as RUNNER
+size, byte = int(sys.argv[1]), sys.argv[2]
+command = ":" if not size else (
+    "head -c %%d /dev/zero | tr '\\0' '%%s'" %% (size, byte))
+with tempfile.TemporaryDirectory() as folder:
+    text = RUNNER._run_oracle_tool(
+        "run", {"command": command, "timeout_sec": 60},
+        base_dir=folder, cfg={}, tool_mode="full")
+with open("/proc/self/status") as status:
+    peak = int(re.search(r"VmHWM:\s+(\d+) kB", status.read()).group(1))
+print(json.dumps({"peak": peak, "chars": len(text), "head": text[:7]}))
+"""
+
+
+def tool(size, byte="a"):
+    """The Oracle's run tool and a command that writes `size`
+    bytes and stops, in a process of its own: what that process's
+    memory reached, in kilobytes, and what the tool handed back."""
+    done = subprocess.run(
+        [sys.executable, "-c", TOOL % {"root": ROOT}, str(size), byte],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300,
+        env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
+    return json.loads(done.stdout.decode("utf-8").strip().split("\n")[-1])
+
+
+# The ladder of finding F19, as measured for the page: the random
+# bytes written into a change job's tree after its commit, the
+# bytes of the diff git made of them, and how far the memory at
+# its highest of the process that read the diff stood above the
+# same process with nothing written, in kilobytes.
+DIFF_LADDER = ((14930352, 19243277, 38192), (24157817, 31136139, 61940),
+               (39088169, 50379194, 100060), (63245986, 81515114, 161980))
+
+DIFF = r"""
+import json, os, re, subprocess, sys, tempfile
+sys.path.insert(0, %(root)r)
+from runner.ops import changes as CHANGES
+size, kind = int(sys.argv[1]), sys.argv[2]
+with tempfile.TemporaryDirectory() as work:
+    src = os.path.join(work, CHANGES.SRC)
+    os.makedirs(src)
+    env = dict(os.environ, GIT_CONFIG_NOSYSTEM="1", GIT_TERMINAL_PROMPT="0")
+
+    def git(*args):
+        return subprocess.run(
+            ["git", "-c", "user.name=t", "-c", "user.email=t@example.test"]
+            + list(args), cwd=src, env=env, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, check=True)
+
+    git("init", "-q")
+    with open(os.path.join(src, "seed.txt"), "w") as handle:
+        handle.write("seed\n")
+    git("add", "seed.txt")
+    git("commit", "-q", "-m", "seed")
+    sha = git("rev-parse", "HEAD").stdout.decode().strip()
+    if size:
+        with open(os.path.join(src, "written.bin"), "wb") as handle:
+            left = size
+            while left:
+                step = min(left, 1 << 20)
+                handle.write(os.urandom(step) if kind == "random"
+                             else bytes(step))
+                left -= step
+    CHANGES.write_result_diff(work, sha)
+    diff = os.path.getsize(os.path.join(work, CHANGES.RESULT_DIFF))
+with open("/proc/self/status") as status:
+    peak = int(re.search(r"VmHWM:\s+(\d+) kB", status.read()).group(1))
+print(json.dumps({"peak": peak, "diff": diff}))
+"""
+
+
+def diff_held(size, kind="random"):
+    """The runner's own reading of a change job's diff, for a tree
+    into which `size` bytes were written after the commit, in a
+    process of its own: what that process's memory reached, in
+    kilobytes, and the size of the diff."""
+    done = subprocess.run(
+        [sys.executable, "-c", DIFF % {"root": ROOT}, str(size), kind],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=300,
         env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
     return json.loads(done.stdout.decode("utf-8").strip().split("\n")[-1])
@@ -358,16 +461,20 @@ class TheBarsAsTheCodeSetsThem(unittest.TestCase):
             'max_out = _confval.integer(cfg.get("max_output_bytes"), '
             '100000, lo=1)', text)
 
-    def test_what_the_runner_holds_while_a_job_runs_has_none(self):
-        # The whole of both streams is read, and cut afterwards.
+    def test_what_the_runner_holds_while_a_job_runs_has_a_bar_now(self):
+        # Finding F17, closed: both streams come through a reader
+        # with a bar, and the cut to the cap comes after it.
         text = source("runner", "ops", "exec.py")
-        read = text.index("outs, errs = proc.communicate(timeout=timeout)")
+        read = text.index("held = _runner()._held_for_job(max_out)")
         cut = text.index("stdout, trunc_out = stdout[:max_out], True")
         self.assertLess(read, cut)
-        between = text[read:cut]
-        self.assertIn('outs.decode("utf-8", errors="replace")', between)
-        self.assertNotIn("max_out", between.replace(
-            "if len(stdout) > max_out:", ""))
+        self.assertNotIn("proc.communicate(", text[read:cut])
+        helpers = source("runner", "ops", "helpers.py")
+        self.assertIn("    bound = 4 * chars + 4\n", helpers)
+        self.assertIn("        room = self.keep - len(held)\n"
+                      "        if room > 0:\n"
+                      "            held += chunk[:room]\n", helpers)
+        self.assertEqual(400004, RUNG.RUNNER.held_bound(100000))
 
     def test_the_linux_sandbox_sets_no_bar_on_the_other_3(self):
         text = source("runner", "guard", "sandbox.py")
@@ -408,8 +515,9 @@ class TheBarsAsTheCodeSetsThem(unittest.TestCase):
 
 
 class FindingF17TheHeldOutput(unittest.TestCase):
-    """The runner holds all that a job writes: 3 bytes of its own
-    memory for each byte, 4 where the bytes are not text."""
+    """The runner held all that a job wrote: 3 bytes of its own
+    memory for each byte, 4 where the bytes are not text. With
+    the bar it holds a fixed number."""
 
     def test_the_ladder_on_the_page(self):
         for byte, low, high in (("a", 2.95, 3.05), ("\\377", 3.95, 4.05)):
@@ -440,18 +548,137 @@ class FindingF17TheHeldOutput(unittest.TestCase):
 
     @unittest.skipUnless(
         LINUX, "the shells and the runner's memory are read on Linux")
-    def test_the_runner_s_memory_grows_with_what_a_job_writes(self):
+    def test_the_runner_s_memory_no_longer_grows_with_a_job_s_writing(
+            self):
+        # At step 36 of the series the runner held 43,412
+        # kilobytes of text above its base, and 58,000 where the
+        # bytes are not text. With the bar: under 4,000.
         base = held(0)
         self.assertEqual((0, "attested"), (base["exit"], base["view"]))
         size = 14930352
-        for byte, least, most in (("a", 2, 4), ("\\377", 3, 6)):
+        for byte in ("a", "\\377"):
             got = held(size, byte)
             self.assertEqual((0, "attested"), (got["exit"], got["view"]))
+            self.assertLess(got["peak"] - base["peak"], 4000, byte)
+        # What the result carries is what it was.
+        self.assertEqual(96, len(got["digest"]))
+
+
+class FindingF19TheDiffOfAChangeJob(unittest.TestCase):
+    """The runner holds the whole diff of a change job: 2.6 bytes
+    of memory for each byte the run wrote into the tree that git
+    cannot press. Open."""
+
+    def test_the_diff_is_read_whole_and_written_afterwards(self):
+        text = source("runner", "ops", "changes.py")
+        read = text.index(
+            '        r = subprocess.run(["git", "diff", "--binary", sha, '
+            '"--"], cwd=src,\n'
+            "                           capture_output=True, timeout=60)\n")
+        write = text.index("            fh.write(data)\n")
+        self.assertLess(read, write)
+
+    def test_the_ladder_on_the_page(self):
+        self.assertEqual(["2.62", "2.63", "2.62", "2.62"], [
+            "%.2f" % (above * 1024 / size)
+            for size, _diff, above in DIFF_LADDER])
+        self.assertEqual([size for size, _above in LADDER["a"]],
+                         [size for size, _diff, _above in DIFF_LADDER])
+        page = MODELS._flat(PAGE)
+        self.assertIn("## Finding F19: the diff of a change job is held "
+                      "whole", page)
+        for size, diff_bytes, above in DIFF_LADDER:
+            self.assertIn("| %s | %s | %s | %.2f |" % (
+                format(size, ","), format(diff_bytes, ","),
+                format(above, ","), above * 1024 / size), page)
+            # Random bytes come out of git 1.29 times as large.
+            self.assertEqual("1.29", "%.2f" % (diff_bytes / size))
+        for stated in ("Git has 60 seconds for it",
+                       "made a diff of 79,428 bytes, and the runner held "
+                       "1,092 kilobytes",
+                       "It is filed, and not closed here."):
+            self.assertIn(stated, page, stated)
+
+    @unittest.skipUnless(
+        LINUX, "the shells and the runner's memory are read on Linux")
+    def test_the_runner_s_memory_grows_with_what_a_run_wrote(self):
+        base = diff_held(0)
+        self.assertEqual(0, base["diff"])
+        size = 14930352
+        got = diff_held(size)
+        above = (got["peak"] - base["peak"]) * 1024
+        self.assertTrue(2 * size <= above <= 3.5 * size, above / size)
+        self.assertTrue(1.2 * size <= got["diff"] <= 1.4 * size,
+                        got["diff"] / size)
+        # Bytes that git presses small cost next to nothing.
+        got = diff_held(size, "zero")
+        self.assertLess(got["peak"] - base["peak"], 4000)
+        self.assertLess(got["diff"], 100000)
+
+
+class FindingF18TheOraclesRunTool(unittest.TestCase):
+    """The Oracle's run tool holds all that a command writes: 2
+    bytes of memory for each byte of text, 4 where the bytes are
+    not text. Open: the day it is closed, this class is turned
+    as the class above was."""
+
+    def test_the_tool_reads_all_and_cuts_afterwards(self):
+        text = source("runner", "ops", "oracle_ops.py")
+        tool_text = text[text.index('    if name == "run":'):]
+        self.assertIn("        timeout = max(1, min(timeout, 120))\n",
+                      tool_text)
+        read = tool_text.index(
+            "command, shell=True, capture_output=True,")
+        cut = tool_text.index("        if len(blob) > 8000:\n")
+        self.assertLess(read, cut)
+        # The 2 streams are joined and stripped before the cut.
+        self.assertIn(
+            '        blob = (out + ("\\n" + err if err else "")).strip()\n',
+            tool_text[read:cut])
+        # The default mode allows the tool, and the code counts
+        # the model as untrusted input.
+        self.assertEqual("full", RUNG.RUNNER._oracle_tool_mode({}))
+        self.assertIn("The model is untrusted input here", text)
+
+    def test_the_ladder_on_the_page(self):
+        self.assertEqual(
+            (["2.02", "2.01", "2.01", "2.01"],
+             ["4.01", "4.00", "4.00", "4.00"]),
+            tuple(["%.2f" % (above * 1024 / size)
+                   for size, above in TOOL_LADDER[byte]]
+                  for byte in ("a", "\\377")))
+        self.assertEqual([size for size, _above in LADDER["a"]],
+                         [size for size, _above in TOOL_LADDER["a"]])
+        page = MODELS._flat(PAGE)
+        self.assertIn("## Finding F18: the Oracle's run tool reads the "
+                      "same way", page)
+        for (size, text_kb), (_size, other_kb) in zip(
+                TOOL_LADDER["a"], TOOL_LADDER["\\377"]):
+            self.assertIn("| %s | %s | %.2f | %s | %.2f |" % (
+                format(size, ","), format(text_kb, ","),
+                text_kb * 1024 / size, format(other_kb, ","),
+                other_kb * 1024 / size), page)
+        for stated in ("for up to 120 seconds",
+                       "the first 8,000 characters",
+                       "was 8,022 characters on every row",
+                       "It is filed, and not closed here."):
+            self.assertIn(stated, page, stated)
+
+    @unittest.skipUnless(
+        LINUX, "the shells and the runner's memory are read on Linux")
+    def test_the_tool_s_memory_grows_with_what_a_command_writes(self):
+        base = tool(0)
+        self.assertEqual("exit=0\n", base["head"])
+        size = 14930352
+        for byte, least, most in (("a", 1.5, 3), ("\\377", 3, 5)):
+            got = tool(size, byte)
             above = (got["peak"] - base["peak"]) * 1024
             self.assertTrue(least * size <= above <= most * size,
                             (byte, above / size))
-        # What the result carries is under its bar all the same.
-        self.assertEqual(96, len(got["digest"]))
+            # What the tool hands back is under its cut all the
+            # same: 8,000 characters, the exit line and the mark.
+            self.assertEqual(("exit=0\n", 8022),
+                             (got["head"], got["chars"]))
 
 
 class ThePageRecordsTheBars(unittest.TestCase):
@@ -472,7 +699,8 @@ class ThePageRecordsTheBars(unittest.TestCase):
                 "| Disk | `yes>f` | 5 |",
                 "| 63,245,986 | 185,632 | 3.01 | 246,772 | 4.00 |",
                 "| 14,930,352 | 43,412 | 2.98 | 58,000 | 3.98 |",
-                "Finding F17",
+                "Finding F17, closed on this branch.",
+                "Findings F18 and F19, open.",
                 "These are candidates."):
             self.assertIn(stated, page, stated)
 

@@ -252,9 +252,19 @@ size.
 
 ## Filed, and not done here
 
-- **F17 is open.** Closing it changes the executor, and
-  this push changes no running code. The rule it calls for
-  is candidate 2 on `v4-the-bars.md`.
+- **F17 was open when this page was pushed.** It is closed
+  on the branch since: the rule, its model, the measure and
+  what held are on `v4-the-bars.md`. It waits for a second
+  seat's test.
+- **F18 and F19 are open.** The Oracle's run tool holds all
+  that a command writes, and the runner holds the whole
+  diff of a change job. Both came out of F17's question,
+  asked of the rest of the runner. They are on
+  `v4-the-bars.md`, each with its ladder.
+- **The log's share of the bar.** A running runner's bar
+  follows its log's size: 33,816,576 bytes a stream at the
+  default. A smaller share for a job's record changes what
+  the log keeps, so it is the owner's to weigh.
 - **Rows for the bars in the constraint spec.** The spec
   and its binding are shared pages.
 - **The Linux sandbox's 3 missing bars.** They change what

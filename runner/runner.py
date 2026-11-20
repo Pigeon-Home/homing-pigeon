@@ -648,6 +648,9 @@ def judge_job(cfg, job):
 _helpers = _required_load_mod("runner.ops.helpers", "ops.helpers")
 snapshot_outside = _helpers.snapshot_outside
 append_bounded_log = _helpers.append_bounded_log
+Held = _helpers.Held
+held_bound = _helpers.held_bound
+HELD_TAIL = _helpers.HELD_TAIL
 
 
 def check_protected_paths(before, after, protected):
@@ -4032,28 +4035,61 @@ def _oracle_log_exchange(endpoint, model, payload, started,
         record["error_body"] = error_body
     _oracle_log_record(record)
 
-def _log_job_output(job_id, kind, stdout, stderr, cfg):
-    """Write a job's complete stdout/stderr to runner.log.
+def _held_for_job(max_out):
+    """The reader of 1 job's streams, with the bar this runner
+    keeps (finding F17): what the output cap needs, or what the
+    log's record of a job's output can carry where a log is
+    kept."""
+    return Held(held_bound(max_out, _LOG_MAX_BYTES if _LOG_FILE else 0))
 
-    The result email carries a bounded copy; the log keeps the whole
-    output so a debugging session can read what the job actually
-    said. Redaction still applies (the log never carries cleartext
-    secrets, same as the one-line preview in execute_job). Written
-    straight through append_bounded_log, not log(): the per-minute
-    cap must not drop exactly the record a debugging session needs,
-    and a chatty job must not flood the console.
+
+def _log_job_output(job_id, kind, stdout, stderr, cfg, held=None):
+    """Write a job's stdout/stderr to runner.log.
+
+    The result email carries a bounded copy; the log keeps the
+    output as the runner holds it, so a debugging session can read
+    what the job actually said. Redaction still applies (the log
+    never carries cleartext secrets, same as the one-line preview
+    in execute_job). Written straight through append_bounded_log,
+    not log(): the per-minute cap must not drop exactly the record
+    a debugging session needs, and a chatty job must not flood the
+    console.
+
+    `held` is the reader the streams came through. A stream it cut
+    at its bar is written as what was held, less its last
+    HELD_TAIL characters: the bar can cut a secret in 2, and the
+    held half would not match the pattern that redacts the whole.
+    The record then says how many bytes the job wrote.
     """
     if not _LOG_FILE:
         return
     patterns = _redact_patterns(cfg)
     out_text, _f1 = redact_text(stdout, patterns)
     err_text, _f2 = redact_text(stderr, patterns)
+    said = "full output"
+    end_out, end_err = len(out_text), len(err_text)
+    if held is not None and (held.cut("stdout") or held.cut("stderr")):
+        if held.cut("stdout"):
+            end_out -= HELD_TAIL
+        if held.cut("stderr"):
+            end_err -= HELD_TAIL
+        said = ("output, its first part (the job wrote %d bytes on "
+                "stdout and %d on stderr; the runner holds at most %d "
+                "of a stream)" % (held.seen["stdout"], held.seen["stderr"],
+                                  held.keep))
+    # The record is cut to the log's size in bytes when it is
+    # written. A character is at least 1 byte, so what stands past
+    # that many characters is never written: it is let go here,
+    # before the record is built around it.
+    out_text = out_text[:max(0, min(end_out, _LOG_MAX_BYTES))]
+    err_text = err_text[:max(0, min(end_err,
+                                    _LOG_MAX_BYTES - len(out_text)))]
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     record = (
-        f"{stamp} [INFO] job {job_id} (kind={kind}) full output:\n"
+        f"{stamp} [INFO] job {job_id} (kind={kind}) {said}:\n"
         f"--- stdout ---\n{out_text}\n"
         f"--- stderr ---\n{err_text}\n"
-        f"--- end of job {job_id} output ---")
+        f"--- end of job {job_id} output ---\n")
     append_bounded_log(_LOG_FILE, record, _LOG_MAX_BYTES, _LOG_BACKUPS)
 
 # Two locks, on purpose. This one covers the seen-set and

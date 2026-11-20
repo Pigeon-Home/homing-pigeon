@@ -387,8 +387,12 @@ A finding is most useful when it points at the file and the line
   on what a job uses. What is solved is the list of
   quantities, each with the shortest script that asks for
   it without end and its bar on each system. Finding F17
-  is on it: the runner holds all that a job writes. No new
-  constraint. `runner/tests/test_v4_the_bars.py` holds it.
+  is on it, with its closing: the runner held all that a
+  job wrote, and it holds a fixed number of bytes of each
+  stream now. Findings F18 and F19 are on it, open: the
+  Oracle's run tool and the reading of a change job's diff
+  hold all that a process writes. No new constraint.
+  `runner/tests/test_v4_the_bars.py` holds it.
   `held.tla` is the model of the rule that closes F17, the
   reader of a job's stream with its bar, and
   `runner/tests/test_v4_the_held_output.py` holds that.

@@ -144,6 +144,12 @@ from ctypes import wintypes
 # The one ceiling Phase 1 sets: 512 MiB of committed memory per job
 # process. A named constant, not a config knob yet.
 DEFAULT_PROCESS_MEMORY_BYTES = 512 * 1024 * 1024
+# What a confined process's 2 pumps hold of each stream at most
+# (finding F17). The pumps start with the process, before the
+# caller can name its own bar, so they carry this fixed one from
+# the first byte; communicate_held lowers it to the caller's.
+# Past the bar a pump goes on reading, counts, and holds no more.
+PUMP_HELD_BYTES = 64 * 1024 * 1024
 
 # The status string for the Job Object control alone (job_user).
 STATUS_JOB_OBJECT = "windows_job_object"
@@ -693,15 +699,18 @@ else:
             self._result = None
             self._out = bytearray()
             self._err = bytearray()
+            self._keep = PUMP_HELD_BYTES
+            self._seen = [0, 0]
             self._readers = []
-            for target, sink in ((out_read, self._out),
-                                 (err_read, self._err)):
+            for index, (target, sink) in enumerate(
+                    ((out_read, self._out), (err_read, self._err))):
                 th = threading.Thread(target=self._pump,
-                                      args=(target, sink), daemon=True)
+                                      args=(target, sink, index),
+                                      daemon=True)
                 th.start()
                 self._readers.append(th)
 
-        def _pump(self, handle, sink):
+        def _pump(self, handle, sink, index):
             buf = ctypes.create_string_buffer(8192)
             while True:
                 got = wintypes.DWORD(0)
@@ -709,7 +718,13 @@ else:
                                        ctypes.byref(got), None)
                 if not ok or got.value == 0:
                     return
-                sink.extend(buf.raw[:got.value])
+                # The pump reads to the stream's end, so the job
+                # never waits on a full pipe. It holds the first
+                # part, up to the bar, and counts the rest.
+                self._seen[index] += got.value
+                room = self._keep - len(sink)
+                if room > 0:
+                    sink.extend(buf.raw[:min(got.value, room)])
 
         def _wait(self, timeout_ms):
             return kernel32.WaitForSingleObject(self._handle, timeout_ms)
@@ -737,6 +752,19 @@ else:
                 if rc == WAIT_TIMEOUT:
                     raise subprocess.TimeoutExpired(self.args, timeout)
             return self._finish()
+
+        def communicate_held(self, held, timeout=None):
+            """communicate, with the caller's bar on what is
+            held of each stream (runner/ops/helpers.py, Held).
+            The pumps' own bar is lowered to it, the streams
+            are handed back cut to it, and the reader is told
+            how many bytes each stream carried."""
+            self._keep = min(self._keep, held.keep)
+            out, err = self.communicate(timeout)
+            out, err = out[:self._keep], err[:self._keep]
+            held.took("stdout", out, self._seen[0])
+            held.took("stderr", err, self._seen[1])
+            return out, err
 
         def poll(self):
             if self.returncode is not None:

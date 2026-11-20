@@ -1596,6 +1596,16 @@ class FreeBSDConfinedProcess:
         self.returncode = self._inner.returncode
         return out, err
 
+    def communicate_held(self, held, timeout=None):
+        """communicate, by a reader with a bar on what it
+        holds of each stream (runner/ops/helpers.py, Held).
+        The wrapper lends the reader the wrapped process,
+        which it reads as communicate() reads it: the same
+        wait, and the same TimeoutExpired."""
+        out, err = held(self._inner, timeout)
+        self.returncode = self._inner.returncode
+        return out, err
+
     def poll(self):
         rc = self._inner.poll()
         if rc is not None:
