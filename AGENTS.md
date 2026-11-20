@@ -36,7 +36,7 @@
 
 ## The goal: read this first
 
-What this project is for, and what done means, stands on 1 short page: [docs/GOAL.md](docs/GOAL.md). Read it before anything else here. It is the owner's page, and only he changes it (rule 18 below).
+The owner's page stands on 1 short page: [docs/GOAL.md](docs/GOAL.md). Read it before anything else here. It is the owner's page, and only he changes it (rule 18 below).
 
 ## A fair warning about this repository's size
 
@@ -367,9 +367,8 @@ Those values live on the runner host. They do not travel through the SI chat.
     Q173). The owner's ceiling for the machines and the services
     together is $700 a month (2026-11-12, Q178): a limit, not an
     allowance, and under it, spending still waits for his word.
-18. **The goal page (owner, 2026-11-19).** `docs/GOAL.md` says
-    what the project is for and what done means: 1 goal, and 3
-    lines for done. Every seat reads it first, before these
+18. **The goal page (owner, 2026-11-19).** `docs/GOAL.md` is
+    the owner's page. Every seat reads it first, before these
     rules. Only the owner changes the page. A seat that reads a
     line of it as wrong, or as done, says so in the questions
     file and leaves the page as it is.
