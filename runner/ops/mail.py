@@ -202,7 +202,13 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             # gated admission (cleartext never means
             # unauthenticated), and the readable arrival is
             # worth its line in the log, as it always was.
-            R.log(f"job {job_id}: received in clear text (not "
+            # The id here is still the subject's. The signature
+            # covers the body, and the body's id is set against
+            # the subject's further down. Until then it is a
+            # stranger's text, and it is written as the line
+            # above writes it, at a bounded length (finding F12).
+            R.log(f"job {R._log_plain(job_id, R.LOG_ID_MAX)}: "
+                f"received in clear text (not "
                 f"encrypted); accepted under "
                 f"--allow-cleartext")
         else:

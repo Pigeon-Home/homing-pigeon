@@ -315,6 +315,104 @@ Joined, the count is 31,405,922 tokens. Main's is
 
 Not run on the joined tree: the whole suite.
 
+## After the measure: the head moved
+
+While the measure was being written, Muse's seat closed F11
+on the branch, in commit `af85f1c76`. It is a change to the
+gate and to the sender, 49 lines of code in 2 files, and it
+came after everything above was measured. So the audit
+went on, as that change's second seat.
+
+### What F11's change is
+
+- **In the gate.** A subject's encoded words are decoded
+  before the id is read off it. A subject of more than
+  2,048 bytes is not handed to the decoder and is read as
+  written. That is an eighth bar, `SUBJECT_DECODE_MAX`, in
+  `runner/ops/mail.py`.
+- **In the sender.** The runner's own mail is built with
+  its lines set to 998, so a subject with a long id leaves
+  on 1 plain line.
+- **Its tests.** 4, in `test_v4_bindings.py`. Its commit
+  names no run of a suite and carries no guard line.
+
+### What the second seat ran
+
+| What ran | Result |
+|----------|--------|
+| The gate's 5 suites on the new head | 158 tests, green |
+| The guard on the 3 test modules F11's commit changed | Green: 128 tests, 7 runs of each |
+| The whole suite on the new head, with the corrections above | 14,299 tests in 1,417 seconds. 273 skipped. 2 red: the 2 bench tests of A1, and no other |
+
+The decode step was then climbed on the ladder, which is
+the test that found F13 in the same decoder. 7 units, each
+under a good signature and under a turned signature: 5
+kinds of encoded word, half a word, and a plain letter. 14
+ladders of 26 steps, to subjects of 0.4 to 4.1 million
+bytes.
+
+| Asked at each of the 364 steps | Found |
+|--------------------------------|-------|
+| The most the decoder was handed | 2,048 characters |
+| The slowest arrival with the subject under the bar | 0.0036 seconds |
+| The time with the subject over the bar | In proportion to the mail, and none of it in the decoder |
+| The mail was decided and marked once | At every step |
+| The most 1 mail wrote to the log | 541 characters |
+
+At the bar itself: a subject of 2,047 bytes and of 2,048 is
+decoded, and 1 of 2,049 is not. 8 shapes of an encoded
+subject were sent after that. Each was marked once. A word
+that decodes to another encoded word is decoded once and
+not twice.
+
+F11's change holds on the ladder. It has its second seat's
+test.
+
+### The fourth finding, from 1 of the 8 shapes
+
+1 shape put a control character where the id stands. The
+gate's first line wrote it quoted, as F12 made it. A second
+line wrote it as it is.
+
+That line is behind the signature, and F12's measure never
+reached it: F12 grew its texts in messages that fail at the
+signature. The signature covers the body and not the
+subject. So a body this runner's own key signed, sent again
+under a subject that names another id, passes the
+signature, and is refused only when the 2 ids are set side
+by side. In between, with clear text allowed, the gate
+wrote 1 line that names the job by the subject's id, whole:
+
+| The subject's id | That line |
+|-----------------:|----------:|
+| 128 characters | 206 |
+| 100,000 characters | 100,078 |
+| 100,000 escape characters | 100,078, with each escape as it is |
+
+Who can send it: anyone who holds 1 mail that this runner's
+key signed. They need not hold the key. The runner must
+have been started with clear text allowed, which is not the
+default. The line stands on main too. It is older than the
+branch.
+
+So F12 was not wholly closed, and the audit closed the
+line: it writes the id as the first line does, 231
+characters for an id of 100,000. `v4-before-the-mac.md`
+records it, and 2 tests hold it. 1 of them fails on the
+code as it was. The 3 suites of the tree that pin an honest
+job's line are green: the line is as it was for an honest
+id. This change came after the whole suite's second run.
+What ran on it is the gate's suites, those 3, the doc
+gates and the guard: 1,266 tests, green.
+
+The cause is left for the owner. The 2 ids are set side by
+side late: after that line, and after the audience check,
+which is handed the subject's id too and writes it into
+the security audit when the audience does not match. That
+second place was read and not measured. Setting the 2 ids
+side by side first would close both. It would also change
+the order of the gate's refusals.
+
 ## What the audit changed
 
 Each is this seat's own line, and each is in the commit
@@ -328,6 +426,7 @@ that carries this measure.
 | 1 new test: the 4 headers of A6 | The same suite | 26 tests |
 | What the flake taught, as a fourth lesson of the technique: a reading is taken where 1 law has taken over | `v4-the-ladder.md` | |
 | The 4 places of A5 | The index, 2 proof pages and the notes | |
+| The line behind the signature writes the id at a bounded length, as F12's lines do. 2 new tests | `runner/ops/mail.py`, `test_v4_before_the_mac.py`, and the page of that name | 31 tests. The guard is green on that suite and on the core's |
 | The address check joins the suites this seat runs before a push | This seat's practice | |
 
 ## Conclusions, against the suppositions
@@ -346,6 +445,12 @@ that carries this measure.
 flake. Both are in lines this seat wrote, and neither is
 in the gate. The gate's 4 changes each stand on a test
 that fails without them.
+
+A6 held as it was supposed, and the audit still found F12
+short by 1 line. The supposition asked whether each change
+has a test that fails without it. It did not ask whether
+the finding was closed on every path. The ladder asked
+that, on another seat's change.
 
 ## What the audit files
 
@@ -366,21 +471,23 @@ owner's.
    are not started here.
 2. **F12, F13 and F14 wait for a second seat's test.** They
    are this seat's changes, and a code fix does not reach
-   main on its own seat's word.
-3. **F11 is open.** Its 2 closings are decided and not
-   made. Muse's seat brought them to this seat in the
-   forum on 2026-11-19. The record of the decision is on
-   main and not on this branch.
+   main on its own seat's word. F12's third line, closed
+   here, waits with them.
+3. **The 2 ids are set side by side late.** This is the
+   cause of the fourth finding. To set them first, straight
+   after the signature, changes the order of the gate's
+   refusals. It is the owner's to say.
 4. **The hosted queue's copy of F10's search is open,** at
    the owner's word. The ladder met it again in L9.
-5. **The 7 bars are in no reader's page.** `PROTOCOL.md`
+5. **The 8 bars are in no reader's page.** `PROTOCOL.md`
    and `SECURITY.md` do not state that a subject of more
    than 2,048 characters is not a panic. A panic subject
    as they describe it is 51 characters, so no reader who
    follows them meets the bar. Whether they should state
    it is the owner's to say.
 6. **The guard's line** is missing from the 15 commits of
-   A6. For Grok's seat.
+   A6, and from the commit that closed F11. For Grok's seat
+   and for Muse's.
 7. **Meeting main is by hand, in 8 files.** The forum's 2
    runs of entries are to be set in order of their dates.
    The count of readers goes from 30 to 31 in the ladder's
@@ -398,6 +505,7 @@ owner's.
   runs. The rows with confinement on are from Grok's
   machine.
 - The whole suite was not run on the joined tree.
-- The 162 lines that change the gate were read 1 by 1. The
-  pages and the tests were not: they were checked by the
-  gates, the guard and the searches above.
+- The 162 lines that change the gate, and the 49 of F11's
+  change, were read 1 by 1. The pages and the tests were
+  not: they were checked by the gates, the guard and the
+  searches above.

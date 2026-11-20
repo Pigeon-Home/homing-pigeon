@@ -419,6 +419,45 @@ class TheLogInFrontOfTheMac(unittest.TestCase):
             line = self.lines(self.stranger(field, limit + 1))[0]
             self.assertIn("... (%d characters)" % (limit + 1), line, field)
 
+    def test_f12_a_signed_body_under_another_subject_adds_a_fixed_amount(self):
+        # The signature covers the body and not the subject. A
+        # body this runner's own key signed, sent under a subject
+        # that names another id, passes the signature and is
+        # refused when the 2 ids are set side by side. In between
+        # the id in hand is the subject's, a stranger's text, and
+        # the line written there cuts it as the first line does.
+        # Before the audit of 2026-11-19 that line wrote it whole:
+        # 100,078 characters for an id of 100,000.
+        text = BIND._signed(self.payload)
+        for unit in ("A", "\x1b"):
+            at = {}
+            for size in GROWN:
+                data, out = self.logged(_mail(
+                    "[HOMING-PIGEON] job %s" % (unit * size), text))
+                self.assertEqual([], out.executed, (unit, size))
+                self.assertEqual(1, out.marks, (unit, size))
+                self.assertNotIn(b"\x1b", data, (unit, size))
+                self.assertEqual(3, data.count(b"\n"), (unit, size))
+                self.assertLessEqual(len(data), LOG_BOUND, (unit, size))
+                at[size] = len(data)
+            # The length is written in 3 places, and 1,000 times
+            # the text adds 3 digits to each.
+            self.assertEqual(9, at[GROWN[-1]] - at[GROWN[0]], unit)
+        lines = self.lines(_mail(
+            "[HOMING-PIGEON] job %s" % ("A" * 1000), text))
+        self.assertEqual(3, len(lines))
+        self.assertIn("... (1000 characters): received in clear text",
+                      lines[1])
+        self.assertEqual("[WARN] rejecting seq 3: job_id mismatch "
+                         "between subject and body", lines[2])
+
+    def test_f12_an_honest_job_s_line_in_clear_text_is_as_it_was(self):
+        lines = self.lines(_mail(_subject(self.job_id),
+                                 BIND._signed(self.payload)))
+        self.assertIn(
+            "[INFO] job %s: received in clear text (not encrypted); "
+            "accepted under --allow-cleartext" % self.job_id, lines)
+
     def test_f12_no_control_character_of_a_stranger_s_reaches_the_log(self):
         escape = "\x1b[2J"
         for name, raw in (
