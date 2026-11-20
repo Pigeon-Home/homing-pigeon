@@ -151,7 +151,7 @@ class TheFolder(unittest.TestCase):
             self.payload, self.job_id, prefix + "; printf x > kept",
             "enforce")
         if not ENGAGES:
-            self.assertIsNone(result)
+            refused_under_enforce(self, result)
             self.assertNotIn("kept", files)
             return
         out, status = BOUND.run(
