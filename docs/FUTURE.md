@@ -1,5 +1,5 @@
 - Anna AI OS Founding Builder Program 2026 research (https://luma.com/kmc1ddf9) [funding secured] Registration confirmed!
-- define runner HOST boundry for Oracle to dispatch patrols: repair, hdd, audit, security_patrols (oracle key distribution)
-- Apple Store (macOS)
-- Microsoft Store (Windows)
 - Ubunutu Snap Store (Linux)
+- Microsoft Store (Windows)
+- Apple Store (macOS)
+- define runner HOST boundry for Oracle to dispatch patrols: repair, hdd, audit, security_patrols (oracle key distribution)
