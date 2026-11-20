@@ -15,6 +15,17 @@ pins the quote in AGENTS.md to the mailbox line README.md
 carries, so the next rewrite of the prompt fails here until
 the quote is synced, and pins that the old prompt lines do
 not stand quoted in AGENTS.md.
+
+The owner rewrote the prompt again at 11:18 PM on
+19-Nov-2026: the mailbox line now reads "Runner mailbox is
+your@email.com", the generic form. The pin's job is
+agreement between README.md and the AGENTS.md quote, not a
+fixed address, so this suite no longer forbids the string
+"your@email.com" in AGENTS.md: it is the current line the
+owner chose, and the agreement test above is what holds it
+in sync. The older prompt lines that no version of the
+current prompt carries ("make one up for me", "My mailbox
+is") stay forbidden.
 """
 
 import os
@@ -63,7 +74,6 @@ class ReadmePromptQuoteTest(unittest.TestCase):
 
     def test_agents_carries_no_old_prompt_lines(self):
         agents = read("AGENTS.md")
-        self.assertNotIn("your@email.com", agents)
         self.assertNotIn("make one up for me", agents)
         self.assertNotIn("My mailbox is", agents)
 
