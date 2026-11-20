@@ -24,8 +24,12 @@ at all.
   the runner holds is refused before any MAC work.
 - If the body is an encryption envelope, it uses the one AEAD,
   AES-256-GCM; it must decrypt, and the inner body must verify
-  under the same key. Encryption is on by default. A cleartext
-  job executes only in a process started with
+  under the same key. Encryption is on by default.
+- The body's version, type, and job id must match the message's.
+  These 3 are checked first behind the signature: until they
+  match, nothing else in the body is acted on, and no record
+  names the job.
+- A cleartext job executes only in a process started with
   `--allow-cleartext`; cleartext is refused by default.
 - Where the audience feature is in `enforce` mode (the default),
   the job's claimed audience must equal the configured runner id.
@@ -33,9 +37,8 @@ at all.
   or with no runner id configured, there is no binding to check,
   and the model says so rather than claiming otherwise.
 - The script must fit `max_script_bytes` (default 1 MiB, measured
-  in UTF-8 bytes), checked after the signature. The body's
-  version, type, and job id must match the message's, and the job
-  must be fresh: issued inside the accepted age window.
+  in UTF-8 bytes), checked after the signature. The job must be
+  fresh: issued inside the accepted age window.
 - The signing key's policy must allow the job (below).
 - The job id must not already be claimed. Only a handling that
   takes the claim proceeds, and execution is reachable only at
