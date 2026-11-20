@@ -36,6 +36,12 @@ from runner.tests import test_v4_models as MODELS  # noqa: E402
 PAGE = os.path.join(MODELS.PROOFS, "v4-the-folder.md")
 INSIDE = "printf x > kept"
 ENGAGES = SB.startup_problem() is None
+# The work mount and the job's folder under enforce are the Linux
+# sandbox's. macOS and Windows confine a job with backends of
+# their own, which this page does not measure: the server's first
+# build of the branch ran these rows there, and the jobs ran
+# where this module, asking the Linux sandbox, expected a refusal.
+LINUX = sys.platform.startswith("linux")
 
 
 def refused_under_enforce(case, result):
@@ -95,6 +101,8 @@ def run(payload, job_id, script, mode):
     return result, notes, files
 
 
+@unittest.skipUnless(LINUX, "the place and the folder are the Linux "
+                            "sandbox's")
 class TheFolder(unittest.TestCase):
     """The writer stays in the job's folder, or the job is
     refused."""

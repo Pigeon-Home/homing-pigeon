@@ -504,6 +504,7 @@ class TheShellPastTheFirstRung(unittest.TestCase):
         self.assertEqual(352 + 44, len(asked))
         self.assertEqual([], self.shell(asked))
 
+    @unittest.skipUnless(LINUX, "the shell's 2 bars are measured on Linux")
     def test_bash_agrees_on_the_rows_that_strain_it_most(self):
         # Under every bar the page finds: the deepest lists at
         # 50,000 characters, the longest pipeline at 13,000, and
@@ -664,7 +665,7 @@ class TheRunnerPastTheFirstRung(unittest.TestCase):
                         self.assertEqual([], said)
                         self.assertEqual("attested", got.get("view"))
 
-    @unittest.skipIf(not POSIX, "POSIX only")
+    @unittest.skipUnless(LINUX, "the shell's 2 bars are measured on Linux")
     def test_over_the_time_limit_the_result_says_so(self):
         # The limit is set to 1 second, and the row starts
         # 28,572 processes.

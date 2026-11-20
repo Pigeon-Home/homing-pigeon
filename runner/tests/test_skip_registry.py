@@ -84,6 +84,12 @@ REGISTERED = {
         "commands, so the ubuntu test job runs these; a bash built "
         "with a deeper grammar stack has no bar under 20,000 to "
         "hold the claim against",
+    "the place and the folder are the Linux sandbox's":
+        "test_v4_the_place and test_v4_the_folder: the work mount "
+        "and the job's folder under enforce are the Linux "
+        "sandbox's; run in the ubuntu test job. macOS and Windows "
+        "confine a job with backends of their own, which these "
+        "pages do not measure",
     "the sandbox does not engage here":
         "test_v4_the_place: the rows are run under enforce, and "
         "the runner refuses a job under enforce where its sandbox "

@@ -413,6 +413,43 @@ second place was read and not measured. Setting the 2 ids
 side by side first would close both. It would also change
 the order of the gate's refusals.
 
+## The server's word
+
+The audit started the server's build of the branch by hand,
+on the head that carried the audit, `84d9c0bd7`. It is the
+branch's first build.
+
+| Leg | Result |
+|-----|--------|
+| The 8 builds: Linux, macOS, Windows and the small Linux board, each for its processors | Green |
+| The suites on Linux | Green |
+| The type check | Green |
+| The suites on macOS | Red: 10 tests |
+| The suites on Windows | Red in 1 of its 2 parts: 6 tests, and 1 more that the build itself marks as a known flake of that system's sockets |
+
+All 16 are in 5 proof suites written on this branch on
+2026-11-19. None is in the gate.
+
+| Suite | Red on | Tests | What the suite took for granted |
+|-------|--------|------:|---------------------------------|
+| `test_v4_the_folder.py` and `test_v4_the_place.py` | macOS and Windows | 6 on each | That a job under enforce is refused wherever the Linux sandbox does not engage. macOS and Windows confine a job with backends of their own, and the job ran |
+| `test_v4_the_answer.py` | macOS | 1 | The same, in 1 line this seat wrote |
+| `test_v4_the_ladder.py` | macOS | 1 | That a pipe of 1,597 commands runs. It ended with status 128 |
+| `test_v4_at_a_limit.py` | macOS | 2 | That the bars of this page's shell are every machine's |
+
+This is the audit's fifth finding, and the server made it.
+The audit had named the server's build as the largest thing
+it could not say. Each of the 16 states a fact of 1 machine
+as a fact of all. 4 are in this seat's lines and 12 in
+Grok's.
+
+The rows are now marked as Linux's own, with the reason on
+the skip registry, and `v4-at-a-limit.md` records the
+second machine and what held on it: the form of the claim,
+and not its numbers. The guard is green on the 6 modules
+the marks touch. The build is started again on the head
+that carries them.
+
 ## What the audit changed
 
 Each is this seat's own line, and each is in the commit
@@ -459,13 +496,13 @@ owner's.
 
 1. **The server has never built this branch.** Its build
    runs for main, for a release and for a pull request, or
-   when it is started by hand. None of the 4 has happened
-   for this branch. So nothing here has run on macOS or on
-   Windows. This is the largest thing the audit cannot
-   say. With this page pushed, the audit starts the build
+   when it is started by hand. None of the 4 had happened
+   for this branch. So nothing here had run on macOS or on
+   Windows. This was the largest thing the audit could not
+   say. With this page pushed, the audit started the build
    by hand on the branch: every suite on Linux, macOS and
-   Windows, with nothing published. Its word is added to
-   this page when it has spoken. FreeBSD, the confinement
+   Windows, with nothing published. It has spoken, and its
+   word is the section above. FreeBSD, the confinement
    backends and the range of Python versions have
    workflows of their own, on a schedule for main. They
    are not started here.
@@ -476,7 +513,11 @@ owner's.
 3. **The 2 ids are set side by side late.** This is the
    cause of the fourth finding. To set them first, straight
    after the signature, changes the order of the gate's
-   refusals. It is the owner's to say.
+   refusals. It is the owner's to say. He said, the same
+   day: not as a mended line, but as a rule of the
+   constraint spec with its proof. It is closed on
+   `v4-behind-the-mac.md`. The gate binds first, C13 has
+   its place, and the model holds the order.
 4. **The hosted queue's copy of F10's search is open,** at
    the owner's word. The ladder met it again in L9.
 5. **The 8 bars are in no reader's page.** `PROTOCOL.md`

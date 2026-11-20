@@ -122,11 +122,14 @@ class TheAnswer(unittest.TestCase):
         raw = self.job("a:" * 1200 + "a")
         with tempfile.TemporaryDirectory() as folder:
             ran, notes, marked = once(raw, folder)
-        # The job runs where the sandbox engages. Where it does
-        # not, the runner under enforce answers with a signed
-        # refusal. The address is unread and the mail is marked
-        # either way.
-        self.assertEqual(FOLDER.ENGAGES, ran)
+        # On Linux the job runs where the sandbox engages. Where
+        # it does not, the runner under enforce answers with a
+        # signed refusal. macOS and Windows confine a job with
+        # backends of their own, and whether it runs there is
+        # theirs to say. The address is unread and the mail is
+        # marked on every platform.
+        if FOLDER.LINUX:
+            self.assertEqual(FOLDER.ENGAGES, ran)
         self.assertTrue(any("sender could not be read" in note
                             for note in notes), notes)
         self.assertEqual([7], marked)

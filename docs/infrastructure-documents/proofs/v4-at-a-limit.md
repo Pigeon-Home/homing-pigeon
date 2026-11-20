@@ -637,6 +637,22 @@ N characters:
 The numbers 3,330 and 26,000 are this shell's, with this
 stack. The form of the claim is not.
 
+**A second machine, 2026-11-19.** The server built this
+branch for the first time that day, and its macOS machine
+is the second the claim has met. There a pipe of 1,597
+commands ended with status 128, where this page's shell
+takes 3,330. The row that starts 28,572 processes ended
+with 128 too, before the time limit could. The likely
+cause is the count of processes that machine gives a user.
+It was not measured.
+
+128 is not in the list of clause 4. It is not 0 or 1
+either, so the result still cannot be taken for one of M's,
+and the form of the claim held on the second machine. Its
+numbers did not. The 3 tests that climb to this machine's
+bars now run on Linux and say so, in this suite and in
+`test_v4_the_ladder.py`.
+
 ## The limit, as a number
 
 N* is the first N at which a row of the atoms can reach a

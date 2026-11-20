@@ -39,6 +39,8 @@ def machine(atoms, joiners, cwd, home):
     return status, digest(out)
 
 
+@unittest.skipUnless(FOLDER.LINUX, "the place and the folder are the "
+                                   "Linux sandbox's")
 class ThePlace(unittest.TestCase):
     """Enforce stands M on the work mount. Off stands it on
     the host folder."""

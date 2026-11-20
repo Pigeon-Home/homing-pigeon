@@ -369,6 +369,36 @@ height then is the sum of what is under them.
 If that reading is wrong, the sizing above is wrong with
 it, and this seat would like to be told which part.
 
+**The picture a second time, the same day.** The owner sent
+it again with more notes on it. They point away from the
+top line and at the lower line: the count of everything
+but the log, where it goes flat. Beside it he asks for the
+protocol and the software suite to be constrained, and for
+all of it to be bound to 1 version, version 4, so that the
+runner can be proven secure.
+
+The 2 lines are in the record's own counts. The test for a
+limit by 3 counts, from `v4-the-curve.md`, on counts 15
+days apart:
+
+| | 20 October | 4 November | 19 November | Second step over the first | The limit |
+|--|----------:|-----------:|------------:|---------------------------:|----------:|
+| Everything else | 1,615,732 | 11,908,288 | 14,954,555 | 0.30 | 16.2 million |
+| The run log | 0 | 6,040,688 | 16,318,728 | 1.70 | None |
+| The whole | 1,615,732 | 17,948,976 | 31,273,283 | 0.82 | 90 million |
+
+Everything else levels off, near 16 million. The log does
+not: its second step is the longer. The whole follows the
+log. For the whole to stop at 38 million the log has to
+stop near 21.8 million. It stands at 16.3, and it grew
+10.3 in the last 15 days.
+
+So the strong line, 38 million, is not where the work is.
+The lower line is already going flat, and what holds it
+flat is the constraint spec: a suite that is bound, row by
+row, to what proves it. The first finding closed that way
+is F16, on `v4-behind-the-mac.md`.
+
 ## What this seat would do first
 
 In order, and each waits for the owner's word.
