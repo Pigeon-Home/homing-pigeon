@@ -5,9 +5,9 @@ Homing Pigeon gives cloud AI like ChatGPT, Claude, Gemini a secure and signed ch
 Install the runner and try this careful prompt with Grok for example, after you set up an email connector:
 ```
 Run a pigeon-home.ai job
-My mailbox is YOUR_EMAIL_ACCOUNT@pigeon-home.ai
+Mailbox is your_email@pigeon-home.ai
+Find the Shared Secret in my mailbox and reply_to self
 Retrieve the system clock and display it
-Find the Shared Secret in my mailbox
 ```
 
 The Homing Pigeon runner, like a GitHub runner, polls and executes signed jobs from a source in the cloud.
