@@ -4,6 +4,7 @@ Extracted from runner.py.
 """
 from datetime import datetime, timezone, timedelta
 import email
+import email.header
 import hashlib
 import json
 import os
@@ -34,6 +35,38 @@ import email
 # Neither bar is a new row in the constraint inventory.
 ADDRESS_COLON_BAR = 64
 COMMENT_DEPTH_BAR = 8
+
+
+# Finding F11, closing 1. A mail library writes a subject word
+# too long for 1 header line as encoded words, and a job whose
+# id is 78 to 128 characters was refused for the mismatch
+# between the subject as written and the signed body. The gate
+# now decodes a subject's encoded words before it reads the id
+# off it. The decoder's time grows with the square of what it
+# is handed (findings F11 and F13), so a subject past this many
+# bytes is never handed to it and is read as written: every
+# honest spelling of a job subject fits well inside the bound
+# (an id of 128 spelled 1 character to an encoded word is 1,811
+# bytes of subject). The panic step in front of this one keeps
+# reading the subject as written, under its own bound.
+SUBJECT_DECODE_MAX = 2048
+
+
+def _decoded_subject(subject: str) -> str:
+    """The subject with its encoded words decoded, as the sender
+    meant it. A subject with no encoded words, one past
+    SUBJECT_DECODE_MAX bytes, or one that does not decode is
+    taken as it stands."""
+    if "=?" not in subject:
+        return subject
+    if len(subject.encode("utf-8", "surrogatepass")) \
+            > SUBJECT_DECODE_MAX:
+        return subject
+    try:
+        return str(email.header.make_header(
+            email.header.decode_header(subject)))
+    except Exception:
+        return subject
 
 
 def _sender_is_deep(header):
@@ -115,6 +148,11 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
             and "[HOMING-PIGEON]" in subject.upper():
         reject(f"mail exceeds max_job_bytes ({len(raw)} > {max_job_bytes})")
         return
+
+    # Finding F11, closing 1: from here the subject is read with
+    # its encoded words decoded, bounded by SUBJECT_DECODE_MAX.
+    # The panic step above read it as written, as it always has.
+    subject = _decoded_subject(subject)
 
     dispatched = _runner()._early_dispatch(
         cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir, seen)

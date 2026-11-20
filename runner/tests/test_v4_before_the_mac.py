@@ -37,6 +37,7 @@ if ROOT not in sys.path:
 
 from runner import runner as RUNNER  # noqa: E402
 from runner.guard import panic as PANIC  # noqa: E402
+from runner.ops import mail as MAIL  # noqa: E402
 from runner.tests import test_proof_conformance as DOOR  # noqa: E402
 from runner.tests import test_v4_bindings as BIND  # noqa: E402
 from runner.tests import test_v4_models as MODELS  # noqa: E402
@@ -581,7 +582,14 @@ class ThePanicStepInFrontOfTheMac(unittest.TestCase):
         # 400 times: 8.55 seconds where this run takes 0.1.
         self.assertLessEqual(spent[1000000], 20 * spent[50000] + 0.5)
 
-    def test_f13_the_decoder_has_1_caller_in_the_runner(self):
+    def test_f13_the_decoder_s_callers_are_each_bounded(self):
+        # N3 as it was measured: the panic step was the decoder's
+        # only caller in the runner. Finding F11's first closing,
+        # decided by the owner after that measure, adds a second:
+        # the gate decodes a job's subject before it reads the id
+        # off it. Each caller is bounded at the same 2,048, the
+        # panic step by SUBJECT_MAX and the gate by
+        # SUBJECT_DECODE_MAX, and no third caller stands.
         callers = []
         top = os.path.join(ROOT, "runner")
         for base, _dirs, names in os.walk(top):
@@ -594,8 +602,11 @@ class ThePanicStepInFrontOfTheMac(unittest.TestCase):
                 with open(path, encoding="utf-8") as handle:
                     if "decode_header" in handle.read():
                         callers.append(os.path.relpath(path, ROOT))
-        self.assertEqual([os.path.join("runner", "guard", "panic.py")],
-                         callers)
+        self.assertEqual([os.path.join("runner", "guard", "panic.py"),
+                          os.path.join("runner", "ops", "mail.py")],
+                         sorted(callers))
+        self.assertEqual(2048, PANIC.SUBJECT_MAX)
+        self.assertEqual(PANIC.SUBJECT_MAX, MAIL.SUBJECT_DECODE_MAX)
 
     def test_the_panic_word_fires_in_front_of_the_cap_and_the_signature(self):
         # The 1 effect a message may have with no key. It is read

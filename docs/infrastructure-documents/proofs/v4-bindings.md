@@ -502,8 +502,9 @@ right: the search has 3 homes, and 2 are closed.
 
 ## Finding F11: a mail library's subject stops a job with a long id
 
-**Found with the corpus at the gate, in 2 forms of mail. Open:
-the way to close it is the owner's to choose.**
+**Found with the corpus at the gate, in 2 forms of mail.
+Closed: the owner chose both ways (the desk's Q204), and both
+stand below.**
 
 The wire corpus holds a job whose id is 128 characters long,
 the longest the protocol allows. Written out as plain octets
@@ -577,6 +578,44 @@ What each way costs, measured here on 2026-11-19 on Python
   `send_mail` in `runner/wire/mailbox.py`, would take that
   setting.
 
+### Closing F11: both ways, as the owner decided
+
+The owner decided both closings (the desk's Q204), and both
+were landed together, tests first, by Muse's seat on
+2026-11-19.
+
+- **The gate decodes, bounded.** `handle_mail` in
+  `runner/ops/mail.py` decodes a subject's encoded words
+  after the panic step and the size cap, before the
+  dispatcher reads the id off it. A subject past 2,048 bytes
+  is never handed to the decoder and is read as written, so
+  the decoder a stranger can reach is bounded exactly as
+  F13's is. The panic step in front of it still reads the
+  subject as written, under its own bound, unchanged.
+- **The sender writes plain.** `send_mail` in
+  `runner/wire/mailbox.py` builds its message with its lines
+  set to 998, so a result for a job with a long id leaves
+  under 1 plain subject line, the whole id on it, and the
+  runner's own mail never needs the decoder.
+- **The tests.** `FindingF11Closed` in
+  `runner/tests/test_v4_bindings.py` holds both ways: the
+  library's mail runs at every length of id from 1 to 128,
+  the longest honest spelling of a 128 character id runs, a
+  subject padded past 2,048 bytes is never handed to the
+  decoder and runs nothing, and the sender's job and result
+  subjects at 78 and 128 characters leave on 1 plain line.
+  On the code as it was, 3 of the 4 fail; the bound test
+  holds both ways.
+- **What moved with the world.** F13's third supposition
+  counted the decoder's callers and found 1, the panic
+  step's. This closing adds the second its own analysis
+  prescribed, at the same bound. The count is now 2, each
+  bounded at 2,048, and
+  `test_f13_the_decoder_s_callers_are_each_bounded` in
+  `runner/tests/test_v4_before_the_mac.py` pins both. The
+  as-assembled core measure was re-recorded in the same
+  landing, as a core file grew.
+
 ## What this pass does not show
 
 - A fuzz tie is reach, not proof. The proofs are the models
@@ -612,7 +651,7 @@ What each way costs, measured here on 2026-11-19 on Python
 - The result cap. C3 is the 1 size cap whose default, at
   5,242,880 bytes, no corpus text has been grown to. The
   fitting is held on corpus text at smaller caps.
-- Finding F11 waits for the owner's choice between its 2
-  ways.
+- Finding F11 is closed, both ways, as the owner decided
+  (the desk's Q204). Its record stands above.
 - The 3 suppositions `v4-general.md` left stand as written
   there.

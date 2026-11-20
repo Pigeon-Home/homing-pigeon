@@ -39,6 +39,8 @@ that applies it, and corpus text through the result fitting.
 """
 import ast
 import collections
+import email
+import email.header
 import json
 import os
 import re
@@ -1483,6 +1485,124 @@ class CorpusUpTheSizes(unittest.TestCase):
                 self.assertEqual(1, len(_why(out)), length)
                 self.assertIn("job_id mismatch between subject and body",
                               _why(out)[0], length)
+
+
+# ---- finding F11, closed both ways
+
+def _spelled(job_id, pad_words=0):
+    """1 job mail as octets whose subject spells the id 1 character
+    to an encoded word, the longest honest spelling of it, with
+    `pad_words` further encoded words that decode to a space each
+    standing after the id."""
+    words = " ".join("=?utf-8?q?%s?=" % ch for ch in job_id)
+    words += " =?utf-8?q?_?=" * pad_words
+    return (("Subject: [HOMING-PIGEON] job %s\r\n"
+             "From: si@example.com\r\n\r\n" % words).encode("ascii"))
+
+
+class _CaptureSmtp:
+    def __init__(self):
+        self.sent = []
+
+    def send_message(self, msg):
+        self.sent.append(msg)
+
+
+class FindingF11Closed(unittest.TestCase):
+    """Finding F11, closed the owner's 2 ways together (the desk's
+    Q204). The gate decodes a subject's encoded words before it
+    reads the id, with a 2,048 byte bound in front of the decoder;
+    and the runner's own sender writes its subjects on 1 plain
+    line, its lines set to 998, so its own mail never needs the
+    decoder. On the code as it was, the library's mail at an id of
+    78 to 128 characters is refused and the sender's own subject
+    is rewritten; both are pinned here first."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.base = None
+        for _entry_id, payload, _subject in fresh_jobs():
+            if _signed(payload) is not None:
+                cls.base = payload
+                break
+        if cls.base is None:
+            raise AssertionError("no signable corpus job")
+
+    def _named(self, length):
+        payload = dict(self.base)
+        payload["job_id"] = "d" * length
+        payload["issued_at"] = _stamp()
+        return payload["job_id"], _signed(payload)
+
+    def test_the_library_s_mail_runs_at_every_length_of_id(self):
+        # The same arrivals as the finding: as the library writes
+        # them, a job now runs at every length of id, and a second
+        # delivery of it runs nothing.
+        for length in ID_LENGTHS:
+            job_id, text = self._named(length)
+            raw = _as_mail(job_id, text)
+            with tempfile.TemporaryDirectory() as folder:
+                out, verified, _ = _climb(raw, folder)
+                self.assertEqual(1, len(out.executed), (length, _why(out)))
+                self.assertEqual(1, verified, length)
+                again, _, _ = _climb(raw, folder)
+                self.assertEqual([], again.executed, length)
+
+    def test_the_longest_honest_spelling_runs(self):
+        # An id of 128 spelled 1 character to an encoded word is
+        # 1,940 bytes of subject, inside the bound: it is decoded
+        # and the job runs.
+        job_id, text = self._named(ID_LENGTHS[-1])
+        raw = _spelled(job_id) + text.encode("utf-8")
+        self.assertLessEqual(len(raw.split(b"\r\n", 1)[0]), 2048)
+        with tempfile.TemporaryDirectory() as folder:
+            out, verified, _ = _climb(raw, folder)
+        self.assertEqual(1, len(out.executed), _why(out))
+        self.assertEqual(1, verified)
+
+    def test_a_subject_past_the_bound_is_never_handed_to_the_decoder(self):
+        # The same spelling padded past 2,048 bytes with encoded
+        # words that decode to spaces. Decoded it names the job;
+        # as written it does not, and the gate takes it as written:
+        # nothing runs, and the decoder is never given the subject.
+        job_id, text = self._named(ID_LENGTHS[-1])
+        raw = _spelled(job_id, pad_words=20) + text.encode("utf-8")
+        self.assertGreater(len(raw.split(b"\r\n", 1)[0]), 2048)
+        handed = []
+        decode_as_it_is = email.header.decode_header
+
+        def decode(value, *args, **kwargs):
+            handed.append(value)
+            return decode_as_it_is(value, *args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.object(email.header, "decode_header", decode):
+            out, _, _ = _climb(raw, folder)
+        self.assertEqual([], out.executed)
+        for value in handed:
+            self.assertLessEqual(len(str(value)), 2048)
+
+    def test_the_runner_s_own_sender_writes_a_long_subject_plain(self):
+        # Closing 2 at the sender: for a job and a result subject
+        # at the lengths the library used to rewrite, what leaves
+        # is 1 plain line holding the whole id, no encoded words.
+        from runner.wire import mailbox
+        cfg = {"mailbox_user": "runner-box@example.com"}
+        for length in (78, 128):
+            job_id = "d" * length
+            for kind in ("job", "result"):
+                smtp = _CaptureSmtp()
+                mailbox.send_mail(
+                    smtp, cfg, "[HOMING-PIGEON] %s %s" % (kind, job_id),
+                    "body")
+                self.assertEqual(1, len(smtp.sent), (kind, length))
+                raw = smtp.sent[0].as_bytes()
+                lines = [line for line in raw.split(b"\n")
+                         if line.startswith(b"Subject:")]
+                self.assertEqual(1, len(lines), (kind, length))
+                self.assertIn(job_id.encode("ascii"), lines[0],
+                              (kind, length))
+                self.assertNotIn(b"=?", lines[0], (kind, length))
 
 
 # ---- the corpus at the local door
