@@ -158,3 +158,11 @@ third option ran end to end on a clean machine.
 - The existing options stay exactly as they are. This is a future
   first option, added ahead of them, not a replacement that
   removes any of them.
+- The first slice of the signup stands in the code as of
+  2026-11-20: runner/cloud/signup.py holds the address rule,
+  the forwarding rule, the owner's approval gate and the page
+  with its one box, and runner/tests/test_cloud_signup.py
+  holds its tests. No host serves the page yet and the slice
+  provisions no account; the wiring that serves the page and
+  runs the sign in flow comes later, and the owner is
+  customer number 1 by signing up first.

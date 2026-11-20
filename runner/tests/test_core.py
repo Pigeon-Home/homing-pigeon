@@ -72,9 +72,11 @@ class CoreListTest(unittest.TestCase):
         # module (ops/identity) registered on 2026-11-15: 140
         # as assembled, 137 canonical; plus the shared trust
         # store (wire/tls) registered on 2026-11-20: 141 as
-        # assembled, 138 canonical.
-        self.assertEqual(141, core.AS_ASSEMBLED_FILES)
-        self.assertEqual(138, len(core.CORE_FILES))
+        # assembled, 138 canonical; plus the signup module
+        # (cloud/signup) registered on 2026-11-20: 142 as
+        # assembled, 139 canonical.
+        self.assertEqual(142, core.AS_ASSEMBLED_FILES)
+        self.assertEqual(139, len(core.CORE_FILES))
 
     def test_list_is_sorted_and_duplicate_free(self):
         files = list(core.CORE_FILES)
@@ -113,7 +115,7 @@ class CoreListTest(unittest.TestCase):
         # re-measure that took up the install record's CPU
         # fact; the Gemini token count above still
         # describes the 2026-11-04 assembly.
-        self.assertEqual(914727, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(917579, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -279,8 +281,8 @@ class CoreListTest(unittest.TestCase):
         # its hard drive, by 33 lines of
         # runner/ops/setup.py (the setup wizard's system
         # facts).
-        self.assertEqual(70909, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(64272, core.AS_ASSEMBLED_NONBLANK_LINES)
+        self.assertEqual(71131, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(64458, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
@@ -562,7 +564,7 @@ class CoreCliTest(unittest.TestCase):
         parts = core.measure_core_lines_by_part(ROOT)
         # 4 head lines, 1 line per part, then zip + 2 token lines.
         self.assertEqual(4 + len(parts) + 3, len(lines))
-        self.assertEqual("core files: 138", lines[0])
+        self.assertEqual("core files: 139", lines[0])
         total, nonblank = core.measure_core_lines(ROOT)
         self.assertEqual(
             "core lines: %d (%d non-blank)" % (total, nonblank), lines[1])
@@ -594,7 +596,7 @@ class CoreCliTest(unittest.TestCase):
             self.assertEqual(0, rc)
             with zipfile.ZipFile(out_zip) as zf:
                 self.assertEqual(list(core.CORE_FILES), zf.namelist())
-            self.assertIn("core files: 138", out)
+            self.assertIn("core files: 139", out)
 
     def test_cli_rejects_an_unknown_command(self):
         rc, _out, err = self._run(["frobnicate"])
@@ -633,7 +635,7 @@ class CoreScriptFallbackTest(unittest.TestCase):
             capture_output=True, text=True, timeout=120)
         self.assertEqual(0, proc.returncode, proc.stderr)
         self.assertTrue(
-            proc.stdout.startswith("core files: 138\n"), proc.stdout)
+            proc.stdout.startswith("core files: 139\n"), proc.stdout)
 
 
 if __name__ == "__main__":
