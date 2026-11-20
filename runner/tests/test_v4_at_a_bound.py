@@ -201,7 +201,22 @@ def step_rows():
 
 ENV = {"HOME": "/home/pigeon-proof", "PATH": "/usr/bin:/bin",
        "LC_ALL": "C"}
-BASH = ["bash", "--noprofile", "--norc"]
+
+
+def found(name):
+    """`name` by its full path, from the folders of this
+    process's own PATH; the bare name where none holds it."""
+    for folder in os.environ.get("PATH", "").split(os.pathsep):
+        path = os.path.join(folder, name)
+        if folder and os.path.isfile(path) and os.access(path, os.X_OK):
+            return path
+    return name
+
+
+# bash by its full path, found before the PATH is narrowed to
+# the 2 system folders: FreeBSD keeps bash outside them, and
+# the suite's first run there could not start it.
+BASH = [found("bash"), "--noprofile", "--norc"]
 
 
 def in_the_shell(scripts, cwd):
