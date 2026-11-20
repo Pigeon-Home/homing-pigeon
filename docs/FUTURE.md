@@ -1,6 +1,4 @@
 - Anna AI OS Founding Builder Program 2026 research (https://luma.com/kmc1ddf9) [funding secured] Registration confirmed!
-- Ubunutu Snap Store (Linux)
-- Microsoft Store (Windows)
-- Apple Store (macOS)
+- Ubunutu Snap Store (Linux) - Windows and macOS confinement - Microsoft Store (Windows) - Apple Store (macOS)
 - Consume and analyze app store "requirements" & analyze/understand legal requirements for public companies etc & notify SI vendors (and info@abdulforsenate.com)
 - define runner HOST boundry for Oracle to dispatch patrols: repair, hdd, audit, security_patrols (oracle key distribution)
