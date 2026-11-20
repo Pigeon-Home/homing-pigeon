@@ -26,6 +26,13 @@ owner chose, and the agreement test above is what holds it
 in sync. The older prompt lines that no version of the
 current prompt carries ("make one up for me", "My mailbox
 is") stay forbidden.
+
+The owner rewrote the prompt again on 20-Nov-2026: the
+Shared Secret line came out of the prompt entirely, because
+the secret agents notes in AGENTS.md now carry the shared
+secret and the reply_to self default themselves, so the
+prompt no longer has to say it. The block stands at 3
+lines, and the block pin below holds exactly those.
 """
 
 import os
@@ -62,9 +69,14 @@ class ReadmePromptQuoteTest(unittest.TestCase):
 
     def test_readme_prompt_block_stands(self):
         lines = readme_prompt_lines()
-        self.assertEqual("Run a pigeon-home.ai job", lines[0])
-        self.assertIn("Find the Shared Secret in my mailbox and reply_to self", lines)
-        self.assertEqual("Retrieve the system clock and display it", lines[-1])
+        self.assertEqual(
+            [
+                "Run a pigeon-home.ai job",
+                "Runner mailbox is your@email.com",
+                "Retrieve the system clock and display it",
+            ],
+            lines,
+        )
 
     def test_agents_quotes_the_current_mailbox_line(self):
         agents = read("AGENTS.md")
