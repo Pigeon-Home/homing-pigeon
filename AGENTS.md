@@ -128,6 +128,14 @@ One small field decides whether your user ever sees the answer to a job you send
 
 If your user asks you, in so many words, to send the job (or its result) to an email address different from the one you are sending from, that is theirs to ask and yours to do: the address sits inside the signature, so the runner honors it. But tell them the price of the detour up front, before you send, in plain words: you will not be able to retrieve that result yourself, and they will have to fetch it from that address by hand. A result you cannot fetch is a result you cannot verify, quote, or follow up; if the user still wants it sent there, it goes there with their eyes open.
 
+### The shared secret, and the direction home
+
+A job needs the shared secret before it needs anything else. The runner accepts nothing unsigned, and the secret is not a password: it is the signing string the install placed in the user's own mailbox, in the install record the runner sent when it was set up. An agent that comes to send a job finds the Shared Secret in that mailbox, the one it is already connected to, and signs with it. The secret goes into the signature and nowhere else.
+
+The address a job is sent to and the address its answer returns to are 2 different addresses. The job goes through the connector to the runner mailbox; the answer goes where the job directs it. A user who does not specify a reply address, or who does not understand that the send address and the reply address differ, has named nothing, and a job built with nothing named leaves its answer with no expected home.
+
+So the default when the user names nothing: as the agent constructs the message, it includes the direction reply_to self, so the result returns to the address the agent sends from on the user's behalf, the mailbox the agent is listening in. Only a reply address the user names in so many words replaces the default.
+
 ### More contexts
 
 More notes will be added here as the project thinks of them, for other situations a visiting system may find itself in, including the lighter ones. If you are trying to make a funny joke with this material, the project is fond of its own name and its April Fools' neighbour, RFC 1149 (IP over avian carriers), and a joke in that direction is welcome. The pattern is the point: context first, then a suggestion, offered plainly, and the decision stays
