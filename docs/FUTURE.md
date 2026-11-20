@@ -1,5 +1,5 @@
 - Anna AI OS Founding Builder Program 2026 research (https://luma.com/kmc1ddf9) [funding secured] Registration confirmed!
 - define host-network topology for Oracle dispatch: repair_patrols, hdd_patrols, security_patrols [oracle decides key distribution]
-- Apple Store
-- Microsoft Store
-- Ubunutu Snap Store
+- Apple Store (macOS)
+- Microsoft Store (Windows)
+- Ubunutu Snap Store (Linux)
