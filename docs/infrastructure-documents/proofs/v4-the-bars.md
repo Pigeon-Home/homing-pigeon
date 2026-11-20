@@ -662,6 +662,54 @@ cannot press.
 itself, and then the runner holds none of it. It is filed, and
 not closed here.
 
+## Finding F20, stated before its measure: the watch is a bar on processes
+
+Written on 2026-11-20, before anything was measured.
+
+**What was seen.** On the server's Linux leg, 1 test of the
+place suite came back red in 1 of the last 3 builds. A row
+of the ladder ran under `enforce`. Its output was whole and
+right, and its exit was -9 where the machine M gives 0.
+
+**What the code says.** This is read, and not measured. The
+runner's watch samples the processes of a job's tree when
+the job starts, and once each second after. More than 64 at
+a sample is a process storm. In the watch's default mode
+the tree is killed on sight. The 2 numbers are settings:
+`remediation_storm_ceiling` and `remediation_sample_sec`.
+
+**What I suppose.**
+
+- **P1.** 4 of that test's 40 rows are 1 pipeline of 1,597
+  commands. Such a row holds more than 64 processes at
+  once for part of its run.
+- **P2.** The row is killed only when a sample falls in
+  that part. So the same row passes on 1 run and is killed
+  on another. On this machine I expect it killed in fewer
+  than half of its runs.
+- **P3.** A row that is killed has exit -9, and its result
+  names a process storm.
+- **P4.** A job that holds 70 processes for 3 seconds is
+  killed on every run. A job that holds 60 is killed on
+  none.
+- **P5.** No script of at most 100 bytes that is 1 pipeline
+  of the machine M's commands holds more than 64
+  processes. A command and its joiner are 2 bytes at
+  least, so 100 bytes are at most 50 commands.
+- **P6.** The table of the bars above is wrong in 1 row. It
+  says no bar on processes on Linux, macOS and Windows.
+  The watch is the same on all 4 systems.
+
+**What kind of bar it is.** If P1 to P4 hold, it is a bar
+that is sampled. A storm shorter than the time between 2
+samples can pass. And a job over the bar is not refused at
+the door: it is killed, late. This page will say so.
+
+**What I will do after the measure.** Correct the table.
+Hold the bar in this page's suite. And say in the forum
+what the place suite's row should ask, because that suite
+is not mine.
+
 ## Candidates
 
 These are candidates. They have no number in the
