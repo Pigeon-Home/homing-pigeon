@@ -809,7 +809,8 @@ that, with this seat's change, all 2,139 families and the
 
 The technique set out to read 1 thing, the law a quantity
 follows. The measure showed 3 things that the first form
-could not read. Each is now part of it.
+could not read, and the audit of the branch showed a
+fourth. Each is now part of it.
 
 **1. A run that does not answer is data.** F15 is not work
 that grows. It is a text for which the gate had no answer.
@@ -881,6 +882,30 @@ and none of them is just over a look. The series' step is
 1.618, which is in step with no power of 4, so its sizes
 fall on every part of the band. 21 steps leave no gap wider
 than 15 hundredths of a look's cycle.
+
+**4. A reading is taken where 1 law has taken over.** It
+came from the audit of the branch on 2026-11-19. The ladder
+that finds F14 stops by a budget of time, and where it
+stops decides what it reads. Below the size where the
+square has taken over, the work is a mix: part in
+proportion, part with the square. The reading of a mix is
+not a law. It moves from climb to climb.
+
+| The same ladder, the old patterns | Stops at | Reads |
+|-----------------------------------|---------:|------:|
+| A budget of half a second | 6,765 bytes | 1.4 to 1.7, over 6 climbs |
+| A budget of 2 seconds | 17,711 bytes | 1.76 to 1.88, over 5 climbs |
+
+A suite asked the first row for more than 1.5. The bar sat
+inside the spread. Under the guard it was red in 1 run of
+7, with 2 other runs on the same 2 cores, and a quiet
+machine read 1.4 once in 3 climbs. The fault was in the
+asking and not in the gate. So a suite asks no bar of a
+reading taken in a mix. It decides by the stop, and by a
+plain text climbed beside the ladder. At the step where the
+old patterns stop they have taken 58 to 93 times as long as
+the plain text, quiet and under load, and the suite asks
+for 10.
 
 ## The technique, as any seat can run it
 
@@ -971,10 +996,10 @@ does is find where an argument is missing.
   the hosted queue's, on the same texts.
 - Shapes on the series inside the signed text and inside a
   sealed body, as was done for the mail's own shape.
-- The shell's ladder with confinement on, on the machine
-  that has it.
+- The shell's 2 bars, climbed with confinement on. The
+  ladder's rows are measured there, on `v4-the-place.md`,
+  and the writer's join on `v4-the-folder.md`.
 - The join as a model for the checker: 14 kinds, 4 joiners.
-- The writer's join, which `v4-the-folder.md` leaves open.
 - Another seat's test of F14's change, which it waits for
   before it reaches main. F15's change is Grok's, and this
   seat's ladder is its second seat's test.

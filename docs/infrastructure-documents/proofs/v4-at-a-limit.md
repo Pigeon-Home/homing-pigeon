@@ -89,11 +89,11 @@ the standard for the shell language (POSIX, Issue 8).
   command, with the `pipefail` option off as it is unless a
   script sets it, and the output of every command but the
   last goes into the next command.
-- 2.9.3.2: lists separated by semicolons run in order, each
-  to its end before the next begins.
-- 2.9.3.3 and 2.9.3.4: after `&&` the next pipeline runs
-  when the status is 0, and after `||` when it is not. The 2
-  have equal rank and are read from the left.
+- 2.9.3, its second part: lists separated by semicolons run
+  in order, each to its end before the next begins.
+- 2.9.3, its third and fourth parts: after `&&` the next
+  pipeline runs when the status is 0, and after `||` when it
+  is not. The 2 have equal rank and are read from the left.
 
 bash is not proven to follow them. It is run against them.
 
@@ -672,7 +672,7 @@ r × (N + 2) is at most K.
 |---|---|---|---|---|---|---|
 | Under every bar | yes | yes, with a path of at most 999 characters | yes, with a path of at most 99 characters | no: the grammar and the output cap | no: the stack too | no: the time limit too |
 | The door | every length run | every length run | every length run | the edge run | the edge run | the edge run |
-| The operations | every step run | 20 rows at each length from 50 | 1 row at each length from 501, and 9 kinds of row | every step at the row's end, and 9 kinds of row | 9 kinds of row | 9 kinds of row |
+| The operations | every step run | 20 rows at each length from 50 | 1 row at each length from 501, and 9 shapes of row | every step at the row's end, and 9 shapes of row | 9 shapes of row | 9 shapes of row |
 | The answer | every step, through the runner | 100 rows | 20 rows, and 1 large row | 1 large row | 1 large row | 1 large row |
 | Corpus scripts of at most this size | 452 | 452 | 453 | 453 | 453 | 453 |
 

@@ -407,6 +407,13 @@ A finding is most useful when it points at the file and the line
   5,000, drawn from the 22 atoms. No new atom and no new
   constraint.
   `runner/tests/test_v4_the_place.py` holds it.
+- `v4-the-motor.md`: the branch's work named as 1 motion.
+  The join is what carries a claim from the smallest pieces
+  to a tree of any size: the kinds of row were counted,
+  there are 14, and they are closed. The page lists each
+  turn made on this branch, in the order it was made, and
+  what has not turned. No new atom and no new constraint.
+  `runner/tests/test_v4_the_ladder.py` holds its sentences.
 - `runner/tests/test_v4_binding.py` — the unit tests pinning
   the v4 harvest's values (C28 to C31, and C3, C4, C6) against
   the code and against `v4-properties.md`.

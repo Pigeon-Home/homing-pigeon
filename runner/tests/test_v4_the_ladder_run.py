@@ -33,6 +33,7 @@ The whole measure is on the page.
 import collections
 import contextlib
 import copy
+import email
 import io
 import itertools
 import os
@@ -1014,10 +1015,24 @@ class TheGateOnTheLadder(unittest.TestCase):
         self.assertLess(was[-1]["step"], 24)
         self.assertLess(was[-1]["size"], 100000)
         self.assertTrue(was[-1]["stopped"])
-        self.assertGreater(reading(was), 1.5)
         self.assertEqual((24, ""), (now[-1]["step"], now[-1]["stopped"]))
         self.assertEqual((24, ""), (plain[-1]["step"], plain[-1]["stopped"]))
         self.assertLess(reading(now), 1.35)
+        # With a budget of half a second the old patterns stop
+        # at 6,765 bytes, where their own work, which grows
+        # with the square, is still mixed with work in
+        # proportion. The reading of a mix is not a law: it
+        # ran from 1.4 to 1.7 from climb to climb. So no fixed
+        # bar is asked of it, only that it stands above the
+        # reading of the patterns that stand now. The decision
+        # is by a plain script climbed beside the ladder: at
+        # the step where the old patterns stop they have taken
+        # more than 10 times as long. Measured: 58 to 93
+        # times, quiet and under load.
+        beside = next(row for row in plain
+                      if row["step"] == was[-1]["step"])
+        self.assertGreater(was[-1]["inside"], 10 * beside["inside"])
+        self.assertGreater(reading(was), reading(now))
 
     def test_in_front_of_the_signature_the_work_has_a_law(self):
         # A message that fails at the signature, with a script
@@ -1087,6 +1102,33 @@ class TheGateHasAnAnswerForEveryMail(unittest.TestCase):
             self.assertIn("rejecting seq 3: bad signature: bad signature",
                           out.notes)
             self.assertIn(PRE.EVENTS, kept)
+
+    def test_a_sender_the_library_returns_as_an_object_is_decided(self):
+        # A header with a byte past 127 comes back from the mail
+        # library as an object and not as a text. The gate makes
+        # it a text before it counts its colons and comments, so
+        # each of these is decided: the job runs, and the mail is
+        # marked once.
+        head = ("Subject: [HOMING-PIGEON] job %s\r\n"
+                % self.job_id).encode("utf-8")
+        text = ("MIME-Version: 1.0\r\n"
+                "Content-Type: text/plain; charset=utf-8\r\n"
+                "Content-Transfer-Encoding: 8bit\r\n\r\n"
+                + self.signed).encode("utf-8")
+        for sender, shown in (
+                (b"Jos\xe9 <si@example.com>", "si@example.com"),
+                (b":" * 100 + b"\xe9 <si@example.com>",
+                 "(sender could not be read)"),
+                (b"(" * 20 + b"\xe9" + b")" * 20 + b" <si@example.com>",
+                 "(sender could not be read)"),
+                (b"\xff\xfe\xfd", "")):
+            raw = head + b"From: " + sender + b"\r\n" + text
+            self.assertNotIsInstance(
+                email.message_from_bytes(raw)["From"], str, sender)
+            out, _kept = self.arrive(raw)
+            self.assertEqual((1, 1), (len(out.executed), out.marks), sender)
+            self.assertIn("submitted by %s" % shown, out.notes[0])
+            self.assertLess(len(out.notes[0]), 400)
 
     def test_a_mail_nested_too_deep_to_read_is_refused_and_marked(self):
         for count in (1200, 20000):
@@ -1178,6 +1220,9 @@ class TheFuzzersReadersOnTheLadder(unittest.TestCase):
 
     def test_4_readers_that_bar_a_long_text_decide_at_every_step(self):
         from runner.tools import de_dust_corpus as dust
+        # The driver keeps 1 temp folder for the process. A test
+        # that asks its readers removes the folder when it ends.
+        self.addCleanup(dust._remove_own_tmp)
 
         def climb_all():
             climbed = []

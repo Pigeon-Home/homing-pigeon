@@ -293,7 +293,7 @@ C makes the work finite.
 A first sizing, set out so it can be attacked.
 
 **What a closed measure costs.** The version 4 proof so far
-is 15 pages and 14 suites, about 200,000 tokens. The 4
+is 16 pages and 16 suites, about 200,000 tokens. The 4
 pages that each carry a claim with its suite:
 
 | Page and its suite | Tokens |
