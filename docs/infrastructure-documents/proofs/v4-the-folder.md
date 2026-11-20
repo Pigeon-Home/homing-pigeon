@@ -6,6 +6,8 @@ folder, and those are what bring confinement into the proof.
 This page adds one such atom, and it does not add it to the
 22. The grammar of the rung is unchanged. No new constraint.
 
+One turn of the motor, `v4-the-motor.md`.
+
 ## The atom
 
 `printf x > kept`

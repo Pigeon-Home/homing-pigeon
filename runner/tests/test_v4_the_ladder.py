@@ -427,5 +427,39 @@ class TheShell(unittest.TestCase):
             self.assertIn(stated, page, stated)
 
 
+MOTOR = os.path.join(
+    ROOT, "docs", "infrastructure-documents", "proofs",
+    "v4-the-motor.md")
+TURN_PAGES = (
+    "v4-the-join.md", "v4-the-grammar.md",
+    "v4-the-folder.md", "v4-the-place.md")
+
+
+class TheMotor(unittest.TestCase):
+    """The motor page names the goal and each turn."""
+
+    def test_the_page_names_the_goal_and_every_turn(self):
+        with open(MOTOR, encoding="utf-8") as handle:
+            page = " ".join(handle.read().split())
+        for stated in (
+                "from 30 million to 38 million",
+                "runner/ops/version4.py",
+                "The goal is not a number of tokens to add.",
+                "30,191,271",
+                "There are 14, and they are closed.",
+                "The shell was not asked inside the sandbox.",
+                "v4-the-join.md",
+                "v4-the-grammar.md",
+                "v4-the-folder.md",
+                "v4-the-place.md"):
+            self.assertIn(stated, page, stated)
+        line = "One turn of the motor, `v4-the-motor.md`."
+        folder = os.path.dirname(MOTOR)
+        for name in TURN_PAGES:
+            with open(os.path.join(folder, name), encoding="utf-8") as handle:
+                text = " ".join(handle.read().split())
+            self.assertIn(line, text, name)
+
+
 if __name__ == "__main__":
     unittest.main()

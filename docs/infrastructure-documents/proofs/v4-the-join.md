@@ -5,6 +5,8 @@ a bound starts with a script already in hand, and gives that
 script to a machine M. The two meet in one sentence. This
 page is that sentence. It adds no constraint.
 
+One turn of the motor, `v4-the-motor.md`.
+
 ## The sentence
 
 Take a bound N. N is `max_script_bytes`, the bound the owner
