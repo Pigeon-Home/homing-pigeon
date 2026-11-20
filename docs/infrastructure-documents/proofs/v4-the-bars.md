@@ -216,6 +216,80 @@ writes, on every system, whatever the job writes. It is
 candidate 2 below. It is not closed here: this page
 changes no running code.
 
+## Closing F17: the rule, the model, and what is expected
+
+This section was written and pushed before the code was
+changed.
+
+**The rule.** The runner holds at most a fixed number of
+bytes of each stream of a job, whatever the job writes. And
+what a result carries is what it carried before.
+
+**The bar.** For each stream: 4 bytes for each character of
+the output cap, and 4 more. A character is at most 4 bytes,
+so the first characters up to the cap lie inside the bar,
+whatever the bytes are, and the 4 more settle whether the
+stream goes on past the cap. Where the runner keeps a log,
+its record of a job's output is as large as the log may be,
+so the bar is the log's size where that is the larger. It
+is no new setting. It follows the 2 settings an owner
+already has.
+
+**How it is kept.** The reader reads each stream to its
+end, as before. So no job waits on a pipe the runner has
+left. Past the bar the reader counts what it reads and lets
+it go.
+
+**The model.** `held.tla` is the reader of 1 stream: a job
+that writes, a pipe, a reader, and the result. It has a
+seam, as `gate.tla` has: with the seam turned, the reader
+is the reader as it was. A twin written apart from the
+checker counted the model's world first: 295 distinct
+states among 665 generated, to a depth of 19. TLC 2.19 then
+found the same counts, with the bar and as it was.
+
+| Configuration | The reader | The checker's word |
+|---------------|------------|--------------------|
+| `heldbar.cfg` | with the bar | 7 invariants hold on all 295 states |
+| `heldasitwas.cfg` | as it was | the 6 that are not the bar hold |
+| `heldwitnessasitwas.cfg` | as it was, asked for the bar | broken: a job writes 10 and all 10 are held, past a bar of 9 |
+| `heldwitnessshortbar.cfg` | a bar of 4 under a cap of 6 | broken: a job writes 5 and its result carries 4 |
+
+The reader as it was breaks the bar on 165 of its 295
+states, and breaks nothing else. So the bar is the 1 thing
+the change adds. The second witness is why the bar may not
+stand under the cap.
+
+**What is expected of the code.**
+
+- **H1. The same result for every job.** On outputs around
+  the cap, of plain text, of characters of 2, 3 and 4
+  bytes, and of bytes that are not text: the same first
+  characters, the same mark of a cut stream, the same exit
+  code. I expect no difference on any.
+- **H2. The ladder turns flat.** At its top step,
+  63,245,986 bytes, the runner held 185,632 kilobytes above
+  its base. I expect under 4,000, at every step.
+- **H3. The time after the job turns flat.** It was 0.44
+  seconds at the top step. I expect under 0.1.
+- **H4. A job that its time limit ends** comes back as
+  before: marked as timed out, with its first characters
+  up to the cap. And the runner stays under the bar while
+  it writes.
+- **H5. With the log on at its default size,** the bar is
+  33,816,576 bytes a stream, and the log's record of a
+  stream under the bar is what it was.
+- **H6. A stream over the bar** is in the log as what was
+  held, less its last 65,536 characters, and the record
+  says how many bytes the job wrote. The last characters
+  are left out because the bar may cut a secret in 2, and
+  the half that is held would not be known for a secret.
+- **H7. The other 3 systems.** On macOS and FreeBSD the
+  job's process is wrapped, and the wrapper lends it to the
+  same reader. The Windows backend reads with a pump of its
+  own, which gets a bar of its own. None of the 3 runs on
+  this seat's machine. The server's legs are their measure.
+
 ## Candidates
 
 These are candidates. They have no number in the

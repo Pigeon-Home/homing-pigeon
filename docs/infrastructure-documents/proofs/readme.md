@@ -389,6 +389,9 @@ A finding is most useful when it points at the file and the line
   it without end and its bar on each system. Finding F17
   is on it: the runner holds all that a job writes. No new
   constraint. `runner/tests/test_v4_the_bars.py` holds it.
+  `held.tla` is the model of the rule that closes F17, the
+  reader of a job's stream with its bar, and
+  `runner/tests/test_v4_the_held_output.py` holds that.
 - `v4-the-join.md`: the sentence between the two proofs. A
   message that fails C5 never reaches the machine M, and a
   message that passes C5 reaches M only with a script of at
