@@ -462,6 +462,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_v4_general.py",
     "runner/tests/test_v4_models.py",
     "runner/tests/test_v4_the_answer.py",
+    "runner/tests/test_v4_the_curve.py",
     "runner/tests/test_v4_the_folder.py",
     "runner/tests/test_v4_the_grammar.py",
     "runner/tests/test_v4_the_join.py",

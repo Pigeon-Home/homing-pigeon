@@ -368,6 +368,15 @@ A finding is most useful when it points at the file and the line
   climbed in 12 places to 2,178,309 bytes, finding F15 was
   met there, and F14 was found again with nobody pointing
   at it. `runner/tests/test_v4_the_ladder_run.py` holds it.
+- `v4-the-curve.md` proves that the count of security
+  tokens has an upper limit under 1 rule: each day the
+  count may grow by at most a fixed share of what is left
+  to 38 million. Something is then always left, the count
+  settles, and with the allowance used it settles at 38
+  million. It is Newton's law of cooling. The page sets the
+  counts beside the proof: the count of tokens does not
+  bend yet, and what the fuzz campaign finds does.
+  `runner/tests/test_v4_the_curve.py` holds it.
 - `v4-the-join.md`: the sentence between the two proofs. A
   message that fails C5 never reaches the machine M, and a
   message that passes C5 reaches M only with a script of at
