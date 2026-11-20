@@ -24,7 +24,7 @@
   "upstream": {
     "repo": "https://github.com/osquery/osquery",
     "ref": "master",
-    "pin": "0e63489ea74e24527a82c99235296115c57bb6c4",
+    "pin": "b3677d269d6db82a64517ebb3234d1d0ff847ce7",
     "paths": [
       "specs/processes.table",
       "specs/users.table",
