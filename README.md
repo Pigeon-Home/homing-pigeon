@@ -6,7 +6,6 @@ Install the runner and try this careful prompt with Grok for example, after you 
 ```
 Run a pigeon-home.ai job
 Runner mailbox is your@email.com
-Find the Shared Secret in my mailbox and reply_to self
 Retrieve the system clock and display it
 ```
 
