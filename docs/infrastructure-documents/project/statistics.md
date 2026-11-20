@@ -1,7 +1,7 @@
 # The project's statistics: the 30-million-token measure
 
 Dated 2026-11-20. Measured on main at commit
-989b7f14263ebb05ab6eeb3e34c63cb2e0f00e4b, the head this
+a27f06eb5afb2d662382112ec1b7b5a98c8e5879, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
@@ -10,7 +10,7 @@ The recorded line, in the display form settled for publication:
 
 ## What stands behind each figure
 
-- Tokens: <!--hp-fig:tokens_exact-->30,299,201<!--/hp-fig-->, counted over the whole tree by the
+- Tokens: <!--hp-fig:tokens_exact-->30,299,211<!--/hp-fig-->, counted over the whole tree by the
   project's own estimator (runner/ops/version4.py). It is the
   measure the version number's 3rd component carries, in whole
   millions: <!--hp-fig:tokens_millions-->30<!--/hp-fig-->. The component holds its figure when a count
@@ -70,9 +70,9 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-20",
-  "commit": "989b7f14263ebb05ab6eeb3e34c63cb2e0f00e4b",
+  "commit": "a27f06eb5afb2d662382112ec1b7b5a98c8e5879",
   "counter": "runner/ops/version4.py",
-  "tokens": 30299201,
+  "tokens": 30299211,
   "lines_tracked": 1550724,
   "commits": 6279,
   "display_commits": 6000,
