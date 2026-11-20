@@ -173,7 +173,12 @@ class TheFolder(unittest.TestCase):
 
     def test_each_atom_after_the_writer_leaves_the_file(self):
         if not ENGAGES:
-            self.skipTest("the sandbox does not engage here")
+            result, _notes, files = run(
+                self.payload, self.job_id,
+                "printf x > kept; true", "enforce")
+            refused_under_enforce(self, result)
+            self.assertNotIn("kept", files)
+            return
         table = BOUND.denotation(
             SB.WORK_MOUNT, os.environ.get("HOME", ""))
         for atom in BOUND.ATOMS:

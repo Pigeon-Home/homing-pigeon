@@ -170,7 +170,11 @@ class ThePlace(unittest.TestCase):
 
     def test_the_trace_inside_the_sandbox_names_the_commands(self):
         if not FOLDER.ENGAGES:
-            self.skipTest("the sandbox does not engage here")
+            result, _notes, files = FOLDER.run(
+                self.payload, self.job_id, "true", "enforce")
+            FOLDER.refused_under_enforce(self, result)
+            self.assertNotIn("trace", files)
+            return
         from collections import Counter
         asked = (
             ("false", "echo a", BOUND.AND, True),
