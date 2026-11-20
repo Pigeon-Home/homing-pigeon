@@ -64,7 +64,7 @@ class ThePlace(unittest.TestCase):
         if not FOLDER.ENGAGES:
             result, notes, _files = FOLDER.run(
                 self.payload, self.job_id, "pwd", "enforce")
-            self.assertIsNone(result)
+            FOLDER.refused_under_enforce(self, result)
             self.assertTrue(
                 any("cannot engage" in note or "unavailable" in note
                     for note in notes),
@@ -127,6 +127,9 @@ class ThePlace(unittest.TestCase):
                  result.get("view")),
                 script[:40])
 
+    # The rows are run by the real bash, as the first rung's
+    # shell legs are.
+    @unittest.skipIf(os.name == "nt", "POSIX only")
     def test_off_the_host_folder_differs_only_for_pwd(self):
         for atom in BOUND.ATOMS:
             result, notes, _files = FOLDER.run(

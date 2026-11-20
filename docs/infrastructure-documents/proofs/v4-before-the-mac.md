@@ -146,6 +146,14 @@ The log, for 1 refused message, by the size of its subject:
   times the message, against the 16 supposed. The MAC was
   computed once, and not twice for each key: the runner
   asks only for the key a message names.
+  *Added 2026-11-19.* 1.42 is the most over these 492
+  arrivals, which grow a subject or a note and leave the
+  signed text small. `v4-the-ladder.md` grows the signed
+  text itself, at every size of its series, and there a
+  message that fails at the signature gives the parser up
+  to 3.30 times its length. The reader's looks grow by 4,
+  so the count sits in a band, and its top by the code as
+  read is 3 and a third. The 16 supposed still stands.
 - **S6 held.** No sealed body was opened before its
   signature.
 - **S7 held.** Each refused message was marked seen once.

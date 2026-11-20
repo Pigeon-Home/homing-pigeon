@@ -84,6 +84,12 @@ REGISTERED = {
         "commands, so the ubuntu test job runs these; a bash built "
         "with a deeper grammar stack has no bar under 20,000 to "
         "hold the claim against",
+    "the sandbox does not engage here":
+        "test_v4_the_place: the rows are run under enforce, and "
+        "the runner refuses a job under enforce where its sandbox "
+        "reports a startup problem; these run on a host where the "
+        "sandbox engages, and the same module's other tests hold "
+        "the refusal where it does not",
     "POSIX mode bits only":
         "test_personal_docs_shelter: the shelter folder's 0o700 pin "
         "reads POSIX stat mode bits, which Windows stat does not "

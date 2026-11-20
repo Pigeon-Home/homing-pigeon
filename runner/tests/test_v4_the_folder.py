@@ -38,6 +38,16 @@ INSIDE = "printf x > kept"
 ENGAGES = SB.startup_problem() is None
 
 
+def refused_under_enforce(case, result):
+    """Where the sandbox does not engage, the runner is not
+    silent under enforce. It answers with a signed refusal,
+    and nothing of the job has run."""
+    case.assertIsNotNone(result)
+    case.assertEqual(-2, result.get("exit_code"))
+    case.assertEqual("", result.get("stdout"))
+    case.assertIn("confinement cannot engage", result.get("stderr", ""))
+
+
 def run(payload, job_id, script, mode):
     """1 job through the real gate and the real execution.
     (the result, the log lines, the files left in the job's
@@ -101,7 +111,7 @@ class TheFolder(unittest.TestCase):
         result, notes, files = run(
             self.payload, self.job_id, INSIDE, "enforce")
         if not ENGAGES:
-            self.assertIsNone(result)
+            refused_under_enforce(self, result)
             self.assertTrue(
                 any("cannot engage" in note or "unavailable" in note
                     for note in notes),
@@ -122,7 +132,7 @@ class TheFolder(unittest.TestCase):
                 self.payload, self.job_id, script, "enforce")
             self.assertFalse(os.path.exists(target), notes)
             if not ENGAGES:
-                self.assertIsNone(result)
+                refused_under_enforce(self, result)
                 return
             self.assertIsNotNone(result, notes)
             # The same script, confinement off, does write on

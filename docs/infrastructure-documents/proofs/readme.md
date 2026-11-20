@@ -354,12 +354,20 @@ A finding is most useful when it points at the file and the line
   L1, the ratio table, was run, and it holds. L2, the
   join of M's tables, was run, and it holds: 31,460 rows,
   0 differences, and 14 kinds of row where 20 were
-  supposed. The shell was not asked. L3 was run in bash
-  5.2.15: 19,360 rows, the output, the status and the
-  commands that ran, 0 differences. The order of a pipe's
-  two sides is not claimed. J2 of finding F15 is in the
-  gate: a deep address is unread and the job goes on, and a
-  mail whose shape raises is marked once. No new constraint.
+  supposed. L3 was run in bash 5.2.15: 19,360 rows, the
+  output, the status and the commands that ran, 0
+  differences. The order of a pipe's 2 sides is not
+  claimed. J2 of finding F15 is in the gate: a deep address
+  is unread and the job goes on, and a mail whose shape
+  raises is marked once. No new constraint.
+  `runner/tests/test_v4_the_ladder.py` and
+  `runner/tests/test_v4_the_answer.py` hold those runs. A
+  second seat ran L1, L2 and L3 apart, in bash 5.2.21 for
+  L3, and the 2 runs agree. That seat ran the whole ladder:
+  bash shows the joined result on 44,588 rows, the gate is
+  climbed in 12 places to 2,178,309 bytes, finding F15 was
+  met there, and F14 was found again with nobody pointing
+  at it. `runner/tests/test_v4_the_ladder_run.py` holds it.
 - `v4-the-join.md`: the sentence between the two proofs. A
   message that fails C5 never reaches the machine M, and a
   message that passes C5 reaches M only with a script of at

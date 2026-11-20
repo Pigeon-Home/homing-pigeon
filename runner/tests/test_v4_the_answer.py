@@ -30,6 +30,7 @@ from runner.tests import test_v4_at_a_bound as BOUND  # noqa: E402
 from runner.tests import test_v4_before_the_mac as PRE  # noqa: E402
 from runner.tests import test_v4_bindings as BIND  # noqa: E402
 from runner.tests import test_v4_models as MODELS  # noqa: E402
+from runner.tests import test_v4_the_folder as FOLDER  # noqa: E402
 
 PAGE = os.path.join(MODELS.PROOFS, "v4-the-ladder.md")
 
@@ -121,7 +122,11 @@ class TheAnswer(unittest.TestCase):
         raw = self.job("a:" * 1200 + "a")
         with tempfile.TemporaryDirectory() as folder:
             ran, notes, marked = once(raw, folder)
-        self.assertTrue(ran)
+        # The job runs where the sandbox engages. Where it does
+        # not, the runner under enforce answers with a signed
+        # refusal. The address is unread and the mail is marked
+        # either way.
+        self.assertEqual(FOLDER.ENGAGES, ran)
         self.assertTrue(any("sender could not be read" in note
                             for note in notes), notes)
         self.assertEqual([7], marked)

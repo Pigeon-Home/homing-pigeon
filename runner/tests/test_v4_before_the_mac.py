@@ -1045,18 +1045,30 @@ class TheGateDecidesAsTheModelDoes(unittest.TestCase):
 
     def test_the_gate_s_steps_stand_in_the_model_s_order(self):
         # The order of the 6 steps, read off the gate's source:
-        # each step's first line stands after the step before it.
+        # each step's line stands after the line of the step
+        # before it. Each is looked for from the step before,
+        # because the parse's own refusal, for a mail that
+        # cannot be read (finding F15), asks whether the box is
+        # stopped too.
         text = MODELS._read(os.path.join(ROOT, "runner", "ops", "mail.py"))
-        begin = text.index("def handle_mail(")
-        places = [text.index(mark, begin) for mark in (
-            "email.message_from_bytes(raw)",
-            "R._panic.matches(base_dir, subject)",
-            "R._panic.fired(base_dir)",
-            "reject(f\"mail exceeds max_job_bytes",
-            "._early_dispatch(",
-            "submitted by {shown_sender}",
-            "._verify_and_decrypt(msg, secrets, job_id)")]
+        places, at = [], text.index("def handle_mail(")
+        for mark in (
+                "email.message_from_bytes(raw)",
+                "R._panic.matches(base_dir, subject)",
+                "R._panic.fired(base_dir)",
+                "reject(f\"mail exceeds max_job_bytes",
+                "._early_dispatch(",
+                "submitted by {shown_sender}",
+                "._verify_and_decrypt(msg, secrets, job_id)"):
+            self.assertIn(mark, text[at:], mark)
+            at = text.index(mark, at)
+            places.append(at)
+        self.assertEqual(7, len(set(places)))
         self.assertEqual(sorted(places), places)
+        # The parse's refusal stands inside step 1: before the
+        # panic word is asked for.
+        refusal = text.index("the mail's shape could not be read")
+        self.assertTrue(places[0] < refusal < places[1])
 
 
 if __name__ == "__main__":
