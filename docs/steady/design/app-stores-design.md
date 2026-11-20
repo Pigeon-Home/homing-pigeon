@@ -3,7 +3,7 @@
 
 Preparation notes for putting Homing Pigeon into the Microsoft
 Store and the Ubuntu Snap Store, opened on 2026-11-20 at the
-conductor's direction. The conductor's FUTURE.md names the stores as
+owner's direction. The owner's FUTURE.md names the stores as
 future work. These notes cover the Microsoft Store in full and
 give the short form of the Snap Store path, whose page of record
 stands elsewhere in the tree. The Apple Store bullet in that
@@ -52,7 +52,7 @@ This page does not repeat it. The short form:
   the store grants it a declaration. The name homing-pigeon fits
   the name rules (lowercase letters, numbers and hyphens, at
   least one letter, no hyphen at either end). Registration is
-  free and permanent, and waits for the conductor's account.
+  free and permanent, and waits for the owner's account.
   Owner only.
 - Strict confinement cannot hold the runner. Jobs are arbitrary
   operator supplied commands run with host interpreters and host
@@ -81,7 +81,7 @@ This page does not repeat it. The short form:
   instead of a systemd unit, and the version adopted from the
   Python package metadata. It sits in a packaging folder; the
   readiness page records the layout question (that folder, or
-  the standard snap folder at the root) as the conductor's
+  the standard snap folder at the root) as the owner's
   decision. Nothing is registered, built or uploaded yet.
 - The first build spike ran on 2026-11-20 and its record stands
   in the readiness page. A staged build of the draft's exact
@@ -109,14 +109,14 @@ This page does not repeat it. The short form:
   creates the package identity: the identity name, the publisher
   and the publisher display name. For a packaged submission those
   values must match the package manifest exactly, character for
-  character. They are issued by the conductor's account, so the
+  character. They are issued by the owner's account, so the
   manifest cannot be finished before them. Owner only.
 - A submission: packages, pricing and availability, properties
   (including a privacy policy address; the project already
   publishes one, docs/steady/project/privacy-policy.md, served at
   https://home.pigeon-home.ai/privacy), an age ratings
   questionnaire, and the store listing. The age ratings and the
-  final submission are the conductor's hand.
+  final submission are the owner's hand.
 - Review: Partner Center validates the package on upload, the
   Windows App Certification Kit can be run locally beforehand,
   and certification review follows. Review is measured in days.
@@ -145,7 +145,30 @@ and a submission:
    packaging work, of the ordinary kind.
 2. Nothing in the Windows build is code signed today. A signing
    certificate from a trusted CA, or an Azure Artifact Signing
-   subscription, is a purchase in the conductor's name. Owner only.
+   subscription, is a purchase in the owner's name. Owner only.
+
+Preparation landed after these notes, on 2026-11-20: the build
+now freezes a one directory variant beside the one file build
+(the build-windows-onedir job in .github/workflows/build.yml),
+and a draft Inno Setup script stands at
+packaging/windows/homing-pigeon.iss. The job freezes the same
+two programs with the same hidden imports and data, lays the
+two program folders out with the example config and the
+provenance stamp under a versioned top folder, and uploads
+the zip as an artifact named outside the release set, so no
+release carries the tree yet. The draft script installs that
+tree into a versioned folder, seeds config.json from the
+example without ever overwriting one, registers the same
+HomingPigeon startup task the install program registers
+today (at startup, as SYSTEM, at the HIGHEST run level, with
+the same task command), starts it, and deletes the task on
+uninstall. The script applies no signature, so gap 2 above
+stands exactly as written. Two open points stand in the
+script's own header: a folder per version means an operator's
+edited config does not carry itself into the next version's
+folder, and an upgrade leaves the previous version's folder
+in place. Both want a decision before a submission, not
+after one.
 
 ### Route B: MSIX
 
@@ -191,6 +214,16 @@ is acceptable, or if the signing purchase is refused.
   later edit cannot quietly flip the snap to strict confinement,
   drop the daemon entry, or replace the manifest placeholders
   with values that did not come from Partner Center.
+- .github/workflows/build.yml, the build-windows-onedir job,
+  and packaging/windows/homing-pigeon.iss: the route A
+  preparation that followed these notes, the one directory
+  freeze and the draft installer script.
+- runner/tests/test_windows_installer.py: pins on that
+  preparation, so a later edit cannot quietly thin the
+  freeze's hidden imports, move the install out of its
+  versioned folder, seed over an operator's config, or
+  register a startup task different from the one the install
+  program registers.
 
 ## Owner only, both stores, in one list
 

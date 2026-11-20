@@ -65,7 +65,7 @@ class HiddenImportSyncTest(unittest.TestCase):
         workflow = _workflow()
         build_lines = [ln for ln in workflow.splitlines()
                        if "pyinstaller" in ln and "runner/runner.py" in ln]
-        self.assertEqual(len(build_lines), 7,
+        self.assertEqual(len(build_lines), 8,
                          "expected one runner build line per binary job")
         for line in build_lines:
             for mod in sorted(_dynamic_runner_modules()):
@@ -125,7 +125,7 @@ class FrozenTrustStoreTest(unittest.TestCase):
         workflow = _workflow()
         installs = [ln for ln in workflow.splitlines()
                     if "pip install" in ln and "pyinstaller" in ln]
-        self.assertEqual(7, len(installs),
+        self.assertEqual(8, len(installs),
                          "expected one install line per binary job")
         for line in installs:
             self.assertIn("certifi", line,
