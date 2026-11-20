@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.1 - 2026-11-20
+
+- Since 3.17.31.11: the v4 branch is merged to main at the owner's word, carrying the closures of F12 to F20 (the gate's order behind the signature, the panic step reading a subject of bounded length, a job's share of the log at 1,048,576 characters of each stream, the watch as a sampled bar at 64 processes), the ladder proofs, the token charts redrawn with the limits read off the counts, and DRU's own edit updating docs/FUTURE.md
+
 ## 3.17.31.11 - 2026-11-20
 
 - Since 3.17.31.10: Germany bank 71 adds 2,664 entries with 0 crashes and 908 new runs to the de_dust campaign data, and DRU's own edit removes the computability bullet from docs/FUTURE.md
