@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.31.8 - 2026-11-20
+
+- Setup: the install record the wizard emails now names the CPU too, and the frozen build carries its trust list (certifi via runner/wire/tls.py) so a clean machine can verify Google (since 3.17.31.7)
+
 ## 3.17.31.7 - 2026-11-20
 
 - Design: docs/steady/design/cs_canoe.md gains a future first option, signup on pigeon-home.ai with the customer's Google address, the application talking to our own service with its certificate pinned, the existing options unchanged (since 3.17.31.6)
