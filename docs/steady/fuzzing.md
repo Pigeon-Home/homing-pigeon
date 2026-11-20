@@ -67,13 +67,13 @@ the as-assembled set stands at
 <!--hp-fig:core_assembled_lines-->70,130<!--/hp-fig--> lines
 (<!--hp-fig:core_assembled_nonblank-->63,576<!--/hp-fig-->
 non-blank) and a
-<!--hp-fig:core_assembled_zip_bytes-->904,123<!--/hp-fig-->-byte
+<!--hp-fig:core_assembled_zip_bytes-->904,124<!--/hp-fig-->-byte
 zip, and the project's own estimator counts it at
-<!--hp-fig:core_assembled_tokens-->773,503<!--/hp-fig--> tokens;
+<!--hp-fig:core_assembled_tokens-->773,498<!--/hp-fig--> tokens;
 the Gemini figure above still describes the 2026-11-04 assembly.
 The project's own estimator counts the canonical
 <!--hp-fig:core_files-->137<!--/hp-fig-->-file list at
-<!--hp-fig:core_tokens-->761,924<!--/hp-fig--> tokens across
+<!--hp-fig:core_tokens-->761,919<!--/hp-fig--> tokens across
 <!--hp-fig:core_lines-->69,011<!--/hp-fig--> lines
 (<!--hp-fig:core_lines_nonblank-->62,575<!--/hp-fig-->
 non-blank); the 2 token counts come from different counters and

@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.31.6 - 2026-11-20
+
+- Setup: the baked OAuth client secret in runner/ops/setup.py is updated to match Google's record again (since 3.17.31.5)
+
 ## 3.17.31.5 - 2026-11-20
 
 - Docs: FUTURE.md drops the cyber turret bullet and amends the computability bullet to 'explain computability to claude, its backwards thrice', the owner's own edit (since 3.17.31.4)
