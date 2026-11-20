@@ -148,7 +148,11 @@ class FrozenTrustStoreTest(unittest.TestCase):
             if "pyinstaller" not in line or "--onefile" not in line:
                 continue
             if "runner/runner.py" in line:
-                self.assertIn("--hidden-import runner.wire.tls", line,
+                # The trailing space is the pin: the script-context and
+                # repair checks read "--hidden-import <mod> " mid-line,
+                # so tls appended at the very end of the line failed
+                # both on the 3.17.31.8 release head.
+                self.assertIn("--hidden-import runner.wire.tls ", line,
                               "runner build line misses the tls import")
             if "runner/ops/install.py" in line:
                 sep = ";" if ";pigeon-" in line else ":"
