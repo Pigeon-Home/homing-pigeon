@@ -357,7 +357,9 @@ A finding is most useful when it points at the file and the line
   supposed. The shell was not asked. L3 was run in bash
   5.2.15: 19,360 rows, the output, the status and the
   commands that ran, 0 differences. The order of a pipe's
-  two sides is not claimed.
+  two sides is not claimed. J2 of finding F15 is in the
+  gate: a deep address is unread and the job goes on, and a
+  mail whose shape raises is marked once. No new constraint.
 - `v4-the-join.md`: the sentence between the two proofs. A
   message that fails C5 never reaches the machine M, and a
   message that passes C5 reaches M only with a script of at

@@ -24,10 +24,53 @@ except ImportError:  # running from inside runner/ as __main__
     from ops.live import _runner  # type: ignore
 import email
 
+# Finding F15. The mail library follows a comment, a colon or a
+# nested part by calling itself, and Python stops a chain of calls
+# at 1,000. Past that the gate raised and the message was never
+# marked, so the next poll read it again. These bars are far above
+# any mail a person sends and far below that raise. The address is
+# for the log only, so a deep address is unread and the job goes
+# on. A deep shape of the mail itself is refused where it stands.
+# Neither bar is a new row in the constraint inventory.
+ADDRESS_COLON_BAR = 64
+COMMENT_DEPTH_BAR = 8
+
+
+def _sender_is_deep(header):
+    """True when the sender header is past a bar the gate chose.
+    Counted in one pass, with no call to the mail library."""
+    colons = 0
+    depth = 0
+    for ch in header:
+        if ch == ":":
+            colons += 1
+            if colons > ADDRESS_COLON_BAR:
+                return True
+        elif ch == "(":
+            depth += 1
+            if depth > COMMENT_DEPTH_BAR:
+                return True
+        elif ch == ")" and depth:
+            depth -= 1
+    return False
+
+
 def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
                 seen: dict, secrets: dict, opts=None, key_policies=None):
     R = _runner()
-    msg = email.message_from_bytes(raw)
+    try:
+        msg = email.message_from_bytes(raw)
+    except RecursionError:
+        # The shape was followed until Python stopped the calls.
+        # A box already stopped leaves the mail, as it leaves every
+        # other. Otherwise the mail is decided: one line, marked.
+        if R._panic.fired(base_dir):
+            R.vlog(f"ingest: seq {seq}: the box is stopped (panic); "
+                   f"left as it is")
+            return
+        R.log(f"seq {seq}: the mail's shape could not be read", "WARN")
+        _runner()._mark(imap, seq, opts)
+        return
     subject = str(msg["Subject"] or "")
     from_header = str(msg["From"] or "")
     def reject(why: str):
@@ -82,13 +125,23 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # The HMAC signature is the sole authentication gate. Any sender
     # may submit jobs; only a valid signature authorizes execution.
     # The sender address is logged for audit but never trusted.
-    from_addr = _runner().parseaddr(from_header)[1].strip()
+    from_addr = ""
+    unreadable = _sender_is_deep(from_header)
+    if not unreadable:
+        try:
+            from_addr = _runner().parseaddr(from_header)[1].strip()
+        except RecursionError:
+            unreadable = True
+    if unreadable:
+        shown_sender = "(sender could not be read)"
+    elif from_addr:
+        shown_sender = (R._log_plain(from_addr, R.LOG_SENDER_MAX))
+    else:
+        shown_sender = "(no sender)"
     # This line is written before the signature is asked for, so every
     # text in it is a stranger's until proven otherwise. Each is
     # written at a bounded length (finding F12): the gate goes on
     # with the whole id, and only the log's copy is cut.
-    shown_sender = (R._log_plain(from_addr, R.LOG_SENDER_MAX)
-                    if from_addr else "(no sender)")
     R.log(f"seq {seq}: job {R._log_plain(job_id, R.LOG_ID_MAX)} "
           f"submitted by {shown_sender} "
           f"subject={R._log_quoted(subject, R.LOG_SUBJECT_MAX)}")

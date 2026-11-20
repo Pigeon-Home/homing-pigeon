@@ -329,6 +329,33 @@ thing a run shows.
   every unit of the first climb, and the 10 shapes to step
   22: supposed 0 raises.
 
+## J2, measured
+
+J2 was run. J1 and J3 were not.
+
+A deep address is not given to the library. The gate counts
+in one pass, and stops at 64 colons, or 8 comments deep. Past
+either bar the log's line says the sender could not be read,
+and the job goes on. A good job whose sender is 1,200 colons
+ran. Its exit status was 0.
+
+A shape the library cannot follow is the other answer. A mail
+of 1,000 parts inside parts makes `message_from_bytes` raise
+`RecursionError` on this interpreter. The gate logs one line,
+marks the message and returns. It does not run. The same mail
+on a box that is already stopped is left where it is, and it
+is not marked. The panic word sits in the subject, and a mail
+that cannot be read has no subject the gate can see.
+
+Five polls of one job whose sender is 1,200 colons fetched it
+once and marked it once. No worker raised.
+
+These bars are far below the raise and far above a real
+address. They are a bound in the gate. No new row in the
+constraint inventory.
+
+`runner/tests/test_v4_the_answer.py` holds it.
+
 ## L1, measured
 
 L1's figures are recorded here.
