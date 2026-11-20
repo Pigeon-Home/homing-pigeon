@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.31.4 - 2026-11-20
+
+- Docs: FUTURE.md amends the computability bullet to 'explain computability to claude, they have it backwards twice now', the owner's own edit (since 3.17.31.3)
+
 ## 3.17.31.3 - 2026-11-19
 
 - Docs: FUTURE.md gains one bullet, 'explain computability to claude', the owner's own edit (since 3.17.31.2)
