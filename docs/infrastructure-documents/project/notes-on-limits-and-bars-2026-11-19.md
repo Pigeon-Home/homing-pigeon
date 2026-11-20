@@ -6,6 +6,13 @@ is the seat's answer. The suppositions below were written
 and pushed before anything was measured. The measure and
 the conclusions follow them on this page.
 
+A note of 2026-11-20. Where this page speaks of a bar at 38
+million, that was the limit as it was named then. At the
+owner's word no limit is named first now: the rule on the
+steps, W3 below, gives each line its limit as a result.
+`v4-the-curve.md` carries the numbers. The page below
+stands as it was written.
+
 ## The question, in 4 parts
 
 - **A. A flat line on a chart is a presumption.** A limit

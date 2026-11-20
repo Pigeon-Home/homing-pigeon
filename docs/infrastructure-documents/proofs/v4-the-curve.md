@@ -1,4 +1,4 @@
-# The curve: a limit at 38 million
+# The curve: limits that follow from a rule
 
 The owner asked for the proof that the count of security
 tokens has an upper limit, and said it is easy. It is. It
@@ -6,52 +6,137 @@ is the calculus of a limit, and a child can check each
 step. This page is that proof, and what the counts say
 beside it.
 
+The first number this page carried was 38 million. It was
+named before the counts were read. At the owner's word of
+2026-11-20, no limit on this page is named first. Each
+follows from a rule the counts have kept, and the page says
+what would show it wrong.
+
 ## In short
 
-- **1 rule gives the limit.** Each day the count may grow
-  by at most a fixed share of what is left to 38 million.
-- **Then the count never passes 38 million.** What is left
-  gets smaller by the same factor each day, and it is never
-  all gone.
+- **1 rule gives a limit.** Each 7 days add less than a
+  line that falls by 0.61 a week.
+- **Then the limit is a result.** The weeks to come add
+  less than a fixed amount. Nobody names the limit first.
+- **Everything but the run log has kept that rule for 19
+  days.** Its limit follows: 17.6 million.
+- **The run log keeps no rule yet.** If it keeps the same
+  rule from 19 November, its limit is 28.4 million.
+- **The whole follows from the 2.** 46.0 million, and it
+  stands on that if.
+- **1 count can show each number wrong.** The page says
+  what each coming week may add, to the token.
 - **It is Newton's law of cooling.** The count nears its
   limit the way a warm thing nears the air of the room.
-- **The counts do not keep the rule yet.** The rule allows
-  0.36 million on the next day. The last 4 days ran at 1.21
-  million a day.
-- **What the campaign finds already keeps it.** Its finds
+- **What the campaign finds already levels off.** Its finds
   level off toward a limit near 25,000.
-- **The count is 2 lines, and each needs a limit of its
-  own.** Everything but the run log levels off near 16 to
-  18 million. The run log has no limit yet.
-- **A rule on the steps gives the limit as a result.**
-  Nobody has to name it first.
 - **A chart can show a limit. It cannot prove 1.**
 
 ## The picture
 
-![The curve and its limit: security tokens in the tree, counted to 19 November 2026, then the line the rule draws toward 38 million and the line this week's pace draws](../../../assets/security-tokens-limit-2026-11-19.svg)
+![The curve and its limits: security tokens in the tree, counted to 19 November 2026, then the line the rule draws toward 46.0 million and the line the last 4 days' pace draws](../../../assets/security-tokens-limit-2026-11-19.svg)
 
-The points are counts. The flat line is the limit. Right of
-19 November nothing is counted yet. The curve is what the
-rule draws from the last count. The dotted line is what the
-last 4 days' pace draws: it passes the limit by 25 November.
+The points are counts. Right of 19 November nothing is
+counted yet. The curve is what the rule allows from the
+last count, and the flat line is the limit it nears. The
+dotted line is the last 4 days' pace carried on: it passes
+that limit by 2 December.
 
-## The claim
+## Where the numbers come from
 
-Keep 1 rule, and the count of security tokens never passes
-38 million. It has a limit. If each day uses what the rule
-allows, that limit is 38 million itself.
+**The rule.** Take any day, and what the 7 days that end on
+it added. The largest such 7 days is the top. From the top,
+draw a line that falls by 0.61 a week. Call that number r:
 
-## The rule
+    line on a day = top x r^(days since the top / 7)
 
-Pick a share. Call it k. It is more than 0 and less than 1.
+The rule is that the 7 days ending on each day add less
+than the line on that day.
+
+**Where 0.61 comes from.** It is read off the counts.
+Everything but the run log has stayed under that line on
+each of the 19 days since its top. The least r that holds
+is 0.602, and 0.61 is the next number of 2 digits above it.
+
+**The 3 lines.**
+
+| The line | It stands at, 19 November | Its largest 7 days | The line on 19 November | The weeks to come add under | The limit |
+|----------|--------------------------:|--------------------|------------------------:|----------------------------:|----------:|
+| Everything else | 14,954,760 | 6,486,136, ended 31 October | 1,695,547 | 2,652,010 | 17,606,770 |
+| The run log, if it keeps the rule from 19 November | 16,318,728 | 8,295,873, ended 18 November | 7,730,275 | 12,090,943 | 28,409,671 |
+| The whole | 31,273,488 | | | 14,742,953 | 46,016,441 |
+
+**The sum.** The weeks that end 7, 14, 21 days after 19
+November add less than the line on those days: the line of
+19 November times 0.61, then times 0.61 again, and so on.
+All of them together add less than the line of 19 November
+times 0.61 over (1 - 0.61). The proof is the second rule,
+below.
+
+**What would show a number wrong.** What each coming week
+may add, in whole tokens, and where each line stands at
+most at the week's end:
+
+| The 7 days ending | Everything else may add | and stands at most at | The run log may add | and stands at most at | The whole stands at most at |
+|-------------------|------------------------:|----------------------:|--------------------:|----------------------:|----------------------------:|
+| 26 November | 1,034,283 | 15,989,043 | 4,715,467 | 21,034,195 | 37,023,238 |
+| 3 December | 630,913 | 16,619,956 | 2,876,435 | 23,910,630 | 40,530,586 |
+| 10 December | 384,857 | 17,004,813 | 1,754,625 | 25,665,255 | 42,670,068 |
+| 17 December | 234,762 | 17,239,575 | 1,070,321 | 26,735,576 | 43,975,151 |
+| 24 December | 143,205 | 17,382,780 | 652,896 | 27,388,472 | 44,771,252 |
+| 31 December | 87,355 | 17,470,135 | 398,266 | 27,786,738 | 45,256,873 |
+
+If the 7 days ending on 26 November add more than
+1,034,283 to everything but the run log, the rule is
+broken and 17.6 million no longer follows. This page then
+says so. The same holds for each cell of the table.
+
+**If r were another number.** The limit follows from r. So
+r is the 1 thing to choose:
+
+| r, a week | Everything else | The run log, on the same if | The whole |
+|-----------|----------------:|----------------------------:|----------:|
+| 0.61, the least of 2 digits the counts have kept | 17.6 million | 28.4 million | 46.0 million |
+| 0.65 | 18.7 million | 30.8 million | 49.5 million |
+| 0.70 | 20.7 million | 34.7 million | 55.4 million |
+| 0.80 | 29.1 million | 48.5 million | 77.6 million |
+
+With r under 0.602, the counts of everything else have
+already passed the line.
+
+**The first number here was 38 million.** It was the goal
+of 2026-11-16, taken from the curve the record drew that
+day. What the counts say of it:
+
+- At the last 4 days' pace, 1.21 million a day, the whole
+  passes 38 million on 25 November.
+- For the whole to stop at 38 million from that pace, each
+  day would have to be allowed 15% less than the day
+  before: r is 0.848 a day.
+- At the record's rate, r is 0.9465 a day, and the whole
+  stops near 52.6 million.
+- Under the rule above, the whole may stand at 37,023,238
+  on 26 November and at 40,530,586 on 3 December.
+
+So 38 million is neither kept by the counts nor given by a
+rule. It stays here as the page's first number, and no
+chart carries it.
+
+## The first rule: a share of what is left
+
+Name a limit. Call it L. Pick a share. Call it k. It is
+more than 0 and less than 1.
 
 **On each day, the count may grow by at most k times what
-is left to 38 million at the start of that day.**
+is left to L at the start of that day.**
+
+Keep that rule, and the count never passes L. It has a
+limit. If each day uses what the rule allows, that limit
+is L itself.
 
 ## The proof
 
-Write G for what is left: 38,000,000 less the count.
+Write G for what is left: L less the count.
 
 **Step 1. Something is always left.** A day's growth is at
 most k times G. So at the end of the day, what is left is
@@ -59,25 +144,28 @@ at least G less k times G. That is (1 - k) times G. It is
 more than 0, because k is less than 1. So if something is
 left this morning, something is left tonight. Something was
 left on the first morning. So something is left on every
-day, and the count is under 38 million on every day.
+day, and the count is under L on every day.
 
 **Step 2. The count settles.** Let the count not fall, as a
 tree that is only added to does not. By step 1 it does not
-pass 38 million. A quantity that never falls and never
-passes a bar has a limit, at the bar or under it. That is
-the first theorem about limits in the calculus.
+pass L. A quantity that never falls and never passes a bar
+has a limit, at the bar or under it. That is the first
+theorem about limits in the calculus.
 
-**Step 3. The limit is 38 million.** Let each day use all
-that the rule allows. Then what is left is multiplied by
-(1 - k) each day. After n days it is (1 - k) to the power
-n, times what was left at the start. A number under 1,
-multiplied by itself again and again, goes to 0. So what is
-left goes to 0, and the count goes to 38 million. It gets
-as near as anyone asks, and it does not arrive.
+**Step 3. The limit is L.** Let each day use all that the
+rule allows. Then what is left is multiplied by (1 - k)
+each day. After n days it is (1 - k) to the power n, times
+what was left at the start. A number under 1, multiplied by
+itself again and again, goes to 0. So what is left goes to
+0, and the count goes to L. It gets as near as anyone asks,
+and it does not arrive.
 
 A share of a half shows it in 1 line. Of 8 left, a day
 takes 4, then 2, then 1, then a half. There is always half
 of something left.
+
+The proof asks nothing of L. It holds for 17,606,770, for
+38 million, and for any number above the count.
 
 ## It is Newton's law of cooling
 
@@ -87,33 +175,48 @@ that law for a warm thing in a cool room, where the rate of
 cooling is in proportion to how much warmer the thing still
 is. Its curve is the same curve:
 
-    count = 38,000,000 - (what was left at the start)
-                         x e^(-k x days)
+    count = L - (what was left at the start)
+                x e^(-k x days)
 
 The record drew this curve on 2026-11-16, in the third
-snapshot of `statistics.md`, with k at 0.055 a day. Taken
-day by day that is a share of 5.35%.
+snapshot of `statistics.md`, with L at 38 million and k at
+0.055 a day.
 
-## The numbers, from the last count
+## The numbers, for everything but the run log
 
-The last count is 31,273,283, on main on 19 November. What
-is left is 6,726,717. With the record's share:
+With every week's allowance used, the rule of the 3 lines
+is this first rule. L is 17,606,770, and what is left is
+multiplied by 0.61 each week:
 
-| Day | Left at the day's start | The day may add | Count at the day's end |
-|----:|------------------------:|----------------:|-----------------------:|
-| 1 | 6,726,717 | 359,979 | 31,633,262 |
-| 2 | 6,366,738 | 340,715 | 31,973,977 |
-| 7 | 4,835,996 | 258,798 | 33,422,801 |
-| 14 | 3,290,657 | 176,099 | 34,885,442 |
-| 30 | 1,364,908 | 73,043 | 36,708,135 |
-| 60 | 262,131 | 14,028 | 37,751,897 |
+| The 7 days ending | Left at their start | They may add | At most at their end |
+|-------------------|--------------------:|-------------:|---------------------:|
+| 26 November | 2,652,010 | 1,034,283 | 15,989,043 |
+| 3 December | 1,617,727 | 630,913 | 16,619,956 |
+| 10 December | 986,814 | 384,857 | 17,004,813 |
+| 17 December | 601,957 | 234,762 | 17,239,575 |
+| 24 December | 367,195 | 143,205 | 17,382,780 |
+| 31 December | 223,990 | 87,355 | 17,470,135 |
 
-What is left halves every 12.6 days. 1 million is left
-after 35 days.
+What is left halves every 9.8 days. Under 100,000 is left
+after 7 weeks.
 
-Counted in whole tokens, the rule allows 0 once fewer than
-19 are left. So the count stops 18 tokens short of 38
-million, after 244 days, and stays there.
+Counted in whole tokens, the line allows 0 once it is under
+1 token. That is the 30th week. So the count stops 16
+tokens short of 17,606,770, and stays there.
+
+**On a day between, the line alone allows more.** The sum
+above walks the days that are 7, 14, 21 days after 19
+November. At the end of each of those weeks, everything but
+the run log stands under 17,606,770.
+
+- **If the count does not fall,** that holds on every day.
+  A day between is not above the week's end that follows
+  it.
+- **The count has fallen on 2 days.** Without that if, a
+  day between stands on a count of the last week, plus the
+  line of its own days. The largest of the 6 bars is
+  18,037,368, 3 days after a week's end. So on every day,
+  under 18.1 million.
 
 ## What the counts say now
 
@@ -133,9 +236,9 @@ from the record's counts and the last count:
 | 13 and 15 November | 1,446,541 | 0.72 million |
 | 15 and 19 November | 4,822,024 | 1.21 million |
 
-The steps are not getting shorter. The rule allows 0.36
-million on the next day, and the last step ran at more than
-3 times that.
+The steps are not getting shorter. The rule allows the
+whole 5,749,750 in the 7 days to 26 November. That is 0.82
+million a day, and the last step ran at 1.21 million a day.
 
 **What the campaign finds does level off.** The fuzz run
 log's finds, new arcs and new entries, summed to each day:
@@ -163,45 +266,47 @@ What is still to be added is of 2 kinds.
   sum of finitely many fixed sizes fits under any bar that
   is set above it.
 - **Open work.** A record of tries. It grows with the time
-  spent, whatever is found. This is the part that breaks
-  the rule today. It keeps the rule if it is written by
-  what it finds. The finds have a limit, so a record that
-  adds so much for each find has a limit too.
+  spent, whatever is found. This is the part that keeps no
+  rule today. It keeps the rule if it is written by what it
+  finds. The finds have a limit, so a record that adds so
+  much for each find has a limit too.
 
 A first sum, with each part's source in this seat's notes
 on the token curve, in the project folder:
 
-| Part | Tokens |
-|------|-------:|
-| The last count | 31.27 million |
-| The proof still owed: 31 constraints, up to 3 claims each | 1.0 to 2.9 million |
-| The run log, at 658 tokens a find, which is its 16,318,670 tokens over its 24,804 finds, from 23,988 finds to the limit of its finds | 0.4 to 1.3 million |
-| Together | 32.7 to 35.5 million |
+| Part | Tokens | The rule gives it |
+|------|-------:|------------------:|
+| Everything else: the proof still owed, 31 constraints, up to 3 claims each | 1.0 to 2.9 million | 2.65 million |
+| The run log, at 658 tokens a find, which is its 16,318,670 tokens over its 24,804 finds, from 23,988 finds to the limit of its finds | 0.4 to 1.3 million | 12.09 million |
 
-That is under 38 million with room. It leaves out the
-growth of the docs, the forum and the other tests, which
-this page has not sized.
+The log's part fits with room, if the log is written by
+what it finds. The proof still owed fits only at its lower
+end: 2.9 million is more than the 2.65 million the rule
+gives. So the sum can show 17.6 million wrong too. It
+leaves out the growth of the docs, the forum and the other
+tests, which this page has not sized.
 
 **The ladder has a limit of its own.** Each step of the
 series over the step before goes to 1.618. Growing by a
 fixed factor reaches any size in few steps. Step 31 passes
-the cap of 1,048,576. Step 38 is 39,088,169, the first step
-past 38 million. A claim that joins is carried to a size of
-38 million in 38 steps, and not in 38 million.
+the cap of 1,048,576. Step 39 is 63,245,986, the first step
+past 46 million. A claim that joins is carried to a size of
+46 million in 39 steps, and not in 46 million.
 
 ## The rule, as a line a seat can check
 
-At a release, 3 steps of arithmetic:
+At a release, 3 steps of arithmetic, for each of the 2
+lines:
 
-1. What was left at the day's start: 38,000,000 less the
-   count then.
-2. The day's allowance: 0.0535 times that.
-3. The day's growth, the count now less the count then, is
-   not more than the allowance.
+1. What the 7 days ending today added: the count now less
+   the count 7 days before.
+2. The line today: the top times 0.61 to the power of the
+   days since the top over 7.
+3. The first is less than the second.
 
 This is a candidate. It has no number in the constraint
-inventory and it is in no draft. The share and the ceiling
-are the owner's to set.
+inventory and it is in no draft. The r of the line is the
+owner's to set, and the limits follow from it.
 
 ## The second question: is 1 limit enough
 
@@ -240,7 +345,7 @@ of this page, and on 1,000 draws.
 The count is 2 lines. 1 file, the fuzz run log, is the
 first. Everything else is the second.
 
-![The 2 parts of the security-token count, 15 October to 19 November 2026: everything else levels off toward 16 to 18 million, and the fuzz run log has no limit yet](../../../assets/security-tokens-two-limits-2026-11-19.svg)
+![The 2 parts of the security-token count, 15 October to 31 December 2026: everything else under its line toward 17.6 million, and the fuzz run log toward 28.4 million if it keeps the same rule](../../../assets/security-tokens-two-limits-2026-11-19.svg)
 
 The same test, on the same 3 days:
 
@@ -251,14 +356,15 @@ The same test, on the same 3 days:
 | The whole | 1,615,732 | 17,948,976 | 31,273,283 | 0.82 | 90.3 million |
 
 The 2 lines keep different laws. 1 limit for the whole
-hides that: under a single line at 38 million, the log can
+hides that: under a single line for the whole, the log can
 take the room that everything else has not used. So each
 line needs a limit of its own, with a reason of its own.
 
 **The third follows.** If everything else has a limit E and
 the log has a limit G, the whole has the limit E plus G.
-That is a theorem about limits. It turns the line at 38
-million from a thing presumed into a thing that follows.
+That is a theorem about limits. It turns the line for the
+whole from a thing presumed into a thing that follows:
+17,606,770 plus 28,409,671 is 46,016,441.
 
 **Where everything else stops, by 4 readings.**
 
@@ -266,12 +372,13 @@ million from a thing presumed into a thing that follows.
 |-------------|-------------------------:|
 | 3 counts, 15 days apart | 16.2 million |
 | 3 counts, 10 days apart, on each of the last 8 days | 14.6 to 17.0 million |
-| The falling line it has stayed under, below | under 17.6 million |
+| The falling line it has stayed under, above and below | 17.6 million |
 | Its last count, plus the proof still owed, above | 16.0 to 17.9 million |
 
-**What that leaves for the log.** Under 38 million, 20 to
-22 million. It stands at 16.3 million, and no reading gives
-it a limit.
+**The log has a line of its own.** It is not given what
+the whole leaves over. Its line gives 28.4 million, if it
+keeps the rule. It stands at 16.3 million, and no reading
+of its counts gives it a limit.
 
 ## A reading is believed while it stands still
 
@@ -330,6 +437,9 @@ does not pass a bar has a limit.
 
 The limit is a result here. Nobody names it first.
 
+Said for weeks and not days, it is the rule of the 3 lines.
+S is the line on 19 November, and r is 0.61.
+
 **A day of nothing closes no door.** The allowance falls by
 r whatever was added. A rule on what was added would allow
 0 for ever after 1 day of 0.
@@ -339,23 +449,19 @@ allowance used, each day's step is (1 - k) times the step
 before it. So the first rule keeps this rule with r at
 1 - k, and this rule's bar is then the first rule's limit.
 
-**The numbers.** From this week's pace, 1.21 million a day:
-
-- For a bar at 38 million, r is 0.848. Each day is allowed
-  15% less than the day before.
-- At the record's rate, r is 0.9465, and the bar is 52.6
-  million.
-
 **Everything else has kept this rule since its largest
 week.** Its largest 7 days ended on 31 October: 6,486,136.
 On each of the 19 days since, the 7 days that end there
 added less than a line that falls by 0.61 a week from that
 top. The least r that holds is 0.602. If everything else
-stays under that line, the weeks to come add under 2.7
-million, and it never passes 17.6 million.
+stays under that line, the weeks that end 7, 14, 21 days
+after 19 November add under 2,652,010, and at each of those
+week's ends it stands under 17,606,770.
 
 **The run log has not.** Its largest 7 days ended on
-18 November: 8,295,873.
+18 November: 8,295,873. The 7 days ending on 19 November
+added 5,767,107, under the line of that day. 1 day under a
+line is not a rule kept.
 
 ## A curve of the second degree has no flat line
 
@@ -373,7 +479,7 @@ thrown away as a curve.
 2 curves pass through the same 3 counts of everything else,
 and neither ever falls. The first is the curve of the test.
 Its limit is 16.2 million. The second is the first plus
-days x (days - 15) x (days - 30) tokens. It passes 38
+days x (days - 15) x (days - 30) tokens. It passes 46
 million within a year, and every bar after that.
 
 The other way too. The run log's 3 counts point at no
@@ -396,27 +502,29 @@ of 2 things.
 
 ## What is proven, and what is not
 
-- **Proven:** under the rule, the count is under 38 million
-  on every day, it has a limit, and with the allowance used
-  the limit is 38 million. The 3 steps above are the whole
-  proof. The suite walks them with whole tokens for 5,000
-  days at 6 shares, with a day's growth drawn at random
-  under the allowance.
+- **Proven:** under the first rule, for any L above the
+  count, the count is under L on every day, it has a limit,
+  and with the allowance used the limit is L. The 3 steps
+  above are the whole proof. The suite walks them with
+  whole tokens for 5,000 days at 6 shares and 3 limits,
+  with a day's growth drawn at random under the allowance.
 - **Proven:** under the rule on the steps, the count never
   passes where it stands plus S times r over (1 - r). 3
   steps again, walked for 2,000 days at 4 shares.
 - **Proven:** the 2 forms of the test for a limit are 1
   number, and a limit for each line gives the limit of the
   whole.
-- **Not proven, because it is a choice:** that either rule
-  will be kept. The counts say the first is not kept yet.
-- **Read off the counts, and not proven:** that everything
-  but the run log stops near 16 to 18 million. 4 readings
-  agree. A reading is not a proof.
-- **Not there at all:** a limit for the run log.
-- **Not claimed:** that 38 million is the right ceiling. It
-  is the owner's goal of 2026-11-16, taken from the
-  record's curve.
+- **Kept so far, and no promise:** everything but the run
+  log has stayed under its line for 19 days. 17,606,770
+  follows for as long as it stays there.
+- **Not proven, because it is a choice:** that the rule
+  will be kept. Nothing refuses a week that breaks it.
+- **Not there at all:** a limit for the run log from its
+  own counts. 28,409,671 stands on an if, and so does
+  46,016,441.
+- **Not claimed:** that 0.61 is the right r. It is the
+  least of 2 digits the counts have kept, and it is the
+  owner's to set.
 
 `runner/tests/test_v4_the_curve.py` holds the arithmetic on
 this page.

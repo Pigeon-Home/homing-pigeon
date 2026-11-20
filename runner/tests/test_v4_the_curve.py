@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""The curve: a limit at 38 million.
+"""The curve: limits that follow from a rule.
 
 docs/infrastructure-documents/proofs/v4-the-curve.md proves that
 the count of security tokens has an upper limit under 1 rule:
 each day the count may grow by at most a fixed share of what is
-left to the limit. Then something is always left, the count
-settles, and with the allowance used it settles at the limit.
-It is Newton's law of cooling, with the count for the
-temperature and the limit for the room.
+left to a limit L. Then something is always left, the count
+settles, and with the allowance used it settles at L. It is
+Newton's law of cooling, with the count for the temperature and
+the limit for the room.
 
-This module walks the 3 steps of the proof with whole tokens,
-holds the page's numbers, and holds the test for a limit against
-the counts the page names.
+The page names no limit first. Its limits follow from a rule on
+the steps that the counts have kept: each 7 days add less than a
+line that falls by 0.61 a week from the largest 7 days. This
+module reads each limit off the series by day, holds what each
+coming week may add, and holds what the page says of 38 million,
+the first number it carried.
 
 It holds the page's second half as well: the test for a limit is
 of the second degree, each of the 2 parts of the count has a
@@ -37,10 +40,23 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
-from runner.tests import test_v4_models as MODELS  # noqa: E402
+PAGE = os.path.join(ROOT, "docs", "infrastructure-documents", "proofs",
+                    "v4-the-curve.md")
 
-PAGE = os.path.join(MODELS.PROOFS, "v4-the-curve.md")
-LIMIT = 38000000
+
+def _flat(path):
+    """A page as 1 line: its words, 1 space apart."""
+    with open(path, encoding="utf-8") as handle:
+        return " ".join(handle.read().split())
+
+
+# The first number the page carried: a goal named before the
+# counts were read. No limit of the page is named first now.
+FIRST_NUMBER = 38000000
+# What a line falls by in a week: the least number of 2 digits
+# that everything but the run log has kept since its largest
+# 7 days.
+A_WEEK = 0.61
 LAST_COUNT = 31273283
 # The record's curve closes its gap by e^(-0.055) a day.
 RATE = 0.055
@@ -134,6 +150,42 @@ def parabola(first, second, third, apart=15):
     return a, b
 
 
+def by_the_rule(series, share=A_WEEK):
+    """The rule on the steps, read off a series by day: (the
+    day its largest 7 days ended, the line on the last day,
+    what the weeks to come add under, the limit). The line
+    falls by `share` a week from the largest 7 days."""
+    last = len(series) - 1
+    week = {end: series[end] - series[end - 7]
+            for end in range(7, last + 1)}
+    top = max(week, key=week.get)
+    now = week[top] * share ** ((last - top) / 7)
+    come = now * share / (1 - share)
+    return top, now, come, series[-1] + come
+
+
+def may_add(series, weeks, share=A_WEEK):
+    """What each of the coming `weeks` weeks may add under the
+    line, in whole tokens: the line at the week's end, rounded
+    down."""
+    now = by_the_rule(series, share)[1]
+    return [int(now * share ** week) for week in range(1, weeks + 1)]
+
+
+def stands_at_most(series, weeks, share=A_WEEK):
+    """Where a series stands at most `weeks` weeks after its
+    last count, with every week's allowance used."""
+    return series[-1] + sum(may_add(series, weeks, share))
+
+
+def lines():
+    """(where it stands, its limit) for everything else, for
+    the run log if it keeps the rule, and for the whole."""
+    rest = (ELSE_BY_DAY[-1], math.ceil(by_the_rule(ELSE_BY_DAY)[3]))
+    log = (LOG_BY_DAY[-1], math.ceil(by_the_rule(LOG_BY_DAY)[3]))
+    return [rest, log, (rest[0] + log[0], rest[1] + log[1])]
+
+
 def series(clone, ref="origin/main"):
     """Count each day's tree again: for each Pacific day, the
     last landing on the first-parent line of `ref` that day or
@@ -186,52 +238,63 @@ def series(clone, ref="origin/main"):
 
 
 class TheLimit(unittest.TestCase):
-    """The 3 steps of the proof, walked."""
+    """The 3 steps of the proof, walked. The proof asks nothing
+    of the limit, so it is walked at 3: the limit of everything
+    but the run log, the limit of the whole, and the first
+    number."""
+
+    def limits(self):
+        (rest, limit), _log, (whole, both) = lines()
+        return ((rest, limit), (whole, both), (LAST_COUNT, FIRST_NUMBER))
 
     def test_step_1_something_is_always_left(self):
         # A day's growth is drawn at random, from 0 to all the
         # rule allows. 6 shares, 5,000 days each, whole tokens.
         draw = random.Random(38)
-        for numerator, denominator in ((1, 2), (1, 10), (535, 10000),
-                                       (1, 100), (9, 10), (999, 1000)):
-            count = LAST_COUNT
-            for _day in range(5000):
-                left = LIMIT - count
-                self.assertGreater(left, 0)
-                grown = draw.randint(
-                    0, allowance(left, numerator, denominator))
-                self.assertLessEqual(grown * denominator, left * numerator)
-                count += grown
-            self.assertLess(count, LIMIT)
+        for start, limit in self.limits():
+            for numerator, denominator in ((1, 2), (1, 10), (535, 10000),
+                                           (1, 100), (9, 10), (999, 1000)):
+                count = start
+                for _day in range(5000):
+                    left = limit - count
+                    self.assertGreater(left, 0)
+                    grown = draw.randint(
+                        0, allowance(left, numerator, denominator))
+                    self.assertLessEqual(grown * denominator,
+                                         left * numerator)
+                    count += grown
+                self.assertLess(count, limit)
 
     def test_step_2_the_count_settles_under_the_bar(self):
         # With every allowance used, each day's count is not
         # under the day before's and is under the limit, and
         # a day comes after which it does not move.
-        count, days = LAST_COUNT, 0
-        while True:
-            grown = allowance(LIMIT - count, 535, 10000)
-            if grown == 0:
-                break
-            self.assertLess(count + grown, LIMIT)
-            count += grown
-            days += 1
-        # Fewer than 19 tokens are left, so the rule allows 0.
-        self.assertEqual(18, LIMIT - count)
+        for start, limit in self.limits():
+            count, days = start, 0
+            while True:
+                grown = allowance(limit - count, 535, 10000)
+                if grown == 0:
+                    break
+                self.assertLess(count + grown, limit)
+                count += grown
+                days += 1
+            # Fewer than 19 tokens are left, so the rule allows 0.
+            self.assertEqual(18, limit - count)
+            self.assertTrue(200 <= days <= 300, days)
         self.assertEqual(0, allowance(18, 535, 10000))
         self.assertEqual(1, allowance(19, 535, 10000))
-        self.assertTrue(240 <= days <= 250, days)
 
     def test_step_3_what_is_left_goes_to_0(self):
         # What is left is multiplied by the same factor each
         # day, so after n days it is that factor to the power
         # n, times what was left at the start.
-        left = start = LIMIT - LAST_COUNT
-        for day in range(1, 401):
-            left -= SHARE * left
-            self.assertAlmostEqual(
-                start * (1 - SHARE) ** day, left, delta=1e-6 * start)
-        self.assertLess(left, 1)
+        for begin, limit in self.limits():
+            left = start = limit - begin
+            for day in range(1, 401):
+                left -= SHARE * left
+                self.assertAlmostEqual(
+                    start * (1 - SHARE) ** day, left, delta=1e-6 * start)
+            self.assertLess(left, 1)
         # A share of a half: of 8 left, a day takes 4, then 2,
         # then 1, then a half.
         left, taken = 8.0, []
@@ -244,53 +307,172 @@ class TheLimit(unittest.TestCase):
     def test_day_by_day_it_is_the_law_of_cooling(self):
         # count = limit - (left at the start) x e^(-k x days),
         # sampled at the end of each day.
-        start = LIMIT - LAST_COUNT
-        count = float(LAST_COUNT)
-        for day in range(1, 91):
-            count += SHARE * (LIMIT - count)
-            self.assertAlmostEqual(
-                LIMIT - start * math.exp(-RATE * day), count, delta=1e-3)
+        for begin, limit in self.limits():
+            start = limit - begin
+            count = float(begin)
+            for day in range(1, 91):
+                count += SHARE * (limit - count)
+                self.assertAlmostEqual(
+                    limit - start * math.exp(-RATE * day), count, delta=1e-3)
         self.assertAlmostEqual(0.0535, SHARE, places=4)
         self.assertAlmostEqual(12.6, math.log(2) / RATE, places=1)
+        # The rule of the 3 lines, said for every moment: what
+        # is left is multiplied by 0.61 each week, and halves
+        # every 9.8 days.
+        self.assertEqual(
+            "9.8", "%.1f" % (7 * math.log(2) / -math.log(A_WEEK)))
 
 
 class TheNumbers(unittest.TestCase):
-    """The page's table, and the test for a limit."""
+    """The page's tables, and the test for a limit."""
 
-    def table(self):
-        rows, left = {}, float(LIMIT - LAST_COUNT)
-        for day in range(1, 61):
-            add = SHARE * left
-            rows[day] = (round(left), round(add), round(LIMIT - left + add))
-            left -= add
-        return rows
+    WEEKS = ("26 November", "3 December", "10 December", "17 December",
+             "24 December", "31 December")
 
-    def test_the_table_from_the_last_count(self):
-        rows = self.table()
-        self.assertEqual((6726717, 359979, 31633262), rows[1])
-        self.assertEqual((6366738, 340715, 31973977), rows[2])
-        self.assertEqual((4835996, 258798, 33422801), rows[7])
-        self.assertEqual((3290657, 176099, 34885442), rows[14])
-        self.assertEqual((1364908, 73043, 36708135), rows[30])
-        self.assertEqual((262131, 14028, 37751897), rows[60])
-        # 1 million is left after 35 days.
-        self.assertAlmostEqual(
-            34.7, math.log((LIMIT - LAST_COUNT) / 1e6) / RATE, places=1)
+    def test_the_3_lines(self):
+        top, now, come, limit = by_the_rule(ELSE_BY_DAY)
+        self.assertEqual((day(10, 31), 1695547, 2652010, 17606770),
+                         (top, round(now), math.ceil(come),
+                          math.ceil(limit)))
+        top, now, come, limit = by_the_rule(LOG_BY_DAY)
+        self.assertEqual((day(11, 18), 7730275, 12090943, 28409671),
+                         (top, round(now), math.ceil(come),
+                          math.ceil(limit)))
+        self.assertEqual([(14954760, 17606770), (16318728, 28409671),
+                          (31273488, 46016441)], lines())
+        self.assertEqual(14742953, 2652010 + 12090943)
+        self.assertEqual(("17.6", "28.4", "46.0"), tuple(
+            "%.1f" % (limit / 1e6) for _stands, limit in lines()))
+
+    def test_what_each_coming_week_may_add(self):
+        # The page's table, in whole tokens: what a week may
+        # add is the line at the week's end, rounded down.
+        rest, log = may_add(ELSE_BY_DAY, 6), may_add(LOG_BY_DAY, 6)
+        self.assertEqual(
+            [1034283, 630913, 384857, 234762, 143205, 87355], rest)
+        self.assertEqual(
+            [4715467, 2876435, 1754625, 1070321, 652896, 398266], log)
+        self.assertEqual(
+            [15989043, 16619956, 17004813, 17239575, 17382780, 17470135],
+            [stands_at_most(ELSE_BY_DAY, week) for week in range(1, 7)])
+        self.assertEqual(
+            [21034195, 23910630, 25665255, 26735576, 27388472, 27786738],
+            [stands_at_most(LOG_BY_DAY, week) for week in range(1, 7)])
+        self.assertEqual(
+            [37023238, 40530586, 42670068, 43975151, 44771252, 45256873],
+            [stands_at_most(ELSE_BY_DAY, week)
+             + stands_at_most(LOG_BY_DAY, week) for week in range(1, 7)])
+        # The 6 weeks end on the page's 6 days.
+        ends = [FIRST_DAY + datetime.timedelta(days=day(11, 19) + 7 * week)
+                for week in range(1, 7)]
+        self.assertEqual(list(self.WEEKS), [
+            "%d %s" % (end.day, end.strftime("%B")) for end in ends])
+        # However many weeks are walked, a line stays under its
+        # limit.
+        for series, (_stands, limit) in zip((ELSE_BY_DAY, LOG_BY_DAY),
+                                            lines()):
+            for weeks in (1, 6, 60, 600):
+                self.assertLess(stands_at_most(series, weeks), limit)
+
+    def test_with_every_allowance_used_it_is_the_first_rule(self):
+        # What is left to the limit at each week's start, and
+        # it is multiplied by 0.61 each week.
+        limit = lines()[0][1]
+        left = [limit - stands_at_most(ELSE_BY_DAY, week)
+                for week in range(0, 8)]
+        self.assertEqual(
+            [2652010, 1617727, 986814, 601957, 367195, 223990], left[:6])
+        for earlier, later in zip(left, left[1:]):
+            self.assertAlmostEqual(A_WEEK, later / earlier, places=4)
+        # Under 100,000 is left after 7 weeks, and not after 6.
+        self.assertGreater(left[6], 100000)
+        self.assertLess(left[7], 100000)
+        # In whole tokens the line allows 0 from the 30th week,
+        # and the count stops 16 tokens short of the limit.
+        weeks = may_add(ELSE_BY_DAY, 40)
+        self.assertEqual(29, weeks.index(0))
+        self.assertEqual(16, limit - stands_at_most(ELSE_BY_DAY, 40))
+
+    def test_on_a_day_between_the_line_alone_allows_more(self):
+        # A day that is `between` days after a week's end stands
+        # on the count 7 days before it, plus its own 7 days and
+        # every 7 days after: each under the line of its day.
+        _top, now, _come, limit = by_the_rule(ELSE_BY_DAY)
+        last = len(ELSE_BY_DAY) - 1
+        bars = [ELSE_BY_DAY[last + between - 7]
+                + now * A_WEEK ** (between / 7) / (1 - A_WEEK)
+                for between in range(1, 7)]
+        self.assertEqual(18037368, math.ceil(max(bars)))
+        self.assertEqual(3, 1 + bars.index(max(bars)))
+        self.assertTrue(all(bar > limit for bar in bars))
+        self.assertLess(max(bars), 18.1e6)
+        # 60 weeks walked under the line alone, a count for each
+        # day: what its 7 days add is drawn at random under the
+        # line, and then is all the line allows.
+        draw = random.Random(1961)
+        for used in (False, True):
+            count = list(ELSE_BY_DAY)
+            for place in range(last + 1, last + 1 + 7 * 60):
+                line = int(now * A_WEEK ** ((place - last) / 7))
+                count.append(count[place - 7]
+                             + (line if used else draw.randint(0, line)))
+            for place in range(last + 1, len(count)):
+                between = (place - last) % 7
+                if between == 0:
+                    self.assertLess(count[place], limit)
+                else:
+                    self.assertLess(count[place], bars[between - 1])
+        # With all used, the third day after a week's end comes
+        # within 100 tokens of its bar, and passes the limit.
+        self.assertLess(bars[2] - count[last + 3 + 7 * 59], 100)
+        self.assertGreater(count[last + 3 + 7 * 59], limit)
+        # If the count does not fall, a day between is not above
+        # the week's end that follows it, which is under the
+        # limit. Everything else fell on 2 of its 35 days.
+        self.assertEqual(2, sum(1 for place in range(1, last + 1)
+                                if ELSE_BY_DAY[place]
+                                < ELSE_BY_DAY[place - 1]))
+
+    def test_if_r_were_another_number(self):
+        rows = {}
+        for share in (0.61, 0.65, 0.70, 0.80):
+            rest = by_the_rule(ELSE_BY_DAY, share)[3]
+            log = by_the_rule(LOG_BY_DAY, share)[3]
+            rows[share] = tuple("%.1f" % (count / 1e6)
+                                for count in (rest, log, rest + log))
+        self.assertEqual({0.61: ("17.6", "28.4", "46.0"),
+                          0.65: ("18.7", "30.8", "49.5"),
+                          0.70: ("20.7", "34.7", "55.4"),
+                          0.80: ("29.1", "48.5", "77.6")}, rows)
+        # With r under 0.602 the counts of everything else have
+        # passed the line; at 0.61 and above they have not.
+        week = {end: ELSE_BY_DAY[end] - ELSE_BY_DAY[end - 7]
+                for end in range(7, 36)}
+        top = max(week, key=week.get)
+
+        def kept(share):
+            return all(week[end] < week[top] * share ** ((end - top) / 7)
+                       for end in range(top + 1, 36))
+
+        self.assertEqual([False, False, True, True, True, True],
+                         [kept(share) for share in
+                          (0.60, 0.602, 0.61, 0.65, 0.70, 0.80)])
 
     def test_the_test_finds_a_limit_that_is_there(self):
         # On a curve made by the rule, 3 counts any same number
         # of days apart give the limit back.
-        start = LIMIT - LAST_COUNT
+        stands, limit = lines()[0]
+        start, rate = limit - stands, -math.log(A_WEEK) / 7
 
         def on_the_curve(day):
-            return LIMIT - start * math.exp(-RATE * day)
+            return limit - start * math.exp(-rate * day)
 
         for apart in (1, 5, 9, 30):
-            factor, limit = limit_of(
+            factor, found = limit_of(
                 on_the_curve(0), on_the_curve(apart),
                 on_the_curve(2 * apart))
-            self.assertAlmostEqual(math.exp(-RATE * apart), factor, places=9)
-            self.assertAlmostEqual(LIMIT, limit, delta=1e-3)
+            self.assertAlmostEqual(math.exp(-rate * apart), factor, places=9)
+            self.assertAlmostEqual(limit, found, delta=1e-3)
         # A straight line has no limit: its steps do not shrink.
         self.assertEqual((1.0, None), limit_of(10, 20, 30))
 
@@ -304,10 +486,12 @@ class TheNumbers(unittest.TestCase):
             [2302977, 4752765, 1446541, 4822024],
             [later - earlier for (_b, earlier), (_d, later)
              in zip(COUNTS, COUNTS[1:])])
-        # The last step is the longest of the 4, and more than
-        # 3 times the next day's allowance.
+        # The last step is the longest of the 4, and above what
+        # the rule allows the whole in the 7 days to 26 November.
         self.assertEqual(max(paces), paces[-1])
-        self.assertGreater(paces[-1] * 1e6, 3 * 359979)
+        week = may_add(ELSE_BY_DAY, 1)[0] + may_add(LOG_BY_DAY, 1)[0]
+        self.assertEqual((5749750, "0.82"), (week, "%.2f" % (week / 7e6)))
+        self.assertGreater(paces[-1] * 7e6, week)
 
     def test_what_the_campaign_finds_does_level_off(self):
         factor, limit = limit_of(
@@ -316,21 +500,31 @@ class TheNumbers(unittest.TestCase):
         factor, limit = limit_of(
             FINDS["4 November"], FINDS["11 November"], FINDS["18 November"])
         self.assertEqual((0.79, 25929), (round(factor, 2), round(limit)))
-        # The log's tail, at its own average for a find.
+        # The log's tail, at its own average for a find, against
+        # what the rule gives each line.
         a_find = 16318670 / 24804
         self.assertEqual(658, round(a_find))
         self.assertEqual(
             ("0.4", "1.3"),
             ("%.1f" % (a_find * (24649 - 23988) / 1e6),
              "%.1f" % (a_find * (25929 - 23988) / 1e6)))
+        rest, log = by_the_rule(ELSE_BY_DAY)[2], by_the_rule(LOG_BY_DAY)[2]
+        self.assertEqual(("2.65", "12.09"),
+                         ("%.2f" % (rest / 1e6), "%.2f" % (log / 1e6)))
+        # The proof still owed, 1.0 to 2.9 million, fits under
+        # the rule at its lower end and not at its upper.
+        self.assertTrue(1.0e6 < rest < 2.9e6)
 
-    def test_step_38_of_the_series_is_the_first_past_38_million(self):
+    def test_step_39_of_the_series_is_the_first_past_46_million(self):
+        whole = lines()[2][1]
         series = [0, 1]
-        while series[-1] <= LIMIT:
+        while series[-1] <= whole:
             series.append(series[-1] + series[-2])
-        self.assertEqual((38, 39088169, 24157817),
-                         (len(series) - 1, series[38], series[37]))
-        self.assertAlmostEqual(1.618, series[38] / series[37], places=3)
+        self.assertEqual((39, 63245986, 39088169),
+                         (len(series) - 1, series[39], series[38]))
+        self.assertAlmostEqual(1.618, series[39] / series[38], places=3)
+        # Step 31 is the first past the cap of 1,048,576.
+        self.assertTrue(series[30] < 1048576 < series[31])
 
 
 class TheSecondDegree(unittest.TestCase):
@@ -374,9 +568,11 @@ class TheSecondDegree(unittest.TestCase):
         factor, limit = limit_of(*WHOLE)
         self.assertEqual(("0.82", "90.3"),
                          ("%.2f" % factor, "%.1f" % (limit / 1e6)))
-        # What is left for the log under 38 million, if everything
-        # else stops between 16 and 18 million.
-        self.assertEqual((22, 20), (38 - 16, 38 - 18))
+        # A limit for each line gives the limit of the whole.
+        (_rest, rest), (_log, log), (_whole, whole) = lines()
+        self.assertEqual((46016441, 46016441),
+                         (whole, 17606770 + 28409671))
+        self.assertEqual(whole, rest + log)
         self.assertEqual("16.3", "%.1f" % (LOG[2] / 1e6))
 
     def test_the_series_by_day(self):
@@ -479,8 +675,9 @@ class TheSecondDegree(unittest.TestCase):
                                 in zip(walk, walk[1:])))
         self.assertLess(with_a_limit(300), limit)
         self.assertLessEqual(max(walk_of(with_a_limit)), limit)
-        self.assertGreater(with_none(365), LIMIT)
-        self.assertGreater(with_none(3650), 1000 * LIMIT)
+        whole = lines()[2][1]
+        self.assertGreater(with_none(365), whole)
+        self.assertGreater(with_none(3650), 1000 * whole)
         # And the run log's 3 counts, which point at no limit,
         # lie on a curve that has 1: a log that is written no
         # more after the third count.
@@ -524,32 +721,20 @@ class TheRuleOnTheSteps(unittest.TestCase):
         added = [610, 0]
         self.assertEqual(0, share * added[-1])
 
-    def test_for_38_million_from_this_week_s_pace(self):
-        pace = Fraction(4822024, 4)
-        left = LIMIT - LAST_COUNT
-        share = left / (pace + left)
-        self.assertEqual(left, pace * share / (1 - share))
-        self.assertEqual("0.848", "%.3f" % share)
-        # At the record's rate the same pace ends near 52.6
-        # million.
-        rate = math.exp(-RATE)
-        self.assertEqual("0.9465", "%.4f" % rate)
-        self.assertEqual("52.6", "%.1f" % (
-            (LAST_COUNT + float(pace) * rate / (1 - rate)) / 1e6))
-
     def test_the_first_rule_with_all_used_keeps_this_rule(self):
         # Under the first rule with every allowance used, each
         # day's step is (1 - k) times the step before, and the
         # steps sum to what was left.
-        left = float(LIMIT - LAST_COUNT)
-        steps = []
-        for _day in range(400):
-            steps.append(SHARE * left)
-            left -= steps[-1]
-        for earlier, later in zip(steps, steps[1:50]):
-            self.assertAlmostEqual(1 - SHARE, later / earlier, places=9)
-        self.assertAlmostEqual(LIMIT - LAST_COUNT,
-                               steps[0] / SHARE, delta=1e-3)
+        for stands, limit in lines() + [(LAST_COUNT, FIRST_NUMBER)]:
+            left = float(limit - stands)
+            steps = []
+            for _day in range(400):
+                steps.append(SHARE * left)
+                left -= steps[-1]
+            for earlier, later in zip(steps, steps[1:50]):
+                self.assertAlmostEqual(1 - SHARE, later / earlier, places=9)
+            self.assertAlmostEqual(limit - stands,
+                                   steps[0] / SHARE, delta=1e-3)
 
     def test_everything_else_has_kept_it_since_its_largest_week(self):
         week = {end: ELSE_BY_DAY[end] - ELSE_BY_DAY[end - 7]
@@ -560,18 +745,23 @@ class TheRuleOnTheSteps(unittest.TestCase):
         # there added less than a line that falls by 0.61 a week.
         for end in range(top + 1, 36):
             self.assertLess(week[end],
-                            week[top] * 0.61 ** ((end - top) / 7), end)
+                            week[top] * A_WEEK ** ((end - top) / 7), end)
         self.assertEqual(19, 35 - top)
         least = max((week[end] / week[top]) ** (7 / (end - top))
                     for end in range(top + 1, 36))
         self.assertEqual("0.602", "%.3f" % least)
-        # Under that line, the weeks to come add less than 2.7
-        # million, and everything else never passes 17.6 million.
-        this_week = week[top] * 0.61 ** ((35 - top) / 7)
-        to_come = this_week * 0.61 / (1 - 0.61)
+        # 0.61 is the next number of 2 digits above the least.
+        self.assertEqual(61, math.ceil(least * 100))
+        # Under that line, the weeks that end 7, 14, 21 days on
+        # add under 2,652,010, and at each of those week's ends
+        # everything else stands under 17,606,770.
+        found, this_week, to_come, limit = by_the_rule(ELSE_BY_DAY)
+        self.assertEqual(top, found)
         self.assertEqual(("1.70", "2.65", "17.6"),
-                         ("%.2f" % (this_week / 1e6), "%.2f" % (to_come / 1e6),
-                          "%.1f" % ((ELSE_BY_DAY[-1] + to_come) / 1e6)))
+                         ("%.2f" % (this_week / 1e6),
+                          "%.2f" % (to_come / 1e6), "%.1f" % (limit / 1e6)))
+        self.assertEqual((2652010, 17606770),
+                         (math.ceil(to_come), math.ceil(limit)))
         self.assertEqual(465512, week[35])
 
     def test_the_run_log_has_not(self):
@@ -579,33 +769,167 @@ class TheRuleOnTheSteps(unittest.TestCase):
                 for end in range(7, 36)}
         top = max(week, key=week.get)
         self.assertEqual((day(11, 18), 8295873), (top, week[top]))
+        # 1 day has passed since its top. The 7 days that end on
+        # it are under the line, and 1 day is not a rule kept.
+        self.assertEqual(1, 35 - top)
+        self.assertEqual(5767107, week[35])
+        self.assertLess(week[35], by_the_rule(LOG_BY_DAY)[1])
+
+
+class TheFirstNumber(unittest.TestCase):
+    """38 million: the goal of 2026-11-16, named before the
+    counts were read. What the counts say of it."""
+
+    def test_at_the_last_4_days_pace_it_is_passed_on_25_november(self):
+        pace = Fraction(4822024, 4)
+        self.assertEqual("1.21", "%.2f" % (pace / 1e6))
+        days = (FIRST_NUMBER - LAST_COUNT) / pace
+        self.assertEqual("5.58", "%.2f" % days)
+        last = datetime.date(2026, 11, 19)
+        self.assertEqual(
+            datetime.date(2026, 11, 25),
+            last + datetime.timedelta(days=math.ceil(days)))
+        # And the whole's limit by the rule, 46,016,441, at the
+        # same pace: by 2 December.
+        days = (lines()[2][1] - LAST_COUNT) / pace
+        self.assertEqual(
+            datetime.date(2026, 12, 2),
+            last + datetime.timedelta(days=math.ceil(days)))
+
+    def test_what_38_million_takes_from_that_pace(self):
+        pace = Fraction(4822024, 4)
+        left = FIRST_NUMBER - LAST_COUNT
+        share = left / (pace + left)
+        self.assertEqual(left, pace * share / (1 - share))
+        self.assertEqual("0.848", "%.3f" % share)
+        self.assertEqual(15, round(100 * (1 - share)))
+        # At the record's rate the same pace ends near 52.6
+        # million.
+        rate = math.exp(-RATE)
+        self.assertEqual("0.9465", "%.4f" % rate)
+        self.assertEqual("52.6", "%.1f" % (
+            (LAST_COUNT + float(pace) * rate / (1 - rate)) / 1e6))
+
+    def test_the_rule_of_the_3_lines_does_not_keep_it(self):
+        # The whole may stand under 38 million on 26 November
+        # and over it on 3 December.
+        at = [stands_at_most(ELSE_BY_DAY, week)
+              + stands_at_most(LOG_BY_DAY, week) for week in (1, 2)]
+        self.assertEqual([37023238, 40530586], at)
+        self.assertTrue(at[0] < FIRST_NUMBER < at[1])
+        self.assertGreater(lines()[2][1], FIRST_NUMBER)
+
+    def test_the_proof_holds_for_it_as_for_any_number(self):
+        # With the record's share, in whole tokens, the count
+        # stops 18 tokens short of 38 million after 244 days.
+        count, days = LAST_COUNT, 0
+        while allowance(FIRST_NUMBER - count, 535, 10000):
+            count += allowance(FIRST_NUMBER - count, 535, 10000)
+            days += 1
+        self.assertEqual((18, 244), (FIRST_NUMBER - count, days))
 
 
 class ThePageRecordsTheProof(unittest.TestCase):
     """The figures this module holds are the page's."""
 
-    def test_the_page_states_the_rule_the_proof_and_the_numbers(self):
-        page = MODELS._flat(PAGE)
+    def test_the_page_states_where_the_numbers_come_from(self):
+        page = _flat(PAGE)
         for stated in (
-                "the count may grow by at most k times what is left to 38 "
-                "million at the start of that day",
+                "# The curve: limits that follow from a rule",
+                "no limit on this page is named first",
+                "line on a day = top x r^(days since the top / 7)",
+                "The least r that holds is 0.602, and 0.61 is the next "
+                "number of 2 digits above it.",
+                "| Everything else | 14,954,760 | 6,486,136, ended 31 October "
+                "| 1,695,547 | 2,652,010 | 17,606,770 |",
+                "| The run log, if it keeps the rule from 19 November "
+                "| 16,318,728 | 8,295,873, ended 18 November | 7,730,275 "
+                "| 12,090,943 | 28,409,671 |",
+                "| The whole | 31,273,488 | | | 14,742,953 | 46,016,441 |",
+                "| 26 November | 1,034,283 | 15,989,043 | 4,715,467 "
+                "| 21,034,195 | 37,023,238 |",
+                "| 3 December | 630,913 | 16,619,956 | 2,876,435 "
+                "| 23,910,630 | 40,530,586 |",
+                "| 10 December | 384,857 | 17,004,813 | 1,754,625 "
+                "| 25,665,255 | 42,670,068 |",
+                "| 17 December | 234,762 | 17,239,575 | 1,070,321 "
+                "| 26,735,576 | 43,975,151 |",
+                "| 24 December | 143,205 | 17,382,780 | 652,896 "
+                "| 27,388,472 | 44,771,252 |",
+                "| 31 December | 87,355 | 17,470,135 | 398,266 "
+                "| 27,786,738 | 45,256,873 |",
+                "If the 7 days ending on 26 November add more than 1,034,283 "
+                "to everything but the run log, the rule is broken",
+                "| 0.61, the least of 2 digits the counts have kept "
+                "| 17.6 million | 28.4 million | 46.0 million |",
+                "| 0.65 | 18.7 million | 30.8 million | 49.5 million |",
+                "| 0.70 | 20.7 million | 34.7 million | 55.4 million |",
+                "| 0.80 | 29.1 million | 48.5 million | 77.6 million |",
+                "With r under 0.602, the counts of everything else have "
+                "already passed the line."):
+            self.assertIn(stated, page, stated)
+
+    def test_the_page_states_what_it_says_of_38_million(self):
+        page = _flat(PAGE)
+        for stated in (
+                "The first number this page carried was 38 million.",
+                "**The first number here was 38 million.**",
+                "the whole passes 38 million on 25 November",
+                "r is 0.848 a day",
+                "the whole stops near 52.6 million",
+                "may stand at 37,023,238 on 26 November and at 40,530,586 "
+                "on 3 December",
+                "no chart carries it",
+                "It holds for 17,606,770, for 38 million, and for any "
+                "number above the count."):
+            self.assertIn(stated, page, stated)
+        # The page's 2 pictures stand in the tree, and neither
+        # carries the first number.
+        for name in ("limit", "two-limits"):
+            asset = "assets/security-tokens-%s-2026-11-19.svg" % name
+            self.assertIn(asset, page)
+            with open(os.path.join(ROOT, *asset.split("/")),
+                      encoding="utf-8") as chart:
+                drawn = chart.read()
+            for first in ("38M", "38 million", "38,000,000"):
+                self.assertFalse(first in drawn,
+                                 "%s carries %s" % (asset, first))
+
+    def test_the_page_states_the_rule_the_proof_and_the_numbers(self):
+        page = _flat(PAGE)
+        for stated in (
+                "the count may grow by at most k times what is left to L "
+                "at the start of that day",
                 "**Step 1. Something is always left.**",
                 "**Step 2. The count settles.**",
-                "**Step 3. The limit is 38 million.**",
+                "**Step 3. The limit is L.**",
                 "Newton's law of cooling",
-                "| 1 | 6,726,717 | 359,979 | 31,633,262 |",
-                "| 60 | 262,131 | 14,028 | 37,751,897 |",
-                "What is left halves every 12.6 days.",
-                "stops 18 tokens short of 38 million, after 244 days",
+                "| 26 November | 2,652,010 | 1,034,283 | 15,989,043 |",
+                "| 3 December | 1,617,727 | 630,913 | 16,619,956 |",
+                "| 10 December | 986,814 | 384,857 | 17,004,813 |",
+                "| 17 December | 601,957 | 234,762 | 17,239,575 |",
+                "| 24 December | 367,195 | 143,205 | 17,382,780 |",
+                "| 31 December | 223,990 | 87,355 | 17,470,135 |",
+                "What is left halves every 9.8 days.",
+                "Under 100,000 is left after 7 weeks.",
+                "That is the 30th week. So the count stops 16 tokens short "
+                "of 17,606,770",
+                "The largest of the 6 bars is 18,037,368, 3 days after a "
+                "week's end.",
+                "The count has fallen on 2 days.",
                 "| 15 and 19 November | 4,822,024 | 1.21 million |",
+                "The rule allows the whole 5,749,750 in the 7 days to "
+                "26 November. That is 0.82 million a day",
                 "| 0.51 | 24,649 |",
                 "| 0.79 | 25,929 |",
-                "Step 38 is 39,088,169",
+                "| 1.0 to 2.9 million | 2.65 million |",
+                "| 0.4 to 1.3 million | 12.09 million |",
+                "Step 39 is 63,245,986",
                 "This is a candidate."):
             self.assertIn(stated, page, stated)
 
     def test_the_page_states_the_second_half(self):
-        page = MODELS._flat(PAGE)
+        page = _flat(PAGE)
         for stated in (
                 "Aitken's delta-squared process",
                 "the last step is 3,046,267, and it is 7,246,289 shorter",
@@ -615,6 +939,7 @@ class ThePageRecordsTheProof(unittest.TestCase):
                 "| The run log | 0 | 6,040,688 | 16,318,728 | 1.70 | none |",
                 "| The whole | 1,615,732 | 17,948,976 | 31,273,283 | 0.82 "
                 "| 90.3 million |",
+                "17,606,770 plus 28,409,671 is 46,016,441.",
                 "| 3 counts, 10 days apart, on each of the last 8 days "
                 "| 14.6 to 17.0 million |",
                 "| 19 November | 16.95 million | 96.62 million |",
@@ -622,16 +947,22 @@ class ThePageRecordsTheProof(unittest.TestCase):
                 "from 14.75 to 47.65 million",
                 "**Each day's allowance is at most r times the allowance of "
                 "the day before, with r under 1.**",
-                "r is 0.848",
-                "the bar is 52.6 million",
+                "S is the line on 19 November, and r is 0.61.",
                 "ended on 31 October: 6,486,136",
                 "The least r that holds is 0.602",
-                "it never passes 17.6 million",
+                "add under 2,652,010, and at each of those week's ends it "
+                "stands under 17,606,770",
                 "ended on 18 November: 8,295,873",
+                "The 7 days ending on 19 November added 5,767,107",
                 "peaks late on 17 November at 14,977,518",
                 "49.6 million for the log alone by 19 December",
+                "It passes 46 million within a year",
                 "So a chart can show a limit. It cannot prove 1."):
             self.assertIn(stated, page, stated)
+        # The sentence the page once carried, that everything
+        # else never passes 17.6 million, held at week's ends
+        # alone. It is gone.
+        self.assertNotIn("never passes 17.6 million", page)
         # 16.0 to 17.9: the last count of everything else plus
         # the 1.0 to 2.9 million of proof still owed.
         self.assertEqual(("16.0", "17.9"),
@@ -640,11 +971,66 @@ class ThePageRecordsTheProof(unittest.TestCase):
         self.assertEqual("1,280,620", "{:,}".format(
             round(second_degree(*ELSE)) - ELSE[2]))
         self.assertEqual(47, round(96.62 - 49.84))
-        # The picture of the 2 lines stands in the tree.
-        self.assertIn("assets/security-tokens-two-limits-2026-11-19.svg",
-                      page)
-        self.assertTrue(os.path.isfile(os.path.join(
-            ROOT, "assets", "security-tokens-two-limits-2026-11-19.svg")))
+
+
+class TheRecordAndTheChartsCarryTheLines(unittest.TestCase):
+    """The fifth snapshot of the statistics record and the charts
+    of 19 November carry the 3 limits this module reads off the
+    counts. Nothing on them is named first."""
+
+    RECORD = os.path.join(ROOT, "docs", "infrastructure-documents",
+                          "project", "statistics.md")
+
+    def chart(self, name):
+        with open(os.path.join(
+                ROOT, "assets", "security-tokens-%s-2026-11-19.svg" % name),
+                encoding="utf-8") as handle:
+            return handle.read()
+
+    def test_the_record_states_the_3_limits(self):
+        with open(self.RECORD, encoding="utf-8") as handle:
+            record = handle.read()
+        (rest, rest_limit), (log, log_limit), (whole, whole_limit) = lines()
+        for stated in (
+                "| Everything else | %s | %.1fM |"
+                % (format(rest, ","), rest_limit / 1e6),
+                "| The run log, if it keeps the rule from 2026-11-19 "
+                "| %s | %.1fM |" % (format(log, ","), log_limit / 1e6),
+                "| The whole | %s | %.1fM |"
+                % (format(whole, ","), whole_limit / 1e6),
+                "a line that falls by %s a week" % A_WEEK):
+            self.assertIn(stated, record, stated)
+
+    def test_each_line_a_chart_draws_ends_where_the_rule_puts_it(self):
+        def drawn(count, top):
+            # A count as the charts place it: 320 units of height
+            # for `top` tokens, to 1 place, as the charts are
+            # written.
+            placed = "%.1f" % (424 - 320 * count / top)
+            return placed[:-2] if placed.endswith(".0") else placed
+
+        (rest, rest_limit), (log, log_limit), (whole, whole_limit) = lines()
+        # On 2026-12-31 a line stands at its limit, less what is
+        # left after 6 weeks.
+        for name, stands, limit, top in (
+                ("growth", whole, whole_limit, 60e6),
+                ("limit", whole, whole_limit, 50e6),
+                ("two-limits", rest, rest_limit, 30e6),
+                ("two-limits", log, log_limit, 30e6)):
+            end = limit - (limit - stands) * A_WEEK ** 6
+            self.assertIn('<circle cx="704" cy="%s" r="3.5"'
+                          % drawn(end, top), self.chart(name), name)
+        # The flat line of the whole stands at the limit itself.
+        for name, top in (("growth", 60e6), ("limit", 50e6)):
+            self.assertIn(
+                "M 80 %s L 704 %s" % ((drawn(whole_limit, top),) * 2),
+                self.chart(name), name)
+        # Each chart says its limits as the page does.
+        for name, said in (("growth", ("46.0M", "17.6M", "28.4M")),
+                           ("two-limits", ("17.6M", "28.4M")),
+                           ("limit", ("46.0 million",))):
+            for limit in said:
+                self.assertIn(limit, self.chart(name), name)
 
 
 if __name__ == "__main__":

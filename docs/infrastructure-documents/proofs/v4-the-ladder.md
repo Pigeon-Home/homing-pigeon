@@ -7,6 +7,12 @@ a technique of the proof, and carry the technique through
 the whole project, toward the upper limit of the measure:
 38 million security tokens.
 
+A note of 2026-11-20. 38 million was the goal as it stood
+on that day. At the owner's word the upper limit is now
+read off the counts, and not named first. `v4-the-curve.md`
+has the rule and the numbers. The technique below is as it
+was.
+
 This page takes the first such technique from finding F14.
 It says how the technique came about, what it is, what it
 reduces, and what was supposed before it was run.

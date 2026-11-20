@@ -14,6 +14,16 @@ of the count is to level off at that limit.
 The technique itself is on the proofs shelf, in
 `v4-the-ladder.md`. These notes are about the curve.
 
+A note of 2026-11-20. These notes take 38 million as the
+limit, as the direction stood when they were written. At
+the owner's word of 2026-11-20 no limit is named first. The
+limits are read off the counts: 17.6 million for everything
+but the run log, 28.4 million for the run log if it keeps
+the same rule, and 46.0 million for the whole.
+`v4-the-curve.md` on the proofs shelf carries them, and
+the 3 charts of 19 November were drawn again from them.
+The notes below stand as they were written.
+
 ## In short
 
 - **The curve is not levelling off.** The count is

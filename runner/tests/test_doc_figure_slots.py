@@ -265,10 +265,14 @@ class TestFourthSnapshot(unittest.TestCase):
 class TestFifthSnapshot(unittest.TestCase):
     # The fifth snapshot sets the counts of 4 more days against
     # the third snapshot's 2 lines, splits each in 2 as the fourth
-    # does, and shows where each part may stop. Its table is
-    # arithmetic a reader can redo, its stated shares are the
+    # does, and shows the limit a rule gives each part. Its table
+    # is arithmetic a reader can redo, its stated shares are the
     # table's own, and each of its 3 charts carries the figures
-    # the table gives.
+    # the table gives. Its charts were drawn again on 2026-11-20:
+    # no limit on them is named first. Each is read off the
+    # counts by the rule of the curve's page, and
+    # test_v4_the_curve holds the record's 3 limits and the
+    # charts' lines to the series by day.
     HEADING = ("## The measure against its lines: a fifth snapshot "
                "as of 2026-11-19")
     CHARTS = ("growth", "split", "two-limits")
@@ -353,10 +357,14 @@ class TestFifthSnapshot(unittest.TestCase):
         self.assertIn("| Asymptotic curve | %.1fM | %.1fM | %.1fM |"
                       % (curve / 1e6, last[2] / 1e6,
                          (last[2] - curve) / 1e6), text)
-        # The last 4 days' pace, and what the curve allows next.
-        self.assertEqual("1.21", "%.2f" % ((last[2] - was[2]) / 4e6))
-        self.assertEqual("0.36", "%.2f" % (
-            (38e6 - last[2]) * (1 - math.exp(-0.055)) / 1e6))
+        # The last 4 days' pace, and the day it passes the third
+        # snapshot's 38 million: the 6th day after 2026-11-19.
+        pace = (last[2] - was[2]) / 4.0
+        self.assertEqual("1.21", "%.2f" % (pace / 1e6))
+        self.assertIn("The last 4 days added 1.21 million a day, and at\n"
+                      "that pace the series passes the third snapshot's 38\n"
+                      "million on 2026-11-25.", text)
+        self.assertEqual(6, math.ceil((38e6 - last[2]) / pace))
 
     def test_each_chart_carries_the_table_s_figures(self):
         last = self._rows()[-1]
@@ -366,13 +374,15 @@ class TestFifthSnapshot(unittest.TestCase):
                        ">%.1fM<" % (last[4] / 1e6),
                        "%d%% of the count" % round(100.0 * last[3] / last[2])):
             self.assertIn(stated, split, stated)
+        limits = self._limits()
         growth = self._chart("growth")
-        for stated in (">%.1fM<" % (last[2] / 1e6), ">51.6M<", ">35.8M<",
-                       ">47.5M<", "ends near 52.6M", "The goal: 38M"):
+        for stated in (">%.1fM<" % (last[2] / 1e6),
+                       ">%s<" % limits["The whole"][1],
+                       "The limit that follows: %s" % limits["The whole"][1],
+                       "by 2 December"):
             self.assertIn(stated, growth, stated)
         limits = self._chart("two-limits")
-        for stated in (">16 to 18M<", ">20 to 22M<",
-                       "the run log: %.1fM," % (last[3] / 1e6),
+        for stated in ("the run log: %.1fM," % (last[3] / 1e6),
                        "Everything else: %.1fM." % (last[4] / 1e6)):
             self.assertIn(stated, limits, stated)
         # 1 surface and 1 blue for the counts, as the charts
@@ -380,18 +390,64 @@ class TestFifthSnapshot(unittest.TestCase):
         for name in self.CHARTS:
             self.assertIn('stroke="#3987e5"', self._chart(name), name)
 
-    def test_this_week_s_pace_at_the_old_rate(self):
-        # Each day allowed e^(-0.055) of the day before, from the
-        # last 4 days' pace: 47.5 million on 2026-12-15, and
-        # 52.6 million in the end. For 38 million, each day is
-        # allowed 15% less than the day before.
-        last, pace, keep = 31273283, 4822024 / 4.0, math.exp(-0.055)
-        at = last + pace * keep * (1 - keep ** 26) / (1 - keep)
-        end = last + pace * keep / (1 - keep)
-        self.assertEqual(("47.5", "52.6"),
-                         ("%.1f" % (at / 1e6), "%.1f" % (end / 1e6)))
-        left = 38000000 - last
-        self.assertEqual(15, round(100 * (1 - left / (pace + left))))
+    def _limits(self):
+        # The table of the 3 limits: part -> (where it stands,
+        # the limit that follows, as the record writes it).
+        lines = _read(STATISTICS).splitlines()
+        rows = {}
+        for line in lines[lines.index(self.HEADING):
+                          lines.index("## Where the project stands")]:
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if len(cells) == 3 and re.match(r"^\d+\.\dM$", cells[2]):
+                rows[cells[0]] = (int(cells[1].replace(",", "")), cells[2])
+        return rows
+
+    def test_the_3_limits_stand_on_the_table_s_last_row(self):
+        # No limit of this view is named first. The record gives
+        # 1 to each part of the last count, and the whole's is
+        # the sum of the other 2.
+        last = self._rows()[-1]
+        limits = self._limits()
+        log = "The run log, if it keeps the rule from 2026-11-19"
+        self.assertEqual({"Everything else", log, "The whole"}, set(limits))
+        self.assertEqual((last[4], last[3], last[2]),
+                         (limits["Everything else"][0], limits[log][0],
+                          limits["The whole"][0]))
+        rest, logs, whole = (float(limits[part][1][:-1])
+                             for part in ("Everything else", log,
+                                          "The whole"))
+        self.assertAlmostEqual(whole, rest + logs, places=6)
+        for part in limits:
+            self.assertGreater(float(limits[part][1][:-1]) * 1e6,
+                               limits[part][0], part)
+        # Each chart that draws the 2 parts carries their limits.
+        for name in ("growth", "two-limits"):
+            for part in ("Everything else", log):
+                self.assertIn(">%s<" % limits[part][1], self._chart(name),
+                              name)
+        # The third snapshot's 38 million is on none of the 3.
+        for name in self.CHARTS:
+            chart = self._chart(name)
+            for first in ("38M", "38 million"):
+                self.assertFalse(first in chart,
+                                 "%s carries %s" % (name, first))
+
+    def test_the_pace_passes_the_whole_s_limit_by_2_december(self):
+        # The dotted line of the growth chart: the last 4 days'
+        # pace from the last count. It passes the limit of the
+        # whole on the 13th day after 2026-11-19.
+        rows = {r[0]: r for r in self._rows()}
+        lines = _read(STATISTICS).splitlines()
+        fourth = {r[0]: r for r in _split_rows(lines[
+            lines.index(TestFourthSnapshot.HEADING):
+            lines.index(self.HEADING)])}
+        last = rows["2026-11-19"][2]
+        pace = (last - fourth["2026-11-15"][2]) / 4.0
+        whole = self._limits()["The whole"][1]
+        self.assertEqual(13, math.ceil((float(whole[:-1]) * 1e6 - last)
+                                       / pace))
+        self.assertIn("the series passes %s million by 2026-12-02"
+                      % whole[:-1], " ".join(lines))
 
 
 class TestRecordSlots(unittest.TestCase):

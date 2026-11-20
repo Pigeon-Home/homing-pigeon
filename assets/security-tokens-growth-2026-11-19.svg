@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="Helvetica, Arial, sans-serif">
-  <title>Security tokens in the tree, 15 October to 15 December 2026: counted to 19 November, above the straight trend and the curve drawn on 16 November</title>
+  <title>Security tokens in the tree, 15 October to 31 December 2026: counted to 19 November, then the line a rule draws from the last count toward a limit of 46.0M that follows from the counts</title>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#2b060d"/>
@@ -8,71 +8,79 @@
   </defs>
   <rect width="900" height="520" fill="url(#bg)"/>
   <text x="50" y="46" fill="#ffffff" font-size="24" font-weight="bold">Security tokens in the tree</text>
-  <text x="50" y="72" fill="#ffd7de" font-size="15">Counted to 19 November 2026, against the 2 lines drawn on 16 November</text>
-  <!-- the modelled side: everything right of the last count -->
-  <rect x="449.5" y="104" width="274.5" height="320" fill="#ffffff" fill-opacity="0.045"/>
-  <!-- the grid and the two axes -->
-  <path d="M 80 424 L 724 424" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="50" y="72" fill="#ffd7de" font-size="15">Counted to 19 November 2026, then what the rule allows from the last count</text>
+  <!-- the side that is not counted -->
+  <rect x="363.6" y="104" width="340.4" height="320" fill="#ffffff" fill-opacity="0.045"/>
+  <!-- the grid and the 2 axes -->
+  <path d="M 80 424 L 704 424" fill="none" stroke="#6a2130" stroke-width="1"/>
   <text x="68" y="428.5" text-anchor="end" fill="#d9a9b1" font-size="13">0</text>
-  <path d="M 80 370.7 L 724 370.7" fill="none" stroke="#45121d" stroke-width="1"/>
+  <path d="M 80 370.7 L 704 370.7" fill="none" stroke="#45121d" stroke-width="1"/>
   <text x="68" y="375.2" text-anchor="end" fill="#d9a9b1" font-size="13">10M</text>
-  <path d="M 80 317.3 L 724 317.3" fill="none" stroke="#45121d" stroke-width="1"/>
+  <path d="M 80 317.3 L 704 317.3" fill="none" stroke="#45121d" stroke-width="1"/>
   <text x="68" y="321.8" text-anchor="end" fill="#d9a9b1" font-size="13">20M</text>
-  <path d="M 80 264 L 724 264" fill="none" stroke="#45121d" stroke-width="1"/>
+  <path d="M 80 264 L 704 264" fill="none" stroke="#45121d" stroke-width="1"/>
   <text x="68" y="268.5" text-anchor="end" fill="#d9a9b1" font-size="13">30M</text>
-  <path d="M 80 210.7 L 724 210.7" fill="none" stroke="#45121d" stroke-width="1"/>
+  <path d="M 80 210.7 L 704 210.7" fill="none" stroke="#45121d" stroke-width="1"/>
   <text x="68" y="215.2" text-anchor="end" fill="#d9a9b1" font-size="13">40M</text>
-  <path d="M 80 157.3 L 724 157.3" fill="none" stroke="#45121d" stroke-width="1"/>
+  <path d="M 80 157.3 L 704 157.3" fill="none" stroke="#45121d" stroke-width="1"/>
   <text x="68" y="161.8" text-anchor="end" fill="#d9a9b1" font-size="13">50M</text>
-  <path d="M 80 104 L 724 104" fill="none" stroke="#45121d" stroke-width="1"/>
+  <path d="M 80 104 L 704 104" fill="none" stroke="#45121d" stroke-width="1"/>
   <text x="68" y="108.5" text-anchor="end" fill="#d9a9b1" font-size="13">60M</text>
   <path d="M 80 424 L 80 430" fill="none" stroke="#6a2130" stroke-width="1"/>
   <text x="80" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Oct 15</text>
-  <path d="M 259.5 424 L 259.5 430" fill="none" stroke="#6a2130" stroke-width="1"/>
-  <text x="259.5" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 1</text>
-  <path d="M 449.5 424 L 449.5 430" fill="none" stroke="#6a2130" stroke-width="1"/>
-  <text x="449.5" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 19</text>
-  <path d="M 576.2 424 L 576.2 430" fill="none" stroke="#6a2130" stroke-width="1"/>
-  <text x="576.2" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Dec 1</text>
-  <path d="M 724 424 L 724 430" fill="none" stroke="#6a2130" stroke-width="1"/>
-  <text x="724" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Dec 15</text>
-  <path d="M 449.5 104 L 449.5 424" fill="none" stroke="#d9a9b1" stroke-width="1"/>
-  <text x="437.5" y="126" text-anchor="end" fill="#ffd7de" font-size="13.5">counted</text>
-  <text x="461.5" y="126" fill="#ffd7de" font-size="13.5">not counted</text>
-  <!-- the goal -->
-  <path d="M 80 221.3 L 724 221.3" fill="none" stroke="#ffd7de" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round"/>
-  <text x="90" y="210.3" fill="#ffd7de" font-size="14" font-weight="bold">The goal: 38M</text>
-  <!-- the 2 lines of 16 November, as they were drawn -->
-  <path d="M 80 421.6 L 724 148.7" fill="none" stroke="#f04866" stroke-width="2.5" stroke-dasharray="8 6" stroke-linecap="round"/>
-  <path d="M 407.3 282.9 L 412.6 281.3 L 417.8 279.6 L 423.1 278 L 428.4 276.5 L 433.7 275 L 439 273.6 L 444.2 272.1 L 449.5 270.8 L 454.8 269.4 L 460.1 268.1 L 465.3 266.8 L 470.6 265.6 L 475.9 264.4 L 481.2 263.2 L 486.5 262.1 L 491.7 261 L 497 259.9 L 502.3 258.9 L 507.6 257.9 L 512.9 256.9 L 518.1 255.9 L 523.4 255 L 528.7 254.1 L 534 253.2 L 539.2 252.3 L 544.5 251.5 L 549.8 250.6 L 555.1 249.9 L 560.4 249.1 L 565.6 248.3 L 570.9 247.6 L 576.2 246.9 L 581.5 246.2 L 586.8 245.5 L 592 244.9 L 597.3 244.2 L 602.6 243.6 L 607.9 243 L 613.1 242.4 L 618.4 241.8 L 623.7 241.3 L 629 240.7 L 634.3 240.2 L 639.5 239.7 L 644.8 239.2 L 650.1 238.7 L 655.4 238.2 L 660.7 237.8 L 665.9 237.3 L 671.2 236.9 L 676.5 236.5 L 681.8 236.1 L 687 235.7 L 692.3 235.3 L 697.6 234.9 L 702.9 234.5 L 708.2 234.2 L 713.4 233.8 L 718.7 233.5 L 724 233.2" fill="none" stroke="#12a594" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-  <!-- this week's pace, slowing at the old curve's rate -->
-  <path d="M 449.5 257.2 L 454.8 254.1 L 460.1 251.1 L 465.3 248.2 L 470.6 245.4 L 475.9 242.6 L 481.2 239.9 L 486.5 237.3 L 491.7 234.8 L 497 232.3 L 502.3 229.9 L 507.6 227.5 L 512.9 225.2 L 518.1 223 L 523.4 220.9 L 528.7 218.8 L 534 216.7 L 539.2 214.7 L 544.5 212.8 L 549.8 210.9 L 555.1 209.1 L 560.4 207.3 L 565.6 205.6 L 570.9 203.9 L 576.2 202.3 L 581.5 200.7 L 586.8 199.1 L 592 197.6 L 597.3 196.1 L 602.6 194.7 L 607.9 193.3 L 613.1 192 L 618.4 190.7 L 623.7 189.4 L 629 188.1 L 634.3 186.9 L 639.5 185.7 L 644.8 184.6 L 650.1 183.5 L 655.4 182.4 L 660.7 181.3 L 665.9 180.3 L 671.2 179.3 L 676.5 178.4 L 681.8 177.4 L 687 176.5 L 692.3 175.6 L 697.6 174.7 L 702.9 173.9 L 708.2 173 L 713.4 172.2 L 718.7 171.5 L 724 170.7" fill="none" stroke="#c98500" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="724" cy="148.7" r="4.5" fill="#f04866" stroke="#21050b" stroke-width="2"/>
-  <circle cx="724" cy="233.2" r="4.5" fill="#12a594" stroke="#21050b" stroke-width="2"/>
-  <circle cx="724" cy="170.7" r="4.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <path d="M 217.8 424 L 217.8 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="217.8" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 1</text>
+  <path d="M 363.6 424 L 363.6 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="363.6" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 19</text>
+  <path d="M 460.9 424 L 460.9 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="460.9" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Dec 1</text>
+  <path d="M 574.3 424 L 574.3 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="574.3" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Dec 15</text>
+  <path d="M 704 424 L 704 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="704" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Dec 31</text>
+  <path d="M 363.6 104 L 363.6 424" fill="none" stroke="#d9a9b1" stroke-width="1"/>
+  <text x="351.6" y="412" text-anchor="end" fill="#ffd7de" font-size="13.5">counted</text>
+  <text x="375.6" y="412" fill="#ffd7de" font-size="13.5">not counted</text>
+  <!-- the limit of the whole: the sum of the 2 limits the rule gives -->
+  <path d="M 80 178.6 L 704 178.6" fill="none" stroke="#ffd7de" stroke-width="2" stroke-dasharray="7 5" stroke-linecap="round"/>
+  <text x="90" y="168.6" font-weight="bold" fill="#ffd7de" font-size="14">The limit that follows: 46.0M</text>
+  <!-- the last 4 days' pace, carried on -->
+  <path d="M 363.6 257.2 L 556.7 104" fill="none" stroke="#d9a9b1" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"/>
+  <text x="572" y="122" fill="#ffd7de" font-size="13">the last 4 days' pace:</text>
+  <text x="572" y="138" fill="#ffd7de" font-size="13">past the limit</text>
+  <text x="572" y="154" fill="#ffd7de" font-size="13">by 2 December</text>
+  <!-- the rule: each 7 days add less than a line that falls by 0.61 a week -->
+  <path d="M 363.6 257.2 L 371.7 251.8 L 379.8 246.9 L 387.9 242.2 L 396.1 237.9 L 404.2 233.8 L 412.3 230.1 L 420.4 226.5 L 428.5 223.3 L 436.6 220.2 L 444.7 217.4 L 452.8 214.7 L 460.9 212.3 L 469 210 L 477.1 207.8 L 485.2 205.8 L 493.3 204 L 501.4 202.3 L 509.5 200.6 L 517.6 199.1 L 525.7 197.7 L 533.8 196.4 L 541.9 195.2 L 550 194.1 L 558.1 193 L 566.2 192 L 574.3 191.1 L 582.4 190.3 L 590.5 189.5 L 598.6 188.7 L 606.8 188 L 614.9 187.4 L 623 186.8 L 631.1 186.2 L 639.2 185.7 L 647.3 185.2 L 655.4 184.8 L 663.5 184.3 L 671.6 184 L 679.7 183.6 L 687.8 183.2 L 695.9 182.9 L 704 182.6" fill="none" stroke="#c98500" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="420.4" cy="226.5" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <circle cx="477.1" cy="207.8" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <circle cx="533.8" cy="196.4" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <circle cx="590.5" cy="189.5" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <circle cx="647.3" cy="185.2" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <circle cx="704" cy="182.6" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <text x="470" y="236" fill="#ffd7de" font-size="13">the rule: each 7 days add less</text>
+  <text x="470" y="252" fill="#ffd7de" font-size="13">than a line that falls by 0.61 a week</text>
   <!-- the counts: each day's last landing; a ring round the first and the last -->
-  <path d="M 80 421.6 L 90.6 421 L 101.1 419.9 L 111.7 417.1 L 122.2 415.6 L 132.8 415.3 L 143.3 414.7 L 153.9 412.5 L 164.5 409.4 L 175 405.5 L 185.6 393.7 L 196.1 389.1 L 206.7 382.9 L 217.2 380.2 L 227.8 374.4 L 238.4 362.9 L 248.9 346.6 L 259.5 337.5 L 270 330.9 L 280.6 329.5 L 291.1 328.9 L 301.7 328.2 L 312.3 325.7 L 322.8 325.4 L 333.4 315.7 L 343.9 315.3 L 354.5 314.3 L 365 311.4 L 375.6 290.4 L 386.2 286.5 L 396.7 283.1 L 407.3 281.3 L 417.8 281 L 428.4 264.6 L 439 259.9 L 449.5 257.2" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 80 421.6 L 88.1 421 L 96.2 419.9 L 104.3 417.1 L 112.4 415.6 L 120.5 415.3 L 128.6 414.7 L 136.7 412.5 L 144.8 409.4 L 152.9 405.5 L 161 393.7 L 169.1 389.1 L 177.2 382.9 L 185.4 380.2 L 193.5 374.4 L 201.6 362.9 L 209.7 346.6 L 217.8 337.5 L 225.9 330.9 L 234 329.5 L 242.1 328.9 L 250.2 328.2 L 258.3 325.7 L 266.4 325.4 L 274.5 315.7 L 282.6 315.3 L 290.7 314.3 L 298.8 311.4 L 306.9 290.4 L 315 286.5 L 323.1 283.1 L 331.2 281.3 L 339.3 281 L 347.4 264.6 L 355.5 259.9 L 363.6 257.2" fill="none" stroke="#21050b" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M 80 421.6 L 88.1 421 L 96.2 419.9 L 104.3 417.1 L 112.4 415.6 L 120.5 415.3 L 128.6 414.7 L 136.7 412.5 L 144.8 409.4 L 152.9 405.5 L 161 393.7 L 169.1 389.1 L 177.2 382.9 L 185.4 380.2 L 193.5 374.4 L 201.6 362.9 L 209.7 346.6 L 217.8 337.5 L 225.9 330.9 L 234 329.5 L 242.1 328.9 L 250.2 328.2 L 258.3 325.7 L 266.4 325.4 L 274.5 315.7 L 282.6 315.3 L 290.7 314.3 L 298.8 311.4 L 306.9 290.4 L 315 286.5 L 323.1 283.1 L 331.2 281.3 L 339.3 281 L 347.4 264.6 L 355.5 259.9 L 363.6 257.2" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
   <circle cx="80" cy="421.6" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <circle cx="449.5" cy="257.2" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <text x="86" y="394.6" fill="#ffffff" font-size="15" font-weight="bold">0.4M</text>
-  <text x="437.5" y="243.2" text-anchor="end" fill="#ffffff" font-size="15" font-weight="bold">31.3M</text>
-  <text x="738" y="134.7" fill="#ffffff" font-size="17" font-weight="bold">51.6M</text>
-  <text x="738" y="150.7" fill="#ffd7de" font-size="13">straight trend</text>
-  <text x="738" y="186.7" fill="#ffffff" font-size="17" font-weight="bold">47.5M</text>
-  <text x="738" y="202.7" fill="#ffd7de" font-size="13">this week's pace,</text>
-  <text x="738" y="217.7" fill="#ffd7de" font-size="13">slowing at that curve's</text>
-  <text x="738" y="232.7" fill="#ffd7de" font-size="13">rate: ends near 52.6M</text>
-  <text x="738" y="263.2" fill="#ffffff" font-size="17" font-weight="bold">35.8M</text>
-  <text x="738" y="279.2" fill="#ffd7de" font-size="13">curve of 16 November</text>
-  <!-- the key -->
+  <circle cx="363.6" cy="257.2" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <text x="86" y="394.6" font-weight="bold" fill="#ffffff" font-size="15">0.4M</text>
+  <text x="351.6" y="243.2" text-anchor="end" font-weight="bold" fill="#ffffff" font-size="15">31.3M</text>
+  <text x="718" y="172.6" font-weight="bold" fill="#ffffff" font-size="17">46.0M</text>
+  <text x="718" y="189.6" fill="#ffd7de" font-size="13">the whole: the sum</text>
+  <text x="718" y="205.6" fill="#ffd7de" font-size="13">of the 2 limits below</text>
+  <text x="718" y="244.6" font-weight="bold" fill="#ffffff" font-size="17">17.6M</text>
+  <text x="718" y="261.6" fill="#ffd7de" font-size="13">everything else: it has</text>
+  <text x="718" y="277.6" fill="#ffd7de" font-size="13">kept the rule 19 days</text>
+  <text x="718" y="316.6" font-weight="bold" fill="#ffffff" font-size="17">28.4M</text>
+  <text x="718" y="333.6" fill="#ffd7de" font-size="13">the run log, if it keeps</text>
+  <text x="718" y="349.6" fill="#ffd7de" font-size="13">the rule from 19 Nov</text>
   <circle cx="58" cy="489.5" r="6" fill="#3987e5"/>
   <text x="74" y="494" fill="#ffd7de" font-size="13.5">counted</text>
-  <path d="M 148 489.5 L 176 489.5" fill="none" stroke="#f04866" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>
-  <text x="186" y="494" fill="#ffd7de" font-size="13.5">straight trend</text>
-  <path d="M 290.8 489.5 L 318.8 489.5" fill="none" stroke="#12a594" stroke-width="3" stroke-linecap="round"/>
-  <text x="328.8" y="494" fill="#ffd7de" font-size="13.5">curve of 16 Nov</text>
-  <path d="M 448.6 489.5 L 476.6 489.5" fill="none" stroke="#c98500" stroke-width="3" stroke-linecap="round"/>
-  <text x="486.6" y="494" fill="#ffd7de" font-size="13.5">this week's pace, same rate</text>
-  <path d="M 683.7 489.5 L 711.7 489.5" fill="none" stroke="#ffd7de" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"/>
-  <text x="721.7" y="494" fill="#ffd7de" font-size="13.5">goal</text>
+  <path d="M 149.7 489.5 L 177.7 489.5" fill="none" stroke="#c98500" stroke-width="3" stroke-linecap="round"/>
+  <text x="187.7" y="494" fill="#ffd7de" font-size="13.5">the rule, from the last count</text>
+  <path d="M 419.6 489.5 L 447.6 489.5" fill="none" stroke="#ffd7de" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>
+  <text x="457.6" y="494" fill="#ffd7de" font-size="13.5">the limit that follows</text>
+  <path d="M 639.8 489.5 L 667.8 489.5" fill="none" stroke="#d9a9b1" stroke-width="3" stroke-dasharray="2 5" stroke-linecap="round"/>
+  <text x="677.8" y="494" fill="#ffd7de" font-size="13.5">the last 4 days' pace</text>
 </svg>

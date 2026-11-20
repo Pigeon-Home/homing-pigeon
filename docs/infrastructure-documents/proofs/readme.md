@@ -371,15 +371,20 @@ A finding is most useful when it points at the file and the line
 - `v4-the-curve.md` proves that the count of security
   tokens has an upper limit under 1 rule: each day the
   count may grow by at most a fixed share of what is left
-  to 38 million. Something is then always left, the count
-  settles, and with the allowance used it settles at 38
-  million. It is Newton's law of cooling. The page sets the
-  counts beside the proof: the count of tokens does not
-  level off yet, and what the fuzz campaign finds does.
-  Its second half: the test for a limit is of the second
-  degree, the count is 2 lines that each need a limit of
-  their own, a rule on the steps gives the limit as a
-  result, and a chart cannot prove a limit.
+  to a limit. Something is then always left, the count
+  settles, and with the allowance used it settles at that
+  limit. It is Newton's law of cooling. No limit on the
+  page is named first. Each follows from a rule on the
+  steps that the counts have kept: 17.6 million for
+  everything but the run log, 28.4 million for the run log
+  if it keeps the same rule, and 46.0 million for the
+  whole. The page says what each coming week may add, so
+  1 count can show a number wrong. The count of tokens
+  does not level off yet, and what the fuzz campaign finds
+  does. Its second half: the test for a limit is of the
+  second degree, the count is 2 lines that each need a
+  limit of their own, a rule on the steps gives the limit
+  as a result, and a chart cannot prove a limit.
   `runner/tests/test_v4_the_curve.py` holds it.
 - `v4-the-bars.md` solves the small case, scripts of at
   most 100 bytes. All 61 constructs of the shell's grammar

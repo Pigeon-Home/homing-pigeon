@@ -349,7 +349,7 @@ coming counts. This fifth view sets 4 more days of counts
 against those 2 lines, opens the count in 2 as the fourth
 snapshot did, and reads each part for a limit.
 
-![Security tokens in the tree, 15 October to 15 December 2026: counted to 19 November, above the straight trend and the curve drawn on 16 November](../../../assets/security-tokens-growth-2026-11-19.svg)
+![Security tokens in the tree, 15 October to 31 December 2026: counted to 19 November, then the line a rule draws from the last count toward a limit of 46.0M that follows from the counts](../../../assets/security-tokens-growth-2026-11-19.svg)
 
 The counts since the fourth snapshot. Each row is the last
 landing on main that day, counted by the estimator's rule:
@@ -379,19 +379,30 @@ Against the 2 lines of the third snapshot, on 2026-11-19:
 | Straight trend | 29.8M | 31.3M | 1.5M |
 | Asymptotic curve | 28.7M | 31.3M | 2.5M |
 
-The series has taken neither shape yet. It runs above both
-lines. From the last count the curve allows 0.36 million on
-the next day, and the last 4 days added 1.21 million a day.
+The series has taken neither shape. It runs above both
+lines. The last 4 days added 1.21 million a day, and at
+that pace the series passes the third snapshot's 38
+million on 2026-11-25.
 
-The chart carries 1 more line, drawn from the last count.
-It keeps this week's pace and slows it as the curve slows,
-each day allowed e^(-0.055) of the day before. On that line
-the series stands at 47.5 million on 2026-12-15 and ends
-near 52.6 million, and not at 38. For the series to end at
-38 million from this pace, each day would have to be
-allowed 15% less than the day before. Like the 2 lines of
-the third snapshot, this line is a model, and not a
-forecast.
+The chart of this view was drawn again on 2026-11-20. It
+carries neither of those 2 lines, and no ceiling that was
+named first. Its line is a rule read off the counts: each
+7 days add less than a line that falls by 0.61 a week from
+the largest 7 days. The limits follow from the rule:
+
+| Part | It stands at, 2026-11-19 | The limit that follows |
+|------|--------------------------|------------------------|
+| Everything else | 14,954,760 | 17.6M |
+| The run log, if it keeps the rule from 2026-11-19 | 16,318,728 | 28.4M |
+| The whole | 31,273,488 | 46.0M |
+
+Everything else has kept that rule for 19 days. The run
+log keeps none yet, so its limit and the whole's stand on
+an if. At the last 4 days' pace, the dotted line of the
+chart, the series passes 46.0 million by 2026-12-02. Like
+the 2 lines of the third snapshot, the rule's line is a
+model, and not a forecast: it says what the rule allows,
+and 1 coming count can show it wrong.
 
 What the measure is made of on 2026-11-19:
 
@@ -408,20 +419,23 @@ What the measure is made of on 2026-11-19:
 
 Each part, read for a limit:
 
-![The 2 parts of the security-token count, 15 October to 19 November 2026: everything else levels off toward 16 to 18 million, and the fuzz run log has no limit yet](../../../assets/security-tokens-two-limits-2026-11-19.svg)
+![The 2 parts of the security-token count, 15 October to 31 December 2026: everything else under its line toward 17.6 million, and the fuzz run log toward 28.4 million if it keeps the same rule](../../../assets/security-tokens-two-limits-2026-11-19.svg)
 
-- Everything else levels off. 4 readings put its limit
-  between 16 and 18 million: 3 counts 15 days apart, 3
-  counts 10 days apart on each of the last 8 days, the
-  falling line it has stayed under since its largest week,
-  and its last count with the proof still owed added.
-- The run log has no limit by any reading. Its largest 7
-  days ended on 2026-11-18.
-- For a whole of 38 million, that leaves the run log 20 to
-  22 million. It stands at 16.3 million.
+- Everything else levels off. Its largest 7 days ended on
+  2026-10-31, and each 7 days since added less than the
+  falling line: 17.6 million follows. 3 other readings put
+  its limit between 16 and 18 million: 3 counts 15 days
+  apart, 3 counts 10 days apart on each of the last 8
+  days, and its last count with the proof still owed
+  added.
+- The run log has no limit by any reading of its counts.
+  Its largest 7 days ended on 2026-11-18. If it keeps the
+  same rule from 2026-11-19, its limit is 28.4 million.
+- The whole follows from the 2: 46.0 million, on that if.
 
-A reading is not a proof. What would prove a limit, and the
-arithmetic behind every figure of this view, stand in
+A reading is not a proof. What would prove a limit, what
+each coming week may add, and the arithmetic behind every
+figure of this view, stand in
 [the curve's page](../proofs/v4-the-curve.md) in the proofs.
 
 ## Where the project stands
