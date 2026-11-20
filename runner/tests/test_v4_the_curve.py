@@ -10,7 +10,7 @@ It is Newton's law of cooling, with the count for the
 temperature and the limit for the room.
 
 This module walks the 3 steps of the proof with whole tokens,
-holds the page's numbers, and holds the test for a bend against
+holds the page's numbers, and holds the test for a limit against
 the counts the page names.
 """
 import math
@@ -49,8 +49,8 @@ def allowance(left, numerator, denominator):
     return left * numerator // denominator
 
 
-def bend(first, second, third):
-    """The test for a bend, on 3 counts the same number of
+def limit_of(first, second, third):
+    """The test for a limit, on 3 counts the same number of
     days apart: (the factor the second step is of the first,
     the limit the 3 counts point at). The limit is None when
     the steps do not shrink."""
@@ -130,7 +130,7 @@ class TheLimit(unittest.TestCase):
 
 
 class TheNumbers(unittest.TestCase):
-    """The page's table, and the test for a bend."""
+    """The page's table, and the test for a limit."""
 
     def table(self):
         rows, left = {}, float(LIMIT - LAST_COUNT)
@@ -152,7 +152,7 @@ class TheNumbers(unittest.TestCase):
         self.assertAlmostEqual(
             34.7, math.log((LIMIT - LAST_COUNT) / 1e6) / RATE, places=1)
 
-    def test_the_test_for_a_bend_finds_a_limit_that_is_there(self):
+    def test_the_test_finds_a_limit_that_is_there(self):
         # On a curve made by the rule, 3 counts any same number
         # of days apart give the limit back.
         start = LIMIT - LAST_COUNT
@@ -161,14 +161,15 @@ class TheNumbers(unittest.TestCase):
             return LIMIT - start * math.exp(-RATE * day)
 
         for apart in (1, 5, 9, 30):
-            factor, limit = bend(on_the_curve(0), on_the_curve(apart),
-                                 on_the_curve(2 * apart))
+            factor, limit = limit_of(
+                on_the_curve(0), on_the_curve(apart),
+                on_the_curve(2 * apart))
             self.assertAlmostEqual(math.exp(-RATE * apart), factor, places=9)
             self.assertAlmostEqual(LIMIT, limit, delta=1e-3)
         # A straight line has no limit: its steps do not shrink.
-        self.assertEqual((1.0, None), bend(10, 20, 30))
+        self.assertEqual((1.0, None), limit_of(10, 20, 30))
 
-    def test_the_count_does_not_bend_yet(self):
+    def test_the_count_does_not_level_off_yet(self):
         paces = [(later - earlier) / (day - before) / 1e6
                  for (before, earlier), (day, later)
                  in zip(COUNTS, COUNTS[1:])]
@@ -183,12 +184,12 @@ class TheNumbers(unittest.TestCase):
         self.assertEqual(max(paces), paces[-1])
         self.assertGreater(paces[-1] * 1e6, 3 * 359979)
 
-    def test_what_the_campaign_finds_does_bend(self):
-        factor, limit = bend(FINDS["30 October"], FINDS["8 November"],
-                             FINDS["17 November"])
+    def test_what_the_campaign_finds_does_level_off(self):
+        factor, limit = limit_of(
+            FINDS["30 October"], FINDS["8 November"], FINDS["17 November"])
         self.assertEqual((0.51, 24649), (round(factor, 2), round(limit)))
-        factor, limit = bend(FINDS["4 November"], FINDS["11 November"],
-                             FINDS["18 November"])
+        factor, limit = limit_of(
+            FINDS["4 November"], FINDS["11 November"], FINDS["18 November"])
         self.assertEqual((0.79, 25929), (round(factor, 2), round(limit)))
         # The log's tail, at its own average for a find.
         a_find = 16318670 / 24804

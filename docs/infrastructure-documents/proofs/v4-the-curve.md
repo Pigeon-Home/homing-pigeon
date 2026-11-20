@@ -19,7 +19,7 @@ beside it.
   0.36 million on the next day. The last 4 days ran at 1.21
   million a day.
 - **What the campaign finds already keeps it.** Its finds
-  bend toward a limit near 25,000.
+  level off toward a limit near 25,000.
 
 ## The picture
 
@@ -111,14 +111,14 @@ million, after 244 days, and stays there.
 
 ## What the counts say now
 
-**The test for a bend.** Take 3 counts the same number of
+**The test for a limit.** Take 3 counts the same number of
 days apart: A, then B, then C. Under the rule the second
 step is shorter than the first by a fixed factor. Call it
-r: (C - B) over (B - A). If r is under 1 the curve bends,
-and its limit is C plus (C - B) times r over (1 - r).
+r: (C - B) over (B - A). If r is under 1 the curve levels
+off, and its limit is C plus (C - B) times r over (1 - r).
 
-**The count of tokens does not bend yet.** Its steps, from
-the record's counts and the last count:
+**The count of tokens does not level off yet.** Its steps,
+from the record's counts and the last count:
 
 | Between the counts of | Added | A day |
 |-----------------------|------:|------:|
@@ -131,8 +131,8 @@ The steps are not getting shorter. The rule allows 0.36
 million on the next day, and the last step ran at more than
 3 times that.
 
-**What the campaign finds does bend.** The fuzz run log's
-finds, new arcs and new entries, summed to each day:
+**What the campaign finds does level off.** The fuzz run
+log's finds, new arcs and new entries, summed to each day:
 
 | 3 days, the same number of days apart | Finds by each | The 2 steps | r | The limit |
 |---------------------------------------|---------------|-------------|--:|----------:|
@@ -142,8 +142,8 @@ finds, new arcs and new entries, summed to each day:
 By both, what these readers can find has a limit near
 25,000, and 23,988 were found by 18 November.
 
-So the knowing bends and the count does not. The rule is
-what ties the count to the knowing.
+So the knowing levels off and the count does not. The rule
+is what ties the count to the knowing.
 
 ## Why the rule can be kept
 
