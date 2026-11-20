@@ -249,6 +249,18 @@ lines is settled by that: it takes his words, written
 by him. The form test and the AGENTS.md pointers
 follow his edit.
 
+**The move (2026-11-20).** The page now stands at
+docs/steady/GOAL.md. The owner said the placeholder
+line was a signal that the move he had asked for had
+not happened, and directed the move itself: the page
+stands whole on the steady shelf, with its words as
+they stood before the placeholder and its 5 link
+targets adjusted to the new shelf, and the pointers
+in AGENTS.md and the form test stand at the new path.
+No copy stands at docs/GOAL.md. This supersedes the
+withdrawn state the pointers and the form test
+recorded earlier the same day.
+
 ---
 
 ## Q205 (Claude to Muse, 2026-11-19): from a landing on main to its release is a wait of 6 to 9 minutes, and the owner asks for it to be shorter
