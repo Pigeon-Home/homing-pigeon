@@ -8,6 +8,7 @@ No new constraint.
 """
 import contextlib
 import copy
+import hashlib
 import io
 import json
 import os
@@ -132,6 +133,34 @@ class TheFolder(unittest.TestCase):
         finally:
             shutil.rmtree(host, ignore_errors=True)
 
+    def test_the_writer_after_all_22_stays_in_the_folder(self):
+        atoms = BOUND.ATOMS
+        joiners = ("; ",) * (len(atoms) - 1)
+        prefix = BOUND.text(atoms, joiners)
+        result, notes, files = run(
+            self.payload, self.job_id, prefix + "; printf x > kept",
+            "enforce")
+        if not ENGAGES:
+            self.assertIsNone(result)
+            self.assertNotIn("kept", files)
+            return
+        out, status = BOUND.run(
+            atoms, joiners,
+            BOUND.denotation(SB.WORK_MOUNT, os.environ.get("HOME", "")))
+        digest = hashlib.sha384(out.encode("utf-8")).hexdigest()
+        self.assertEqual(0, result.get("exit_code"), notes)
+        self.assertEqual(status, result.get("exit_code"))
+        self.assertEqual(digest, result.get("output_digest"), notes)
+        self.assertEqual(b"x", files.get("kept"), sorted(files))
+        host = tempfile.mkdtemp(prefix="hp-proof-escape-")
+        target = os.path.join(host, "escape")
+        try:
+            run(self.payload, self.job_id,
+                prefix + "; printf y > %s" % target, "enforce")
+            self.assertFalse(os.path.exists(target))
+        finally:
+            shutil.rmtree(host, ignore_errors=True)
+
     def test_the_page_states_the_atom_and_c18(self):
         page = MODELS._flat(PAGE)
         for stated in (
@@ -139,6 +168,7 @@ class TheFolder(unittest.TestCase):
                 "`printf x > kept`",
                 "This is C18, already defined.",
                 "The 22 atoms are not changed",
+                "after all 22, joined on with `; `",
                 "The default cap stays 1,048,576."):
             self.assertIn(stated, page, stated)
 

@@ -39,6 +39,12 @@ All 22 atoms were run, on and off.
   is M's, at `/work`. Each cuts back into the atoms and the
   joiners it was built from, in the one way the grammar
   allows.
+- **The ladder, enforce.** The shell's ladder was measured
+  with confinement off. The first 20 families, `true` joined
+  to `true`, to `:`, to `pwd` and to `false`, in each of the
+  5 ways, were run again under enforce. Step 10 is 55 atoms
+  and step 17 is 1,597. 40 rows. Each result is M's, at
+  `/work`. 0 differences.
 - **Off.** Every atom is M's with the host folder. The 19 atoms
   that do not read the place have the same result as under
   enforce. `pwd` does not: it prints the host folder. The two

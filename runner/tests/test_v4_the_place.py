@@ -25,6 +25,7 @@ from runner.tests import test_v4_at_a_limit as LIMIT  # noqa: E402
 from runner.tests import test_v4_models as MODELS  # noqa: E402
 from runner.tests import test_v4_the_folder as FOLDER  # noqa: E402
 from runner.tests import test_v4_the_grammar as GRAMMAR  # noqa: E402
+from runner.tests import test_v4_the_ladder as LADDER  # noqa: E402
 
 PAGE = os.path.join(MODELS.PROOFS, "v4-the-place.md")
 
@@ -145,6 +146,25 @@ class ThePlace(unittest.TestCase):
             else:
                 self.assertEqual(host, mount, atom)
 
+    def test_the_ladders_first_families_under_enforce(self):
+        if not FOLDER.ENGAGES:
+            self.skipTest("the sandbox does not engage here")
+        table = BOUND.denotation(WORK_MOUNT, self.home)
+        rows = [row for row in LADDER.ladder_rows(17, families=20)
+                if len(row[0]) in (55, 1597)]
+        self.assertEqual(40, len(rows))
+        for atoms, joiners in rows:
+            script = BOUND.text(atoms, joiners)
+            result, notes, _files = FOLDER.run(
+                self.payload, self.job_id, script, "enforce")
+            out, status = BOUND.run(atoms, joiners, table)
+            self.assertIsNotNone(result, notes)
+            self.assertEqual(
+                (status, digest(out), "attested"),
+                (result.get("exit_code"), result.get("output_digest"),
+                 result.get("view")),
+                script[:40])
+
     def test_the_page_states_the_place(self):
         page = MODELS._flat(PAGE)
         for stated in (
@@ -155,6 +175,7 @@ class ThePlace(unittest.TestCase):
                 "All 22 atoms were run, on and off.",
                 "There are 352.",
                 "8 of 50 characters, 8 of 500, and 4 of 5,000.",
+                "Step 10 is 55 atoms and step 17 is 1,597.",
                 "The default cap stays 1,048,576."):
             self.assertIn(stated, page, stated)
 

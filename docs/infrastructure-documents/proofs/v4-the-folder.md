@@ -39,6 +39,11 @@ the real execution.
 - **Outside, off.** The same script does create the file on
   the host. That is the difference the default is there to
   make. The test removes the file.
+- **The join, enforce.** The writer is still not one of the
+  22. It was asked after all 22, joined on with `; `. The
+  row's result is M's, at `/work`, and `kept` holds `x`.
+  The same row, then a write to a host path, does not
+  create that file.
 - **Enforce, where the sandbox cannot engage.** The job is
   refused, and nothing is written.
 
