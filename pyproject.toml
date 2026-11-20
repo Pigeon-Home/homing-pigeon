@@ -442,6 +442,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_sky_watcher.py",
     "runner/tests/test_small_edges.py",
     "runner/tests/test_sourceforge_vkey.py",
+    "runner/tests/test_store_packaging.py",
     "runner/tests/test_strictness_batch.py",
     "runner/tests/test_subject_grammar.py",
     "runner/tests/test_support_matrix.py",

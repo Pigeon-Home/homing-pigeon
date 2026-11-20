@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DRAFT, not a submittable package.
+  Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+  Draft MSIX manifest for Homing Pigeon, prepared 2026-11-20 with
+  docs/steady/design/app-stores-design.md (route B there).
+
+  The Identity values below are placeholders. Partner Center
+  issues the real Name, Publisher and PublisherDisplayName when
+  the conductor reserves the product name in his own account, and
+  the manifest must match those values exactly, character for
+  character. Do not submit with the placeholders in place; the
+  test in runner/tests/test_store_packaging.py holds them there
+  until the real values exist.
+
+  The Assets files named below are not in the tree yet; the
+  packaging lane draws them before a package is built.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap desktop rescap">
+
+  <Identity
+    Name="PLACEHOLDER-Identity-Name"
+    Publisher="CN=PLACEHOLDER-Publisher"
+    PublisherDisplayName="PLACEHOLDER Publisher Display Name"
+    Version="3.17.32.3" />
+
+  <Properties>
+    <DisplayName>Homing Pigeon</DisplayName>
+    <PublisherDisplayName>PLACEHOLDER Publisher Display Name</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Applications>
+    <Application Id="HomingPigeon" Executable="homing-pigeon.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="Homing Pigeon"
+        Description="A runner that carries out jobs sent to its mailbox"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png"
+        BackgroundColor="transparent" />
+    </Application>
+  </Applications>
+
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+</Package>

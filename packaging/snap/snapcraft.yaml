@@ -1,0 +1,60 @@
+# DRAFT, not built, not registered, not uploaded.
+# Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+#
+# Draft Snap Store package definition for Homing Pigeon, prepared
+# 2026-11-20. It follows the shape recommended in
+# docs/steady/project/snap-store-readiness.md: the python plugin
+# on the core24 base, Python bundled into the snap, bubblewrap
+# staged beside the runner, and the five console scripts exposed
+# as apps. The design notes stand in
+# docs/steady/design/app-stores-design.md.
+#
+# The snap name below is not registered yet; registration is the
+# conductor's hand, from his own Snap Store account. The classic
+# confinement grant has not been requested yet either; that
+# request is also his, through the store's forum process.
+#
+# Placement: the readiness page leaves the layout choice (a snap
+# folder at the root, or a packaging folder) to the conductor.
+# This draft sits in the packaging folder, so the runner part's
+# source points at the tree root from here; in the standard
+# layout the same line reads source: .
+
+name: homing-pigeon
+base: core24
+adopt-info: runner
+summary: A self hosted, email driven agent runner
+description: |
+  Homing Pigeon runs signed jobs on your own machine. Tell your
+  cloud SI to send the job by email; the runner verifies it,
+  runs it confined, and mails the result back.
+confinement: classic
+grade: stable
+license: Apache-2.0
+
+platforms:
+  amd64:
+  arm64:
+
+apps:
+  homing-pigeon:
+    command: bin/homing-pigeon
+    daemon: simple
+  homing-pigeon-install:
+    command: bin/homing-pigeon-install
+  homing-pigeon-send-job:
+    command: bin/homing-pigeon-send-job
+  homing-pigeon-auth:
+    command: bin/homing-pigeon-auth
+  homing-pigeon-host:
+    command: bin/homing-pigeon-host
+
+parts:
+  runner:
+    plugin: python
+    source: ../../..
+    python-packages:
+      - certifi
+    stage-packages:
+      - python3-venv
+      - bubblewrap
