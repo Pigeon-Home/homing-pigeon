@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="Helvetica, Arial, sans-serif">
+  <title>What the security-token count is made of, 15 October to 19 November 2026: one fuzz run log and everything else</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b060d"/>
+      <stop offset="1" stop-color="#17030a"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="520" fill="url(#bg)"/>
+  <text x="50" y="46" fill="#ffffff" font-size="24" font-weight="bold">What the count is made of</text>
+  <text x="50" y="72" fill="#ffd7de" font-size="15">Security tokens in the tree, 15 October to 19 November 2026, split in two</text>
+  <!-- the grid and the two axes -->
+  <path d="M 80 424 L 704 424" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="68" y="428.5" text-anchor="end" fill="#d9a9b1" font-size="13">0</text>
+  <path d="M 80 378.3 L 704 378.3" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="382.8" text-anchor="end" fill="#d9a9b1" font-size="13">5M</text>
+  <path d="M 80 332.6 L 704 332.6" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="337.1" text-anchor="end" fill="#d9a9b1" font-size="13">10M</text>
+  <path d="M 80 286.9 L 704 286.9" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="291.4" text-anchor="end" fill="#d9a9b1" font-size="13">15M</text>
+  <path d="M 80 241.1 L 704 241.1" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="245.6" text-anchor="end" fill="#d9a9b1" font-size="13">20M</text>
+  <path d="M 80 195.4 L 704 195.4" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="199.9" text-anchor="end" fill="#d9a9b1" font-size="13">25M</text>
+  <path d="M 80 149.7 L 704 149.7" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="154.2" text-anchor="end" fill="#d9a9b1" font-size="13">30M</text>
+  <path d="M 80 104 L 704 104" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="108.5" text-anchor="end" fill="#d9a9b1" font-size="13">35M</text>
+  <path d="M 80 424 L 80 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="80" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Oct 15</text>
+  <path d="M 383.1 424 L 383.1 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="383.1" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 1</text>
+  <path d="M 632.7 424 L 632.7 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="632.7" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 15</text>
+  <path d="M 704 424 L 704 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <!-- everything else: the lower band -->
+  <path d="M 80 424 L 80 419.9 L 97.8 418.8 L 115.7 417 L 133.5 412.1 L 151.3 409.6 L 169.1 409.2 L 187 408.1 L 204.8 404.4 L 222.6 398.9 L 240.5 392.3 L 258.3 372.1 L 276.1 364.2 L 293.9 357 L 311.8 355.2 L 329.6 351.4 L 347.4 349.1 L 365.3 333 L 383.1 325.6 L 400.9 316.5 L 418.7 315.6 L 436.6 316.2 L 454.4 315 L 472.2 310.7 L 490.1 310.1 L 507.9 307.9 L 525.7 307.3 L 543.5 305.6 L 561.4 300.5 L 579.2 291.5 L 597 296.9 L 614.9 294.4 L 632.7 291.2 L 650.5 290.8 L 668.3 290.3 L 686.2 288.1 L 704 287.3 L 704 424 Z" fill="#3987e5" fill-opacity="0.42"/>
+  <!-- the fuzz run log: the upper band, stacked on the lower one -->
+  <path d="M 80 419.9 L 97.8 418.8 L 115.7 417 L 133.5 412.1 L 151.3 409.6 L 169.1 409.2 L 187 408.1 L 204.8 404.4 L 222.6 398.9 L 240.5 392.3 L 258.3 372.1 L 276.1 364.2 L 293.9 353.5 L 311.8 348.8 L 329.6 339 L 347.4 319.3 L 365.3 291.4 L 383.1 275.7 L 400.9 264.5 L 418.7 262 L 436.6 261 L 454.4 259.7 L 472.2 255.5 L 490.1 254.9 L 507.9 238.3 L 525.7 237.6 L 543.5 236 L 561.4 230.9 L 579.2 195.1 L 597 188.2 L 614.9 182.4 L 632.7 179.3 L 650.5 178.8 L 668.3 150.7 L 686.2 142.6 L 704 138.1 L 704 287.3 L 686.2 288.1 L 668.3 290.3 L 650.5 290.8 L 632.7 291.2 L 614.9 294.4 L 597 296.9 L 579.2 291.5 L 561.4 300.5 L 543.5 305.6 L 525.7 307.3 L 507.9 307.9 L 490.1 310.1 L 472.2 310.7 L 454.4 315 L 436.6 316.2 L 418.7 315.6 L 400.9 316.5 L 383.1 325.6 L 365.3 333 L 347.4 349.1 L 329.6 351.4 L 311.8 355.2 L 293.9 357 L 276.1 364.2 L 258.3 372.1 L 240.5 392.3 L 222.6 398.9 L 204.8 404.4 L 187 408.1 L 169.1 409.2 L 151.3 409.6 L 133.5 412.1 L 115.7 417 L 97.8 418.8 L 80 419.9 Z" fill="#c98500" fill-opacity="0.5"/>
+  <path d="M 80 419.9 L 97.8 418.8 L 115.7 417 L 133.5 412.1 L 151.3 409.6 L 169.1 409.2 L 187 408.1 L 204.8 404.4 L 222.6 398.9 L 240.5 392.3 L 258.3 372.1 L 276.1 364.2 L 293.9 357 L 311.8 355.2 L 329.6 351.4 L 347.4 349.1 L 365.3 333 L 383.1 325.6 L 400.9 316.5 L 418.7 315.6 L 436.6 316.2 L 454.4 315 L 472.2 310.7 L 490.1 310.1 L 507.9 307.9 L 525.7 307.3 L 543.5 305.6 L 561.4 300.5 L 579.2 291.5 L 597 296.9 L 614.9 294.4 L 632.7 291.2 L 650.5 290.8 L 668.3 290.3 L 686.2 288.1 L 704 287.3" fill="none" stroke="#21050b" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M 80 419.9 L 97.8 418.8 L 115.7 417 L 133.5 412.1 L 151.3 409.6 L 169.1 409.2 L 187 408.1 L 204.8 404.4 L 222.6 398.9 L 240.5 392.3 L 258.3 372.1 L 276.1 364.2 L 293.9 357 L 311.8 355.2 L 329.6 351.4 L 347.4 349.1 L 365.3 333 L 383.1 325.6 L 400.9 316.5 L 418.7 315.6 L 436.6 316.2 L 454.4 315 L 472.2 310.7 L 490.1 310.1 L 507.9 307.9 L 525.7 307.3 L 543.5 305.6 L 561.4 300.5 L 579.2 291.5 L 597 296.9 L 614.9 294.4 L 632.7 291.2 L 650.5 290.8 L 668.3 290.3 L 686.2 288.1 L 704 287.3" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 276.1 364.2 L 293.9 353.5 L 311.8 348.8 L 329.6 339 L 347.4 319.3 L 365.3 291.4 L 383.1 275.7 L 400.9 264.5 L 418.7 262 L 436.6 261 L 454.4 259.7 L 472.2 255.5 L 490.1 254.9 L 507.9 238.3 L 525.7 237.6 L 543.5 236 L 561.4 230.9 L 579.2 195.1 L 597 188.2 L 614.9 182.4 L 632.7 179.3 L 650.5 178.8 L 668.3 150.7 L 686.2 142.6 L 704 138.1" fill="none" stroke="#c98500" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 712 138.1 L 712 284.3" fill="none" stroke="#c98500" stroke-width="1"/>
+  <path d="M 712 290.3 L 712 424" fill="none" stroke="#3987e5" stroke-width="1"/>
+  <text x="720" y="206.7" fill="#ffffff" font-size="17" font-weight="bold">16.3M</text>
+  <text x="720" y="224.7" fill="#ffd7de" font-size="13">one fuzz run log</text>
+  <text x="720" y="241.7" fill="#ffd7de" font-size="13">52% of the count</text>
+  <text x="720" y="349.6" fill="#ffffff" font-size="17" font-weight="bold">15.0M</text>
+  <text x="720" y="367.6" fill="#ffd7de" font-size="13">everything else: code,</text>
+  <text x="720" y="384.6" fill="#ffd7de" font-size="13">tests, docs, records</text>
+  <text x="696" y="124.1" text-anchor="end" fill="#ffffff" font-size="15" font-weight="bold">31.3M in all</text>
+  <text x="704" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 19</text>
+  <!-- the key -->
+  <rect x="50" y="483.5" width="16" height="12" rx="3" fill="#c98500"/>
+  <text x="74" y="494" fill="#ffd7de" font-size="13.5">the fuzz run log (one file)</text>
+  <rect x="254.6" y="483.5" width="16" height="12" rx="3" fill="#3987e5"/>
+  <text x="278.6" y="494" fill="#ffd7de" font-size="13.5">everything else in the tree</text>
+</svg>

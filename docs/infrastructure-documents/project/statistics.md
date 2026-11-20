@@ -341,6 +341,103 @@ standing still, reaches about 32.7 million, under the
 curve's 35.8M. Which line the series follows turns mostly
 on that 1 file.
 
+## The measure against its lines: a fifth snapshot as of 2026-11-19
+
+The third snapshot drew 2 lines from the count of
+2026-11-15, and left the shape the series takes to the
+coming counts. This fifth view sets 4 more days of counts
+against those 2 lines, opens the count in 2 as the fourth
+snapshot did, and reads each part for a limit.
+
+![Security tokens in the tree, 15 October to 31 December 2026: counted to 19 November, then the line a rule draws from the last count toward a limit of 46.0M that follows from the counts](../../../assets/security-tokens-growth-2026-11-19.svg)
+
+The counts since the fourth snapshot. Each row is the last
+landing on main that day, counted by the estimator's rule:
+
+| Date | Counted at | Security tokens | In the run log | In everything else |
+|------|------------|-----------------|----------------|--------------------|
+| 2026-11-16 | commit 3e1286ca5e | 26,814,236 | 12,240,873 | 14,573,363 |
+| 2026-11-17 | commit 7a81cb3b1f | 29,889,011 | 15,265,975 | 14,623,036 |
+| 2026-11-18 | commit d1f6993c19 | 30,773,483 | 15,913,904 | 14,859,579 |
+| 2026-11-19 | commit 0b33ac3804 | 31,273,488 | 16,318,728 | 14,954,760 |
+
+How the counts were taken. The estimator's rule is run
+over the blobs of each commit, with no checkout:
+`python3 runner/tests/test_v4_the_curve.py series`
+counts every day from 2026-10-15 again, from a complete
+clone. The 2 rows of the fourth snapshot that name a commit
+agree with it to the token. A row of the fourth snapshot
+counts a tag, and a row here counts the day's last landing,
+so the 2 tables can differ on a day both carry: 2026-11-16
+reads 26,793,953 at its tag and 26,814,236 at its last
+landing.
+
+Against the 2 lines of the third snapshot, on 2026-11-19:
+
+| Line | Its figure for 2026-11-19 | The count | The count stands above it by |
+|------|---------------------------|-----------|------------------------------|
+| Straight trend | 29.8M | 31.3M | 1.5M |
+| Asymptotic curve | 28.7M | 31.3M | 2.5M |
+
+The series has taken neither shape. It runs above both
+lines. The last 4 days added 1.21 million a day, and at
+that pace the series passes the third snapshot's 38
+million on 2026-11-25.
+
+The chart of this view was drawn again on 2026-11-20. It
+carries neither of those 2 lines, and no ceiling that was
+named first. Its line is a rule read off the counts: each
+7 days add less than a line that falls by 0.61 a week from
+the largest 7 days. The limits follow from the rule:
+
+| Part | It stands at, 2026-11-19 | The limit that follows |
+|------|--------------------------|------------------------|
+| Everything else | 14,954,760 | 17.6M |
+| The run log, if it keeps the rule from 2026-11-19 | 16,318,728 | 28.4M |
+| The whole | 31,273,488 | 46.0M |
+
+Everything else has kept that rule for 19 days. The run
+log keeps none yet, so its limit and the whole's stand on
+an if. At the last 4 days' pace, the dotted line of the
+chart, the series passes 46.0 million by 2026-12-02. Like
+the 2 lines of the third snapshot, the rule's line is a
+model, and not a forecast: it says what the rule allows,
+and 1 coming count can show it wrong.
+
+What the measure is made of on 2026-11-19:
+
+![What the security-token count is made of, 15 October to 19 November 2026: one fuzz run log and everything else](../../../assets/security-tokens-split-2026-11-19.svg)
+
+- The run log holds 16,318,728 tokens at the last count:
+  52.2% of the measure. Since 2026-11-17 it is the larger
+  of the 2 parts.
+- Between the counts of 2026-11-15 and 2026-11-19 the tree
+  added 4,822,229 tokens, and 4,077,855 of them, 84.6%,
+  were the log's.
+- Everything else added 744,374 over the same 4 days,
+  about 0.19 million a day.
+
+Each part, read for a limit:
+
+![The 2 parts of the security-token count, 15 October to 31 December 2026: everything else under its line toward 17.6 million, and the fuzz run log toward 28.4 million if it keeps the same rule](../../../assets/security-tokens-two-limits-2026-11-19.svg)
+
+- Everything else levels off. Its largest 7 days ended on
+  2026-10-31, and each 7 days since added less than the
+  falling line: 17.6 million follows. 3 other readings put
+  its limit between 16 and 18 million: 3 counts 15 days
+  apart, 3 counts 10 days apart on each of the last 8
+  days, and its last count with the proof still owed
+  added.
+- The run log has no limit by any reading of its counts.
+  Its largest 7 days ended on 2026-11-18. If it keeps the
+  same rule from 2026-11-19, its limit is 28.4 million.
+- The whole follows from the 2: 46.0 million, on that if.
+
+A reading is not a proof. What would prove a limit, what
+each coming week may add, and the arithmetic behind every
+figure of this view, stand in
+[the curve's page](../proofs/v4-the-curve.md) in the proofs.
+
 ## Where the project stands
 
 The longer series changes what the shape can say. Across the
