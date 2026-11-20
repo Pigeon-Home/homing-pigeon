@@ -90,6 +90,13 @@ REGISTERED = {
         "process's memory at its highest is read in kilobytes as "
         "Linux reports it; run in the ubuntu test job. The other "
         "systems report that reading in units of their own",
+    "the job's tree is counted on Linux here":
+        "test_v4_the_bars, finding F20: a job that holds 70 "
+        "processes is killed by the runner's watch and 1 that "
+        "holds 60 is not, run through the real gate with bash; run "
+        "in the ubuntu test job. The watch's count itself is held "
+        "on every system by the tests beside it, with a count "
+        "handed in",
     "the Windows backend's pumps are read on Windows":
         "test_v4_the_held_output: 1 test starts a real process "
         "under the Windows backend's Job Object and reads it with "

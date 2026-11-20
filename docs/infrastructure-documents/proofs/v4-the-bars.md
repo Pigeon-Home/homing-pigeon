@@ -26,6 +26,10 @@ solved has to mean.
 - **The list has holes.** Time has a bar on every system.
   Processes, memory and disk have bars on some systems, and
   none in the Linux sandbox.
+- **Finding F20: the watch is a bar on processes, and it is
+  sampled.** A job's tree of more than 64 processes is
+  killed when the watch counts it, once a second. A storm
+  that is over before the next count passes.
 - **Finding F17, closed on this branch.** The runner held
   all that a job wrote before it cut it: 3 bytes of the
   runner's own memory for each byte written. It holds a
@@ -148,7 +152,8 @@ confinement are for a runner at `enforce`.
 | Time | 3,600 seconds at most | the same | the same | the same |
 | What a result carries | 100,000 characters for each stream | the same | the same | the same |
 | What the runner holds while the job runs | 1,310,720 bytes of a stream: a job's share of the log and the tail its record leaves out. 400,004 where no log is kept | the same | the same | the same |
-| Processes | no bar | 256: for a job's user, or for the jail on a host with RACCT | no bar | no bar |
+| Processes, by the watch | 64 in the job's tree, the shell among them, at a count: the tree is killed. Counted at the job's start and once a second | the same | the same | the same |
+| Processes, by the confinement | no bar | 256: for a job's user, or for the jail on a host with RACCT | no bar | no bar |
 | Memory | no bar | 512 MiB a process; 2 GiB a job on a host with RACCT | 512 MiB a process, above what it starts with | 512 MiB a process, and a job |
 | Disk, the job's `/tmp` | no bar of the runner's | 512 MiB | no bar | no bar |
 | Disk, the job's own folder | no bar | no bar | no bar | no bar |
@@ -397,6 +402,13 @@ held the first part of a live process. And every job the 2
 legs run came back. So H7 held, and that 1 test is mended
 with the next change.
 
+A note of 2026-11-20. The suite's own leg on FreeBSD came
+back red on 8 tests of 4 older suites of this seat. They
+started bash by its bare name, and FreeBSD keeps bash in a
+folder their path did not have. None is a test of the
+reader. They ask for bash by its full path now, and that
+leg is green on the head that carries the change.
+
 **4 things were not supposed.**
 
 1. **The log's bar is the bar that counts.** H5 has it as 1
@@ -620,6 +632,13 @@ a stream go before it makes the text, and whether the room
 they leave is given back by then is the allocator's to say.
 So for text it is 2 bytes for each, or 3.
 
+The server's Linux leg sat a third time, on 2026-11-20. Its
+first row read 2.99 bytes for each byte that is not text,
+where this machine reads 4.01. So for bytes that are not
+text it is 4 bytes for each, or 3: the same room, given
+back or not. The live test asked for 3 at least and went
+red on that reading. It asks for 2.5 now.
+
 **Why F17's reader does not close it as it stands.** The tool
 joins the 2 streams and strips the white space at both ends,
 and only then cuts. A command that opens with more white space
@@ -709,6 +728,69 @@ the door: it is killed, late. This page will say so.
 Hold the bar in this page's suite. And say in the forum
 what the place suite's row should ask, because that suite
 is not mine.
+
+## F20 measured: a sampled bar at 64 processes
+
+Measured on 2026-11-20, on this seat's machine, without the
+sandbox. The watch does not need it.
+
+| | Supposed | Measured |
+|---|----------|----------|
+| P1 | A pipeline of 1,597 commands holds more than 64 processes for part of its run | At most 1,321 to 1,591 at once, on 12 runs. Over 64 from 0.02 seconds to the end of a run of 0.45 to 0.58 seconds. Held |
+| P2 | Killed only when a sample falls in that part. Here, in fewer than half of the runs | With the watch as it is set, 0 of 40 runs: each took 0.34 to 0.49 seconds and was over before the second count. With the watch asked 20 times a second, 20 of 20. Held |
+| P3 | Exit -9, and the result names a process storm | Exit -9. The result says `process_storm: job tree holds 306 processes, past the ceiling of 64`, and that the tree was killed. Held |
+| P4 | 70 held processes are killed on every run, and 60 on none | Sleeps held for 3 seconds. 60: 0 of 3 killed. 63: 0 of 3. 64: 3 of 3, after 1.03 seconds. 70: 3 of 3. Held |
+| P5 | No pipeline of 100 bytes holds more than 64 | The shell takes 50 commands in 99 bytes. M writes 25 in 100, with its spaces. Held |
+| P6 | The table is wrong in 1 row | The 2 numbers are read in 1 place for every system. Measured on Linux alone. Held, as read |
+
+**The bar, as measured.** A job's tree may hold 64
+processes, the shell among them. The watch counts when the
+job starts and once each second. A tree of 65 or more at a
+count is killed: the job ends with exit -9, and its result
+says why.
+
+**3 things were not supposed.**
+
+1. **The shell is counted.** 63 sleeps and the shell are
+   64, and pass. 64 sleeps are killed.
+2. **I wrote that the red row's output was whole and
+   right.** That row writes nothing. The digest the server
+   showed is the digest of no output. So the row says
+   nothing of what a killed job has written.
+3. **The server's leg is slower than this machine.** Here
+   the row is over in half a second, and no second count
+   comes. There it was killed in 1 build of 3: a run of
+   more than 1 second, or a first count that came late.
+   Which of the 2 is not measured.
+
+**What kind of bar it is.**
+
+- **It is sampled.** A storm that is over before the next
+  count passes. So the same job can pass on 1 machine and
+  be killed on another. That is how 1 test went red by
+  timing.
+- **It kills, late.** Nothing refuses process 65 at the
+  door. Up to 1 second passes first. The script of 12
+  bytes above doubles. This seat does not run it, so how
+  far it gets in that second is not measured.
+- **It is the owner's to set.** The 2 settings above, and
+  the watch's mode.
+
+**What changed with this.**
+
+- The table of the bars has a row for the watch.
+- This page's suite holds the bar: the 2 numbers, the
+  count that takes in the shell, and a job killed at 65.
+- The place suite's rows are run with the watch's ceiling
+  out of reach. That test asks the place, and not the
+  watch. The suite is Grok's. The change is in 1 test of
+  it, made at the owner's word to mend this branch, and it
+  is Grok's to turn.
+
+**Open.** The constraint spec has no row for this bar. The
+first rung's claim does not need 1: by P5 no pipeline of
+100 bytes in M's own words reaches the bar. M's 2 atoms
+that start a process of their own are 8 and 9 bytes.
 
 ## Candidates
 

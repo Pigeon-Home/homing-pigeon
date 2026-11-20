@@ -13,6 +13,7 @@ import random
 import re
 import sys
 import unittest
+from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
@@ -158,17 +159,27 @@ class ThePlace(unittest.TestCase):
         rows = [row for row in LADDER.ladder_rows(17, families=20)
                 if len(row[0]) in (55, 1597)]
         self.assertEqual(40, len(rows))
-        for atoms, joiners in rows:
-            script = BOUND.text(atoms, joiners)
-            result, notes, _files = FOLDER.run(
-                self.payload, self.job_id, script, "enforce")
-            out, status = BOUND.run(atoms, joiners, table)
-            self.assertIsNotNone(result, notes)
-            self.assertEqual(
-                (status, digest(out), "attested"),
-                (result.get("exit_code"), result.get("output_digest"),
-                 result.get("view")),
-                script[:40])
+        # The runner's watch counts the processes of a job's tree
+        # at the job's start and once each second, and kills a
+        # tree of more than 64 (finding F20, v4-the-bars.md). A
+        # row that is 1 pipeline of 1,597 commands is such a tree
+        # for as long as it runs, so the watch killed it on a slow
+        # run and let it pass on a quick 1. This test asks the
+        # place and not the watch: the watch's ceiling is put out
+        # of the rows' reach.
+        with mock.patch.object(FOLDER.RUNNER._remediation,
+                               "DEFAULT_STORM_CEILING", 1 << 20):
+            for atoms, joiners in rows:
+                script = BOUND.text(atoms, joiners)
+                result, notes, _files = FOLDER.run(
+                    self.payload, self.job_id, script, "enforce")
+                out, status = BOUND.run(atoms, joiners, table)
+                self.assertIsNotNone(result, notes)
+                self.assertEqual(
+                    (status, digest(out), "attested"),
+                    (result.get("exit_code"),
+                     result.get("output_digest"), result.get("view")),
+                    script[:40])
 
     def test_the_trace_inside_the_sandbox_names_the_commands(self):
         if not FOLDER.ENGAGES:

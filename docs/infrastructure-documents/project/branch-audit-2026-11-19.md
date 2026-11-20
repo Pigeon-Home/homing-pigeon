@@ -478,6 +478,19 @@ before the change, and none after it. The walk's own word
 waits for the next build. It stops at its first red, so the
 tests behind that 1 have not been asked yet.
 
+**The builds after the audit.** Written on 2026-11-20.
+
+| Head | What it carries | The server's word |
+|------|-----------------|-------------------|
+| dc14b063c | The closing of F17 | The live proofs of the FreeBSD and macOS backends are green. The suite on FreeBSD is red: 8 tests could not start bash. The build was cancelled when the next took its place |
+| deff53d12 | The log's share | Green on macOS, on both Windows legs and on all 8 builds. Red in 1 test of the Linux suite: a row of the place suite was killed by the runner's watch. It is finding F20, on `v4-the-bars.md` |
+| fcfaa082f | Bash by its full path | The suite on FreeBSD is green. The build is green on the same legs, and red in 1 test of the Linux suite: a floor of F18's live reading was set too high |
+
+Where the Linux suite is red, the build starts neither the
+mutation walk nor the type check. So the walk's own word
+still waits. Both tests are mended on the head that
+carries this table.
+
 ## What the audit changed
 
 Each is this seat's own line, and each is in the commit

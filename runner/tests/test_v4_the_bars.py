@@ -15,7 +15,9 @@ system, and finding F17: the runner held all that a job wrote.
 The closing of F17 is held by test_v4_the_held_output.py. And
 findings F18 and F19, open: the Oracle's run tool holds all
 that a command writes, and the runner holds the whole diff of a
-change job.
+change job. And finding F20: the runner's watch is a bar on
+the processes of a job's tree, 64 at a count, and it is
+sampled.
 
 No script that asks without end is handed to a shell here, not
 even to a shell's syntax check. Each of them is built only of
@@ -36,6 +38,8 @@ if ROOT not in sys.path:
 
 from runner.tests import test_v4_at_a_bound as RUNG  # noqa: E402
 from runner.tests import test_v4_models as MODELS  # noqa: E402
+from runner.tests import test_v4_the_folder as FOLDER  # noqa: E402
+from runner.tests import test_v4_the_ladder as RUNGS  # noqa: E402
 
 PAGE = os.path.join(MODELS.PROOFS, "v4-the-bars.md")
 LINUX = sys.platform.startswith("linux")
@@ -618,9 +622,9 @@ class FindingF19TheDiffOfAChangeJob(unittest.TestCase):
 
 class FindingF18TheOraclesRunTool(unittest.TestCase):
     """The Oracle's run tool holds all that a command writes: 2
-    bytes of memory for each byte of text, 4 where the bytes are
-    not text. Open: the day it is closed, this class is turned
-    as the class above was."""
+    bytes of memory for each byte of text, or 3, and 4 where the
+    bytes are not text, or 3. Open: the day it is closed, this
+    class is turned as the class above was."""
 
     def test_the_tool_reads_all_and_cuts_afterwards(self):
         text = source("runner", "ops", "oracle_ops.py")
@@ -674,7 +678,9 @@ class FindingF18TheOraclesRunTool(unittest.TestCase):
         size = 14930352
         # For text the page has 2 bytes for each byte, and 3 in
         # 1 cell of a second sitting: the allocator's to say.
-        for byte, least, most in (("a", 1.5, 3.5), ("\\377", 3, 5.5)):
+        # For bytes that are not text it has 4, and the server's
+        # Linux leg read 2.99 on 2026-11-20: 3, a little short.
+        for byte, least, most in (("a", 1.5, 3.5), ("\\377", 2.5, 5.5)):
             got = tool(size, byte)
             above = (got["peak"] - base["peak"]) * 1024
             self.assertTrue(least * size <= above <= most * size,
@@ -683,6 +689,148 @@ class FindingF18TheOraclesRunTool(unittest.TestCase):
             # same: 8,000 characters, the exit line and the mark.
             self.assertEqual(("exit=0\n", 8022),
                              (got["head"], got["chars"]))
+
+
+class FindingF20TheWatchIsABarOnProcesses(unittest.TestCase):
+    """The runner's watch counts the processes of a job's tree
+    when the job starts and once each second, and kills a tree
+    of more than 64. A bar on every system, and a sampled 1."""
+
+    WATCH = RUNG.RUNNER._remediation
+
+    def asked_once(self, held, cfg=None):
+        """The watch asked once of a tree of `held` processes:
+        (the tree was killed, what the watch says of it)."""
+        killed = []
+        with tempfile.TemporaryDirectory() as folder:
+            monitor = self.WATCH.JobMonitor(
+                self.WATCH.settings(cfg or {}), "job-1", 1, folder,
+                kill_fn=lambda extra=None: killed.append(1),
+                sampler=lambda root: {pid: (0.0, None)
+                                      for pid in range(1, held + 1)})
+            monitor.sample_once()
+        acted = monitor.outcome["acted"]
+        said = acted and self.WATCH.divergence_text(acted["divergence"])
+        return bool(killed), said
+
+    def test_the_2_numbers_and_the_mode(self):
+        watch = self.WATCH
+        self.assertEqual(
+            (64, 1.0, "deterministic"),
+            (watch.DEFAULT_STORM_CEILING, watch.DEFAULT_SAMPLE_SEC,
+             watch.DEFAULT_MODE))
+        self.assertIn("process_storm", watch.TRIPWIRE_KINDS)
+        set_up = watch.settings({})
+        self.assertEqual((64, 1.0, "deterministic"),
+                         (set_up["storm_ceiling"], set_up["sample_sec"],
+                          set_up["mode"]))
+        # Both numbers are the owner's to set.
+        set_up = watch.settings({"remediation_storm_ceiling": 8,
+                                 "remediation_sample_sec": 0.25})
+        self.assertEqual((8, 0.25),
+                         (set_up["storm_ceiling"], set_up["sample_sec"]))
+        # No system has numbers of its own: they are read in 1
+        # place.
+        text = source("runner", "oracle", "remediation.py")
+        self.assertEqual(1, text.count("DEFAULT_STORM_CEILING = "))
+        self.assertEqual(1, text.count("DEFAULT_SAMPLE_SEC = "))
+        # The watch counts first and waits after, so its first
+        # count is at the job's start.
+        loop = text[text.index("    def _run(self):"):
+                    text.index("    def _error(self, e):")]
+        self.assertLess(loop.index("self.sample_once()"),
+                        loop.index('self._stop.wait(self._st["sample_sec"])'))
+
+    def test_64_pass_and_65_are_killed(self):
+        self.assertEqual((False, None), self.asked_once(64))
+        killed, said = self.asked_once(65)
+        self.assertTrue(killed)
+        self.assertEqual("process_storm: job tree holds 65 processes, "
+                         "past the ceiling of 64", said)
+        self.assertEqual((False, None), self.asked_once(1))
+        self.assertTrue(self.asked_once(1597)[0])
+        # In the watch's off mode nothing is killed.
+        self.assertEqual((False, None), self.asked_once(
+            65, {"remediation_mode": "off"}))
+        # And the owner's ceiling moves the bar.
+        self.assertEqual((False, None), self.asked_once(
+            65, {"remediation_storm_ceiling": 65}))
+
+    def test_the_ladder_has_rows_that_are_such_a_tree(self):
+        # 4 of the 40 rows the place suite runs are 1 pipeline of
+        # 1,597 commands: more than 64 at once, by the page's
+        # measure, for as long as the row runs.
+        rows = [row for row in RUNGS.ladder_rows(17, families=20)
+                if len(row[0]) in (55, 1597)]
+        self.assertEqual(40, len(rows))
+        wide = [atoms for atoms, joiners in rows
+                if len(atoms) == 1597 and set(joiners) == {" | "}]
+        self.assertEqual(4, len(wide))
+        self.assertGreater(1597, 64)
+
+    def test_no_pipeline_of_100_bytes_reaches_the_bar(self):
+        # The shell takes 50 commands in 99 bytes, and 51 do not
+        # fit in 100.
+        self.assertEqual(99, len("|".join([":"] * 50)))
+        self.assertGreater(len("|".join([":"] * 51)), 100)
+        # M writes a pipe with a space on each side, and its
+        # shortest atom is 1 byte: 25 commands in 100 bytes.
+        self.assertIn(" | ", RUNG.JOINERS)
+        self.assertEqual(":", min(RUNG.ATOMS, key=len))
+        self.assertLessEqual(len(" | ".join([":"] * 25)), 100)
+        self.assertGreater(len(" | ".join([":"] * 26)), 100)
+        # M's 2 atoms that start a process of their own.
+        own = [atom for atom in RUNG.ATOMS
+               if atom.startswith("(")
+               or "$(" in atom.replace("$((", "")]
+        self.assertEqual(["echo $(:)", "(echo a)"], own)
+        # With the shell, 51 processes at most: under the bar.
+        self.assertLessEqual(50 + 1, self.WATCH.DEFAULT_STORM_CEILING)
+
+    @unittest.skipUnless(
+        LINUX, "the job's tree is counted on Linux here")
+    def test_a_job_that_holds_70_is_killed_and_60_is_not(self):
+        payload, job_id = RUNG.honest_job()
+        result, _notes, _files = FOLDER.run(
+            payload, job_id,
+            "for i in $(seq 60); do sleep 3 & done; wait\n", "off")
+        self.assertEqual((0, False), (result.get("exit_code"),
+                                      "remediation" in result))
+        result, notes, _files = FOLDER.run(
+            payload, job_id,
+            "for i in $(seq 70); do sleep 3 & done; wait\n", "off")
+        self.assertEqual(-9, result.get("exit_code"))
+        said = result.get("remediation") or {}
+        self.assertEqual(("deterministic", "tripwire", "killed"),
+                         (said.get("mode"), said.get("authority"),
+                          said.get("act")))
+        self.assertRegex(
+            said.get("divergence", ""),
+            r"^process_storm: job tree holds \d+ processes, past the "
+            r"ceiling of 64$")
+        # It did not run its 3 seconds out.
+        self.assertLess(result.get("duration_sec"), 3)
+
+    def test_the_page_states_the_finding(self):
+        page = MODELS._flat(PAGE)
+        for stated in (
+                "## Finding F20, stated before its measure: the watch is "
+                "a bar on processes",
+                "## F20 measured: a sampled bar at 64 processes",
+                "| Processes, by the watch | 64 in the job's tree, the "
+                "shell among them, at a count: the tree is killed.",
+                "| Processes, by the confinement | no bar |",
+                "At most 1,321 to 1,591 at once, on 12 runs.",
+                "0 of 40 runs",
+                "20 of 20",
+                "64: 3 of 3, after 1.03 seconds.",
+                "The shell takes 50 commands in 99 bytes. M writes 25 "
+                "in 100, with its spaces.",
+                "63 sleeps and the shell are 64, and pass.",
+                "That row writes nothing.",
+                "**It is sampled.**",
+                "It asks for 2.5 now."):
+            self.assertIn(stated, page, stated)
 
 
 class ThePageRecordsTheBars(unittest.TestCase):
