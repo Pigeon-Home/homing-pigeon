@@ -423,6 +423,33 @@ def _total_memory() -> str:
     return "unknown"
 
 
+def _cpu_name() -> str:
+    """The machine's CPU as a display string; never raises.
+
+    Stdlib only, on every platform the runner ships for: Linux
+    names the chip on a "model name" line of /proc/cpuinfo, and
+    platform.processor() answers on Windows and macOS. Anything
+    that yields nothing reads "unknown", like the record's other
+    facts."""
+    try:
+        with open("/proc/cpuinfo", encoding="utf-8",
+                  errors="replace") as fh:
+            for line in fh:
+                if line.lower().startswith("model name") and ":" in line:
+                    name = line.split(":", 1)[1].strip()
+                    if name:
+                        return name
+    except Exception:
+        pass
+    try:
+        name = (platform.processor() or "").strip()
+        if name:
+            return name
+    except Exception:
+        pass
+    return "unknown"
+
+
 def system_facts() -> dict:
     """The install record's facts about this system. Every value is
     a display string; anything that cannot be read is "unknown".
@@ -436,6 +463,10 @@ def system_facts() -> dict:
     except Exception:
         ip_address = "unknown"
     try:
+        cpu = _cpu_name()
+    except Exception:
+        cpu = "unknown"
+    try:
         disk = _gb(shutil.disk_usage(os.path.expanduser("~")).total)
     except Exception:
         disk = "unknown"
@@ -443,6 +474,7 @@ def system_facts() -> dict:
         "platform": platform.platform() or "unknown",
         "hostname": hostname,
         "ip_address": ip_address,
+        "cpu": cpu,
         "memory": _total_memory(),
         "hard_drive": disk,
     }
@@ -461,6 +493,7 @@ def install_record_body(secret: str, facts: dict | None = None) -> str:
         f"Platform: {facts['platform']}",
         f"Hostname: {facts['hostname']}",
         f"IP address: {facts['ip_address']}",
+        f"CPU: {facts['cpu']}",
         f"Memory: {facts['memory']}",
         f"Hard drive: {facts['hard_drive']}",
         "",

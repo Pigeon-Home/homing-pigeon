@@ -41,7 +41,7 @@ Keep that message private: it is a credential.
 
 **Install record.** The install record emailed to you lists facts
 about the machine you installed on (platform, hostname, address,
-memory, storage), recorded in your own mailbox for your own
+processor, memory, storage), recorded in your own mailbox for your own
 reference.
 
 **What we store.** Account identification needed to operate the

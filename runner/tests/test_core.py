@@ -109,9 +109,11 @@ class CoreListTest(unittest.TestCase):
         # entry's figures and took up the trial staging fix,
         # and again at the 2026-11-10 re-measures that took up
         # the briefing's contradiction mark and the posture
-        # stamp producer; the Gemini token count above still
+        # stamp producer, and again on 2026-11-20 at the
+        # re-measure that took up the install record's CPU
+        # fact; the Gemini token count above still
         # describes the 2026-11-04 assembly.
-        self.assertEqual(906214, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(906491, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -272,8 +274,13 @@ class CoreListTest(unittest.TestCase):
         # run, by 29 lines of
         # runner/tools/regression_guard.py (the guard's
         # core check).
-        self.assertEqual(70285, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(63710, core.AS_ASSEMBLED_NONBLANK_LINES)
+        # On 2026-11-20, after the install record came to
+        # name the machine's CPU beside its memory and
+        # its hard drive, by 33 lines of
+        # runner/ops/setup.py (the setup wizard's system
+        # facts).
+        self.assertEqual(70318, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(63740, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

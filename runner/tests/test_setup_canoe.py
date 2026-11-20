@@ -49,6 +49,7 @@ class InstallRecordTest(unittest.TestCase):
         "platform": "TestOS 1.0",
         "hostname": "test-host",
         "ip_address": "192.0.2.10",
+        "cpu": "TestCPU 3000",
         "memory": "16.0 GB",
         "hard_drive": "500.0 GB",
     }
@@ -59,7 +60,7 @@ class InstallRecordTest(unittest.TestCase):
         self.assertIn(
             "Homing Pigeon shared secret installed on this system", body)
         self.assertIn("s3cr3t-fixture", body)
-        for label in ("Platform:", "Hostname:", "IP address:",
+        for label in ("Platform:", "Hostname:", "IP address:", "CPU:",
                       "Memory:", "Hard drive:"):
             self.assertIn(label, body)
         for value in self.FACTS.values():
@@ -69,10 +70,44 @@ class InstallRecordTest(unittest.TestCase):
         facts = SU.system_facts()
         self.assertEqual(
             set(facts),
-            {"platform", "hostname", "ip_address", "memory", "hard_drive"})
+            {"platform", "hostname", "ip_address", "cpu", "memory",
+             "hard_drive"})
         for value in facts.values():
             self.assertIsInstance(value, str)
             self.assertTrue(value)
+
+    def test_cpu_name_from_cpuinfo(self):
+        cpuinfo = ("processor\t: 0\n"
+                   "model name\t: Fixture CPU 9000\n"
+                   "processor\t: 1\n"
+                   "model name\t: Fixture CPU 9000\n")
+        with mock.patch("builtins.open",
+                        mock.mock_open(read_data=cpuinfo)):
+            self.assertEqual(SU._cpu_name(), "Fixture CPU 9000")
+
+    def test_cpu_name_falls_back_to_platform_processor(self):
+        with mock.patch("builtins.open",
+                        side_effect=OSError("no cpuinfo here")), \
+             mock.patch.object(SU.platform, "processor",
+                               return_value="FixtureProcessor"):
+            self.assertEqual(SU._cpu_name(), "FixtureProcessor")
+
+    def test_cpu_name_unknown_when_nothing_yields(self):
+        with mock.patch("builtins.open",
+                        side_effect=OSError("no cpuinfo here")), \
+             mock.patch.object(SU.platform, "processor", return_value=""):
+            self.assertEqual(SU._cpu_name(), "unknown")
+
+    def test_cpu_detection_failure_still_composes_record(self):
+        with mock.patch.object(SU, "_cpu_name",
+                               side_effect=RuntimeError("boom")):
+            facts = SU.system_facts()
+            body = SU.install_record_body("s3cr3t-fixture")
+        self.assertEqual(facts["cpu"], "unknown")
+        for label in ("Platform:", "Hostname:", "IP address:", "CPU:",
+                      "Memory:", "Hard drive:"):
+            self.assertIn(label, body)
+        self.assertIn("CPU: unknown", body)
 
 
 class WizardCanoeTest(unittest.TestCase):
