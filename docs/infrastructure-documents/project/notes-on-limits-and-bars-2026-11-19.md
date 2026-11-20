@@ -262,9 +262,11 @@ size.
   asked of the rest of the runner. They are on
   `v4-the-bars.md`, each with its ladder.
 - **The log's share of the bar.** A running runner's bar
-  follows its log's size: 33,816,576 bytes a stream at the
-  default. A smaller share for a job's record changes what
-  the log keeps, so it is the owner's to weigh.
+  followed its log's size: 33,816,576 bytes a stream at the
+  default. The owner has set a job's share of the log
+  since, at 1 megabyte for each stream, and the bar is
+  1,310,720 bytes. The rule, the measure and what held are
+  on `v4-the-bars.md`.
 - **Rows for the bars in the constraint spec.** The spec
   and its binding are shared pages.
 - **The Linux sandbox's 3 missing bars.** They change what

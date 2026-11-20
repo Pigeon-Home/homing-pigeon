@@ -173,10 +173,10 @@ def held_bound(max_out, log_bytes=0):
     within the first 4 x max_out bytes whatever the bytes are.
     The 4 bytes more are a margin: whether a stream goes on past
     what is held is settled by the reader's own count. Where the
-    runner keeps a log, its record of a job's output is as large
-    as the log may be (`log_bytes`), so the bar is the log's
-    size, and the tail the record leaves out, where that is the
-    larger. A value that is not a number counts as 0.
+    runner keeps a log, `log_bytes` is the most its record
+    carries of a stream, and the bar is that, and the tail the
+    record leaves out, where that is the larger. A value that
+    is not a number counts as 0.
     """
     try:
         chars = max(0, int(max_out))

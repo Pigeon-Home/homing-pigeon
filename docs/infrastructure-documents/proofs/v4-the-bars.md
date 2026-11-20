@@ -30,8 +30,9 @@ solved has to mean.
   all that a job wrote before it cut it: 3 bytes of the
   runner's own memory for each byte written. It holds a
   fixed number of bytes of each stream now, and every
-  result is what it was. The number follows the log's
-  size, and at the default it is not small.
+  result is what it was. A job's share of the log is 1
+  megabyte for each stream, by the owner's word, so that
+  number is 1,310,720 bytes in a running runner.
 - **Findings F18 and F19, open.** 2 more readers hold all
   that a process writes: the Oracle's run tool, and the
   reading of a change job's diff.
@@ -146,7 +147,7 @@ confinement are for a runner at `enforce`.
 |----------|-------|---------|-------|---------|
 | Time | 3,600 seconds at most | the same | the same | the same |
 | What a result carries | 100,000 characters for each stream | the same | the same | the same |
-| What the runner holds while the job runs | 33,816,576 bytes of a stream: the log's default size sets it, and 400,004 where no log is kept | the same | the same | the same, and at most 67,108,864 in the backend's own pumps |
+| What the runner holds while the job runs | 1,310,720 bytes of a stream: a job's share of the log and the tail its record leaves out. 400,004 where no log is kept | the same | the same | the same |
 | Processes | no bar | 256: for a job's user, or for the jail on a host with RACCT | no bar | no bar |
 | Memory | no bar | 512 MiB a process; 2 GiB a job on a host with RACCT | 512 MiB a process, above what it starts with | 512 MiB a process, and a job |
 | Disk, the job's `/tmp` | no bar of the runner's | 512 MiB | no bar | no bar |
@@ -499,6 +500,87 @@ new setting.
   the costliest kind it was over 1 second. I expect under
   0.2.
 
+## The log's share: the measure, and what held
+
+**What changed.** The log's record of a job carries a stream
+whole where the stream is at most 1,048,576 bytes, and the
+first part of a longer stream. So the reader's bar is
+1,310,720 bytes a stream in a running runner. The share is a
+constant, `JOB_LOG_SHARE` in `runner/runner.py`, and no
+setting. A log smaller than the share is as it was: its own
+size is the share.
+
+**The measure.** The same as above: a job that writes
+63,245,986 bytes on 1 stream or on each of the 2, with the log
+kept at its default size. The reading is the runner's memory
+at its highest, in kilobytes above a runner whose job wrote
+nothing.
+
+| The job writes | On 1 stream, before | Now | On both streams, before | Now |
+|----------------|--------------------:|----:|------------------------:|----:|
+| Text | 164,088 | 4,352 | 229,096 | 9,568 |
+| Bytes that are not text | 328,088 | 10,448 | 415,940 | 21,556 |
+| Text behind 1 character of 4 bytes | 492,972 | 17,068 | 682,860 | 32,448 |
+| Not text, behind such a character | 558,480 | 19,152 | 657,300 | 36,884 |
+
+The most on the table is 36,884, where it was 682,860. It is
+flat: text behind 1 character of 4 bytes, on both streams,
+read 32,676 for a job writing 1,346,269 bytes on each, 32,520
+for 14,930,352, 32,712 for 40,000,000 and 28,880 for
+200,000,000.
+
+**What 1 job adds to the log,** in bytes:
+
+| The job writes | On 1 stream | On both streams |
+|----------------|------------:|----------------:|
+| Text | 1,048,843 | 2,097,426 |
+| Bytes that are not text | 3,145,995 | 6,291,730 |
+| Text behind 1 character of 4 bytes | 1,048,846 | 2,097,432 |
+| Not text, behind such a character | 3,145,996 | 6,291,732 |
+
+Before, each of these 8 was 33,554,432: the log's whole size.
+The time the runner spends after the job has ended was 0.43
+seconds for text on 1 stream and over 1 second for the
+costliest kind. It is 0.018 and 0.071 now.
+
+**What held.**
+
+| | Supposed | Found |
+|---|----------|-------|
+| L1 | 1,310,720 bytes a stream at the default log size | So. Held |
+| L2 | About 35,000 kilobytes for the costliest kind, and under 50,000. Under 10,000 for plain text on 1 stream | 36,884 and 4,352. Held |
+| L3 | Every result is what it was | The same 82 jobs: 0 differ. Held |
+| L4 | A stream of at most 1,048,576 bytes is in the log whole | Held, at 1,048,575 and at 1,048,576 |
+| L5 | Of a longer stream, its first 1,048,576 bytes at least and its first 1,048,576 characters at most. A secret at the cut is written as its mark | Held, for characters of 1, 2, 3 and 4 bytes |
+| L6 | A job of text on both streams adds 2,097,152 bytes and a frame of under 400 | 2,097,426: a frame of 274. Held |
+| L7 | Under 0.2 seconds after the job, for the costliest kind | 0.071. Held |
+
+**2 things were not supposed.**
+
+1. **A byte that is not text is 3 bytes in the log.** The
+   share is counted in characters. The runner writes a byte
+   that is not text as a mark of 3 bytes. So a job of such
+   bytes adds 3 times as much to the log as a job of text:
+   6,291,730 bytes for both streams. L6 was written for text.
+2. **A compile hides the next megabytes.** The first measure
+   of the share read too low: 1,820 kilobytes for text on 1
+   stream, where the table has 4,352. The measured process had
+   just compiled a changed module. Such a process starts 6,940
+   kilobytes higher and has that much room free inside it, and
+   what a job takes out of that room leaves no mark on the
+   reading. The readings above were taken with the compiled
+   modules cached, so that the measured process compiles
+   nothing. A reading above a base is taken that way from here
+   on. The large readings of the sections above do not move by
+   it, and their small readings were taken with the modules
+   cached.
+
+**What this settles above.** The log's share of the bar is
+set. And the Windows backend's pumps, which hold 67,108,864
+bytes of a stream at most from the first byte, stand far over
+the caller's bar now, so a record on that backend keeps what a
+record keeps elsewhere.
+
 ## Finding F18: the Oracle's run tool reads the same way
 
 F17's question, asked of the rest of the runner: who else
@@ -530,6 +612,13 @@ above the same process running a command that writes nothing.
 The law: 2 bytes held for each byte of text, and 4 for each
 byte that is not text. What the tool hands back was 8,022
 characters on every row.
+
+A second sitting, with the compiled modules cached, read
+the same on 7 of the 8 cells. The first row of text read
+43,900: 3 bytes for each byte. The tool lets the pieces of
+a stream go before it makes the text, and whether the room
+they leave is given back by then is the allocator's to say.
+So for text it is 2 bytes for each, or 3.
 
 **Why F17's reader does not close it as it stands.** The tool
 joins the 2 streams and strips the white space at both ends,

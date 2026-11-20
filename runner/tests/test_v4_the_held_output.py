@@ -249,19 +249,28 @@ class TheModelOfTheReader(unittest.TestCase):
 
 def writer(out=b"", err=b"", code=0, pause=0.0, more=b""):
     """A process that writes `out` and `err`, and then, after a
-    pause, `more` on stdout, and ends with `code`."""
+    pause, `more` on stdout, and ends with `code`. A number in
+    the place of bytes asks for that many bytes of the cycle,
+    made in the process itself, and a number under 0 for the
+    cycle turned round. So nothing long stands on the command
+    line: Windows takes 32,767 characters there."""
     program = (
         "import sys, time\n"
         "o, e = sys.stdout.buffer, sys.stderr.buffer\n"
-        "def cycle(n):\n"
-        "    return (bytes(range(256)) * (n // 256 + 1))[:n]\n"
-        "o.write(cycle(%d) if %r else %r); o.flush()\n"
-        "e.write(%r); e.flush()\n"
+        "def made(n):\n"
+        "    if not isinstance(n, int):\n"
+        "        return n\n"
+        "    size = abs(n)\n"
+        "    cycle = (bytes(range(256)) * (size // 256 + 1))[:size]\n"
+        "    return cycle if n >= 0 else cycle[::-1]\n"
+        "o.write(made(%r)); o.flush()\n"
+        "e.write(made(%r)); e.flush()\n"
         "time.sleep(%r)\n"
         "o.write(%r); o.flush()\n"
-        "sys.exit(%d)\n" % (
-            out if isinstance(out, int) else 0, isinstance(out, int),
-            b"" if isinstance(out, int) else out, err, pause, more, code))
+        "sys.exit(%d)\n" % (out, err, pause, more, code))
+    # The longest command line this module asks for is far under
+    # what Windows takes.
+    assert len(program) < 2000, len(program)
     return subprocess.Popen([sys.executable, "-c", program],
                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
@@ -305,17 +314,23 @@ class TheReader(unittest.TestCase):
         self.assertFalse(Held(1, by_threads=False)._by_threads)
 
     def test_under_the_bar_it_hands_back_what_communicate_does(self):
+        # The last row: 9,999 bytes of the cycle on 1 stream, and
+        # 10,000 of it turned round on the other.
+        self.assertEqual(
+            (cycle(9999), cycle(10000)[::-1]),
+            writer(9999, -10000, 0).communicate(timeout=60))
         for way in WAYS:
             for out, err, code in ((b"", b"", 0), (b"a", b"", 1),
                                    (b"line 1\nline 2\n", b"oops\n", 3),
-                                   (cycle(9999), cycle(10000)[::-1], 0)):
+                                   (9999, -10000, 0)):
                 want = writer(out, err, code).communicate(timeout=60)
                 proc = writer(out, err, code)
                 held = Held(10000, by_threads=way)
                 self.assertEqual(want, held(proc, 60), way)
                 self.assertEqual(code, proc.returncode)
-                self.assertEqual({"stdout": len(out), "stderr": len(err)},
-                                 held.seen)
+                self.assertEqual(
+                    {"stdout": len(want[0]), "stderr": len(want[1])},
+                    held.seen)
                 self.assertEqual(held.seen, held.kept)
                 self.assertFalse(held.cut("stdout") or held.cut("stderr"))
                 # Both pipes are closed, as communicate() leaves them.
@@ -650,15 +665,15 @@ class TheRealExecutorWithTheBar(unittest.TestCase):
     @unittest.skipIf(not POSIX, "POSIX only")
     def test_h1_with_a_log_kept_the_result_is_the_same(self):
         # A running runner keeps a log, and then the bar is the
-        # log's: here 2,097,152 bytes and the tail, 2,359,296.
-        # A stream past the output cap's own bar and under the
-        # log's comes back as it did, and the log's record
+        # share's: 1,048,576 bytes and the tail, 1,310,720. A
+        # stream past the output cap's own bar and under the
+        # share comes back as it did, and the log's record
         # carries the whole of it, as it did.
         with tempfile.TemporaryDirectory() as folder:
             path = os.path.join(folder, "runner.log")
             with mock.patch.object(RUNNER, "_LOG_FILE", path), \
                     mock.patch.object(RUNNER, "_LOG_MAX_BYTES", 2097152):
-                self.assertEqual(2359296, RUNNER._held_for_job(CAP).keep)
+                self.assertEqual(1310720, RUNNER._held_for_job(CAP).keep)
             for kind, size in (("plain", 999), ("plain", 1001),
                                ("4 bytes a character", 1001),
                                ("not text", 4005), ("mixed", 20000)):
@@ -682,8 +697,8 @@ class TheRealExecutorWithTheBar(unittest.TestCase):
             self):
         # A log of 1,000 bytes makes the bar 263,144 bytes. A job
         # writes 300,000. Its result is what it was, and the
-        # log's record says what the job wrote and what the
-        # runner holds.
+        # log's record says what the job wrote and what a record
+        # carries: such a log's own size is the share.
         with tempfile.TemporaryDirectory() as folder:
             path = os.path.join(folder, "runner.log")
             out = stream("plain", 300000)
@@ -698,8 +713,36 @@ class TheRealExecutorWithTheBar(unittest.TestCase):
         self.assertEqual(1000, len(logged))
         self.assertIn(
             b"output, its first part (the job wrote 300000 bytes on "
-            b"stdout and 0 on stderr; the runner holds at most 263144 "
-            b"of a stream):\n--- stdout ---\nab cd\n", logged)
+            b"stdout and 0 on stderr; the record carries at most 1000 "
+            b"characters of a stream):\n--- stdout ---\nab cd\n", logged)
+
+    @unittest.skipIf(not POSIX, "POSIX only")
+    def test_l6_what_1_job_adds_to_the_log(self):
+        # A job writes 3,000,000 bytes of text on each stream,
+        # with the log at its default size. Its result is what
+        # it was. Its record carries the share of each stream,
+        # in a frame of under 400 bytes: it was 6,000,000 and
+        # the frame.
+        share = RUNNER.JOB_LOG_SHARE
+        script = ("head -c 3000000 /dev/zero | tr '\\0' a; "
+                  "head -c 3000000 /dev/zero | tr '\\0' b >&2")
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, "runner.log")
+            got = self.ask({}, script, log=(path, 33554432))
+            self.assertEqual(("a" * CAP, "b" * CAP, True, True, 0), (
+                got.get("stdout"), got.get("stderr"),
+                got.get("stdout_truncated"), got.get("stderr_truncated"),
+                got.get("exit_code")))
+            with open(path, "rb") as handle:
+                logged = handle.read()
+        frame = len(logged) - 2 * share
+        self.assertTrue(0 < frame < 400, frame)
+        self.assertIn(
+            b"output, its first part (the job wrote 3000000 bytes on "
+            b"stdout and 3000000 on stderr; the record carries at most "
+            b"1048576 characters of a stream):\n--- stdout ---\n"
+            + b"a" * share + b"\n--- stderr ---\n" + b"b" * share
+            + b"\n--- end of job ", logged)
 
     @unittest.skipIf(not POSIX, "POSIX only")
     def test_h4_a_job_its_time_limit_ends_comes_back_as_before(self):
@@ -766,7 +809,8 @@ class TheRealExecutorWithTheBar(unittest.TestCase):
 
 
 class TheLogsRecord(unittest.TestCase):
-    """H5 and H6: the log's record of a job's output."""
+    """H5 and H6, and then L1, L4 and L5: the log's record of a
+    job's output, and the share of the log that a job has."""
 
     def record(self, stdout, stderr, held=None, cfg=None, limit=33554432):
         with tempfile.TemporaryDirectory() as folder:
@@ -779,14 +823,99 @@ class TheLogsRecord(unittest.TestCase):
             with open(path, encoding="utf-8") as handle:
                 return handle.read(), bar
 
-    def test_h5_with_the_log_on_the_bar_is_the_log_s_size(self):
-        _text, bar = self.record("out", "err")
-        self.assertEqual(33816576, bar)
-        _text, bar = self.record("out", "err", limit=2097152)
-        self.assertEqual(2097152 + 4 * 65536, bar)
+    def test_l1_with_a_log_kept_the_bar_is_the_share_s(self):
+        # H5 had the bar at the log's size, 33,816,576 bytes at
+        # the default. A job's share of the log is 1,048,576
+        # characters of each stream since, and the bar is the
+        # share and the tail the record leaves out.
+        share = RUNNER.JOB_LOG_SHARE
+        self.assertEqual(1048576, share)
+        for limit in (33554432, 2097152, 1048576):
+            _text, bar = self.record("out", "err", limit=limit)
+            self.assertEqual(1310720, bar, limit)
+        self.assertEqual(1310720, share + 4 * HELPERS.HELD_TAIL)
+        # A log smaller than the share: its own size is the
+        # share, as it was.
+        _text, bar = self.record("out", "err", limit=600000)
+        self.assertEqual(600000 + 4 * 65536, bar)
+        # And never under what the output cap needs.
+        _text, bar = self.record("out", "err", limit=1000)
+        self.assertEqual(400004, bar)
         # With no log the bar is the output cap's alone.
         with mock.patch.object(RUNNER, "_LOG_FILE", None):
             self.assertEqual(400004, RUNNER._held_for_job(100000).keep)
+
+    def stream_of(self, record):
+        """The stdout part of a record."""
+        return record.split("--- stdout ---\n", 1)[1].split(
+            "\n--- stderr ---\n", 1)[0]
+
+    def test_l4_a_stream_of_at_most_the_share_is_recorded_whole(self):
+        share = RUNNER.JOB_LOG_SHARE
+        for size in (share - 1, share):
+            text = ("line %d\n" * 7 % tuple(range(7)) * (size // 49 + 1))[
+                :size]
+            self.assertEqual(size, len(text))
+            record, _bar = self.record(text, "e")
+            self.assertIn(") full output:\n--- stdout ---\n", record)
+            self.assertNotIn("its first part", record)
+            self.assertEqual(text, self.stream_of(record))
+            self.assertTrue(record.endswith(
+                "\n--- stderr ---\ne\n--- end of job j1 output ---\n"))
+
+    def test_l5_of_a_longer_stream_the_first_part(self):
+        share = RUNNER.JOB_LOG_SHARE
+        # 1 character over the share, with no reader's word: the
+        # record carries the share and says so.
+        text = "a" * (share + 1)
+        record, _bar = self.record(text, "e")
+        self.assertIn(
+            "job j1 (kind=exec) output, its first part (the record "
+            "carries at most 1048576 characters of a stream):\n", record)
+        self.assertEqual("a" * share, self.stream_of(record))
+        # The other stream is whole beside it.
+        self.assertIn("\n--- stderr ---\ne\n--- end of job", record)
+        # A stream the reader cut at its bar, in characters of 1,
+        # 2, 3 and 4 bytes: the record carries its first
+        # 1,048,576 bytes at least and its first 1,048,576
+        # characters at most, and says what the job wrote.
+        bar = HELPERS.held_bound(100000, share)
+        self.assertEqual(1310720, bar)
+        for unit in ("a", "\u00e9", "\u20ac", "\U0001f600"):
+            wide = len(unit.encode("utf-8"))
+            held_bytes = (unit * (bar // wide)).encode("utf-8")
+            held = Held(bar)
+            held.took("stdout", held_bytes, 63245986)
+            held.took("stderr", b"")
+            record, _bar = self.record(
+                held_bytes.decode("utf-8"), "", held=held)
+            self.assertIn(
+                "output, its first part (the job wrote 63245986 bytes "
+                "on stdout and 0 on stderr; the record carries at most "
+                "1048576 characters of a stream):\n", record)
+            carried = self.stream_of(record)
+            self.assertEqual(unit * len(carried), carried)
+            self.assertLessEqual(len(carried), share, wide)
+            self.assertGreaterEqual(len(carried.encode("utf-8")), share,
+                                    wide)
+        # At 4 bytes a character it is the first 1,048,576 bytes
+        # exactly: the tail the record leaves out is the rest.
+        self.assertEqual(share, len(carried.encode("utf-8")))
+
+    def test_l5_a_secret_at_the_share_s_cut_is_written_as_its_mark(self):
+        share = RUNNER.JOB_LOG_SHARE
+        cfg = {"redact_patterns_extra": {"badge": "BADGE-[0-9]{20}"}}
+        secret = "BADGE-01234567890123456789"
+        # The secret stands across the place where the share
+        # cuts. The text is redacted whole first, so the cut
+        # falls in the mark.
+        text = "x" * (share - 10) + secret + "y" * 100000
+        record, _bar = self.record(text, "", cfg=cfg)
+        carried = self.stream_of(record)
+        self.assertEqual(share, len(carried))
+        self.assertEqual("x" * (share - 10) + "[REDACTED:", carried)
+        self.assertNotIn("BADGE-", record)
+        self.assertNotIn("0123456789", record)
 
     def test_h5_a_stream_under_the_bar_is_recorded_as_it_was(self):
         held = Held(1000)
@@ -814,8 +943,8 @@ class TheLogsRecord(unittest.TestCase):
         record, _bar = self.record(text, "e", held=held, cfg=cfg)
         self.assertIn(
             "job j1 (kind=exec) output, its first part (the job wrote "
-            "9000000 bytes on stdout and 1 on stderr; the runner holds at "
-            "most %d of a stream):\n" % len(text), record)
+            "9000000 bytes on stdout and 1 on stderr; the record carries "
+            "at most 1048576 characters of a stream):\n", record)
         # The whole secret inside is redacted, as before.
         self.assertIn("kept line\n[REDACTED:badge]\n", record)
         self.assertNotIn("BADGE-", record)
@@ -852,33 +981,42 @@ class TheLogsRecord(unittest.TestCase):
 # ---- The ladder, once more
 
 HELD_CHILD = r"""
-import json, re, sys, time
+import json, os, re, sys, tempfile, time
 sys.path.insert(0, %(root)r)
+from runner import runner as RUNNER
 from runner.tests import test_v4_at_a_bound as RUNG
-script, timeout = sys.argv[1], int(sys.argv[2])
+script, timeout, log = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
 payload, job_id = RUNG.honest_job()
 if timeout:
     payload["timeout_sec"] = timeout
-started = time.monotonic()
-got, _where = RUNG.ask_the_runner(
-    payload, job_id, script, extra=dict(RUNG.OFF))
-took = time.monotonic() - started
+with tempfile.TemporaryDirectory() as folder:
+    if log:
+        # A running runner keeps a log, at the size it has by
+        # default.
+        RUNNER._LOG_FILE = os.path.join(folder, "runner.log")
+    started = time.monotonic()
+    got, _where = RUNG.ask_the_runner(
+        payload, job_id, script, extra=dict(RUNG.OFF))
+    took = time.monotonic() - started
+    logged = os.path.getsize(RUNNER._LOG_FILE) if log else 0
 with open("/proc/self/status") as status:
     peak = int(re.search(r"VmHWM:\s+(\d+) kB", status.read()).group(1))
 print(json.dumps({
     "peak": peak, "exit": got.get("exit_code"), "view": got.get("view"),
     "timed_out": got.get("timed_out"), "took": took,
-    "job": got.get("duration_sec")}))
+    "job": got.get("duration_sec"), "logged": logged}))
 """
 
 
-def runner_of_its_own(script, timeout=0):
+def runner_of_its_own(script, timeout=0, log=False):
     """1 job through the real gate and the real execution, in a
     runner of its own: that runner's memory at its highest, in
-    kilobytes, by the kernel's high-water mark, and the result."""
+    kilobytes, by the kernel's high-water mark, and the result.
+    With `log` the runner keeps a log, as a running runner
+    does."""
     done = subprocess.run(
         [sys.executable, "-c", HELD_CHILD % {"root": ROOT}, script,
-         str(timeout)],
+         str(timeout), "1" if log else "0"],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=600,
         env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
     return json.loads(done.stdout.decode("utf-8").strip().split("\n")[-1])
@@ -931,6 +1069,33 @@ class TheLadderIsFlat(unittest.TestCase):
         got = runner_of_its_own(writes(300000000) + "; sleep 60", 3)
         self.assertEqual((True, -1), (got["timed_out"], got["exit"]))
         self.assertLess(got["peak"] - base["peak"], 4000)
+
+
+class TheShareOfTheLog(unittest.TestCase):
+    """L2: with a log kept, as a running runner keeps 1, the
+    runner's memory is small since a job has a share of the
+    log."""
+
+    @unittest.skipUnless(
+        LINUX, "the shells and the runner's memory are read on Linux")
+    def test_l2_with_a_log_kept_the_runner_s_memory(self):
+        base = runner_of_its_own(":", log=True)
+        self.assertEqual((0, "attested"), (base["exit"], base["view"]))
+        # Plain text on 1 stream, at step 36 of the series. With
+        # the log's size for a bar it read 164,088 kilobytes at
+        # the top step, and the same at every step past the bar.
+        got = runner_of_its_own(writes(14930352), log=True)
+        self.assertEqual((0, "attested"), (got["exit"], got["view"]))
+        self.assertLess(got["peak"] - base["peak"], 10000)
+        # The costliest kind found, on both streams: it read
+        # 682,860.
+        got = runner_of_its_own(writes_wide_on_both(14930352), log=True)
+        self.assertEqual((0, "attested"), (got["exit"], got["view"]))
+        self.assertLess(got["peak"] - base["peak"], 50000)
+        # What that job's record is in the log: the share of each
+        # stream, 1 wide character in each, and the frame.
+        self.assertLess(got["logged"], 2 * RUNNER.JOB_LOG_SHARE + 600)
+        self.assertGreater(got["logged"], 2 * RUNNER.JOB_LOG_SHARE)
 
 
 # ---- The other 3 systems
@@ -1124,14 +1289,78 @@ class ThePageRecordsTheModel(unittest.TestCase):
             self.assertIn(stated, page, stated)
         self.assertEqual(67108864, windows_confine.PUMP_HELD_BYTES)
         # The table of the bars carries the bar, on every system.
-        self.assertIn(
-            "| What the runner holds while the job runs | 33,816,576 "
-            "bytes of a stream: the log's default size sets it, and "
-            "400,004 where no log is kept | the same | the same | the "
-            "same, and at most 67,108,864 in the backend's own pumps |",
-            page)
         self.assertNotIn("| What the runner holds while the job runs | "
                          "no bar |", page)
+
+    # The measure of the log's share, as taken for the page: with
+    # the log kept at its default size, the same job, in the same
+    # 4 kinds. Kilobytes above the base on 1 stream and on both,
+    # with the share; and the bytes the job's record added to the
+    # log, on 1 stream and on both.
+    SHARE = ((4352, 9568, 1048843, 2097426),
+             (10448, 21556, 3145995, 6291730),
+             (17068, 32448, 1048846, 2097432),
+             (19152, 36884, 3145996, 6291732))
+
+    def test_the_page_states_the_share_and_what_held(self):
+        page = MODELS._flat(PAGE)
+        self.assertIn(
+            "## The log's share: the rule, and what is expected", page)
+        self.assertIn(
+            "## The log's share: the measure, and what held", page)
+        self.assertLess(
+            page.index("## The log's share: the rule"),
+            page.index("## The log's share: the measure"))
+        comma = lambda number: format(number, ",")  # noqa: E731
+        share = RUNNER.JOB_LOG_SHARE
+        before = self.WITH_LOG[0][2]
+        for kind, was, row in zip(self.KINDS, before, self.SHARE):
+            one, both, logged_one, logged_both = row
+            self.assertIn("| %s | %s | %s | %s | %s |" % (
+                kind, comma(was[0]), comma(one), comma(was[1]),
+                comma(both)), page)
+            self.assertIn("| %s | %s | %s |" % (
+                kind, comma(logged_one), comma(logged_both)), page)
+            # L2: under 50,000 kilobytes, where each was over
+            # 160,000.
+            self.assertLess(max(one, both), 50000)
+            self.assertGreater(min(was), 160000)
+            # What a record adds: the share of each stream in
+            # characters, 1 or 3 bytes for each, and a frame.
+            for logged, streams in ((logged_one, 1), (logged_both, 2)):
+                wide = 3 if "ot text" in kind else 1
+                frame = logged - streams * wide * share
+                self.assertTrue(0 < frame < 400, (kind, frame))
+        self.assertEqual(36884, max(max(row[:2]) for row in self.SHARE))
+        self.assertLess(self.SHARE[0][0], 10000)
+        for stated in (
+                "**The owner's word, 20 November.** A job's share of the "
+                "log is 1 megabyte for each of its streams.",
+                "1,310,720 bytes a stream, where it was 33,816,576",
+                "I expect about 35,000, and under 50,000",
+                "The most on the table is 36,884, where it was 682,860",
+                "read 32,676 for a job writing 1,346,269 bytes on each, "
+                "32,520 for 14,930,352, 32,712 for 40,000,000 and 28,880 "
+                "for 200,000,000",
+                "It is 0.018 and 0.071 now",
+                "| L2 | About 35,000 kilobytes for the costliest kind, and "
+                "under 50,000. Under 10,000 for plain text on 1 stream | "
+                "36,884 and 4,352. Held |",
+                "| L6 | A job of text on both streams adds 2,097,152 bytes "
+                "and a frame of under 400 | 2,097,426: a frame of 274. "
+                "Held |",
+                "1,820 kilobytes for text on 1 stream, where the table has "
+                "4,352",
+                "starts 6,940 kilobytes higher"):
+            self.assertIn(stated, page, stated)
+        # The table of the bars carries the bar as it is now, on
+        # every system.
+        self.assertIn(
+            "| What the runner holds while the job runs | 1,310,720 "
+            "bytes of a stream: a job's share of the log and the tail "
+            "its record leaves out. 400,004 where no log is kept | the "
+            "same | the same | the same |", page)
+        self.assertEqual(1310720, HELPERS.held_bound(100000, share))
 
 
 if __name__ == "__main__":

@@ -661,6 +661,8 @@ class FindingF18TheOraclesRunTool(unittest.TestCase):
         for stated in ("for up to 120 seconds",
                        "the first 8,000 characters",
                        "was 8,022 characters on every row",
+                       "The first row of text read 43,900: 3 bytes for "
+                       "each byte",
                        "It is filed, and not closed here."):
             self.assertIn(stated, page, stated)
 
@@ -670,7 +672,9 @@ class FindingF18TheOraclesRunTool(unittest.TestCase):
         base = tool(0)
         self.assertEqual("exit=0\n", base["head"])
         size = 14930352
-        for byte, least, most in (("a", 1.5, 3), ("\\377", 3, 5)):
+        # For text the page has 2 bytes for each byte, and 3 in
+        # 1 cell of a second sitting: the allocator's to say.
+        for byte, least, most in (("a", 1.5, 3.5), ("\\377", 3, 5.5)):
             got = tool(size, byte)
             above = (got["peak"] - base["peak"]) * 1024
             self.assertTrue(least * size <= above <= most * size,

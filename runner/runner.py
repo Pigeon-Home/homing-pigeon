@@ -4035,48 +4035,70 @@ def _oracle_log_exchange(endpoint, model, payload, started,
         record["error_body"] = error_body
     _oracle_log_record(record)
 
+# A job's share of the log (the owner's word, 2026-11-20): the
+# most of each stream of a job that the log's record of the job
+# carries, in characters. A named constant, not a setting.
+# Before it, a job's record could be as large as the log, and
+# the runner held that much of a stream to write it.
+JOB_LOG_SHARE = 1_048_576
+
+
+def _job_log_share():
+    """What the log's record carries of each stream of a job at
+    most: the share, or the log's own size where the log is the
+    smaller."""
+    return min(_LOG_MAX_BYTES, JOB_LOG_SHARE)
+
+
 def _held_for_job(max_out):
     """The reader of 1 job's streams, with the bar this runner
     keeps (finding F17): what the output cap needs, or what the
-    log's record of a job's output can carry where a log is
-    kept."""
-    return Held(held_bound(max_out, _LOG_MAX_BYTES if _LOG_FILE else 0))
+    log's record carries of a stream where a log is kept."""
+    return Held(held_bound(max_out, _job_log_share() if _LOG_FILE else 0))
 
 
 def _log_job_output(job_id, kind, stdout, stderr, cfg, held=None):
     """Write a job's stdout/stderr to runner.log.
 
-    The result email carries a bounded copy; the log keeps the
-    output as the runner holds it, so a debugging session can read
-    what the job actually said. Redaction still applies (the log
-    never carries cleartext secrets, same as the one-line preview
-    in execute_job). Written straight through append_bounded_log,
-    not log(): the per-minute cap must not drop exactly the record
-    a debugging session needs, and a chatty job must not flood the
-    console.
+    The result email carries a bounded copy; the log keeps more
+    of the output, so a debugging session can read what the job
+    actually said: a stream whole where it is at most the job's
+    share of the log, and the first part of a longer one.
+    Redaction still applies (the log never carries cleartext
+    secrets, same as the one-line preview in execute_job).
+    Written straight through append_bounded_log, not log(): the
+    per-minute cap must not drop exactly the record a debugging
+    session needs, and a chatty job must not flood the console.
 
     `held` is the reader the streams came through. A stream it cut
     at its bar is written as what was held, less its last
     HELD_TAIL characters: the bar can cut a secret in 2, and the
     held half would not match the pattern that redacts the whole.
-    The record then says how many bytes the job wrote.
+    A stream is then cut to the share, after it was redacted
+    whole, so that cut can fall in a mark and never in a secret.
+    Where the record leaves some of a stream out it says that it
+    is the first part, and how many bytes the job wrote.
     """
     if not _LOG_FILE:
         return
     patterns = _redact_patterns(cfg)
     out_text, _f1 = redact_text(stdout, patterns)
     err_text, _f2 = redact_text(stderr, patterns)
+    share = _job_log_share()
+    cut_out = held is not None and held.cut("stdout")
+    cut_err = held is not None and held.cut("stderr")
+    end_out = len(out_text) - (HELD_TAIL if cut_out else 0)
+    end_err = len(err_text) - (HELD_TAIL if cut_err else 0)
     said = "full output"
-    end_out, end_err = len(out_text), len(err_text)
-    if held is not None and (held.cut("stdout") or held.cut("stderr")):
-        if held.cut("stdout"):
-            end_out -= HELD_TAIL
-        if held.cut("stderr"):
-            end_err -= HELD_TAIL
-        said = ("output, its first part (the job wrote %d bytes on "
-                "stdout and %d on stderr; the runner holds at most %d "
-                "of a stream)" % (held.seen["stdout"], held.seen["stderr"],
-                                  held.keep))
+    if cut_out or cut_err or end_out > share or end_err > share:
+        wrote = ""
+        if held is not None:
+            wrote = ("the job wrote %d bytes on stdout and %d on "
+                     "stderr; " % (held.seen["stdout"],
+                                   held.seen["stderr"]))
+        said = ("output, its first part (%sthe record carries at "
+                "most %d characters of a stream)" % (wrote, share))
+    end_out, end_err = min(end_out, share), min(end_err, share)
     # The record is cut to the log's size in bytes when it is
     # written. A character is at least 1 byte, so what stands past
     # that many characters is never written: it is let go here,
