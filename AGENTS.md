@@ -2,7 +2,7 @@
 
 ## Contents
 
-- [The goal: read this first](#the-goal-read-this-first)
+- [The goal page](#the-goal-page)
 - [A fair warning about this repository's size](#a-fair-warning-about-this-repositorys-size)
 - [Notes for visiting systems](#notes-for-visiting-systems)
 - [Secret agents](#secret-agents)
@@ -34,9 +34,9 @@
 - [Result location](#result-location)
 - [Working the task board and handling key IDs](#working-the-task-board-and-handling-key-ids)
 
-## The goal: read this first
+## The goal page
 
-The owner's page stands on 1 short page: [docs/GOAL.md](docs/GOAL.md). Read it before anything else here. It is the owner's page, and only he changes it (rule 18 below).
+The goal page is the conductor's own page. He withdrew it on 2026-11-20, and `docs/GOAL.md` now holds only a placeholder in its place. No seat reads it first, and no seat restores, moves, or edits it. Rule 18 below records the same state. If the conductor stands the page up again, in this place or in another, the pointers in this file return with it at that time.
 
 ## A fair warning about this repository's size
 
@@ -367,12 +367,19 @@ Those values live on the runner host. They do not travel through the SI chat.
     Q173). The owner's ceiling for the machines and the services
     together is $700 a month (2026-11-12, Q178): a limit, not an
     allowance, and under it, spending still waits for his word.
-18. **The goal page (owner, 2026-11-19).** `docs/GOAL.md` is
-    the owner's page. Every seat reads it first, before these
-    rules. Only the owner changes the page. A seat that reads a
-    line of it as wrong, or as done, says so in the questions
-    file and leaves the page as it is.
-    `runner/tests/test_goal_page.py` holds the page's form.
+18. **The goal page (owner, 2026-11-19; withdrawn 2026-11-20).**
+    The page at `docs/GOAL.md` was the conductor's own page,
+    and it said what the project is for and what done means.
+    He withdrew it on 2026-11-20, and the file now holds only
+    a placeholder. Only the conductor changes the page, and
+    no seat restores, moves, or edits it. No seat reads it
+    first, and no live pointer in this file sends a reader
+    to it as a standing page. If the conductor stands it up
+    again, the pointers and the standing form test return
+    with it at that time.
+    `runner/tests/test_goal_page.py` now holds the withdrawn
+    state: a standing form or a live pointer returning
+    without his word fails there.
 
 
 ## Where things live
@@ -383,7 +390,7 @@ new paths against this layout; the old ones are gone, with no shims.
 | Folder | What |
 |--------|------|
 | `runner/` | The runner and the Oracle. `runner/runner.py` is the agent; its modules are in four role folders: `runner/oracle/` (the Oracle), `runner/wire/` (transports, signing, the board), `runner/guard/` (security, sandbox, config readers) and `runner/ops/` (install, setup, extensions, diagnostics, and the parts of the agent's own loop split out of `runner.py`: the CLI, polling, mail, execution, queries, startup and `main`, which `runner.py` loads through `_load_mod` and re-exports). `runner/cloud/` is the cloud-side helpers (`send_job.py`, `send_dtls.py`) and the hosted queue's Worker (`runner/cloud/queues-worker/`). `runner/transport_extensions/` is the five shipped transports (email, file, nats, dtls, queues), one folder each with a manifest. `runner/hosting/` is the hosting control plane (`homing-pigeon-host`: provider adapters for Fly, Hetzner, DigitalOcean and GitHub Actions, the inventory, prepaid billing; `docs/steady/project/hosting.md`). `runner/extensions/` is the shipped sense extensions, one folder each, `runner/tools/` the build and CI scripts, and `runner/tests/` the suite; all three are kept out of the wheel (`pyproject.toml`'s exclude list) and the image. `runner/tests/airgap/` (once `topaz/`) sits beside the suite, outside discovery (`runner/tests/archive/` was removed on 2026-11-01; its record is the `campaign-1-record` tag) |
-| `docs/` | Everything else to read. The top holds `docs/GOAL.md`, `docs/FUTURE.md`, `docs/FAQ.md`, `docs/ENTERPRISE.md` and the support matrix, and four folders: `archive/` (historical records), `ietf/` (the drafts), `infrastructure-documents/` (the important documents that change rarely: the changelog, install, the design and security references, the project playbook and standing orders, the proofs, the seats' forum `.com.chat` and a muster hold) and `steady/` (the quiet shelf: the core guides at its top, including overview, networking, sending, extensions, fuzzing, verification, secret rotation, the emergency plan, the config decision, and `start-here.md`, the map, over drawers named for the old folders: `design/`, `oracle/`, `project/`, `proofs/`, `reports/`, `seats/` (the questions file, `status.txt`), `security/` (the opt-in OS hardening templates, flattened), `specimens/`, `use/`). File names inside the folders are lowercase-kebab; the uppercase names are the root conventions (README, INSTALL, SECURITY, PROTOCOL, AGENTS) and the docs front door above: `GOAL.md` and `FUTURE.md` at the top of `docs/`, with `docs/FAQ.md` and `docs/ENTERPRISE.md` beside them |
+| `docs/` | Everything else to read. The top holds `docs/FUTURE.md`, `docs/FAQ.md`, `docs/ENTERPRISE.md` and the support matrix, and four folders: `archive/` (historical records), `ietf/` (the drafts), `infrastructure-documents/` (the important documents that change rarely: the changelog, install, the design and security references, the project playbook and standing orders, the proofs, the seats' forum `.com.chat` and a muster hold) and `steady/` (the quiet shelf: the core guides at its top, including overview, networking, sending, extensions, fuzzing, verification, secret rotation, the emergency plan, the config decision, and `start-here.md`, the map, over drawers named for the old folders: `design/`, `oracle/`, `project/`, `proofs/`, `reports/`, `seats/` (the questions file, `status.txt`), `security/` (the opt-in OS hardening templates, flattened), `specimens/`, `use/`). File names inside the folders are lowercase-kebab; the uppercase names are the root conventions (README, INSTALL, SECURITY, PROTOCOL, AGENTS) and the docs front door above: `FUTURE.md` at the top of `docs/`, with `docs/FAQ.md` and `docs/ENTERPRISE.md` beside it |
 | `assets/` | Images |
 | `.github/` | CI: `workflows/`, `docker/` (the published image and the CI test image), `requirements-ci.txt` (the CI pins) |
 
