@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="Helvetica, Arial, sans-serif">
+  <title>The 2 parts of the security-token count, 15 October to 19 November 2026: everything else levels off toward 16 to 18 million, and the fuzz run log has no limit yet</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b060d"/>
+      <stop offset="1" stop-color="#17030a"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="520" fill="url(#bg)"/>
+  <text x="50" y="46" fill="#ffffff" font-size="24" font-weight="bold">2 lines, 2 limits</text>
+  <text x="50" y="72" fill="#ffd7de" font-size="15">The 2 parts of the count to 19 November 2026, and where each may stop</text>
+  <!-- the side that is not counted -->
+  <rect x="438" y="104" width="266" height="320" fill="#ffffff" fill-opacity="0.045"/>
+  <!-- the grid and the two axes -->
+  <path d="M 80 424 L 704 424" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="68" y="428.5" text-anchor="end" fill="#d9a9b1" font-size="13">0</text>
+  <path d="M 80 360 L 704 360" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="364.5" text-anchor="end" fill="#d9a9b1" font-size="13">5M</text>
+  <path d="M 80 296 L 704 296" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="300.5" text-anchor="end" fill="#d9a9b1" font-size="13">10M</text>
+  <path d="M 80 232 L 704 232" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="236.5" text-anchor="end" fill="#d9a9b1" font-size="13">15M</text>
+  <path d="M 80 168 L 704 168" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="172.5" text-anchor="end" fill="#d9a9b1" font-size="13">20M</text>
+  <path d="M 80 104 L 704 104" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="108.5" text-anchor="end" fill="#d9a9b1" font-size="13">25M</text>
+  <path d="M 80 424 L 80 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="80" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Oct 15</text>
+  <path d="M 253.9 424 L 253.9 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="253.9" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 1</text>
+  <path d="M 438 424 L 438 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="438" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 19</text>
+  <path d="M 560.8 424 L 560.8 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="560.8" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Dec 1</text>
+  <path d="M 704 424 L 704 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="704" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Dec 15</text>
+  <path d="M 438 104 L 438 424" fill="none" stroke="#d9a9b1" stroke-width="1"/>
+  <text x="426" y="126" text-anchor="end" fill="#ffd7de" font-size="13.5">counted</text>
+  <text x="450" y="126" fill="#ffd7de" font-size="13.5">not counted</text>
+  <!-- where everything else stops, by 4 readings: 16 to 18 million -->
+  <rect x="438" y="193.6" width="266" height="25.6" fill="#3987e5" fill-opacity="0.30"/>
+  <!-- what a whole of 38 million leaves the run log: 20 to 22 million -->
+  <rect x="438" y="142.4" width="266" height="25.6" fill="#c98500" fill-opacity="0.26"/>
+  <!-- the 2 lines, each day's last landing -->
+  <path d="M 80 418.3 L 90.2 416.8 L 100.5 414.2 L 110.7 407.4 L 120.9 403.8 L 131.1 403.2 L 141.4 401.7 L 151.6 396.5 L 161.8 388.9 L 172.1 379.6 L 182.3 351.3 L 192.5 340.2 L 202.8 330.1 L 213 327.7 L 223.2 322.4 L 233.4 319.2 L 243.7 296.6 L 253.9 286.2 L 264.1 273.5 L 274.4 272.3 L 284.6 273.1 L 294.8 271.4 L 305 265.4 L 315.3 264.6 L 325.5 261.5 L 335.7 260.6 L 346 258.3 L 356.2 251.2 L 366.4 238.5 L 376.7 246.1 L 386.9 242.5 L 397.1 238.1 L 407.3 237.5 L 417.6 236.8 L 427.8 233.8 L 438 232.6" fill="none" stroke="#21050b" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M 80 418.3 L 90.2 416.8 L 100.5 414.2 L 110.7 407.4 L 120.9 403.8 L 131.1 403.2 L 141.4 401.7 L 151.6 396.5 L 161.8 388.9 L 172.1 379.6 L 182.3 351.3 L 192.5 340.2 L 202.8 330.1 L 213 327.7 L 223.2 322.4 L 233.4 319.2 L 243.7 296.6 L 253.9 286.2 L 264.1 273.5 L 274.4 272.3 L 284.6 273.1 L 294.8 271.4 L 305 265.4 L 315.3 264.6 L 325.5 261.5 L 335.7 260.6 L 346 258.3 L 356.2 251.2 L 366.4 238.5 L 376.7 246.1 L 386.9 242.5 L 397.1 238.1 L 407.3 237.5 L 417.6 236.8 L 427.8 233.8 L 438 232.6" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 192.5 424 L 202.8 419.2 L 213 415.1 L 223.2 406.6 L 233.4 382.2 L 243.7 365.7 L 253.9 354.2 L 264.1 351.2 L 274.4 349 L 284.6 346.7 L 294.8 346.7 L 305 346.7 L 315.3 346.7 L 325.5 326.5 L 335.7 326.5 L 346 326.5 L 356.2 326.5 L 366.4 288.9 L 376.7 271.8 L 386.9 267.3 L 397.1 267.3 L 407.3 267.3 L 417.6 228.6 L 427.8 220.3 L 438 215.1" fill="none" stroke="#21050b" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M 192.5 424 L 202.8 419.2 L 213 415.1 L 223.2 406.6 L 233.4 382.2 L 243.7 365.7 L 253.9 354.2 L 264.1 351.2 L 274.4 349 L 284.6 346.7 L 294.8 346.7 L 305 346.7 L 315.3 346.7 L 325.5 326.5 L 335.7 326.5 L 346 326.5 L 356.2 326.5 L 366.4 288.9 L 376.7 271.8 L 386.9 267.3 L 397.1 267.3 L 407.3 267.3 L 417.6 228.6 L 427.8 220.3 L 438 215.1" fill="none" stroke="#c98500" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="438" cy="232.6" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="438" cy="215.1" r="6.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <text x="718" y="153.2" fill="#ffffff" font-size="17" font-weight="bold">20 to 22M</text>
+  <text x="718" y="170.2" fill="#ffd7de" font-size="13">what a whole of 38M</text>
+  <text x="718" y="186.2" fill="#ffd7de" font-size="13">leaves the run log</text>
+  <text x="718" y="228.4" fill="#ffffff" font-size="17" font-weight="bold">16 to 18M</text>
+  <text x="718" y="245.4" fill="#ffd7de" font-size="13">where everything else</text>
+  <text x="718" y="261.4" fill="#ffd7de" font-size="13">stops, by 4 readings</text>
+  <text x="718" y="345.2" fill="#d9a9b1" font-size="13">On 19 November</text>
+  <text x="718" y="362.2" fill="#d9a9b1" font-size="13">the run log: 16.3M,</text>
+  <text x="718" y="378.2" fill="#d9a9b1" font-size="13">and no limit yet.</text>
+  <text x="718" y="394.2" fill="#d9a9b1" font-size="13">Everything else: 15.0M.</text>
+  <!-- the key -->
+  <path d="M 50 489.5 L 78 489.5" fill="none" stroke="#c98500" stroke-width="3" stroke-linecap="round"/>
+  <text x="88" y="494" fill="#ffd7de" font-size="13.5">the fuzz run log (one file)</text>
+  <path d="M 268.6 489.5 L 296.6 489.5" fill="none" stroke="#3987e5" stroke-width="3" stroke-linecap="round"/>
+  <text x="306.6" y="494" fill="#ffd7de" font-size="13.5">everything else in the tree</text>
+  <rect x="487.2" y="483.5" width="16" height="12" rx="3" fill="#d9a9b1"/>
+  <text x="511.2" y="494" fill="#ffd7de" font-size="13.5">where each may stop</text>
+</svg>

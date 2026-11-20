@@ -238,8 +238,11 @@ of this page, and on 1,000 draws.
 ## 2 limits, and the third follows
 
 The count is 2 lines. 1 file, the fuzz run log, is the
-first. Everything else is the second. The same test, on the
-same 3 days:
+first. Everything else is the second.
+
+![The 2 parts of the security-token count, 15 October to 19 November 2026: everything else levels off toward 16 to 18 million, and the fuzz run log has no limit yet](../../../assets/security-tokens-two-limits-2026-11-19.svg)
+
+The same test, on the same 3 days:
 
 | The line | 20 October | 4 November | 19 November | The second step over the first | The limit |
 |----------|-----------:|-----------:|------------:|-------------------------------:|----------:|

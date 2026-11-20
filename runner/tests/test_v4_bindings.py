@@ -59,6 +59,7 @@ if ROOT not in sys.path:
 
 from runner import runner as RUNNER  # noqa: E402
 from runner.guard import security as SECURITY  # noqa: E402
+from runner.tests import mutant_copy as MUTANT_COPY  # noqa: E402
 from runner.tests import test_proof_conformance as DOOR  # noqa: E402
 from runner.tests import test_proof_constraints as PINS  # noqa: E402
 from runner.tests import test_v4_general as GENERAL  # noqa: E402
@@ -215,6 +216,22 @@ def leave_no_trace(case):
 
 # ---- the fuzz part, measured
 
+# The mutation walk rewrites the file it mutates: each function
+# stands there as a copy under a longer name (x_<name>__mutmut_orig,
+# then x_<name>__mutmut_<N> for each mutant; a method's copy carries
+# its class between 2 click letters), and a call goes to a copy.
+# A frame of a copy is a frame of the function.
+_WALK_COPY = re.compile(
+    "^x(?:_|\u01c1[^\u01c1]+\u01c1)(.+)__mutmut_(?:orig|[0-9]+)$")
+
+
+def plain_name(name):
+    """The name a function has in the tree, from the name its
+    frame carries: the same, but for a copy the walk made."""
+    found = _WALK_COPY.match(name)
+    return found.group(1) if found else name
+
+
 def entered(target, entry):
     """The runner functions 1 corpus entry enters under its
     target's check, as path:function. The caller holds the rig."""
@@ -228,7 +245,7 @@ def entered(target, entry):
                     and not name.startswith(_TESTS_DIR):
                 seen.add("%s:%s" % (
                     name[len(ROOT) + 1:].replace(os.sep, "/"),
-                    code.co_name))
+                    plain_name(code.co_name)))
 
     # threading.getprofile came with Python 3.10. Before it the
     # hook new threads start with cannot be read, and this module
@@ -672,6 +689,41 @@ class FuzzTies(unittest.TestCase):
             self.assertEqual(set(row["code"]),
                              tied | set(row["unfuzzed"]), row["id"])
             self.assertFalse(tied & set(row["unfuzzed"]), row["id"])
+
+    def test_a_copy_the_mutation_walk_made_is_read_as_its_function(self):
+        # The walk's stats pass replays every tie inside its copy
+        # of the tree, where the 3 bound functions of the mutated
+        # file are entered through copies.
+        for frame, function in (
+                ("x_key_fingerprint__mutmut_orig", "key_fingerprint"),
+                ("x_sec_mode__mutmut_12", "sec_mode"),
+                ("x_validate_shared_secret__mutmut_orig",
+                 "validate_shared_secret"),
+                ("x\u01c1Gate\u01c1check__mutmut_3", "check"),
+                ("x\u01c1Gate\u01c1__init____mutmut_orig", "__init__")):
+            self.assertEqual(function, plain_name(frame), frame)
+        for same in ("key_fingerprint", "x_ray", "__init__", "x_y__mutmut",
+                     "y_key__mutmut_orig", "x_key__mutmut_orig_2"):
+            self.assertEqual(same, plain_name(same), same)
+
+    def test_no_function_of_the_tree_is_named_as_a_copy(self):
+        # So outside the walk the reading changes no name.
+        MUTANT_COPY.skip_in_mutant_copy(self)
+        named = []
+        for folder, _dirs, files in os.walk(_RUNNER_DIR):
+            if folder.startswith(_TESTS_DIR):
+                continue
+            for name in sorted(files):
+                if not name.endswith(".py"):
+                    continue
+                path = os.path.join(folder, name)
+                with open(path, encoding="utf-8") as handle:
+                    tree = ast.parse(handle.read())
+                named += [node.name for node in ast.walk(tree)
+                          if isinstance(node, (ast.FunctionDef,
+                                               ast.AsyncFunctionDef))
+                          and plain_name(node.name) != node.name]
+        self.assertEqual([], named)
 
     def test_each_bound_target_still_reaches_its_site(self):
         # 1 replay of the witness entry is the common case. Where

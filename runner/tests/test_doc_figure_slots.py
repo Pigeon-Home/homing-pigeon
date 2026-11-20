@@ -34,6 +34,7 @@ module was written against, inside the record itself.
 RF.RECORD_SLOTS names the figures the list states, and the
 check names any of them the list no longer carries in a slot.
 """
+import math
 import os
 import re
 import shutil
@@ -83,6 +84,18 @@ class TestFactsBlock(unittest.TestCase):
         self.assertIn("CI-SNAPSHOT.json", text)
         self.assertIn("PROJECT-SNAPSHOT.md", text)
         self.assertIn("gh attestation verify", text)
+
+
+def _split_rows(lines):
+    """The rows of a table of the split: (date, where, the whole,
+    the run log, everything else)."""
+    rows = []
+    for line in lines:
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 5 and re.match(r"^\d{4}-\d{2}-\d{2}$", cells[0]):
+            rows.append((cells[0], cells[1]) + tuple(
+                int(c.replace(",", "")) for c in cells[2:]))
+    return rows
 
 
 class TestThirdSnapshot(unittest.TestCase):
@@ -186,7 +199,7 @@ class TestGrowthCharts(unittest.TestCase):
                         "snapshot as of 2026-11-15",
                         TestThirdSnapshot.KEPT_HEADING)
         fourth = counts(TestFourthSnapshot.HEADING,
-                        "## Where the project stands")
+                        TestFifthSnapshot.HEADING)
         self.assertEqual(8, len(second))
         for day, tokens in second.items():
             self.assertEqual(fourth[day], tokens, day)
@@ -205,14 +218,8 @@ class TestFourthSnapshot(unittest.TestCase):
     def _rows(self):
         lines = _read(STATISTICS).splitlines()
         start = lines.index(self.HEADING)
-        end = lines.index("## Where the project stands")
-        rows = []
-        for line in lines[start:end]:
-            cells = [c.strip() for c in line.strip().strip("|").split("|")]
-            if len(cells) == 5 and re.match(r"^\d{4}-\d{2}-\d{2}$", cells[0]):
-                rows.append((cells[0], cells[1]) + tuple(
-                    int(c.replace(",", "")) for c in cells[2:]))
-        return rows
+        end = lines.index(TestFifthSnapshot.HEADING)
+        return _split_rows(lines[start:end])
 
     def test_the_snapshot_stands_once_between_the_third_and_the_close(self):
         lines = _read(STATISTICS).splitlines()
@@ -253,6 +260,138 @@ class TestFourthSnapshot(unittest.TestCase):
                          100.0 * (b[3] - a[3]) / (b[2] - a[2])), text)
         self.assertIn("%s to %s," % (format(a[4], ","), format(b[4], ",")),
                       text.replace("\n  ", " "))
+
+
+class TestFifthSnapshot(unittest.TestCase):
+    # The fifth snapshot sets the counts of 4 more days against
+    # the third snapshot's 2 lines, splits each in 2 as the fourth
+    # does, and shows where each part may stop. Its table is
+    # arithmetic a reader can redo, its stated shares are the
+    # table's own, and each of its 3 charts carries the figures
+    # the table gives.
+    HEADING = ("## The measure against its lines: a fifth snapshot "
+               "as of 2026-11-19")
+    CHARTS = ("growth", "split", "two-limits")
+
+    def _rows(self):
+        lines = _read(STATISTICS).splitlines()
+        start = lines.index(self.HEADING)
+        end = lines.index("## Where the project stands")
+        return _split_rows(lines[start:end])
+
+    def _chart(self, name):
+        return _read(os.path.join(
+            REPO, "assets", "security-tokens-%s-2026-11-19.svg" % name))
+
+    def test_the_snapshot_stands_once_between_the_fourth_and_the_close(self):
+        lines = _read(STATISTICS).splitlines()
+        self.assertEqual(1, lines.count(self.HEADING))
+        self.assertLess(lines.index(TestFourthSnapshot.HEADING),
+                        lines.index(self.HEADING))
+        self.assertLess(lines.index(self.HEADING),
+                        lines.index("## Where the project stands"))
+
+    def test_its_charts_stand_in_the_tree_and_the_readme_shows_the_split(
+            self):
+        text = _read(STATISTICS)
+        for name in self.CHARTS:
+            asset = "security-tokens-%s-2026-11-19.svg" % name
+            self.assertIn(asset, text)
+            self.assertTrue(os.path.isfile(
+                os.path.join(REPO, "assets", asset)), asset)
+        readme = _read(os.path.join(REPO, "README.md"))
+        self.assertIn("assets/security-tokens-split-2026-11-19.svg", readme)
+        self.assertNotIn("security-tokens-split-2026-11-16.svg", readme)
+
+    def test_every_row_s_two_parts_make_its_whole(self):
+        rows = self._rows()
+        self.assertEqual(["2026-11-16", "2026-11-17", "2026-11-18",
+                          "2026-11-19"], [r[0] for r in rows])
+        for date, where, total, log, rest in rows:
+            self.assertEqual(total, log + rest, "%s at %s" % (date, where))
+            self.assertRegex(where, r"^commit [0-9a-f]{10}$")
+        for before, after in zip(rows, rows[1:]):
+            self.assertLessEqual(before[3], after[3])
+            self.assertLess(before[2], after[2])
+        # The fourth snapshot's last 2 rows carry the log at
+        # 12,240,873, and the first row here still does.
+        self.assertEqual(12240873, rows[0][3])
+
+    def test_the_stated_figures_are_the_table_s_own(self):
+        rows = {r[0]: r for r in self._rows()}
+        text = _read(STATISTICS)
+        last = rows["2026-11-19"]
+        self.assertIn("The run log holds %s tokens at the last count:\n"
+                      "  %.1f%% of the measure."
+                      % (format(last[3], ","), 100.0 * last[3] / last[2]), text)
+        # Since 2026-11-17 the log is the larger part, and not before.
+        self.assertGreater(rows["2026-11-17"][3], rows["2026-11-17"][4])
+        self.assertLess(rows["2026-11-16"][3], rows["2026-11-16"][4])
+        # Against the fourth snapshot's count of 2026-11-15.
+        lines = text.splitlines()
+        fourth = {r[0]: r for r in _split_rows(lines[
+            lines.index(TestFourthSnapshot.HEADING):
+            lines.index(self.HEADING)])}
+        was = fourth["2026-11-15"]
+        added, log, rest = (last[2] - was[2], last[3] - was[3],
+                            last[4] - was[4])
+        self.assertIn("added %s tokens, and %s of them, %.1f%%,"
+                      % (format(added, ","), format(log, ","),
+                         100.0 * log / added), text)
+        self.assertIn("Everything else added %s over the same 4 days,\n"
+                      "  about %.2f million a day."
+                      % (format(rest, ","), rest / 4e6), text)
+        # The 2 lines of the third snapshot, on 2026-11-19: 35
+        # days from the first count, 4 from the count of
+        # 2026-11-15.
+        first = fourth["2026-10-15"][2]
+        straight = first + (was[2] - first) / 31.0 * 35
+        curve = 38e6 - (38e6 - was[2]) * math.exp(-0.055 * 4)
+        self.assertIn("| Straight trend | %.1fM | %.1fM | %.1fM |"
+                      % (straight / 1e6, last[2] / 1e6,
+                         (last[2] - straight) / 1e6), text)
+        self.assertIn("| Asymptotic curve | %.1fM | %.1fM | %.1fM |"
+                      % (curve / 1e6, last[2] / 1e6,
+                         (last[2] - curve) / 1e6), text)
+        # The last 4 days' pace, and what the curve allows next.
+        self.assertEqual("1.21", "%.2f" % ((last[2] - was[2]) / 4e6))
+        self.assertEqual("0.36", "%.2f" % (
+            (38e6 - last[2]) * (1 - math.exp(-0.055)) / 1e6))
+
+    def test_each_chart_carries_the_table_s_figures(self):
+        last = self._rows()[-1]
+        split = self._chart("split")
+        for stated in ("%.1fM in all" % (last[2] / 1e6),
+                       ">%.1fM<" % (last[3] / 1e6),
+                       ">%.1fM<" % (last[4] / 1e6),
+                       "%d%% of the count" % round(100.0 * last[3] / last[2])):
+            self.assertIn(stated, split, stated)
+        growth = self._chart("growth")
+        for stated in (">%.1fM<" % (last[2] / 1e6), ">51.6M<", ">35.8M<",
+                       ">47.5M<", "ends near 52.6M", "The goal: 38M"):
+            self.assertIn(stated, growth, stated)
+        limits = self._chart("two-limits")
+        for stated in (">16 to 18M<", ">20 to 22M<",
+                       "the run log: %.1fM," % (last[3] / 1e6),
+                       "Everything else: %.1fM." % (last[4] / 1e6)):
+            self.assertIn(stated, limits, stated)
+        # 1 surface and 1 blue for the counts, as the charts
+        # before these.
+        for name in self.CHARTS:
+            self.assertIn('stroke="#3987e5"', self._chart(name), name)
+
+    def test_this_week_s_pace_at_the_old_rate(self):
+        # Each day allowed e^(-0.055) of the day before, from the
+        # last 4 days' pace: 47.5 million on 2026-12-15, and
+        # 52.6 million in the end. For 38 million, each day is
+        # allowed 15% less than the day before.
+        last, pace, keep = 31273283, 4822024 / 4.0, math.exp(-0.055)
+        at = last + pace * keep * (1 - keep ** 26) / (1 - keep)
+        end = last + pace * keep / (1 - keep)
+        self.assertEqual(("47.5", "52.6"),
+                         ("%.1f" % (at / 1e6), "%.1f" % (end / 1e6)))
+        left = 38000000 - last
+        self.assertEqual(15, round(100 * (1 - left / (pace + left))))
 
 
 class TestRecordSlots(unittest.TestCase):

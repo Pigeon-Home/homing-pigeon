@@ -455,6 +455,29 @@ word is green: the Linux suite, macOS, both Windows legs,
 the type check and all 8 builds. Its mutation job was still
 running when this line was written.
 
+**The third build.** On 153c117fe, the head that carries
+the page of the bars, the same legs are green again: the
+Linux suite, macOS, both Windows legs, the type check and
+all 8 builds. The second build's mutation job was cancelled
+when this build took its place.
+
+**The mutation walk's word, and a sixth finding.** The
+walk ran to a verdict on the branch for the first time in
+the third build, and its verdict is red. Its first pass
+stopped at 1 test of the registry's suite, the replay of
+each fuzz tie. The walk rewrites the file it mutates,
+`runner/guard/security.py`: each function there is entered
+through a copy under a longer name. The replay reads the
+names of the frames an entry enters. So the 5 ties into
+that file read as lost, and the walk stopped before it
+tried any mutant.
+
+The reading now takes a copy for its function. A stand-in
+for the walk's copy of the tree shows the same 5 ties lost
+before the change, and none after it. The walk's own word
+waits for the next build. It stops at its first red, so the
+tests behind that 1 have not been asked yet.
+
 ## What the audit changed
 
 Each is this seat's own line, and each is in the commit

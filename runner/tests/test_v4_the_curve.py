@@ -640,6 +640,11 @@ class ThePageRecordsTheProof(unittest.TestCase):
         self.assertEqual("1,280,620", "{:,}".format(
             round(second_degree(*ELSE)) - ELSE[2]))
         self.assertEqual(47, round(96.62 - 49.84))
+        # The picture of the 2 lines stands in the tree.
+        self.assertIn("assets/security-tokens-two-limits-2026-11-19.svg",
+                      page)
+        self.assertTrue(os.path.isfile(os.path.join(
+            ROOT, "assets", "security-tokens-two-limits-2026-11-19.svg")))
 
 
 if __name__ == "__main__":
