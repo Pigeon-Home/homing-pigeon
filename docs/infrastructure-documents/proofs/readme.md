@@ -407,6 +407,17 @@ A finding is most useful when it points at the file and the line
   5,000, drawn from the 22 atoms. No new atom and no new
   constraint.
   `runner/tests/test_v4_the_place.py` holds it.
+- `v4-behind-the-mac.md`: whose text is it. The signature
+  covers the body and nothing around it, so a text from
+  outside the signature is a stranger's until the gate has
+  set it equal to a signed text. The page gives every text
+  1 of 3 labels and every use 1 of 3 kinds, reads the
+  findings F10 to F16 by them, and states finding F16: the
+  gate named a job by the subject's id before it had set
+  that id against the body's. The rule is C13 with its
+  place: version, type and id are checked first behind the
+  signature. Its suppositions are written before the
+  measure.
 - `v4-the-motor.md`: the branch's work named as 1 motion.
   The join is what carries a claim from the smallest pieces
   to a tree of any size: the kinds of row were counted,
