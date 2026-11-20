@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.3 - 2026-11-20
+
+- Since 3.17.32.2: the first slice of Project Canoe's first option signup lands (the address rule, the forwarding rule and the owner's approval gate), the Ubuntu Snap Store readiness page records the confinement finding and the packaging path, FUTURE.md is restored to the conductor's newest edit and then updated by its owner, the secret agents notes gain the shared secret and the reply_to self default, and the README is updated by its owner.
+
 ## 3.17.32.2 - 2026-11-20
 
 - Since 3.17.31.11: the v4 branch is merged to main at the owner's word, carrying the closures of F12 to F20, the ladder proofs, and DRU's own edit updating docs/FUTURE.md. The first cut of this load, 3.17.32.1, failed genuinely at the gate and stands abandoned unspent: the gate target had joined the fuzz corpus and the ladder pin still counted 30 targets, red on Linux and on Windows in the same single test. The pin now counts 31 with the target set named beside it, the previously red Windows leg is green on the fixed head, and the statistics record carries the chart of the owner's drawing of 20 November, the 2 lines that close.
