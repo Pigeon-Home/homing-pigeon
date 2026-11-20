@@ -20,6 +20,12 @@ beside it.
   million a day.
 - **What the campaign finds already keeps it.** Its finds
   level off toward a limit near 25,000.
+- **The count is 2 lines, and each needs a limit of its
+  own.** Everything but the run log levels off near 16 to
+  18 million. The run log has no limit yet.
+- **A rule on the steps gives the limit as a result.**
+  Nobody has to name it first.
+- **A chart can show a limit. It cannot prove 1.**
 
 ## The picture
 
@@ -197,6 +203,194 @@ This is a candidate. It has no number in the constraint
 inventory and it is in no draft. The share and the ceiling
 are the owner's to set.
 
+## The second question: is 1 limit enough
+
+The owner asked next: is a flat line on a chart not a
+presumption, which has to be proven? Does the proof need a
+rule of the second degree, or more limits, 1 or 2? The 6
+sections below answer. What this seat expected before it
+measured is in its notes on limits and bars, in the project
+folder.
+
+## The test is of the second degree
+
+The test for a limit above takes 3 counts. Written with
+differences, it is this:
+
+    limit = last count
+            + (last step) x (last step)
+              / (how much shorter the last step is
+                 than the step before it)
+
+A step is a first difference. How much shorter it got is a
+second difference. So the test reads how the line turns,
+and not only where it stands. It has been known since 1926
+as Aitken's delta-squared process.
+
+For everything but the run log, on 20 October, 4 November
+and 19 November: the last step is 3,046,267, and it is
+7,246,289 shorter than the step before it. So the limit is
+14,954,555 plus 1,280,620. That is 16,235,175.
+
+The 2 forms give the same number to the token on every row
+of this page, and on 1,000 draws.
+
+## 2 limits, and the third follows
+
+The count is 2 lines. 1 file, the fuzz run log, is the
+first. Everything else is the second. The same test, on the
+same 3 days:
+
+| The line | 20 October | 4 November | 19 November | The second step over the first | The limit |
+|----------|-----------:|-----------:|------------:|-------------------------------:|----------:|
+| Everything else | 1,615,732 | 11,908,288 | 14,954,555 | 0.30 | 16.2 million |
+| The run log | 0 | 6,040,688 | 16,318,728 | 1.70 | none |
+| The whole | 1,615,732 | 17,948,976 | 31,273,283 | 0.82 | 90.3 million |
+
+The 2 lines keep different laws. 1 limit for the whole
+hides that: under a single line at 38 million, the log can
+take the room that everything else has not used. So each
+line needs a limit of its own, with a reason of its own.
+
+**The third follows.** If everything else has a limit E and
+the log has a limit G, the whole has the limit E plus G.
+That is a theorem about limits. It turns the line at 38
+million from a thing presumed into a thing that follows.
+
+**Where everything else stops, by 4 readings.**
+
+| The reading | Everything else stops at |
+|-------------|-------------------------:|
+| 3 counts, 15 days apart | 16.2 million |
+| 3 counts, 10 days apart, on each of the last 8 days | 14.6 to 17.0 million |
+| The falling line it has stayed under, below | under 17.6 million |
+| Its last count, plus the proof still owed, above | 16.0 to 17.9 million |
+
+**What that leaves for the log.** Under 38 million, 20 to
+22 million. It stands at 16.3 million, and no reading gives
+it a limit.
+
+## A reading is believed while it stands still
+
+Each new day moves the limit that 3 counts point at. So
+this seat counted each day's tree on main, 15 October to
+19 November: the last landing of each day, as it stood on
+the evening of 19 November, by the estimator's rule.
+
+    python3 runner/tests/test_v4_the_curve.py series
+
+counts them again from a complete clone. The 2 rows of the
+record that name a commit agree with it to the token.
+
+| The 3 counts end on | Everything else, 10 days apart | The whole, 15 days apart |
+|---------------------|-------------------------------:|-------------------------:|
+| 16 November | 16.24 million | 49.84 million |
+| 17 November | 16.33 million | 71.59 million |
+| 18 November | 16.67 million | 86.14 million |
+| 19 November | 16.95 million | 96.62 million |
+
+The first has stood within 2.4 million on each of the last
+8 days. The second rose by 47 million in 3 days. A limit
+that climbs as fast as it is read is not a limit yet.
+
+**The step has to be long enough.** With 3 counts 7 days
+apart, everything else gives no limit at all on 2 of the
+last 8 days, and from 14.75 to 47.65 million on the other
+6. 1 day's landing can be as large as a week's step. At 10
+days apart the reading holds still.
+
+**The run log gives none.** Not at 7 days apart, not at 10,
+not at 15, on any of the last 6 days.
+
+## A second rule: on the steps
+
+The first rule names the limit, and gives each day a share
+of what is left. A rule of the second degree names no
+limit. It speaks of the steps alone.
+
+**Each day's allowance is at most r times the allowance of
+the day before, with r under 1.**
+
+Call the allowance of the day before the first S.
+
+**Step 1.** Day n is allowed at most S times r to the power
+n.
+
+**Step 2.** So the first n days add at most S times
+(r + r x r + ...), n terms. That sum is S times r times
+(1 - r to the power n) over (1 - r). It is under S times r
+over (1 - r) for every n.
+
+**Step 3.** So the count never passes where it stands plus
+S times r over (1 - r). A quantity that does not fall and
+does not pass a bar has a limit.
+
+The limit is a result here. Nobody names it first.
+
+**A day of nothing closes no door.** The allowance falls by
+r whatever was added. A rule on what was added would allow
+0 for ever after 1 day of 0.
+
+**It is the same curve.** Under the first rule with every
+allowance used, each day's step is (1 - k) times the step
+before it. So the first rule keeps this rule with r at
+1 - k, and this rule's bar is then the first rule's limit.
+
+**The numbers.** From this week's pace, 1.21 million a day:
+
+- For a bar at 38 million, r is 0.848. Each day is allowed
+  15% less than the day before.
+- At the record's rate, r is 0.9465, and the bar is 52.6
+  million.
+
+**Everything else has kept this rule since its largest
+week.** Its largest 7 days ended on 31 October: 6,486,136.
+On each of the 19 days since, the 7 days that end there
+added less than a line that falls by 0.61 a week from that
+top. The least r that holds is 0.602. If everything else
+stays under that line, the weeks to come add under 2.7
+million, and it never passes 17.6 million.
+
+**The run log has not.** Its largest 7 days ended on
+18 November: 8,295,873.
+
+## A curve of the second degree has no flat line
+
+A parabola is thrown away. Through the 3 counts of
+everything else it peaks late on 17 November at 14,977,518,
+and it is at 0 on 18 December. A tree does not do that.
+Through the 3 counts of the run log it rises without end:
+49.6 million for the log alone by 19 December.
+
+So the second degree is kept as a test and as a rule, and
+thrown away as a curve.
+
+## Counts cannot prove a limit
+
+2 curves pass through the same 3 counts of everything else,
+and neither ever falls. The first is the curve of the test.
+Its limit is 16.2 million. The second is the first plus
+days x (days - 15) x (days - 30) tokens. It passes 38
+million within a year, and every bar after that.
+
+The other way too. The run log's 3 counts point at no
+limit, and they lie on a curve that has 1: a log that is
+written no more after the third count.
+
+So a chart can show a limit. It cannot prove 1. A flat
+line on a chart is a presumption, and what proves it is 1
+of 2 things.
+
+- **A rule that is kept, with something that refuses to
+  pass it.** For a job, the system refuses: a bar on a
+  job's time is a limit that is enforced. `v4-the-bars.md`
+  lists those bars, and the quantities that have none. For
+  the count of tokens nothing refuses yet. The 3 steps of
+  arithmetic above could be asked at a release.
+- **A reason why the work is finite.** Closed work is a
+  sum of finitely many fixed sizes. A record written by
+  what it finds is bounded by its finds.
+
 ## What is proven, and what is not
 
 - **Proven:** under the rule, the count is under 38 million
@@ -205,8 +399,18 @@ are the owner's to set.
   proof. The suite walks them with whole tokens for 5,000
   days at 6 shares, with a day's growth drawn at random
   under the allowance.
-- **Not proven, because it is a choice:** that the rule
-  will be kept. The counts say it is not kept yet.
+- **Proven:** under the rule on the steps, the count never
+  passes where it stands plus S times r over (1 - r). 3
+  steps again, walked for 2,000 days at 4 shares.
+- **Proven:** the 2 forms of the test for a limit are 1
+  number, and a limit for each line gives the limit of the
+  whole.
+- **Not proven, because it is a choice:** that either rule
+  will be kept. The counts say the first is not kept yet.
+- **Read off the counts, and not proven:** that everything
+  but the run log stops near 16 to 18 million. 4 readings
+  agree. A reading is not a proof.
+- **Not there at all:** a limit for the run log.
 - **Not claimed:** that 38 million is the right ceiling. It
   is the owner's goal of 2026-11-16, taken from the
   record's curve.

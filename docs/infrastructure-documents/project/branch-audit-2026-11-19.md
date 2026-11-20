@@ -450,6 +450,11 @@ and not its numbers. The guard is green on the 6 modules
 the marks touch. The build is started again on the head
 that carries them.
 
+**The second build.** On that head, 7406e30e6, the server's
+word is green: the Linux suite, macOS, both Windows legs,
+the type check and all 8 builds. Its mutation job was still
+running when this line was written.
+
 ## What the audit changed
 
 Each is this seat's own line, and each is in the commit

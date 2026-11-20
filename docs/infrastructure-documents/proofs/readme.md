@@ -376,7 +376,19 @@ A finding is most useful when it points at the file and the line
   million. It is Newton's law of cooling. The page sets the
   counts beside the proof: the count of tokens does not
   level off yet, and what the fuzz campaign finds does.
+  Its second half: the test for a limit is of the second
+  degree, the count is 2 lines that each need a limit of
+  their own, a rule on the steps gives the limit as a
+  result, and a chart cannot prove a limit.
   `runner/tests/test_v4_the_curve.py` holds it.
+- `v4-the-bars.md` solves the small case, scripts of at
+  most 100 bytes. All 61 constructs of the shell's grammar
+  are present there, so no cap on a script's size is a bar
+  on what a job uses. What is solved is the list of
+  quantities, each with the shortest script that asks for
+  it without end and its bar on each system. Finding F17
+  is on it: the runner holds all that a job writes. No new
+  constraint. `runner/tests/test_v4_the_bars.py` holds it.
 - `v4-the-join.md`: the sentence between the two proofs. A
   message that fails C5 never reaches the machine M, and a
   message that passes C5 reaches M only with a script of at
