@@ -86,7 +86,7 @@ class ExchangeFormTest(unittest.TestCase):
     def test_refresh_form_carries_secret_when_configured(self):
         seen = []
 
-        def fake_urlopen(req, timeout=30):
+        def fake_urlopen(req, timeout=30, context=None):
             seen.append(urllib.parse.parse_qs(req.data.decode("ascii")))
             return _Resp(b'{"access_token": "ya29.fixture"}')
 

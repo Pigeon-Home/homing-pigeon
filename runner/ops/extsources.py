@@ -95,12 +95,17 @@ import zlib
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlparse
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import (HTTPRedirectHandler, HTTPSHandler, Request,
+                            build_opener)
 
 try:
     from runner.guard import atomicio as _atomicio
 except ImportError:
     from guard import atomicio as _atomicio  # type: ignore
+try:
+    from runner.wire import tls as _tls
+except ImportError:
+    from wire import tls as _tls  # type: ignore
 
 SOURCES_FILE = "sources.json"
 LOCK_FILE = "sources.lock.json"
@@ -771,7 +776,9 @@ class Fetcher:
     """
 
     def __init__(self, opener=None, timeout=60, token=None):
-        self._opener = opener or build_opener(_HttpsOnlyRedirect)
+        self._opener = opener or build_opener(
+            _HttpsOnlyRedirect,
+            HTTPSHandler(context=_tls.ssl_context()))
         self.timeout = timeout
         self.token = token or None
         self.requests = 0

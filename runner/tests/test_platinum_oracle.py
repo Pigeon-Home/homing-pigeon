@@ -123,7 +123,7 @@ class SendTelegramTest(unittest.TestCase):
             def read(self):
                 return b"{}"
 
-        def fake_urlopen(req, timeout=None):
+        def fake_urlopen(req, timeout=None, context=None):
             sent["payload"] = req.data
             return _Resp()
 

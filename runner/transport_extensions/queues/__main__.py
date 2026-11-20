@@ -41,6 +41,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(
 
 from runner.transport_extensions import channel as ch  # noqa: E402
 from runner.wire import subject as _subject  # noqa: E402
+from runner.wire import tls as _tls  # noqa: E402
 
 MAX_BYTES = ch.FILE_MAX_BYTES
 _JOB_ID_RE = _subject.JOB_ID_RE        # the one grammar (Q121)
@@ -99,7 +100,9 @@ def _open_without_redirect(req, timeout=None):
     return _TOKEN_OPENER.open(req, timeout=timeout)
 
 
-_TOKEN_OPENER = urllib.request.build_opener(_RedirectRefused)
+_TOKEN_OPENER = urllib.request.build_opener(
+    _RedirectRefused,
+    urllib.request.HTTPSHandler(context=_tls.ssl_context()))
 
 
 def _result_file_id(fname):

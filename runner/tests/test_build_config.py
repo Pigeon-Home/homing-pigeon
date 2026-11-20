@@ -107,6 +107,56 @@ class UnixVersionSmokeTest(unittest.TestCase):
             "smoke script is not executable")
 
 
+class FrozenTrustStoreTest(unittest.TestCase):
+    """The frozen executables carry their own trust store.
+
+    The one-file build died on a clean Windows Server at the OAuth
+    token exchange: urllib found no CA bundle to verify Google's
+    certificate with (CERTIFICATE_VERIFY_FAILED), because nothing
+    shipped one. runner/wire/tls.py answers that by choosing
+    certifi's bundle, so every binary job must install certifi,
+    collect its data into the freeze, and carry tls.py itself:
+    as a hidden import in the runner (it is loaded dynamically,
+    like every wire module) and as data in the installer, whose
+    by-path loader reads it from the pigeon-wire folder.
+    """
+
+    def test_every_binary_job_installs_certifi(self):
+        workflow = _workflow()
+        installs = [ln for ln in workflow.splitlines()
+                    if "pip install" in ln and "pyinstaller" in ln]
+        self.assertEqual(7, len(installs),
+                         "expected one install line per binary job")
+        for line in installs:
+            self.assertIn("certifi", line,
+                          "binary job does not install certifi")
+
+    def test_every_build_line_collects_the_bundle(self):
+        workflow = _workflow()
+        builds = [ln for ln in workflow.splitlines()
+                  if "pyinstaller" in ln and "--onefile" in ln]
+        self.assertEqual(14, len(builds),
+                         "expected a runner and an installer build "
+                         "line per binary job")
+        for line in builds:
+            self.assertIn("--collect-data certifi", line,
+                          "build line does not collect the bundle")
+
+    def test_the_runner_builds_carry_tls_and_the_installers_its_file(self):
+        workflow = _workflow()
+        for line in workflow.splitlines():
+            if "pyinstaller" not in line or "--onefile" not in line:
+                continue
+            if "runner/runner.py" in line:
+                self.assertIn("--hidden-import runner.wire.tls", line,
+                              "runner build line misses the tls import")
+            if "runner/ops/install.py" in line:
+                sep = ";" if ";pigeon-" in line else ":"
+                self.assertIn(
+                    '--add-data "runner/wire/tls.py%spigeon-wire"' % sep,
+                    line, "installer build line does not carry tls.py")
+
+
 class MutationGateTest(unittest.TestCase):
     """Mutation is a non-gating signal, off the release path
     (owner's call, 2026-10-22).

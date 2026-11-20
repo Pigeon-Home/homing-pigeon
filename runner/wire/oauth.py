@@ -53,6 +53,10 @@ except ImportError:  # running from inside runner/ as __main__
         from ops import identity as _identity  # type: ignore
     except ImportError:
         _identity = None
+try:
+    from runner.wire import tls as _tls
+except ImportError:  # running from inside runner/ as __main__
+    from wire import tls as _tls  # type: ignore
 
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
@@ -97,6 +101,18 @@ def _pkce() -> tuple:
     return verifier, challenge
 
 
+def _open(request, timeout=30):
+    """One HTTPS open, through the shared trust store (wire/tls.py).
+
+    The platform default context is what died on the clean server:
+    a frozen build carries no CA bundle of its own for urllib to
+    find, so the choice of CA file is tls.ssl_context()'s to make,
+    never the default's.
+    """
+    return urllib.request.urlopen(request, timeout=timeout,
+                                  context=_tls.ssl_context())
+
+
 def refresh_access_token(cfg: dict) -> str:
     """Trade the stored refresh token for a short-lived access token.
 
@@ -115,7 +131,7 @@ def refresh_access_token(cfg: dict) -> str:
     data = urllib.parse.urlencode(form).encode("ascii")
     req = urllib.request.Request(TOKEN_URL, data=data)
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with _open(req, timeout=30) as resp:
             body = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         try:
@@ -215,7 +231,7 @@ def exchange_code(cfg, code, verifier, opener=None) -> str:
         form["client_secret"] = secret
     data = urllib.parse.urlencode(form).encode("ascii")
     req = urllib.request.Request(TOKEN_URL, data=data)
-    open_fn = opener or urllib.request.urlopen
+    open_fn = opener or _open
     try:
         with open_fn(req, timeout=30) as resp:
             body = json.loads(resp.read().decode("utf-8"))

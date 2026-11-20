@@ -61,7 +61,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import NoReturn
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.request import (HTTPRedirectHandler, HTTPSHandler, Request,
+                            build_opener)
 
 def _load_attr(package, local, attr, default):
     """package.attr, else the sibling import used when this file is __main__.
@@ -137,6 +138,7 @@ _setup = _load_mod("runner.ops.setup", "ops.setup")
 _security = _load_mod("runner.guard.security", "guard.security")
 _sandbox = _load_mod("runner.guard.sandbox", "guard.sandbox")
 _transports = _load_mod("runner.wire.transports", "wire.transports")
+_tls = _load_mod("runner.wire.tls", "wire.tls")
 _extsources = _load_mod("runner.ops.extsources", "ops.extsources")
 _jobcrypto = _load_mod("runner.wire.jobcrypto", "wire.jobcrypto")
 _protocol_v2 = _load_mod("runner.wire.protocol_v2", "wire.protocol_v2")
@@ -923,7 +925,9 @@ def secret_fragment_hit(reply, source, patterns, min_len=_SECRET_FRAGMENT):
     return False
 
 def _default_inference_open(req, timeout=60):
-    opener = build_opener(_InferenceRedirectRefused)
+    opener = build_opener(
+        _InferenceRedirectRefused,
+        HTTPSHandler(context=_tls.ssl_context()))
     return opener.open(req, timeout=timeout)
 
 def ask_model(cfg, question, output_text, max_chars, patterns=None, opener=None, instructions=None, base_dir=None, briefing_scope="ask"):
@@ -3178,7 +3182,10 @@ class _NoForeignRedirect(HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
 def _open_download(req, timeout):
-    return build_opener(_NoForeignRedirect).open(req, timeout=timeout)
+    return build_opener(
+        _NoForeignRedirect,
+        HTTPSHandler(context=_tls.ssl_context())).open(
+            req, timeout=timeout)
 
 def download(url: str, dest: str, max_bytes: int = MAX_DOWNLOAD_BYTES):
     # Downloads are HTTPS only (PROTOCOL Sections 6/7, draft

@@ -183,7 +183,7 @@ class FetchAndConfigTest(unittest.TestCase):
 
         seen = {}
 
-        def urlopen(req, timeout=60):
+        def urlopen(req, timeout=60, context=None):
             seen["timeout"] = timeout
             seen["ua"] = req.get_header("User-agent")
             return _Body()

@@ -54,8 +54,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 70,130 lines,
-63,576 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 70,285 lines,
+63,710 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 
@@ -665,23 +665,23 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # assembly. The zip size and the estimator counts re-measured
 # here come from this module's own deterministic build and
 # counter over the current tree.
-AS_ASSEMBLED_FILES = 140
-AS_ASSEMBLED_ZIP_BYTES = 904124
-AS_ASSEMBLED_LINES = 70130
-AS_ASSEMBLED_NONBLANK_LINES = 63576
+AS_ASSEMBLED_FILES = 141
+AS_ASSEMBLED_ZIP_BYTES = 906214
+AS_ASSEMBLED_LINES = 70285
+AS_ASSEMBLED_NONBLANK_LINES = 63710
 # The as-assembled set's lines, part by part; the parts sum
 # to AS_ASSEMBLED_LINES. A part is a folder under runner/, or
 # a file standing directly under runner/ as its own part.
 AS_ASSEMBLED_PART_LINES = {
-    "runner/ops": 23966,
+    "runner/ops": 24010,
     "runner/tools": 10092,
-    "runner/wire": 9115,
-    "runner/runner.py": 7312,
-    "runner/oracle": 5411,
-    "runner/transport_extensions": 2775,
+    "runner/wire": 9204,
+    "runner/runner.py": 7319,
+    "runner/oracle": 5416,
+    "runner/transport_extensions": 2778,
     "runner/guard": 7597,
     "runner/cloud": 2125,
-    "runner/hosting": 1704,
+    "runner/hosting": 1711,
     "runner/__init__.py": 23,
     "runner/_version.py": 10,
 }
@@ -827,6 +827,7 @@ CORE_FILES = (
     "runner/wire/platformcard.py",
     "runner/wire/protocol_v2.py",
     "runner/wire/subject.py",
+    "runner/wire/tls.py",
     "runner/wire/transports.py",
     "runner/wire/verify.py",
 )

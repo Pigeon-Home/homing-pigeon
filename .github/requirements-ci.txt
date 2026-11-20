@@ -17,4 +17,9 @@ build==1.6.1
 mutmut==3.8.1
 pyrefly==1.4.1
 pyinstaller==6.22.3
+# The frozen builds collect certifi's CA bundle as data
+# (runner/wire/tls.py): the shipped executables verify outbound
+# HTTPS against it on machines that offer urllib no bundle of
+# their own. Only the binary jobs install it.
+certifi==2026.10.23
 coverage==7.17.2

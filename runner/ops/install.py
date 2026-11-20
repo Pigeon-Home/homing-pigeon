@@ -100,6 +100,42 @@ def _import_atomicio():
 _atomicio = _import_atomicio()
 
 
+def _import_tls():
+    """runner/wire/tls.py, the same four ways as atomicio.
+
+    The installer's own downloads (a collector, a model) verify
+    through the shared trust store: the frozen installer on a clean
+    machine has the same missing-bundle failure the runner had at
+    the token exchange, so the bundle's choice cannot be left to
+    the platform default here either. The frozen installer carries
+    the file as data (`--add-data runner/wire/tls.py`), for the
+    same reason atomicio rides that way.
+    """
+    frozen = getattr(sys, "_MEIPASS", None)
+    if frozen:
+        cand = os.path.join(frozen, "pigeon-wire", "tls.py")
+        if os.path.isfile(cand):
+            return _load_by_path(cand)
+        # The frozen runner imports this module too; it bundles the
+        # whole package, so the import below is the one that works.
+    if _running_as_package():
+        try:
+            from runner.wire import tls
+            return tls
+        except ImportError:
+            pass
+    try:
+        from wire import tls  # type: ignore
+        return tls
+    except ImportError:
+        pass
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    return _load_by_path(os.path.join(here, "wire", "tls.py"))
+
+
+_tls = _import_tls()
+
+
 def _import_panic():
     """runner/guard/panic.py (Q100), the same four ways as atomicio."""
     frozen = getattr(sys, "_MEIPASS", None)
@@ -3425,7 +3461,8 @@ def _download(url) -> bytes:
     import urllib.request
     req = urllib.request.Request(
         url, headers={"User-Agent": "homing-pigeon-install"})
-    with urllib.request.urlopen(req, timeout=180) as fh:
+    with urllib.request.urlopen(
+            req, timeout=180, context=_tls.ssl_context()) as fh:
         return fh.read()
 
 

@@ -32,6 +32,10 @@ except ImportError:
         from oracle import senses as _senses
     except ImportError:
         _senses = None
+try:
+    from runner.wire import tls as _tls
+except ImportError:
+    from wire import tls as _tls  # type: ignore
 
 STATE_FILE = "dri-state.json"
 EVENTS_FILE = "security-events.jsonl"
@@ -490,7 +494,8 @@ def send_telegram(bot_token, chat_id, text):
                   headers={"Content-Type": "application/json"},
                   method="POST")
     try:
-        with urlopen(req, timeout=30) as resp:
+        with urlopen(req, timeout=30,
+                     context=_tls.ssl_context()) as resp:
             return resp.status == 200
     except Exception:
         return False

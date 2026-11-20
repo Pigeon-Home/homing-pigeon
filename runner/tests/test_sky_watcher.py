@@ -203,7 +203,7 @@ class FeedSampleTest(unittest.TestCase):
                "units": "kilometers"}
         seen = {}
 
-        def fake_urlopen(req, timeout=None):
+        def fake_urlopen(req, timeout=None, context=None):
             seen["url"] = req.full_url
             seen["ua"] = req.headers.get("User-agent")
             seen["timeout"] = timeout

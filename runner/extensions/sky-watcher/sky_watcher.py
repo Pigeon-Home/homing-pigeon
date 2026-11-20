@@ -268,6 +268,20 @@ def sample_from_feed(data):
             "sunlit": sunlit, "ts": float(ts)}
 
 
+def _tls_context():
+    """The runner's shared trust store, when it is importable.
+
+    An extension also runs copied out on its own, away from the
+    runner package; there the platform default is what there is,
+    and None says exactly that to urlopen.
+    """
+    try:
+        from runner.wire import tls
+        return tls.ssl_context()
+    except ImportError:
+        return None
+
+
 def fetch_position(url=FEED_URL):
     """The station's current position, as a sample (or None).
 
@@ -276,7 +290,8 @@ def fetch_position(url=FEED_URL):
     """
     req = urllib.request.Request(
         url, headers={"User-Agent": "homing-pigeon-sky-watcher/0.1.0"})
-    with urllib.request.urlopen(req, timeout=10) as resp:
+    with urllib.request.urlopen(
+            req, timeout=10, context=_tls_context()) as resp:
         data = json.loads(resp.read().decode("utf-8"))
     return sample_from_feed(data)
 

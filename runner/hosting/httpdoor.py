@@ -13,6 +13,11 @@ import json
 import urllib.error
 import urllib.request
 
+try:
+    from runner.wire import tls as _tls
+except ImportError:  # running from inside runner/ as __main__
+    from wire import tls as _tls  # type: ignore
+
 
 class Response:
     """What a request came back with. `json()` parses lazily and
@@ -77,7 +82,9 @@ class UrllibHttp(HttpClient):
         try:
             req = urllib.request.Request(url, data=data, method=method,
                                          headers=hdrs)
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
+            with urllib.request.urlopen(
+                    req, timeout=timeout,
+                    context=_tls.ssl_context()) as resp:
                 return Response(resp.status, dict(resp.headers.items()),
                                 resp.read())
         except urllib.error.HTTPError as e:
