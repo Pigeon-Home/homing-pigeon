@@ -358,3 +358,37 @@ difference grows at every step from 2 to 30: 0, then 2,
 then 4, then 12, and on. A cube's grows too.
 
 `runner/tests/test_v4_the_ladder.py` holds these figures.
+
+## L2, measured
+
+L2's figures are recorded here. The shell was not asked.
+The gate was not asked.
+
+A row's table has one entry for each of M's 4 states and
+each of the 4 joiners that can stand in front of the row.
+The entry says what becomes of the output still pending, what
+the row itself prints, and the state it leaves. The table of
+a joined row is made from the 2 tables. The atoms are not
+walked again.
+
+The rows are built from every 2 atoms, 484 pairs. Step 1 is
+the first atom and step 2 is the second. The text at a step
+is the text of the step before, joined to the text of the
+step before that. There are 5 ways to join. 4 of them use
+one joiner at every step. The fifth uses the 4 joiners in
+turn, `&&` then `||` then `;` then `|`, starting at step 3.
+
+| What was checked | The count |
+|------------------|----------:|
+| Rows, steps 3 to 15, 484 pairs, 5 ways | 31,460 |
+| Differences between the table and M's walk | 0 |
+| The longest row, in atoms | 610 |
+
+The 22 atoms are 2 kinds, by what they do to M's state.
+21 of them leave status 0 when they run. `false` leaves
+status 1. Closing those 2 kinds under every joiner gives
+14 kinds, and joining any 2 of the 14 gives one of the 14.
+So every row, of any length, is one of the 14. The
+supposition said 20 at most. The number is 14.
+
+`runner/tests/test_v4_the_ladder.py` holds these figures.

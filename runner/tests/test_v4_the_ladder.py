@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
-"""L1 of the ladder: the ratio table, on made-up quantities.
+"""L1 and L2 of the ladder.
 
-docs/infrastructure-documents/proofs/v4-the-ladder.md. No shell
-and no gate. The ratio of a step to the sum of the 2 before
-it, at steps 20 to 30, is within 0.01 of the page's 4 numbers.
-The difference test is exact for a fixed quantity and for one
-in proportion to the size. L2 to L8 are not run here.
+docs/infrastructure-documents/proofs/v4-the-ladder.md. L1 is
+the ratio table, on made-up quantities. L2 is M's table: a
+joined row's result is made from the 2 rows' tables, with no
+walk through the atoms, and it equals the walk. No shell and
+no gate.
 """
 import os
+import sys
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+from runner.tests import test_v4_at_a_bound as BOUND  # noqa: E402
+
 PAGE = os.path.join(
     ROOT, "docs", "infrastructure-documents", "proofs",
     "v4-the-ladder.md")
@@ -87,6 +93,185 @@ class TheRatioTable(unittest.TestCase):
                 "difference -5",
                 "holds these figures."):
             self.assertIn(stated, page, stated)
+
+
+# ---- L2. The table joins.
+
+STATES = ((0, True), (0, False), (1, True), (1, False))
+DEN = BOUND.denotation("/work", "/home")
+AND, OR, SEMI, PIPE = BOUND.AND, BOUND.OR, BOUND.SEMI, BOUND.PIPE
+
+
+def atom_table(atom):
+    """The 16 entries for one atom. An entry is (fate, own
+    output, pending, status, running). Fate is what becomes
+    of the output still pending in front of the row."""
+    out, status = DEN[atom]
+    table = {}
+    for old, running in STATES:
+        row = {}
+        for joiner in BOUND.JOINERS:
+            if joiner == SEMI:
+                row[joiner] = ("flush", "", out, status, True)
+            elif joiner == PIPE:
+                if running:
+                    row[joiner] = ("drop", "", out, status, True)
+                else:
+                    row[joiner] = ("keep", "", None, old, False)
+            elif (old == 0) == (joiner == AND):
+                row[joiner] = ("flush", "", out, status, True)
+            else:
+                row[joiner] = ("flush", "", "", old, False)
+        table[(old, running)] = row
+    return table
+
+
+def combine(left, right, mid):
+    fate, own, pending, status, running = left
+    if fate == "keep":
+        got = right[(status, running)][mid]
+        if got[0] == "keep":
+            return ("keep", "", None, status, running)
+        return got
+    got = right[(status, running)][mid]
+    if got[0] == "keep":
+        return left
+    if got[0] == "flush":
+        return (fate, own + (pending or "") + got[1], got[2],
+                got[3], got[4])
+    return (fate, own + got[1], got[2], got[3], got[4])
+
+
+def compose(left, right, mid):
+    return {state: {front: combine(left[state][front], right, mid)
+                    for front in BOUND.JOINERS}
+            for state in STATES}
+
+
+def leaf_end(atom):
+    out, status = DEN[atom]
+    return ("", out, status, True)
+
+
+def join_end(end, right, mid):
+    committed, pending, status, running = end
+    fate, own, pend, status2, running2 = right[(status, running)][mid]
+    if fate == "keep":
+        return end
+    if fate == "flush":
+        return (committed + (pending or "") + own, pend, status2, running2)
+    return (committed + own, pend, status2, running2)
+
+
+def printed(end):
+    committed, pending, status, _running = end
+    return committed + (pending or ""), status
+
+
+def kind_of(table):
+    cells = []
+    for state in STATES:
+        for joiner in BOUND.JOINERS:
+            fate, _own, _pend, status, running = table[state][joiner]
+            cells.append(("keep",) if fate == "keep"
+                         else (fate, status, running))
+    return tuple(cells)
+
+
+class TheJoin(unittest.TestCase):
+    """L2. The table's result is the walk's, and the kinds
+    are 14, closed."""
+
+    def test_the_table_matches_the_walk_on_every_row(self):
+        tables = {atom: atom_table(atom) for atom in BOUND.ATOMS}
+        ends = {atom: leaf_end(atom) for atom in BOUND.ATOMS}
+        ways = [(joiner,) for joiner in BOUND.JOINERS] + ["turn"]
+        rows = differences = longest = 0
+        seen = {kind_of(table) for table in tables.values()}
+        for first in BOUND.ATOMS:
+            for second in BOUND.ATOMS:
+                for way in ways:
+                    step_end = [None, ends[first], ends[second]]
+                    step_table = [None, tables[first], tables[second]]
+                    step_atoms = [None, (first,), (second,)]
+                    step_joiners = [None, (), ()]
+                    for step in range(3, 16):
+                        mid = (BOUND.JOINERS[(step - 3) % 4]
+                               if way == "turn" else way[0])
+                        end = join_end(step_end[step - 1],
+                                       step_table[step - 2], mid)
+                        table = compose(step_table[step - 1],
+                                        step_table[step - 2], mid)
+                        atoms = step_atoms[step - 1] + step_atoms[step - 2]
+                        joiners = (step_joiners[step - 1] + (mid,)
+                                   + step_joiners[step - 2])
+                        rows += 1
+                        longest = max(longest, len(atoms))
+                        if printed(end) != BOUND.run(atoms, joiners, DEN):
+                            differences += 1
+                        seen.add(kind_of(table))
+                        step_end.append(end)
+                        step_table.append(table)
+                        step_atoms.append(atoms)
+                        step_joiners.append(joiners)
+        self.assertEqual((31460, 0, 610), (rows, differences, longest))
+        self.assertEqual(14, len(seen))
+
+    def test_every_row_is_one_of_14_kinds(self):
+        tables = [atom_table(atom) for atom in BOUND.ATOMS]
+        found = {kind_of(table) for table in tables}
+        self.assertEqual(2, len(found))
+        self.assertEqual(
+            ["false"],
+            [atom for atom in BOUND.ATOMS if DEN[atom][1] != 0])
+        horizon = list(found)
+        while horizon:
+            current = horizon.pop()
+            for other in list(found):
+                for mid in BOUND.JOINERS:
+                    for nxt in (compose_kind(current, other, mid),
+                                compose_kind(other, current, mid)):
+                        if nxt not in found:
+                            found.add(nxt)
+                            horizon.append(nxt)
+        self.assertEqual(14, len(found))
+
+    def test_the_page_records_l2(self):
+        with open(PAGE, encoding="utf-8") as handle:
+            page = " ".join(handle.read().split())
+        for stated in (
+                "L2's figures are recorded here.",
+                "| Rows, steps 3 to 15, 484 pairs, 5 ways | 31,460 |",
+                "| Differences between the table and M's walk | 0 |",
+                "| The longest row, in atoms | 610 |",
+                "The number is 14.",
+                "The shell was not asked."):
+            self.assertIn(stated, page, stated)
+
+
+def compose_kind(left, right, mid):
+    """The kind of a join, from the 2 kinds. The output text
+    is not part of a kind, and it is not used here."""
+    index = {joiner: i for i, joiner in enumerate(BOUND.JOINERS)}
+
+    def cell(kind, state, joiner):
+        return kind[STATES.index(state) * 4 + index[joiner]]
+
+    cells = []
+    for state in STATES:
+        for front in BOUND.JOINERS:
+            got = cell(left, state, front)
+            if got[0] == "keep":
+                other = cell(right, state, mid)
+                cells.append(("keep",) if other[0] == "keep" else other)
+                continue
+            left_state = (got[1], got[2])
+            other = cell(right, left_state, mid)
+            if other[0] == "keep":
+                cells.append(got)
+            else:
+                cells.append((got[0], other[1], other[2]))
+    return tuple(cells)
 
 
 if __name__ == "__main__":
