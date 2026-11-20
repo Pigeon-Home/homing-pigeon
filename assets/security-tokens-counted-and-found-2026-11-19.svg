@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="Helvetica, Arial, sans-serif">
+  <title>What the fuzz run log counts and what it finds, 26 October to 19 November 2026, each as a share of its total on 19 November</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b060d"/>
+      <stop offset="1" stop-color="#17030a"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="520" fill="url(#bg)"/>
+  <text x="50" y="46" fill="#ffffff" font-size="24" font-weight="bold">What is counted, and what is found</text>
+  <text x="50" y="72" fill="#ffd7de" font-size="15">The fuzz run log, 26 October to 19 November 2026: each line as a share of its total on 19 November</text>
+  <!-- the grid and the axes -->
+  <path d="M 80 424.0 L 704 424.0" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="68" y="428.5" text-anchor="end" fill="#d9a9b1" font-size="13">0%</text>
+  <path d="M 80 344.0 L 704 344.0" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="348.5" text-anchor="end" fill="#d9a9b1" font-size="13">25%</text>
+  <path d="M 80 264.0 L 704 264.0" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="268.5" text-anchor="end" fill="#d9a9b1" font-size="13">50%</text>
+  <path d="M 80 184.0 L 704 184.0" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="188.5" text-anchor="end" fill="#d9a9b1" font-size="13">75%</text>
+  <path d="M 80 104.0 L 704 104.0" fill="none" stroke="#45121d" stroke-width="1"/>
+  <text x="68" y="108.5" text-anchor="end" fill="#d9a9b1" font-size="13">100%</text>
+  <path d="M 105.0 424 L 105.0 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="105.0" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Oct 26</text>
+  <path d="M 254.7 424 L 254.7 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="254.7" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 1</text>
+  <path d="M 429.4 424 L 429.4 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="429.4" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 8</text>
+  <path d="M 604.2 424 L 604.2 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="604.2" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 15</text>
+  <path d="M 704.0 424 L 704.0 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="704.0" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 19</text>
+  <!-- what is found: new arcs and new entries, summed day by day -->
+  <path d="M 80.0 424.0 L 105.0 214.3 L 129.9 209.9 L 154.9 205.2 L 179.8 157.7 L 204.8 142.2 L 229.8 136.0 L 254.7 132.0 L 279.7 130.4 L 304.6 129.6 L 329.6 129.4 L 379.5 127.9 L 404.5 126.2 L 429.4 124.5 L 454.4 122.9 L 479.4 122.4 L 504.3 121.1 L 529.3 120.3 L 554.2 119.4 L 579.2 118.6 L 604.2 117.1 L 629.1 116.4 L 654.1 115.5 L 679.0 114.5 L 704.0 104.0" fill="none" stroke="#3987e5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- what is counted: the tokens the log holds, summed day by day -->
+  <path d="M 80.0 424.0 L 105.0 418.4 L 129.9 416.4 L 154.9 409.9 L 179.8 396.7 L 204.8 358.3 L 229.8 333.5 L 254.7 316.9 L 279.7 312.2 L 304.6 308.0 L 329.6 305.5 L 379.5 294.1 L 404.5 280.9 L 429.4 269.0 L 454.4 252.5 L 479.4 234.1 L 504.3 220.1 L 529.3 203.7 L 554.2 186.0 L 579.2 172.9 L 604.2 157.4 L 629.1 139.5 L 654.1 122.8 L 679.0 109.8 L 704.0 104.0" fill="none" stroke="#c98500" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+  <!-- the days, each with its figures for a pointer that rests on it -->
+  <circle cx="105.0" cy="214.3" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Oct 26: 65.5% of the finds</title></circle>
+  <circle cx="105.0" cy="418.4" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Oct 26: 1.8% of the tokens</title></circle>
+  <circle cx="129.9" cy="209.9" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Oct 27: 66.9% of the finds</title></circle>
+  <circle cx="129.9" cy="416.4" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Oct 27: 2.4% of the tokens</title></circle>
+  <circle cx="154.9" cy="205.2" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Oct 28: 68.4% of the finds</title></circle>
+  <circle cx="154.9" cy="409.9" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Oct 28: 4.4% of the tokens</title></circle>
+  <circle cx="179.8" cy="157.7" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Oct 29: 83.2% of the finds</title></circle>
+  <circle cx="179.8" cy="396.7" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Oct 29: 8.5% of the tokens</title></circle>
+  <circle cx="204.8" cy="142.2" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Oct 30: 88.1% of the finds</title></circle>
+  <circle cx="204.8" cy="358.3" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Oct 30: 20.5% of the tokens</title></circle>
+  <circle cx="229.8" cy="136.0" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Oct 31: 90.0% of the finds</title></circle>
+  <circle cx="229.8" cy="333.5" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Oct 31: 28.3% of the tokens</title></circle>
+  <circle cx="254.7" cy="132.0" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 1: 91.3% of the finds</title></circle>
+  <circle cx="254.7" cy="316.9" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 1: 33.5% of the tokens</title></circle>
+  <circle cx="279.7" cy="130.4" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 2: 91.7% of the finds</title></circle>
+  <circle cx="279.7" cy="312.2" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 2: 34.9% of the tokens</title></circle>
+  <circle cx="304.6" cy="129.6" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 3: 92.0% of the finds</title></circle>
+  <circle cx="304.6" cy="308.0" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 3: 36.2% of the tokens</title></circle>
+  <circle cx="329.6" cy="129.4" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 4: 92.1% of the finds</title></circle>
+  <circle cx="329.6" cy="305.5" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 4: 37.0% of the tokens</title></circle>
+  <circle cx="379.5" cy="127.9" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 6: 92.5% of the finds</title></circle>
+  <circle cx="379.5" cy="294.1" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 6: 40.6% of the tokens</title></circle>
+  <circle cx="404.5" cy="126.2" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 7: 93.1% of the finds</title></circle>
+  <circle cx="404.5" cy="280.9" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 7: 44.7% of the tokens</title></circle>
+  <circle cx="429.4" cy="124.5" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 8: 93.6% of the finds</title></circle>
+  <circle cx="429.4" cy="269.0" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 8: 48.4% of the tokens</title></circle>
+  <circle cx="454.4" cy="122.9" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 9: 94.1% of the finds</title></circle>
+  <circle cx="454.4" cy="252.5" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 9: 53.6% of the tokens</title></circle>
+  <circle cx="479.4" cy="122.4" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 10: 94.2% of the finds</title></circle>
+  <circle cx="479.4" cy="234.1" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 10: 59.3% of the tokens</title></circle>
+  <circle cx="504.3" cy="121.1" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 11: 94.7% of the finds</title></circle>
+  <circle cx="504.3" cy="220.1" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 11: 63.7% of the tokens</title></circle>
+  <circle cx="529.3" cy="120.3" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 12: 94.9% of the finds</title></circle>
+  <circle cx="529.3" cy="203.7" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 12: 68.8% of the tokens</title></circle>
+  <circle cx="554.2" cy="119.4" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 13: 95.2% of the finds</title></circle>
+  <circle cx="554.2" cy="186.0" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 13: 74.4% of the tokens</title></circle>
+  <circle cx="579.2" cy="118.6" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 14: 95.4% of the finds</title></circle>
+  <circle cx="579.2" cy="172.9" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 14: 78.5% of the tokens</title></circle>
+  <circle cx="604.2" cy="117.1" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 15: 95.9% of the finds</title></circle>
+  <circle cx="604.2" cy="157.4" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 15: 83.3% of the tokens</title></circle>
+  <circle cx="629.1" cy="116.4" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 16: 96.1% of the finds</title></circle>
+  <circle cx="629.1" cy="139.5" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 16: 88.9% of the tokens</title></circle>
+  <circle cx="654.1" cy="115.5" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 17: 96.4% of the finds</title></circle>
+  <circle cx="654.1" cy="122.8" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 17: 94.1% of the tokens</title></circle>
+  <circle cx="679.0" cy="114.5" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 18: 96.7% of the finds</title></circle>
+  <circle cx="679.0" cy="109.8" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 18: 98.2% of the tokens</title></circle>
+  <circle cx="704.0" cy="104.0" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"><title>Nov 19: 100.0% of the finds</title></circle>
+  <circle cx="704.0" cy="104.0" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"><title>Nov 19: 100.0% of the tokens</title></circle>
+  <!-- the gap, at 30 October -->
+  <path d="M 204.8 149.2 L 204.8 351.3" fill="none" stroke="#ffd7de" stroke-width="1" stroke-dasharray="3 3"/>
+  <text x="216.8" y="191.0" fill="#ffffff" font-size="14">By 30 October: 88% of the finds,</text>
+  <text x="216.8" y="209.0" fill="#ffffff" font-size="14">for 21% of the tokens</text>
+  <!-- the legend, and each line named at its end -->
+  <path d="M 724 150 L 748 150" stroke="#3987e5" stroke-width="2"/><circle cx="736" cy="150" r="4" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <text x="756" y="146" fill="#ffffff" font-size="13">Found: new arcs</text>
+  <text x="756" y="162" fill="#ffffff" font-size="13">and new entries</text>
+  <path d="M 724 196 L 748 196" stroke="#c98500" stroke-width="2"/><circle cx="736" cy="196" r="4" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <text x="756" y="192" fill="#ffffff" font-size="13">Counted: tokens</text>
+  <text x="756" y="208" fill="#ffffff" font-size="13">the log holds</text>
+  <text x="724" y="262" fill="#d9a9b1" font-size="12">On 19 November:</text>
+  <text x="724" y="280" fill="#d9a9b1" font-size="12">24,804 finds,</text>
+  <text x="724" y="298" fill="#d9a9b1" font-size="12">16,318,670 tokens.</text>
+  <text x="50" y="488" fill="#d9a9b1" font-size="12">Counted from runner/tests/de_dust/runs.jsonl on main, 19 November 2026, with the tree's own estimator. 96.4% of its lines found nothing new.</text>
+</svg>
