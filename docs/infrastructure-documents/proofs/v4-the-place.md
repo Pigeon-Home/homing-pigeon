@@ -47,6 +47,11 @@ All 22 atoms were run, on and off.
   5 ways, were run again under enforce. Step 10 is 55 atoms
   and step 17 is 1,597. 40 rows. Each result is M's, at
   `/work`. 0 differences.
+- **The trace, enforce.** Two families at step 10 kept the
+  shell's own trace in the job's folder. One is `false`
+  joined to `echo a` by `&&`. One is `echo $(:)` joined to
+  `true` by `|`. The commands that ran are M's. The order
+  across the pipe is not, the same as in the plain shell.
 - **Off.** Every atom is M's with the host folder. The 19 atoms
   that do not read the place have the same result as under
   enforce. `pwd` does not: it prints the host folder. The two

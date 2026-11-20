@@ -165,6 +165,36 @@ class ThePlace(unittest.TestCase):
                  result.get("view")),
                 script[:40])
 
+    def test_the_trace_inside_the_sandbox_names_the_commands(self):
+        if not FOLDER.ENGAGES:
+            self.skipTest("the sandbox does not engage here")
+        from collections import Counter
+        asked = (
+            ("false", "echo a", BOUND.AND, True),
+            ("echo $(:)", "true", BOUND.PIPE, False),
+        )
+        for first, second, way, order_holds in asked:
+            atoms = [None, (first,), (second,)]
+            joiners = [None, (), ()]
+            for step in range(3, 11):
+                atoms.append(atoms[step - 1] + atoms[step - 2])
+                joiners.append(joiners[step - 1] + (way,)
+                               + joiners[step - 2])
+            script = (
+                "trap 'printf \"%s\\n\" \"$BASH_COMMAND\" >> trace' DEBUG\n"
+                "set -T\n"
+                + BOUND.text(atoms[10], joiners[10]) + "\n")
+            result, notes, files = FOLDER.run(
+                self.payload, self.job_id, script, "enforce")
+            self.assertIsNotNone(result, notes)
+            lines = files.get("trace", b"").decode("utf-8").splitlines()
+            self.assertEqual(["set -T"], lines[:1], first)
+            body = lines[1:]
+            expect = LADDER.commands_of(atoms[10], joiners[10])
+            self.assertEqual(Counter(expect), Counter(body), first)
+            if order_holds:
+                self.assertEqual(expect, body, first)
+
     def test_the_page_states_the_place(self):
         page = MODELS._flat(PAGE)
         for stated in (
@@ -176,6 +206,7 @@ class ThePlace(unittest.TestCase):
                 "There are 352.",
                 "8 of 50 characters, 8 of 500, and 4 of 5,000.",
                 "Step 10 is 55 atoms and step 17 is 1,597.",
+                "The commands that ran are M's.",
                 "The default cap stays 1,048,576."):
             self.assertIn(stated, page, stated)
 

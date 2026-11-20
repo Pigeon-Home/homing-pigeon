@@ -451,7 +451,10 @@ class TheMotor(unittest.TestCase):
                 "v4-the-join.md",
                 "v4-the-grammar.md",
                 "v4-the-folder.md",
-                "v4-the-place.md"):
+                "v4-the-place.md",
+                "The file still holds `x`.",
+                "The commands that ran are the machine's.",
+                "The shell's bars, climbed under enforce."):
             self.assertIn(stated, page, stated)
         line = "One turn of the motor, `v4-the-motor.md`."
         folder = os.path.dirname(MOTOR)

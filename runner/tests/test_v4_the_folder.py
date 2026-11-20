@@ -161,6 +161,21 @@ class TheFolder(unittest.TestCase):
         finally:
             shutil.rmtree(host, ignore_errors=True)
 
+    def test_each_atom_after_the_writer_leaves_the_file(self):
+        if not ENGAGES:
+            self.skipTest("the sandbox does not engage here")
+        table = BOUND.denotation(
+            SB.WORK_MOUNT, os.environ.get("HOME", ""))
+        for atom in BOUND.ATOMS:
+            result, notes, files = run(
+                self.payload, self.job_id,
+                "printf x > kept; " + atom, "enforce")
+            out, status = BOUND.run((atom,), (), table)
+            digest = hashlib.sha384(out.encode("utf-8")).hexdigest()
+            self.assertEqual(b"x", files.get("kept"), atom)
+            self.assertEqual(status, result.get("exit_code"), atom)
+            self.assertEqual(digest, result.get("output_digest"), notes)
+
     def test_the_page_states_the_atom_and_c18(self):
         page = MODELS._flat(PAGE)
         for stated in (
@@ -169,6 +184,7 @@ class TheFolder(unittest.TestCase):
                 "This is C18, already defined.",
                 "The 22 atoms are not changed",
                 "after all 22, joined on with `; `",
+                "The file still holds `x`.",
                 "The default cap stays 1,048,576."):
             self.assertIn(stated, page, stated)
 

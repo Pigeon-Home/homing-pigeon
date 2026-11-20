@@ -46,6 +46,11 @@ the real execution.
   row's result is M's, at `/work`, and `kept` holds `x`.
   The same row, then a write to a host path, does not
   create that file.
+- **The writer in the middle, enforce.** The writer had
+  only been a suffix. It was asked, and then each of the
+  22 after it. The file still holds `x`. The result is
+  that atom's own result, at `/work`. The atom did not
+  read the file. 0 differences.
 - **Enforce, where the sandbox cannot engage.** The job is
   refused, and nothing is written.
 

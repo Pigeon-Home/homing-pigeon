@@ -112,22 +112,28 @@ this branch. The order is the order they were made.
    writer's join was the turn numbered 3, measured in the
    same default.
 
+10. **The writer in the middle.** `v4-the-folder.md`. The
+    writer had been a suffix. It was asked, and then each
+    of the 22 after it, under enforce. The file still holds
+    `x`. The result is that atom's own result, at `/work`.
+    The atom did not read the file.
+
+11. **The trace, inside the sandbox.** `v4-the-place.md`.
+    Two families at step 10 kept the shell's own trace in
+    the job's folder. `false` joined to `echo a` by `&&`,
+    and `echo $(:)` joined to `true` by `|`. The commands
+    that ran are the machine's. The order across the pipe
+    is not, the same as in the plain shell.
+
 ## What has not turned
 
-The motor has not turned these. They are named so they are
-not done twice, and so a later turn can pick one up.
+The motor has not turned these.
 
-1. The shell's trace of which commands ran, asked inside
-   the sandbox. The confined rows above were checked by
-   output and status, not by the trace.
-2. Every reader in front of the signature returns an
+1. Every reader in front of the signature returns an
    answer, and a message is marked when one does not. J2
    is two readers. The others are not yet that sentence.
-3. The shell's bars, climbed under enforce. A bar that
+2. The shell's bars, climbed under enforce. A bar that
    moves inside the sandbox is a number to write down.
-4. One of the 22 after the writer, to show the file is not
-   read. The writer has been a suffix. It has not been a
-   middle.
 
 `runner/tests/test_v4_the_ladder.py` holds the sentences
 on this page, and the one line each turn's page carries.
