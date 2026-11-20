@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.31.9 - 2026-11-20
+
+- Wire: the tls hidden import sits mid-line on all 7 runner build lines, where the build checks read it, fixing the genuine guard red that stopped 3.17.31.8 unspent; the frozen build carries its trust list (certifi via runner/wire/tls.py) so a clean machine can verify Google, and the install record the wizard emails now names the CPU too (since 3.17.31.7)
+
 ## 3.17.31.8 - 2026-11-20
 
 - Setup: the install record the wizard emails now names the CPU too, and the frozen build carries its trust list (certifi via runner/wire/tls.py) so a clean machine can verify Google (since 3.17.31.7)
