@@ -131,3 +131,30 @@ further, the work is reconciled into the design of record.
   (queues) instead of the inbox.
 - Same sign-in, same account; only the transport changes. The Google
   identity carries over, and the pairing stays super simple.
+
+## A first option, future: signup on our own site
+
+Direction set on 2026-11-19, after the manual install test of the
+third option ran end to end on a clean machine.
+
+- The browser login is only half of the flow. After the browser
+  sign in completes, the runner itself speaks HTTPS to Google: it
+  exchanges the sign in code for tokens, and it sends the install
+  record email that carries the secret. None of that second half
+  happens in the browser.
+- On a clean Windows Server, the frozen build could not verify
+  Google's certificate, because the build carried no trust list of
+  its own. The exchange stopped with a certificate verification
+  failure until the session was pointed at a certificate bundle.
+  A customer on a clean machine would meet the same wall.
+- The planned option, placed first when it exists: the customer
+  signs up on the project's own site, pigeon-home.ai, with their
+  Google address. The application then talks to our own service
+  instead of talking to Google directly.
+- Under this option the build pins our own service's certificate.
+  Pinning the certificate of an endpoint we operate is more
+  appropriate than shipping or pinning Google's certificate
+  material inside the build.
+- The existing options stay exactly as they are. This is a future
+  first option, added ahead of them, not a replacement that
+  removes any of them.
