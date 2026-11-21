@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.4 - 2026-11-21
+
+- Since 3.17.32.2: the first slice of Project Canoe's first option signup stands (the address rule, the forwarding rule and the owner's approval gate) and the signup book now saves through the one atomic writer, with the as-assembled record re-measured over the tree that fix grew; the Ubuntu Snap Store readiness page records the confinement finding and the packaging path, the snap build spike passes its staged checks, and the app store preparation records the Microsoft Store routes and the store packaging drafts; the onedir freeze and the draft route A installer stand; the goal page moves to its steady shelf with its doc name exception; the upstream pins are refreshed; the secret agents notes gain the shared secret and the reply_to self default; FUTURE.md is updated by its owner; and the README front page carries the closing chart. This release replaces the 3.17.32.3 cut, whose build failed on the atomic writer pin; that number is not reused.
+
 ## 3.17.32.3 - 2026-11-20
 
 - Since 3.17.32.2: the first slice of Project Canoe's first option signup lands (the address rule, the forwarding rule and the owner's approval gate), the Ubuntu Snap Store readiness page records the confinement finding and the packaging path, FUTURE.md is restored to the conductor's newest edit and then updated by its owner, the secret agents notes gain the shared secret and the reply_to self default, and the README is updated by its owner.
