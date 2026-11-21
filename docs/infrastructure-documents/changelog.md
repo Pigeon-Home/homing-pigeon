@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.8 - 2026-11-21
+
+- Since 3.17.32.7: Grok's proofs commit closes the 14 kinds for M and re-asks the grammar bar on bash 5.2.15. The motor page (docs/infrastructure-documents/proofs/v4-the-motor.md) no longer says a larger tree needs no further proof; the shell's premise is still open. The at-a-limit page (docs/infrastructure-documents/proofs/v4-at-a-limit.md) records that the grammar bar's two rows, first read on bash 5.2.21, give the same result on bash 5.2.15: the row of 13,328 characters runs and has M's result, and the row of 13,332 characters is refused whole. The pinning tests are updated in runner/tests/test_v4_at_a_limit.py and runner/tests/test_v4_the_ladder.py.
+
 ## 3.17.32.7 - 2026-11-21
 
 - Since 3.17.32.6: FUTURE.md is updated by its owner in 4 edits via the GitHub web UI, touching docs/FUTURE.md only.
