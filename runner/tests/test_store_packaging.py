@@ -102,6 +102,42 @@ class SnapDraftTest(unittest.TestCase):
         self.assertIn("importlib.metadata", self.text)
         self.assertIn("pigeon-home-runner", self.text)
 
+    def test_part_source_resolves_to_the_tree_root(self):
+        # The runner part's source is resolved by craft-parts
+        # from the folder this file sits in, packaging/snap, so
+        # the line must climb exactly 2 levels to the tree root,
+        # the folder holding pyproject.toml. The first real
+        # build (2026-11-20, on the San Francisco rig) found the
+        # draft 1 level too deep: the part pulled the folder
+        # above the tree as its source, no pyproject.toml was
+        # found where the plugin looked, the project was never
+        # installed, and the adopted version came out empty.
+        m = re.search(r"(?m)^\s+source:\s*(\S+)\s*$", self.text)
+        self.assertIsNotNone(m)
+        snap_dir = os.path.join(_root(), "packaging", "snap")
+        resolved = os.path.realpath(os.path.join(snap_dir, m.group(1)))
+        self.assertEqual(os.path.realpath(_root()), resolved)
+        self.assertTrue(os.path.isfile(
+            os.path.join(resolved, "pyproject.toml")))
+
+    def test_stage_packages_name_the_interpreter_closure(self):
+        # The interpreter closure is named package by package,
+        # not left to python3-venv's dependency closure alone.
+        # The first real build ran in destructive mode on a
+        # working host, where the stage fetch skips the packages
+        # the host already has installed; the host's own Python
+        # meant the venv closure never entered the payload, and
+        # the build died with "No suitable Python interpreter
+        # found, giving up". A package named explicitly in
+        # stage-packages is downloaded either way.
+        m = re.search(r"(?ms)^\s+stage-packages:\s*\n"
+                      r"((?:\s+- [^\n]*\n)+)", self.text)
+        self.assertIsNotNone(m)
+        staged = [line.strip() for line in m.group(1).splitlines()]
+        for pkg in ("python3.12", "python3.12-minimal",
+                    "libpython3.12-stdlib", "libpython3.12-minimal"):
+            self.assertIn("- " + pkg, staged)
+
 
 class MsixDraftTest(unittest.TestCase):
 

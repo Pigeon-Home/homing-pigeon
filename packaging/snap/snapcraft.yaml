@@ -65,11 +65,15 @@ apps:
 parts:
   runner:
     plugin: python
-    source: ../../..
+    source: ../..
     python-packages:
       - certifi
     stage-packages:
       - python3-venv
+      - python3.12
+      - python3.12-minimal
+      - libpython3.12-stdlib
+      - libpython3.12-minimal
       - bubblewrap
     override-build: |
       craftctl default
