@@ -53,6 +53,12 @@
 # from $CRAFT_PART_SRC before reading its version, and rewrites
 # the new scripts' shebangs the way the plugin rewrites the
 # scripts it installs itself.
+#
+# Second failure, 2026-11-21 (build 3355989): the explicit pip
+# install above failed because $CRAFT_PART_SRC is not the tree
+# root: its ls showed only "buildd" and "homing-pigeon", the
+# cloned tree under its own name. The install now targets
+# $CRAFT_PART_SRC/homing-pigeon.
 
 name: homing-pigeon
 base: core24
@@ -98,12 +104,13 @@ parts:
       - bubblewrap
     override-build: |
       craftctl default
-      # See the 2026-11-21 note in the header: the python plugin
+      # See the 2026-11-21 notes in the header: the python plugin
       # did not install the project in the Launchpad build, so
-      # install it explicitly from the part source directory.
+      # install it explicitly from the cloned tree inside the
+      # part source directory.
       echo "runner part source: $CRAFT_PART_SRC"
       ls "$CRAFT_PART_SRC"
-      "$CRAFT_PART_INSTALL/bin/pip" install -U "$CRAFT_PART_SRC"
+      "$CRAFT_PART_INSTALL/bin/pip" install -U "$CRAFT_PART_SRC/homing-pigeon"
       ls "$CRAFT_PART_INSTALL/bin"
       # Scripts installed above carry the venv interpreter shebang;
       # rewrite them as the plugin rewrites scripts it installs.
