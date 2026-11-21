@@ -156,7 +156,9 @@ class RootLayoutTest(unittest.TestCase):
     def test_doc_names_are_lowercase_kebab(self):
         """Case-only renames break on macOS/Windows checkouts; one rule
         for docs: lowercase-kebab, except the root conventions and
-        historical records."""
+        historical records. The goal page is a named exception, by
+        its full path: it keeps the name the conductor gave it, at
+        the steady shelf he moved it to on 2026-11-20."""
         import subprocess
         out = subprocess.run(["git", "ls-files", "docs"], cwd=REPO,
                              capture_output=True, text=True).stdout.split()
@@ -164,10 +166,28 @@ class RootLayoutTest(unittest.TestCase):
                 "docs/steady/specimens/")
         bad = [f for f in out if f.endswith(".md")
                and not f.startswith(skip)
+               and f != "docs/steady/GOAL.md"
                and os.path.dirname(f) != "docs"
                and os.path.basename(f) not in ("CHANGELOG.md", "CONTRIBUTING.md")
                and os.path.basename(f) != os.path.basename(f).lower()]
         self.assertEqual(bad, [])
+
+    def test_the_goal_page_is_the_one_uppercase_doc_name(self):
+        """The exception above stays narrow: outside the shelves and
+        root conventions it names, the goal page is the only doc
+        whose name is not lowercase. A second uppercase name fails
+        here first, so it is a decision, never a drift."""
+        import subprocess
+        out = subprocess.run(["git", "ls-files", "docs"], cwd=REPO,
+                             capture_output=True, text=True).stdout.split()
+        skip = ("docs/archive/", "docs/steady/reports/", "docs/ietf/",
+                "docs/steady/specimens/")
+        upper = [f for f in out if f.endswith(".md")
+                 and not f.startswith(skip)
+                 and os.path.dirname(f) != "docs"
+                 and os.path.basename(f) not in ("CHANGELOG.md", "CONTRIBUTING.md")
+                 and os.path.basename(f) != os.path.basename(f).lower()]
+        self.assertEqual(["docs/steady/GOAL.md"], upper)
 
     def test_the_moved_homes_exist(self):
         for rel in ("runner/extensions", "runner/cloud/send_job.py",
