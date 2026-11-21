@@ -1,0 +1,88 @@
+# Build service copy: the twin of packaging/snap/snapcraft.yaml
+# (the build-proven draft that built the verified 3.17.32.4 snap
+# on 2026-11-20), placed where Canonical's build service looks.
+# Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+#
+# Snap Store package definition for Homing Pigeon, prepared
+# 2026-11-20. It follows the shape recommended in
+# docs/steady/project/snap-store-readiness.md: the python plugin
+# on the core24 base, Python bundled into the snap, bubblewrap
+# staged beside the runner, and the five console scripts exposed
+# as apps. The design notes stand in
+# docs/steady/design/app-stores-design.md.
+#
+# The snap name below was registered to the conductor's own
+# Snap Store account on 2026-11-20. The classic confinement
+# grant has not been requested yet; that request goes through
+# the store's forum process once a revision stands uploaded.
+#
+# Placement: this twin sits in a snap folder at the tree root,
+# the one layout Canonical's build service can discover
+# (/.snapcraft.yaml, /snapcraft.yaml or /snap/snapcraft.yaml);
+# it cannot see the packaging folder's copy. The conductor
+# directed this root placement on 2026-11-20, bending the no
+# new root files rule this once, so the build service can find
+# the packaging and publish under his account with no local
+# upload. From here the runner part's source climbs exactly 1
+# level to the tree root; in the packaging folder the same line
+# climbs 2. Every other line is the packaging copy's, unchanged,
+# and runner/tests/test_store_packaging.py pins the agreement.
+#
+# Build spike, 2026-11-20: a staged build of this exact layout
+# passed the runner's own checks, including a bubblewrap trial
+# job (the record stands in the readiness page). The spike also
+# found that adopt-info alone adopts nothing: Snapcraft takes a
+# part's metadata only through parse-info or a craftctl set
+# call, and this part had neither, so a build would have failed
+# at the prime step for want of a version. The override-build
+# below sets the version from the installed package metadata,
+# which is the single source adopt-info was always meant to
+# read. A full snapcraft build itself remains untried; the
+# machine the spike ran on cannot mount squashfs images, so
+# snapd could not install snapcraft or the core24 base there.
+
+name: homing-pigeon
+base: core24
+adopt-info: runner
+summary: A self hosted, email driven agent runner
+description: |
+  Homing Pigeon runs signed jobs on your own machine. Tell your
+  cloud SI to send the job by email; the runner verifies it,
+  runs it confined, and mails the result back.
+confinement: classic
+grade: stable
+license: Apache-2.0
+
+platforms:
+  amd64:
+  arm64:
+
+apps:
+  homing-pigeon:
+    command: bin/homing-pigeon
+    daemon: simple
+  homing-pigeon-install:
+    command: bin/homing-pigeon-install
+  homing-pigeon-send-job:
+    command: bin/homing-pigeon-send-job
+  homing-pigeon-auth:
+    command: bin/homing-pigeon-auth
+  homing-pigeon-host:
+    command: bin/homing-pigeon-host
+
+parts:
+  runner:
+    plugin: python
+    source: ..
+    python-packages:
+      - certifi
+    stage-packages:
+      - python3-venv
+      - python3.12
+      - python3.12-minimal
+      - libpython3.12-stdlib
+      - libpython3.12-minimal
+      - bubblewrap
+    override-build: |
+      craftctl default
+      craftctl set version="$($CRAFT_PART_INSTALL/bin/python -c "import importlib.metadata; print(importlib.metadata.version('pigeon-home-runner'))")"

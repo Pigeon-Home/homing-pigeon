@@ -31,6 +31,7 @@ def _read(rel):
 
 
 SNAP = os.path.join("packaging", "snap", "snapcraft.yaml")
+ROOT_SNAP = os.path.join("snap", "snapcraft.yaml")
 MSIX = os.path.join("packaging", "msix", "Package.appxmanifest")
 DOC = os.path.join("docs", "steady", "design", "app-stores-design.md")
 
@@ -137,6 +138,47 @@ class SnapDraftTest(unittest.TestCase):
         for pkg in ("python3.12", "python3.12-minimal",
                     "libpython3.12-stdlib", "libpython3.12-minimal"):
             self.assertIn("- " + pkg, staged)
+
+
+class SnapRootLayoutTest(unittest.TestCase):
+    # The twin at snap/snapcraft.yaml exists for Canonical's
+    # build service, which discovers the packaging only at the
+    # tree root (/.snapcraft.yaml, /snapcraft.yaml or
+    # /snap/snapcraft.yaml) and cannot see the packaging folder's
+    # copy. The owner directed this one root placement on
+    # 2026-11-20 ("Finish Ubuntu"), bending the no new root
+    # files rule this once. The twin must build the same snap:
+    # same name, base and confinement as the packaging copy,
+    # with its part source climbing exactly 1 level from snap/
+    # to the tree root.
+
+    @classmethod
+    def setUpClass(cls):
+        cls.text = _read(ROOT_SNAP)
+        cls.packaging_text = _read(SNAP)
+
+    def test_root_snap_file_exists(self):
+        self.assertTrue(os.path.isfile(os.path.join(_root(), ROOT_SNAP)))
+
+    def test_root_snap_name_is_the_store_name(self):
+        self.assertEqual("homing-pigeon", _top_level(self.text, "name"))
+
+    def test_root_snap_part_source_resolves_to_the_tree_root(self):
+        m = re.search(r"(?m)^\s+source:\s*(\S+)\s*$", self.text)
+        self.assertIsNotNone(m)
+        snap_dir = os.path.join(_root(), "snap")
+        resolved = os.path.realpath(os.path.join(snap_dir, m.group(1)))
+        self.assertEqual(os.path.realpath(_root()), resolved)
+        self.assertTrue(os.path.isfile(
+            os.path.join(resolved, "pyproject.toml")))
+
+    def test_root_snap_confinement_is_classic(self):
+        self.assertEqual("classic", _top_level(self.text, "confinement"))
+
+    def test_root_snap_agrees_with_the_packaging_copy(self):
+        for key in ("name", "base", "confinement"):
+            self.assertEqual(_top_level(self.packaging_text, key),
+                             _top_level(self.text, key), key)
 
 
 class MsixDraftTest(unittest.TestCase):
