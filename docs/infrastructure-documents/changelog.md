@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.12 - 2026-11-21
+
+- Since 3.17.32.11: the statistics figures are refreshed at the 3.17.32.11 head, and the last 2 charts on the statistics page are reworded for a cold reader (statistics.md, the 2 security-token chart SVGs, README, PROTOCOL and AGENTS wording carried along, and the doc figure-slot tests updated to match). No runner code changes.
+
 ## 3.17.32.11 - 2026-11-21
 
 - Since 3.17.32.10: two dependabot bumps land, each merged by DRU. actions/dependency-review-action moves 5.0.0 to 5.0.1 in .github/workflows/security.yml (PR #121, 1 file, 1 insertion, 1 deletion). coverage moves 7.17.2 to 7.17.3 in .github/requirements-ci.txt (PR #122, 1 file, 1 insertion, 1 deletion). No runner code changes.
