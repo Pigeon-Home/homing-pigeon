@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.7 - 2026-11-21
+
+- Since 3.17.32.6: FUTURE.md is updated by its owner in 4 edits via the GitHub web UI, touching docs/FUTURE.md only.
+
 ## 3.17.32.6 - 2026-11-21
 
 - Since 3.17.32.5: the snap packaging gains its build service twin at snap/snapcraft.yaml, the one placement Canonical's build service can discover at the tree root (/.snapcraft.yaml, /snapcraft.yaml or /snap/snapcraft.yaml); it cannot see the build-proven draft in packaging/snap, and its dashboard offers no web upload. The conductor directed this one root placement on 2026-11-20, so the service can build from the tree itself and publish to latest/edge under his account, web only, with no local upload. The twin is the packaging draft's twin in name, base, confinement, grade, apps, parts and plugs, so it builds the same snap, including the adopt-info version flow the first real build proved; the one functional difference is the part source, source: .. from snap/ where the packaging copy climbs 2 levels. The store packaging tests pin the twin: it exists at snap/snapcraft.yaml, its name is homing-pigeon, its part source resolves to the tree root from snap/, its confinement is classic, and it agrees with the packaging copy on name, base and confinement.
