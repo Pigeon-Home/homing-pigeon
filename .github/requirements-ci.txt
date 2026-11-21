@@ -22,4 +22,4 @@ pyinstaller==6.22.3
 # HTTPS against it on machines that offer urllib no bundle of
 # their own. Only the binary jobs install it.
 certifi==2026.10.23
-coverage==7.17.2
+coverage==7.17.3
