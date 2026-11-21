@@ -32,6 +32,19 @@
 # read. A full snapcraft build itself remains untried; the
 # machine the spike ran on cannot mount squashfs images, so
 # snapd could not install snapcraft or the core24 base there.
+#
+# Build failure, 2026-11-21: the first Launchpad build of the
+# root snap twin (Snapcraft 9.2.1, builds 3355983 amd64 and
+# 3355984 arm64) failed at the prime step with an empty version.
+# The python plugin never installed the project: its install
+# step is "[ -f setup.py ] || [ -f pyproject.toml ] && pip
+# install -U ." and in the Launchpad build both tests were false
+# in the build working directory, so only certifi was installed
+# and importlib.metadata found no pigeon-home-runner metadata.
+# The override-build below now installs the project explicitly
+# from $CRAFT_PART_SRC before reading its version, and rewrites
+# the new scripts' shebangs the way the plugin rewrites the
+# scripts it installs itself.
 
 name: homing-pigeon
 base: core24
@@ -77,4 +90,14 @@ parts:
       - bubblewrap
     override-build: |
       craftctl default
+      # See the 2026-11-21 note in the header: the python plugin
+      # did not install the project in the Launchpad build, so
+      # install it explicitly from the part source directory.
+      echo "runner part source: $CRAFT_PART_SRC"
+      ls "$CRAFT_PART_SRC"
+      "$CRAFT_PART_INSTALL/bin/pip" install -U "$CRAFT_PART_SRC"
+      ls "$CRAFT_PART_INSTALL/bin"
+      # Scripts installed above carry the venv interpreter shebang;
+      # rewrite them as the plugin rewrites scripts it installs.
+      find "$CRAFT_PART_INSTALL" -type f -executable -print0 | xargs --no-run-if-empty -0 sed -i "1 s|^#!$CRAFT_PART_INSTALL/bin/python.*|#!/usr/bin/env python3|"
       craftctl set version="$($CRAFT_PART_INSTALL/bin/python -c "import importlib.metadata; print(importlib.metadata.version('pigeon-home-runner'))")"
