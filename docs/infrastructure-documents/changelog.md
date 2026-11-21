@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.10 - 2026-11-21
+
+- Since 3.17.32.9: the nightly upstream-pins refresh lands one commit. Each feed sense's upstream ref is resolved to its current tip, the pinned files are refetched, and the drift tests are green against them. The change touches only the softflowd and zeek feed pins: runner/extensions/softflowd-feed/extension.json and its upstream PIN.json, and runner/extensions/zeek-feed/extension.json and its upstream PIN.json (4 files, 6 insertions, 6 deletions). See .github/workflows/upstream-pins.yml.
+
 ## 3.17.32.9 - 2026-11-21
 
 - Since 3.17.32.8: the snap build fix lands in both snapcraft copies. Launchpad builds 3355983 and 3355984 failed at prime with an empty version because the python plugin never installed pigeon-home-runner. snap/snapcraft.yaml and packaging/snap/snapcraft.yaml now install the project explicitly from $CRAFT_PART_SRC in override-build before reading its metadata version, and rewrite the new scripts' shebangs the way the plugin rewrites its own. The two copies stay in agreement.
