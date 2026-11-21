@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.11 - 2026-11-21
+
+- Since 3.17.32.10: two dependabot bumps land, each merged by DRU. actions/dependency-review-action moves 5.0.0 to 5.0.1 in .github/workflows/security.yml (PR #121, 1 file, 1 insertion, 1 deletion). coverage moves 7.17.2 to 7.17.3 in .github/requirements-ci.txt (PR #122, 1 file, 1 insertion, 1 deletion). No runner code changes.
+
 ## 3.17.32.10 - 2026-11-21
 
 - Since 3.17.32.9: the nightly upstream-pins refresh lands one commit. Each feed sense's upstream ref is resolved to its current tip, the pinned files are refetched, and the drift tests are green against them. The change touches only the softflowd and zeek feed pins: runner/extensions/softflowd-feed/extension.json and its upstream PIN.json, and runner/extensions/zeek-feed/extension.json and its upstream PIN.json (4 files, 6 insertions, 6 deletions). See .github/workflows/upstream-pins.yml.
