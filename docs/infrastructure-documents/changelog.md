@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.6 - 2026-11-21
+
+- Since 3.17.32.5: the snap packaging gains its build service twin at snap/snapcraft.yaml, the one placement Canonical's build service can discover at the tree root (/.snapcraft.yaml, /snapcraft.yaml or /snap/snapcraft.yaml); it cannot see the build-proven draft in packaging/snap, and its dashboard offers no web upload. The conductor directed this one root placement on 2026-11-20, so the service can build from the tree itself and publish to latest/edge under his account, web only, with no local upload. The twin is the packaging draft's twin in name, base, confinement, grade, apps, parts and plugs, so it builds the same snap, including the adopt-info version flow the first real build proved; the one functional difference is the part source, source: .. from snap/ where the packaging copy climbs 2 levels. The store packaging tests pin the twin: it exists at snap/snapcraft.yaml, its name is homing-pigeon, its part source resolves to the tree root from snap/, its confinement is classic, and it agrees with the packaging copy on name, base and confinement.
+
 ## 3.17.32.5 - 2026-11-21
 
 - Since 3.17.32.4: the snap packaging draft carries the 2 fixes the first real build needed, both found when the draft was built for real on the San Francisco rig tonight. The Python 3.12 interpreter closure is named outright in stage-packages (python3.12, python3.12-minimal, libpython3.12-stdlib and libpython3.12-minimal), because a destructive mode build on a working host otherwise skips the closure the host already has and the build gives up for want of an interpreter. The snap part source path is corrected to ../.. so it resolves to the tree root from packaging/snap, where the old path pulled the directory above the tree and the adopted version came out empty. The store packaging tests pin both facts, and the draft on main is now the exact draft that built the homing-pigeon 3.17.32.4 snap.
