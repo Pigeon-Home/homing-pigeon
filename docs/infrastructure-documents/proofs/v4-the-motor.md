@@ -37,9 +37,11 @@ that the claim for two pieces is the claim for the piece
 they make. The ladder carries that join up the sizes: each
 step is the two steps before it. What grows is the number
 of kinds, not the number of tokens. The kinds were counted.
-There are 14, and they are closed. A tree that passes 30
-million and approaches 38 million does not need a fifteenth
-proof of the same claim.
+There are 14, and they are closed, for the machine M. The
+shell is not closed with them. `v4-at-a-bound.md` names the
+sample, 858,319 scripts, and `v4-the-ladder.md` says the
+premise P-b is not proved. A larger tree does not need a
+fifteenth kind of row. It still needs that premise.
 
 That is how the work on this branch faces the goal. Every
 turn below is a turn of that motor. A turn that only adds

@@ -545,7 +545,7 @@ class TheBarsTheShellAndTheMachineSet(unittest.TestCase):
         most = self.most_read("", ":")
         if most is None:
             self.skipTest("this bash reads a pipeline of 20,000 commands")
-        if bash_version().startswith("5.2.21"):
+        if bash_version().startswith(("5.2.21", "5.2.15")):
             # The page's numbers, for the bash the page names.
             self.assertEqual(3333, most)
             self.assertEqual(3332, self.most_read(":; ", ":"))

@@ -324,7 +324,10 @@ says. So B2 holds at the cap for a row inside the 2 bars.
 command, it was never under 3,330. The shortest row found
 that bash will not read is 13,332 characters: `:; ` and a
 pipeline of 3,333 commands. The row of 13,328 characters,
-with 3,332, runs and has M's result.
+with 3,332, runs and has M's result. Those two rows were
+first read on bash 5.2.21. Asked again on bash 5.2.15,
+the same two rows: 13,328 runs, and 13,332 is refused
+whole. The number is the row's, on both.
 
 A refused row is refused whole. bash ends with status 2 and
 "syntax error near unexpected token" on its error stream,
