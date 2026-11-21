@@ -295,7 +295,7 @@ class TestFifthSnapshot(unittest.TestCase):
         self.assertLess(lines.index(self.HEADING),
                         lines.index("## Where the project stands"))
 
-    def test_its_charts_stand_in_the_tree_and_the_readme_shows_the_split(
+    def test_its_charts_stand_in_the_tree_and_the_readme_shows_the_closing(
             self):
         text = _read(STATISTICS)
         for name in self.CHARTS:
@@ -304,7 +304,14 @@ class TestFifthSnapshot(unittest.TestCase):
             self.assertTrue(os.path.isfile(
                 os.path.join(REPO, "assets", asset)), asset)
         readme = _read(os.path.join(REPO, "README.md"))
-        self.assertIn("assets/security-tokens-split-2026-11-19.svg", readme)
+        # At the owner's word of 2026-11-20 the front page
+        # carries the closing chart at the foot of the
+        # statistics record (the 2 lines that close, the gap
+        # going to 0) in place of this snapshot's split chart.
+        self.assertIn(
+            "assets/security-tokens-2-lines-that-close-2026-11-20.svg",
+            readme)
+        self.assertNotIn("security-tokens-split-2026-11-19.svg", readme)
         self.assertNotIn("security-tokens-split-2026-11-16.svg", readme)
 
     def test_every_row_s_two_parts_make_its_whole(self):
