@@ -15,3 +15,5 @@ December 2021
 oracle root CA could be self signed, or pigeon-home.ai mint, or "OTHER" like earlier OTP gate idea for job-approval to perform certain RCE in high security or "attested" cloud or air gapped env. OTP can be software or harwdware ish
 - https://slashdot.org/story/21/11/15/220255/nyc-passes-bill-requiring-bias-audits-of-ai-hiring-tech
 - https://regulations.ai/regulations/RAI-US-NY-S1169A0-2025 (https://ag.ny.gov/contact-ag)
+
+LETTTSFF FUCKKKKCING GOOOOOOOOOOOOOOOOOOOOOOOOOO
