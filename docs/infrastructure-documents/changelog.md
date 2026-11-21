@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.13 - 2026-11-21
+
+- Since 3.17.32.12: the statistics figures are refreshed at the 3.17.32.12 head, and the closing chart (2 lines that close) is regenerated with its counted series extended to 21 November (statistics.md, the closing chart SVG, README, PROTOCOL and AGENTS wording carried along, and the doc figure-slot tests updated to match). No runner code changes.
+
 ## 3.17.32.12 - 2026-11-21
 
 - Since 3.17.32.11: the statistics figures are refreshed at the 3.17.32.11 head, and the last 2 charts on the statistics page are reworded for a cold reader (statistics.md, the 2 security-token chart SVGs, README, PROTOCOL and AGENTS wording carried along, and the doc figure-slot tests updated to match). No runner code changes.

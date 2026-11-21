@@ -684,7 +684,7 @@ except ImportError:  # plain script: python3 runner/ops/core.py
 # here come from this module's own deterministic build and
 # counter over the current tree.
 AS_ASSEMBLED_FILES = 142
-AS_ASSEMBLED_ZIP_BYTES = 917688
+AS_ASSEMBLED_ZIP_BYTES = 917689
 AS_ASSEMBLED_LINES = 71134
 AS_ASSEMBLED_NONBLANK_LINES = 64459
 # The as-assembled set's lines, part by part; the parts sum
