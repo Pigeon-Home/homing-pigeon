@@ -459,21 +459,24 @@ class TestFifthSnapshot(unittest.TestCase):
     CLOSING_CHART = "security-tokens-2-lines-that-close-2026-11-20.svg"
 
     def test_the_closing_chart_of_20_november_stands_in_the_tree(self):
-        # The owner's drawing of 2026-11-20 closes this view:
+        # The closing chart of 2026-11-20 closes this view:
         # a ceiling for the run log at 21.0 million, closing
         # by 0.61 a week onto the line of everything else at
         # 17.6 million, the gap between the 2 lines closing
         # to 0, and the whole at 35.2 million where they meet.
         # The chart was drawn with numbers by the research
-        # zipped in the archive, and it carries the drawing's
-        # own figures.
+        # zipped in the archive, and it carries that reading's
+        # own figures. Its 2 line labels were reworded for a
+        # cold reader on 2026-11-21 (they named the lines by
+        # their colours, addressed to the drawing's maker);
+        # the pins below carry the new wording.
         text = _read(STATISTICS)
         self.assertIn(self.CLOSING_CHART, text)
         path = os.path.join(REPO, "assets", self.CLOSING_CHART)
         self.assertTrue(os.path.isfile(path), self.CLOSING_CHART)
         chart = _read(path)
-        for stated in ("21.0M: your red line",
-                       "17.6M: your yellow line",
+        for stated in ("21.0M: the run log's ceiling",
+                       "17.6M: everything else's floor",
                        "3.39M", "35.2M"):
             self.assertIn(stated, chart, stated)
         lines = text.splitlines()

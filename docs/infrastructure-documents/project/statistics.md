@@ -438,27 +438,59 @@ each coming week may add, and the arithmetic behind every
 figure of this view, stand in
 [the curve's page](../proofs/v4-the-curve.md) in the proofs.
 
-The owner drew a further reading on 2026-11-20, and the
-research that works it out stands zipped in
-[the archive](../../archive/2-lines-that-close-2026-11-20.zip).
-This view lets the run log keep its own line toward 28.4
-million. The drawing bends that line down instead: a
-ceiling for the log at 21.0 million, closing by 0.61 a
-week onto the line of everything else at 17.6 million.
-The gap between the 2 lines is 3,393,230 at the count of
-2026-11-19, and at that rate it reaches 0 after 30 weeks.
-Where the 2 lines meet, both parts stand at 17.6 million
-and the whole tree at 35.2 million. The drawing names no
-limit first either: the 2 starting lines and the rate are
-given, and the meeting point follows from them.
+A further reading of the same counts, worked out on
+2026-11-20, stands zipped in
+[the archive](../../archive/2-lines-that-close-2026-11-20.zip),
+with the research that supports it. The view above lets
+the run log keep its own line toward 28.4 million. This
+reading bends that line down instead: a ceiling for the
+log at 21.0 million, closing by 0.61 a week onto the
+line of everything else at 17.6 million.
+The gap between the 2 lines is 3,393,230 at the count
+of 2026-11-19, and at that rate it reaches 0 after 30
+weeks. Where the 2 lines meet, both parts stand at 17.6
+million and the whole tree at 35.2 million. This reading
+names no limit first either: the 2 starting lines and
+the rate are given, and the meeting point follows from
+them.
 
-![The owner's drawing of 20 November 2026, with numbers: a ceiling for the run log at 21.0 million closing by 0.61 a week onto the line of everything else at 17.6 million, the gap of 3,393,230 between them closing to 0 in 30 weeks, and the whole tree at 35.2 million where the 2 lines meet](../../../assets/security-tokens-2-lines-that-close-2026-11-20.svg)
+![2 lines that close: a ceiling for the fuzz run log at 21.0 million closing by 0.61 a week onto the line of everything else at 17.6 million, the gap of 3,393,230 between them closing to 0 in 30 weeks, and the whole tree at 35.2 million where the 2 lines meet](../../../assets/security-tokens-2-lines-that-close-2026-11-20.svg)
+
+What the 0 means. Zero is where the gap closes: nothing
+of the run log stands above the line of everything else,
+the 2 parts stand at 1 figure, and the whole tree stands
+at 35.2 million. It is reached, not only approached.
+Tokens are whole numbers, and a gap of whole tokens that
+shrinks to at most 0.61 of itself each week does not
+fade toward 0 without arriving: it stands at 1 in the
+29th week and at 0 in the 30th. The reading is the one
+the v5 work is asked to carry: constraints from all
+directions, forcing the remaining unproven gap to 0 over
+time. A number held from 1 side only is a cap or a
+floor. A number whose gap stands at 0 is bound exactly,
+the state the v4 bindings already stand in.
+
+What the 0 does not mean. The meeting of 2 lines on a
+chart proves nothing by itself: a chart cannot prove a
+limit. The squeeze that closes the gap is a theorem
+about the lines, and it holds only while the counts keep
+the rule under them: the floor does not fall, the
+ceiling does not rise, and the gap shrinks by the share
+each week. A count that breaks the rule breaks the
+reading, and the research note in the archive names the
+counts that would. And no property of the runner is
+proven when the lines meet. The proof work closes the
+gap between tested and proven property by property,
+each property inside its stated assumptions and bounds,
+and until a property has a checked model behind it the
+honest statement about it stands as the proofs state it:
+tested and reviewed, not proven.
 
 The research reads the run log itself as well: 96.4% of
 its tokens are lines that say nothing new was found, and
 folded to 1 line of sums for each target and day, with 1
 hash of the lines it stands for, it would hold 677,562
-tokens. The bend the drawing asks for is there to take.
+tokens. The bend this reading asks for is there to take.
 What a fold would cost the proof stands in the note in
 the archive.
 

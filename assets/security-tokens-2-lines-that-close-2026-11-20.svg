@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="Helvetica, Arial, sans-serif">
-  <title>The owner's drawing of 20 November 2026 with numbers: a ceiling for the fuzz run log that starts at 21.0M and closes on the line of everything else, 17.6M. The gap between the 2 lines is 3.4M on 19 November and is multiplied by 0.61 each week</title>
+  <title>2 lines that close: a ceiling for the fuzz run log at 21.0 million closing by 0.61 a week onto the line of everything else at 17.6 million, the gap of 3,393,230 between them closing to 0 in 30 weeks, and the whole tree at 35.2 million where the 2 lines meet</title>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#2b060d"/>
@@ -8,7 +8,7 @@
   </defs>
   <rect width="900" height="520" fill="url(#bg)"/>
   <text x="50" y="46" fill="#ffffff" font-size="24" font-weight="bold">2 lines that close</text>
-  <text x="50" y="72" fill="#ffd7de" font-size="15">Your drawing of 20 November, with numbers: the gap between the 2 lines, week by week</text>
+  <text x="50" y="72" fill="#ffd7de" font-size="15">The gap between the 2 lines, week by week, from the count of 19 November 2026</text>
   <!-- the side that is not counted -->
   <rect x="363.6" y="104" width="340.4" height="320" fill="#ffffff" fill-opacity="0.045"/>
   <!-- the grid and the 2 axes -->
@@ -43,7 +43,7 @@
   <text x="375.6" y="412" fill="#ffd7de" font-size="13.5">not counted</text>
   <!-- where the run log went with no bend: 28.4M, on an if -->
   <path d="M 363.6 121 L 704 121" fill="none" stroke="#c98500" stroke-width="1.2" stroke-dasharray="3 6"/>
-  <text x="698" y="114" text-anchor="end" fill="#d9a9b1" font-size="12">28.4M: the old line, with no bend</text>
+  <text x="698" y="114" text-anchor="end" fill="#d9a9b1" font-size="12">28.4M: the run log's own line, with no bend</text>
   <!-- the yellow line: where everything else ends, 17.6M -->
   <path d="M 80 236.2 L 704 236.2" fill="none" stroke="#ffe14a" stroke-width="2.5" stroke-linecap="round"/>
   <!-- the red line: 21M as drawn, then closing on the yellow line -->
@@ -79,20 +79,20 @@
   <path d="M 169.1 424 L 177.2 420 L 185.4 416.6 L 193.5 409.5 L 201.6 389.1 L 209.7 375.4 L 217.8 365.8 L 225.9 363.3 L 234 361.5 L 242.1 359.6 L 250.2 359.6 L 258.3 359.6 L 266.4 359.6 L 274.5 342.7 L 282.6 342.7 L 290.7 342.7 L 298.8 342.7 L 306.9 311.4 L 315 297.2 L 323.1 293.4 L 331.2 293.4 L 339.3 293.4 L 347.4 261.2 L 355.5 254.3 L 363.6 249.9" fill="none" stroke="#c98500" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
   <circle cx="363.6" cy="264.5" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
   <circle cx="363.6" cy="249.9" r="6.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
-  <text x="90" y="191" font-weight="bold" fill="#ffffff" font-size="14">21.0M: your red line</text>
-  <text x="90" y="227.2" font-weight="bold" fill="#ffffff" font-size="14">17.6M: your yellow line</text>
+  <text x="90" y="191" font-weight="bold" fill="#ffffff" font-size="14">21.0M: the run log's ceiling</text>
+  <text x="90" y="227.2" font-weight="bold" fill="#ffffff" font-size="14">17.6M: everything else's floor</text>
   <text x="718" y="122" font-weight="bold" fill="#ffffff" font-size="17">3.39M</text>
-  <text x="718" y="139" fill="#ffd7de" font-size="13">the gap today</text>
+  <text x="718" y="139" fill="#ffd7de" font-size="13">the gap on 19 November</text>
   <text x="718" y="178" font-weight="bold" fill="#ffffff" font-size="17">0</text>
   <text x="718" y="195" fill="#ffd7de" font-size="13">the gap in 30 weeks,</text>
-  <text x="718" y="211" fill="#ffd7de" font-size="13">to the token</text>
+  <text x="718" y="211" fill="#ffd7de" font-size="13">exactly, in whole tokens</text>
   <text x="718" y="250" font-weight="bold" fill="#ffffff" font-size="17">17.6M</text>
   <text x="718" y="267" fill="#ffd7de" font-size="13">where the 2 lines meet.</text>
-  <text x="718" y="283" fill="#ffd7de" font-size="13">Nobody names it first</text>
+  <text x="718" y="283" fill="#ffd7de" font-size="13">a result, not a target</text>
   <text x="718" y="322" font-weight="bold" fill="#ffffff" font-size="17">35.2M</text>
-  <text x="718" y="339" fill="#ffd7de" font-size="13">the whole tree then,</text>
-  <text x="718" y="355" fill="#ffd7de" font-size="13">where the 2 lines of</text>
-  <text x="718" y="371" fill="#ffd7de" font-size="13">today make 38.6M</text>
+  <text x="718" y="339" fill="#ffd7de" font-size="13">the whole tree then.</text>
+  <text x="718" y="355" fill="#ffd7de" font-size="13">The 2 lines of today</text>
+  <text x="718" y="371" fill="#ffd7de" font-size="13">add to 38.6M.</text>
   <path d="M 50 489.5 L 78 489.5" fill="none" stroke="#d0202c" stroke-width="3" stroke-linecap="round"/>
   <text x="88" y="494" fill="#ffd7de" font-size="13.5">the ceiling: it closes by 0.61 a week</text>
   <path d="M 376.7 489.5 L 404.7 489.5" fill="none" stroke="#ffe14a" stroke-width="3" stroke-linecap="round"/>
@@ -100,5 +100,5 @@
   <path d="M 504.6 489.5 L 532.6 489.5" fill="none" stroke="#ff8a2a" stroke-width="3" stroke-linecap="round"/>
   <text x="542.6" y="494" fill="#ffd7de" font-size="13.5">the gap</text>
   <path d="M 618.3 489.5 L 646.3 489.5" fill="none" stroke="#c98500" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>
-  <text x="656.3" y="494" fill="#ffd7de" font-size="13.5">the run log, bent</text>
+  <text x="656.3" y="494" fill="#ffd7de" font-size="13.5">the run log, bent down</text>
 </svg>
