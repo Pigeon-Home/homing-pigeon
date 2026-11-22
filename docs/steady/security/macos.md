@@ -1857,3 +1857,95 @@ say so, with the fix following in this lane. If
 F3 finds a page, the page is corrected in the
 same landing as the conclusions, and the
 correction is named there.
+
+## The enforce flip: conclusions
+
+Measured 2026-11-21, on the head the supposition
+above landed on, and judged against the hosted
+record the design page carries.
+
+F1 holds. The seed tests in the macOS suite,
+which pin the scripted probe's three shapes (a
+pass leaves `confinement` unstated, a reason
+states `audit` and carries the reason back, a
+named platform with no probe states `audit` and
+asks nothing), pass on this head, and the
+FreeBSD suite, which shares the seed machinery,
+passes whole beside them.
+
+F2 holds. The seam tests in the macOS suite,
+which pin the scripted backend at `enforce` (a
+job spawned through the backend, the audit
+record naming exactly "macos: seatbelt_profile +
+no_network + spawn_resource_limits", and a
+backend that cannot engage refusing the job),
+pass on this head.
+
+F3 found its remainder, and it is corrected in
+this landing. Two pages still stated the
+pre-flip posture as the present one:
+`docs/infrastructure-documents/project/testing.md`
+named macOS as the kernel with no backend that
+refuses to start at `enforce`, and
+`docs/infrastructure-documents/security/security-gaps.md`
+said no cage exists yet on macOS. Both now state
+the flip's shape: the Seatbelt backend engaging
+at `enforce`, and the gap that genuinely remains
+on macOS, which is the base directory ACL that
+nothing applies, a gap that matters where
+confinement is `off` or `audit`. The pages that
+carry the posture as their subject (the support
+matrix, the default posture page, the root
+SECURITY.md, and the design page) already agreed
+with the flip and are unchanged.
+
+The counts on this head, run on this Linux host:
+the macOS suite runs 263 tests and passes, with
+52 skipped, every skip a live class that runs
+only on a Mac, under reasons the skip registry
+carries; the FreeBSD suite runs 332 and passes,
+with 67 skipped, its live classes the same way;
+the Windows suite runs 81 and passes; the skip
+registry's own suite runs 5 and passes. The
+contract side of the flip is therefore proven on
+the current head. The live side was proven when
+the flip landed: the flip itself stands on main
+in the commit of 2026-11-14, 10:56 PM Pacific,
+and the macos-confinement workflow's run of
+2026-11-15 (43688324966) ran green on both
+hosted Macs, as the ordinary user and as root,
+with a frozen runner starting at `enforce` and
+running a confined job and a frozen installer
+leaving `enforce` in its config.
+
+That same hosted record judges the verdict the
+sixth round left open. P3 of R6 waited for a
+live leg: the suite's live class carrying the
+spawn limits point in its fixed form, green on
+both hosted Macs. The workflow's runs of
+2026-11-15 (43768512227 and 43769143056) ran the
+whole suite, 263 tests on each Mac, green on an
+Apple silicon Mac and an Intel Mac, and the live
+class runs on a Mac rather than skipping. P3 is
+judged, and it holds: the fixed form reads a
+confined process's reported limits as limited on
+both machines, and the `unlimited` answer the
+old form gave is the one the record above
+convicted.
+
+What remains owed, stated plainly. No fresh
+hosted run of the macos-confinement workflow was
+taken for this record: the workflow runs on
+GitHub's Macs, and this landing's proof is the
+contract suites on the current head plus the
+hosted record of 2026-11-15, which stands one
+week behind the head. A fresh hosted run on the
+current head closes that gap, and until it is
+taken the live proof of the flip at this exact
+head rests on the 2026-11-15 runs. The support
+level's name in the support matrix, "Supported,
+reduced confinement", is not moved by this
+record: it names the profile's shape (the host's
+processes stay visible to a job, where a
+namespace backend's do not), not its posture,
+and the posture it stands under is `enforce`.

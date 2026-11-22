@@ -47,7 +47,7 @@ readable by the runner principal and not by the job principal.
 | Platform | What exists | The gap |
 |---|---|---|
 | Linux | `job_user` (setuid), `install.py` writes owner-only `0600` | Default is still the same user. POSIX ACLs (`setfacl`) on the base dir should hide the secret from the job user when bwrap is off |
-| macOS | launchd agent as the installing user | `chmod +a` ACLs exist but nothing applies them; the real cage would be `sandbox-exec`, not an ACL |
+| macOS | launchd agent as the installing user | `chmod +a` ACLs exist but nothing applies them. The cage is separate from this gap: the Seatbelt backend (`sandbox-exec`) engages at `enforce`, so the unapplied ACL matters where confinement is `off` or `audit` |
 | FreeBSD | cron `@reboot` as the user | `setfacl` on ZFS/UFS unapplied; the per-job jail is the confinement backend and engages at `enforce` |
 | Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `docs/steady/security/windows.md` documents the account as the identity boundary | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r`, which is a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity and a restricted token are the stronger cousins, and they now ship as the Windows confinement backend at `enforce` |
 
@@ -62,11 +62,14 @@ the write itself has happened. An ACL, or a confinement backend
 with filesystem isolation where one exists, makes the write *fail*.
 On Linux, bwrap (`security.modes.confinement`) is the better tool
 and should stay the confinement backend; FreeBSD has its per-job
-jail, whose only writable mount is the workdir. The Windows backend
+jail, whose only writable mount is the workdir; macOS has its
+Seatbelt profile, which leaves the work directory as the job's only
+writable tree. The Windows backend
 (Job Object, restricted token, low integrity) bounds the job but
 isolates no filesystem, so on Windows the ACL and the identity
 split carry this step. ACLs matter where confinement is set to
-`off`, and for macOS, where no cage exists yet. The Pi profile
+`off`, and on macOS where it is set to `audit`, since the Seatbelt
+cage engages only at `enforce`. The Pi profile
 already lists `/etc/shadow` as a protected path; that path should
 be *denied* to the job user, not only watched.
 

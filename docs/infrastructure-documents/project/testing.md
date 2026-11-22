@@ -125,17 +125,19 @@ workflow fails when a proof disappears.
 
 What the platforms cannot prove is what the runner does not do there,
 by the owner's 2026-10-15 decisions: confinement's full form is bwrap
-on Linux; Windows and FreeBSD engage their own backends under
-`confinement: enforce` (a job object and a restricted token on
-Windows; a jail on FreeBSD), each probed at startup, and a kernel
-with no backend (macOS today) refuses to start under `confinement:
+on Linux; Windows, FreeBSD, and macOS engage their own backends
+under `confinement: enforce` (a job object and a restricted token on
+Windows; a jail on FreeBSD; a Seatbelt profile applied by
+`sandbox-exec` on macOS), each probed at startup, and a kernel
+with no backend refuses to start under `confinement:
 enforce` (the default for a feature the config does not set) because
 nothing can engage there; the WARN line and `fallback` audit entry
 path is for a control that breaks after a good start; `job_user` is a
 uid change and works on the three POSIX kernels; on Windows its form
-is the Job Object ceiling. The cage macOS still lacks is named in
-`docs/infrastructure-documents/security/security-gaps.md`
-(`sandbox-exec` on macOS); adding it is a scope decision, not a test.
+is the Job Object ceiling. What macOS still lacks is named in
+`docs/infrastructure-documents/security/security-gaps.md`: nothing
+applies the base directory ACL there, a gap that matters where
+confinement is set to `off` or `audit`.
 
 <!-- Agent-Stamp: 40000e00-1234-4abc-9def-0123456789ab -->
 
