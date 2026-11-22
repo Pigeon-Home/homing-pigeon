@@ -311,6 +311,55 @@ under the floor exactly as they did before the control
 existed; on a host where the job shape runs contained, the
 control engages as designed.
 
+Supposition for the Lane 7 diagnosis, recorded before any
+measurement in this lane (2026-11-21): the measurement above
+settled that grant breadth is not the cause, since
+PowerShell died under the whole Windows tree granted, and
+its closing claim, that managed programs do not initialize
+in a container whatever the construction, is wider than its
+evidence, because Lane 6 measured a second failing target
+that is not managed at all: whoami.exe, a native system
+binary, dies with the same exit (0xC0000142,
+STATUS_DLL_INIT_FAILED) and no output inside the container,
+while cmd.exe, findstr.exe and the Python interpreter run
+in the same container on the same host. A cause that covers
+both failing targets and spares the three running ones is
+therefore still open, and my belief, stated so the
+measurement can prove it wrong, is that one DLL in the load
+set the two failing targets share and the three running
+ones do not load eagerly at initialization performs an
+initialization access the capability less container token
+cannot make: the candidates, in the order I expect them,
+are an initialization open of the creating session's
+window station or desktop object, an initialization read
+of a profile path or user hive location the inherited
+environment names but the container SID cannot read, and
+an initialization open of a named object or registry key
+that a capability SID, and only a capability SID, reaches.
+The measurement that settles it names the DLL first:
+loader snaps for both failing targets inside the container
+(the image flag set per image, the loader's own debug
+output captured), checked against their import sets and
+against the running targets' import sets; then one
+variable at a time on the rig through this module's own
+spawn: the desktop named explicitly in the startup info
+with the window station and desktop granted to the
+container SID as a recorded grant; the profile environment
+variables pointed at the container's own profile folder
+with that folder granted; and, as diagnosis only and
+never as a fix, one capability SID at a time in the
+capabilities array, to learn whether any capability is
+what the initialization reaches for. A variant that lets
+both failing targets print their markers and exit 0 names
+the cause and the failing access together. If the only
+variant that works is a capability, the finding stands at
+the design boundary and no fix lands in this lane: the
+empty capability list is the no_network control, and
+widening it is a decision above this module. If a named
+grant inside the existing grant shape works, the fix
+stands in that shape, recorded and revoked like every
+other grant here.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
