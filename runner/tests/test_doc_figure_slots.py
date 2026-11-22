@@ -388,9 +388,14 @@ class TestFifthSnapshot(unittest.TestCase):
                        "The limit that follows: %s" % limits["The whole"][1],
                        "by 2 December"):
             self.assertIn(stated, growth, stated)
+        # The 2 limits chart was drawn again on 2026-11-21,
+        # counted to that day (at the 3.17.32.12 head the run
+        # log stood at 16,740,539 and everything else at
+        # 15,331,349), so its note carries that day's figures,
+        # not this snapshot's.
         limits = self._chart("two-limits")
-        for stated in ("the run log: %.1fM," % (last[3] / 1e6),
-                       "Everything else: %.1fM." % (last[4] / 1e6)):
+        for stated in ("the run log: 16.7M,",
+                       "Everything else: 15.3M."):
             self.assertIn(stated, limits, stated)
         # 1 surface and 1 blue for the counts, as the charts
         # before these.
@@ -427,11 +432,20 @@ class TestFifthSnapshot(unittest.TestCase):
         for part in limits:
             self.assertGreater(float(limits[part][1][:-1]) * 1e6,
                                limits[part][0], part)
-        # Each chart that draws the 2 parts carries their limits.
-        for name in ("growth", "two-limits"):
-            for part in ("Everything else", log):
-                self.assertIn(">%s<" % limits[part][1], self._chart(name),
-                              name)
+        # Each chart that draws the 2 parts carries their
+        # limits. The growth chart carries this snapshot's.
+        # The 2 limits chart, drawn again on 2026-11-21 from
+        # that day's counts, carries everything else's limit
+        # unchanged, and the run log's as the rule then gave
+        # it: the log stood still for 2 days, so its line
+        # fell to 27.2M.
+        for part in ("Everything else", log):
+            self.assertIn(">%s<" % limits[part][1],
+                          self._chart("growth"), "growth")
+        self.assertIn(">%s<" % limits["Everything else"][1],
+                      self._chart("two-limits"), "two-limits")
+        self.assertIn(">27.2M<", self._chart("two-limits"),
+                      "two-limits")
         # The third snapshot's 38 million is on none of the 3.
         for name in self.CHARTS:
             chart = self._chart(name)

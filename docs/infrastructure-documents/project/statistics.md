@@ -433,6 +433,15 @@ Each part, read for a limit:
   same rule from 2026-11-19, its limit is 28.4 million.
 - The whole follows from the 2: 46.0 million, on that if.
 
+The 2 limits chart above was drawn again on 2026-11-21,
+counted to that day at the 3.17.32.12 head: everything
+else stood at 15,331,349 and the run log at 16,740,539.
+Read off those counts, the rule gives everything else
+the same limit, 17.6 million (17,634,068), and the run
+log 27.2 million (27,239,005): the log stood still on
+both days, so its line fell further. The table above
+stands as the reading of 2026-11-19.
+
 A reading is not a proof. What would prove a limit, what
 each coming week may add, and the arithmetic behind every
 figure of this view, stand in

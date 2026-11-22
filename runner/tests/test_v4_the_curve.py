@@ -1014,20 +1014,33 @@ class TheRecordAndTheChartsCarryTheLines(unittest.TestCase):
         # left after 6 weeks.
         for name, stands, limit, top in (
                 ("growth", whole, whole_limit, 60e6),
-                ("limit", whole, whole_limit, 50e6),
-                ("two-limits", rest, rest_limit, 30e6),
-                ("two-limits", log, log_limit, 30e6)):
+                ("limit", whole, whole_limit, 50e6)):
             end = limit - (limit - stands) * A_WEEK ** 6
             self.assertIn('<circle cx="704" cy="%s" r="3.5"'
                           % drawn(end, top), self.chart(name), name)
+        # The 2 limits chart was drawn again on 2026-11-21,
+        # counted to that day at the 3.17.32.12 head
+        # (everything else 15,331,349, the run log
+        # 16,740,539), so its 2 lines start from that count
+        # and end at the axis edge on their paths, 40 days
+        # on, at the limits the rule gave that day:
+        # 17,634,068 and 27,239,005.
+        two = self.chart("two-limits")
+        for stands, limit in ((15331349, 17634068),
+                              (16740539, 27239005)):
+            end = limit - (limit - stands) * A_WEEK ** (40 / 7.0)
+            self.assertIn("L 704 %s" % drawn(end, 30e6), two,
+                          "two-limits")
         # The flat line of the whole stands at the limit itself.
         for name, top in (("growth", 60e6), ("limit", 50e6)):
             self.assertIn(
                 "M 80 %s L 704 %s" % ((drawn(whole_limit, top),) * 2),
                 self.chart(name), name)
-        # Each chart says its limits as the page does.
+        # Each chart says its limits as the page does. The
+        # 2 limits chart says the run log's as the rule gave
+        # it on 2026-11-21, 27.2M (see above).
         for name, said in (("growth", ("46.0M", "17.6M", "28.4M")),
-                           ("two-limits", ("17.6M", "28.4M")),
+                           ("two-limits", ("17.6M", "27.2M")),
                            ("limit", ("46.0 million",))):
             for limit in said:
                 self.assertIn(limit, self.chart(name), name)

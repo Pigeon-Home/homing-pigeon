@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="Helvetica, Arial, sans-serif">
-  <title>The 2 parts of the security-token count, 15 October to 31 December 2026: everything else under its line toward 17.6M, and the fuzz run log toward 28.4M if it keeps the same rule</title>
+  <title>The 2 parts of the security-token count, 15 October to 31 December 2026: everything else under its line toward 17.6M, and the fuzz run log toward 27.2M if it keeps the same rule</title>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#2b060d"/>
@@ -8,9 +8,9 @@
   </defs>
   <rect width="900" height="520" fill="url(#bg)"/>
   <text x="50" y="46" fill="#ffffff" font-size="24" font-weight="bold">2 lines, 2 limits</text>
-  <text x="50" y="72" fill="#ffd7de" font-size="15">The 2 parts of the count to 19 November 2026, and the limit a rule gives each</text>
+  <text x="50" y="72" fill="#ffd7de" font-size="15">The 2 parts of the count to 21 November 2026, and the limit a rule gives each</text>
   <!-- the side that is not counted -->
-  <rect x="363.6" y="104" width="340.4" height="320" fill="#ffffff" fill-opacity="0.045"/>
+  <rect x="379.8" y="104" width="324.2" height="320" fill="#ffffff" fill-opacity="0.045"/>
   <!-- the grid and the 2 axes -->
   <path d="M 80 424 L 704 424" fill="none" stroke="#6a2130" stroke-width="1"/>
   <text x="68" y="428.5" text-anchor="end" fill="#d9a9b1" font-size="13">0</text>
@@ -30,55 +30,53 @@
   <text x="80" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Oct 15</text>
   <path d="M 217.8 424 L 217.8 430" fill="none" stroke="#6a2130" stroke-width="1"/>
   <text x="217.8" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 1</text>
-  <path d="M 363.6 424 L 363.6 430" fill="none" stroke="#6a2130" stroke-width="1"/>
-  <text x="363.6" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 19</text>
+  <path d="M 379.8 424 L 379.8 430" fill="none" stroke="#6a2130" stroke-width="1"/>
+  <text x="379.8" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Nov 21</text>
   <path d="M 460.9 424 L 460.9 430" fill="none" stroke="#6a2130" stroke-width="1"/>
   <text x="460.9" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Dec 1</text>
   <path d="M 574.3 424 L 574.3 430" fill="none" stroke="#6a2130" stroke-width="1"/>
   <text x="574.3" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Dec 15</text>
   <path d="M 704 424 L 704 430" fill="none" stroke="#6a2130" stroke-width="1"/>
   <text x="704" y="448" text-anchor="middle" fill="#d9a9b1" font-size="13">Dec 31</text>
-  <path d="M 363.6 104 L 363.6 424" fill="none" stroke="#d9a9b1" stroke-width="1"/>
-  <text x="351.6" y="412" text-anchor="end" fill="#ffd7de" font-size="13.5">counted</text>
-  <text x="375.6" y="412" fill="#ffd7de" font-size="13.5">not counted</text>
+  <path d="M 379.8 104 L 379.8 424" fill="none" stroke="#d9a9b1" stroke-width="1"/>
+  <text x="367.8" y="412" text-anchor="end" fill="#ffd7de" font-size="13.5">counted</text>
+  <text x="391.8" y="412" fill="#ffd7de" font-size="13.5">not counted</text>
   <!-- the 2 limits: each follows from its own line -->
-  <path d="M 363.6 121 L 704 121" fill="none" stroke="#c98500" stroke-width="2" stroke-dasharray="7 5" stroke-linecap="round"/>
-  <path d="M 363.6 236.2 L 704 236.2" fill="none" stroke="#3987e5" stroke-width="2" stroke-dasharray="7 5" stroke-linecap="round"/>
-  <!-- what the rule allows each line from 19 November: the run log's is drawn broken, because it stands on an if -->
-  <path d="M 363.6 249.9 L 371.7 241.1 L 379.8 232.9 L 387.9 225.3 L 396.1 218.2 L 404.2 211.6 L 412.3 205.4 L 420.4 199.6 L 428.5 194.3 L 436.6 189.3 L 444.7 184.6 L 452.8 180.3 L 460.9 176.2 L 469 172.5 L 477.1 169 L 485.2 165.7 L 493.3 162.6 L 501.4 159.8 L 509.5 157.1 L 517.6 154.7 L 525.7 152.4 L 533.8 150.2 L 541.9 148.2 L 550 146.4 L 558.1 144.6 L 566.2 143 L 574.3 141.5 L 582.4 140.1 L 590.5 138.8 L 598.6 137.6 L 606.8 136.5 L 614.9 135.4 L 623 134.4 L 631.1 133.5 L 639.2 132.7 L 647.3 131.9 L 655.4 131.1 L 663.5 130.4 L 671.6 129.8 L 679.7 129.2 L 687.8 128.6 L 695.9 128.1 L 704 127.6" fill="none" stroke="#c98500" stroke-width="3" stroke-dasharray="9 6" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="420.4" cy="199.6" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
-  <circle cx="477.1" cy="169" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
-  <circle cx="533.8" cy="150.2" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
-  <circle cx="590.5" cy="138.8" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
-  <circle cx="647.3" cy="131.9" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
-  <circle cx="704" cy="127.6" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
-  <path d="M 363.6 264.5 L 371.7 262.6 L 379.8 260.8 L 387.9 259.1 L 396.1 257.5 L 404.2 256.1 L 412.3 254.7 L 420.4 253.5 L 428.5 252.3 L 436.6 251.2 L 444.7 250.2 L 452.8 249.2 L 460.9 248.3 L 469 247.5 L 477.1 246.7 L 485.2 246 L 493.3 245.3 L 501.4 244.7 L 509.5 244.1 L 517.6 243.6 L 525.7 243.1 L 533.8 242.6 L 541.9 242.2 L 550 241.8 L 558.1 241.4 L 566.2 241 L 574.3 240.7 L 582.4 240.4 L 590.5 240.1 L 598.6 239.8 L 606.8 239.6 L 614.9 239.4 L 623 239.1 L 631.1 238.9 L 639.2 238.8 L 647.3 238.6 L 655.4 238.4 L 663.5 238.3 L 671.6 238.1 L 679.7 238 L 687.8 237.9 L 695.9 237.8 L 704 237.7" fill="none" stroke="#3987e5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="420.4" cy="253.5" r="3.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <circle cx="477.1" cy="246.7" r="3.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <circle cx="533.8" cy="242.6" r="3.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <circle cx="590.5" cy="240.1" r="3.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <circle cx="647.3" cy="238.6" r="3.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <circle cx="704" cy="237.7" r="3.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <path d="M 379.8 133.5 L 704 133.5" fill="none" stroke="#c98500" stroke-width="2" stroke-dasharray="7 5" stroke-linecap="round"/>
+  <path d="M 379.8 235.9 L 704 235.9" fill="none" stroke="#3987e5" stroke-width="2" stroke-dasharray="7 5" stroke-linecap="round"/>
+  <!-- what the rule allows each line from 21 November: the run log's is drawn broken, because it stands on an if -->
+  <path d="M 379.8 245.4 L 387.9 237.8 L 396.1 230.7 L 404.2 224.1 L 412.3 217.9 L 420.4 212.1 L 428.5 206.8 L 436.6 201.8 L 444.7 197.1 L 452.8 192.8 L 460.9 188.7 L 469 185 L 477.1 181.4 L 485.2 178.2 L 493.3 175.1 L 501.4 172.3 L 509.5 169.6 L 517.6 167.2 L 525.7 164.9 L 533.8 162.7 L 541.9 160.7 L 550 158.9 L 558.1 157.1 L 566.2 155.5 L 574.3 154 L 582.4 152.6 L 590.5 151.3 L 598.6 150.1 L 606.8 149 L 614.9 147.9 L 623 146.9 L 631.1 146 L 639.2 145.1 L 647.3 144.3 L 655.4 143.6 L 663.5 142.9 L 671.6 142.3 L 679.7 141.7 L 687.8 141.1 L 695.9 140.6 L 704 140.1" fill="none" stroke="#c98500" stroke-width="3" stroke-dasharray="9 6" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="436.6" cy="201.8" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <circle cx="493.3" cy="175.1" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <circle cx="550" cy="158.9" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <circle cx="606.8" cy="149" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <circle cx="663.5" cy="142.9" r="3.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <path d="M 379.8 260.5 L 387.9 258.8 L 396.1 257.2 L 404.2 255.8 L 412.3 254.4 L 420.4 253.2 L 428.5 252 L 436.6 250.9 L 444.7 249.9 L 452.8 248.9 L 460.9 248 L 469 247.2 L 477.1 246.4 L 485.2 245.7 L 493.3 245 L 501.4 244.4 L 509.5 243.8 L 517.6 243.3 L 525.7 242.8 L 533.8 242.3 L 541.9 241.9 L 550 241.5 L 558.1 241.1 L 566.2 240.7 L 574.3 240.4 L 582.4 240.1 L 590.5 239.8 L 598.6 239.6 L 606.8 239.3 L 614.9 239.1 L 623 238.9 L 631.1 238.7 L 639.2 238.5 L 647.3 238.3 L 655.4 238.1 L 663.5 238 L 671.6 237.8 L 679.7 237.7 L 687.8 237.6 L 695.9 237.5 L 704 237.4" fill="none" stroke="#3987e5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="436.6" cy="250.9" r="3.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="493.3" cy="245" r="3.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="550" cy="241.5" r="3.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="606.8" cy="239.3" r="3.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="663.5" cy="238" r="3.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
   <!-- the 2 lines, each day's last landing -->
-  <path d="M 80 419.2 L 88.1 418 L 96.2 415.9 L 104.3 410.1 L 112.4 407.2 L 120.5 406.7 L 128.6 405.4 L 136.7 401.1 L 144.8 394.7 L 152.9 387 L 161 363.4 L 169.1 354.2 L 177.2 345.8 L 185.4 343.8 L 193.5 339.3 L 201.6 336.7 L 209.7 317.8 L 217.8 309.1 L 225.9 298.6 L 234 297.6 L 242.1 298.2 L 250.2 296.8 L 258.3 291.9 L 266.4 291.2 L 274.5 288.6 L 282.6 287.8 L 290.7 285.9 L 298.8 280 L 306.9 269.4 L 315 275.8 L 323.1 272.7 L 331.2 269.1 L 339.3 268.6 L 347.4 268 L 355.5 265.5 L 363.6 264.5" fill="none" stroke="#21050b" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M 80 419.2 L 88.1 418 L 96.2 415.9 L 104.3 410.1 L 112.4 407.2 L 120.5 406.7 L 128.6 405.4 L 136.7 401.1 L 144.8 394.7 L 152.9 387 L 161 363.4 L 169.1 354.2 L 177.2 345.8 L 185.4 343.8 L 193.5 339.3 L 201.6 336.7 L 209.7 317.8 L 217.8 309.1 L 225.9 298.6 L 234 297.6 L 242.1 298.2 L 250.2 296.8 L 258.3 291.9 L 266.4 291.2 L 274.5 288.6 L 282.6 287.8 L 290.7 285.9 L 298.8 280 L 306.9 269.4 L 315 275.8 L 323.1 272.7 L 331.2 269.1 L 339.3 268.6 L 347.4 268 L 355.5 265.5 L 363.6 264.5" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M 169.1 424 L 177.2 420 L 185.4 416.6 L 193.5 409.5 L 201.6 389.1 L 209.7 375.4 L 217.8 365.8 L 225.9 363.3 L 234 361.5 L 242.1 359.6 L 250.2 359.6 L 258.3 359.6 L 266.4 359.6 L 274.5 342.7 L 282.6 342.7 L 290.7 342.7 L 298.8 342.7 L 306.9 311.4 L 315 297.2 L 323.1 293.4 L 331.2 293.4 L 339.3 293.4 L 347.4 261.2 L 355.5 254.3 L 363.6 249.9" fill="none" stroke="#21050b" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M 169.1 424 L 177.2 420 L 185.4 416.6 L 193.5 409.5 L 201.6 389.1 L 209.7 375.4 L 217.8 365.8 L 225.9 363.3 L 234 361.5 L 242.1 359.6 L 250.2 359.6 L 258.3 359.6 L 266.4 359.6 L 274.5 342.7 L 282.6 342.7 L 290.7 342.7 L 298.8 342.7 L 306.9 311.4 L 315 297.2 L 323.1 293.4 L 331.2 293.4 L 339.3 293.4 L 347.4 261.2 L 355.5 254.3 L 363.6 249.9" fill="none" stroke="#c98500" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="363.6" cy="264.5" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
-  <circle cx="363.6" cy="249.9" r="6.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
+  <path d="M 80 419.2 L 88.1 418 L 96.2 415.9 L 104.3 410.1 L 112.4 407.2 L 120.5 406.7 L 128.6 405.4 L 136.7 401.1 L 144.8 394.7 L 152.9 387 L 161 363.4 L 169.1 354.2 L 177.2 345.8 L 185.4 343.8 L 193.5 339.3 L 201.6 336.7 L 209.7 317.8 L 217.8 309.1 L 225.9 298.6 L 234 297.6 L 242.1 298.2 L 250.2 296.8 L 258.3 291.9 L 266.4 291.2 L 274.5 288.6 L 282.6 287.8 L 290.7 285.9 L 298.8 280 L 306.9 269.4 L 315 275.8 L 323.1 272.7 L 331.2 269.1 L 339.3 268.6 L 347.4 268 L 355.5 265.5 L 363.6 264.5 L 371.7 260.5 L 379.8 260.5" fill="none" stroke="#21050b" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M 80 419.2 L 88.1 418 L 96.2 415.9 L 104.3 410.1 L 112.4 407.2 L 120.5 406.7 L 128.6 405.4 L 136.7 401.1 L 144.8 394.7 L 152.9 387 L 161 363.4 L 169.1 354.2 L 177.2 345.8 L 185.4 343.8 L 193.5 339.3 L 201.6 336.7 L 209.7 317.8 L 217.8 309.1 L 225.9 298.6 L 234 297.6 L 242.1 298.2 L 250.2 296.8 L 258.3 291.9 L 266.4 291.2 L 274.5 288.6 L 282.6 287.8 L 290.7 285.9 L 298.8 280 L 306.9 269.4 L 315 275.8 L 323.1 272.7 L 331.2 269.1 L 339.3 268.6 L 347.4 268 L 355.5 265.5 L 363.6 264.5 L 371.7 260.5 L 379.8 260.5" fill="none" stroke="#3987e5" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M 169.1 424 L 177.2 420 L 185.4 416.6 L 193.5 409.5 L 201.6 389.1 L 209.7 375.4 L 217.8 365.8 L 225.9 363.3 L 234 361.5 L 242.1 359.6 L 250.2 359.6 L 258.3 359.6 L 266.4 359.6 L 274.5 342.7 L 282.6 342.7 L 290.7 342.7 L 298.8 342.7 L 306.9 311.4 L 315 297.2 L 323.1 293.4 L 331.2 293.4 L 339.3 293.4 L 347.4 261.2 L 355.5 254.3 L 363.6 249.9 L 371.7 245.4 L 379.8 245.4" fill="none" stroke="#21050b" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M 169.1 424 L 177.2 420 L 185.4 416.6 L 193.5 409.5 L 201.6 389.1 L 209.7 375.4 L 217.8 365.8 L 225.9 363.3 L 234 361.5 L 242.1 359.6 L 250.2 359.6 L 258.3 359.6 L 266.4 359.6 L 274.5 342.7 L 282.6 342.7 L 290.7 342.7 L 298.8 342.7 L 306.9 311.4 L 315 297.2 L 323.1 293.4 L 331.2 293.4 L 339.3 293.4 L 347.4 261.2 L 355.5 254.3 L 363.6 249.9 L 371.7 245.4 L 379.8 245.4" fill="none" stroke="#c98500" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="379.8" cy="260.5" r="6.5" fill="#3987e5" stroke="#21050b" stroke-width="2"/>
+  <circle cx="379.8" cy="245.4" r="6.5" fill="#c98500" stroke="#21050b" stroke-width="2"/>
   <!-- the rule, stated on the chart so the word needs no other page -->
   <text x="90" y="134" fill="#ffd7de" font-size="13">the rule: each 7 days add less</text>
   <text x="90" y="150" fill="#ffd7de" font-size="13">than a line that falls by 0.61 a week</text>
-  <text x="718" y="123" font-weight="bold" fill="#ffffff" font-size="17">28.4M</text>
-  <text x="718" y="140" fill="#ffd7de" font-size="13">the run log, if it keeps</text>
-  <text x="718" y="156" fill="#ffd7de" font-size="13">the rule from 19 Nov</text>
-  <text x="718" y="238.2" font-weight="bold" fill="#ffffff" font-size="17">17.6M</text>
-  <text x="718" y="255.2" fill="#ffd7de" font-size="13">everything else: it has</text>
-  <text x="718" y="271.2" fill="#ffd7de" font-size="13">kept the rule 19 days</text>
-  <text x="718" y="345.2" fill="#d9a9b1" font-size="13">On 19 November</text>
-  <text x="718" y="362.2" fill="#d9a9b1" font-size="13">the run log: 16.3M,</text>
+  <text x="718" y="135.5" font-weight="bold" fill="#ffffff" font-size="17">27.2M</text>
+  <text x="718" y="152.5" fill="#ffd7de" font-size="13">the run log, if it keeps</text>
+  <text x="718" y="168.5" fill="#ffd7de" font-size="13">the rule from 21 Nov</text>
+  <text x="718" y="237.9" font-weight="bold" fill="#ffffff" font-size="17">17.6M</text>
+  <text x="718" y="254.9" fill="#ffd7de" font-size="13">everything else: it has</text>
+  <text x="718" y="270.9" fill="#ffd7de" font-size="13">kept the rule 21 days</text>
+  <text x="718" y="345.2" fill="#d9a9b1" font-size="13">On 21 November</text>
+  <text x="718" y="362.2" fill="#d9a9b1" font-size="13">the run log: 16.7M,</text>
   <text x="718" y="378.2" fill="#d9a9b1" font-size="13">its limit stands on an if.</text>
-  <text x="718" y="394.2" fill="#d9a9b1" font-size="13">Everything else: 15.0M.</text>
+  <text x="718" y="394.2" fill="#d9a9b1" font-size="13">Everything else: 15.3M.</text>
   <path d="M 50 489.5 L 78 489.5" fill="none" stroke="#c98500" stroke-width="3" stroke-linecap="round"/>
   <text x="88" y="494" fill="#ffd7de" font-size="13.5">the fuzz run log (one file)</text>
   <path d="M 305.7 489.5 L 333.7 489.5" fill="none" stroke="#3987e5" stroke-width="3" stroke-linecap="round"/>
