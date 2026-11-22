@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.7 - 2026-11-22
+
+- Docs: the owner's FUTURE.md updates land on main (since 3.17.33.6)
+- Tests: the snap release planner, the signup address surface, and the Apple store version check families land (since 3.17.33.6)
+
 ## 3.17.33.6 - 2026-11-22
 
 - Docs: the owner's FUTURE.md updates land on main (since 3.17.33.5)
