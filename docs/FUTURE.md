@@ -16,4 +16,3 @@ oracle root CA could be self signed, or pigeon-home.ai mint, or 'OTHER' like ear
 - https://slashdot.org/story/21/11/15/220255/nyc-passes-bill-requiring-bias-audits-of-ai-hiring-tech
 - https://regulations.ai/regulations/RAI-US-NY-S1169A0-2025 (https://ag.ny.gov/contact-ag)
 - OKLETSGO
-- ask DAD for simulator for bday!!! omggggg yesssssss P != NP ?!?!!?:!:!:!:!!:!:!: cannot WAIT for xmas THIS YEAR!
