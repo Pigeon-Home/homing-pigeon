@@ -462,6 +462,74 @@ one verdict, consulted by both the gate and the spawn
 seam in every start shape, with the audit line naming
 the backend actually in force for each job.
 
+Conclusions, from the Lane 8 measurement (2026-11-21, the
+Germany rig, Windows Server 2022): the supposition's
+wiring candidates were each measured, and the break is
+narrower and stranger than any of them. The duplicate
+instance candidate does not stand in the battery shape:
+remediation_ops itself loads under two names there, but
+both copies resolve this backend to the one
+runner.guard instance, and in the traced battery run the
+gate and the spawn seam held the same module id and the
+same cache throughout. The cache timing candidate does
+not stand either: the verdict the gate computed did
+reach the spawn seam, on the same instance, for every
+job. What the traced run in the battery's own start
+shape (the driver launched detached through WMI, outside
+any interactive session) showed instead is that the
+verdict itself was the failure: the AppContainer trial
+passed, but its job shape half answered that powershell
+could not run to completion inside the container (exit
+1, an UnauthorizedAccessException naming the staged
+work directory under the creating user's profile Temp),
+so the gate honestly fell back to the floor and every
+job followed it. The same gate and spawn in an
+interactive session answered None and spawned every job
+contained, which is why the defect hid behind green
+batteries whose runner happened to start in the other
+shape. The isolation then varied the staged directory:
+any work directory under the profile Temp tree failed
+the same way in the detached shape, a work directory
+under the preview root passed, and the staging mechanism
+(mkdtemp's DACL versus a plain makedirs) made no
+difference. The mechanism, isolated in the interactive
+shape where the process runs instead of dying: inside
+the container, the process's Win32 current directory is
+the granted work directory, but powershell's own
+location falls back to a drive root it can open (D:\ on
+the rig), its Set-Location to the granted directory is
+denied, and its provider relative paths (Get-Content,
+Get-FileHash on a staged file's bare name) resolve
+against that root instead of the work directory, while
+Win32 relative paths work. The shell stands in its
+directory by opening the directory and its ancestors;
+the spawn granted the leaf and nothing above it, and an
+ancestor whose DACL names nothing the container token
+holds (the profile root above a Temp tree is the
+measured case) is a wall the leaf grant cannot see
+past. Granting the container SID read and execute on
+every ancestor of the work directory by hand, through
+this module's own ACL call, made the contained shell
+stand in its directory and read and hash its staged
+files by their bare names. The fix therefore stands in
+the grant shape: app_container_grant_set now records
+every ancestor directory of the work directory and of
+each read path at read_execute, granted and revoked
+with the rest of the set, so a contained process can
+always walk to the directory it was granted, in the
+trial's staging and in a job's work tree alike, in
+every start shape. Two wiring hardenings from the
+supposition stand beside it, because each closes a
+silent floor of the same family even though neither was
+this break: spawn_confined_process consults the verdict
+through windows_app_container_problem when its cache is
+empty instead of reading an empty cache as a floor
+verdict, and the loader in ops/remediation_ops.py
+registers the backend it loaded under both import names
+this file carries, so a later import by the other name
+in the same process resolves to the same instance, one
+verdict for the gate and the spawn alike.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
@@ -2088,12 +2156,24 @@ else:
         exactly as it always has, and the process carries the
         floor status. There is no unconfined fallback either
         way.
+
+        The seam consults the verdict, not only the cache: a
+        spawn reached on a process whose gate has not run yet
+        (a start shape that services a job before any startup
+        or per job gate call landed on this module instance)
+        computes the verdict here, through the same cached
+        trial the gate consults, instead of reading an empty
+        cache as a floor verdict. An empty cache was never a
+        verdict; treating it as one silently floored every
+        job in any start shape whose first confinement call
+        was a spawn (the Lane 8 diagnosis, recorded in the
+        header).
         """
-        if _ac_trial_verdict and app_container_boundary_crossing(
-                _ac_trial_verdict[0]):
-            raise RuntimeError(_ac_trial_verdict[0])
-        if _ac_trial_verdict and _ac_trial_verdict[0] is None \
-                and cwd:
+        verdict = _ac_trial_verdict[0] if _ac_trial_verdict \
+            else windows_app_container_problem()
+        if app_container_boundary_crossing(verdict):
+            raise RuntimeError(verdict)
+        if verdict is None and cwd:
             try:
                 return spawn_app_container_process(
                     argv, cwd=cwd, env=env)
@@ -2434,20 +2514,56 @@ def proc_thread_attribute_spec(capabilities):
             capabilities)
 
 
+def app_container_ancestor_dirs(path):
+    """The ancestor directories of `path`, nearest first, up
+    to and including the root of its drive or tree: for a
+    path three levels deep, its parent, its grandparent and
+    the root. A relative path with no directory part has
+    none. Pure path arithmetic, on any host, so the grant
+    set's shape can be pinned by the suite anywhere.
+    """
+    out = []
+    node = os.path.dirname(path)
+    while node and node not in out:
+        out.append(node)
+        parent = os.path.dirname(node)
+        if parent == node:
+            break
+        node = parent
+    return out
+
+
 def app_container_grant_set(work_dir, read_paths=()):
     """The recorded grant set for an AppContainer spawn: a list
     of (path, access) pairs, the work directory first at "full",
-    then each read path at "read_execute", deduplicated, in
-    order. This set is the whole grant: the container SID gets
-    access to these paths and to nothing else, and the spawn
-    records exactly this list so what was granted can be
-    reported. An empty work directory is an error.
+    then each read path at "read_execute", then every ancestor
+    directory of the work directory and of each read path at
+    "read_execute", deduplicated, in order. This set is the
+    whole grant: the container SID gets access to these paths
+    and to nothing else, and the spawn records exactly this
+    list so what was granted can be reported and revoked. An
+    empty work directory is an error.
+
+    The ancestors stand in the set because a contained
+    process must be able to walk the path to the directory
+    it was granted (the Lane 8 measurement, recorded in the
+    header): the job interpreter's shell resolves its own
+    standing in the work directory by opening the directory
+    and its ancestors, and where an ancestor's DACL names
+    nothing the container token holds (a profile tree is the
+    measured case), the shell either falls back to a drive
+    root it can open, so its relative paths silently
+    resolve somewhere else, or refuses to stand there at
+    all and the process exits before a line of the job
+    runs. A grant on the leaf alone is a grant the job
+    cannot always reach.
     """
     if not isinstance(work_dir, str) or not work_dir:
         raise ValueError(
             "an AppContainer grant set needs a work directory")
     grants = [(work_dir, "read_write_execute")]
     seen = {work_dir}
+    named = [work_dir]
     for path in read_paths or ():
         if not isinstance(path, str) or not path:
             raise ValueError(
@@ -2456,7 +2572,14 @@ def app_container_grant_set(work_dir, read_paths=()):
         if path in seen:
             continue
         seen.add(path)
+        named.append(path)
         grants.append((path, "read_execute"))
+    for path in named:
+        for ancestor in app_container_ancestor_dirs(path):
+            if ancestor in seen:
+                continue
+            seen.add(ancestor)
+            grants.append((ancestor, "read_execute"))
     return grants
 
 

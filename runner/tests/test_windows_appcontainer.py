@@ -176,20 +176,42 @@ class GrantSetTests(unittest.TestCase):
             "/work", ["/ro/one", "/ro/two"])
         self.assertEqual(grants, [("/work", "read_write_execute"),
                                   ("/ro/one", "read_execute"),
-                                  ("/ro/two", "read_execute")])
+                                  ("/ro/two", "read_execute"),
+                                  ("/", "read_execute"),
+                                  ("/ro", "read_execute")])
 
-    def test_only_the_named_paths_are_granted(self):
+    def test_only_the_named_paths_and_their_ancestors(self):
+        # The Lane 8 shape (2026-11-21): the named paths, and
+        # the ancestors a contained process must walk to reach
+        # them, and nothing else. A relative work directory
+        # names no ancestor and gains none.
         grants = WC.app_container_grant_set("/work")
-        self.assertEqual(grants, [("/work", "read_write_execute")])
+        self.assertEqual(grants, [("/work", "read_write_execute"),
+                                  ("/", "read_execute")])
         self.assertNotIn("/etc", [p for p, _ in grants])
-        self.assertNotIn("/", [p for p, _ in grants])
+        grants = WC.app_container_grant_set("work")
+        self.assertEqual(grants, [("work", "read_write_execute")])
+
+    def test_ancestors_nearest_first_to_the_root(self):
+        self.assertEqual(
+            WC.app_container_ancestor_dirs("/a/b/c"),
+            ["/a/b", "/a", "/"])
+        self.assertEqual(WC.app_container_ancestor_dirs("/a"),
+                         ["/"])
+        self.assertEqual(WC.app_container_ancestor_dirs("a"), [])
+        grants = WC.app_container_grant_set("/a/b/c")
+        self.assertEqual(grants, [("/a/b/c", "read_write_execute"),
+                                  ("/a/b", "read_execute"),
+                                  ("/a", "read_execute"),
+                                  ("/", "read_execute")])
 
     def test_duplicates_collapse_in_order(self):
         grants = WC.app_container_grant_set(
             "/work", ["/ro", "/ro", "/work", "/other", "/ro"])
         self.assertEqual(grants, [("/work", "read_write_execute"),
                                   ("/ro", "read_execute"),
-                                  ("/other", "read_execute")])
+                                  ("/other", "read_execute"),
+                                  ("/", "read_execute")])
 
     def test_empty_work_dir_is_an_error(self):
         for bad in ("", None, 7):
@@ -875,6 +897,49 @@ class StatusTests(unittest.TestCase):
                     ["x"], cwd="/work")
             with self.assertRaises(RuntimeError):
                 WC.spawn_confined_process(["x"], cwd="/work")
+
+
+class Lane8VerdictWiringTests(unittest.TestCase):
+    """The Lane 8 regression pin (2026-11-21): in the rig
+    battery's own start shape the audit named the floor for
+    every job while the trial passed in other start shapes.
+    The measurement (recorded in windows_confine.py's
+    header) isolated two wiring facts this class pins: the
+    spawn seam must consult the trial's verdict itself, not
+    only a cache a gate call happened to populate, and the
+    loader must hand the gate and the spawn one backend
+    instance even though the module carries two import
+    names. The grant shape half of the fix is pinned in
+    GrantSetTests above.
+    """
+
+    def _source(self):
+        with open(WC.__file__, encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_spawn_seam_consults_the_verdict_itself(self):
+        source = self._source()
+        start = source.index(
+            "def spawn_confined_process(argv, cwd=None, env=None):")
+        body = source[start:start + 4000]
+        # The verdict is computed through the trial when the
+        # cache is empty: an empty cache is not a floor
+        # verdict, and the seam may not read it as one.
+        self.assertIn("windows_app_container_problem()", body)
+        self.assertIn("_ac_trial_verdict[0] if _ac_trial_verdict",
+                      body)
+
+    def test_loader_registers_one_instance_under_both_names(self):
+        from runner.ops import remediation_ops as REM
+        mod = REM._windows_confine()
+        self.assertIsNotNone(mod)
+        self.assertIs(
+            sys.modules.get("runner.guard.windows_confine"), mod)
+        self.assertIs(
+            sys.modules.get("guard.windows_confine"), mod)
+        # And a later resolution through the loader is the
+        # same instance the gate and the spawn both consult.
+        self.assertIs(REM._windows_confine(), mod)
 
 
 if __name__ == "__main__":

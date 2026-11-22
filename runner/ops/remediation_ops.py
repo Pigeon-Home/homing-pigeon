@@ -23,19 +23,36 @@ def _windows_confine(backend=None):
     sibling modules import each other. None when it cannot be
     imported at all: callers read that as "cannot engage",
     which keeps every gate in its refuse direction.
+
+    Whichever name loads it first, the module is registered
+    under both names it carries (runner.guard.windows_confine
+    and guard.windows_confine) when the other name is still
+    unregistered: the backend holds the confinement trial's
+    cached verdict, and a process that imported it twice
+    under its two names would hold two verdicts, one for the
+    startup gate and one for the spawn seam, each able to
+    disagree with the other in silence (the Lane 8 wiring
+    hardening, recorded in windows_confine.py's header).
+    One instance, one verdict, consulted by both.
     """
     if backend is not None:
         return backend
+    mod = None
     try:
         from runner.guard import windows_confine
-        return windows_confine
+        mod = windows_confine
     except ImportError:
         pass
-    try:
-        from guard import windows_confine  # type: ignore
-        return windows_confine
-    except ImportError:
-        return None
+    if mod is None:
+        try:
+            from guard import windows_confine  # type: ignore
+            mod = windows_confine
+        except ImportError:
+            return None
+    for alias in ("runner.guard.windows_confine",
+                  "guard.windows_confine"):
+        sys.modules.setdefault(alias, mod)
+    return mod
 
 # The mark _confinement_spawn leaves on a Windows confined
 # process: this process already sits in a Job Object. The
