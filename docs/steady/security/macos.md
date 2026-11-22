@@ -1974,7 +1974,7 @@ flip at this exact head rests on the hosted runs of
 
 ## The flip at the current head: supposition, recorded before the verification
 
-Recorded 2026-11-22, at the conductor's word of this
+Recorded 2026-11-22, at the owner's word of this
 day approving this lane's work. The flip sections
 above record the flip as it landed on 2026-11-14 and
 was verified on the head of 2026-11-21, and they
