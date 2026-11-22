@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.6 - 2026-11-22
+
+- Docs: the owner's FUTURE.md updates land on main (since 3.17.33.5)
+- Docs: the ComChat forum record of the 3.17.33.5 publication and verification lands (since 3.17.33.5)
+
 ## 3.17.33.5 - 2026-11-22
 
 - Docs: the full project status lands in ComChat on main at the owner's word of 22-Nov-2026, verbose, with the Apple, Microsoft and Snap store vetting notes recording what information was put in where, and the public listings verbatim; the owner's surname stays out and his contact phone number is described, never printed (since 3.17.33.4)
