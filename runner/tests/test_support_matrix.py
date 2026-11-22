@@ -126,22 +126,34 @@ class SupportMatrixTest(unittest.TestCase):
         self.assertNotIn("reduced confinement", row)
         self.assertNotIn("Experimental", row)
 
-    def test_the_reduced_level_names_the_platforms_it_fits(self):
-        # The level's definition says, platform by platform, why
-        # confinement there is weaker than the Linux sandbox. It
-        # names Windows alone now: FreeBSD left the level on
-        # 2026-11-14 when its jail was rebuilt, and macOS left
-        # it on 2026-11-21 on the owner's call, its row moved
-        # to Supported because the name now follows the
-        # backend's enforce posture. Neither may come back as
-        # a present-tense example of the level.
+    def test_the_reduced_level_records_its_departures(self):
+        # No platform carries the reduced-confinement level in
+        # the present tense now. Its definition stands as the
+        # record of a step three platforms took and left:
+        # FreeBSD left it on 2026-11-14 when its jail was
+        # rebuilt, macOS left it on 2026-11-21 on the owner's
+        # call, and Windows left it on 2026-11-21 on the
+        # owner's call the same evening, each name now
+        # following its backend's enforce posture. None of the
+        # three may come back as a present-tense example of
+        # the level.
         flat = _flat()
         start = flat.index("- **Supported, reduced confinement**")
         end = flat.index("- **Experimental**")
         definition = flat[start:end]
-        self.assertIn("on Windows", definition)
-        self.assertNotIn("on macOS the backend applies", definition)
-        self.assertNotIn("on FreeBSD the backend applies", definition)
+        self.assertIn("No row in the table below stands at "
+                      "this level today", definition)
+        self.assertIn("FreeBSD stood at this level until "
+                      "2026-11-14", definition)
+        self.assertIn("macOS stood at this level until "
+                      "2026-11-21", definition)
+        self.assertIn("Windows stood at this level until "
+                      "2026-11-21", definition)
+        self.assertNotIn("on Windows the backend", definition)
+        self.assertNotIn("on macOS the backend applies",
+                         definition)
+        self.assertNotIn("on FreeBSD the backend applies",
+                         definition)
 
     def test_the_macos_row_carries_its_landed_level(self):
         # The macOS row stands at Supported since the owner's
@@ -150,8 +162,8 @@ class SupportMatrixTest(unittest.TestCase):
         # and the level's name follows that posture. The
         # reduced-confinement level may not come back on its
         # row. (The words for it still stand in this file's
-        # level definitions, for the Windows rows, so the pin
-        # reads the row itself.)
+        # level definitions, as the record of the departures,
+        # so the pin reads the row itself.)
         row = _row("macOS (Intel and Apple silicon)")
         self.assertTrue(
             row.startswith(
@@ -159,6 +171,33 @@ class SupportMatrixTest(unittest.TestCase):
                 "**Supported** |"),
             row[:70])
         self.assertNotIn("reduced confinement", row)
+
+    def test_the_windows_rows_carry_their_landed_level(self):
+        # The Windows rows stand at Supported since the owner's
+        # call of 2026-11-21: the AppContainer control has
+        # enforced at enforce where its trial proves since it
+        # landed that day, and the level's name follows that
+        # posture, as the macOS row's did the same evening.
+        # The reduced-confinement level may not come back on
+        # either row. (The words for it still stand in this
+        # file's level definitions, as the record of the
+        # departures, so the pin reads the rows themselves.)
+        for name in ("Windows x86-64", "Windows ARM64"):
+            row = _row(name)
+            self.assertTrue(
+                row.startswith("| %s | **Supported** |" % name),
+                row[:60])
+            self.assertNotIn("reduced confinement", row)
+        # The shape limits stay stated on the x86-64 row
+        # itself: the whole job ceiling beside the per
+        # process one, the floor's open network where the
+        # trial does not prove, and no processor ceiling in
+        # either shape.
+        row = _row("Windows x86-64")
+        self.assertIn("for the job as a whole", row)
+        self.assertIn("The floor isolates no network", row)
+        self.assertIn("Neither shape sets a processor ceiling",
+                      row)
 
     def test_the_freebsd_row_s_numbers_and_names_match_the_code(self):
         # The row states the jail's ceilings and the record's

@@ -248,3 +248,93 @@ wrong:
 The conclusions go in this same place when the
 measurement lands, and the change the numbers support
 follows them.
+
+### Conclusions (2026-11-21)
+
+Measured against the suppositions above:
+
+- S1 stands, with one correction to the supposition's
+  own wording. The whole job ceiling is set in code:
+  `_create_job_with_limits` composes the limit flags
+  from the per process memory flag, the job memory flag
+  and kill on job close, and sets both limits from the
+  caller's byte count (512 MiB by default), through
+  `SetInformationJobObject` at the extended limit
+  information class. The correction: the JobMemoryLimit
+  assignment was already pinned, by the v4 bars record
+  in `runner/tests/test_v4_the_bars.py`; what no test
+  named was the flag that makes the assignment take
+  effect. A source pin family in
+  `runner/tests/test_windows_confine.py`
+  (JobObjectLimitsSourceTest) now pins the flags, both
+  assignments, the extended class call, and that every
+  spawn shape (the containment applier, the AppContainer
+  spawn, the floor spawn and the job_user spawn) builds
+  its job through the one helper.
+- S2 stands. No processor ceiling is set: the limits
+  body names no job time, per process time, CPU rate or
+  process count flag, and the new pin holds that absence
+  in the body. The parity reading also stands: the Linux
+  sandbox sets no processor ceiling, the macOS launcher
+  sets an address space limit only, and the FreeBSD
+  jail's core limit is a set of cores. The confinement
+  cell of the Windows row states the position plainly.
+- S3 stands. The gate, the posture record and the spawn
+  seam consult the one cached verdict, the AppContainer
+  half of it being the trial and the job shape probe
+  together; a spawn reached before any gate call
+  computes the verdict rather than reading an empty
+  cache as a floor verdict; and the loader registers the
+  one module instance under both import names. The Lane
+  8 test families pin each leg.
+- S4 stands. The floor fallback is by design, and the
+  matrix cell now states the floor's network position
+  plainly: the floor isolates no network.
+- S5 stands in its confinement half, and its timing half
+  is recorded as it was measured. On the head this lane
+  landed, the rig battery ran twice. In both runs every
+  confinement step passed: the gate's refusal shape, the
+  workspace write and read, the escape write blocked,
+  the escape read refused (outsideReadSucceeded=False,
+  the AppContainer shape engaged, not the floor), the
+  memory ceiling's refusal, and the audit record naming
+  exactly "windows: job_object + appcontainer +
+  no_network", with the production install untouched.
+  In both runs the timing steps failed under measured
+  rig saturation (CPU at 88 to 93 percent with 12 to 14
+  python processes from parallel lanes, and a second
+  battery running for the same head inside the first
+  run's window): startup and build stamp read an empty
+  log window while the runner stood alive and its stamp
+  stood in the log the report itself prints, and the
+  clock job did not arrive inside its window. Those are
+  timing failures under load, not confinement failures,
+  and no clean 17 of 17 is claimed for this head; a re
+  run of the battery on a quiet rig remains the
+  outstanding check for those three steps.
+
+### The owner's call on the level's name (2026-11-21)
+
+On 2026-11-21 the owner directed that the Windows rows
+of `docs/support-matrix.md` be given the treatment the
+macOS row was given the same evening, and that the
+AppContainer backend's design record
+(`docs/steady/design/windows-appcontainer-design.md`) be
+landed with it, reconciled against the build. The rows
+now stand at **Supported**. The reasoning is the macOS
+reasoning: the name follows the posture. The AppContainer
+control has enforced at `enforce` since it landed on
+2026-11-21; where its trial cannot prove on a host, the
+floor stands with its own record, and a boundary
+crossing refuses outright at the gate. What the name
+does not do is widen any claim: the rows keep their
+shape limits stated in their own cells (the floor
+fallback, and at the floor the open reads and the open
+network; no processor ceiling in either shape;
+`job_user` as the memory ceiling alone; the ARM64 row
+resting on its build leg), and the reduced level's
+definition in the matrix now records all three
+departures, FreeBSD's, macOS's and Windows', each dated.
+This note supersedes any sentence in this page or in the
+matrix that named the Windows level otherwise; the
+earlier text stands as the record of its day.
