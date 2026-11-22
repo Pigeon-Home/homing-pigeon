@@ -64,18 +64,18 @@ lines, which that landing left unrecorded, and again on
 (runner/guard/macos_confine.py) joined the canonical list and
 its wiring grew runner/ops, runner/guard and the runner proper,
 the as-assembled set stands at
-<!--hp-fig:core_assembled_lines-->72,300<!--/hp-fig--> lines
-(<!--hp-fig:core_assembled_nonblank-->65,553<!--/hp-fig-->
+<!--hp-fig:core_assembled_lines-->72,524<!--/hp-fig--> lines
+(<!--hp-fig:core_assembled_nonblank-->65,769<!--/hp-fig-->
 non-blank) and a
-<!--hp-fig:core_assembled_zip_bytes-->930,108<!--/hp-fig-->-byte
+<!--hp-fig:core_assembled_zip_bytes-->933,125<!--/hp-fig-->-byte
 zip, and the project's own estimator counts it at
-<!--hp-fig:core_assembled_tokens-->794,236<!--/hp-fig--> tokens;
+<!--hp-fig:core_assembled_tokens-->796,508<!--/hp-fig--> tokens;
 the Gemini figure above still describes the 2026-11-04 assembly.
 The project's own estimator counts the canonical
 <!--hp-fig:core_files-->139<!--/hp-fig-->-file list at
-<!--hp-fig:core_tokens-->782,657<!--/hp-fig--> tokens across
-<!--hp-fig:core_lines-->71,181<!--/hp-fig--> lines
-(<!--hp-fig:core_lines_nonblank-->64,552<!--/hp-fig-->
+<!--hp-fig:core_tokens-->784,929<!--/hp-fig--> tokens across
+<!--hp-fig:core_lines-->71,405<!--/hp-fig--> lines
+(<!--hp-fig:core_lines_nonblank-->64,768<!--/hp-fig-->
 non-blank); the 2 token counts come from different counters and
 are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -91,7 +91,7 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 7,444 lines; the core around it is
-64,856. The set as assembled, part by part (re-measured
+65,080. The set as assembled, part by part (re-measured
 2026-11-22):
 
 - runner/ops: 24,429 lines
@@ -100,7 +100,7 @@ The runner proper is 7,444 lines; the core around it is
 - runner/runner.py: 7,444
 - runner/oracle: 5,423
 - runner/transport_extensions: 2,778
-- runner/guard: 8,826
+- runner/guard: 9,050
 - runner/cloud: 2,350
 - runner/hosting: 1,711
 - runner/__init__.py: 23
