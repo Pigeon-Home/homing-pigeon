@@ -11,10 +11,21 @@
   __VERSION__ and __BUILD__ are tokens, not numbers: the
   build renders this template through the planner's
   render_info_plist, which fills them from the release's own
-  version (the number pyproject.toml carries). A literal
-  version typed here would drift from the release; the test
-  in runner/tests/test_apple_store.py holds the tokens in
+  version (the number pyproject.toml carries), mapped to
+  the shapes the store accepts: the short version is the
+  release version's first three components and the build is
+  its last two, because Apple's validation refuses a bundle
+  version of more than three integers. A literal version
+  typed here would drift from the release; the test in
+  runner/tests/test_apple_store.py holds the tokens in
   place.
+
+  LSApplicationCategoryType names the listing's primary
+  category (Developer Tools); Apple's validation refuses a
+  bundle without it. CFBundleIconFile names AppIcon.icns
+  beside this file, built from assets/logo.png with the
+  full size set, the 512 point at 2x image included; the
+  planner copies it into the bundle's Resources.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -23,6 +34,8 @@
 	<string>en</string>
 	<key>CFBundleExecutable</key>
 	<string>homing-pigeon</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>ai.pigeon-home.homing-pigeon</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -35,6 +48,8 @@
 	<string>__VERSION__</string>
 	<key>CFBundleVersion</key>
 	<string>__BUILD__</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.developer-tools</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>NSPrincipalClass</key>

@@ -55,6 +55,21 @@ prefix for this team stands in the keychain, and the
 productbuild step signs with the name that same lookup
 returns, never a hardcoded team display name.
 
+A second lesson came from the first upload itself
+(2026-11-21): the chain signed and packaged cleanly, and
+Apple's validation refused the archive with 4 errors. The
+bundle's Info.plist carried no LSApplicationCategoryType;
+its CFBundleVersion and CFBundleShortVersionString carried
+the release's own 4 part version (3.17.33.1), where the
+store accepts at most three non-negative integers in each;
+and the bundle carried no icon. The fixes stand in the
+template and in this tool: the template names the listing's
+category and the bundle icon, the render maps the release
+version into the shapes the store accepts (see
+store_version and store_build), and the assembly copies
+AppIcon.icns, built from assets/logo.png with the full size
+set, into the bundle's Resources.
+
 Nothing here opens a socket or runs a command. The pipeline
 step that carries the plan out first imports the two .p12s
 into a temporary keychain and places the profile at the
@@ -80,6 +95,65 @@ SKU = "HOMINGPIGEON-MAC-001"
 
 APP_DISTRIBUTION_IDENTITY = "Apple Distribution"
 INSTALLER_DISTRIBUTION_IDENTITY = "Mac Installer Distribution"
+
+# The listing's primary category, in the UTI form the
+# bundle's LSApplicationCategoryType key carries. Apple's
+# validation refuses a bundle that names no category; the
+# category is the one the listing itself declares
+# (Developer Tools), so the bundle and the listing agree.
+APP_CATEGORY_UTI = "public.app-category.developer-tools"
+
+# The bundle icon: CFBundleIconFile names it without the
+# extension, the file stands in packaging/macos beside the
+# Info.plist template, and the assembly copies it into the
+# bundle's Resources. It is built from assets/logo.png
+# (1600x1600, downscaled only) with the full size set, the
+# 512pt @2x image (1024x1024) included, because Apple's
+# validation refuses a bundle with no such icon.
+ICON_FILE_NAME = "AppIcon"
+ICON_SOURCE = "packaging/macos/AppIcon.icns"
+ICON_BUNDLE_PATH = "Contents/Resources/AppIcon.icns"
+
+
+def _release_parts(version):
+    """Split a release version into its 4 integer parts.
+
+    The release version is the 4 part number pyproject.toml
+    carries (for example 3.17.33.1). Anything else is not a
+    release version this tool can map for the store, and
+    raises ValueError rather than guessing a shape.
+    """
+    parts = version.split(".")
+    if len(parts) != 4 or not all(part.isdigit() for part in parts):
+        raise ValueError("release version %r is not the 4 part "
+                         "number the store mapping expects"
+                         % version)
+    return [int(part) for part in parts]
+
+
+def store_version(version):
+    """Return the store short version for a release version.
+
+    Apple's validation accepts at most three non-negative
+    integers in CFBundleShortVersionString, so the short
+    version is the release version's first three components:
+    3.17.33.1 ships as 3.17.33.
+    """
+    parts = _release_parts(version)
+    return ".".join(str(part) for part in parts[:3])
+
+
+def store_build(version):
+    """Return the store build number for a release version.
+
+    CFBundleVersion carries the release version's third and
+    fourth components (33.1 for 3.17.33.1): two integers,
+    inside the store's three integer limit, and increasing
+    as the release odometer advances, within one short
+    version (33.1, 33.2) and across the next (34.1).
+    """
+    parts = _release_parts(version)
+    return "%d.%d" % (parts[2], parts[3])
 
 # The installer certificate's keychain common name is not
 # its portal type name above: an imported Mac Installer
@@ -163,6 +237,7 @@ BUNDLE_LAYOUT = (
     ("dist/homing-pigeon", "Contents/MacOS/homing-pigeon"),
     ("dist/install", "Contents/MacOS/install"),
     ("packaging/macos/Info.plist", "Contents/Info.plist"),
+    (ICON_SOURCE, ICON_BUNDLE_PATH),
     ("store/Homing Pigeon Mac App Store.provisionprofile",
      "Contents/embedded.provisionprofile"),
 )
@@ -184,28 +259,45 @@ def render_info_plist(version, build=None, template_text=None):
     """Return the bundle's Info.plist text for one version.
 
     The template in packaging/macos carries __VERSION__ and
-    __BUILD__ tokens where the numbers go; the version is
+    __BUILD__ tokens where the numbers go. The version is
     the release's own version (the number pyproject.toml
     carries, the same number the GitHub release and the
-    tarballs carry), and the build defaults to it. The
-    rendered text must parse as a plist and carry the
-    bundle ID the App Store Connect record was created
-    with; anything else raises ValueError.
+    tarballs carry), mapped into the shapes the store
+    accepts: the short version is store_version(version)
+    and the build defaults to store_build(version), because
+    Apple's validation refuses either key in the release's
+    raw 4 part shape. The rendered text must parse as a
+    plist and carry the bundle ID the App Store Connect
+    record was created with, the mapped numbers, the
+    listing's category and the bundle icon's name; anything
+    else raises ValueError.
     """
     if template_text is None:
         with open(info_plist_template_path(), encoding="utf-8") as fh:
             template_text = fh.read()
-    rendered = template_text.replace("__VERSION__", version)
-    rendered = rendered.replace("__BUILD__", build or version)
+    short = store_version(version)
+    rendered = template_text.replace("__VERSION__", short)
+    rendered = rendered.replace("__BUILD__", build or store_build(version))
     parsed = plistlib.loads(rendered.encode("utf-8"))
     if parsed.get("CFBundleIdentifier") != BUNDLE_ID:
         raise ValueError("rendered Info.plist carries the wrong "
                          "bundle ID: %r" % parsed.get(
                              "CFBundleIdentifier"))
-    if parsed.get("CFBundleShortVersionString") != version:
+    if parsed.get("CFBundleShortVersionString") != short:
         raise ValueError("rendered Info.plist carries the wrong "
                          "version: %r" % parsed.get(
                              "CFBundleShortVersionString"))
+    if parsed.get("CFBundleVersion") != (build or store_build(version)):
+        raise ValueError("rendered Info.plist carries the wrong "
+                         "build: %r" % parsed.get("CFBundleVersion"))
+    if parsed.get("LSApplicationCategoryType") != APP_CATEGORY_UTI:
+        raise ValueError("rendered Info.plist carries the wrong "
+                         "category: %r" % parsed.get(
+                             "LSApplicationCategoryType"))
+    if parsed.get("CFBundleIconFile") != ICON_FILE_NAME:
+        raise ValueError("rendered Info.plist carries the wrong "
+                         "icon name: %r" % parsed.get(
+                             "CFBundleIconFile"))
     return rendered
 
 
@@ -258,6 +350,8 @@ def plan_upload(state, version):
         "cp dist/install %s/Contents/MacOS/install" % app,
         "python3 runner/tools/apple_store.py --render-info-plist "
         "--version %s --out %s/Contents/Info.plist" % (version, app),
+        "mkdir -p %s/Contents/Resources" % app,
+        "cp %s %s/%s" % (ICON_SOURCE, app, ICON_BUNDLE_PATH),
         "cp \"store/Homing Pigeon Mac App Store.provisionprofile\" "
         "%s/Contents/embedded.provisionprofile" % app,
         # Sign everything in the bundle, innermost first in
@@ -314,7 +408,8 @@ def main(argv=None):
                              "--version instead of planning")
     parser.add_argument("--build",
                         help="build number for the rendered plist; "
-                             "defaults to the version")
+                             "defaults to the version's mapped "
+                             "store build (see store_build)")
     parser.add_argument("--out",
                         help="write the rendered plist here instead "
                              "of stdout")
