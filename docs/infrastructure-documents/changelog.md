@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.8 - 2026-11-22
+
+- Docs: the forum status update lands on main (since 3.17.33.7) — the conductor's go items in detail, the macOS flip proof, release 3.17.33.6, the test sweep and the export
+
 ## 3.17.33.7 - 2026-11-22
 
 - Docs: the owner's FUTURE.md updates land on main (since 3.17.33.6)
