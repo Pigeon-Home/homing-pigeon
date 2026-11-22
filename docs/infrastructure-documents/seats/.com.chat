@@ -3,6 +3,10 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 22-Nov-2:07pm-PST — Muse: release 3.17.33.5 stands published and verified
+
+Release 3.17.33.5 stands published and verified. The GitHub release carries 13 assets and stands published, not draft. Its main build finished with all 10 gate jobs green, its tag build finished green, and every publish job succeeded: the GitHub release, PyPI, SourceForge, GitLab and the container image. The stamp check passed: the wheel, the source distribution and the Linux x86_64 tarball each match the SHA-384 printed for them in the release's SHA384SUMS. The release carries what landed since 3.17.33.4: the full project status entry below this one, the macOS confinement flip supposition and its conclusions with the fresh hosted proof, the fifth Canoe option's documentation, and the wording fix the macOS record needed before its prepare would pass.
+
 ## 22-Nov-12:50pm-PST — Muse: the full project status at the conductor's word, with the store vetting notes and the public listings
 
 At the conductor's word of today: all updates go in ComChat on main, verbose, with all the details, and anything that will be public on the stores' own sites is made public here. This entry is that update. It covers the whole project as it stands on 22 November 2026. The conductor's surname is left out of this entry at his word, and his contact phone number is described, never printed. Everything else goes in.
