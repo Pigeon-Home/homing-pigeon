@@ -142,6 +142,35 @@ settles all four; until it does, they stand here as
 suppositions, and the trial names whichever check fails on a
 host where one of them is wrong.
 
+Supposition for the Lane 6 diagnosis, recorded before any
+measurement in this lane (2026-11-21): the Lane 5 field test
+found the AppContainer spawn failing at creation with
+CreateProcessW error 2 (ERROR_FILE_NOT_FOUND) for every
+target, cmd.exe included, from the elevated Administrator
+context, while the floor spawn works on the same host. My
+belief, stated so the measurement can prove it wrong: the
+cause sits in the spawn shape itself, not in any grant or
+target binary, and the leading candidates inside that shape
+are the container profile state behind the derived SID (this
+module computes the CreateAppContainerProfile outcome and
+then discards it, so a profile that never stood would leave
+creation looking for a profile object that does not exist)
+and the SECURITY_CAPABILITIES marshaling handed to
+UpdateProcThreadAttribute (a NULL Capabilities pointer at a
+zero count). The measurement that settles it is a minimal
+reproduction on the rig varying one element at a time: the
+profile outcome and its HRESULT printed with the profile
+folder inspected; a plain CreateProcessW; a STARTUPINFOEX
+with an attribute list carrying no attribute; the shipped
+capabilities shape; the same shape with a non NULL empty
+capabilities array; an explicit application name beside the
+command line; a system working directory; no CREATE_SUSPENDED
+flag; and an unelevated creating context. The single variant
+that turns error 2 into a created process names the cause.
+If no variant creates a process and the profile outcome is a
+failure, the honest outcome is that the trial names that
+failure precisely and the posture record says so.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
