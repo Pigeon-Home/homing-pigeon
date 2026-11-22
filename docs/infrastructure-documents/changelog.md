@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.15 - 2026-11-22
+
+- Since 3.17.32.14: windows confinement gains the AppContainer control in runner/guard/windows_confine.py, proved by its trial, with its test family in runner/tests/test_windows_appcontainer.py and core wiring updates.
+- Auto-publish: the stores design record (docs/steady/design/auto-publish-design.md) and the snap release planner in runner/tools/store_release.py, with its tests in runner/tests/test_store_release.py.
+
 ## 3.17.32.14 - 2026-11-22
 
 - Since 3.17.32.13: the 2 limits chart (the last chart of the statistics record but one) is regenerated with its counted series extended to 21 November (statistics.md, the 2 limits chart SVG, and the doc figure-slot and curve tests updated to match). No runner code changes.
