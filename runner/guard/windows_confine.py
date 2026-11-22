@@ -104,6 +104,44 @@ confined token carries enabled -- read+execute on the
 staged tree explicitly, so the verdict does not depend on
 any host's temp inheritance.
 
+AppContainer (the completion lane, 2026-11-21): the future path
+named above is now built. spawn_app_container_process derives
+the container SID from the fixed container name
+APP_CONTAINER_NAME, builds a SECURITY_CAPABILITIES carrying no
+capability SIDs at all (a container with no network capability
+has no network; that is the point), grants that SID access to
+the job's work directory and to nothing else beyond the read
+paths a caller names, with TEMP and TMP pointed at the work
+directory for the container process, and creates the process suspended
+through CreateProcessW with
+PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES in a
+STARTUPINFOEXW attribute list, assigning the Job Object before
+resume under the same no race discipline as every other spawn
+here. The floor stands exactly as it was: the AppContainer
+control is added on top of it, never instead of it, and the
+status string gains the app_container control only when the
+AppContainer trial below proves the control on the host. On a
+host where that trial fails, spawn_confined_process keeps the
+floor spawn and the floor status, unchanged.
+
+Suppositions for the AppContainer lane, recorded before the
+field test that settles them (the Germany rig, Windows Server
+2022, the rig lane's run): first, an AppContainer process
+created under this spawn shape reads a staged file its
+container SID was granted and writes its work directory, on
+that build, with no elevation. Second, the same process is
+refused a read of a file outside its granted paths, by the
+container's own token check rather than by an integrity label.
+Third, the same process establishes no network connection at
+all, loopback included, because its capabilities carry no
+network capability SID. Fourth, the error the network attempt
+fails with there distinguishes the container's denial from an
+ordinary unreachable address, so the trial's network check can
+tell a contained refusal from a dead network. The rig lane
+settles all four; until it does, they stand here as
+suppositions, and the trial names whichever check fails on a
+host where one of them is wrong.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
@@ -160,6 +198,63 @@ STATUS_JOB_OBJECT = "windows_job_object"
 STATUS_CONFINEMENT = "windows: job_object + restricted_token + low_integrity"
 CONFINEMENT_CONTROLS = ("job_object", "restricted_token", "low_integrity")
 
+# The AppContainer controls, named by the record when the
+# AppContainer trial proves them on the host, and only then
+# (the design record: docs/steady/design/
+# windows-appcontainer-design.md). The AppContainer spawn
+# replaces the restricted token control for the processes it
+# covers: Job Objects compose, the restricted token does not,
+# and composing CreateProcessAsUserW with a security
+# capabilities attribute is undocumented, so the design does
+# not attempt it. Low integrity is not double named either:
+# an AppContainer token runs at Low integrity by construction.
+# The proven string is therefore its own shape, not the floor
+# string with a name appended.
+APP_CONTAINER_CONTROL = "appcontainer"
+NO_NETWORK_CONTROL = "no_network"
+STATUS_APP_CONTAINER = "windows: job_object + appcontainer + no_network"
+APP_CONTAINER_CONTROLS = ("job_object", "appcontainer", "no_network")
+# The earlier lane name for the extended string, kept as an
+# alias so no record built on it breaks.
+STATUS_CONFINEMENT_WITH_APP_CONTAINER = STATUS_APP_CONTAINER
+CONFINEMENT_CONTROLS_WITH_APP_CONTAINER = APP_CONTAINER_CONTROLS
+
+# The fixed container name the container SID is derived from.
+# One name for every job: the container identity is the
+# runner's confinement identity, not a per job identity, and a
+# fixed name keeps the SID (and so every grant) stable across
+# runs. validate_app_container_name below pins its shape.
+APP_CONTAINER_NAME = "pigeon-home.homing-pigeon.runner"
+APP_CONTAINER_NAME_MAX = 64
+
+# PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES: attribute 9 in
+# the PROC_THREAD_ATTRIBUTE_NUM class, with the thread class
+# bit set, exactly as the Windows headers define it.
+PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES = 0x00020009
+EXTENDED_STARTUPINFO_PRESENT = 0x00080000
+
+
+def confinement_status(app_container=False):
+    """The confinement status string for this backend.
+
+    The floor string by default. The extended string, naming
+    app_container, only when `app_container` is true, which a
+    caller may pass only on the strength of a passed
+    AppContainer trial (appcontainer_trial_problem below).
+    """
+    if app_container:
+        return STATUS_APP_CONTAINER
+    return STATUS_CONFINEMENT
+
+
+def effective_confinement_status(app_container_problem):
+    """The status a posture record carries, given the
+    AppContainer trial's verdict: the extended string when the
+    trial passed (the problem is None), the floor string when
+    it failed, with the floor exactly as it has always been.
+    """
+    return confinement_status(app_container_problem is None)
+
 if sys.platform != "win32" or not hasattr(ctypes, "WinDLL"):
     # Stub so the rest of the runner can import without error. The
     # startup probes answer a problem string (never None), so an
@@ -195,6 +290,18 @@ if sys.platform != "win32" or not hasattr(ctypes, "WinDLL"):
 
     def spawn_job_object_process(*args, **kwargs):
         raise RuntimeError("windows_confine is Windows-only")
+
+    def windows_app_container_problem(*args, **kwargs):
+        return "windows_confine is Windows-only"
+
+    def spawn_app_container_process(*args, **kwargs):
+        raise RuntimeError("windows_confine is Windows-only")
+
+    def app_container_grants(*args, **kwargs):
+        return []
+
+    def remove_app_container_grants(*args, **kwargs):
+        return []
 
     def close_job_handle(handle):
         return None
@@ -303,6 +410,45 @@ else:
         wintypes.LPVOID, wintypes.LPVOID, wintypes.LPVOID,
         wintypes.LPVOID]
 
+    # AppContainer bindings. DeriveAppContainerSidFromAppContainerName
+    # lives in userenv; the attribute list calls and the SID to
+    # string conversion are kernel32 and advapi32.
+    userenv = ctypes.WinDLL("userenv", use_last_error=True)
+    userenv.DeriveAppContainerSidFromAppContainerName.restype = \
+        ctypes.c_long
+    userenv.DeriveAppContainerSidFromAppContainerName.argtypes = [
+        wintypes.LPCWSTR, ctypes.POINTER(wintypes.LPVOID)]
+    userenv.CreateAppContainerProfile.restype = ctypes.c_long
+    userenv.CreateAppContainerProfile.argtypes = [
+        wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPCWSTR,
+        wintypes.LPVOID, ctypes.POINTER(wintypes.LPVOID)]
+    advapi32.GetNamedSecurityInfoW.restype = wintypes.DWORD
+    advapi32.GetNamedSecurityInfoW.argtypes = [
+        wintypes.LPWSTR, ctypes.c_int, wintypes.DWORD,
+        ctypes.POINTER(wintypes.LPVOID),
+        ctypes.POINTER(wintypes.LPVOID),
+        ctypes.POINTER(wintypes.LPVOID),
+        ctypes.POINTER(wintypes.LPVOID),
+        ctypes.POINTER(wintypes.LPVOID)]
+    advapi32.SetEntriesInAclW.restype = wintypes.DWORD
+    advapi32.SetEntriesInAclW.argtypes = [
+        wintypes.DWORD, wintypes.LPVOID, wintypes.LPVOID,
+        ctypes.POINTER(wintypes.LPVOID)]
+    advapi32.ConvertSidToStringSidW.restype = wintypes.BOOL
+    advapi32.ConvertSidToStringSidW.argtypes = [
+        wintypes.LPVOID, ctypes.POINTER(wintypes.LPWSTR)]
+    kernel32.InitializeProcThreadAttributeList.restype = wintypes.BOOL
+    kernel32.InitializeProcThreadAttributeList.argtypes = [
+        wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD,
+        ctypes.POINTER(ctypes.c_size_t)]
+    kernel32.UpdateProcThreadAttribute.restype = wintypes.BOOL
+    kernel32.UpdateProcThreadAttribute.argtypes = [
+        wintypes.LPVOID, wintypes.DWORD, ctypes.c_size_t,
+        wintypes.LPVOID, ctypes.c_size_t, wintypes.LPVOID,
+        ctypes.POINTER(ctypes.c_size_t)]
+    kernel32.DeleteProcThreadAttributeList.restype = None
+    kernel32.DeleteProcThreadAttributeList.argtypes = [wintypes.LPVOID]
+
     # Constants
     JOB_OBJECT_LIMIT_PROCESS_MEMORY = 0x00000100
     JOB_OBJECT_LIMIT_JOB_MEMORY = 0x00000200
@@ -335,6 +481,16 @@ else:
     LABEL_SECURITY_INFORMATION = 0x00000010
     DACL_SECURITY_INFORMATION = 0x00000004
     SDDL_REVISION_1 = 1
+    GRANT_ACCESS = 1
+    REVOKE_ACCESS = 4
+    TRUSTEE_IS_SID = 0
+    TRUSTEE_IS_UNKNOWN = 0
+    OBJECT_INHERIT_ACE = 0x00000001
+    CONTAINER_INHERIT_ACE = 0x00000002
+    GENERIC_ALL_ACCESS = 0x10000000
+    GENERIC_READ_EXECUTE_ACCESS = 0xA0000000
+    PROFILE_DISPLAY_NAME = "Homing Pigeon runner"
+    PROFILE_DESCRIPTION = "Homing Pigeon runner confinement"
     INVALID_HANDLE_VALUE = ctypes.c_void_p(-1).value
 
     class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
@@ -407,6 +563,30 @@ else:
                     ("hThread", wintypes.HANDLE),
                     ("dwProcessId", wintypes.DWORD),
                     ("dwThreadId", wintypes.DWORD)]
+
+    class SECURITY_CAPABILITIES(ctypes.Structure):
+        _fields_ = [("AppContainerSid", wintypes.LPVOID),
+                    ("Capabilities",
+                     ctypes.POINTER(SID_AND_ATTRIBUTES)),
+                    ("CapabilityCount", wintypes.DWORD),
+                    ("Reserved", wintypes.DWORD)]
+
+    class TRUSTEE_W(ctypes.Structure):
+        _fields_ = [("pMultipleTrustee", wintypes.LPVOID),
+                    ("MultipleTrusteeOperation", ctypes.c_int),
+                    ("TrusteeForm", ctypes.c_int),
+                    ("TrusteeType", ctypes.c_int),
+                    ("ptstrName", wintypes.LPVOID)]
+
+    class EXPLICIT_ACCESS_W(ctypes.Structure):
+        _fields_ = [("grfAccessPermissions", wintypes.DWORD),
+                    ("grfAccessMode", ctypes.c_int),
+                    ("grfInheritance", wintypes.DWORD),
+                    ("Trustee", TRUSTEE_W)]
+
+    class STARTUPINFOEXW(ctypes.Structure):
+        _fields_ = [("StartupInfo", STARTUPINFOW),
+                    ("lpAttributeList", wintypes.LPVOID)]
 
     def _create_job_with_limits(memory_bytes):
         """(handle, None) with the memory ceiling set, or
@@ -636,9 +816,23 @@ else:
             if not _trial_verdict:
                 _trial_verdict.append(
                     confinement_trial_problem(
-                        spawn_confined_process,
+                        _spawn_floor_confined_process,
                         grant=_grant_users_read_execute))
-            return _trial_verdict[0]
+            verdict = _trial_verdict[0]
+        if verdict is None:
+            # The floor stands on this host. The AppContainer
+            # trial runs too, and caches its verdict, so the
+            # status and the spawn choice can name the controls
+            # when they prove out. A merely unavailable
+            # AppContainer changes nothing here; a boundary
+            # crossing refuses outright, through
+            # confinement_gate_problem, naming the crossing.
+            try:
+                ac_verdict = windows_app_container_problem(cfg)
+            except Exception:
+                ac_verdict = None
+            return confinement_gate_problem(verdict, ac_verdict)
+        return verdict
 
     def apply_windows_containment(proc_handle,
                                   memory_bytes=DEFAULT_PROCESS_MEMORY_BYTES):
@@ -793,7 +987,8 @@ else:
                         pass
             self._out_read = self._err_read = None
 
-    def _spawn_suspended(argv, cwd, env, job, token):
+    def _spawn_suspended(argv, cwd, env, job, token,
+                         capabilities=None):
         """Create the process suspended, assign it, resume it.
 
         The one creation sequence both Windows spawns use, so
@@ -858,17 +1053,62 @@ else:
         cmdline = ctypes.create_unicode_buffer(
             subprocess.list2cmdline(list(argv)))
         pi = PROCESS_INFORMATION()
+        attr_list = None
+        si_ref = ctypes.byref(si)
+        if capabilities is not None:
+            if token is not None:
+                for h in (out_read.value, err_read.value, job):
+                    if h:
+                        kernel32.CloseHandle(h)
+                raise RuntimeError(
+                    "the AppContainer spawn takes no token: the "
+                    "container's own token is the control")
+            siex = STARTUPINFOEXW()
+            siex.StartupInfo = si
+            siex.StartupInfo.cb = ctypes.sizeof(siex)
+            size = ctypes.c_size_t(0)
+            kernel32.InitializeProcThreadAttributeList(
+                None, 1, 0, ctypes.byref(size))
+            attr_list = ctypes.create_string_buffer(size.value)
+            if not kernel32.InitializeProcThreadAttributeList(
+                    attr_list, 1, 0, ctypes.byref(size)):
+                err = ctypes.get_last_error()
+                for h in (out_read.value, err_read.value, job):
+                    if h:
+                        kernel32.CloseHandle(h)
+                raise RuntimeError(
+                    "InitializeProcThreadAttributeList failed: %d"
+                    % err)
+            if not kernel32.UpdateProcThreadAttribute(
+                    attr_list, 0,
+                    PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES,
+                    ctypes.byref(capabilities),
+                    ctypes.sizeof(capabilities), None, None):
+                err = ctypes.get_last_error()
+                kernel32.DeleteProcThreadAttributeList(attr_list)
+                for h in (out_read.value, err_read.value, job):
+                    if h:
+                        kernel32.CloseHandle(h)
+                raise RuntimeError(
+                    "UpdateProcThreadAttribute("
+                    "SECURITY_CAPABILITIES) failed: %d" % err)
+            siex.lpAttributeList = ctypes.cast(
+                attr_list, wintypes.LPVOID)
+            flags |= EXTENDED_STARTUPINFO_PRESENT
+            si_ref = ctypes.byref(siex)
         if token is not None:
             create_name = "CreateProcessAsUserW"
             ok = advapi32.CreateProcessAsUserW(
                 token, None, cmdline, None, None, True, flags,
-                env_block, cwd, ctypes.byref(si), ctypes.byref(pi))
+                env_block, cwd, si_ref, ctypes.byref(pi))
         else:
             create_name = "CreateProcessW"
             ok = kernel32.CreateProcessW(
                 None, cmdline, None, None, True, flags,
-                env_block, cwd, ctypes.byref(si), ctypes.byref(pi))
+                env_block, cwd, si_ref, ctypes.byref(pi))
         err = ctypes.get_last_error()
+        if attr_list is not None:
+            kernel32.DeleteProcThreadAttributeList(attr_list)
         if token is not None:
             kernel32.CloseHandle(token)
         kernel32.CloseHandle(out_write)
@@ -895,8 +1135,337 @@ else:
             list(argv), pi.hProcess, pi.dwProcessId, job,
             out_read, err_read)
 
+    _ac_profile_attempted = []
+
+    def _ensure_app_container_profile(name=APP_CONTAINER_NAME):
+        """Create the container profile once, never per job.
+
+        Returns the profile_creation_outcome word. An outcome
+        of "exists" is the ordinary steady state: the profile
+        stands from an earlier run, and the SID is derived
+        from the name. The profile is deleted only at
+        uninstall, which is not this module's work.
+        """
+        if _ac_profile_attempted:
+            return _ac_profile_attempted[0]
+        sid = wintypes.LPVOID()
+        hr = userenv.CreateAppContainerProfile(
+            name, PROFILE_DISPLAY_NAME, PROFILE_DESCRIPTION,
+            None, ctypes.byref(sid))
+        if sid:
+            kernel32.LocalFree(sid)
+        outcome = profile_creation_outcome(hr)
+        _ac_profile_attempted.append(outcome)
+        return outcome
+
+    def _derive_app_container_sid(name=APP_CONTAINER_NAME):
+        """(sid, None) or (None, problem). The SID is a PSID the
+        caller frees with LocalFree. The name is validated first,
+        by the platform neutral validate_app_container_name: a
+        name outside that shape never reaches the OS call.
+        """
+        problem = validate_app_container_name(name)
+        if problem is not None:
+            return None, problem
+        _ensure_app_container_profile(name)
+        sid = wintypes.LPVOID()
+        hr = userenv.DeriveAppContainerSidFromAppContainerName(
+            name, ctypes.byref(sid))
+        if hr != 0 or not sid:
+            return None, (
+                "DeriveAppContainerSidFromAppContainerName(%s) "
+                "failed: 0x%08x" % (name, hr & 0xFFFFFFFF))
+        return sid, None
+
+    def _sid_to_string(sid):
+        """(text, None) or (None, problem) for a PSID."""
+        text = wintypes.LPWSTR()
+        if not advapi32.ConvertSidToStringSidW(
+                sid, ctypes.byref(text)):
+            return None, "ConvertSidToStringSidW failed: %d" % (
+                ctypes.get_last_error(),)
+        try:
+            return ctypes.wstring_at(text), None
+        finally:
+            kernel32.LocalFree(text)
+
+    def _set_dacl_sddl(path, sddl):
+        """None once the DACL built from `sddl` stands on `path`,
+        else the problem. The _grant_users_read_execute shape,
+        with the caller's descriptor."""
+        sd = wintypes.LPVOID()
+        if not advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                sddl, SDDL_REVISION_1, ctypes.byref(sd), None):
+            return ("ConvertStringSecurityDescriptorTo"
+                    "SecurityDescriptorW failed: %d"
+                    % (ctypes.get_last_error(),))
+        try:
+            present = wintypes.BOOL()
+            defaulted = wintypes.BOOL()
+            dacl = wintypes.LPVOID()
+            if not advapi32.GetSecurityDescriptorDacl(
+                    sd, ctypes.byref(present), ctypes.byref(dacl),
+                    ctypes.byref(defaulted)):
+                return ("GetSecurityDescriptorDacl failed: %d"
+                        % (ctypes.get_last_error(),))
+            if not present or not dacl:
+                return "the grant's descriptor carries no DACL"
+            rc = advapi32.SetNamedSecurityInfoW(
+                ctypes.create_unicode_buffer(path), SE_FILE_OBJECT,
+                DACL_SECURITY_INFORMATION, None, None, dacl, None)
+            if rc != 0:
+                return "SetNamedSecurityInfoW(%s) failed: %d" % (
+                    path, rc)
+            return None
+        finally:
+            kernel32.LocalFree(sd)
+
+    def _set_entries_in_acl(path, sid, mask, mode):
+        """None once one entry for `sid` at `mask` has been
+        added to (GRANT_ACCESS) or revoked from (REVOKE_ACCESS)
+        the DACL `path` already carries, else the problem.
+
+        The grant is additive, always: the existing DACL is
+        read, SetEntriesInAclW merges or revokes the one
+        entry, and the merged DACL is written back. No grant
+        in this backend ever replaces a DACL.
+        """
+        psid_owner = wintypes.LPVOID()
+        psid_group = wintypes.LPVOID()
+        dacl = wintypes.LPVOID()
+        sd = wintypes.LPVOID()
+        rc = advapi32.GetNamedSecurityInfoW(
+            ctypes.create_unicode_buffer(path), SE_FILE_OBJECT,
+            DACL_SECURITY_INFORMATION, ctypes.byref(psid_owner),
+            ctypes.byref(psid_group), ctypes.byref(dacl), None,
+            ctypes.byref(sd))
+        if rc != 0:
+            return "GetNamedSecurityInfoW(%s) failed: %d" % (
+                path, rc)
+        try:
+            ea = EXPLICIT_ACCESS_W()
+            ea.grfAccessPermissions = mask
+            ea.grfAccessMode = mode
+            ea.grfInheritance = (
+                OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE)
+            ea.Trustee.TrusteeForm = TRUSTEE_IS_SID
+            ea.Trustee.TrusteeType = TRUSTEE_IS_UNKNOWN
+            ea.Trustee.ptstrName = sid
+            new_dacl = wintypes.LPVOID()
+            rc = advapi32.SetEntriesInAclW(
+                1, ctypes.byref(ea), dacl, ctypes.byref(new_dacl))
+            if rc != 0:
+                return "SetEntriesInAclW(%s) failed: %d" % (
+                    path, rc)
+            try:
+                rc = advapi32.SetNamedSecurityInfoW(
+                    ctypes.create_unicode_buffer(path),
+                    SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
+                    None, None, new_dacl, None)
+                if rc != 0:
+                    return ("SetNamedSecurityInfoW(%s) failed: "
+                            "%d" % (path, rc))
+                return None
+            finally:
+                kernel32.LocalFree(new_dacl)
+        finally:
+            kernel32.LocalFree(sd)
+
+    def _grant_app_container_paths(sid, work_dir, read_paths=()):
+        """(granted, problem): additively grant the container
+        SID read, write and execute on the work directory and
+        read plus execute on each read path, and nothing
+        anywhere else. `granted` is the recorded grant set
+        (app_container_grant_set's shape) once every grant
+        stands, so the caller can report exactly what was
+        granted and revoke exactly that at job end; on a
+        problem it is empty and no spawn follows.
+        """
+        try:
+            grants = app_container_grant_set(work_dir, read_paths)
+        except ValueError as e:
+            return [], "%s" % (e,)
+        for path, access in grants:
+            mask = GENERIC_ALL_ACCESS \
+                if access == "read_write_execute" \
+                else GENERIC_READ_EXECUTE_ACCESS
+            problem = _set_entries_in_acl(
+                path, sid, mask, GRANT_ACCESS)
+            if problem is not None:
+                return [], problem
+        return grants, None
+
+    def remove_app_container_grants(sid, grants):
+        """Revoke exactly the recorded grant set: the job end
+        removal. Best effort per path, in reverse order; a
+        path whose revocation fails is the caller's to log,
+        and the names are returned for that.
+        """
+        failed = []
+        for path, access in reversed(list(grants)):
+            mask = GENERIC_ALL_ACCESS \
+                if access == "read_write_execute" \
+                else GENERIC_READ_EXECUTE_ACCESS
+            if _set_entries_in_acl(
+                    path, sid, mask, REVOKE_ACCESS) is not None:
+                failed.append(path)
+        return failed
+
+    def app_container_grants(work_dir, read_paths=()):
+        """The recorded grant set currently granted to the
+        container SID for a spawn in `work_dir`: what
+        _grant_app_container_paths granted, in its recorded
+        shape. On this backend the record is the grant set
+        itself; app_container_grant_set builds it.
+        """
+        return app_container_grant_set(work_dir, read_paths)
+
+    def spawn_app_container_process(argv, cwd=None, env=None,
+                                    read_paths=()):
+        """Create a job process inside the AppContainer.
+
+        The container SID is derived from APP_CONTAINER_NAME,
+        granted full access to the work directory `cwd` (and
+        read plus execute on `read_paths`) before spawn, and the
+        process is created suspended through CreateProcessW
+        with a SECURITY_CAPABILITIES carrying no capability
+        SIDs, assigned to the Job Object, and only then resumed.
+        Returns a WindowsConfinedProcess whose
+        .confinement_status is the extended string and whose
+        .app_container_grants records what was granted. Raises
+        RuntimeError when any step fails; there is no
+        unconfined fallback inside this spawn (the floor
+        fallback lives in spawn_confined_process, which chooses
+        between this spawn and the floor spawn).
+        """
+        if not isinstance(argv, (list, tuple)) or not argv \
+                or not all(isinstance(a, str) for a in argv):
+            raise RuntimeError(
+                "AppContainer spawn needs a non-empty list of "
+                "strings")
+        if not cwd:
+            raise RuntimeError(
+                "AppContainer spawn needs a work directory to "
+                "grant the container")
+        sid, problem = _derive_app_container_sid()
+        if problem is not None:
+            raise RuntimeError(problem)
+        try:
+            sid_text, problem = _sid_to_string(sid)
+            if problem is not None:
+                raise RuntimeError(problem)
+            grants, problem = _grant_app_container_paths(
+                sid, cwd, read_paths)
+            if problem is not None:
+                raise RuntimeError(problem)
+            caps_dict = build_security_capabilities(sid_text)
+            caps = SECURITY_CAPABILITIES()
+            caps.AppContainerSid = sid
+            caps.Capabilities = None
+            caps.CapabilityCount = caps_dict["capability_count"]
+            caps.Reserved = 0
+            job, problem = _create_job_with_limits(
+                DEFAULT_PROCESS_MEMORY_BYTES)
+            if problem is not None:
+                raise RuntimeError(problem)
+            # TEMP and TMP point at the work directory for a
+            # container process: the container can write there
+            # under its grants, and the host's temp tree is
+            # outside them by design.
+            ac_env = dict(env) if env is not None \
+                else dict(os.environ)
+            ac_env["TEMP"] = cwd
+            ac_env["TMP"] = cwd
+            proc = _spawn_suspended(argv, cwd, ac_env, job, None,
+                                    capabilities=caps)
+        finally:
+            kernel32.LocalFree(sid)
+        proc.confinement_status = STATUS_APP_CONTAINER
+        proc.app_container_grants = grants
+        # The grants are removed at job end: the process's
+        # release (close, which the spawn seam calls once the
+        # process has exited) revokes exactly the recorded set
+        # before it closes the handles.
+        _base_close = proc.close
+        _grant_sid, _p = _derive_app_container_sid()
+
+        def _close_with_grant_removal():
+            try:
+                if _grant_sid:
+                    remove_app_container_grants(_grant_sid, grants)
+                    kernel32.LocalFree(_grant_sid)
+            except Exception:
+                pass
+            _base_close()
+
+        proc.close = _close_with_grant_removal
+        return proc
+
+    _ac_trial_lock = threading.Lock()
+    _ac_trial_verdict = []
+
+    def windows_app_container_problem(cfg=None, timeout=60):
+        """None when the AppContainer trial proves the control
+        on this host, else the named failure. Cached for the
+        life of the process, exactly as the floor trial's
+        verdict is: the per job gate consults the floor probe,
+        and this verdict decides only whether the status may
+        name app_container and whether spawn_confined_process
+        may choose the AppContainer spawn.
+        """
+        with _ac_trial_lock:
+            if not _ac_trial_verdict:
+                def _trial_grant(paths):
+                    sid, problem = _derive_app_container_sid()
+                    if problem is not None:
+                        return problem
+                    try:
+                        sid_text, problem = _sid_to_string(sid)
+                        if problem is not None:
+                            return problem
+                        for path in paths:
+                            problem = _set_entries_in_acl(
+                                path, sid, GENERIC_ALL_ACCESS,
+                                GRANT_ACCESS)
+                            if problem is not None:
+                                return problem
+                        return None
+                    finally:
+                        kernel32.LocalFree(sid)
+
+                _ac_trial_verdict.append(
+                    appcontainer_trial_problem(
+                        spawn_app_container_process,
+                        grant=_trial_grant))
+            return _ac_trial_verdict[0]
+
     def spawn_confined_process(argv, cwd=None, env=None):
-        """Create a job process under every confinement control.
+        """Create a job process under every confinement control
+        the host has proved.
+
+        When the AppContainer trial has proved the control on
+        this host (its cached verdict is None), the AppContainer
+        spawn is used and the process carries the extended
+        status. When it has not, or when the AppContainer spawn
+        itself fails at job time, the floor spawn above runs,
+        exactly as it always has, and the process carries the
+        floor status. There is no unconfined fallback either
+        way.
+        """
+        if _ac_trial_verdict and app_container_boundary_crossing(
+                _ac_trial_verdict[0]):
+            raise RuntimeError(_ac_trial_verdict[0])
+        if _ac_trial_verdict and _ac_trial_verdict[0] is None \
+                and cwd:
+            try:
+                return spawn_app_container_process(
+                    argv, cwd=cwd, env=env)
+            except RuntimeError:
+                pass
+        return _spawn_floor_confined_process(argv, cwd=cwd, env=env)
+
+    def _spawn_floor_confined_process(argv, cwd=None, env=None):
+        """Create a job process under the floor controls alone.
 
         argv is the full command (interpreter, script, args). The
         process is created suspended under the restricted,
@@ -904,7 +1473,10 @@ else:
         then resumed. Returns a WindowsConfinedProcess whose
         .confinement_status is STATUS_CONFINEMENT. Raises
         RuntimeError when any control could not be applied --
-        there is no unconfined fallback to fall through to.
+        there is no unconfined fallback to fall through to. This
+        is the spawn the floor trial tests, and the spawn
+        spawn_confined_process falls back to whenever the
+        AppContainer control is not proved on the host.
         """
         if not isinstance(argv, (list, tuple)) or not argv \
                 or not all(isinstance(a, str) for a in argv):
@@ -953,7 +1525,6 @@ else:
         proc = _spawn_suspended(argv, cwd, env, job, None)
         proc.job_object_status = STATUS_JOB_OBJECT
         return proc
-
 
 # The confinement trial (Q134). The orchestration is platform-
 # neutral -- it stages files in a temp tree and drives a spawn
@@ -1136,3 +1707,377 @@ def confinement_trial_problem(spawn, timeout=60, grant=None):
     finally:
         if tmp is not None:
             shutil.rmtree(tmp, ignore_errors=True)
+
+
+# ----------------------------------------------------------------
+# The AppContainer control: the platform neutral half. The name
+# validation, the capabilities shape, the grant set and the
+# trial's orchestration live here, outside the win32 branch, so
+# the suite exercises them on any host through scripted spawn
+# seams, exactly as the floor trial's orchestration is exercised.
+# The real backend above supplies the OS calls: SID derivation,
+# the DACL grant, and the suspended spawn with the attribute
+# list.
+
+import re as _re
+
+_APP_CONTAINER_NAME_SHAPE = _re.compile(
+    r"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+
+def validate_app_container_name(name):
+    """None when `name` may be handed to
+    DeriveAppContainerSidFromAppContainerName, else the problem.
+
+    The shape is deliberately narrow: a string of 1 to
+    APP_CONTAINER_NAME_MAX characters, letters, digits, dot,
+    underscore and hyphen, starting with a letter or a digit.
+    Anything else (empty, whitespace, a path separator, a
+    control character, a symbol the shape does not name) is
+    refused here, deterministically, on every host, before any
+    OS call sees it.
+    """
+    if not isinstance(name, str):
+        return "the AppContainer name must be a string"
+    if not name:
+        return "the AppContainer name must not be empty"
+    if len(name) > APP_CONTAINER_NAME_MAX:
+        return ("the AppContainer name must be at most %d "
+                "characters" % (APP_CONTAINER_NAME_MAX,))
+    if not _APP_CONTAINER_NAME_SHAPE.fullmatch(name):
+        return ("the AppContainer name %r is outside the "
+                "permitted shape (letters, digits, dot, "
+                "underscore and hyphen, starting with a letter "
+                "or a digit)" % (name,))
+    return None
+
+
+def build_security_capabilities(app_container_sid,
+                                capabilities=()):
+    """The SECURITY_CAPABILITIES shape for the spawn, as a dict
+    the suite can pin: the container SID, an empty capability
+    tuple, a capability count of 0 and a reserved field of 0.
+
+    The empty set is the control: a container with no network
+    capability SID has no network. Passing any capability is an
+    error, never a wider container: this backend grants no
+    capabilities, by design, and a caller asking for one has
+    asked for a different backend.
+    """
+    if capabilities:
+        raise ValueError(
+            "this backend builds AppContainer capabilities with "
+            "no capability SIDs; %r was asked for"
+            % (list(capabilities),))
+    if app_container_sid is None or app_container_sid == "":
+        raise ValueError(
+            "SECURITY_CAPABILITIES needs the container SID")
+    return {"app_container_sid": app_container_sid,
+            "capabilities": (),
+            "capability_count": 0,
+            "reserved": 0}
+
+
+def proc_thread_attribute_spec(capabilities):
+    """The attribute list construction for the spawn, as the
+    pair the real backend hands UpdateProcThreadAttribute: the
+    attribute number PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES
+    and the capabilities dict build_security_capabilities made.
+    A capabilities shape with a nonzero count is refused here
+    too, so no path to the attribute list carries a capability
+    this backend did not mean to grant.
+    """
+    if not isinstance(capabilities, dict) \
+            or capabilities.get("capability_count") != 0 \
+            or capabilities.get("capabilities") != ():
+        raise ValueError(
+            "the attribute list takes only the empty capability "
+            "set this backend builds")
+    return (PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES,
+            capabilities)
+
+
+def app_container_grant_set(work_dir, read_paths=()):
+    """The recorded grant set for an AppContainer spawn: a list
+    of (path, access) pairs, the work directory first at "full",
+    then each read path at "read_execute", deduplicated, in
+    order. This set is the whole grant: the container SID gets
+    access to these paths and to nothing else, and the spawn
+    records exactly this list so what was granted can be
+    reported. An empty work directory is an error.
+    """
+    if not isinstance(work_dir, str) or not work_dir:
+        raise ValueError(
+            "an AppContainer grant set needs a work directory")
+    grants = [(work_dir, "read_write_execute")]
+    seen = {work_dir}
+    for path in read_paths or ():
+        if not isinstance(path, str) or not path:
+            raise ValueError(
+                "an AppContainer read path must be a non-empty "
+                "string")
+        if path in seen:
+            continue
+        seen.add(path)
+        grants.append((path, "read_execute"))
+    return grants
+
+
+# HRESULT ERROR_ALREADY_EXISTS, as an unsigned value: the
+# answer CreateAppContainerProfile gives when the profile
+# already stands, which is the design's signal to fall back to
+# deriving the SID from the name.
+ERROR_ALREADY_EXISTS_HRESULT = 0x800700B7
+
+
+def profile_creation_outcome(hresult):
+    """What a CreateAppContainerProfile result means, as a
+    word: "created" for success, "exists" for
+    ERROR_ALREADY_EXISTS (the profile stands; derive the SID
+    from the name), and "failed" for anything else. The
+    profile is created once, never per job, and deleted only
+    at uninstall; this word is how the once is decided.
+    """
+    hr = hresult & 0xFFFFFFFF
+    if hr == 0:
+        return "created"
+    if hr == ERROR_ALREADY_EXISTS_HRESULT:
+        return "exists"
+    return "failed"
+
+
+def app_container_boundary_crossing(problem):
+    """True when an AppContainer trial verdict is a boundary
+    crossing: the container reached something it should not
+    have (a read or write outside its grants, or the network).
+    A crossing is not a missing mechanism. The design's
+    deliberate asymmetry: a missing mechanism falls back to
+    the floor, a crossing refuses outright at startup.
+    """
+    return bool(problem) and problem.startswith(
+        "AppContainer boundary crossing")
+
+
+def confinement_gate_problem(floor_problem, app_container_problem):
+    """The startup gate's answer from the two trial verdicts:
+    the floor's problem when the floor itself failed; the
+    AppContainer problem when it is a boundary crossing; and
+    None otherwise, because a merely unavailable AppContainer
+    leaves the floor standing exactly as it was.
+    """
+    if floor_problem is not None:
+        return floor_problem
+    if app_container_boundary_crossing(app_container_problem):
+        return app_container_problem
+    return None
+
+
+_AC_TRIAL_PROGRAM = (
+    "import os, socket, sys\n"
+    "try:\n"
+    "    data = open(sys.argv[1], encoding='utf-8').read()\n"
+    "    assert 'hp-confinement-trial' in data, 'marker missing'\n"
+    "    print('AC-READ-OK', flush=True)\n"
+    "except Exception as e:\n"
+    "    print('AC-READ-FAIL %s' % (e,), flush=True)\n"
+    "try:\n"
+    "    out = os.path.join(sys.argv[2], 'ac-trial-out.txt')\n"
+    "    with open(out, 'w', encoding='utf-8') as fh:\n"
+    "        fh.write('ok\\n')\n"
+    "    print('AC-WRITE-OK', flush=True)\n"
+    "except Exception as e:\n"
+    "    print('AC-WRITE-FAIL %s' % (e,), flush=True)\n"
+    "try:\n"
+    "    open(sys.argv[3], encoding='utf-8').read()\n"
+    "    print('AC-OUTSIDE-OPEN', flush=True)\n"
+    "except Exception:\n"
+    "    print('AC-OUTSIDE-REFUSED', flush=True)\n"
+    "try:\n"
+    "    fh = open(sys.argv[3], 'a', encoding='utf-8')\n"
+    "    fh.write('x')\n"
+    "    fh.close()\n"
+    "    print('AC-OUTSIDE-WRITE-OPEN', flush=True)\n"
+    "except Exception:\n"
+    "    print('AC-OUTSIDE-WRITE-REFUSED', flush=True)\n"
+    "try:\n"
+    "    import ctypes\n"
+    "    from ctypes import wintypes\n"
+    "    tok = wintypes.HANDLE()\n"
+    "    adv = ctypes.windll.advapi32\n"
+    "    ker = ctypes.windll.kernel32\n"
+    "    adv.OpenProcessToken(ker.GetCurrentProcess(), 0x0008,\n"
+    "        ctypes.byref(tok))\n"
+    "    val = wintypes.DWORD(0)\n"
+    "    adv.GetTokenInformation(tok, 29, ctypes.byref(val), 4,\n"
+    "        ctypes.byref(wintypes.DWORD(0)))\n"
+    "    print('AC-TOKEN-APPCONTAINER' if val.value else\n"
+    "        'AC-TOKEN-PLAIN', flush=True)\n"
+    "except Exception as e:\n"
+    "    print('AC-TOKEN-UNKNOWN %s' % (e,), flush=True)\n"
+    "try:\n"
+    "    sock = socket.create_connection(\n"
+    "        ('127.0.0.1', 9), timeout=3)\n"
+    "    sock.close()\n"
+    "    print('AC-NETWORK-OPEN', flush=True)\n"
+    "except Exception:\n"
+    "    print('AC-NETWORK-REFUSED', flush=True)\n"
+)
+
+
+def _stage_appcontainer_trial_tree():
+    """(root, staged, program, work, outside) for 1 run.
+
+    The granted tree follows _stage_trial_tree's staging: a
+    default mode directory the grant hook then makes explicit.
+    The outside file lives in its own sibling tree, which no
+    grant names: that separation is what check (c) measures.
+    """
+    root, staged, program, work = _stage_trial_tree()
+    try:
+        with open(program, "w", encoding="utf-8") as fh:
+            fh.write(_AC_TRIAL_PROGRAM)
+        parent = tempfile.gettempdir()
+        outside_root = None
+        for _attempt in range(100):
+            candidate = os.path.join(
+                parent,
+                "hp-appcontainer-outside-" + os.urandom(8).hex())
+            try:
+                os.makedirs(candidate)
+                outside_root = candidate
+                break
+            except FileExistsError:
+                continue
+        if outside_root is None:
+            raise OSError(
+                "no free name for the AppContainer trial's "
+                "outside directory under %s" % (parent,))
+        outside = os.path.join(outside_root, "outside.txt")
+        with open(outside, "w", encoding="utf-8") as fh:
+            fh.write(_TRIAL_MARKER + "\n")
+    except Exception:
+        shutil.rmtree(root, ignore_errors=True)
+        raise
+    return root, staged, program, work, outside
+
+
+def appcontainer_trial_problem(spawn, timeout=60, grant=None):
+    """None when an AppContainer process works contained here,
+    else the named failure.
+
+    `spawn` is an AppContainer spawn callable with the
+    backend's signature. The trial's four checks, each named
+    when it fails: the process (a) reads a staged file it was
+    granted, (b) writes its work directory, (c) attempts a
+    read outside its granted paths and is refused, and (d)
+    attempts network access and is refused, (e) attempts a
+    write outside its granted paths and is refused, and (f)
+    reads its own token from inside and finds an AppContainer
+    token. A boundary check
+    that comes back open is a failure of the control, named as
+    such: a container that can read outside its grants or
+    reach the network is not confining, whatever its spawn
+    claimed. `grant`, when given, is called with the granted
+    paths (root, data file, program, work directory) before
+    the spawn and answers None or the problem, in the floor
+    trial's shape; the outside file is never in that list.
+    """
+    tmp = None
+    outside_root = None
+    try:
+        tmp, staged, program, work, outside = \
+            _stage_appcontainer_trial_tree()
+        outside_root = os.path.dirname(outside)
+        if grant is not None:
+            try:
+                problem = grant([tmp, staged, program, work])
+            except Exception as e:
+                problem = "%s" % (e,)
+            if problem is not None:
+                return ("AppContainer trial could not grant its "
+                        "staged tree to the container SID: %s"
+                        % (problem,))
+        argv = [sys.executable, program, staged, work, outside]
+        try:
+            proc = spawn(argv, cwd=work, env=dict(os.environ))
+        except Exception as e:
+            return "AppContainer trial spawn failed: %s" % (e,)
+        try:
+            try:
+                out, err = proc.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                return ("AppContainer trial timed out after "
+                        "%ss; a contained process could not "
+                        "finish its four checks" % (timeout,))
+            out_text = out.decode("utf-8", "replace") \
+                if isinstance(out, (bytes, bytearray)) \
+                else str(out or "")
+            err_text = err.decode("utf-8", "replace") \
+                if isinstance(err, (bytes, bytearray)) \
+                else str(err or "")
+            tail = _trial_tail(err_text or out_text)
+            if "AC-READ-OK" not in out_text:
+                return ("an AppContainer process could not read "
+                        "its granted staged file (exit %s: %s)"
+                        % (proc.returncode, tail))
+            if "AC-WRITE-OK" not in out_text:
+                return ("an AppContainer process read its "
+                        "granted staged file but could not write "
+                        "its work directory (exit %s: %s)"
+                        % (proc.returncode, tail))
+            if "AC-OUTSIDE-OPEN" in out_text:
+                return ("AppContainer boundary crossing: an "
+                        "AppContainer process read outside its "
+                        "granted paths")
+            if "AC-OUTSIDE-REFUSED" not in out_text:
+                return ("the AppContainer trial could not show "
+                        "a read outside the granted paths being "
+                        "refused (exit %s: %s)"
+                        % (proc.returncode, tail))
+            if "AC-OUTSIDE-WRITE-OPEN" in out_text:
+                return ("AppContainer boundary crossing: an "
+                        "AppContainer process wrote outside its "
+                        "granted paths")
+            if "AC-OUTSIDE-WRITE-REFUSED" not in out_text:
+                return ("the AppContainer trial could not show "
+                        "a write outside the granted paths being "
+                        "refused (exit %s: %s)"
+                        % (proc.returncode, tail))
+            if "AC-NETWORK-OPEN" in out_text:
+                return ("AppContainer boundary crossing: an "
+                        "AppContainer process reached the "
+                        "network with no network capability")
+            if "AC-NETWORK-REFUSED" not in out_text:
+                return ("the AppContainer trial could not show "
+                        "network access being refused (exit %s: "
+                        "%s)" % (proc.returncode, tail))
+            if "AC-TOKEN-PLAIN" in out_text:
+                return ("the AppContainer trial process's "
+                        "token is not an AppContainer token "
+                        "(exit %s: %s)" % (proc.returncode, tail))
+            if "AC-TOKEN-APPCONTAINER" not in out_text:
+                return ("the AppContainer trial could not read "
+                        "an AppContainer token from inside the "
+                        "trial process (exit %s: %s)"
+                        % (proc.returncode, tail))
+            if proc.returncode not in (0, None):
+                return ("the AppContainer trial process exited "
+                        "%s after its checks (%s)"
+                        % (proc.returncode, tail))
+            return None
+        finally:
+            try:
+                proc.close()
+            except Exception:
+                pass
+    except Exception as e:
+        return "AppContainer trial could not be staged: %s" % (e,)
+    finally:
+        if tmp is not None:
+            shutil.rmtree(tmp, ignore_errors=True)
+        if outside_root is not None:
+            shutil.rmtree(outside_root, ignore_errors=True)
