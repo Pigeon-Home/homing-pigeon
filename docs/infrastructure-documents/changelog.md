@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.4 - 2026-11-22
+
+- Docs: the Windows rows of the support matrix stand at Supported on the owner's call of 2026-11-21, with the lane's supposition and conclusions in docs/steady/security/windows.md, the reduced level's definition recording all three dated departures, and the pins following the rename (since 3.17.33.3)
+- Docs: the AppContainer design record lands at docs/steady/design/windows-appcontainer-design.md, reconciled against the build in its own differences section, with the rig's conclusions written against its eleven suppositions (since 3.17.33.3)
+
 ## 3.17.33.3 - 2026-11-22
 
 - Windows confinement: Lane 8 supposition recorded before measurement, the container granted the ancestors of its work directory with the verdict consulted at the spawn seam, ancestor grants standing without inheritance, and the Job Object limit flags pinned with the whole job ceiling (since 3.17.33.1)
