@@ -40,6 +40,21 @@ out the upload for one version:
   the package signature, and upload the package with altool
   under the API key.
 
+One naming lesson the first carried out run taught
+(2026-11-21): the portal type names above are not the names
+the keychain holds. codesign accepts the Apple Distribution
+type name and signed with it, so that step stands as it is.
+productbuild does not: it stopped with "Could not find
+appropriate signing identity for Mac Installer
+Distribution", because the installer certificate's keychain
+common name is the "3rd Party Mac Developer Installer:
+<team name> (team ID)" form. The plan therefore resolves
+the installer identity from the keychain at run time: a
+find-identity gate first proves an identity carrying that
+prefix for this team stands in the keychain, and the
+productbuild step signs with the name that same lookup
+returns, never a hardcoded team display name.
+
 Nothing here opens a socket or runs a command. The pipeline
 step that carries the plan out first imports the two .p12s
 into a temporary keychain and places the profile at the
@@ -65,6 +80,47 @@ SKU = "HOMINGPIGEON-MAC-001"
 
 APP_DISTRIBUTION_IDENTITY = "Apple Distribution"
 INSTALLER_DISTRIBUTION_IDENTITY = "Mac Installer Distribution"
+
+# The installer certificate's keychain common name is not
+# its portal type name above: an imported Mac Installer
+# Distribution certificate stands in the keychain as
+# "3rd Party Mac Developer Installer: <team name> (3PH9A88USW)".
+# productbuild matches --sign against that common name, so
+# the plan resolves the name from the keychain at run time
+# (see installer_identity_lookup) instead of handing
+# productbuild the type name, which it cannot find.
+INSTALLER_KEYCHAIN_IDENTITY_PREFIX = "3rd Party Mac Developer Installer"
+
+
+def installer_identity_lookup():
+    """Return the shell substitution that resolves the
+    installer signing identity from the keychain.
+
+    The substitution runs security find-identity on the
+    machine carrying the plan out, keeps the identity whose
+    common name carries INSTALLER_KEYCHAIN_IDENTITY_PREFIX
+    for this team, and yields that full common name. It is
+    embedded in the productbuild command, so the name
+    productbuild signs with is the name the keychain
+    actually holds at run time, whatever the team's display
+    name is.
+    """
+    return ("$(security find-identity -v | grep -o "
+            "'%s: [^\"]* (%s)' | head -n 1)"
+            % (INSTALLER_KEYCHAIN_IDENTITY_PREFIX, TEAM_ID))
+
+
+def installer_identity_gate():
+    """Return the plan step that proves the installer
+    identity stands in the keychain before packaging.
+
+    The step fails the chain where the identity is absent,
+    in plain sight, instead of leaving productbuild to stop
+    later with its own cannot-find line.
+    """
+    return ("security find-identity -v | grep -q "
+            "'%s:.*(%s)'"
+            % (INSTALLER_KEYCHAIN_IDENTITY_PREFIX, TEAM_ID))
 
 # The signing material the chain needs, in the order the
 # chain reaches for it. Each entry: the state key, the piece
@@ -219,10 +275,15 @@ def plan_upload(state, version):
         "%s" % (APP_DISTRIBUTION_IDENTITY, app),
         "codesign --verify --deep --strict --verbose=2 %s" % app,
         # Package and sign the installer, verify it, and
-        # upload it under the API key.
+        # upload it under the API key. The gate proves the
+        # installer identity stands in the keychain under
+        # its keychain common name, and productbuild signs
+        # with the name the lookup resolves there, not the
+        # portal type name it cannot find.
+        installer_identity_gate(),
         "productbuild --component %s /Applications --sign \"%s\" "
         "--identifier %s --version %s %s"
-        % (app, INSTALLER_DISTRIBUTION_IDENTITY, BUNDLE_ID,
+        % (app, installer_identity_lookup(), BUNDLE_ID,
            version, pkg),
         "pkgutil --check-signature %s" % pkg,
         "xcrun altool --upload-app --type macos --file %s "

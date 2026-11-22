@@ -105,9 +105,56 @@ class PlanUploadTest(unittest.TestCase):
         commands = apple_store.plan_upload(
             _full_state(), "3.17.33.1")["commands"]
         (package,) = [c for c in commands if c.startswith("productbuild")]
-        self.assertIn('"Mac Installer Distribution"', package)
         self.assertIn("ai.pigeon-home.homing-pigeon", package)
         self.assertIn("3.17.33.1", package)
+        # productbuild matches --sign against the keychain
+        # common name, not the portal type name: the first
+        # carried out run stopped on exactly that. The plan
+        # must hand it the resolved keychain name, and must
+        # never hand it the bare type name again.
+        self.assertNotIn('"Mac Installer Distribution"', package)
+        self.assertIn(apple_store.installer_identity_lookup(), package)
+
+    def test_installer_identity_is_resolved_from_the_keychain(self):
+        lookup = apple_store.installer_identity_lookup()
+        self.assertTrue(lookup.startswith("$(security find-identity"))
+        self.assertIn("3rd Party Mac Developer Installer:", lookup)
+        self.assertIn("(3PH9A88USW)", lookup)
+        self.assertIn("head -n 1", lookup)
+        # No team display name is hardcoded anywhere in the
+        # plan: the name comes from the keychain at run time.
+        commands = apple_store.plan_upload(
+            _full_state(), "3.17.33.1")["commands"]
+        for command in commands:
+            self.assertNotIn("Installer: Andrew", command)
+
+    def test_installer_keychain_prefix_is_the_imported_name(self):
+        self.assertEqual("3rd Party Mac Developer Installer",
+                         apple_store.INSTALLER_KEYCHAIN_IDENTITY_PREFIX)
+
+    def test_identity_gate_stands_before_productbuild(self):
+        commands = apple_store.plan_upload(
+            _full_state(), "3.17.33.1")["commands"]
+        gate = apple_store.installer_identity_gate()
+        self.assertIn(gate, commands)
+        self.assertIn("security find-identity", gate)
+        self.assertIn("grep -q", gate)
+        self.assertIn("3rd Party Mac Developer Installer:", gate)
+        self.assertIn("(3PH9A88USW)", gate)
+        package = next(c for c in commands
+                       if c.startswith("productbuild"))
+        self.assertLess(commands.index(gate), commands.index(package))
+
+    def test_bundle_signing_still_uses_the_app_identity(self):
+        # codesign accepted the Apple Distribution type name
+        # and verified on the carried out run, so only the
+        # indicted productbuild step changes shape.
+        commands = apple_store.plan_upload(
+            _full_state(), "3.17.33.1")["commands"]
+        signing = [c for c in commands if c.startswith("codesign --force")]
+        self.assertEqual(3, len(signing))
+        for command in signing:
+            self.assertNotIn("find-identity", command)
 
     def test_upload_uses_the_api_key_facts(self):
         commands = apple_store.plan_upload(
