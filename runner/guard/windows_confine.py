@@ -233,7 +233,20 @@ process object reads TokenIsAppContainer from the token of
 the process it created, which the runner can always ask.
 The program's own report still decides wherever the spawn
 seam offers no parent side answer, and a plain token named
-by either side still fails the check.
+by either side still fails the check. A third measurement
+from the same re run, isolated in both directions on the
+rig: a container SID entry standing in a library file's
+DACL makes the floor's restricted token process fail at
+load with STATUS_DLL_NOT_FOUND, while a plain token loads
+the same file and a container process requires the entry.
+The entry that Lane 5's diagnostics granted the rig's
+interpreter tree, on a spawn that then failed at creation,
+was never revoked, because a failed spawn had no process
+whose close could revoke it; every rig battery after it
+failed its floor trial at startup for exactly that reason.
+A failed AppContainer spawn therefore revokes the grants it
+made before the failure travels, in this module, so the
+fallback it hands back to is the floor it found.
 
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
@@ -1545,8 +1558,28 @@ else:
                 else dict(os.environ)
             ac_env["TEMP"] = cwd
             ac_env["TMP"] = cwd
-            proc = _spawn_suspended(argv, cwd, ac_env, job, None,
-                                    capabilities=caps)
+            try:
+                proc = _spawn_suspended(argv, cwd, ac_env, job,
+                                        None, capabilities=caps)
+            except Exception:
+                # A failed spawn revokes the grants it made
+                # before the failure travels: a container SID
+                # entry left standing on a granted path is not
+                # inert. On a library file it makes the floor's
+                # restricted token unable to load that library
+                # at all (STATUS_DLL_NOT_FOUND at process
+                # creation, the Lane 6 re run's second
+                # measurement, isolated in both directions on
+                # the rig), so a leaked grant on an interpreter
+                # tree silently breaks the floor the spawn was
+                # supposed to fall back to. The successful
+                # spawn's grants are revoked at job end by the
+                # process's close, exactly as before.
+                try:
+                    remove_app_container_grants(sid, grants)
+                except Exception:
+                    pass
+                raise
         finally:
             kernel32.LocalFree(sid)
         proc.confinement_status = STATUS_APP_CONTAINER

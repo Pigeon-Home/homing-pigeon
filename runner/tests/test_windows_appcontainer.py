@@ -444,6 +444,23 @@ class ProfileCallShapeTests(unittest.TestCase):
             "read_paths = (os.path.abspath(exe_dir),) \\",
             source)
 
+    def test_a_failed_spawn_revokes_its_grants(self):
+        # The Lane 6 third measurement: a container SID entry
+        # left standing on a library file's DACL makes the
+        # floor's restricted token fail at load, so a spawn
+        # that fails after granting must revoke before the
+        # failure travels, not leave the grant for a process
+        # close that will never happen.
+        source = self._source()
+        self.assertIn(
+            "except Exception:\n"
+            "                # A failed spawn revokes the "
+            "grants it made",
+            source)
+        self.assertIn(
+            "remove_app_container_grants(sid, grants)",
+            source)
+
     def test_live_binding_carries_six_parameters(self):
         if not WC.IS_WINDOWS_BACKEND:
             self.skipTest(
