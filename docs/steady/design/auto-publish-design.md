@@ -36,10 +36,13 @@ release attempts close with no effect and no error. The
 classic grant itself is a forum process, described in the
 readiness page; it is a one time gate, not a per release one.
 
-The Apple leg has no store listing at all, by the verdict in
-the preparation notes: the Mac App Store's sandbox cannot
-hold the runner, so the route is Developer ID signing,
-notarization and stapling, distributed from our own shelf.
+The Apple leg's preparation notes carried a verdict: the
+Mac App Store's sandbox cannot hold the runner, so the route
+would be Developer ID signing, notarization and stapling,
+distributed from our own shelf. Since then an App Store
+Connect record has been created (Homing Pigeon Runner, macOS,
+created 2026-11-21) and stands at Prepare for Submission,
+with no binary uploaded yet.
 The owner has directed that a store submission be
 attempted anyway and Apple's own review be allowed to give
 the answer. His enrollment stands active as an individual

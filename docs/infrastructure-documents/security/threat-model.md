@@ -39,8 +39,9 @@ It could even work as a marketable service.
 - The Oracle reviews and attests. It does not contain a job unless
   a confinement backend engages (`security.modes.confinement` runs
   at `enforce` by default): Linux bubblewrap, the Windows backend
-  (Job Object, restricted token, low integrity), or the FreeBSD
-  per-job jail. Where the platform's backend cannot engage, the
+  (Job Object, restricted token, low integrity, with the
+  AppContainer control on top where its trial proves), the
+  FreeBSD per-job jail, or the macOS Seatbelt profile. Where the platform's backend cannot engage, the
   runner refuses to start at that default rather than run
   uncontained. A VM, a locked-down user, and the OS policy still do the real
   containment. AppArmor and SELinux profiles live under `docs/steady/security/`

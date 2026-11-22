@@ -68,8 +68,9 @@ unreadable ACL is a WARN, never a FAIL).
 ## Confinement on Windows
 
 There is no bwrap on Windows, and the Windows confinement backend
-is not a namespace sandbox. What it applies, at `enforce`, is
-named exactly in every audit and startup record:
+is not a namespace sandbox. What its floor applies, at
+`enforce`, is named exactly in every audit and startup record
+for a floor spawn:
 
 ```
 windows: job_object + restricted_token + low_integrity
@@ -87,16 +88,42 @@ key-policy constraints (`allowed_env`, `allowed_files`,
 `args_pattern`, `max_args`) are platform-independent and apply
 as well.
 
-What this does not provide, plainly: no filesystem namespace
-isolation. A confined job can still read any path its token can
-read; low integrity stops it writing to medium- or
-higher-integrity objects outside its workspace, it does not
-hide the filesystem, and it isolates no network. At `enforce`
-the startup gate probes the backend (Job Object creation plus
-restricted-token creation plus the integrity-level set) and
-refuses to start when the probe fails, naming why. An
-AppContainer backend is the future path to confinement parity
-with the Linux sandbox; it is not built yet.
+What the floor does not provide, plainly: no filesystem
+namespace isolation. A job at the floor can still read any
+path its token can read; low integrity stops it writing to
+medium- or higher-integrity objects outside its workspace, it
+does not hide the filesystem, and it isolates no network. At
+`enforce` the startup gate probes the backend (Job Object
+creation plus restricted-token creation plus the
+integrity-level set) and refuses to start when the probe
+fails, naming why.
+
+On top of that floor, an AppContainer control stands since
+2026-11-21, where its trial proves on the host. The spawn
+derives the container SID from a fixed container name, builds
+its security capabilities with no capability SIDs at all (a
+container with no network capability has no network), grants
+that SID the job's work directory, the ancestors of that
+directory at read and execute only, and the read paths a
+caller names, points the job's temporary folders at its work
+directory, and assigns the Job Object before the process
+resumes. A failed AppContainer start revokes the grants it
+made. Where that shape engages, the audit and startup record
+names a different string, exactly:
+
+```
+windows: job_object + appcontainer + no_network
+```
+
+The trial asks for the job's own shape before the verdict is
+given, because the record on the project's own Windows rig
+shows shapes that die at load inside the container
+(PowerShell cannot start there, and managed programs die at
+load there). A shape the trial cannot prove falls back to
+the floor spawn and the floor record, unchanged. The
+AppContainer spawn replaces the restricted token control for
+the processes it covers; an AppContainer token runs at Low
+integrity by construction, so neither control is named twice.
 
 ## The two modes a Windows config states
 
@@ -108,7 +135,9 @@ read `enforce` when a config does not state them.
 
 Their Windows stories differ. Confinement has the backend
 described above: at `enforce`, startup probes it and each job
-runs under the three named controls, or is refused. `job_user`
+runs under the three named controls, or under the
+AppContainer shape where its trial proves on that host and
+for that job's shape, or is refused. `job_user`
 has the narrower one: a Job Object with a per-process memory
 ceiling (512 MiB), assigned to each job's process as it starts.
 At `enforce`, Windows `job_user` runs with that ceiling, and a

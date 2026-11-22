@@ -82,7 +82,11 @@ This page does not repeat it. The short form:
   Python package metadata. It sits in a packaging folder; the
   readiness page records the layout question (that folder, or
   the standard snap folder at the root) as the owner's
-  decision. Nothing is registered, built or uploaded yet.
+  decision. Since that was written the name has been
+  registered, builds are produced by the store's build service
+  from the tree itself, and revisions stand uploaded under the
+  classic confinement review hold; nothing has been released
+  to a channel yet (the record stands in the readiness page).
 - The first build spike ran on 2026-11-20 and its record stands
   in the readiness page. A staged build of the draft's exact
   layout passed 18 checks from the staged tree, including a

@@ -11,8 +11,9 @@ covers what **you** do, step by step, to keep a deployment safe.
   as. There is no confirmation prompt. A sandbox exists only where
   a confinement backend can engage (`security.modes.confinement`
   runs at `enforce` by default): Linux bubblewrap, the Windows
-  backend (Job Object, restricted token, low integrity), or the
-  FreeBSD per-job jail. Where the platform's backend cannot
+  backend (Job Object, restricted token, low integrity, with
+  the AppContainer control on top where its trial proves), the
+  FreeBSD per-job jail, or the macOS Seatbelt profile. Where the platform's backend cannot
   engage, the runner refuses to start at that default; set
   `confinement` to `audit` or `off` there to run without the sandbox.
 - The shared secret (a dedicated high-entropy string, by your explicit choice)
@@ -73,11 +74,14 @@ Defense in depth, cheapest first:
   On Linux, `security.modes.confinement` set to `enforce` runs the
   job inside bubblewrap; on Windows `enforce` runs the job under
   the Windows backend (Job Object, restricted token, low
-  integrity), and on FreeBSD inside a per-job jail with no network
-  at all. Enforce is the default: a feature the
+  integrity, with the AppContainer control on top where its
+  trial proves, and no network there), on FreeBSD inside a
+  per-job jail with no network at all, and on macOS under a
+  per-job Seatbelt profile with no network. Enforce is the default: a feature the
   config does not set reads as `enforce`. Under `enforce` a sandbox
   that cannot engage (no `bwrap`, user namespaces blocked) refuses to start the runner; a sandbox that breaks after a
-  good start falls back loudly and the audit log says `fallback`.
+  good start does not run the job weaker: the audit log says
+  `fallback` as the record of a denial, and the job is refused.
   Inside the Linux sandbox
   the job sees `/usr`, its own workdir, and nothing else; when the
   interpreter lives outside `/usr` (pyenv, a venv, `/opt`), its own

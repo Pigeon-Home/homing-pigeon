@@ -290,9 +290,9 @@ refuse-class setting it stops the runner before any job is read.
   decision itself in `enforce` mode refuses the job, not the
   runner.
 
-## C11. The seven security modes
+## C11. The nine security modes
 
-- **Constraint:** each of the seven hardening features carries a
+- **Constraint:** each of the nine hardening features carries a
   mode, and the mode MUST be one of `off`, `audit`, or `enforce`.
   `off` does nothing. `audit` lets the job proceed exactly as
   `off` would and writes what `enforce` would have decided to the
@@ -300,20 +300,27 @@ refuse-class setting it stops the runner before any job is read.
   ordinary reject path. A missing security block leaves every
   feature at the default, `enforce`; a mode a config sets is the
   mode that runs. Changing a mode requires a restart: the
-  configuration is read once at startup. The seventh feature,
-  `personal_docs_shelter`, gates an operator-invoked tool rather
-  than a job: `off` refuses to plan or apply, `audit` plans only,
-  and `enforce` lets the operator's `--apply` move files.
+  configuration is read once at startup. Two of the features
+  gate operator-invoked tools rather than jobs:
+  `personal_docs_shelter` (the seventh), where `off` refuses to
+  plan or apply, `audit` plans only, and `enforce` lets the
+  operator's `--apply` move files; and `agent_state_guard`
+  (the eighth), where `off` refuses, `audit` reports what
+  would be stopped and stops nothing, and `enforce` lets the
+  guard stop a commit carrying agent permission or config
+  state. The ninth, `v2_question`, gates whether a version 2
+  question may leave the box.
 - **Value:** features, in the order the code declares them —
   `policy_env`, `policy_files`, `policy_args`, `audience`,
-  `confinement`, `job_user`, `personal_docs_shelter`. Modes —
+  `confinement`, `job_user`, `personal_docs_shelter`,
+  `agent_state_guard`, `v2_question`. Modes —
   `off`, `audit`, `enforce`.
   Default for every feature: `enforce`.
 - **Where:** `runner/guard/security.py` — `MODES`, line 39;
-  `FEATURES`, line 44; `sec_mode`, line 342, which reads a missing
+  `FEATURES`, line 44; `sec_mode`, line 356, which reads a missing
   mode as the `enforce` default and a malformed value defensively
-  as `off`; `sec_decide`, line 772, the single decision point;
-  `validate_security_config`, line 440, the startup validator.
+  as `off`; `sec_decide`, line 822, the single decision point;
+  `validate_security_config`, line 490, the startup validator.
 - **Class:** refuse class. Security modes are named in Decision 1
   itself, and `validate_security_config` raises `RuntimeError` for
   a security block that is not an object, a feature name it does
@@ -321,8 +328,8 @@ refuse-class setting it stops the runner before any job is read.
   `runner/ops/main.py`, line 83, before any mailbox, model, or job
   work. Two features add their own startup refusals in the same
   class, both in `runner/ops/main.py`: `confinement` on `enforce`
-  whose confinement backend cannot engage on this platform (no
-  backend engages there — macOS today) refuses to start, and `job_user` on `enforce` whose
+  whose confinement backend cannot engage on this platform (a
+  platform with no backend at all) refuses to start, and `job_user` on `enforce` whose
   demotion mechanism cannot engage (on Windows, where it was once
   a silent no-op) refuses to start.
 
@@ -903,7 +910,7 @@ refuse-class setting it stops the runner before any job is read.
   `docs/steady/security/macos.md`.
 - **Class:** refuse class at `enforce`, through the
   startup path; the confinement mode itself is one of
-  the seven security modes of C11.
+  the nine security modes of C11.
 
 ## Summary table
 
@@ -919,7 +926,7 @@ refuse-class setting it stops the runner before any job is read.
 | C8 | Cleartext | refused; `--allow-cleartext` only | no config key exists |
 | C9 | AEAD | AES-256-GCM, `aes-256-gcm/hkdf-sha384` | not a setting |
 | C10 | Audience | configured `runner_id`; `aud` wins | refuse (as a security mode) |
-| C11 | Seven security modes | each `enforce` by default | refuse (malformed block) |
+| C11 | Nine security modes | each `enforce` by default | refuse (malformed block) |
 | C12 | `max_job_age_sec` | 3600; future bound 300 | default class |
 | C13 | Protocol version | integer 1 only | not a setting |
 | C14 | Key policies | per-key; script pin is SHA-384 | refuse (malformed policy) |

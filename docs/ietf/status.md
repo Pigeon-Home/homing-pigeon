@@ -214,7 +214,7 @@ and has NOT been posted: the author posts drafts himself, and
 this one is ready for him to post. It binds versions 1, 2 and 3
 to the provable model on the proofs shelf: the constraint
 inventory C1 to C31, the properties P1 to P13, their TLA+
-models with their TLC verdicts, and the findings F1 to F7. Its
+models with their TLC verdicts, and the findings F1 to F9. Its
 idnits check, submission mode on the text and the XML, is
 nit-free: 0 errors, 0 warnings, 0 comments, recorded in the
 `.idnits.txt` beside its source. Its folder holds no

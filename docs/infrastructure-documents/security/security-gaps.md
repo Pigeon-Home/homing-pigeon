@@ -12,15 +12,19 @@ the order in which to turn things on if the answer bothers you.
 With default settings, jobs execute as the same OS user that owns
 `config.json`, the code, the state, and the audit log; no separate
 job user is named by default, so in that `job_user` sense **the job
-is the runner**. That is not the whole default picture: all six
+is the runner**. That is not the whole default picture: all nine
 `security.modes` features read `enforce` when unset, and
 confinement engages out of the box on a Linux box with `bwrap`, on
-Windows through its backend, and on FreeBSD through its jail, so on
-Linux and FreeBSD the job is sandboxed away from `config.json`, the
-state dir and the audit log; on Windows the backend bounds the
-job's token, integrity level and memory but isolates no filesystem,
-and there a same-user job is separated from those files only by the
-identity split and the ACLs below. Where confinement cannot engage,
+Windows through its backend, on FreeBSD through its jail, and on
+macOS through its Seatbelt profile, so on Linux, FreeBSD and
+macOS the job is sandboxed away from `config.json`, the
+state dir and the audit log; on Windows the backend's floor
+bounds the job's token, integrity level and memory but isolates
+no filesystem, and there a same-user job is separated from
+those files only by the identity split and the ACLs below,
+unless the AppContainer control described in
+`docs/steady/security/windows.md` proves on that host, in which
+case the contained job's reads are walled to its grants. Where confinement cannot engage,
 or where it is set to `audit` or `off`, every file permission on
 the box is theater against a same-user job itself, because the job
 can read and rewrite all of it. Everything below follows from that.
@@ -49,7 +53,7 @@ readable by the runner principal and not by the job principal.
 | Linux | `job_user` (setuid), `install.py` writes owner-only `0600` | Default is still the same user. POSIX ACLs (`setfacl`) on the base dir should hide the secret from the job user when bwrap is off |
 | macOS | launchd agent as the installing user | `chmod +a` ACLs exist but nothing applies them. The cage is separate from this gap: the Seatbelt backend (`sandbox-exec`) engages at `enforce`, so the unapplied ACL matters where confinement is `off` or `audit` |
 | FreeBSD | cron `@reboot` as the user | `setfacl` on ZFS/UFS unapplied; the per-job jail is the confinement backend and engages at `enforce` |
-| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `docs/steady/security/windows.md` documents the account as the identity boundary | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r`, which is a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity and a restricted token are the stronger cousins, and they now ship as the Windows confinement backend at `enforce` |
+| Windows | Scheduled Task (SYSTEM by default, or `--run-as`); `docs/steady/security/windows.md` documents the account as the identity boundary | On a fresh one-home install, `install.py`'s `_acl_home()` runs `icacls /inheritance:r /grant:r`, which is a real DACL set by code at install. The legacy non-one-home path remains chmod-only, which sets no real DACL. Low integrity and a restricted token are the stronger cousins, and they now ship as the floor of the Windows confinement backend at `enforce`; since 2026-11-21 the AppContainer control stands on top of that floor where its trial proves on the host, and a contained job's reads are walled to its grants |
 
 `--posture` already warns about the Windows ACL; it should warn
 about a missing POSIX ACL too.
@@ -64,10 +68,12 @@ On Linux, bwrap (`security.modes.confinement`) is the better tool
 and should stay the confinement backend; FreeBSD has its per-job
 jail, whose only writable mount is the workdir; macOS has its
 Seatbelt profile, which leaves the work directory as the job's only
-writable tree. The Windows backend
-(Job Object, restricted token, low integrity) bounds the job but
-isolates no filesystem, so on Windows the ACL and the identity
-split carry this step. ACLs matter where confinement is set to
+writable tree. The Windows backend's
+floor (Job Object, restricted token, low integrity) bounds the
+job but isolates no filesystem, so at the floor on Windows the
+ACL and the identity split carry this step; where the
+AppContainer control proves on the host, the contained job's
+reads and writes are walled to its grants instead. ACLs matter where confinement is set to
 `off`, and on macOS where it is set to `audit`, since the Seatbelt
 cage engages only at `enforce`. The Pi profile
 already lists `/etc/shadow` as a protected path; that path should
@@ -102,7 +108,10 @@ where each one stands. Items marked absent are listed in docs/FUTURE.md.
   every redaction rule (those only cover what comes *back* in the
   result email). Bwrap in enforce mode (Linux, the default)
   blocks it, and the FreeBSD jail denies a job all network; the
-  Windows backend has no network control. Status: mechanism
+  Windows backend's floor has no network control, and since
+  2026-11-21 its AppContainer control, where its trial proves
+  on the host, carries no network capability at all, so a
+  contained job there has no network. Status: mechanism
   exists, on by default where a backend with a network control
   can engage.
 - **Audit log integrity.** Neither log is append-only in the
@@ -140,7 +149,7 @@ where each one stands. Items marked absent are listed in docs/FUTURE.md.
 The gaps that remain are the owner's call, not an accident: this
 is a personal runner, and availability beats strictness for one
 user's box. The hardening controls themselves are not opt-in;
-all six `security.modes` features read `enforce` when unset.
+all nine `security.modes` features read `enforce` when unset.
 What remains in effect until the owner names one is the identity
 split: `job_user` reads `enforce` when unset, but with no job
 user named there is no other user to drop to, so jobs still run

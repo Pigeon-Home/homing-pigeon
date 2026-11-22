@@ -42,11 +42,11 @@ deleted.
 ## Fuzzing
 
 A coverage-guided corpus is grown against the runner's
-own protocol surface: 30 targets (wire, cloud, v2, crypto, local,
+own protocol surface: 31 targets (wire, cloud, v2, crypto, local,
 stash, mail, dtls, board, board_ops, channels, manifest, inbox,
 local_inbox, secret, queries, names, query, board_mail, v2_mail,
 stage, collect, keydir, address, dtls_session, race_board,
-race_stash, race_state, dtls_hostile, edge_subject), mutating
+race_stash, race_state, dtls_hostile, edge_subject, gate), mutating
 real traffic and replaying whatever breaks. The method is a
 fuzzer's systematic, coverage-driven logic aimed at basic test
 points: the assurance target is that the ordinary
@@ -69,17 +69,17 @@ names they were written with.
 
 Status at this writing:
 
-- Corpus: **2,400 entries over 30 targets**, counted from the
-  committed corpus at this writing, merged from all three rigs.
+- Corpus: **42,251 entries over 31 targets**, counted from the
+  committed corpus files on 2026-11-22, merged from all three rigs.
 - Crashes are filed as findings, never fixed by the hand that
   found them.
 - The key-parity family is closed: all fifteen doors,
   DTLS resumption included, now refuse a superseded key, and the
   two by-design failing probes are green since the key directory
   shipped.
-- Releases: the latest published release stands on the
-  3.16 line, verified on the GitHub releases page on
-  2026-11-10. The
+- Releases: the latest published release is 3.17.32.18,
+  verified on the GitHub releases page on
+  2026-11-22, with 3.17.33.1 in flight behind it. The
   version in pyproject.toml moves ahead of publication whenever
   a ship is in flight, so the changelog is the record of what
   has shipped and the releases page is the record of what has

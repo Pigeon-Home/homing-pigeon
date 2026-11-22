@@ -1029,9 +1029,15 @@ at `enforce` by default. On Linux with `bwrap` installed the job
 runs inside bubblewrap: `/usr` read-only, no network, and only the
 job workdir writable at `/work`. On Windows the job is created
 under a Job Object with a restricted token at low integrity, with a
-512 MiB per-process ceiling; there is no filesystem namespace
-isolation, so a confined job can still read any path its token can
-read. On FreeBSD each job runs in its own jail: the system mounts
+512 MiB per-process ceiling; at that floor there is no filesystem
+namespace isolation, so a job at the floor can still read any path
+its token can read, and since 2026-11-21 an AppContainer control
+stands on top of that floor where its trial proves on the host,
+walling a contained job's reads to its grants and giving it no
+network. On macOS each job runs under a Seatbelt profile applied
+by `sandbox-exec`: the system trees and the interpreter's prefix
+readable, the job workdir the only writable tree, no network, and
+a ceiling on each job process's address map set at spawn. On FreeBSD each job runs in its own jail: the system mounts
 read-only, the job workdir the only writable mount, a fresh `/tmp`,
 no network at all, and a 512 MiB ceiling at spawn. At startup, a
 backend that cannot engage on a platform that has one (and any

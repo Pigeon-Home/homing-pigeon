@@ -2,7 +2,7 @@
 
 Steady is the quiet shelf. A document lands here when it has not been touched for a while, and this folder exists for 1 thing: wandering. If you opened steady, you came to explore.
 
-Everything on this shelf arrived between 2026-10-13 and 2026-11-10, covering the project's first 4 weeks and the days since. Nothing here is deleted, and every file sits in exactly 1
+Everything on this shelf arrived between 2026-10-13 and 2026-11-21, covering the project's first 4 weeks and the days since. Nothing here is deleted, and every file sits in exactly 1
 place.
 
 ## Which tree
@@ -11,7 +11,7 @@ Two trees of documents sit side by side in docs/. This one, steady, is the quiet
 
 ## The core of the project
 
-11 files sit at the top of this folder, in no folder at all, and this map is 1 of them. The 9 core files among them are the heart of the project: what the system is, how it is used, and how it keeps itself
+12 files sit at the top of this folder, in no folder at all, and this map is 1 of them. The 9 core files among them are the heart of the project: what the system is, how it is used, and how it keeps itself
 safe.
 
 - overview.md, the project overview, what Homing Pigeon is and where the campaign stands. Untouched since 2026-10-30.
@@ -26,17 +26,17 @@ safe.
 
 ## The drawers
 
-The other 178 files are in 9 drawers, named the way the rest of the project's documents are named:
+The other 188 files are in 9 drawers, named the way the rest of the project's documents are named:
 
-- design, 8 files. design documents and decision records, how pieces were shaped before they were built.
-- security, 17 files. the hardening set, host hardening, the confinement profiles, the privacy papers, and the security papers.
+- design, 14 files. design documents and decision records, how pieces were shaped before they were built.
+- security, 18 files. the hardening set, host hardening, the confinement profiles, the privacy papers, and the security papers.
 - use, 10 files. guides and runbooks, running the system and using it day to day.
-- project, 12 files. the project's own papers, plans, maps, and campaign notes.
+- project, 14 files. the project's own papers, plans, maps, and campaign notes.
 - oracle, 4 files. the Oracle's papers, its playbook, its reviews, its senses, its standing instructions.
 - seats: 3 files. papers from the seats era, which closed on 2026-10-31: who sat where, and what was asked.
 - proofs: 2 files. proof and verification records.
 - specimens: 14 files. raw artifacts: logs and machine output, kept as found.
-- reports: 108 files. the dated record: audits, coverage, reviews, rig reports, and release records; the biggest drawer.
+- reports: 109 files. the dated record: audits, coverage, reviews, rig reports, and release records; the biggest drawer.
 
 ## First stops: important, and untouched the longest
 

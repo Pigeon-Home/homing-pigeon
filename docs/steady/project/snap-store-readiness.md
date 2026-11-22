@@ -6,9 +6,14 @@ This page records the preparation for offering the runner through the
 Ubuntu Snap Store, one of the three store fronts the owner names in
 [FUTURE.md](../../FUTURE.md). It sits beside [hosting.md](hosting.md),
 which covers machines the tenant pays for; this page covers a store
-listing for machines the user already owns. Status: preparation only.
-No store account exists yet, nothing has been submitted, and no money
-has been spent. The decisions this page asks of the owner are collected
+listing for machines the user already owns. Status, as of
+2026-11-21: the Ubuntu One account exists, the name
+homing-pigeon stands registered to it, the listing's metadata
+stands filled in by the owner, and the store's build service
+builds each new release into fresh revisions, which stand
+uploaded under the classic confinement review hold
+(ReviewQueued). Nothing has been released to any channel yet.
+The decisions this page asks of the owner are collected
 at the end.
 
 ## The short answer
@@ -330,7 +335,10 @@ above before a snapped install can be offered.
 ### Muse can do alone
 
 1. Write snap/snapcraft.yaml and produce a first local build with
-   snapcraft and LXD on a Linux build machine.
+   snapcraft and LXD on a Linux build machine. (Done: both
+   snapcraft.yaml files stand on main, a local build was
+   produced and verified on 2026-11-20, and the store's build
+   service now builds each new release from the tree itself.)
 2. Install the built snap locally with the dangerous and classic
    flags (the form for a local file that has not been through the
    store) and run the runner's own checks against the snapped
@@ -346,13 +354,12 @@ above before a snapped install can be offered.
 1. Create the Ubuntu One account at the snapcraft.io account page.
    This is the first manual step and the only one that cannot be
    delegated at all: the account is the publisher's identity, and
-   everything else hangs off it.
+   everything else hangs off it. (Done by the owner on
+   2026-11-20.)
 2. Register the name homing-pigeon from that account. Names go to
    whoever registers first, so this one step is worth taking early,
-   before the build is finished. Whether the name is still free is
-   known only at the moment of trying; a web search on 2026-11-20
-   found no snap carrying it, which is encouraging and proves
-   nothing.
+   before the build is finished. (Done by the owner on
+   2026-11-20; the name stands registered and verified.)
 3. Post the classic confinement request under his own account and
    answer the reviewers' questions. The vetting is of the publisher,
    so some answers can only be his.

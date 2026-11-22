@@ -528,7 +528,7 @@ its 19,227 jobs are worth knowing before loosening a real box:
 | `policy_files` | M2 | Constrains staged files for keys with a policy entry |
 | `policy_args` | M2 | Constrains job args for keys with a policy entry |
 | `audience` | M5 | Binds signed jobs to this runner's id |
-| `confinement` | M6 | Runs jobs inside the platform's confinement backend: a bwrap sandbox on Linux, a Job Object with a restricted token at low integrity on Windows, a jail with no network on FreeBSD |
+| `confinement` | M6 | Runs jobs inside the platform's confinement backend: a bwrap sandbox on Linux, a Job Object with a restricted token at low integrity on Windows (with an AppContainer control on top where its trial proves), a jail with no network on FreeBSD, a Seatbelt profile with no network on macOS |
 | `job_user` | M8 | Runs jobs as a different user (a POSIX setuid demote; on Windows, a Job Object memory ceiling instead) |
 
 ### Confinement
@@ -575,8 +575,15 @@ backend instead, and the startup gate probes that backend the
 same way. On Windows: a Job Object (512 MiB per process), a
 restricted token and a low integrity level, audited as
 `windows: job_object + restricted_token + low_integrity`,
-with no filesystem namespace isolation, so a confined job can
-still read any path its token can read. A fresh Windows
+with no filesystem namespace isolation at that floor, so a
+job at the floor can still read any path its token can read.
+Since 2026-11-21 an AppContainer control stands on top of
+that floor where its trial proves on the host: the contained
+job's reads are walled to its grants (its work directory, the
+ancestors of that directory at read and execute only, and
+the read paths a caller names), it carries no network
+capability, and the record names it
+`windows: job_object + appcontainer + no_network`. A fresh Windows
 install states the mode at `audit` in the seeded config, for
 the operator to step up deliberately. On FreeBSD: a per-job
 jail with a read-only root, the host's system directories
@@ -766,7 +773,7 @@ file or patches the check before the owner ever sends the word. The
 word is real protection only where jobs cannot write to the runner's
 state or code, which today means `security.job_user` in `enforce`
 (above) on a POSIX box, or `security.confinement` in `enforce` on
-Linux or FreeBSD, whose backends give a job no write to them.
+Linux, FreeBSD or macOS, whose backends give a job no write to them.
 `install.py --check` prints which case a
 box is in. Keep the word off the machine it protects.
 

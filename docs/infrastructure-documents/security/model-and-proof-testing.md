@@ -102,11 +102,13 @@ the job's.
 - Whether the job runs inside the sandbox is a function of the
   configured confinement mode and of whether the mechanism works
   on the machine, and of nothing else. No field in the job is
-  read by that decision. Inside the Linux sandbox and the
-  FreeBSD jail, the job's writable set is its work directory
-  alone; the Windows backend carries no filesystem isolation,
-  and what it bounds is the job's token, integrity level and
-  memory.
+  read by that decision. Inside the Linux sandbox, the
+  FreeBSD jail, and the macOS Seatbelt profile, the job's
+  writable set is its work directory alone; the Windows
+  backend's floor carries no filesystem isolation, and what
+  it bounds is the job's token, integrity level and memory,
+  while its AppContainer control, where its trial proves on
+  the host, walls a contained job's reads to its grants.
 - The visible set grows by one bounded rule only: when the
   interpreter a job names resolves outside `/usr`, that
   interpreter's own install prefix is bound read-only, by a

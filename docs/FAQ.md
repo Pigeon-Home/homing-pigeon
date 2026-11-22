@@ -82,7 +82,8 @@ reader cannot read the job. Nothing executes before the signature
 verifies. Everything past that is containment under the security
 modes at `enforce` by default: the Oracle's `judge`, and the
 confinement backend (bubblewrap on Linux, a Job Object on
-Windows, a jail on FreeBSD). Run it as a locked-down user
+Windows with an AppContainer control on top where its trial
+proves, a jail on FreeBSD, a Seatbelt profile on macOS). Run it as a locked-down user
 on a box you can wipe (`docs/infrastructure-documents/security/threat-model.md`).
 
 ## Why not SSH, Tailscale, or a self-hosted CI runner?

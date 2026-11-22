@@ -245,7 +245,9 @@ of thing.** The workspace snapshot *detects*: it compares file
 metadata around the run and attests `confined_to_workspace`,
 which is a record, not a cage (PROTOCOL.md section 9.4). The
 confinement backends *prevent*: bubblewrap on Linux, a
-restricted token and Job Object on Windows, a per-job jail on
+restricted token and Job Object on Windows (with an
+AppContainer control on top of that floor where its trial
+proves on the host), a per-job jail on
 FreeBSD, a Seatbelt profile on macOS. The key is
 `security.modes.confinement`; the mode defaults to `enforce`,
 and at `enforce` a job whose confinement cannot engage is

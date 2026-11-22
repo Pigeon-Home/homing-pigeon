@@ -187,9 +187,12 @@ backend has a network control: on Linux bwrap runs with
 per-job jail has no network at all. The confinement mode stands at
 `enforce` by default, so a job's network edge is caged unless the
 operator has set the mode otherwise; a backend that cannot engage
-refuses the job rather than running it weaker. The Windows backend
-has no network control (per-job WFP egress rules are not built),
-so there is no Windows network cage for a collector to verify. The
+refuses the job rather than running it weaker. The Windows
+backend's floor has no network control (per-job WFP egress rules
+are not built), so at the floor there is no Windows network cage
+for a collector to verify; since 2026-11-21 the AppContainer
+control, where its trial proves on the host, gives a contained
+job no network at all, and that cage is a claim of the same kind. The
 firewall sense is how the Oracle *would check* the cage claim
 instead of trusting it: the collector would watch for what a caged
 job must never do (an outbound connection from a job UID, a new

@@ -17,8 +17,10 @@ a firewall, as sense or as enforcement, watches or bites.
 
   runner ──loopback──► Ollama 127.0.0.1:11434   (inference)
   owner  ──loopback──► Oracle page 127.0.0.1:11436 (chat UI)
-  job    ── confined ─► loopback only (Linux), nowhere (FreeBSD),
-                        the account's reach (Windows: no net control)
+  job    ── confined ─► loopback only (Linux), nowhere (FreeBSD
+                        and macOS), nowhere where the Windows
+                        AppContainer control proves, and the
+                        account's reach at the Windows floor
   sensor daemons ──local──► Oracle ingest (signed sensor_alert jobs)
 ```
 
@@ -51,10 +53,15 @@ confinement spawn (a restricted token at low integrity, with
 the Job Object ceiling; the POSIX demote itself does not exist
 there). Its network edge is closed by confinement where the
 backend carries a network control: loopback only on Linux, no
-network at all on FreeBSD. The Windows backend carries no
+network at all on FreeBSD or under the macOS Seatbelt
+profile. The Windows backend's floor carries no
 network control, and a deployment that lowers confinement
 leaves the edge at the account's reach: a job there can open
-any outbound connection the account can. That open shape is
+any outbound connection the account can. Since 2026-11-21 the
+Windows backend also carries the AppContainer control, and
+where its trial proves on the host a contained job there has
+no network either, since the container is built with no
+network capability. That open shape is
 the edge all firewall work is about, and the edge this
 document draws.
 
@@ -69,9 +76,11 @@ Three slots, deliberately separate:
 - **Cage (on by default: confinement defaults to enforce).** Linux: bwrap with
   `--unshare-net` (loopback-only jobs) in enforce mode. FreeBSD: a per-job
   jail with `ip4`/`ip6` disabled, giving no network at all. Windows: the
-  confinement backend (Job Object, restricted token, low integrity) carries no
-  network control, so a confined Windows job keeps the account's network
-  reach; per-user WFP rules tied to the job identity are not built, and no WFP
+  confinement backend's floor (Job Object, restricted token, low integrity) carries no
+  network control, so a Windows job at the floor keeps the account's network
+  reach; where the AppContainer control proves on the host, a contained job
+  there has no network, since the container carries no network capability;
+  per-user WFP rules tied to the job identity are not built, and no WFP
   rules are written today. The firewall *sense* verifies the cage held: check,
   don't trust.
 - **Egress policy (opt-in enforcement).** Per-job-identity
