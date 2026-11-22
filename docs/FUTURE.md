@@ -2,7 +2,7 @@
 - Ubunutu Snap Store (Linux) - Microsoft Store (Windows) - Apple Store (macOS)
 - Consume and analyze app store "requirements" & analyze/understand legal requirements for public companies etc & notify SI vendors (polish agenda for info@abdulforsenate.com)
 - https://slashdot.org/story/21/11/15/220255/nyc-passes-bill-requiring-bias-audits-of-ai-hiring-tech
-- https://regulations.ai/regulations/RAI-US-NY-S1169A0-2025 (https://ag.ny.gov/contact-ag)
+- https://regulations.ai/regulations/RAI-US-NY-S1169A0-2025 (CC https://ag.ny.gov/contact-ag)
 - define runner HOST boundry for Oracle to dispatch patrols: repair, hdd, audit, security_patrols
 - oracle key distribution based on IETF and Committee on National Security Systems:
 INSTRUCTION FOR
