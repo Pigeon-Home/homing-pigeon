@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.16 - 2026-11-22
+
+- Since 3.17.32.15: windows confinement fixes the AppContainer profile call that kept every container spawn at CreateProcessW error 2, in runner/guard/windows_confine.py.
+- The fix is proved by its test family in runner/tests/test_windows_appcontainer.py, with the new skips registered in runner/tests/test_skip_registry.py, and the Lane 6 supposition for the spawn failure recorded before measurement.
+
 ## 3.17.32.15 - 2026-11-22
 
 - Since 3.17.32.14: windows confinement gains the AppContainer control in runner/guard/windows_confine.py, proved by its trial, with its test family in runner/tests/test_windows_appcontainer.py and core wiring updates.
