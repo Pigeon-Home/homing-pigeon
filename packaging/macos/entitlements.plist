@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+  Entitlements for the Mac App Store bundle, prepared
+  2026-11-21 with runner/tools/apple_store.py. The store
+  requires the App Sandbox on every Mac App Store app; that
+  single entitlement is the whole list today. The sandbox
+  cannot hold what the runner does on a customer's machine,
+  which is the known shape of this submission: the owner
+  directed that it be attempted anyway and App Review be
+  allowed to give the answer (the record stands in
+  docs/steady/design/auto-publish-design.md). No further
+  entitlement joins this file quietly; each one is a claim
+  the review reads.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+</dict>
+</plist>

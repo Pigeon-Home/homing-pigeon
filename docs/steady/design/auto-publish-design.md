@@ -47,9 +47,16 @@ The owner has directed that a store submission be
 attempted anyway and Apple's own review be allowed to give
 the answer. His enrollment stands active as an individual
 with the agreements accepted (2026-11-21). The signing
-requests stand generated on our side. The one step that
-needs his hands is creating the Developer ID certificates in
-his portal; only the account holder can create them.
+requests stand generated on our side, and the store
+certificates and the provisioning profile were created in
+his portal on 2026-11-21: the Apple Distribution and Mac
+Installer Distribution certificates, the registered App ID,
+and the Homing Pigeon Mac App Store profile. What has not
+happened yet: the issued files have not been downloaded to
+the build side or converted for the pipeline, and no App
+Store Connect API key exists yet. The Developer ID
+certificates for the shelf route below remain his to
+create; only the account holder can create those.
 
 The Microsoft leg waits on Microsoft. The Partner Center
 account stands created in his name, the vetting submission
@@ -115,8 +122,12 @@ store's own page or API shows it.
 ### Apple leg
 
 1. Certificates: one time, his hands, in his portal, from
-   the signing requests already generated. The private keys
-   and the notarization credential then live as CI secrets.
+   the signing requests already generated. The store pair
+   and the profile were created on 2026-11-21; the issued
+   files still have to be downloaded, converted with the
+   private keys held here, and placed as CI secrets, beside
+   the App Store Connect API key the upload signs with,
+   which the account holder creates once.
 2. Per release, in the macOS build legs that already exist:
    sign the executables with the Developer ID Application
    certificate under the hardened runtime, sign the package
@@ -127,7 +138,15 @@ store's own page or API shows it.
 3. The store submission he directed is a separate one time
    attempt through App Store Connect, made once the package
    exists; its outcome is Apple's to give, and the notarized
-   shelf route above does not depend on it.
+   shelf route above does not depend on it. The upload
+   itself is a machine step now: runner/tools/apple_store.py
+   plans the chain (assemble the bundle from the frozen
+   binaries and the packaging template in packaging/macos,
+   embed the profile, sign the bundle, package it, verify
+   both signatures, upload), and the macos-store workflow
+   carries the plan out on a Mac leg once the material
+   stands in place. While a piece is missing the plan is a
+   refusal that names the piece and where it comes from.
 
 ### Microsoft leg
 

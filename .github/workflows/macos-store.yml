@@ -1,0 +1,164 @@
+name: macos-store
+
+# The Mac App Store leg of the automatic store publishing
+# (docs/steady/design/auto-publish-design.md). The App Store
+# Connect record stands (Homing Pigeon Runner, macOS, bundle
+# ID ai.pigeon-home.homing-pigeon); the certificates and the
+# provisioning profile stand created in the portal. This leg
+# is the machine chain from a published release's frozen
+# macOS binaries to an uploaded store package, planned by
+# runner/tools/apple_store.py and carried out here.
+#
+# The planner demands the signing material in chain order:
+# the Apple Distribution .p12, the Mac Installer
+# Distribution .p12, the provisioning profile, and the App
+# Store Connect API key, all held as repository secrets.
+# While any piece is missing the planner refuses and names
+# it; this leg prints that refusal in the run summary and
+# stays green, a signal and not a gate, in the posture of
+# the other signal legs. The release itself never waits on
+# this leg. Once every piece stands present, the leg imports
+# the certificates into a temporary keychain, runs the
+# plan's commands in order, and a failure in the chain fails
+# the run where it happened.
+#
+# Triggered by a published release, like the other store
+# legs hang on the release, and by hand for a chosen
+# version.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to upload, e.g. 3.17.33.1"
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-store-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  upload-macos-store:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: "3.12"
+      - name: resolve the version
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.version }}" ]; then
+            ver="${{ inputs.version }}"
+          else
+            ver="${{ github.event.release.tag_name }}"
+            ver="${ver#v}"
+          fi
+          echo "VERSION=$ver" >> "$GITHUB_ENV"
+      - name: fetch the release's frozen macOS binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist dl
+          gh release download "v$VERSION" \
+            --pattern "homing-pigeon-macos-arm64-$VERSION.tar.gz" \
+            --dir dl
+          tar xzf "dl/homing-pigeon-macos-arm64-$VERSION.tar.gz" -C dl
+          cp "dl/homing-pigeon-macos-arm64-$VERSION/homing-pigeon" dist/
+          cp "dl/homing-pigeon-macos-arm64-$VERSION/install" dist/
+      - name: lay out the signing material the secrets hold
+        env:
+          APPLE_APP_DISTRIBUTION_P12: ${{ secrets.APPLE_APP_DISTRIBUTION_P12 }}
+          APPLE_INSTALLER_DISTRIBUTION_P12: ${{ secrets.APPLE_INSTALLER_DISTRIBUTION_P12 }}
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE }}
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          ASC_API_KEY_ID: ${{ secrets.ASC_API_KEY_ID }}
+          ASC_API_ISSUER_ID: ${{ secrets.ASC_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          mkdir -p store "$HOME/.appstoreconnect/private_keys"
+          present() { [ -n "$1" ]; }
+          if present "$APPLE_APP_DISTRIBUTION_P12"; then
+            echo "$APPLE_APP_DISTRIBUTION_P12" | base64 --decode \
+              > store/app-distribution.p12
+          fi
+          if present "$APPLE_INSTALLER_DISTRIBUTION_P12"; then
+            echo "$APPLE_INSTALLER_DISTRIBUTION_P12" | base64 --decode \
+              > store/installer-distribution.p12
+          fi
+          if present "$APPLE_PROVISIONING_PROFILE"; then
+            echo "$APPLE_PROVISIONING_PROFILE" | base64 --decode \
+              > "store/Homing Pigeon Mac App Store.provisionprofile"
+          fi
+          if present "$ASC_API_KEY_P8"; then
+            echo "$ASC_API_KEY_P8" | base64 --decode \
+              > "$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_API_KEY_ID.p8"
+          fi
+          python3 - <<'PY'
+          import json, os
+          state = {
+              "app_distribution_p12":
+                  os.path.exists("store/app-distribution.p12"),
+              "installer_distribution_p12":
+                  os.path.exists("store/installer-distribution.p12"),
+              "provisioning_profile": os.path.exists(
+                  "store/Homing Pigeon Mac App Store.provisionprofile"),
+              "api_key": bool(os.environ.get("ASC_API_KEY_ID")),
+              "api_key_id": os.environ.get("ASC_API_KEY_ID", ""),
+              "api_key_issuer_id": os.environ.get("ASC_API_ISSUER_ID", ""),
+          }
+          with open("store/state.json", "w", encoding="utf-8") as fh:
+              json.dump(state, fh)
+          PY
+      - name: plan the upload
+        run: |
+          set -uo pipefail
+          python3 runner/tools/apple_store.py --state store/state.json \
+            --version "$VERSION" > store/plan.txt 2>&1
+          rc=$?
+          cat store/plan.txt
+          if [ "$rc" -eq 3 ]; then
+            {
+              echo "## Mac App Store leg: not attempted"
+              head -1 store/plan.txt
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "PLAN_OK=false" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          [ "$rc" -eq 0 ] || exit "$rc"
+          echo "PLAN_OK=true" >> "$GITHUB_ENV"
+      - name: import the certificates into a temporary keychain
+        if: env.PLAN_OK == 'true'
+        env:
+          APPLE_P12_PASSWORD: ${{ secrets.APPLE_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          security create-keychain -p actions build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p actions build.keychain
+          security import store/app-distribution.p12 \
+            -k build.keychain -P "$APPLE_P12_PASSWORD" -T /usr/bin/codesign
+          security import store/installer-distribution.p12 \
+            -k build.keychain -P "$APPLE_P12_PASSWORD" -T /usr/bin/productbuild
+          security set-key-partition-list -S apple-tool:,apple: \
+            -s -k actions build.keychain
+      - name: run the plan's commands
+        if: env.PLAN_OK == 'true'
+        run: |
+          set -euo pipefail
+          tail -n +2 store/plan.txt | while IFS= read -r command; do
+            [ -n "$command" ] || continue
+            echo "+ $command"
+            bash -e -c "$command"
+          done
+          {
+            echo "## Mac App Store leg: uploaded"
+            echo "Version $VERSION was assembled, signed, packaged"
+            echo "and uploaded by the plan in runner/tools/apple_store.py."
+          } >> "$GITHUB_STEP_SUMMARY"

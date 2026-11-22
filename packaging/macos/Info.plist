@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
+
+  Info.plist template for the Mac App Store bundle, prepared
+  2026-11-21 with runner/tools/apple_store.py. The bundle ID
+  is the one the App Store Connect record was created with
+  (Homing Pigeon Runner, created 2026-11-21); it must match
+  the registered App ID and the provisioning profile exactly.
+
+  __VERSION__ and __BUILD__ are tokens, not numbers: the
+  build renders this template through the planner's
+  render_info_plist, which fills them from the release's own
+  version (the number pyproject.toml carries). A literal
+  version typed here would drift from the release; the test
+  in runner/tests/test_apple_store.py holds the tokens in
+  place.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>homing-pigeon</string>
+	<key>CFBundleIdentifier</key>
+	<string>ai.pigeon-home.homing-pigeon</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Homing Pigeon Runner</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>__VERSION__</string>
+	<key>CFBundleVersion</key>
+	<string>__BUILD__</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+</dict>
+</plist>
