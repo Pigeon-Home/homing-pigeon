@@ -530,6 +530,21 @@ this file carries, so a later import by the other name
 in the same process resolves to the same instance, one
 verdict for the gate and the spawn alike.
 
+Addendum, from the fix's first battery run in that same
+detached shape: the ancestor grants as first landed
+carried the grant helper's inheritance flags, and an
+inheritable entry set on a directory propagates into
+its existing children when the merged DACL is written
+back, so the trial's outside file, staged under the
+same Temp ancestor as the trial's work directory,
+inherited the container's read entry from that ancestor
+and the trial answered a boundary crossing and the
+runner refused to start. The ancestor entries now stand
+without inheritance (an ancestor grant is for the
+directory object alone, so the granted path can be
+walked to), which the re run's trial and battery then
+judge on their own facts.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
@@ -1706,7 +1721,7 @@ else:
         finally:
             kernel32.LocalFree(sd)
 
-    def _set_entries_in_acl(path, sid, mask, mode):
+    def _set_entries_in_acl(path, sid, mask, mode, inherit=True):
         """None once one entry for `sid` at `mask` has been
         added to (GRANT_ACCESS) or revoked from (REVOKE_ACCESS)
         the DACL `path` already carries, else the problem.
@@ -1715,6 +1730,22 @@ else:
         read, SetEntriesInAclW merges or revokes the one
         entry, and the merged DACL is written back. No grant
         in this backend ever replaces a DACL.
+
+        `inherit` carries the entry's inheritance flags, and
+        it matters: an inheritable entry set on a directory
+        propagates into the directory's existing children
+        when the merged DACL is written back, so a grant
+        meant for one directory object alone (an ancestor of
+        a granted path, granted only so the path can be
+        walked to) must be made with inherit=False, or it
+        silently widens into a grant on everything under
+        that ancestor (the Lane 8 fix's first battery run:
+        the trial's outside file, staged under the same
+        Temp ancestor the work directory's grant set now
+        names, inherited the container's read entry and the
+        trial read a boundary crossing where none was
+        intended). Revocation ignores the flags: a revoke
+        removes the trustee's entries either way.
         """
         psid_owner = wintypes.LPVOID()
         psid_group = wintypes.LPVOID()
@@ -1733,7 +1764,8 @@ else:
             ea.grfAccessPermissions = mask
             ea.grfAccessMode = mode
             ea.grfInheritance = (
-                OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE)
+                OBJECT_INHERIT_ACE | CONTAINER_INHERIT_ACE) \
+                if inherit else 0
             ea.Trustee.TrusteeForm = TRUSTEE_IS_SID
             ea.Trustee.TrusteeType = TRUSTEE_IS_UNKNOWN
             ea.Trustee.ptstrName = sid
@@ -1771,12 +1803,18 @@ else:
             grants = app_container_grant_set(work_dir, read_paths)
         except ValueError as e:
             return [], "%s" % (e,)
+        named = {work_dir} | set(read_paths or ())
+        ancestors = set()
+        for path in named:
+            ancestors.update(app_container_ancestor_dirs(path))
+        ancestors -= named
         for path, access in grants:
             mask = GENERIC_ALL_ACCESS \
                 if access == "read_write_execute" \
                 else GENERIC_READ_EXECUTE_ACCESS
             problem = _set_entries_in_acl(
-                path, sid, mask, GRANT_ACCESS)
+                path, sid, mask, GRANT_ACCESS,
+                inherit=path not in ancestors)
             if problem is not None:
                 return [], problem
         return grants, None

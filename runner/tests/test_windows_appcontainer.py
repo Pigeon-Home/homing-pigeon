@@ -929,6 +929,21 @@ class Lane8VerdictWiringTests(unittest.TestCase):
         self.assertIn("_ac_trial_verdict[0] if _ac_trial_verdict",
                       body)
 
+    def test_ancestor_grants_carry_no_inheritance(self):
+        # An inheritable ancestor entry propagates into the
+        # ancestor's existing children when the merged DACL
+        # is written back, which would widen a walk to grant
+        # into a grant on everything under the ancestor (the
+        # Lane 8 fix's first battery run read exactly that
+        # as a boundary crossing in the trial). The grant
+        # loop must pass the ancestor entries with no
+        # inheritance, and the ACL helper must be able to
+        # express that.
+        source = self._source()
+        self.assertIn("inherit=path not in ancestors", source)
+        self.assertIn("def _set_entries_in_acl(path, sid, mask, "
+                      "mode, inherit=True):", source)
+
     def test_loader_registers_one_instance_under_both_names(self):
         from runner.ops import remediation_ops as REM
         mod = REM._windows_confine()
