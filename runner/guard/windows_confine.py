@@ -222,6 +222,18 @@ every AppContainer spawn, its own grant, recorded in the
 grant set and revoked with it at job end. System libraries
 need no such grant: the container token carries the ALL
 APPLICATION PACKAGES membership those trees already grant.
+One more measurement from the same re run: with read, write,
+outside and network all proving out, the trial's token check
+still failed, because the trial program's own ctypes import
+cannot initialize inside the container (its library's
+initialization routine fails under the container token), so
+a contained process cannot always report its own token. The
+trial now also accepts the parent side's answer: the spawn's
+process object reads TokenIsAppContainer from the token of
+the process it created, which the runner can always ask.
+The program's own report still decides wherever the spawn
+seam offers no parent side answer, and a plain token named
+by either side still fails the check.
 
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
@@ -454,6 +466,10 @@ else:
     advapi32.SetTokenInformation.argtypes = [
         wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID,
         wintypes.DWORD]
+    advapi32.GetTokenInformation.restype = wintypes.BOOL
+    advapi32.GetTokenInformation.argtypes = [
+        wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID,
+        wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
     advapi32.CreateProcessAsUserW.restype = wintypes.BOOL
     advapi32.CreateProcessAsUserW.argtypes = [
         wintypes.HANDLE, wintypes.LPCWSTR, wintypes.LPWSTR,
@@ -552,6 +568,7 @@ else:
     TOKEN_ADJUST_DEFAULT = 0x0080
     DISABLE_MAX_PRIVILEGE = 0x00000001
     TokenIntegrityLevel = 25
+    TokenIsAppContainer = 29
     SE_GROUP_INTEGRITY = 0x00000020
     ADMINISTRATORS_SID = "S-1-5-32-544"
     LOW_INTEGRITY_SID = "S-1-16-4096"
@@ -1058,6 +1075,37 @@ else:
                 return None
             self._finish()
             return self.returncode
+
+        def is_app_container_token(self):
+            """True when this process's own token is an
+            AppContainer token, read from the parent side:
+            OpenProcessToken on the handle this class holds,
+            GetTokenInformation(TokenIsAppContainer). None
+            when the query itself fails, so a caller can tell
+            an unreadable token from a plain one. The parent
+            side is the reliable side for this fact: inside
+            the container, the trial program's own ctypes
+            import can fail to initialize under the container
+            token (the Lane 6 re run's measurement), so a
+            contained process cannot always report its own
+            token, while the runner that created it always
+            can ask for it."""
+            token = wintypes.HANDLE()
+            if not advapi32.OpenProcessToken(
+                    self._handle, TOKEN_QUERY,
+                    ctypes.byref(token)):
+                return None
+            try:
+                val = wintypes.DWORD(0)
+                needed = wintypes.DWORD(0)
+                if not advapi32.GetTokenInformation(
+                        token, TokenIsAppContainer,
+                        ctypes.byref(val), ctypes.sizeof(val),
+                        ctypes.byref(needed)):
+                    return None
+                return bool(val.value)
+            finally:
+                kernel32.CloseHandle(token)
 
         def kill(self):
             try:
@@ -2180,7 +2228,26 @@ def appcontainer_trial_problem(spawn, timeout=60, grant=None):
                 return ("the AppContainer trial process's "
                         "token is not an AppContainer token "
                         "(exit %s: %s)" % (proc.returncode, tail))
-            if "AC-TOKEN-APPCONTAINER" not in out_text:
+            token_ok = "AC-TOKEN-APPCONTAINER" in out_text
+            if not token_ok:
+                # The parent side decides when it can: a
+                # contained process cannot always report its
+                # own token (its ctypes import can fail to
+                # initialize under the container token, the
+                # Lane 6 re run's measurement), while the
+                # spawn's own process object can be asked for
+                # the token of the process it created. A spawn
+                # seam without that answer (the suite's
+                # scripted seams) is judged on the program's
+                # own report alone, exactly as before.
+                hook = getattr(
+                    proc, "is_app_container_token", None)
+                if callable(hook):
+                    try:
+                        token_ok = hook() is True
+                    except Exception:
+                        token_ok = False
+            if not token_ok:
                 return ("the AppContainer trial could not read "
                         "an AppContainer token from inside the "
                         "trial process (exit %s: %s)"

@@ -306,6 +306,41 @@ class TrialTests(unittest.TestCase):
         self.assertIn("wrote outside its granted paths", problem)
         self.assertTrue(WC.app_container_boundary_crossing(problem))
 
+    def test_token_parent_side_true_satisfies_the_check(self):
+        # The Lane 6 addendum: inside the container the trial
+        # program's ctypes import can fail to initialize, so
+        # no token line is printed; the spawn's own process
+        # object answers from the parent side instead.
+        class ParentCheckedProc(FakeProc):
+            def is_app_container_token(self):
+                return True
+
+        out = _ALL_OK.replace(b"AC-TOKEN-APPCONTAINER\n", b"")
+        self.assertIsNone(WC.appcontainer_trial_problem(
+            _spawn_returning(ParentCheckedProc(out=out))))
+
+    def test_token_parent_side_false_is_named(self):
+        class ParentCheckedProc(FakeProc):
+            def is_app_container_token(self):
+                return False
+
+        out = _ALL_OK.replace(b"AC-TOKEN-APPCONTAINER\n", b"")
+        problem = WC.appcontainer_trial_problem(
+            _spawn_returning(ParentCheckedProc(out=out)))
+        self.assertIn("could not read an AppContainer token",
+                      problem)
+
+    def test_token_parent_side_unreadable_is_named(self):
+        class ParentCheckedProc(FakeProc):
+            def is_app_container_token(self):
+                return None
+
+        out = _ALL_OK.replace(b"AC-TOKEN-APPCONTAINER\n", b"")
+        problem = WC.appcontainer_trial_problem(
+            _spawn_returning(ParentCheckedProc(out=out)))
+        self.assertIn("could not read an AppContainer token",
+                      problem)
+
     def test_token_plain_is_named(self):
         out = _ALL_OK.replace(b"AC-TOKEN-APPCONTAINER",
                               b"AC-TOKEN-PLAIN")
