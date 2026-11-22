@@ -3,6 +3,30 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 22-Nov-3:03pm-PST — Muse: the conductor's go items in detail, the macOS flip proven, release 3.17.33.6, the test sweep and the conversation export
+
+This entry follows the 2 entries below it from earlier today. The status entry at 12:50pm closed with a section of items waiting on the conductor's word, and the conductor gave that word today in plain terms: go. The actionable items were taken up at once, and this entry records what came of them in full, together with the releases and the rest of the landings that followed. 2 items on that list were not covered by the word and stand as they stood: the 4 readings are the conductor's alone to answer, and France goes back onto the Apple listing only when the French encryption declaration form exists, which is a missing form and not a missing word.
+
+**Canoe: the fifth option stands documented.**
+
+At 1:11pm today the fifth Canoe option landed in docs/steady/design/cs_canoe.md, 18 lines under a heading that names it plainly as future work. The option: the customer brings their own S3 compatible bucket, and the transport becomes that bucket instead of the inbox or the queues, with Backblaze B2 as the default example of such a bucket. The customer opens the bucket in their own account, on their own side. The record states the option honestly as documented, not implemented: options 1 to 4 stand as they were, option 3 stands verified live, and the fifth is written down so the design carries it from here.
+
+**macOS: the fresh install enforce flip stands proven at the current head.**
+
+The conductor's go cleared the lane's outstanding blocker, the approval to process repository content in the confinement lanes' scratch clones, and the proof the 12:50pm entry listed as outstanding was run the same afternoon. The shape followed the house rule: the supposition was written into docs/steady/security/macos.md first, at 1:11pm, before any measuring, and the conclusions were posted in the same place at 1:24pm against the numbers. The flip itself has stood in the tree since 14 November, in the fresh platform modes of runner/ops/install.py: when the platform probe passes, a fresh install's confinement is left unstated at enforce; when the probe fails, the record states audit with the reason; and a mode an operator has stated is never moved. What was owed was fresh proof at the current head, and the proof stands as follows. The macOS suite ran 263 tests OK with 52 skipped. The FreeBSD suite ran 332 tests OK. A wider targeted run ran 704 tests OK. The hosted macos-confinement workflow, run 45070679404, succeeded on both of its legs, macos-15 on arm64 and macos-15-intel on x86_64, and a frozen installer's fresh install left its config at enforce. No code change was needed and none was made: suppositions V1, V2 and V3 hold as written.
+
+**The releases.**
+
+Release 3.17.33.6 stands published and verified, following 3.17.33.5 recorded below: the GitHub release carries 13 assets and the stamp check passed, the wheel, the source distribution and the Linux x86_64 tarball each matching the SHA-384 printed for them. A further release commit, for 3.17.33.7, stands at the head as this entry is written, carrying the conductor's own FUTURE.md edits of this afternoon and the test families recorded next.
+
+**The test sweep the conductor asked for.**
+
+In voice today the conductor asked whether anywhere in the project could benefit from unit tests being added: he had not asked for any in 2 weeks, he did not want bloat, and there was room. A sweep of what has been added lately looked for exactly that, and 53 new tests landed at 2:26pm in 3 commits, all green. The first pins the snap release planner: each held review state on its own, held newest over approved older and the reverse, unknown architectures, missing channel lists, the state shapes, and the command line's exit codes. The second wraps the Canoe signup address surface in the full bookend family, every symbol on the ASCII table plus the non printing edge cases at the front and the back, with the signup book's load edges beside it. The third covers the Apple store version mapping, and it caught 1 real bug on the way in: handed a non string version, the mapping crashed with the wrong error, an AttributeError from inside; it is now refused with the mapping's own error instead, fixed test first and pinned by the harness that landed with the fix. The macOS flip and the Windows confinement were checked in the same sweep and already stood covered, so nothing was added there for its own sake.
+
+**The conversation export.**
+
+The full text conversation export the conductor asked for stands built and delivered. It holds 44,184 messages, 18,881 of them the conductor's and 25,303 Muse's, spanning the whole conversation from 12 October 2026 to 22 November 2026, assembled in slices with every slice's count and length verified against the record before assembly. It was zipped and sent to the conductor by email as a download link, the standing route for a file of that size, since the mail route blocks zip attachments.
+
 ## 22-Nov-2:07pm-PST — Muse: release 3.17.33.5 stands published and verified
 
 Release 3.17.33.5 stands published and verified. The GitHub release carries 13 assets and stands published, not draft. Its main build finished with all 10 gate jobs green, its tag build finished green, and every publish job succeeded: the GitHub release, PyPI, SourceForge, GitLab and the container image. The stamp check passed: the wheel, the source distribution and the Linux x86_64 tarball each match the SHA-384 printed for them in the release's SHA384SUMS. The release carries what landed since 3.17.33.4: the full project status entry below this one, the macOS confinement flip supposition and its conclusions with the fresh hosted proof, the fifth Canoe option's documentation, and the wording fix the macOS record needed before its prepare would pass.
