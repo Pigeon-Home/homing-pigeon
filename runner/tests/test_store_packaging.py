@@ -96,6 +96,24 @@ class SnapDraftTest(unittest.TestCase):
         self.assertIn("craftctl default", self.text)
         self.assertIn("craftctl set version=", self.text)
 
+    def test_install_resolves_the_tree_directory(self):
+        # The part source layout differs by builder: the
+        # snapcraft.io builder nests the cloned tree as a
+        # homing-pigeon subdirectory of the part source (build
+        # 3355989), while the Launchpad builder's part source
+        # IS the tree root (build 3356273, 2026-11-22), where
+        # the hard-coded subdirectory path did not exist and
+        # the install died. The override-build resolves the
+        # tree directory first and installs from the resolved
+        # path only, never from a hard-coded layout.
+        self.assertIn('if [ -d "$CRAFT_PART_SRC/homing-pigeon" ]; then',
+                      self.text)
+        self.assertIn('HP_SRC="$CRAFT_PART_SRC/homing-pigeon"', self.text)
+        self.assertIn('HP_SRC="$CRAFT_PART_SRC"', self.text)
+        self.assertIn('install -U "$HP_SRC"', self.text)
+        self.assertNotIn('install -U "$CRAFT_PART_SRC/homing-pigeon"',
+                         self.text)
+
     def test_version_comes_from_the_installed_metadata(self):
         # The version is read from the metadata pip installed
         # for the project itself, never from a second copy of
@@ -171,6 +189,20 @@ class SnapRootLayoutTest(unittest.TestCase):
         self.assertEqual(os.path.realpath(_root()), resolved)
         self.assertTrue(os.path.isfile(
             os.path.join(resolved, "pyproject.toml")))
+
+    def test_root_snap_install_resolves_the_tree_directory(self):
+        # The root twin carries the same resolved-directory
+        # install as the packaging copy: the homing-pigeon
+        # subdirectory when it exists (the snapcraft.io
+        # builder layout), else the part source itself (the
+        # Launchpad builder layout, build 3356273).
+        self.assertIn('if [ -d "$CRAFT_PART_SRC/homing-pigeon" ]; then',
+                      self.text)
+        self.assertIn('HP_SRC="$CRAFT_PART_SRC/homing-pigeon"', self.text)
+        self.assertIn('HP_SRC="$CRAFT_PART_SRC"', self.text)
+        self.assertIn('install -U "$HP_SRC"', self.text)
+        self.assertNotIn('install -U "$CRAFT_PART_SRC/homing-pigeon"',
+                         self.text)
 
     def test_root_snap_confinement_is_classic(self):
         self.assertEqual("classic", _top_level(self.text, "confinement"))

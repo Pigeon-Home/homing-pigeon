@@ -51,6 +51,14 @@
 # root: its ls showed only "buildd" and "homing-pigeon", the
 # cloned tree under its own name. The install now targets
 # $CRAFT_PART_SRC/homing-pigeon.
+#
+# Third failure, 2026-11-22 (build 3356273, on the Launchpad
+# builder): there the part source IS the tree root, its ls
+# showing the tree directly with no homing-pigeon subdirectory,
+# so the hard-coded subdirectory path did not exist and the
+# install died. The override-build now resolves the tree
+# directory first: the homing-pigeon subdirectory when it
+# exists, else the part source itself.
 
 name: homing-pigeon
 base: core24
@@ -102,7 +110,19 @@ parts:
       # part source directory.
       echo "runner part source: $CRAFT_PART_SRC"
       ls "$CRAFT_PART_SRC"
-      "$CRAFT_PART_INSTALL/bin/pip" install -U "$CRAFT_PART_SRC/homing-pigeon"
+      # The part source layout differs by builder: the
+      # snapcraft.io builder nests the tree as a homing-pigeon
+      # subdirectory, while the Launchpad builder's part source
+      # IS the tree root (build 3356273). Resolve the tree
+      # directory first, then install from it.
+      if [ -d "$CRAFT_PART_SRC/homing-pigeon" ]; then
+        HP_SRC="$CRAFT_PART_SRC/homing-pigeon"
+      else
+        HP_SRC="$CRAFT_PART_SRC"
+      fi
+      echo "runner tree source: $HP_SRC"
+      ls "$HP_SRC"
+      "$CRAFT_PART_INSTALL/bin/pip" install -U "$HP_SRC"
       ls "$CRAFT_PART_INSTALL/bin"
       # Scripts installed above carry the venv interpreter shebang;
       # rewrite them as the plugin rewrites scripts it installs.
