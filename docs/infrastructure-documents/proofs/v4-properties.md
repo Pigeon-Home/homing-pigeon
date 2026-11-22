@@ -36,7 +36,7 @@ or the draft record it cites.
 | C8 | Cleartext refused by default | P1 clause 3 |
 | C9 | The one AEAD | P1 clause 3 |
 | C10 | Audience binding | P1 clause 4 |
-| C11 | Seven security modes | P1 clauses 4 and 8; P4 clause 11 |
+| C11 | Nine security modes | P1 clauses 4 and 8; P4 clause 11 |
 | C12 | Freshness | P1 clause 7 |
 | C13 | Protocol version and type | P1 clause 6 |
 | C14 | Key policies and pinning | P1 clause 8; P4, the whole property |

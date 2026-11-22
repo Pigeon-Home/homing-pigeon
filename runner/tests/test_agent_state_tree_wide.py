@@ -121,6 +121,13 @@ ALLOWLIST = {
     (".github/workflows/macos-confinement.yml",
      AG.RULE_SECRET_IN_COMMAND):
         "the same CI fixture config literal as build.yml",
+    (".github/workflows/macos-store.yml",
+     AG.RULE_SECRET_IN_COMMAND):
+        "the temporary keychain's password is a literal "
+        "throwaway for the ephemeral CI keychain that holds "
+        "the imported certificates for one run; the signing "
+        "material itself arrives through env from repository "
+        "secrets and never appears in a command string",
 }
 
 

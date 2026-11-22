@@ -77,7 +77,7 @@ the constraint's functions.
 | C8 | Cleartext | P1 clause 3 | `_cleartext_jobs_allowed` in `runner/runner.py` | 2 | `query` 3, `v2_mail` 3, `board_mail` 2, `gate` 1 |
 | C9 | AEAD | P1 clause 3 | `decrypt_body` in `runner/wire/jobcrypto.py` | 2 | `crypto` 73 |
 | C10 | Audience | P1 clause 4 | `check_audience` in `runner/wire/verify.py`; `audience_allows` in `runner/wire/verify.py` | 1 | `query` 176, `board_mail` 95 |
-| C11 | Seven security modes | P1 clauses 4 and 8; P4 clause 11 | `sec_mode` in `runner/guard/security.py`; `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` | 2 | `query` 176, `board_mail` 95 |
+| C11 | Nine security modes | P1 clauses 4 and 8; P4 clause 11 | `sec_mode` in `runner/guard/security.py`; `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` | 2 | `query` 176, `board_mail` 95 |
 | C12 | `max_job_age_sec` | P1 clause 7 | `handle_mail` in `runner/ops/mail.py` | 2 | `gate` 15 |
 | C13 | Protocol version | P1 clause 6 | `_version_ok` in `runner/runner.py`; `handle_mail` in `runner/ops/mail.py` | 4 | `local` 518, `query` 176, `board_mail` 95, `local_inbox` 23, `gate` 15 |
 | C14 | Key policies | P1 clause 8; P4, the whole property | `check_key_policy` in `runner/wire/verify.py`; `_build_key_policies` in `runner/wire/verify.py` | 9 | `keydir` 35, `local` 518, `query` 163 |
@@ -218,7 +218,7 @@ counted once. 26 of the 31 constraints have entries to size.
 | C8 | Cleartext | 9 | 233 | 857 | 0 | 9 | 0 | 0 |
 | C9 | AEAD | 73 | 50 | 4,427 | 2 | 70 | 1 | 0 |
 | C10 | Audience | 271 | 71 | 8,583 | 2 | 229 | 40 | 0 |
-| C11 | Seven security modes | 271 | 71 | 8,583 | 2 | 229 | 40 | 0 |
+| C11 | Nine security modes | 271 | 71 | 8,583 | 2 | 229 | 40 | 0 |
 | C12 | `max_job_age_sec` | 15 | 0 | 11,642 | 2 | 11 | 0 | 2 |
 | C13 | Protocol version | 827 | 0 | 11,642 | 58 | 725 | 42 | 2 |
 | C14 | Key policies | 716 | 0 | 4,754 | 61 | 618 | 37 | 0 |
@@ -291,7 +291,7 @@ all 31 there are 17 code sites that no corpus entry enters.
 
 | ID | Constraint | Code no corpus entry enters |
 |----|------------|-----------------------------|
-| C11 | Seven security modes | `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` |
+| C11 | Nine security modes | `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` |
 | C16 | Transport credentials | `__init__` in `runner/transport_extensions/nats/__main__.py` |
 | C18 | Sandbox shape | `build_bwrap_command` in `runner/guard/sandbox.py`; `_confinement_cfg` in `runner/guard/sandbox.py` |
 | C19 | Queues edge gates | `bearerMatches` in `runner/cloud/queues-worker/src/index.js` |

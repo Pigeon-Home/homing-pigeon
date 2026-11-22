@@ -75,7 +75,7 @@ that file records it:
 | C8 | Cleartext | refused; `--allow-cleartext` only |
 | C9 | AEAD | AES-256-GCM, `aes-256-gcm/hkdf-sha384` |
 | C10 | Audience | configured `runner_id`; `aud` wins |
-| C11 | Seven security modes | each `enforce` by default |
+| C11 | Nine security modes | each `enforce` by default |
 | C12 | `max_job_age_sec` | 3600; future bound 300 |
 | C13 | Protocol version | integer 1 only |
 | C14 | Key policies | per-key; script pin is SHA-384 |
