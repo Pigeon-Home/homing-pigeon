@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.17 - 2026-11-22
+
+- Since 3.17.32.16: windows confinement grants the AppContainer spawn its target program's own directory, without which the container dies at load, in runner/guard/windows_confine.py.
+- The AppContainer trial now reads the token from the parent side, since a contained process cannot always report its own; both changes are proved by their test families in runner/tests/test_windows_appcontainer.py.
+
 ## 3.17.32.16 - 2026-11-22
 
 - Since 3.17.32.15: windows confinement fixes the AppContainer profile call that kept every container spawn at CreateProcessW error 2, in runner/guard/windows_confine.py.
