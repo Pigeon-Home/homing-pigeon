@@ -103,6 +103,12 @@ REGISTERED = {
         "the backend's own pumps; run in the windows test jobs. "
         "The lines of the pumps are held on every system by the "
         "test beside it",
+    "the live userenv binding exists only on a Windows backend host":
+        "test_windows_appcontainer: 1 test reads the live "
+        "CreateAppContainerProfile binding's declared parameter "
+        "shape, which exists only where the Windows backend is "
+        "real; run in the windows test jobs. The same shape is "
+        "held on every system by the source pins beside it",
     "the place and the folder are the Linux sandbox's":
         "test_v4_the_place and test_v4_the_folder: the work mount "
         "and the job's folder under enforce are the Linux "

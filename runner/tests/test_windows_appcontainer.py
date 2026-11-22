@@ -350,6 +350,62 @@ class ProfileAndGateTests(unittest.TestCase):
         self.assertFalse(WC.app_container_boundary_crossing(None))
 
 
+class ProfileCallShapeTests(unittest.TestCase):
+    """The Lane 6 regression pin (2026-11-21): the native
+    CreateAppContainerProfile takes six parameters, the
+    capabilities array, its DWORD count, and only then the
+    SID out pointer. The binding this module shipped declared
+    five, the count missing, so the call failed with
+    E_INVALIDARG on every host, no profile ever stood, and
+    every AppContainer CreateProcessW failed with
+    ERROR_FILE_NOT_FOUND while derivation, being algorithmic,
+    succeeded and hid the cause. These tests pin the shape
+    from the source, so they run on every host, and from the
+    live binding where the backend is real."""
+
+    def _source(self):
+        with open(WC.__file__, encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_binding_declares_the_count_before_the_sid(self):
+        self.assertIn(
+            "userenv.CreateAppContainerProfile.argtypes = [\n"
+            "        wintypes.LPCWSTR, wintypes.LPCWSTR, "
+            "wintypes.LPCWSTR,\n"
+            "        wintypes.LPVOID, wintypes.DWORD,\n"
+            "        ctypes.POINTER(wintypes.LPVOID)]",
+            self._source())
+
+    def test_the_call_supplies_a_zero_count(self):
+        self.assertIn(
+            "userenv.CreateAppContainerProfile(\n"
+            "            name, PROFILE_DISPLAY_NAME, "
+            "PROFILE_DESCRIPTION,\n"
+            "            None, 0, ctypes.byref(sid))",
+            self._source())
+
+    def test_no_five_argument_profile_call_remains(self):
+        self.assertNotIn(
+            "None, ctypes.byref(sid))", self._source())
+
+    def test_a_failed_profile_outcome_is_named_not_discarded(self):
+        source = self._source()
+        self.assertIn('outcome == "failed"', source)
+        self.assertIn(
+            "CreateAppContainerProfile(%s) failed: ", source)
+        self.assertIn(
+            "the container profile does not stand", source)
+
+    def test_live_binding_carries_six_parameters(self):
+        if not WC.IS_WINDOWS_BACKEND:
+            self.skipTest(
+                "the live userenv binding exists only on a "
+                "Windows backend host")
+        argtypes = WC.userenv.CreateAppContainerProfile.argtypes
+        self.assertEqual(len(argtypes), 6)
+        self.assertIs(argtypes[4], WC.wintypes.DWORD)
+
+
 class StatusTests(unittest.TestCase):
     def test_floor_status_is_exact_and_unchanged(self):
         self.assertEqual(

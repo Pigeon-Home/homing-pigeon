@@ -171,6 +171,42 @@ If no variant creates a process and the profile outcome is a
 failure, the honest outcome is that the trial names that
 failure precisely and the posture record says so.
 
+Conclusions, from the Lane 6 measurement (2026-11-21, the
+Germany rig, Windows Server 2022, the elevated Administrator
+context): the supposition's leading candidate was the cause,
+in a sharper form than stated. The minimal reproduction
+varied one element at a time from the shipped shape. A plain
+CreateProcessW created the process, and a STARTUPINFOEX with
+an initialized but empty attribute list created it too;
+every variant carrying the SECURITY_CAPABILITIES attribute
+failed with error 2, alike with a NULL capabilities pointer
+and with a non NULL empty array, with an explicit application
+name, with a system working directory and with no working
+directory, without CREATE_SUSPENDED, without an environment
+block, and without standard handles. The profile call was
+the difference: called with the binding this module shipped,
+CreateAppContainerProfile returned 0x80070057 (E_INVALIDARG)
+and no profile folder stood under the creating user, while
+DeriveAppContainerSidFromAppContainerName succeeded anyway,
+derivation being algorithmic. The shipped binding declared
+five parameters for a six parameter function: it omitted the
+DWORD capability count that stands between the capabilities
+array and the SID out pointer, so the out pointer was read
+as the count and the call could never succeed. Called with
+the count supplied, the same profile call returned 0, the
+profile folder stood, and the shipped spawn shape, unchanged
+in every other element, created the process and wrote its
+marker. The module also discarded the profile outcome it
+computed, which is why the failure travelled as a bare error
+2 at creation instead of naming itself. The fix therefore
+stands in two places: the binding and the call carry the
+count, and a failed profile outcome now refuses SID
+derivation with the call and its HRESULT named, so the trial
+reports the missing mechanism precisely and the gate falls
+back to the floor on a named reason. Suppositions S2, S3 and
+S4b from the Lane 5 run remain for the re run to settle; S1
+is settled by the re run's trial on the fixed head.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
@@ -448,9 +484,19 @@ else:
     userenv.DeriveAppContainerSidFromAppContainerName.argtypes = [
         wintypes.LPCWSTR, ctypes.POINTER(wintypes.LPVOID)]
     userenv.CreateAppContainerProfile.restype = ctypes.c_long
+    # The native signature carries six parameters: the
+    # capabilities array, its DWORD count, and only then the
+    # SID out pointer. The Lane 6 field diagnosis (2026-11-21)
+    # found this binding declared with five, the count missing:
+    # the call's SID out pointer was read as the capability
+    # count, the call failed with E_INVALIDARG, no profile ever
+    # stood, and every AppContainer CreateProcessW then failed
+    # with ERROR_FILE_NOT_FOUND. The count stands here so the
+    # shape cannot silently lose it again.
     userenv.CreateAppContainerProfile.argtypes = [
         wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPCWSTR,
-        wintypes.LPVOID, ctypes.POINTER(wintypes.LPVOID)]
+        wintypes.LPVOID, wintypes.DWORD,
+        ctypes.POINTER(wintypes.LPVOID)]
     advapi32.GetNamedSecurityInfoW.restype = wintypes.DWORD
     advapi32.GetNamedSecurityInfoW.argtypes = [
         wintypes.LPWSTR, ctypes.c_int, wintypes.DWORD,
@@ -1169,23 +1215,26 @@ else:
     def _ensure_app_container_profile(name=APP_CONTAINER_NAME):
         """Create the container profile once, never per job.
 
-        Returns the profile_creation_outcome word. An outcome
-        of "exists" is the ordinary steady state: the profile
-        stands from an earlier run, and the SID is derived
-        from the name. The profile is deleted only at
-        uninstall, which is not this module's work.
+        Returns (outcome, hresult): the
+        profile_creation_outcome word and the call's own
+        result beside it, so a failure can be named with its
+        code and never merely counted. An outcome of "exists"
+        is the ordinary steady state: the profile stands from
+        an earlier run, and the SID is derived from the name.
+        The profile is deleted only at uninstall, which is not
+        this module's work.
         """
         if _ac_profile_attempted:
             return _ac_profile_attempted[0]
         sid = wintypes.LPVOID()
         hr = userenv.CreateAppContainerProfile(
             name, PROFILE_DISPLAY_NAME, PROFILE_DESCRIPTION,
-            None, ctypes.byref(sid))
+            None, 0, ctypes.byref(sid))
         if sid:
             kernel32.LocalFree(sid)
         outcome = profile_creation_outcome(hr)
-        _ac_profile_attempted.append(outcome)
-        return outcome
+        _ac_profile_attempted.append((outcome, hr))
+        return outcome, hr
 
     def _derive_app_container_sid(name=APP_CONTAINER_NAME):
         """(sid, None) or (None, problem). The SID is a PSID the
@@ -1196,7 +1245,20 @@ else:
         problem = validate_app_container_name(name)
         if problem is not None:
             return None, problem
-        _ensure_app_container_profile(name)
+        outcome, hr = _ensure_app_container_profile(name)
+        if outcome == "failed":
+            # Derivation is algorithmic and would succeed with
+            # no profile standing, and a spawn under the derived
+            # SID then fails at creation with a bare
+            # ERROR_FILE_NOT_FOUND that names nothing (the Lane 6
+            # finding). Refuse here instead, naming the call and
+            # its code: a profile that does not stand is a
+            # missing mechanism, and the trial reports it as one.
+            return None, (
+                "CreateAppContainerProfile(%s) failed: "
+                "0x%08x; the container profile does not stand, "
+                "so no AppContainer process can be created for "
+                "it" % (name, hr & 0xFFFFFFFF))
         sid = wintypes.LPVOID()
         hr = userenv.DeriveAppContainerSidFromAppContainerName(
             name, ctypes.byref(sid))
