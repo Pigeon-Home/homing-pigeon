@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.3 - 2026-11-22
+
+- Windows confinement: Lane 8 supposition recorded before measurement, the container granted the ancestors of its work directory with the verdict consulted at the spawn seam, ancestor grants standing without inheritance, and the Job Object limit flags pinned with the whole job ceiling (since 3.17.33.1)
+- macOS: the enforce flip's supposition recorded before verification, and its conclusions landed with the two pages that still stated the old posture updated (since 3.17.33.1)
+- Apple store: the upload planner, the bundle packaging and the Mac leg that carries the plan out, productbuild signing with the installer identity the keychain holds, and the validation refusal answered with category, mapped versions and bundle icon (since 3.17.33.1)
+- Docs: the whole-set accuracy pass and the macOS row standing at Supported on the owner's call of 2026-11-21; FUTURE.md updated by DRU (since 3.17.33.1)
+- Release train: the 4 consistency pins the recent landings left behind, re-pinned (the failed 3.17.33.2 cut's fix-forward): the v4 bindings C11 name at Nine security modes, the defaults registry doc lines, the mutation selection regenerated, and the macOS store workflow on the tree-wide allowlist with its reason recorded
+
 ## 3.17.33.2 - 2026-11-22
 
 - Windows confinement: Lane 8 supposition recorded before measurement, the container granted the ancestors of its work directory with the verdict consulted at the spawn seam, and ancestor grants standing without inheritance so they cannot widen into the ancestor's children (since 3.17.33.1)
