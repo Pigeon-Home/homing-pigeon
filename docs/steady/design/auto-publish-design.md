@@ -1,7 +1,7 @@
 # Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
 # Automatic publishing to the stores: design
 
-Opened on 2026-11-21 at the conductor's direction. His words:
+Opened on 2026-11-21 at the owner's direction. His words:
 the pipelines should publish to all these places when we do a
 new release, instead of each storefront being pushed by hand,
 one at a time, after the fact. This page is the design for
@@ -22,7 +22,7 @@ this design hangs the store legs on.
 
 The Snap leg is half automatic already, by accident of how
 the store works. The snapcraft.io build service watches the
-repository, finds snap/snapcraft.yaml where the conductor
+repository, finds snap/snapcraft.yaml where the owner
 placed it on 2026-11-20, and Launchpad builds each new head
 into fresh store revisions with no hands at all: the
 3.17.32.13 head produced revisions 20 (amd64) and 21 (arm64)
@@ -40,7 +40,7 @@ The Apple leg has no store listing at all, by the verdict in
 the preparation notes: the Mac App Store's sandbox cannot
 hold the runner, so the route is Developer ID signing,
 notarization and stapling, distributed from our own shelf.
-The conductor has directed that a store submission be
+The owner has directed that a store submission be
 attempted anyway and Apple's own review be allowed to give
 the answer. His enrollment stands active as an individual
 with the agreements accepted (2026-11-21). The signing
@@ -153,7 +153,7 @@ store's own page or API shows it.
 - Microsoft's identity vetting of the publisher: in motion,
   theirs to finish.
 - Any purchase: a signing certificate is bought in the
-  conductor's name, by his hand, or not at all.
+  owner's name, by his hand, or not at all.
 
 Everything else on this page is a machine step, and the
 measure of the design is that a release cut at midnight
