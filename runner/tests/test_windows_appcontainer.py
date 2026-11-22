@@ -204,6 +204,126 @@ class GrantSetTests(unittest.TestCase):
             WC.app_container_grant_set("/work", [None])
 
 
+class SessionGrantTests(unittest.TestCase):
+    """The Lane 7 regression pin (2026-11-21): powershell.exe
+    and whoami.exe died inside the container with exit
+    -1073741502 (0xC0000142, STATUS_DLL_INIT_FAILED) and no
+    output, while cmd.exe, findstr.exe and the Python
+    interpreter ran. The rig bisection isolated the cause to
+    the session objects: both failing targets import
+    USER32.dll directly and the running ones do not, a
+    library in that load set opens the creating session's
+    window station and desktop while initializing, and the
+    container SID held no grant on either. Granting both
+    objects ran both targets; revoking both restored the
+    failure; the least sufficient masks are the window
+    station at 0x0102 (WINSTA_READATTRIBUTES plus
+    WINSTA_ENUMERATE) and the desktop at 0x0001
+    (DESKTOP_READOBJECTS). These tests pin the recorded
+    grant plan and the spawn's use of it from the source, so
+    they run on every host."""
+
+    def test_plan_is_exactly_the_two_session_objects(self):
+        self.assertEqual(
+            WC.app_container_session_grant_set(),
+            [("window_station", 0x0102), ("desktop", 0x0001)])
+
+    def test_plan_matches_the_named_constants(self):
+        plan = dict(WC.app_container_session_grant_set())
+        self.assertEqual(plan["window_station"],
+                         WC.WINDOW_STATION_CONTAINER_ACCESS)
+        self.assertEqual(plan["desktop"],
+                         WC.DESKTOP_CONTAINER_ACCESS)
+
+    def test_window_station_mask_is_read_rights_only(self):
+        mask = dict(WC.app_container_session_grant_set())[
+            "window_station"]
+        # WINSTA_READATTRIBUTES (0x0002) and WINSTA_ENUMERATE
+        # (0x0100) are the whole mask: no ENUMDESKTOPS alone
+        # (measured insufficient), no create window station,
+        # no read screen, no clipboard, no switch rights.
+        self.assertEqual(mask & ~0x0102, 0)
+        self.assertTrue(mask & 0x0002)
+        self.assertTrue(mask & 0x0100)
+
+    def test_desktop_mask_is_readobjects_only(self):
+        mask = dict(WC.app_container_session_grant_set())[
+            "desktop"]
+        self.assertEqual(mask, 0x0001)
+        # None of DESKTOP_CREATEWINDOW (0x0002),
+        # DESKTOP_WRITEOBJECTS (0x0080), DESKTOP_SWITCHDESKTOP
+        # (0x0100) or any standard or generic right stands in
+        # the mask.
+        self.assertEqual(mask & ~0x0001, 0)
+
+    def test_plan_carries_no_other_object(self):
+        kinds = [kind for kind, mask
+                 in WC.app_container_session_grant_set()]
+        self.assertEqual(kinds, ["window_station", "desktop"])
+
+    def test_plan_is_stable_across_calls(self):
+        first = WC.app_container_session_grant_set()
+        for _ in range(50):
+            self.assertEqual(
+                WC.app_container_session_grant_set(), first)
+
+    def test_plan_is_a_fresh_list_each_call(self):
+        plan = WC.app_container_session_grant_set()
+        plan.append(("clipboard", 0xFFFF))
+        self.assertEqual(
+            WC.app_container_session_grant_set(),
+            [("window_station", 0x0102), ("desktop", 0x0001)])
+
+    def test_plan_entries_are_string_mask_pairs(self):
+        for kind, mask in WC.app_container_session_grant_set():
+            self.assertIsInstance(kind, str)
+            self.assertIsInstance(mask, int)
+            self.assertGreater(mask, 0)
+
+    def _source(self):
+        with open(WC.__file__, encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_spawn_grants_the_session_objects(self):
+        self.assertIn(
+            "_grant_app_container_session_objects(sid)",
+            self._source())
+
+    def test_spawn_records_the_session_grants(self):
+        self.assertIn(
+            "proc.app_container_session_grants = session_grants",
+            self._source())
+
+    def test_close_revokes_the_session_grants(self):
+        source = self._source()
+        self.assertIn(
+            "_remove_app_container_session_object_grants(\n"
+            "                        _grant_sid, session_grants)",
+            source)
+
+    def test_failed_spawn_revokes_the_session_grants(self):
+        source = self._source()
+        self.assertIn(
+            "_remove_app_container_session_object_grants(\n"
+            "                        sid, session_grants)",
+            source)
+
+    def test_session_grants_use_the_handle_security_calls(self):
+        source = self._source()
+        self.assertIn("advapi32.GetSecurityInfo(", source)
+        self.assertIn("advapi32.SetSecurityInfo(", source)
+        self.assertIn("SE_WINDOW_OBJECT", source)
+
+    def test_backend_session_grants_answer_matches(self):
+        if WC.IS_WINDOWS_BACKEND:
+            self.assertEqual(
+                WC.app_container_session_grants(),
+                WC.app_container_session_grant_set())
+        else:
+            self.assertEqual(WC.app_container_session_grants(),
+                             [])
+
+
 class TrialTests(unittest.TestCase):
     def test_all_four_checks_pass(self):
         proc = FakeProc(out=_ALL_OK)

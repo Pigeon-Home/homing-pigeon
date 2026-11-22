@@ -360,6 +360,61 @@ grant inside the existing grant shape works, the fix
 stands in that shape, recorded and revoked like every
 other grant here.
 
+Conclusions, from the Lane 7 measurement (2026-11-21, the
+Germany rig, Windows Server 2022, the elevated
+Administrator context): the supposition's third candidate
+was the cause, in a narrower form than stated, and no
+capability stands anywhere near it. The import sets named
+the shared shape first: powershell.exe and whoami.exe both
+import USER32.dll directly, while cmd.exe, findstr.exe and
+the Python interpreter, the three targets that run
+contained, import no USER32 at all. The bisection then
+varied the session objects one at a time through the
+module's own spawn. Granting the container SID on the
+creating process's window station alone changed nothing:
+both targets still died with 0xC0000142. Granting it on
+the desktop alone changed nothing either. Granting both
+together, both targets ran: powershell printed its marker
+and exited 0, whoami printed its name and exited 0. After
+both grants were revoked, powershell died with 0xC0000142
+again, the isolation holding in both directions. The mask
+bisection then shrank each grant to the least access that
+still works: on the desktop, DESKTOP_READOBJECTS (0x0001)
+alone suffices; on the window station, either
+WINSTA_READATTRIBUTES (0x0002) alone or WINSTA_ENUMERATE
+(0x0100) alone suffices, while WINSTA_ENUMDESKTOPS (0x0001)
+alone does not, and the spawn grants the two read rights
+together (0x0102) so the shape does not rest on one host's
+choice between them. A full job payload under the minimal
+pair (write a file in the work directory, read it back,
+compute a sum) printed its content and its sum and exited
+0. The failing initialization is therefore the USER32
+family's: a library in that load set opens the session's
+window station and desktop while initializing, the access
+check is the container's intersection check, and the
+capability less token holds no grant on either object, so
+initialization fails before a line of the job runs. The
+earlier conclusion, that managed programs do not
+initialize in a container whatever the construction, does
+not stand: it was a grant shaped failure wearing a load
+set's clothes, and whoami, a native binary, was the
+evidence against it all along. The fix stands inside the
+design's own grant shape: every AppContainer spawn now
+grants the container SID the recorded session object
+access (app_container_session_grant_set: the window
+station at 0x0102, the desktop at 0x0001, no create, write,
+switch, read screen or clipboard right in either mask),
+records it on the process beside the path grants, and
+revokes it at job end and on a failed spawn exactly as
+the path grants are revoked; the revocation was read back
+on the rig, with neither object's DACL naming the
+container SID after the process closed. The empty
+capability list is untouched, and the proven string names
+exactly what it named before. With the fix, the module
+trial's verdict on the rig is None with the job shape
+probe engaged, and the bare name job shape prints its
+marker contained.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
@@ -445,6 +500,18 @@ CONFINEMENT_CONTROLS_WITH_APP_CONTAINER = APP_CONTAINER_CONTROLS
 APP_CONTAINER_NAME = "pigeon-home.homing-pigeon.runner"
 APP_CONTAINER_NAME_MAX = 64
 
+# The session object access the container SID is granted for
+# every AppContainer spawn (the Lane 7 measurement, recorded
+# in the header): on the creating process's own window
+# station, WINSTA_READATTRIBUTES (0x0002) plus WINSTA_ENUMERATE
+# (0x0100), and on its desktop, DESKTOP_READOBJECTS (0x0001)
+# alone. No create, write, switch, read screen or clipboard
+# right stands in either mask: the grant exists so a library
+# that initializes against the session's window station and
+# desktop can open them, and for nothing else.
+WINDOW_STATION_CONTAINER_ACCESS = 0x0102
+DESKTOP_CONTAINER_ACCESS = 0x0001
+
 # PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES: attribute 9 in
 # the PROC_THREAD_ATTRIBUTE_NUM class, with the thread class
 # bit set, exactly as the Windows headers define it.
@@ -516,6 +583,9 @@ if sys.platform != "win32" or not hasattr(ctypes, "WinDLL"):
         raise RuntimeError("windows_confine is Windows-only")
 
     def app_container_grants(*args, **kwargs):
+        return []
+
+    def app_container_session_grants(*args, **kwargs):
         return []
 
     def remove_app_container_grants(*args, **kwargs):
@@ -654,6 +724,26 @@ else:
         wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.LPCWSTR,
         wintypes.LPVOID, wintypes.DWORD,
         ctypes.POINTER(wintypes.LPVOID)]
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+    user32.GetProcessWindowStation.restype = wintypes.HANDLE
+    user32.GetProcessWindowStation.argtypes = []
+    user32.GetThreadDesktop.restype = wintypes.HANDLE
+    user32.GetThreadDesktop.argtypes = [wintypes.DWORD]
+    kernel32.GetCurrentThreadId.restype = wintypes.DWORD
+    kernel32.GetCurrentThreadId.argtypes = []
+    advapi32.GetSecurityInfo.restype = wintypes.DWORD
+    advapi32.GetSecurityInfo.argtypes = [
+        wintypes.HANDLE, ctypes.c_int, wintypes.DWORD,
+        ctypes.POINTER(wintypes.LPVOID),
+        ctypes.POINTER(wintypes.LPVOID),
+        ctypes.POINTER(wintypes.LPVOID),
+        ctypes.POINTER(wintypes.LPVOID),
+        ctypes.POINTER(wintypes.LPVOID)]
+    advapi32.SetSecurityInfo.restype = wintypes.DWORD
+    advapi32.SetSecurityInfo.argtypes = [
+        wintypes.HANDLE, ctypes.c_int, wintypes.DWORD,
+        wintypes.LPVOID, wintypes.LPVOID, wintypes.LPVOID,
+        wintypes.LPVOID]
     advapi32.GetNamedSecurityInfoW.restype = wintypes.DWORD
     advapi32.GetNamedSecurityInfoW.argtypes = [
         wintypes.LPWSTR, ctypes.c_int, wintypes.DWORD,
@@ -711,6 +801,7 @@ else:
     FILE_SHARE_WRITE = 0x00000002
     OPEN_EXISTING = 3
     SE_FILE_OBJECT = 1
+    SE_WINDOW_OBJECT = 7
     LABEL_SECURITY_INFORMATION = 0x00000010
     DACL_SECURITY_INFORMATION = 0x00000004
     SDDL_REVISION_1 = 1
@@ -1600,13 +1691,137 @@ else:
         """
         return app_container_grant_set(work_dir, read_paths)
 
+    def _set_entries_in_acl_on_handle(handle, sid, mask, mode,
+                                      label):
+        """None once one entry for `sid` at `mask` has been
+        added to (GRANT_ACCESS) or revoked from (REVOKE_ACCESS)
+        the DACL of the kernel object `handle` already
+        carries, else the problem. The handle form of
+        _set_entries_in_acl, for the session objects (window
+        station and desktop) that have handles, not paths.
+        The grant is additive, exactly as there: the existing
+        DACL is read, merged, and written back.
+        """
+        dacl = wintypes.LPVOID()
+        sd = wintypes.LPVOID()
+        rc = advapi32.GetSecurityInfo(
+            handle, SE_WINDOW_OBJECT, DACL_SECURITY_INFORMATION,
+            None, None, ctypes.byref(dacl), None,
+            ctypes.byref(sd))
+        if rc != 0:
+            return "GetSecurityInfo(%s) failed: %d" % (label, rc)
+        try:
+            ea = EXPLICIT_ACCESS_W()
+            ea.grfAccessPermissions = mask
+            ea.grfAccessMode = mode
+            ea.grfInheritance = 0
+            ea.Trustee.TrusteeForm = TRUSTEE_IS_SID
+            ea.Trustee.TrusteeType = TRUSTEE_IS_UNKNOWN
+            ea.Trustee.ptstrName = sid
+            new_dacl = wintypes.LPVOID()
+            rc = advapi32.SetEntriesInAclW(
+                1, ctypes.byref(ea), dacl, ctypes.byref(new_dacl))
+            if rc != 0:
+                return "SetEntriesInAclW(%s) failed: %d" % (
+                    label, rc)
+            try:
+                rc = advapi32.SetSecurityInfo(
+                    handle, SE_WINDOW_OBJECT,
+                    DACL_SECURITY_INFORMATION, None, None,
+                    new_dacl, None)
+                if rc != 0:
+                    return "SetSecurityInfo(%s) failed: %d" % (
+                        label, rc)
+                return None
+            finally:
+                kernel32.LocalFree(new_dacl)
+        finally:
+            kernel32.LocalFree(sd)
+
+    def _session_object_handles():
+        """((kind, handle, mask), ...) for the creating
+        process's own window station and the calling thread's
+        desktop, in the recorded grant plan's order, or a
+        problem string. The handles are the session's own:
+        neither is closed here or by the caller (a process's
+        window station handle and a thread's desktop handle
+        are owned by the session, not by this code).
+        """
+        winsta = user32.GetProcessWindowStation()
+        if not winsta:
+            return None, "GetProcessWindowStation failed: %d" % (
+                ctypes.get_last_error(),)
+        desktop = user32.GetThreadDesktop(
+            kernel32.GetCurrentThreadId())
+        if not desktop:
+            return None, "GetThreadDesktop failed: %d" % (
+                ctypes.get_last_error(),)
+        handles = {"window_station": winsta, "desktop": desktop}
+        return [(kind, handles[kind], mask)
+                for kind, mask
+                in app_container_session_grant_set()], None
+
+    def _grant_app_container_session_objects(sid):
+        """(granted, problem): grant the container SID the
+        recorded session object access (app_container_session_
+        grant_set) on the creating process's window station
+        and desktop. `granted` is the recorded plan once every
+        grant stands; on a problem it is empty, every grant
+        this call already made is revoked again, and no spawn
+        follows.
+        """
+        objects, problem = _session_object_handles()
+        if problem is not None:
+            return [], problem
+        granted = []
+        for kind, handle, mask in objects:
+            problem = _set_entries_in_acl_on_handle(
+                handle, sid, mask, GRANT_ACCESS, kind)
+            if problem is not None:
+                _remove_app_container_session_object_grants(
+                    sid, granted)
+                return [], problem
+            granted.append((kind, mask))
+        return granted, None
+
+    def _remove_app_container_session_object_grants(sid,
+                                                    granted):
+        """Revoke exactly the recorded session object grants,
+        in reverse order. Best effort per object; the kinds
+        whose revocation failed are returned for the caller
+        to log.
+        """
+        failed = []
+        objects, problem = _session_object_handles()
+        if problem is not None:
+            return [kind for kind, mask in granted]
+        handles = {kind: handle for kind, handle, mask in objects}
+        for kind, mask in reversed(list(granted)):
+            if _set_entries_in_acl_on_handle(
+                    handles[kind], sid, mask, REVOKE_ACCESS,
+                    kind) is not None:
+                failed.append(kind)
+        return failed
+
+    def app_container_session_grants():
+        """The recorded session object grant set for an
+        AppContainer spawn: what _grant_app_container_session_
+        objects grants, in its recorded shape.
+        """
+        return app_container_session_grant_set()
+
     def spawn_app_container_process(argv, cwd=None, env=None,
                                     read_paths=()):
         """Create a job process inside the AppContainer.
 
         The container SID is derived from APP_CONTAINER_NAME,
         granted full access to the work directory `cwd` (and
-        read plus execute on `read_paths`) before spawn, and the
+        read plus execute on `read_paths`) before spawn, and
+        granted the recorded session object access
+        (app_container_session_grant_set) on the creating
+        process's window station and desktop, without which a
+        target whose load set initializes against them dies
+        at DLL initialization (the Lane 7 measurement). The
         process is created suspended through CreateProcessW
         with a SECURITY_CAPABILITIES carrying no capability
         SIDs, assigned to the Job Object, and only then resumed.
@@ -1652,6 +1867,23 @@ else:
                 sid, cwd, read_paths)
             if problem is not None:
                 raise RuntimeError(problem)
+            # The session object grants stand beside the path
+            # grants, in the same recorded and revoked shape:
+            # a target whose load set initializes against the
+            # window station and desktop (USER32 and every
+            # library built on it, powershell.exe and
+            # whoami.exe the measured cases) dies at DLL
+            # initialization when the container SID holds no
+            # access to them, before a line of the job runs
+            # (the Lane 7 measurement, recorded in the header).
+            session_grants, problem = \
+                _grant_app_container_session_objects(sid)
+            if problem is not None:
+                try:
+                    remove_app_container_grants(sid, grants)
+                except Exception:
+                    pass
+                raise RuntimeError(problem)
             caps_dict = build_security_capabilities(sid_text)
             caps = SECURITY_CAPABILITIES()
             caps.AppContainerSid = sid
@@ -1661,6 +1893,15 @@ else:
             job, problem = _create_job_with_limits(
                 DEFAULT_PROCESS_MEMORY_BYTES)
             if problem is not None:
+                try:
+                    _remove_app_container_session_object_grants(
+                        sid, session_grants)
+                except Exception:
+                    pass
+                try:
+                    remove_app_container_grants(sid, grants)
+                except Exception:
+                    pass
                 raise RuntimeError(problem)
             # TEMP and TMP point at the work directory for a
             # container process: the container can write there
@@ -1691,10 +1932,16 @@ else:
                     remove_app_container_grants(sid, grants)
                 except Exception:
                     pass
+                try:
+                    _remove_app_container_session_object_grants(
+                        sid, session_grants)
+                except Exception:
+                    pass
                 raise
         finally:
             kernel32.LocalFree(sid)
         proc.confinement_status = STATUS_APP_CONTAINER
+        proc.app_container_session_grants = session_grants
         proc.app_container_grants = grants
         # The grants are removed at job end: the process's
         # release (close, which the spawn seam calls once the
@@ -1707,6 +1954,8 @@ else:
             try:
                 if _grant_sid:
                     remove_app_container_grants(_grant_sid, grants)
+                    _remove_app_container_session_object_grants(
+                        _grant_sid, session_grants)
                     kernel32.LocalFree(_grant_sid)
             except Exception:
                 pass
@@ -2162,6 +2411,23 @@ def app_container_grant_set(work_dir, read_paths=()):
         seen.add(path)
         grants.append((path, "read_execute"))
     return grants
+
+
+def app_container_session_grant_set():
+    """The recorded session object grant set for an
+    AppContainer spawn: a list of (object, access mask) pairs,
+    the creating process's window station first, then its
+    desktop, at exactly the access the Lane 7 measurement
+    found sufficient and necessary (WINDOW_STATION_CONTAINER_
+    ACCESS and DESKTOP_CONTAINER_ACCESS). This set is the
+    whole session grant: the container SID gets this access
+    to these two objects and to no other session object, and
+    neither mask carries a create, write, switch, read screen
+    or clipboard right. The spawn records exactly this list
+    so what was granted can be reported and revoked.
+    """
+    return [("window_station", WINDOW_STATION_CONTAINER_ACCESS),
+            ("desktop", DESKTOP_CONTAINER_ACCESS)]
 
 
 # HRESULT ERROR_ALREADY_EXISTS, as an unsigned value: the
