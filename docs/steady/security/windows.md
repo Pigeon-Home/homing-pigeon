@@ -166,3 +166,85 @@ directives in `docs/steady/security/` (no `NoNewPrivileges`,
 `ProtectSystem`, or `PrivateTmp`). The account boundary is the
 mechanism; keep the task's "run with highest privileges" box
 unchecked (the installer already uses `LIMITED` for named accounts).
+
+## The level's name: a supposition, recorded before measurement (2026-11-21)
+
+The owner has directed that the Windows rows of
+`docs/support-matrix.md` be given the treatment the macOS
+row was given the same evening: earn the full claim in
+code where code is what it rests on, and then let the
+name follow the posture. The matrix today names both
+Windows rows **Supported, reduced confinement**. What
+that name rests on, read from the matrix, from this page
+and from the backend (`runner/guard/windows_confine.py`),
+is five things:
+
+1. The AppContainer control engages only where its trial
+   proves on the host, the trial now including the job's
+   own shape; where it does not prove, jobs run at the
+   floor, whose reads are not walled and which isolates
+   no network.
+2. The Job Object's ceilings: the matrix states the per
+   process memory ceiling and nothing wider.
+3. The verdict the runner acts on: whether the
+   AppContainer verdict the gate computes is the verdict
+   the spawn seam acts on, in every start shape.
+4. `job_user` on Windows is the memory ceiling alone,
+   with no account demote behind it.
+5. Windows ARM64 carries no field proof; its row follows
+   the x86-64 row on a build leg's evidence.
+
+Suppositions, stated so the measurement can prove them
+wrong:
+
+- S1. The whole job ceiling is already set in code:
+  `_create_job_with_limits` sets
+  `JOB_OBJECT_LIMIT_JOB_MEMORY` beside the per process
+  flag, with the job memory limit equal to the same
+  512 MiB, so a job as a whole is capped, not only each
+  process in it. What is missing is the pin: no unit
+  test names that flag or that assignment today. The
+  measurement is a source reading plus a new pin test,
+  and the rig battery's ceiling step beside it.
+- S2. No processor ceiling is set: no job time limit, no
+  per process time limit, no CPU rate control and no
+  process count limit stands in the limit flags. No
+  other backend at **Supported** sets a processor time
+  ceiling either: the Linux sandbox sets none, the macOS
+  launcher sets an address space limit and no time
+  limit, and the FreeBSD jail's core limit is a set of
+  cores, stated on its own row as not a share of time.
+  A processor time ceiling on Windows would need a
+  value no config names and would be new policy, not a
+  repair. Supposition: it is not closable in this lane,
+  and it stays stated in the confinement cell, as the
+  macOS row states its own.
+- S3. The verdict wiring is already whole: the gate, the
+  posture record and the spawn seam consult the one
+  cached verdict (the trial and the job shape probe
+  together) on the one module instance the loader
+  registers under both import names, and a spawn reached
+  before any gate call computes the verdict instead of
+  reading an empty cache as a floor verdict. The Lane 8
+  landing claims exactly this; the measurement is a
+  source reading against its tests.
+- S4. The floor fallback is by design and stays: a
+  missing mechanism falls back to the floor with the
+  floor's own record, and a boundary crossing refuses
+  outright. What the matrix cell does not state plainly
+  today is the floor's network position: the floor
+  isolates no network. Accuracy, not code, is what that
+  part needs.
+- S5. On the head this lane lands, the rig battery's
+  confinement steps pass with the audit lines naming
+  "windows: job_object + appcontainer + no_network".
+  The battery's three timing steps (startup, build
+  stamp and clock) have failed before only under rig
+  saturation; if they fail on a saturated rig, that is
+  recorded as a timing failure under load, never as a
+  confinement failure, and the run is repeated on a
+  quiet rig before any verdict is drawn from them.
+
+The conclusions go in this same place when the
+measurement lands, and the change the numbers support
+follows them.
