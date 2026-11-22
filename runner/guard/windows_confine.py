@@ -415,6 +415,53 @@ trial's verdict on the rig is None with the job shape
 probe engaged, and the bare name job shape prints its
 marker contained.
 
+Supposition for the Lane 8 diagnosis, recorded before any
+measurement in this lane (2026-11-21): with the Lane 7 fix
+landed, the module trial's verdict on the rig is None and
+a runner started with this module imported under its
+runner.guard name spawns its jobs in the AppContainer,
+yet in the rig battery's own start shape (the runner
+started by the harness bootstrap, which puts both the
+tree root and the tree's runner directory on sys.path and
+runs runner.py by path as __main__) the audit record
+names the floor string for most jobs, with the
+AppContainer string appearing only occasionally, even
+though the trial passes on that machine. My belief,
+stated so the measurement can prove it wrong: the
+AppContainer verdict the startup gate computes does not
+reliably reach the spawn seam, for a wiring reason inside
+this module and its loader, not a capability reason. The
+shape of the suspicion is precise. spawn_confined_process
+never computes the verdict itself: it reads only this
+module instance's cached verdict list, which is populated
+solely as a side effect of windows_confinement_problem or
+windows_app_container_problem being called on this same
+module instance, and it swallows any RuntimeError from
+the AppContainer spawn without naming it. So any start
+shape in which the gate's call and the spawn's read land
+on different module instances of this backend (this file
+is importable under two names, runner.guard.windows_
+confine with the tree root on the path and guard.
+windows_confine with the runner directory on the path,
+and the harness bootstrap puts both roots on the path at
+once), or in which the spawn is reached on an instance
+whose cache no gate call has populated, or in which the
+AppContainer spawn itself fails at job time for a reason
+the swallow hides, produces exactly the observed record:
+the floor runs, the audit names the floor truthfully,
+and no surface says the stronger control was proved and
+then not used. The measurement that settles it runs on
+the rig in the harness bootstrap's own shape, prints the
+module identity (its name and id) and the cached verdict
+at the gate and at the spawn seam, repeats the spawn
+several times in one process, and records any error the
+AppContainer spawn raises at job time before the floor
+fallback takes it. Whichever variant the measurement
+names, the fix must leave one backend instance holding
+one verdict, consulted by both the gate and the spawn
+seam in every start shape, with the audit line naming
+the backend actually in force for each job.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
