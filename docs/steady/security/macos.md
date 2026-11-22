@@ -1971,3 +1971,45 @@ current head remains owed, as the conclusions above
 state, and until it is taken the live proof of the
 flip at this exact head rests on the hosted runs of
 2026-11-15.
+
+## The flip at the current head: supposition, recorded before the verification
+
+Recorded 2026-11-22, at the conductor's word of this
+day approving this lane's work. The flip sections
+above record the flip as it landed on 2026-11-14 and
+was verified on the head of 2026-11-21, and they
+leave 1 thing owed: a fresh hosted run of the
+macos-confinement workflow on the current head, the
+hosted runs of 2026-11-15 standing 1 week behind it.
+This round takes that run, and first re-measures the
+contract side on the current head. The supposition,
+written before any of it is run:
+
+- V1, the seed still asks and obeys on this head.
+  The macOS suite's seed tests pass whole on this
+  host: a passing probe leaves a fresh install's
+  confinement unstated, so the mode stays at
+  `enforce`; a failing probe states `audit` in the
+  file and carries its reason; a mode the operator
+  stated down is never asked about and never moved;
+  and the installer and the setup wizard take the
+  same answer.
+- V2, the seam still enforces on this head. The
+  suite's seam tests pass: a job at `enforce` is
+  spawned through the backend, its audit record
+  names exactly "macos: seatbelt_profile +
+  no_network + spawn_resource_limits", and a backend
+  that cannot engage refuses the job rather than
+  falling through to an unconfined spawn.
+- V3, the hosted run is green on this head. A fresh
+  dispatch of the macos-confinement workflow on this
+  head completes green on both hosted Macs (macos-15
+  and macos-15-intel), with the suite's live classes
+  running on the Macs rather than skipping.
+
+If V1 or V2 fails, the flip does not stand on this
+head, and the fix follows in this lane before any
+conclusion is drawn. If V3 fails, the failure is
+recorded in the conclusions with its shape, and the
+support level's name is not moved by this record
+either way.
