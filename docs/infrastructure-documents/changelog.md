@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.14 - 2026-11-22
+
+- Since 3.17.32.13: the 2 limits chart (the last chart of the statistics record but one) is regenerated with its counted series extended to 21 November (statistics.md, the 2 limits chart SVG, and the doc figure-slot and curve tests updated to match). No runner code changes.
+
 ## 3.17.32.13 - 2026-11-21
 
 - Since 3.17.32.12: the statistics figures are refreshed at the 3.17.32.12 head, and the closing chart (2 lines that close) is regenerated with its counted series extended to 21 November (statistics.md, the closing chart SVG, README, PROTOCOL and AGENTS wording carried along, and the doc figure-slot tests updated to match). No runner code changes.
