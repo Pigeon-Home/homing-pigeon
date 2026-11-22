@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.1 - 2026-11-22
+
+- Since 3.17.32.18: the Germany bank 72 corpus lands — 2,686 entries, 0 crashes, 2,362 new runs.
+- Windows confinement: the AppContainer verdict now requires the job shape, since the trial's interpreter proof does not cover the managed job interpreter, and the Lane 7 supposition for the DLL initialization failure is recorded before measurement.
+- Figures: the core figures are re-recorded for the job shape landing and the bank it followed.
+
 ## 3.17.32.18 - 2026-11-22
 
 - Since 3.17.32.17: the snap build resolves the tree directory in override-build for both builder layouts — on the Launchpad builder the part source is the tree root, while the snapcraft.io builder nests the tree under a subdirectory; both snapcraft.yaml twins now resolve the tree directory first and install from the resolved path.
