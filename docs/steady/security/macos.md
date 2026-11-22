@@ -1949,3 +1949,25 @@ record: it names the profile's shape (the host's
 processes stay visible to a job, where a
 namespace backend's do not), not its posture,
 and the posture it stands under is `enforce`.
+
+## The level's name, moved on the owner's call (2026-11-21)
+
+On 2026-11-21 the owner directed that the macOS row of
+`docs/support-matrix.md` no longer carry the reduced
+confinement label, and the row now stands at Supported.
+The name now follows the posture the backend stands
+under, `enforce`, fail-closed, as the flip conclusions
+above establish. This note supersedes the naming
+sentence in those conclusions, which said the name was
+not moved by that record.
+
+The rename changes the name only. The profile's shape
+limits stand exactly as the matrix row states them: a
+job can list the host's processes and read the
+hardware's properties, and there is no ceiling on a job
+as a whole, on processor time or on cores. A fresh
+hosted run of the macos-confinement workflow on the
+current head remains owed, as the conclusions above
+state, and until it is taken the live proof of the
+flip at this exact head rests on the hosted runs of
+2026-11-15.

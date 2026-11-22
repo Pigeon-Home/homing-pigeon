@@ -129,15 +129,36 @@ class SupportMatrixTest(unittest.TestCase):
     def test_the_reduced_level_names_the_platforms_it_fits(self):
         # The level's definition says, platform by platform, why
         # confinement there is weaker than the Linux sandbox. It
-        # must go on naming macOS and Windows, and must not go
-        # on describing a FreeBSD jail as one of them.
+        # names Windows alone now: FreeBSD left the level on
+        # 2026-11-14 when its jail was rebuilt, and macOS left
+        # it on 2026-11-21 on the owner's call, its row moved
+        # to Supported because the name now follows the
+        # backend's enforce posture. Neither may come back as
+        # a present-tense example of the level.
         flat = _flat()
         start = flat.index("- **Supported, reduced confinement**")
         end = flat.index("- **Experimental**")
         definition = flat[start:end]
-        self.assertIn("on macOS", definition)
         self.assertIn("on Windows", definition)
+        self.assertNotIn("on macOS the backend applies", definition)
         self.assertNotIn("on FreeBSD the backend applies", definition)
+
+    def test_the_macos_row_carries_its_landed_level(self):
+        # The macOS row stands at Supported since the owner's
+        # call of 2026-11-21: the backend has enforced at
+        # enforce, fail-closed, since the flip of 2026-11-14,
+        # and the level's name follows that posture. The
+        # reduced-confinement level may not come back on its
+        # row. (The words for it still stand in this file's
+        # level definitions, for the Windows rows, so the pin
+        # reads the row itself.)
+        row = _row("macOS (Intel and Apple silicon)")
+        self.assertTrue(
+            row.startswith(
+                "| macOS (Intel and Apple silicon) | "
+                "**Supported** |"),
+            row[:70])
+        self.assertNotIn("reduced confinement", row)
 
     def test_the_freebsd_row_s_numbers_and_names_match_the_code(self):
         # The row states the jail's ceilings and the record's
