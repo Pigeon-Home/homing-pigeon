@@ -1778,3 +1778,82 @@ exactly:
   the point in either direction P3 names, R6-S1
   stands convicted in the open and the backend is
   the next round's subject.
+
+## The enforce flip: supposition, recorded before the verification
+
+Recorded 2026-11-21. The rounds above end on
+2026-11-12, with the spawn limits point's live
+verdict (P3 of the sixth round) still unjudged in
+this page and the support level standing where
+the first verdicts left it. The work that
+followed is recorded in the design page
+(`docs/steady/design/macos-confinement-design.md`):
+the launcher became the system shell, the
+profile learned to name the session's services,
+and a fresh install learned to ask the probe.
+That last change is the enforce flip, and this
+page, which is where the backend's suppositions
+stand, carries no record of it. This section
+records it in this page's own order: the flip
+stated, the supposition written before the
+verification, and the conclusions after it.
+
+The flip, stated plainly. Before it, a fresh
+macOS install stated `confinement` at `audit` in
+the file on every Mac, without asking the
+machine, so a fresh install's jobs ran
+unconfined until the operator changed the file.
+After it, the installer and the setup wizard ask
+the backend's probe on the Mac they are seeding,
+with the config they are about to leave. Where
+the probe passes, the mode is left at `enforce`
+and nothing is written for it, and the lines
+printed say what a job carries on that Mac.
+Where it does not pass, the mode is stated at
+`audit` in the file, with the probe's reason
+printed. A mode the operator has already stated
+below `enforce` stays as stated, and nothing is
+asked. At `enforce`, every job is spawned under
+the profile at the spawn seam, and a job whose
+confined spawn cannot be created is refused: no
+path runs a job unconfined under `enforce`.
+
+The supposition, written before any verification
+of the current head was run for this record. The
+tree at the head this record is written on is
+supposed to show three things:
+
+- F1, the seed asks and obeys. With a scripted
+  probe handed to the seed, a passing answer
+  leaves `confinement` out of the modes a fresh
+  macOS config states, and an answering reason
+  states `audit` and carries the reason back;
+  and where no probe is handed in and the
+  platform is only named, the stated map is
+  `audit` and nothing on the host is asked. The
+  seed tests in the macOS suite pin each shape.
+- F2, the seam enforces. With a scripted backend
+  on a darwin platform, a job at `enforce` is
+  spawned through the backend and the audit
+  record names exactly "macos: seatbelt_profile
+  + no_network + spawn_resource_limits", and a
+  backend that cannot engage refuses the job
+  rather than falling through to an unconfined
+  spawn. The seam tests pin both.
+- F3, the doc set agrees. Every page that states
+  the macOS posture as a present fact states the
+  flip's shape: the backend enforcing at
+  `enforce`, and a fresh install at `enforce`
+  where the probe passes. A page that still
+  states the pre-flip posture as the present one
+  is the flip's remainder, and the verification
+  names any such page it finds rather than
+  passing over it.
+
+If F1 or F2 fails on this head, the flip does
+not stand in the current tree whatever the
+design page records, and the conclusions below
+say so, with the fix following in this lane. If
+F3 finds a page, the page is corrected in the
+same landing as the conclusions, and the
+correction is named there.
