@@ -248,6 +248,69 @@ A failed AppContainer spawn therefore revokes the grants it
 made before the failure travels, in this module, so the
 fallback it hands back to is the floor it found.
 
+Supposition for the PowerShell measurement, recorded before
+the measurement runs (2026-11-22): on the head carrying all
+of the above, the rig battery's runner starts under the
+AppContainer control and the audit record names it, yet
+every PowerShell job the runner spawns dies at once with
+exit 0xC0000142 (STATUS_DLL_INIT_FAILED) and empty output,
+while the confinement trial, whose program is the Python
+interpreter, proves the control on the same host. My belief,
+stated so the measurement can prove it wrong: the trial
+proves the container for a native interpreter whose load set
+sits beside it and in the system tree the container token
+already reaches; PowerShell 5.1 is a .NET Framework program
+whose initialization load set reaches further, into the
+Windows directory's .NET tree (the CLR and the assembly
+store), and the job spawn grants only the work directory
+plus the target program's own directory -- for a job, argv
+names powershell by its bare name, so not even that -- and a
+library the CLR must load while initializing sits beyond
+the container's grants, so initialization fails before a
+line of the job runs. The measurement that settles it spawns
+powershell.exe on the rig through this module's own
+AppContainer spawn, first in the job's exact shape, then
+with the program's own directory granted, then with the
+Windows .NET tree and the system tree added as read paths
+one at a time, and records which grant set first lets the
+job print its marker and exit 0; a native system binary
+spawned the same way is the control that separates a .NET
+load set problem from a container wide one. If no added
+grant set lets PowerShell run, the supposition is wrong and
+the record will say what the measurement found instead.
+
+Conclusions, from that measurement (2026-11-22, the Germany
+rig, Windows Server 2022, the elevated Administrator
+context): the supposition's mechanism was wrong and its
+shape was right. PowerShell died with 0xC0000142 under every
+grant set the spawn can name: the work directory alone, the
+program's own directory, the Windows .NET tree, the system
+tree, and the whole Windows tree granted read and execute
+together, and again with its profile environment pointed at
+the granted work directory; the .NET Framework's own tools
+died the same way. A minimal hand built AppContainer launch
+on the same host (profile standing, the capabilities
+attribute, no job object, no grants, no handle plumbing)
+ran cmd.exe and died the same way on PowerShell, with the
+capabilities array NULL and with it an empty array; the
+floor spawn ran PowerShell on the same host in the same
+minutes, and cmd.exe and the Python interpreter ran
+contained under the shipped spawn. Native programs run in
+the container on this host; .NET Framework programs do not
+initialize in one, whatever the construction. The trial's
+interpreter proof therefore proved less than the audit
+record claimed when it named the control: a native load
+shape, not the job shape the runner runs. The verdict now
+carries the trial's second half (appcontainer_job_shape_
+problem): the job interpreter, spawned in the job's own
+shape through the same AppContainer spawn, must print its
+marker and exit cleanly before the verdict may name the
+control. On this host the verdict names the job shape
+failure, the gate leaves the floor standing, and jobs run
+under the floor exactly as they did before the control
+existed; on a host where the job shape runs contained, the
+control engages as designed.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
@@ -1606,6 +1669,19 @@ else:
     _ac_trial_lock = threading.Lock()
     _ac_trial_verdict = []
 
+    # The job shape probe's shape: the runner's Windows job
+    # interpreter in the shape exec builds it (the powershell
+    # argv of runner.py, bare name first), printing one
+    # marker line. The trial proves the container with the
+    # host's interpreter; this probe proves it for the
+    # interpreter the jobs actually run, and the verdict
+    # below requires both (see appcontainer_job_shape_problem
+    # and the module header's 2026-11-22 measurement).
+    AC_JOB_SHAPE_MARKER = "AC-JOBSHAPE-OK"
+    AC_JOB_SHAPE_ARGV = [
+        "powershell", "-NoProfile", "-NonInteractive",
+        "-Command", "Write-Output " + AC_JOB_SHAPE_MARKER]
+
     def windows_app_container_problem(cfg=None, timeout=60):
         """None when the AppContainer trial proves the control
         on this host, else the named failure. Cached for the
@@ -1614,6 +1690,15 @@ else:
         and this verdict decides only whether the status may
         name app_container and whether spawn_confined_process
         may choose the AppContainer spawn.
+
+        The verdict is the trial's verdict, and, when the
+        trial passes, the job shape probe's: a container that
+        works for the trial's interpreter but cannot run the
+        job interpreter has not proved the control for the
+        work this runner does, and its problem names that,
+        so the gate falls back to the floor on a named reason
+        instead of engaging a control every job would fail
+        inside.
         """
         with _ac_trial_lock:
             if not _ac_trial_verdict:
@@ -1635,10 +1720,15 @@ else:
                     finally:
                         kernel32.LocalFree(sid)
 
-                _ac_trial_verdict.append(
-                    appcontainer_trial_problem(
+                problem = appcontainer_trial_problem(
+                    spawn_app_container_process,
+                    grant=_trial_grant)
+                if problem is None:
+                    problem = appcontainer_job_shape_problem(
                         spawn_app_container_process,
-                        grant=_trial_grant))
+                        list(AC_JOB_SHAPE_ARGV),
+                        AC_JOB_SHAPE_MARKER, timeout=timeout)
+                _ac_trial_verdict.append(problem)
             return _ac_trial_verdict[0]
 
     def spawn_confined_process(argv, cwd=None, env=None):
@@ -2302,3 +2392,88 @@ def appcontainer_trial_problem(spawn, timeout=60, grant=None):
             shutil.rmtree(tmp, ignore_errors=True)
         if outside_root is not None:
             shutil.rmtree(outside_root, ignore_errors=True)
+
+
+def appcontainer_job_shape_problem(spawn, argv, marker,
+                                   timeout=60):
+    """None when a contained process can run the job shape
+    the runner actually runs, else the named failure.
+
+    The AppContainer trial above proves the container with
+    the host's Python interpreter: a native program whose
+    load set sits beside it and in the system tree. A host
+    can pass that trial and still fail the runner's real
+    work, because the job interpreter is a different load
+    shape entirely. On Windows the runner's jobs are
+    powershell, a .NET Framework program, and on the
+    measured host a managed program does not initialize
+    inside a container token at all (STATUS_DLL_INIT_FAILED,
+    exit 0xC0000142, before a line of the job runs) while
+    native programs run contained on the same host in the
+    same minutes; the measurement stands in the module
+    header. This probe is the trial's second half: it
+    spawns `argv` -- the job interpreter in the job's own
+    shape, bare name and all -- in a staged work directory
+    through the same AppContainer spawn, and requires the
+    process to print `marker` and exit 0 before the verdict
+    may name the control. A failure here is a missing
+    mechanism, never a boundary crossing: the gate leaves
+    the floor standing, the status keeps the floor's name,
+    and jobs run under the floor exactly as they did before
+    the control existed. On a host where the job shape runs
+    contained, the control engages as designed.
+    """
+    if not argv or not all(
+            isinstance(a, str) for a in argv) \
+            or not isinstance(marker, str) or not marker:
+        return ("the AppContainer job shape probe needs a "
+                "job interpreter argv of strings and a marker")
+    tmp = None
+    try:
+        tmp, staged, program, work = _stage_trial_tree()
+        try:
+            proc = spawn(argv, cwd=work, env=dict(os.environ))
+        except Exception as e:
+            return ("AppContainer job shape spawn failed: %s"
+                    % (e,))
+        try:
+            try:
+                out, err = proc.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+                return ("AppContainer job shape timed out "
+                        "after %ss; a contained process could "
+                        "not finish running the job "
+                        "interpreter %s" % (timeout, argv[0]))
+            out_text = out.decode("utf-8", "replace") \
+                if isinstance(out, (bytes, bytearray)) \
+                else str(out or "")
+            err_text = err.decode("utf-8", "replace") \
+                if isinstance(err, (bytes, bytearray)) \
+                else str(err or "")
+            tail = _trial_tail(err_text or out_text)
+            if marker not in out_text:
+                return ("an AppContainer process could not "
+                        "run the job interpreter %s to "
+                        "completion (exit %s: %s)"
+                        % (argv[0], proc.returncode, tail))
+            if proc.returncode not in (0, None):
+                return ("an AppContainer process printed "
+                        "the job shape marker but the job "
+                        "interpreter %s exited %s (%s)"
+                        % (argv[0], proc.returncode, tail))
+            return None
+        finally:
+            try:
+                proc.close()
+            except Exception:
+                pass
+    except Exception as e:
+        return ("AppContainer job shape could not be "
+                "staged: %s" % (e,))
+    finally:
+        if tmp is not None:
+            shutil.rmtree(tmp, ignore_errors=True)

@@ -7,7 +7,9 @@ the container name's shape (with the bookend family around it),
 the capabilities structure with its empty capability set, the
 attribute list construction, the recorded grant set, the
 AppContainer trial's four checks and each named failure, the
-status string naming app_container only when the trial passes,
+job shape probe (the trial's second half) and each of its
+named failures, the status string naming app_container only
+when the trial passes,
 and the floor's behavior unchanged when it does not.
 """
 import os
@@ -356,6 +358,229 @@ class TrialTests(unittest.TestCase):
                        "AC-OUTSIDE-WRITE-OPEN",
                        "AC-TOKEN-APPCONTAINER"):
             self.assertIn(marker, WC._AC_TRIAL_PROGRAM)
+
+
+_JOB_ARGV = ["powershell", "-NoProfile", "-NonInteractive",
+             "-Command", "Write-Output AC-JOBSHAPE-OK"]
+_JOB_MARKER = "AC-JOBSHAPE-OK"
+
+
+class JobShapeProbeTests(unittest.TestCase):
+    """appcontainer_job_shape_problem through scripted spawn
+    seams: the trial's second half. The field failure it pins
+    (the Germany rig, 2026-11-22): the AppContainer trial
+    passed with the host's Python interpreter while every
+    powershell job died at load with exit -1073741502
+    (0xC0000142, STATUS_DLL_INIT_FAILED) and empty output,
+    because a .NET Framework program does not initialize
+    inside a container token on that host. The probe exists
+    so the verdict names that instead of engaging a control
+    every job would fail inside."""
+
+    def test_job_shape_runs_contained(self):
+        proc = FakeProc(out=b"AC-JOBSHAPE-OK\r\n")
+        calls = []
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc, calls), _JOB_ARGV,
+            _JOB_MARKER)
+        self.assertIsNone(problem)
+        self.assertTrue(proc.closed)
+        argv, cwd = calls[0]
+        self.assertEqual(argv, _JOB_ARGV)
+        self.assertEqual(argv[0], "powershell")
+        self.assertTrue(os.path.isdir(cwd) is False)
+
+    def test_measured_dll_init_failure_is_named(self):
+        proc = FakeProc(out=b"", err=b"", returncode=-1073741502)
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER)
+        self.assertIn("could not run the job interpreter "
+                      "powershell to completion", problem)
+        self.assertIn("-1073741502", problem)
+
+    def test_marker_with_nonzero_exit_is_named(self):
+        proc = FakeProc(out=b"AC-JOBSHAPE-OK\n", returncode=1)
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER)
+        self.assertIn("printed the job shape marker", problem)
+        self.assertIn("exited 1", problem)
+
+    def test_exit_zero_without_the_marker_is_named(self):
+        proc = FakeProc(out=b"PS-OK\n", returncode=0)
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER)
+        self.assertIn("could not run the job interpreter",
+                      problem)
+
+    def test_spawn_failure_is_named(self):
+        def _spawn(argv, cwd=None, env=None):
+            raise RuntimeError("CreateProcessW failed: 2")
+
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn, _JOB_ARGV, _JOB_MARKER)
+        self.assertIn("AppContainer job shape spawn failed",
+                      problem)
+        self.assertIn("CreateProcessW failed: 2", problem)
+
+    def test_timeout_is_named_and_kills(self):
+        proc = FakeProc(timeout=True)
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER,
+            timeout=3)
+        self.assertIn("timed out after 3s", problem)
+        self.assertIn("powershell", problem)
+        self.assertTrue(proc.killed)
+        self.assertTrue(proc.closed)
+
+    def test_str_output_is_accepted(self):
+        proc = FakeProc(out="AC-JOBSHAPE-OK\n")
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER)
+        self.assertIsNone(problem)
+
+    def test_none_returncode_with_marker_is_accepted(self):
+        proc = FakeProc(out=b"AC-JOBSHAPE-OK\n", returncode=None)
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER)
+        self.assertIsNone(problem)
+
+    def test_error_tail_is_named_in_the_problem(self):
+        proc = FakeProc(out=b"", err=b"noise\nLAST-LINE\n",
+                        returncode=5)
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER)
+        self.assertIn("LAST-LINE", problem)
+
+    def test_marker_inside_a_longer_line_counts(self):
+        proc = FakeProc(out=b"xx AC-JOBSHAPE-OK yy\n")
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER)
+        self.assertIsNone(problem)
+
+    def test_marker_bookended_by_symbols_counts(self):
+        proc = FakeProc(out=b"---;;;AC-JOBSHAPE-OK;;;---\n")
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER)
+        self.assertIsNone(problem)
+
+    def test_marker_bookended_by_nul_bytes_counts(self):
+        proc = FakeProc(out=b"\x00AC-JOBSHAPE-OK\x00\n")
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER)
+        self.assertIsNone(problem)
+
+    def test_symbol_only_output_is_named(self):
+        proc = FakeProc(out=b"---;;;---\n", returncode=0)
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER)
+        self.assertIn("could not run the job interpreter",
+                      problem)
+
+    def test_empty_argv_is_refused_before_any_spawn(self):
+        calls = []
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(FakeProc(), calls), [], _JOB_MARKER)
+        self.assertIn("needs a job interpreter argv", problem)
+        self.assertEqual(calls, [])
+
+    def test_none_argv_is_refused(self):
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(FakeProc()), None, _JOB_MARKER)
+        self.assertIn("needs a job interpreter argv", problem)
+
+    def test_non_string_argv_element_is_refused(self):
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(FakeProc()),
+            ["powershell", 3], _JOB_MARKER)
+        self.assertIn("needs a job interpreter argv", problem)
+
+    def test_empty_marker_is_refused(self):
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(FakeProc()), _JOB_ARGV, "")
+        self.assertIn("needs a job interpreter argv", problem)
+
+    def test_non_string_marker_is_refused(self):
+        for marker in (None, b"AC-JOBSHAPE-OK", 7):
+            problem = WC.appcontainer_job_shape_problem(
+                _spawn_returning(FakeProc()), _JOB_ARGV, marker)
+            self.assertIn("needs a job interpreter argv",
+                          problem)
+
+    def test_tuple_argv_runs_like_a_list(self):
+        proc = FakeProc(out=b"AC-JOBSHAPE-OK\n")
+        problem = WC.appcontainer_job_shape_problem(
+            _spawn_returning(proc), tuple(_JOB_ARGV),
+            _JOB_MARKER)
+        self.assertIsNone(problem)
+
+    def test_no_job_shape_failure_is_a_boundary_crossing(self):
+        variants = [
+            FakeProc(out=b"", err=b"", returncode=-1073741502),
+            FakeProc(out=b"AC-JOBSHAPE-OK\n", returncode=1),
+            FakeProc(out=b"nothing\n", returncode=0),
+            FakeProc(timeout=True),
+        ]
+        for proc in variants:
+            problem = WC.appcontainer_job_shape_problem(
+                _spawn_returning(proc), _JOB_ARGV, _JOB_MARKER,
+                timeout=3)
+            self.assertIsNotNone(problem)
+            self.assertFalse(
+                WC.app_container_boundary_crossing(problem),
+                problem)
+            self.assertIsNone(WC.confinement_gate_problem(
+                None, problem), problem)
+
+    def test_gate_still_refuses_a_crossing_with_the_probe(self):
+        crossing = ("AppContainer boundary crossing: an "
+                    "AppContainer process read outside its "
+                    "granted paths")
+        self.assertEqual(
+            WC.confinement_gate_problem(None, crossing),
+            crossing)
+
+
+class JobShapeWiringTests(unittest.TestCase):
+    """The verdict composition, pinned from the source so it
+    runs on every host: windows_app_container_problem runs
+    the interpreter trial first and the job shape probe only
+    when the trial passed, and the probe's argv is the job
+    interpreter in the job's own shape (bare name first, the
+    flags exec builds), never a path around it."""
+
+    def _source(self):
+        with open(WC.__file__, encoding="utf-8") as fh:
+            return fh.read()
+
+    def _verdict_function(self):
+        source = self._source()
+        start = source.index("def windows_app_container_problem")
+        end = source.index("def spawn_confined_process", start)
+        return source[start:end]
+
+    def test_probe_runs_after_a_passing_trial(self):
+        body = self._verdict_function()
+        trial_at = body.index("appcontainer_trial_problem(")
+        guard_at = body.index("if problem is None:")
+        probe_at = body.index("appcontainer_job_shape_problem(")
+        self.assertLess(trial_at, guard_at)
+        self.assertLess(guard_at, probe_at)
+
+    def test_job_shape_argv_is_the_jobs_own_shape(self):
+        source = self._source()
+        self.assertIn('AC_JOB_SHAPE_MARKER = "AC-JOBSHAPE-OK"',
+                      source)
+        self.assertIn(
+            '"powershell", "-NoProfile", "-NonInteractive",',
+            source)
+        self.assertIn(
+            '"-Command", "Write-Output " + AC_JOB_SHAPE_MARKER',
+            source)
+
+    def test_probe_marker_matches_the_argv_marker(self):
+        body = self._verdict_function()
+        self.assertIn("list(AC_JOB_SHAPE_ARGV)", body)
+        self.assertIn("AC_JOB_SHAPE_MARKER", body)
 
 
 class ProfileAndGateTests(unittest.TestCase):
