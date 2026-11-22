@@ -1486,6 +1486,94 @@ class ConfinementTrialStagingTest(unittest.TestCase):
         self.assertIn("TRIAL_GRANT_SDDL", src)
 
 
+class JobObjectLimitsSourceTest(unittest.TestCase):
+    """The Job Object's limits, pinned at the source.
+
+    The Win32 calls cannot execute on this host, so what
+    _create_job_with_limits sets is pinned where any host
+    can read it, as the Q168 spawn order is pinned above.
+    Two halves, both measured for the level name lane of
+    2026-11-21 (the supposition and its conclusions stand
+    in docs/steady/security/windows.md):
+
+    The whole job ceiling is set, not merely available:
+    the limit flags carry JOB_OBJECT_LIMIT_JOB_MEMORY
+    beside the per process flag, and both limits take the
+    caller's byte count, so a job as a whole is capped at
+    the same 512 MiB as each process in it. The v4 bars
+    record pins the JobMemoryLimit assignment file wide;
+    this family pins the flag that makes it take effect,
+    which no test named before this lane.
+
+    No processor ceiling is set: no job time limit, no
+    per process time limit, no CPU rate control and no
+    process count limit stands in the flags. That absence
+    is the measured parity position, not an oversight: no
+    backend at Supported sets a processor time ceiling
+    (the v4 bars record pins the process count absence
+    file wide), and a value here would be new policy.
+    """
+
+    @staticmethod
+    def _src():
+        with open(WC.__file__, encoding="utf-8") as fh:
+            return fh.read()
+
+    def _limits_body(self):
+        src = self._src()
+        i = src.index("def _create_job_with_limits(memory_bytes):")
+        j = src.index("def _sid_from_string", i)
+        return src[i:j]
+
+    def test_the_limit_flags_carry_the_whole_job_memory_flag(self):
+        body = self._limits_body()
+        self.assertIn("LimitFlags", body)
+        for flag in ("JOB_OBJECT_LIMIT_PROCESS_MEMORY",
+                     "JOB_OBJECT_LIMIT_JOB_MEMORY",
+                     "JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE"):
+            self.assertIn(flag, body, flag)
+
+    def test_both_memory_limits_take_the_callers_byte_count(self):
+        body = self._limits_body()
+        self.assertIn("info.ProcessMemoryLimit = int(memory_bytes)",
+                      body)
+        self.assertIn("info.JobMemoryLimit = int(memory_bytes)",
+                      body)
+
+    def test_the_limits_are_set_through_the_extended_class(self):
+        body = self._limits_body()
+        self.assertIn("SetInformationJobObject", body)
+        self.assertIn("JobObjectExtendedLimitInformation", body)
+
+    def test_no_processor_ceiling_stands_in_the_flags(self):
+        body = self._limits_body()
+        for absent in ("JOB_OBJECT_LIMIT_JOB_TIME",
+                       "JOB_OBJECT_LIMIT_PROCESS_TIME",
+                       "JOB_OBJECT_LIMIT_ACTIVE_PROCESS",
+                       "JOB_OBJECT_CPU_RATE_CONTROL_ENABLE",
+                       "PerJobUserTimeLimit",
+                       "PerProcessUserTimeLimit",
+                       "CpuRate"):
+            self.assertNotIn(absent, body, absent)
+
+    def test_the_default_ceiling_is_512_mib(self):
+        self.assertEqual(WC.DEFAULT_PROCESS_MEMORY_BYTES,
+                         512 * 1024 * 1024)
+
+    def test_every_spawn_shape_builds_its_job_through_the_helper(self):
+        src = self._src()
+        for marker in ("def apply_windows_containment(proc_handle,",
+                       "def spawn_app_container_process(argv,",
+                       "def _spawn_floor_confined_process(argv,",
+                       "def spawn_job_object_process(argv,"):
+            i = src.index(marker)
+            ends = [p for p in (src.find("\n    def ", i + 1),
+                                src.find("\ndef ", i + 1)) if p > 0]
+            j = min(ends) if ends else len(src)
+            self.assertIn("_create_job_with_limits(", src[i:j],
+                          marker)
+
+
 class SeedShapeUnchangedTest(unittest.TestCase):
     """This landing does not move the seeded platform gates."""
 
