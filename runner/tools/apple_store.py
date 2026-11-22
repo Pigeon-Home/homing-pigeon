@@ -123,6 +123,10 @@ def _release_parts(version):
     release version this tool can map for the store, and
     raises ValueError rather than guessing a shape.
     """
+    if not isinstance(version, str):
+        raise ValueError("release version %r is not the 4 part "
+                         "number the store mapping expects"
+                         % (version,))
     parts = version.split(".")
     if len(parts) != 4 or not all(part.isdigit() for part in parts):
         raise ValueError("release version %r is not the 4 part "
