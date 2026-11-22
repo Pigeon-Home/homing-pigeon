@@ -132,6 +132,24 @@ further, the work is reconciled into the design of record.
 - Same sign-in, same account; only the transport changes. The Google
   identity carries over, and the pairing stays super simple.
 
+## The fifth option, future
+
+- A fifth option, for later: the customer brings their own S3
+  compatible bucket, and the transport becomes that bucket instead
+  of the inbox or the queues. Backblaze B2 is the default example
+  of such a bucket.
+- The customer opens the bucket in their own account, on their own
+  bill and their own terms, and gives the runner and the sender the
+  bucket address and the keys the bucket provider issues. Jobs and
+  results move as objects in the bucket: a job is an object dropped
+  in, and its result is an object dropped back.
+- Same sign in, same account; only the transport changes. The signed
+  envelope is unchanged, and the transport stays blind to what it
+  carries, as with every other option.
+- State: documented and researched, not implemented. No code in the
+  tree speaks to such a bucket today; this section records the
+  design so the option can be built against it later.
+
 ## A first option, future: signup on our own site
 
 Direction set on 2026-11-19, after the manual install test of the
