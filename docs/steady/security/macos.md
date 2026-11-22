@@ -2013,3 +2013,64 @@ conclusion is drawn. If V3 fails, the failure is
 recorded in the conclusions with its shape, and the
 support level's name is not moved by this record
 either way.
+
+## The flip at the current head: conclusions
+
+Measured 2026-11-22, on the head the supposition
+above landed on, and judged against it point by
+point.
+
+V1 holds. The macOS suite runs 263 tests on this
+host and passes, with 52 skipped, every skip a live
+class that runs only on a Mac, under reasons the
+skip registry carries (its own suite runs 5 and
+passes). The seed tests pin each shape the
+supposition names: a passing probe leaves a fresh
+install's confinement unstated, so the mode stays
+at `enforce`; a failing probe states `audit` in
+the file and carries the reason; a mode the
+operator stated down is never asked about and
+never moved; and the installer and the setup
+wizard take the same answer. The FreeBSD suite,
+which shares the seed machinery, runs 332 and
+passes beside it, with 67 skipped. The wider
+targeted run on this host (those suites with the
+default posture, the install platforms and the
+setup suites together) runs 704 tests and passes,
+with 119 skipped.
+
+V2 holds. The seam tests in the same suite pass: a
+job at `enforce` is spawned through the backend,
+its audit record names exactly "macos:
+seatbelt_profile + no_network +
+spawn_resource_limits", and a backend that cannot
+engage refuses the job rather than falling through
+to an unconfined spawn.
+
+V3 holds, and the owed run is taken. The
+macos-confinement workflow was dispatched on this
+head on 2026-11-22 (run 45070679404) and completed
+green on both hosted Macs, macos-15 and
+macos-15-intel, every step on both legs. On each
+Mac the backend's test module ran 263 tests as the
+runner's user and 263 tests as root, with the
+suite's live classes running on the Macs rather
+than skipping, the frozen runner started with
+confinement at `enforce` and ran a confined job,
+and the frozen installer, on a home of its own,
+left a fresh install's config with
+security.modes.confinement at `enforce`, printing
+that the macOS backend's probe, asked on that
+machine as that user, passed, and that the startup
+gate asks it again at every start.
+
+The flip therefore stands verified on the current
+head, contract side and live side together, and
+nothing in this round's numbers supports a code
+change: the fresh install default the flip set,
+`enforce` wherever the machine's own probe passes,
+is the default the tree carries and the default
+the hosted Macs answered to. What the flip
+sections above left owed, a fresh hosted run on
+the current head, is owed no longer. The support
+level's name is not moved by this record.
