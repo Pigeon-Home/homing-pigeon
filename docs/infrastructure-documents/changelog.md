@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.2 - 2026-11-22
+
+- Windows confinement: Lane 8 supposition recorded before measurement, the container granted the ancestors of its work directory with the verdict consulted at the spawn seam, and ancestor grants standing without inheritance so they cannot widen into the ancestor's children (since 3.17.33.1)
+- macOS: the enforce flip's supposition recorded before verification, and its conclusions landed with the two pages that still stated the old posture updated (since 3.17.33.1)
+- Docs: the whole-set accuracy pass covering the AppContainer shape and the counts the recent landings left behind, and the macOS row standing at Supported on the owner's call of 2026-11-21 (since 3.17.33.1)
+
 ## 3.17.33.1 - 2026-11-22
 
 - Since 3.17.32.18: the Germany bank 72 corpus lands — 2,686 entries, 0 crashes, 2,362 new runs.
