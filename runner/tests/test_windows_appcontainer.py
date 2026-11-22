@@ -396,6 +396,19 @@ class ProfileCallShapeTests(unittest.TestCase):
         self.assertIn(
             "the container profile does not stand", source)
 
+    def test_spawn_grants_the_programs_own_directory(self):
+        # The Lane 6 addendum: a container whose SID cannot
+        # read the target program's directory dies at load
+        # (STATUS_DLL_NOT_FOUND) before a line runs, so the
+        # spawn grants that directory itself, recorded in the
+        # grant set, ahead of any caller named read path.
+        source = self._source()
+        self.assertIn("exe_dir = os.path.dirname(argv[0])",
+                      source)
+        self.assertIn(
+            "read_paths = (os.path.abspath(exe_dir),) \\",
+            source)
+
     def test_live_binding_carries_six_parameters(self):
         if not WC.IS_WINDOWS_BACKEND:
             self.skipTest(

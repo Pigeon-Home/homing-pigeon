@@ -207,6 +207,22 @@ back to the floor on a named reason. Suppositions S2, S3 and
 S4b from the Lane 5 run remain for the re run to settle; S1
 is settled by the re run's trial on the fixed head.
 
+Addendum, from the same re run's first measurement: with the
+profile standing, the trial process on the rig's interpreter
+tree (C:\hp-tools\python) died at load, exit 0xC0000135
+(STATUS_DLL_NOT_FOUND) with no output, while the floor trial
+passed on the same interpreter. The container SID held no
+grant on the interpreter's directory, so the loader could
+not map the image's own libraries under the container token;
+the earlier Lane 5 diagnostic had shown the same spawn
+working only where the interpreter directory had been
+granted to the container SID by hand. The spawn therefore
+grants the target program's own directory as a read path of
+every AppContainer spawn, its own grant, recorded in the
+grant set and revoked with it at job end. System libraries
+need no such grant: the container token carries the ALL
+APPLICATION PACKAGES membership those trees already grant.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
@@ -1438,6 +1454,20 @@ else:
             raise RuntimeError(
                 "AppContainer spawn needs a work directory to "
                 "grant the container")
+        # The target program's own directory is a read path
+        # of every spawn, granted by the spawn itself and
+        # recorded in the grant set like any other: a container
+        # whose SID cannot read the program's directory cannot
+        # map the image or the libraries beside it, and the
+        # process dies at load with STATUS_DLL_NOT_FOUND before
+        # a line runs (the Lane 6 re run's measurement, on the
+        # rig's own interpreter tree). A bare program name with
+        # no directory names nothing to grant; the loader's
+        # search then decides, and the trial names the outcome.
+        exe_dir = os.path.dirname(argv[0])
+        if exe_dir:
+            read_paths = (os.path.abspath(exe_dir),) \
+                + tuple(read_paths or ())
         sid, problem = _derive_app_container_sid()
         if problem is not None:
             raise RuntimeError(problem)
