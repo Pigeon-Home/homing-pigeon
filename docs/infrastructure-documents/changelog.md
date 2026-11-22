@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.32.18 - 2026-11-22
+
+- Since 3.17.32.17: the snap build resolves the tree directory in override-build for both builder layouts — on the Launchpad builder the part source is the tree root, while the snapcraft.io builder nests the tree under a subdirectory; both snapcraft.yaml twins now resolve the tree directory first and install from the resolved path.
+- The fallback shape is pinned in test_store_packaging for both snapcraft.yaml files.
+
 ## 3.17.32.17 - 2026-11-22
 
 - Since 3.17.32.16: windows confinement grants the AppContainer spawn its target program's own directory, without which the container dies at load, in runner/guard/windows_confine.py.
