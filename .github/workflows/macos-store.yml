@@ -14,17 +14,26 @@ name: macos-store
 # Distribution .p12, the provisioning profile, and the App
 # Store Connect API key, all held as repository secrets.
 # While any piece is missing the planner refuses and names
-# it; this leg prints that refusal in the run summary and
-# stays green, a signal and not a gate, in the posture of
-# the other signal legs. The release itself never waits on
-# this leg. Once every piece stands present, the leg imports
-# the certificates into a temporary keychain, runs the
-# plan's commands in order, and a failure in the chain fails
-# the run where it happened.
+# it, and this leg fails on that refusal, loudly: a green
+# run that uploaded nothing reads as an upload in the run
+# list, which is how the gap after the 2026-11-22 upload
+# stayed invisible (the outside review of 2026-11-23). The
+# release itself never waits on this leg; the leg's own run
+# is simply red until the material stands complete. Once
+# every piece stands present, the leg imports the
+# certificates into a temporary keychain, runs the plan's
+# commands in order, and a failure in the chain fails the
+# run where it happened.
 #
-# Triggered by a published release, like the other store
-# legs hang on the release, and by hand for a chosen
-# version.
+# Triggered three ways. A release published by a person or
+# a token GitHub honours fires the release event below. A
+# release the pipeline publishes does not: build.yml's
+# release job publishes under the default GITHUB_TOKEN, and
+# GitHub starts no workflow run for an event that token
+# raises, workflow_dispatch excepted, so build.yml's
+# macos-store-dispatch job dispatches this workflow by name
+# once its release job has succeeded. And by hand, for a
+# chosen version.
 
 on:
   release:
@@ -125,11 +134,15 @@ jobs:
           cat store/plan.txt
           if [ "$rc" -eq 3 ]; then
             {
-              echo "## Mac App Store leg: not attempted"
+              echo "## Mac App Store leg: NOT uploaded"
               head -1 store/plan.txt
+              echo "Nothing was uploaded: the signing material"
+              echo "above is missing. This run fails on purpose,"
+              echo "so a green run always means an upload."
             } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=macos-store::nothing uploaded for $VERSION: $(head -1 store/plan.txt)"
             echo "PLAN_OK=false" >> "$GITHUB_ENV"
-            exit 0
+            exit 1
           fi
           [ "$rc" -eq 0 ] || exit "$rc"
           echo "PLAN_OK=true" >> "$GITHUB_ENV"

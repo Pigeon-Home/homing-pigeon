@@ -1498,3 +1498,39 @@ jobs:
             gh workflow run "$wf" --repo "$REPO" --ref "$TAG" || echo "::warning title=$wf::could not dispatch $wf on $TAG"
           done
           echo "::notice::the nine proof workflows dispatched on $TAG (runner/ changed since ${prev:-the start})"
+
+  macos-store-dispatch:
+    # The Mac App Store leg, started here by name. The release
+    # job above publishes through softprops/action-gh-release
+    # under the default GITHUB_TOKEN, and GitHub starts no
+    # workflow run for an event that token raises, so the
+    # `release: published` trigger macos-store.yml carries
+    # never fires for a pipeline release: no store run followed
+    # any release after the upload dispatched by hand on
+    # 2026-11-22 (the outside review of 2026-11-23).
+    # workflow_dispatch is the one trigger that token is
+    # allowed, the exception cut-release.yml already relies on
+    # to start this very workflow's pipeline on a tag, so this
+    # job dispatches the store leg explicitly once the release
+    # stands published. It needs only the release job, not the
+    # mirrors: the store leg downloads the release's frozen
+    # macOS binaries itself, and starting it beside the mirrors
+    # keeps it off the path the next cycle's gate waits for.
+    # runner/tests/test_apple_store.py pins this wiring.
+    if: >-
+      startsWith(github.ref, 'refs/tags/v')
+      && !cancelled() && needs.release.result == 'success'
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh workflow run macos-store.yml --repo "$REPO" --ref main -f version="${VERSION#v}"
+          echo "::notice::macos-store.yml dispatched for ${VERSION#v}"

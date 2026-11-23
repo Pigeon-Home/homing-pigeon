@@ -504,7 +504,7 @@ class WorkflowTest(unittest.TestCase):
         self.assertIn("actions: write", block)
         self.assertIn('gh workflow run macos-store.yml', block)
         self.assertIn('-f version=', block)
-        self.assertIn('VERSION=${{ github.ref_name }}', block)
+        self.assertIn('VERSION: ${{ github.ref_name }}', block)
 
 
 if __name__ == "__main__":

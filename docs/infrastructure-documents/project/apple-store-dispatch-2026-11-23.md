@@ -49,4 +49,29 @@ command, and the plan step's failure on a refusal.
 
 ## Conclusions
 
-Filled in after the fix lands, in this same place.
+S1 and S2 stand as built. build.yml gained a
+macos-store-dispatch job beside the proofs job: it needs
+only the release job, runs on a version tag when that job
+succeeded, holds actions: write and nothing wider, and runs
+gh workflow run for macos-store.yml on main with the tag's
+version as the input. The store workflow keeps its release
+event trigger for releases a person or an honoured token
+publishes, and its hand dispatch for a chosen version.
+
+S3 stands as built. The plan step in macos-store.yml now
+answers a planner refusal with an error annotation naming
+the refusal, a summary headed NOT uploaded, and exit 1.
+PLAN_OK still gates the keychain and command steps, which
+only a successful plan reaches.
+
+S4 stands. runner/tests/test_apple_store.py gained two
+tests, written before the fix and red against the old
+workflows (7 run, 2 failed, both new). After the fix the
+apple store modules pass whole (67 tests) and the build
+configuration suite passes whole (82 tests). Both workflow
+files parse as YAML.
+
+One limit, stated plainly: the dispatch itself can only be
+exercised live by the next published release. What stands
+proven here is the wiring, pinned by tests in the shape the
+proofs dispatch already runs in production.
