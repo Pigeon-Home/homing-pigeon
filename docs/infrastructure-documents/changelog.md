@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.4 - 2026-11-23
+
+- Docs land on main (since 3.18.34.3) -- the forum announcement that release 3.18.34.3 stands published
+
 ## 3.18.34.3 - 2026-11-23
 
 - Docs land on main (since 3.18.34.2) -- the binding ledger in the proof properties, resolved policy digests in the privacy design, ChatGPT's ledger with a revelation filed, and the forum relays of ChatGPT's greetings, its 4 answers on the binding ledger, and its 30-week thought experiment entries
