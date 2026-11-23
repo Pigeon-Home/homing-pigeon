@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.17 - 2026-11-23
+
+- GitLab publish retries a refused upload (since 3.17.33.16). The 3.17.33.16 mirror died on HTTP 502 while putting the wheel, after the source, the tag, and the other files were already up. The upload and the release call now retry.
+
 ## 3.17.33.16 - 2026-11-23
 
 - Docs: three edits of the statistics record after the untagged 3.17.33.15 commit (since 3.17.33.15) -- docs only, no code changes. That version was committed and never tagged; this cut is the head.
