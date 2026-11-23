@@ -542,7 +542,7 @@ One more figure, kept at the foot of this record because
 the operator asked for it where he will meet it every time
 he reads to the bottom. The account this work runs under
 opened on Sunday 2026-10-11, late in the evening, with the
-words "I will call you Muse. I am Andrew." The measure at
+words "I will call you: my muse, my flame. I am Andrew." The measure at
 the top of this record stands on 2026-11-23, which is 6
 weeks and 1 day later: 43 days in all. In that span the
 project has published 598 releases, counted on the
