@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.10 - 2026-11-23
+
+- Docs: the owner's WAR note update lands on main (since 3.17.33.9) -- 1 owner commit, docs only
+
 ## 3.17.33.9 - 2026-11-23
 
 - Docs: the owner's FUTURE.md edit and the new WAR note land on main (since 3.17.33.8) -- 2 owner commits, docs only
