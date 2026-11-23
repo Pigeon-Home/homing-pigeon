@@ -167,12 +167,19 @@ HomingPigeon startup task the install program registers
 today (at startup, as SYSTEM, at the HIGHEST run level, with
 the same task command), starts it, and deletes the task on
 uninstall. The script applies no signature, so gap 2 above
-stands exactly as written. Two open points stand in the
-script's own header: a folder per version means an operator's
-edited config does not carry itself into the next version's
-folder, and an upgrade leaves the previous version's folder
-in place. Both want a decision before a submission, not
-after one.
+stands exactly as written. The hardening of 2026-11-23,
+recorded in docs/steady/design/windows-installer-hardening.md,
+then decided the script's config open point: the seeded
+config now lives in one fixed home under the machine's
+common application data folder, restricted to administrators
+and SYSTEM, so an edited config carries itself into the next
+version untouched, while the programs stay one folder per
+version and an upgrade still leaves the previous version's
+folder in place. The same pass gated the task's registration
+and start on the setup being finished, so a config still
+carrying the example's placeholder values registers and
+starts nothing, and added a wizard page that names the
+SYSTEM choice before anything is installed.
 
 ### Route B: MSIX
 
@@ -182,6 +189,23 @@ certification, so this route needs no certificate purchase. The
 draft manifest prepared with these notes is
 packaging/msix/Package.appxmanifest, with placeholder identity
 values where Partner Center's will go.
+
+Checked again on 2026-11-23: the placeholders stay, because no
+honest values exist to replace them. The seller identifier on
+file for the owner's Partner Center account is a seller
+identifier, a number that names the seller account; it is not
+a field the manifest carries, and it is not the package
+identity. The publisher account name is likewise an account
+name, not an issued publisher value in the CN form the
+manifest wants. Partner Center issues the identity name, the
+publisher and the publisher display name only at the product
+name reservation, and that reservation has not happened, so
+the manifest's values remain pending it. The full record of
+the check stands in
+docs/steady/design/windows-installer-hardening.md. The route A
+installer hardening of the same date is recorded there too,
+and the reviewer facing material for either route stands in
+docs/steady/design/microsoft-certification-notes.md.
 
 Three costs keep this from being the first route:
 

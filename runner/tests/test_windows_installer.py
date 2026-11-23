@@ -182,6 +182,35 @@ class InnoDraftTest(unittest.TestCase):
         self.assertIn("onlyifdoesntexist", seeded[0])
         self.assertIn("uninsneveruninstall", seeded[0])
 
+    def test_config_home_is_stable_across_versions(self):
+        # The seeded config used to live in {app}, the versioned
+        # program folder, so every upgrade stranded the operator's
+        # edited config in the previous version's folder. It now
+        # seeds into one fixed home no version number enters, and
+        # the programs themselves stay versioned.
+        seeded = [ln for ln in self.text.splitlines()
+                  if 'DestName: "config.json"' in ln]
+        self.assertEqual(len(seeded), 1)
+        self.assertIn(r'DestDir: "{commonappdata}\Homing Pigeon"',
+                      seeded[0])
+        self.assertNotIn('DestDir: "{app}"', seeded[0])
+        self.assertIn(r"DefaultDirName={autopf}\Homing Pigeon\{#AppVersion}",
+                      self.text)
+
+    def test_config_home_is_access_controlled(self):
+        self.assertIn("[Dirs]", self.text)
+        dirs = [ln for ln in self.text.splitlines()
+                if ln.startswith('Name: "{commonappdata}')]
+        self.assertEqual(len(dirs), 1)
+        self.assertIn("Permissions: admins-full system-full", dirs[0])
+
+    def test_the_legacy_config_gets_a_manual_copy_note(self):
+        # Installs from the earlier draft shape hold their config
+        # in a versioned folder; the header names the one time
+        # hand copy instead of migrating silently.
+        flat = " ".join(self.text.split())
+        self.assertIn("copies that file once by hand", flat)
+
     def test_the_task_is_the_one_the_install_program_registers(self):
         m = re.search(r'"/TN",\s*"([^"]+)"', self.install)
         self.assertIsNotNone(m, "install.py registers no task by name")
@@ -202,10 +231,54 @@ class InnoDraftTest(unittest.TestCase):
         self.assertIn("/TR ", self.text)
         self.assertIn(r'"{app}\homing-pigeon\homing-pigeon.exe', self.text)
         self.assertIn("--config", self.text)
-        self.assertIn(r'"{app}\config.json', self.text)
+        # The task reads the config from its stable home, the
+        # same fixed path the seed writes (see the config home
+        # tests above); it used to point into {app}, the
+        # versioned folder, which is what stranded the config.
+        self.assertIn(r'"{commonappdata}\Homing Pigeon\config.json',
+                      self.text)
+        self.assertNotIn(r'"{app}\config.json', self.text)
         # And it starts at once, as it does under install.py.
         self.assertIn('"/Run", "/TN", "HomingPigeon"', self.install)
         self.assertIn("/Run /TN " + name, self.text)
+
+    def _run_lines(self):
+        block = self.text.split("[Run]", 1)[1].split("[", 1)[0]
+        return [ln for ln in block.splitlines() if ln.strip()]
+
+    def test_both_task_entries_are_gated_on_completed_setup(self):
+        # A config still carrying the example's placeholder
+        # values is not a setup: neither registering the task
+        # nor starting it may happen against one.
+        lines = self._run_lines()
+        self.assertEqual(len(lines), 2)
+        for line in lines:
+            self.assertIn("Check: ConfigIsSetUp", line)
+
+    def test_no_run_entry_is_ungated(self):
+        for line in self._run_lines():
+            self.assertIn("Check:", line)
+
+    def test_the_gate_names_the_placeholder_values(self):
+        self.assertIn("function ConfigIsSetUp", self.text)
+        for placeholder in ("paste-app-password-here-in-plaintext",
+                            "generate-with-openssl-rand-hex-32",
+                            "homing-pigeon-runner@gmail.com"):
+            self.assertIn(placeholder, self.text)
+
+    def test_the_system_choice_is_visible_before_install(self):
+        # The task runs as SYSTEM at the highest run level
+        # whether or not anyone is signed in; a wizard page
+        # says so, and what follows from it, before anything
+        # is installed.
+        self.assertIn("CreateOutputMsgPage", self.text)
+        self.assertIn("runs as SYSTEM", self.text)
+        self.assertIn("whether or not anyone is signed in", self.text)
+
+    def test_unfinished_setup_gets_a_closing_message(self):
+        self.assertIn("CurStepChanged", self.text)
+        self.assertIn("Setup is not finished", self.text)
+        self.assertIn("run this installer again", self.text)
 
     def test_uninstall_deletes_the_task(self):
         self.assertIn("[UninstallRun]", self.text)

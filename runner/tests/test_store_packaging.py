@@ -228,6 +228,21 @@ class MsixDraftTest(unittest.TestCase):
         for attr in ("Name", "Publisher", "PublisherDisplayName"):
             self.assertIn("PLACEHOLDER", identity.get(attr, ""), attr)
 
+    def test_manifest_records_the_identity_check(self):
+        # Checked 2026-11-23: the account's seller identifier is
+        # a Partner Center seller identifier, not a manifest
+        # field, and the account name is not an issued publisher
+        # value, so no honest value exists to put in place of
+        # the placeholders before the name reservation. The
+        # header records that check so a later editor does not
+        # fill the values in from the account record.
+        text = _read(MSIX)
+        flat = " ".join(text.split())
+        self.assertIn("Checked 2026-11-23", flat)
+        self.assertIn("seller identifier", flat)
+        self.assertIn("not a field this manifest carries", flat)
+        self.assertIn("name reservation", flat)
+
     def test_run_full_trust_is_declared(self):
         names = [el.get("Name") for el in self._all("Capability")]
         self.assertIn("runFullTrust", names)

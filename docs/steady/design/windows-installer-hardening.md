@@ -77,4 +77,56 @@ the values remain pending the name reservation.
 
 ## Conclusions
 
-Filled in after the change lands, in this same place.
+Written after the change, against the supposition above.
+
+S1 held. The seeded config now lands in
+{commonappdata}\Homing Pigeon with onlyifdoesntexist and
+uninsneveruninstall kept, a [Dirs] entry restricts that
+folder to administrators and SYSTEM, and the task command
+points --config at the fixed path. No version number enters
+the path, so an upgrade cannot strand an edited config in a
+previous version's folder. The legacy note stands in the
+script header: an install from the earlier draft shape holds
+its config in a versioned folder, and its operator copies
+that file once by hand. No silent migration was added.
+
+S2 held. Both [Run] entries carry Check: ConfigIsSetUp, and
+the [Code] function of that name reads the stable config and
+refuses while any of the three placeholder strings stands in
+it: the mailbox password, the shared secret, and the example
+mailbox user. The wizard gained a page, shown before
+installation, that names the SYSTEM account, the highest run
+level, the at boot start, and the right the runner then has.
+CurStepChanged adds the closing message for the unfinished
+case, naming the config path and the rerun step. Under the
+silent install flags the page is skipped by Inno Setup
+itself, and the gate still applies, which is the shape the
+route's silent requirement wants.
+
+S3 held. docs/steady/design/microsoft-certification-notes.md
+now carries the reviewer material: the authenticated job
+path, a six step disposable test account recipe, stop and
+remove through the install program's own commands and the
+uninstaller, and the generative AI disclosure question
+stated as an open listing check with the product facts it
+will be answered from.
+
+S4 held. The manifest placeholders are unchanged, character
+for character, and the dated note stands in the manifest
+header with the matching paragraph in
+docs/steady/design/app-stores-design.md: the seller
+identifier is a Partner Center seller identifier and not a
+field the manifest carries, the account name is not an
+issued publisher value, and the identity values remain
+pending the product name reservation.
+
+Proof of work: the pins in runner/tests/test_windows_installer.py
+and runner/tests/test_store_packaging.py were written first
+and read red against the draft shape (10 failures), then
+green after the change. What this proof cannot reach is
+stated plainly: nothing here compiles the installer, because
+Inno Setup runs on Windows and this work ran on Linux, and
+nothing is signed, because no signing certificate exists.
+The script stays marked DRAFT and UNSIGNED, and both of
+those remain owner steps on the route, exactly as the design
+notes record.

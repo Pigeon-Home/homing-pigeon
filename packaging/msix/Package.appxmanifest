@@ -14,6 +14,18 @@
   test in runner/tests/test_store_packaging.py holds them there
   until the real values exist.
 
+  Checked 2026-11-23, against the account record on file:
+  no honest values exist yet to put in place of the
+  placeholders. The seller identifier on file for the
+  account is a Partner Center seller identifier; it is not
+  a field this manifest carries, and it names the seller
+  account, not a package. The publisher account name is
+  likewise not an issued CN publisher value. The Identity
+  values remain pending the product name reservation,
+  which is what issues them; the matching record stands in
+  docs/steady/design/app-stores-design.md and in
+  docs/steady/design/windows-installer-hardening.md.
+
   The Assets files named below are not in the tree yet; the
   packaging lane draws them before a package is built.
 -->
