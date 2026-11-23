@@ -12,7 +12,7 @@ runner/tools/apple_store.py. Its store_build function maps the
 release version into the bundle build number using only the
 third and fourth components: 3.17.33.1 becomes 33.1. The review
 checked the next transition by hand: the uploaded 3.17.33.3
-carried build 33.3, while the latest release 3.18.33.1 would
+carried build 33.3, while the latest release 3.18.33.1 (2026-11-23) would
 carry build 33.1. The build number goes backwards at a minor
 version transition, and Apple requires build numbers to keep
 increasing. A submission built on the new line can be refused
@@ -21,7 +21,7 @@ for a number the planner chose, not for anything the app does.
 The defect is wider than the one transition the review named.
 Any change confined to the first or the second component is
 invisible to the old mapping: 3.17.33.9 and 4.17.33.9 would
-carry the same build, and 3.18.33.1 falls below 3.17.33.3.
+carry the same build, and 3.18.33.1 (2026-11-23) falls below 3.17.33.3.
 Only the third and fourth components move the old number.
 
 ## The supposition
