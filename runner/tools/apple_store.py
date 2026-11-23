@@ -70,6 +70,20 @@ store_version and store_build), and the assembly copies
 AppIcon.icns, built from assets/logo.png with the full size
 set, into the bundle's Resources.
 
+A third lesson came from an outside review of that upload
+(2026-11-23). The entitlements the chain signed with
+declared the App Sandbox and nothing else: no outgoing
+network entitlement, though the runner initiates its
+mailbox and HTTPS connections and the sandbox refuses
+them without one; and no application identifier, which is
+the gap Apple's own answer to the first upload had
+already named as TestFlight warning 90886. Both entries
+stand in the entitlements file now, the expected set
+stands in this tool as EXPECTED_ENTITLEMENTS, and the
+plan refuses when the file drifts from it in either
+direction. The record of the probe stands in
+docs/infrastructure-documents/project/macos-entitlements-probe-2026-11-23.md.
+
 Nothing here opens a socket or runs a command. The pipeline
 step that carries the plan out first imports the two .p12s
 into a temporary keychain and places the profile at the
@@ -92,6 +106,33 @@ APP_BUNDLE = APP_NAME.replace(" ", "") + ".app"
 EXECUTABLE = "homing-pigeon"
 INSTALLER_EXECUTABLE = "install"
 SKU = "HOMINGPIGEON-MAC-001"
+
+# The application identifier the provisioning profile was
+# made for and the signed bundle must carry: the team ID
+# joined to the bundle ID. The first upload (3.17.33.3,
+# 2026-11-22) came back with TestFlight warning 90886
+# because the signature carried no application identifier,
+# and that build stands unavailable for TestFlight.
+APPLICATION_IDENTIFIER = "%s.%s" % (TEAM_ID, BUNDLE_ID)
+
+# The entitlements the signing chain hands to codesign, in
+# the parsed form of packaging/macos/entitlements.plist.
+# The App Sandbox is the store's requirement; the outgoing
+# network client entitlement answers the runner's own shape
+# (it initiates its mailbox and HTTPS connections, which
+# the sandbox refuses without it); the application
+# identifier matches the embedded profile. plan_upload
+# refuses to plan when the file on disk drifts from this
+# value in either direction, because each entitlement is a
+# claim App Review reads and none may join or leave
+# quietly.
+EXPECTED_ENTITLEMENTS = {
+    "com.apple.security.app-sandbox": True,
+    "com.apple.security.network.client": True,
+    "com.apple.application-identifier": APPLICATION_IDENTIFIER,
+}
+
+ENTITLEMENTS_SOURCE = "packaging/macos/entitlements.plist"
 
 APP_DISTRIBUTION_IDENTITY = "Apple Distribution"
 INSTALLER_DISTRIBUTION_IDENTITY = "Mac Installer Distribution"
@@ -259,6 +300,59 @@ def info_plist_template_path():
                         "Info.plist")
 
 
+def entitlements_path():
+    """The on-disk entitlements file the signing chain uses.
+
+    The file lives in packaging/macos beside the Info.plist
+    template; every codesign step in the plan names it, so
+    it is the single source of the bundle's entitlements.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(here, "..", "..", "packaging", "macos",
+                        "entitlements.plist")
+
+
+def load_entitlements(text=None):
+    """Return the parsed entitlements the chain will sign with.
+
+    The text must parse as a plist whose top level is a
+    dictionary; anything else raises ValueError, because a
+    file codesign would read differently than the planner
+    checked must never reach the signing step unnoticed.
+    """
+    if text is None:
+        with open(entitlements_path(), encoding="utf-8") as fh:
+            text = fh.read()
+    try:
+        parsed = plistlib.loads(text.encode("utf-8"))
+    except Exception as exc:
+        raise ValueError("the store entitlements at %s do not "
+                         "parse as a plist: %s"
+                         % (ENTITLEMENTS_SOURCE, exc))
+    if not isinstance(parsed, dict):
+        raise ValueError("the store entitlements at %s do not "
+                         "parse to a dictionary: %r"
+                         % (ENTITLEMENTS_SOURCE, parsed))
+    return parsed
+
+
+def check_entitlements(parsed):
+    """Refuse entitlements that drift from the expected set.
+
+    parsed: a mapping as load_entitlements returns. Any
+    difference from EXPECTED_ENTITLEMENTS, a missing entry,
+    a changed value or an added entry, raises ValueError
+    naming the drift, so the file can neither lose the
+    outgoing network entitlement or the application
+    identifier silently nor gain a claim nobody reviewed.
+    """
+    if parsed != EXPECTED_ENTITLEMENTS:
+        raise ValueError(
+            "the store entitlements at %s carry %r, not the "
+            "expected %r" % (ENTITLEMENTS_SOURCE, parsed,
+                             EXPECTED_ENTITLEMENTS))
+
+
 def render_info_plist(version, build=None, template_text=None):
     """Return the bundle's Info.plist text for one version.
 
@@ -342,6 +436,14 @@ def plan_upload(state, version):
             "reason": "the App Store Connect API key stands present "
                       "but its Key ID or Issuer ID is missing; the "
                       "upload cannot sign without both",
+            "commands": [],
+        }
+    try:
+        check_entitlements(load_entitlements())
+    except (OSError, ValueError) as exc:
+        return {
+            "ok": False,
+            "reason": str(exc),
             "commands": [],
         }
     app = "store/" + APP_BUNDLE

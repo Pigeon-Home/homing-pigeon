@@ -60,6 +60,10 @@ class ConstantsTest(unittest.TestCase):
     def test_team_id_is_the_enrollment_team(self):
         self.assertEqual("3PH9A88USW", apple_store.TEAM_ID)
 
+    def test_application_identifier_joins_team_and_bundle(self):
+        self.assertEqual("3PH9A88USW.ai.pigeon-home.homing-pigeon",
+                         apple_store.APPLICATION_IDENTIFIER)
+
     def test_sku_matches_the_store_record(self):
         self.assertEqual("HOMINGPIGEON-MAC-001", apple_store.SKU)
 
@@ -379,8 +383,84 @@ class PackagingTest(unittest.TestCase):
         text = _read(os.path.join("packaging", "macos",
                                   "entitlements.plist"))
         parsed = plistlib.loads(text.encode("utf-8"))
-        self.assertEqual({"com.apple.security.app-sandbox": True},
-                         parsed)
+        self.assertIs(True,
+                      parsed["com.apple.security.app-sandbox"])
+
+    def test_entitlements_declare_outgoing_network_client(self):
+        # The runner initiates its mailbox and HTTPS
+        # connections; under the App Sandbox those are refused
+        # without the outgoing network entitlement, so the
+        # store entitlements must carry it.
+        text = _read(os.path.join("packaging", "macos",
+                                  "entitlements.plist"))
+        parsed = plistlib.loads(text.encode("utf-8"))
+        self.assertIs(True,
+                      parsed["com.apple.security.network.client"])
+
+    def test_entitlements_carry_the_application_identifier(self):
+        # TestFlight warning 90886: the first upload lacked an
+        # application identifier in its signature. The value
+        # joins the team ID and the bundle ID, matching the
+        # provisioning profile the bundle embeds.
+        text = _read(os.path.join("packaging", "macos",
+                                  "entitlements.plist"))
+        parsed = plistlib.loads(text.encode("utf-8"))
+        self.assertEqual("3PH9A88USW.ai.pigeon-home.homing-pigeon",
+                         parsed["com.apple.application-identifier"])
+        self.assertEqual(apple_store.APPLICATION_IDENTIFIER,
+                         parsed["com.apple.application-identifier"])
+        self.assertEqual(
+            "%s.%s" % (apple_store.TEAM_ID, apple_store.BUNDLE_ID),
+            parsed["com.apple.application-identifier"])
+
+    def test_entitlements_match_the_planner_expectation_exactly(self):
+        # Both directions: the file may neither lose an entry
+        # the planner expects nor gain one it does not, because
+        # each entitlement is a claim App Review reads.
+        text = _read(os.path.join("packaging", "macos",
+                                  "entitlements.plist"))
+        parsed = plistlib.loads(text.encode("utf-8"))
+        self.assertEqual(apple_store.EXPECTED_ENTITLEMENTS, parsed)
+        self.assertEqual(parsed,
+                         apple_store.load_entitlements())
+
+    def test_entitlements_check_refuses_drift(self):
+        good = dict(apple_store.EXPECTED_ENTITLEMENTS)
+        apple_store.check_entitlements(good)
+        drifted = []
+        missing_network = dict(good)
+        del missing_network["com.apple.security.network.client"]
+        drifted.append(missing_network)
+        missing_identifier = dict(good)
+        del missing_identifier["com.apple.application-identifier"]
+        drifted.append(missing_identifier)
+        wrong_identifier = dict(good)
+        wrong_identifier["com.apple.application-identifier"] = (
+            "3PH9A88USW.com.example.other")
+        drifted.append(wrong_identifier)
+        extra = dict(good)
+        extra["com.apple.security.network.server"] = True
+        drifted.append(extra)
+        no_sandbox = dict(good)
+        del no_sandbox["com.apple.security.app-sandbox"]
+        drifted.append(no_sandbox)
+        for parsed in drifted:
+            with self.assertRaises(ValueError, msg=repr(parsed)):
+                apple_store.check_entitlements(parsed)
+
+    def test_plan_refuses_when_the_entitlements_file_drifts(self):
+        drifted = dict(apple_store.EXPECTED_ENTITLEMENTS)
+        del drifted["com.apple.security.network.client"]
+        original = apple_store.load_entitlements
+        apple_store.load_entitlements = lambda: drifted
+        try:
+            plan = apple_store.plan_upload(_full_state(),
+                                           "3.17.33.1")
+        finally:
+            apple_store.load_entitlements = original
+        self.assertFalse(plan["ok"])
+        self.assertEqual([], plan["commands"])
+        self.assertIn("entitlements", plan["reason"])
 
     def test_bundle_layout_embeds_the_profile(self):
         layout = dict(apple_store.BUNDLE_LAYOUT)
