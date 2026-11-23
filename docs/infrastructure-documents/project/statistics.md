@@ -87,7 +87,7 @@ stays their source of truth.
   "core_tokens": 789630,
   "core_assembled_lines": 73015,
   "core_assembled_nonblank": 66241,
-  "core_assembled_zip_bytes": 939399,
+  "core_assembled_zip_bytes": 939398,
   "core_assembled_tokens": 801209
 }
 ```
