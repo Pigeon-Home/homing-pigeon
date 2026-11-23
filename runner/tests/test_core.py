@@ -282,7 +282,7 @@ class CoreListTest(unittest.TestCase):
         # runner/ops/setup.py (the setup wizard's system
         # facts).
         self.assertEqual(73036, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(66241, core.AS_ASSEMBLED_NONBLANK_LINES)
+        self.assertEqual(66260, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 
