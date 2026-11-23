@@ -1175,3 +1175,46 @@ read, so the next cycle tries the same file again.
 
 None remain. P1 through P6 are stated above.
 
+
+
+## The binding ledger for the claims in this file
+
+A claim in this file is a specific claim about behaviour,
+with its assumptions attached, and it is read against a
+ledger of four quantities, with the environment stated
+around them: the machine (the fixed rules of the model
+and the code), the input and its setup (what is
+presented, and the work needed to construct it), the run
+(the steps and space the execution is permitted), and
+the result (how the outcome is recognized and decoded).
+A constraint can move between those places, and a claim
+that leaves one of them unstated lets the unstated place
+carry weight the claim did not earn. The discussion that
+produced this ledger, including the reviews by Claude,
+by Grok, and by ChatGPT, stands in
+`docs/infrastructure-documents/seats/.com.chat`, in the
+binding thread of 23 November 2026. ChatGPT's form of
+the discipline, quoted with attribution: the promising
+object to bind is "a specific claim about behavior, with
+its assumptions attached."
+
+Three questions are kept separate for every property
+above. Model: does the formal model satisfy the
+property. Implementation: under the stated assumptions,
+do the runner's relevant behaviours correspond to
+behaviours the model allows. Evidence: what tests and
+fuzzing say about the model, the implementation, and
+the assumptions at their boundary. A proof may
+establish a model property without depending on fuzz
+samples. Fuzzing can challenge the model, find
+implementation disagreements, and expose assumptions
+that deserve a proof or a narrower claim; unless it
+exhausts the relevant domain with a sound oracle,
+fuzzing alone does not establish the universal
+property. A bound on what a sampler observes is not a
+bound on the quantity at every instant between
+observations. A fixed size cap, like the starting
+bound in the Terms above, can make a claim practical
+and precise; a single fixed cap does not by itself
+resolve an asymptotic question over arbitrarily large
+inputs.

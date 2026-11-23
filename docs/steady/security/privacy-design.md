@@ -373,3 +373,31 @@ derivation and differences, with the standing rules of
 section 2 kept whole: unset resolves to the strict reading,
 a misspelled name is refused, and every bundle shows in the
 posture report.
+
+Two additions from the binding discussion of
+23 November 2026, where ChatGPT reviewed this section
+alongside the runner claims. First, resolution is recorded. Because a bundle
+is derived by reference and a parent change reaches its
+children, a policy name alone may no longer tell what
+rules applied to a past decision. The bundle machinery
+of queued item 6 therefore records the resolved policy
+version or digest alongside a decision, with the
+corresponding resolved policy retained where it can be
+inspected, so the system can inherit changes live while
+still answering, later, in ChatGPT's words, "what was
+in force for this target at that moment?" Second, the
+open edges are named before the machinery is built, and
+each needs a stated rule in the declaration's
+semantics: what happens when a target matches multiple
+bundles, when a parent a bundle derives from is
+missing, and when derivations form a cycle. Cedar's
+policy language is the reference for making policy
+combination and default decisions explicit; its permit
+and forbid semantics are not copied into this project's
+mode settings. Read against the ledger in
+`docs/infrastructure-documents/proofs/properties.md`,
+the bundle declaration is the machine line, the
+derivation chain is part of the setup, and the recorded
+digest is the result line: the part that lets a later
+reader decode which computation of the policy actually
+ran.
