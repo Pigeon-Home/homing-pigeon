@@ -4,9 +4,9 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
-## 3.18.0.0 - 2026-11-23
+## 3.18.33.1 - 2026-11-23
 
-- 3.18. The releases page stood at 599. This is the one.
+- 3.18. Minor 18, the token figure held at 33 million, the counter restarted at 1. The releases page stood at 599.
 
 ## 3.17.33.17 - 2026-11-23
 
