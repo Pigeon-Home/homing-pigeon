@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.14 - 2026-11-23
+
+- Docs: DRU lands docs/PUB_POLICY on main (since 3.17.33.13) -- 2 commits, the public policy outline file created and then updated, docs only, no code changes
+
 ## 3.17.33.13 - 2026-11-23
 
 - Data: Germany bank 73 lands on main (since 3.17.33.12) -- 1 commit, corpus bank 2,693 entries, 0 crashes, 1121 new runs, 20,618,595 children tested
