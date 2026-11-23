@@ -73,4 +73,45 @@ the way the harness step detail records ready_in and probe.
 
 ## Conclusions
 
-(Appended after the tests run.)
+S1 holds. A search of the tree for a battery driver, a
+readiness wait, or the harness function names came back empty:
+the runner has no readiness path of its own, because the wait
+always lived in whoever starts it. The fix therefore lands in
+the repository own test tooling, at runner/tools/rig_readiness.py,
+beside rig_bank.py and rig_resources.py, with its tests at
+runner/tests/test_rig_readiness.py. The rig driver keeps its
+PowerShell implementation of the same 3 stages; this module is
+the rule stated once, in the tree, in a form any driver can be
+checked against.
+
+S2 holds. The decision is implemented as one pure function,
+wait_for_readiness, over 4 named inputs: the log text, the
+commit under test, a probe function, and an optional liveness
+function, with the clock and the sleep injected for the tests.
+
+S3 through S6 hold, pinned by 14 tests, all green. The stages
+are required in order and the probe never fires before the
+watching line. A probe result that arrives unattested is not
+readiness. A missing envelope is resubmitted and stops at 3
+attempts, and an attempt that consumes the budget leaves no
+room for another. The constants stand at 420 seconds for the
+readiness budget, 120 seconds for the clock job window, 3
+probe attempts, and 240 seconds for one probe result wait, and
+a test pins the function default budget to the named constant.
+A dead process fails readiness in about its own exit time
+instead of the full budget, and the result carries the measured
+time to readiness and the probe latency either way.
+
+The regression guard on the new test file is green on every
+check: native, repeat, shuffled, the simulated Windows
+surface, leaks, and the registry gates (538 seconds). The
+neighbouring rig suites (rig resources, rig bank, and this
+one) run 41 tests, all green.
+
+The change the numbers support is the one made: no product
+code changed, because no product code held the fault; the
+harness rule now stands in the tree with tests, so a driver
+rebuilt from the repository carries proven readiness instead
+of the fixed wait. The harness proof itself stands as recorded
+in the trio notes: all 17 battery steps passed twice in a row
+with this readiness shape, production untouched.
