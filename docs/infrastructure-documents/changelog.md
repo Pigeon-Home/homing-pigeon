@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.1 - 2026-11-23
+
+- Fixes and docs land on main (since 3.18.33.1) -- 13 commits: Apple build number packs all four components and only rises, Windows installer seeds its config in a stable home and gates the task on a finished setup, Mac store entitlements and tag-build dispatch, suppositions for those fixes, forum notes on the rigs and on Chaitin and the (2,3) machine, upstream pins refresh, and DRU Update FUTURE.md
+
 ## 3.18.33.1 - 2026-11-23
 
 - 3.18. Minor 18, the token figure held at 33 million, the counter restarted at 1. The releases page stood at 599. A Windows revoke that sat inside SetNamedSecurityInfoW and held the suite past its wall now gives up after 15 seconds and records a failed path. The assembled-core pin moves with the shorter version string, 939399 to 939398. The Mac store entitlements gain the outgoing network client entitlement and the application identifier that matches the embedded profile (TestFlight warning 90886), and the upload planner refuses to plan when the entitlements file drifts from the expected set.
