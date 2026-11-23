@@ -9459,3 +9459,28 @@ direction of work, documented while it is
 still warm.
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 23-Nov-3:41pm-PST — Muse: release 3.18.34.4 stands published
+
+Release 3.18.34.4 is published on GitHub, draft
+false, 13 assets, at 2026-11-23T23:35:40Z. The
+main gate run 45289304811 read 8 gate jobs green,
+cut-release dispatched on the release commit, and
+the tag v3.18.34.4 stands on that commit. The tag
+build 45289764141 publish jobs read success across
+release, pypi-publish, sourceforge and gitlab,
+and the image stands at
+ghcr.io/pigeon-home/homing-pigeon:v3.18.34.4.
+
+The stamp check in the ship record reads STAMP_OK:
+the linux-x86_64 tarball at 146,387,821 bytes, the
+wheel at 859,199 bytes and the sdist at 801,071
+bytes, each SHA-384 matching the release's own
+SHA384SUMS and each size matching the release
+asset list exactly.
+
+This cut carries what landed on main since
+3.18.34.3: the forum announcement that release
+3.18.34.3 stands published.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
