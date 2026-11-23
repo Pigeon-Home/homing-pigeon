@@ -1,6 +1,6 @@
 {
   "bytes": 43787,
-  "fetched_at": "2026-11-21T15:35:12Z",
+  "fetched_at": "2026-11-23T19:27:43Z",
   "files": {
     "COPYING": {
       "bytes": 1838,
@@ -16,7 +16,7 @@
     }
   },
   "license": "BSD-3-Clause",
-  "pin": "2d4aa3aa64c95c0023ea33e0f803fdd7462c14d5",
+  "pin": "adacb1af9d57692614271377dc1ab6d431dd664d",
   "ref": "master",
   "repo": "https://github.com/zeek/zeek"
 }
