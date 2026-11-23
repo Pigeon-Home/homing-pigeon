@@ -22,6 +22,7 @@ pipeline's, with the material it holds as CI secrets.
 import importlib.util
 import os
 import plistlib
+import re
 import struct
 import unittest
 
@@ -464,6 +465,46 @@ class WorkflowTest(unittest.TestCase):
                       self.text)
         self.assertIn("security import store/installer-distribution.p12",
                       self.text)
+
+    def test_workflow_fails_loudly_when_the_planner_refuses(self):
+        # A planner refusal (exit 3) means signing material is
+        # missing and nothing was uploaded. The plan step must
+        # end the run red with an error annotation and a summary
+        # headed NOT uploaded; a green run that merely notes the
+        # refusal reads as an upload in the run list (the outside
+        # review of 2026-11-23).
+        plan = self.text.split("- name: plan the upload", 1)[1]
+        plan = plan.split("- name:", 1)[0]
+        self.assertIn('if [ "$rc" -eq 3 ]; then', plan)
+        self.assertIn("Mac App Store leg: NOT uploaded", plan)
+        self.assertIn("::error title=macos-store::", plan)
+        self.assertIn("exit 1", plan)
+        self.assertNotIn("exit 0", plan)
+
+    def test_build_workflow_dispatches_the_store_leg(self):
+        # The release job publishes through
+        # softprops/action-gh-release under the default
+        # GITHUB_TOKEN, and GitHub starts no workflow run for an
+        # event that token raises, workflow_dispatch excepted.
+        # So the release event this workflow also listens for
+        # never fires for a pipeline release, and the one upload
+        # that stands followed a dispatch by hand. A job in
+        # build.yml must dispatch this workflow by name once the
+        # release job has succeeded, the pattern the proofs job
+        # already follows for the same reason.
+        build = _read(os.path.join(".github", "workflows",
+                                   "build.yml"))
+        match = re.search(r"(?ms)^  macos-store-dispatch:\n(.*?)(?=^  [a-z0-9_-]+:\n|\Z)",
+                          build)
+        self.assertIsNotNone(match, "build.yml has no macos-store-dispatch job")
+        block = match.group(1)
+        self.assertIn("startsWith(github.ref, 'refs/tags/v')", block)
+        self.assertIn("needs.release.result == 'success'", block)
+        self.assertIn("needs: [release]", block)
+        self.assertIn("actions: write", block)
+        self.assertIn('gh workflow run macos-store.yml', block)
+        self.assertIn('-f version=', block)
+        self.assertIn('VERSION=${{ github.ref_name }}', block)
 
 
 if __name__ == "__main__":
