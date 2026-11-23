@@ -3,6 +3,27 @@
 Newest first. The forum record through 31-Oct-2026 stands whole at
 docs/archive/com-chat-through-2026-10-31.md.
 
+## 22-Nov-6:58pm-PST — Muse: releases 3.17.33.9 and 3.17.33.10, the Windows trio healed, the parallel lanes audit, and San Francisco freed for the curve
+
+This entry follows the 3:03pm entry below it and records the evening's landings: 2 releases, the healing of the Windows timing trio, the audit of parallel working the conductor asked for, and the move that frees San Francisco for the curve work.
+
+**The releases.**
+
+Release 3.17.33.9 stands published and verified. The GitHub release carries 13 assets, and the stamp check passed all OK: the wheel, the source distribution and the platform tarball each match the SHA-384 printed for them. The release carries the conductor's own FUTURE.md edit of this evening and his new docs/WAR file, a file of his own that holds the single line "MY FILE." Release 3.17.33.10 followed it the same evening, published and verified the same way, and it carries his "Update WAR" edit, which grows that file to 9 lines in his own shorthand. Both of the conductor's own landings were read in full on arrival and reviewed against the whole doc set, and both stand sound: 17 doc tests pass on each, no new file stands in the repository root, and nothing in either one disturbs the set around it.
+
+**The Windows trio healed.**
+
+The Windows battery stands green again, twice in a row, all 17 steps passing on both runs, and the failing streak that ran through the day is over. The diagnosis the evening produced is a plain one: only the startup step ever held a fault of its own. The runner was alive but slow to write its first log line on a cold start under a saturated rig, past the fixed wait the driver allowed it, and the 2 steps behind startup failed only because they read what startup had not yet produced. Readiness is now proven by a real probe job instead of a fixed wait, and nothing in the battery was weakened to get there: the clock step still demands its full 120 seconds before it passes. Windows Defender was tested as a suspect along the way and cleared; the scan was not the cause, and the exclusion tried during the testing was removed again. Production stands untouched, 7272 of 7272, exactly as it stood before the runs.
+
+**The parallel lanes audit.**
+
+The conductor asked whether the work truly runs in parallel lanes, from the beginning of the project to now, and the audit was run against the record. Tonight the answer stands verified in the present: 4 lanes ran at once, with Target A and the standing loops running beside them, and the lanes landed their verdicts independently of one another. The honest misses stand in the record too, and this entry keeps them. Preview drops ran one at a time for weeks, serial work while parallel capacity stood idle across the fleet, until the fix landed on 9 November and preview builds began to fan out across the machines. The Windows trio was likewise run again and again in single file, battery after battery, until tonight, when its lane was aimed at the cause instead of at one more run. Both misses are the same shape: capacity that stood ready was not used in parallel until somebody named the waste plainly.
+
+**San Francisco freed for the curve.**
+
+The Linux rig battery now runs on the Menlo Park machine. It ran there on the current head with all 17 steps passing, under the same strictness it kept in San Francisco, and the watch points here now, with the move recorded in the results file. That move frees San Francisco for the curve work the conductor set this evening, and the machine stands ready for it, untouched by the move itself. Its fuzz stream is advancing: the log moves round over round with findings at 0, and the machine has stood up since 19 November without a fall. A sweep of the machine found about 100 idle processes left behind by the preview test days of 20 to 22 November, helpers from test instances that had long since finished; they were cleared, memory on the box rose with the clearing, and the fuzz work was not touched by the sweep. Nothing was bought for any of this, and the storage question stands researched and held on the back burner, exactly as the conductor ordered.
+
+
 ## 22-Nov-3:03pm-PST — Muse: the conductor's go items in detail, the macOS flip proven, release 3.17.33.6, the test sweep and the conversation export
 
 This entry follows the 2 entries below it from earlier today. The status entry at 12:50pm closed with a section of items waiting on the conductor's word, and the conductor gave that word today in plain terms: go. The actionable items were taken up at once, and this entry records what came of them in full, together with the releases and the rest of the landings that followed. 2 items on that list were not covered by the word and stand as they stood: the 4 readings are the conductor's alone to answer, and France goes back onto the Apple listing only when the French encryption declaration form exists, which is a missing form and not a missing word.
