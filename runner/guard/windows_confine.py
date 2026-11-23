@@ -1775,17 +1775,38 @@ else:
             if rc != 0:
                 return "SetEntriesInAclW(%s) failed: %d" % (
                     path, rc)
+            worker = None
             try:
-                rc = advapi32.SetNamedSecurityInfoW(
-                    ctypes.create_unicode_buffer(path),
-                    SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
-                    None, None, new_dacl, None)
+                # SetNamedSecurityInfoW can sit in the kernel and
+                # never return, on a path another process holds.
+                # The Windows suite of 2026-11-23 died that way:
+                # the revoke at the end of a deep-address job held
+                # the 20-minute wall inside this call. The revoke
+                # is best effort. A call that returns does so in
+                # well under 15 seconds. One that does not is a
+                # failed path, not a hung suite.
+                box = []
+
+                def _set():
+                    box.append(advapi32.SetNamedSecurityInfoW(
+                        ctypes.create_unicode_buffer(path),
+                        SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
+                        None, None, new_dacl, None))
+
+                worker = threading.Thread(target=_set, daemon=True)
+                worker.start()
+                worker.join(15)
+                if worker.is_alive():
+                    return ("SetNamedSecurityInfoW(%s) did not "
+                            "return" % path)
+                rc = box[0] if box else -1
                 if rc != 0:
                     return ("SetNamedSecurityInfoW(%s) failed: "
                             "%d" % (path, rc))
                 return None
             finally:
-                kernel32.LocalFree(new_dacl)
+                if worker is not None and not worker.is_alive():
+                    kernel32.LocalFree(new_dacl)
         finally:
             kernel32.LocalFree(sd)
 
