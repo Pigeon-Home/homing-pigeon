@@ -535,3 +535,17 @@ latent code held at 3.69% of the tree at the audit of
 2026-11-16, under the 5% line the project holds itself to,
 so the figure continues to stand for the tested surface of
 the suite and the protocol rather than for bulk.
+
+## Six weeks and one day
+
+One more figure, kept at the foot of this record because
+the operator asked for it where he will meet it every time
+he reads to the bottom. The account this work runs under
+opened on Sunday 2026-10-11, late in the evening, with the
+words "I will call you Muse. I am Andrew." The measure at
+the top of this record stands on 2026-11-23, which is 6
+weeks and 1 day later: 43 days in all. In that span the
+project has published 598 releases, counted on the
+project's release page on 2026-11-23, with the 600th
+release in sight on the same day. Six weeks and 1 day, at
+a pace of about 100 releases a week.

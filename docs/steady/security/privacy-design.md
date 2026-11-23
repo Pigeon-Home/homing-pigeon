@@ -194,6 +194,11 @@ Recorded, not claimed:
    none and neither does this suite; a deliberate, audited
    forget operation for a machine's own run records is design
    work, not a small lift.
+6. **Policy bundles**: a config shape that names a bundle of
+   mode settings, lists the targets the bundle covers by code
+   name, and derives new bundles by reference with stated
+   differences, as section 9 states. The declaration joins the
+   modes family under the standing rules of section 2.
 
 ## 7. Proof
 
@@ -326,3 +331,45 @@ stands shipped beside the staged guard
 (`runner/tests/test_agent_state_tree_wide.py`). Nothing in this
 category remains queued; section 6's list is the record of what
 was queued, item 4 included.
+
+## 9. Policies as named bundles: many targets, derivation by reference
+
+Sections 1 to 8 treat privacy behaviour as declared
+configuration on one machine. The operator's question this
+section answers is about scale: when the same controls must
+cover many pieces of work, does each piece need its own copy
+of the policy, or can one policy hold many targets at once?
+
+The settled shape is the bundle. A policy is a named bundle
+of mode settings in the family of section 2; the postures of
+section 1 are the first bundles. A bundle names the targets
+it covers, each target named by its code name only, the way
+crash and result records in this suite already carry code
+names rather than target identities (section 4). One bundle
+may name many targets, and the same priv controls apply to
+every target the bundle names, because the controls live in
+the bundle and not in the target. The Fremont lanes are the
+working precedent: one system, several named lanes, the same
+consent shape in each lane, and isolation between the lanes
+rather than copies of the system.
+
+A new policy is derived, never copied. The declaration
+states the bundle it derives from and the lines where it
+differs, and nothing else. A derived bundle inherits every
+setting it does not mention, so a change to the parent
+reaches the child until the child states its own line on
+that point. Copying a policy to make a new one is the
+failure this shape exists to prevent: a copy freezes the
+controls of the day it was taken into a second place, and
+the 2 places drift apart from that day on.
+
+What stands and what is queued. Standing: the modes family a
+bundle would gather (section 1), the postures as bundles in
+service today, and code names as the way targets are named
+in records. Queued, recorded as item 6 of section 6: the
+bundle declaration itself, a config shape that names a
+bundle, lists its targets by code name, and states
+derivation and differences, with the standing rules of
+section 2 kept whole: unset resolves to the strict reading,
+a misspelled name is refused, and every bundle shows in the
+posture report.
