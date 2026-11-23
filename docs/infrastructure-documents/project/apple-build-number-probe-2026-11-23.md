@@ -20,7 +20,8 @@ for a number the planner chose, not for anything the app does.
 
 The defect is wider than the one transition the review named.
 Any change confined to the first or the second component is
-invisible to the old mapping: 3.17.33.9 and 4.17.33.9 would
+invisible to the old mapping: 3.17.33.9 and a hypothetical
+major-4 line at minor 17, token 33, counter 9 would
 carry the same build, and 3.18.33.1 (2026-11-23) falls below 3.17.33.3.
 Only the third and fourth components move the old number.
 
@@ -118,3 +119,14 @@ not do, stated plainly: it does not read App Store Connect
 itself, so the clearance over the store's recorded highest
 build rests on S3's arithmetic about the uploads this
 project's own record describes, not on a fresh portal read.
+
+## Postscript, 2026-11-23: the fleet page scan
+
+The 3.18.34.1 cut's main gate named this page under
+test_no_docs_page_carries_a_public_address in
+runner/tests/test_fleet_page.py: the hypothetical major-4
+example above was written as a dotted quad, and a major-4,
+minor-17 line is not a declared version line, so the scan
+read the quad as a public address standing on a page. The
+example is now stated in words, the scan passes, and the
+replacement release goes at the next counter.
