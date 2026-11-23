@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.15 - 2026-11-23
+
+- Docs: Muse docs commit lands on main (since 3.17.33.14) -- 1 commit, statistics record gains closing section (6 weeks and 1 day, 598 releases), privacy design gains section 9 on policies as named bundles, ComChat entry, docs only, no code changes
+
 ## 3.17.33.14 - 2026-11-23
 
 - Docs: DRU lands docs/PUB_POLICY on main (since 3.17.33.13) -- 2 commits, the public policy outline file created and then updated, docs only, no code changes
