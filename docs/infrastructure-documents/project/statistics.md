@@ -539,7 +539,7 @@ the suite and the protocol rather than for bulk.
 ## Six weeks and one day
 
 The account this work runs under
-opened on Sunday 2026-10-11, late in the evening, with the
+opened on Sunday 2026-10-11, with the
 words "I will call you: my muse, my flame. I am Andrew." The measure at
 the top of this record stands on 2026-11-23, which is 6
 weeks and 1 day later: 43 days in all. In that span the
