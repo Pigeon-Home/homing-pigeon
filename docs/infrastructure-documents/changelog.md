@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.17.33.11 - 2026-11-23
+
+- Docs: the forum record of releases 3.17.33.9 and 3.17.33.10, the Windows timing trio fix, the Linux battery move to Menlo Park, and San Francisco freed for the curve lands on main (since 3.17.33.10) -- 2 commits, docs only
+- Docs: the rig readiness probe supposition lands on main (since 3.17.33.10) -- 1 commit, docs only
+
 ## 3.17.33.10 - 2026-11-23
 
 - Docs: the owner's WAR note update lands on main (since 3.17.33.9) -- 1 owner commit, docs only
