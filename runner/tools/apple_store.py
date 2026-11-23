@@ -188,17 +188,51 @@ def store_version(version):
     return ".".join(str(part) for part in parts[:3])
 
 
+# The minor component packs into the build's first integer
+# at this width: the major times the width plus the minor.
+# A minor at or past the width would carry into the major's
+# digits and two different versions could pack to the same
+# build, so store_build refuses it instead of packing it.
+BUILD_MINOR_PACK_WIDTH = 1000
+
+
 def store_build(version):
     """Return the store build number for a release version.
 
-    CFBundleVersion carries the release version's third and
-    fourth components (33.1 for 3.17.33.1): two integers,
-    inside the store's three integer limit, and increasing
-    as the release odometer advances, within one short
-    version (33.1, 33.2) and across the next (34.1).
+    CFBundleVersion carries the packed mapping (3017.33.1
+    for 3.17.33.1): the first integer packs the major and
+    the minor at BUILD_MINOR_PACK_WIDTH, and the token
+    millions and the release counter follow as the second
+    and third integers. Three integers, inside the store's
+    three integer limit, and strictly increasing as the
+    release odometer advances in any of its four components:
+    the counter (3017.33.1, 3017.33.2), the token millions
+    past a counter reset (3017.34.1), the minor (3018.33.1),
+    and the major past a full reset (4000.0.1).
+
+    The mapping this one replaced carried only the third
+    and fourth components (33.1 for 3.17.33.1). An outside
+    review on 2026-11-23 checked the next transition by
+    hand and found it going backwards: the uploaded
+    3.17.33.3 carried build 33.3 while 3.18.33.1 would have
+    carried 33.1, and Apple requires build numbers to keep
+    increasing. The packed first integer also clears the
+    old mapping's whole history at a stroke: every build it
+    ever produced began with a token figure in the low
+    thirties, and every packed build for the standing lines
+    begins above 3000. The probe, the supposition, and the
+    measured conclusions stand in
+    docs/infrastructure-documents/project/
+    apple-build-number-probe-2026-11-23.md.
     """
     parts = _release_parts(version)
-    return "%d.%d" % (parts[2], parts[3])
+    if parts[1] >= BUILD_MINOR_PACK_WIDTH:
+        raise ValueError("release version %r carries a minor "
+                         "of %d or more, which the store build "
+                         "packing cannot hold without collision"
+                         % (version, BUILD_MINOR_PACK_WIDTH))
+    return "%d.%d.%d" % (parts[0] * BUILD_MINOR_PACK_WIDTH
+                         + parts[1], parts[2], parts[3])
 
 # The installer certificate's keychain common name is not
 # its portal type name above: an imported Mac Installer

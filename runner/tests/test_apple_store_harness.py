@@ -86,7 +86,7 @@ class VersionShapeTest(unittest.TestCase):
     def test_leading_zeros_normalize(self):
         self.assertEqual("3.17.33",
                          apple_store.store_version("03.17.33.01"))
-        self.assertEqual("33.1",
+        self.assertEqual("3017.33.1",
                          apple_store.store_build("03.17.33.01"))
 
     def test_wrong_part_counts_refuse(self):

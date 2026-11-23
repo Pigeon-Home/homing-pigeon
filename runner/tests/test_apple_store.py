@@ -271,7 +271,7 @@ class InfoPlistTest(unittest.TestCase):
                          parsed["CFBundleIdentifier"])
         self.assertEqual("3.17.33",
                          parsed["CFBundleShortVersionString"])
-        self.assertEqual("33.1", parsed["CFBundleVersion"])
+        self.assertEqual("3017.33.1", parsed["CFBundleVersion"])
         self.assertEqual("homing-pigeon", parsed["CFBundleExecutable"])
         self.assertEqual("Homing Pigeon Runner", parsed["CFBundleName"])
 
@@ -312,26 +312,35 @@ class StoreVersionTest(unittest.TestCase):
     CFBundleShortVersionString carried the release's raw 4
     part version; the store accepts at most three
     non-negative integers in each. The short version is the
-    first three components and the build is the last two, so
-    the build still advances with the release odometer.
+    first three components and the build is the packed
+    mapping (major and minor packed into the first integer,
+    then the token millions and the counter), so the build
+    advances with every component of the release odometer.
+    The build mapping this one replaced carried only the
+    last two components and went backwards at the 3.18
+    transition; StoreBuildMonotonicTest below pins the
+    packed mapping transition by transition.
     """
 
     def test_short_version_is_the_first_three_components(self):
         self.assertEqual("3.17.33",
                          apple_store.store_version("3.17.33.1"))
 
-    def test_build_is_the_last_two_components(self):
-        self.assertEqual("33.1", apple_store.store_build("3.17.33.1"))
+    def test_build_is_the_packed_mapping(self):
+        self.assertEqual("3017.33.1",
+                         apple_store.store_build("3.17.33.1"))
 
     def test_next_odometer_number_maps_forward(self):
         self.assertEqual("3.17.33",
                          apple_store.store_version("3.17.33.2"))
-        self.assertEqual("33.2", apple_store.store_build("3.17.33.2"))
+        self.assertEqual("3017.33.2",
+                         apple_store.store_build("3.17.33.2"))
 
     def test_next_token_count_maps_forward(self):
         self.assertEqual("3.17.34",
                          apple_store.store_version("3.17.34.1"))
-        self.assertEqual("34.1", apple_store.store_build("3.17.34.1"))
+        self.assertEqual("3017.34.1",
+                         apple_store.store_build("3.17.34.1"))
 
     def test_mapped_numbers_stay_inside_the_store_limit(self):
         for version in ("3.17.33.1", "3.17.33.2", "3.17.34.1",
@@ -353,9 +362,9 @@ class StoreVersionTest(unittest.TestCase):
 
     def test_rendered_plist_carries_the_mapped_numbers(self):
         for version, short, build in (
-                ("3.17.33.1", "3.17.33", "33.1"),
-                ("3.17.33.2", "3.17.33", "33.2"),
-                ("3.17.34.1", "3.17.34", "34.1")):
+                ("3.17.33.1", "3.17.33", "3017.33.1"),
+                ("3.17.33.2", "3.17.33", "3017.33.2"),
+                ("3.17.34.1", "3.17.34", "3017.34.1")):
             parsed = plistlib.loads(
                 apple_store.render_info_plist(version).encode("utf-8"))
             self.assertEqual(short,
@@ -375,6 +384,127 @@ class StoreVersionTest(unittest.TestCase):
                 apple_store.store_build(bad)
             with self.assertRaises(ValueError, msg=bad):
                 apple_store.render_info_plist(bad)
+
+
+class StoreBuildMonotonicTest(unittest.TestCase):
+    """The build number must rise at every version transition.
+
+    An outside review (2026-11-23) checked the standing
+    mapping by hand and found the next Mac build going
+    backwards: the uploaded 3.17.33.3 carried build 33.3
+    while 3.18.33.1 would carry 33.1, because the old build
+    used only the third and fourth components. Apple
+    requires build numbers to keep increasing, and a change
+    to ANY of the four components is a new release, so the
+    build must answer to all four. The packed mapping is
+    (major * 1000 + minor, token millions, counter): three
+    integers inside the store limit, compared componentwise,
+    rising strictly with the release odometer. The probe and
+    its supposition stand in
+    docs/infrastructure-documents/project/
+    apple-build-number-probe-2026-11-23.md.
+    """
+
+    def _key(self, version):
+        return tuple(int(part) for part in
+                     apple_store.store_build(version).split("."))
+
+    def test_build_packs_all_four_components(self):
+        self.assertEqual("3017.33.1",
+                         apple_store.store_build("3.17.33.1"))
+
+    def test_the_reviews_transition_maps_forward(self):
+        # The exact pair the review named: the uploaded build
+        # and the latest release that would have gone under it.
+        self.assertEqual("3017.33.3",
+                         apple_store.store_build("3.17.33.3"))
+        self.assertEqual("3018.33.1",
+                         apple_store.store_build("3.18.33.1"))
+        self.assertLess(self._key("3.17.33.3"),
+                        self._key("3.18.33.1"))
+
+    def test_counter_change_alone_raises_the_build(self):
+        self.assertLess(self._key("3.17.33.1"),
+                        self._key("3.17.33.2"))
+
+    def test_token_change_raises_the_build_past_a_counter_reset(self):
+        # The counter restarts at 1 when the token millions
+        # figure advances; the build must still rise.
+        self.assertLess(self._key("3.17.33.9"),
+                        self._key("3.17.34.1"))
+
+    def test_minor_change_alone_raises_the_build(self):
+        self.assertLess(self._key("3.17.33.1"),
+                        self._key("3.18.33.1"))
+
+    def test_major_change_alone_raises_the_build(self):
+        self.assertLess(self._key("3.17.33.1"),
+                        self._key("4.17.33.1"))
+
+    def test_major_change_raises_the_build_past_a_full_reset(self):
+        self.assertLess(self._key("3.99.99.9"),
+                        self._key("4.0.0.1"))
+
+    def test_every_component_moves_the_build_number(self):
+        base = apple_store.store_build("3.17.33.1")
+        for bumped in ("4.17.33.1", "3.18.33.1", "3.17.34.1",
+                       "3.17.33.2"):
+            self.assertNotEqual(base,
+                                apple_store.store_build(bumped),
+                                bumped)
+
+    def test_builds_rise_strictly_in_odometer_order(self):
+        ordered = ["3.17.33.1", "3.17.33.2", "3.17.33.9",
+                   "3.17.34.1", "3.17.34.2", "3.18.33.1",
+                   "3.18.34.1", "4.0.0.1", "4.17.33.1"]
+        keys = [self._key(version) for version in ordered]
+        for earlier, later in zip(keys, keys[1:]):
+            self.assertLess(earlier, later)
+
+    def test_build_order_matches_version_order_across_the_grid(self):
+        versions = []
+        for major in (3, 4):
+            for minor in (0, 17, 18, 999):
+                for tokens in (0, 33, 34):
+                    for counter in (1, 2, 99):
+                        versions.append("%d.%d.%d.%d"
+                                        % (major, minor, tokens,
+                                           counter))
+        versions.sort(key=lambda v: tuple(
+            int(part) for part in v.split(".")))
+        keys = [self._key(version) for version in versions]
+        for earlier, later in zip(keys, keys[1:]):
+            self.assertLess(earlier, later)
+
+    def test_packed_build_stays_inside_the_store_limit(self):
+        for version in ("3.17.33.1", "3.18.33.1", "4.0.0.1",
+                        "3.999.999.999"):
+            parts = apple_store.store_build(version).split(".")
+            self.assertEqual(3, len(parts), version)
+            self.assertTrue(all(part.isdigit() for part in parts),
+                            version)
+
+    def test_packed_build_clears_the_old_mappings_history(self):
+        # Every build the old mapping ever produced for the
+        # standing lines began with a token figure in the low
+        # thirties; the packed first component stands above
+        # any of them, so the first packed build App Store
+        # Connect sees is higher than the highest old build.
+        self.assertGreater(self._key("3.17.33.1")[0], 99)
+
+    def test_a_minor_at_the_packing_width_is_refused(self):
+        # A minor of 1000 or more would pack into the major's
+        # digits and could collide; the mapping refuses it
+        # rather than guessing.
+        with self.assertRaises(ValueError):
+            apple_store.store_build("3.1000.33.1")
+
+    def test_rendered_plist_carries_the_packed_build(self):
+        parsed = plistlib.loads(
+            apple_store.render_info_plist("3.18.33.1").encode("utf-8"))
+        self.assertEqual("3.18.33",
+                         parsed["CFBundleShortVersionString"])
+        self.assertEqual("3018.33.1", parsed["CFBundleVersion"])
 
 
 class PackagingTest(unittest.TestCase):

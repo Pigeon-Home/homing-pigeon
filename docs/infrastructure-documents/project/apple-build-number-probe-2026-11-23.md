@@ -74,3 +74,47 @@ change store_build to the packed mapping, refuse a minor of
 1000 or more rather than packing it into a collision, update
 the pins that named the old shape, and append the conclusions
 below.
+
+## Conclusions, after the tests ran
+
+Measured 2026-11-23, in the order the plan called for.
+
+The new tests came first. StoreBuildMonotonicTest in
+runner/tests/test_apple_store.py carries 14 tests: the exact
+pair the review named, one test per component changing alone,
+the counter reset and full reset crossings, a strict ordering
+over an odometer sequence, an ordering sweep over a grid of
+144 versions sorted by their release components, the store
+limit, the clearance over the old mapping's history, the
+refusal at the packing width, and the rendered plist. Run
+against the standing code, 12 of the 14 failed and 2 passed;
+the passes were the counter and token transitions the old
+mapping already answered to, and every failure was a first or
+second component blindness or the backwards 3.18 transition
+itself. S5 stands as written.
+
+S1 stands: a tree search for store_build found the planner,
+its two test files, and no other consumer, and no document
+described the old mapping's shape, so no document needed to
+move with the fix. S2, S3, and S4 stand on the grid sweep and
+the limit tests: the packed build rises strictly across all
+144 grid versions in release order, its first integer for the
+standing lines is 3017 or more against the old history's low
+thirties, and it never carries more than three integers.
+
+The change the numbers support is the one the plan named.
+store_build now returns the packed mapping, with the minor
+refused at 1000 or more, and the pins that named the old 33.1
+shape moved to the packed numbers in test_apple_store.py and
+test_apple_store_harness.py. After the change, both files run
+green together: 85 tests, all passing. The fix was then
+rebased onto the entitlements landing that reached main in
+the meantime (the same files, different regions), the
+duplicate entitlement hunks in the shared working tree were
+discarded rather than committed a second time, and the two
+files ran green again on the landed state: 87 tests, all
+passing, the entitlements pins among them. What this landing does
+not do, stated plainly: it does not read App Store Connect
+itself, so the clearance over the store's recorded highest
+build rests on S3's arithmetic about the uploads this
+project's own record describes, not on a fresh portal read.
