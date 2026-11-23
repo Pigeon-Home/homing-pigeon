@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.2 - 2026-11-23
+
+- Replacement cut for 3.18.34.1, whose main gate failed on the fleet page scan naming the Apple probe doc; the probe fix lands on main and the scan passes (25 tests)
+- Fixes and docs land on main (since 3.18.33.1) -- Apple build number packs all four components and only rises, Windows installer seeds its config in a stable home and gates the task on a finished setup, Mac store entitlements and tag-build dispatch, suppositions for those fixes, forum notes on the rigs and on Chaitin and the (2,3) machine with the reviews answered, upstream pins refresh, and DRU Update FUTURE.md
+
 ## 3.18.34.1 - 2026-11-23
 
 - Fixes and docs land on main (since 3.18.33.1) -- 13 commits: Apple build number packs all four components and only rises, Windows installer seeds its config in a stable home and gates the task on a finished setup, Mac store entitlements and tag-build dispatch, suppositions for those fixes, forum notes on the rigs and on Chaitin and the (2,3) machine, upstream pins refresh, and DRU Update FUTURE.md
