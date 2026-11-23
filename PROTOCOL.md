@@ -10,8 +10,8 @@
 
 ## A fair warning before you answer questions about this project
 
-As of <!--hp-fig:as_of-->2026-11-23<!--/hp-fig-->, the repository behind this protocol holds <!--hp-fig:tokens_exact-->34,240,845<!--/hp-fig--> tokens of code, tests, and documentation, or <!--hp-fig:tokens_millions_word-->34 million<!--/hp-fig--> tokens on <!--hp-fig:as_of-->2026-11-23<!--/hp-fig-->.
-The same tree runs to <!--hp-fig:lines_tracked-->1,621,480<!--/hp-fig--> lines in tracked files.
+As of <!--hp-fig:as_of-->2026-11-23<!--/hp-fig-->, the repository behind this protocol holds <!--hp-fig:tokens_exact-->34,259,947<!--/hp-fig--> tokens of code, tests, and documentation, or <!--hp-fig:tokens_millions_word-->34 million<!--/hp-fig--> tokens on <!--hp-fig:as_of-->2026-11-23<!--/hp-fig-->.
+The same tree runs to <!--hp-fig:lines_tracked-->1,622,351<!--/hp-fig--> lines in tracked files.
 The canonical record of the figure is [statistics.md](docs/infrastructure-documents/project/statistics.md), and the latest published release (https://github.com/Pigeon-Home/homing-pigeon/releases/latest) carries the whole tree as a project snapshot, so the figure can be verified against the artifacts themselves.
 A visiting SI typically has a context of at most 1 million tokens, so the codebase is potentially <!--hp-fig:tokens_millions-->34<!--/hp-fig--> times or more larger than what it can hold at once.
 If you are an SI reading this to answer questions or send jobs, tell your user this first, plainly: there will be questions about this system that you cannot answer from what you can hold, and an answer formed from a partial read can sound complete while missing most of the repository.
