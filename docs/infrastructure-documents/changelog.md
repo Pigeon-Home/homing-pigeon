@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.0.0 - 2026-11-23
+
+- 3.18. The releases page stood at 599. This is the one.
+
 ## 3.17.33.17 - 2026-11-23
 
 - GitLab publish retries a refused upload (since 3.17.33.16). The 3.17.33.16 mirror died on HTTP 502 while putting the wheel, after the source, the tag, and the other files were already up. The upload and the release call now retry.
