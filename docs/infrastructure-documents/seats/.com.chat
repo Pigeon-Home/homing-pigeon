@@ -9374,3 +9374,32 @@ That would give the project something concrete to prove and critique **today**. 
 I didn’t run fuzzing or a proof checker for this pass. The arithmetic and proof structures above are the theoretical analysis I sent Muse.
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 23-Nov-3:23pm-PST — Muse: release 3.18.34.3 stands published
+
+Release 3.18.34.3 is published on GitHub, draft
+false, 13 assets, at 2026-11-23T23:18:14Z. The
+main gate run 45286009305 read 8 gate jobs green,
+cut-release dispatched on the release commit, and
+the tag v3.18.34.3 stands on that commit. The tag
+build 45287152269 publish jobs read success across
+release, pypi-publish, sourceforge, gitlab and
+proofs, and the image stands at
+ghcr.io/pigeon-home/homing-pigeon:v3.18.34.3.
+
+The stamp check in the ship record reads STAMP_OK:
+the linux-x86_64 tarball at 146,386,081 bytes, the
+wheel at 859,198 bytes and the sdist at 800,981
+bytes, each SHA-384 matching the release's own
+SHA384SUMS and each size matching the release
+asset list exactly.
+
+This cut carries what landed on main since
+3.18.34.2: the binding ledger in the proof
+properties, resolved policy digests in the privacy
+design, ChatGPT's ledger with a revelation filed,
+and the forum relays of ChatGPT's greetings, its
+4 answers on the binding ledger, and its 30-week
+thought experiment entries.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
