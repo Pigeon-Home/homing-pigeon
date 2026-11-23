@@ -1218,3 +1218,133 @@ bound in the Terms above, can make a claim practical
 and precise; a single fixed cap does not by itself
 resolve an asymptotic question over arbitrarily large
 inputs.
+
+## The binding ledger and the P versus NP discussion
+
+On 23 November 2026 the ledger was carried into the
+project's P versus NP discussion, in the reverse
+direction: work the P = NP side as seriously as the
+separation side, and let each direction document what
+the other one needs. Two ChatGPT emails of that
+afternoon stand relayed in full in
+`docs/infrastructure-documents/seats/.com.chat`, and
+the verified findings from them are recorded here, in
+the ledger's own terms, with their assumptions
+attached. Nothing recorded here is a proof of
+P = NP, and nothing here is a proof of its negation.
+
+The chain rule, in its exact form. Kabanets and
+Kolokolova, "Chain Rules for Time-Bounded Kolmogorov
+Complexity," ECCC report TR25-089 (first posted in
+July 2025; revision 1 in March 2026), in the
+proceedings of STOC 2026. Their theorem: the chain
+rule for conditional time-bounded Kolmogorov
+complexity, with error e(N, t) at most o(N), holds if
+and only if two statements hold together: (1) E is
+not contained in io-SIZE[2^o(n)], a circuit lower
+bound, and (2) GapMcKtP, the gap version of the
+conditional minimum time-bounded Kolmogorov
+complexity problem, lies in promise-P. Under the
+further assumption that GapMcKtP is NP-hard, the
+equivalence simplifies to its headline form: the
+chain rule holds if and only if P = NP. That
+hardness assumption is itself conditional; it holds
+under cryptographic assumptions (Huang, Ilango and
+Ren, STOC 2023: NP hardness of approximating
+meta-complexity, from subexponentially secure
+witness encryption). The ledger records the lemma
+with its price attached: stated unconditionally it
+is the conjunction, the clean form exists only with
+the hardness assumption named, and proving the chain
+rule outright would settle at least as much as the
+conjunction's two parts.
+
+The counterexample dual. Fix a universal interpreter
+U. For fixed positive constants c and d, the machine
+A(c, d) enumerates every U program of length at most
+c log2(n + 2), runs each on the formula F for at
+most (n + 2)^d steps, and returns any verified
+satisfying assignment it finds. P = NP if and only
+if some fixed pair c, d makes A(c, d) succeed on
+every satisfiable formula. Dually, P is not equal to
+NP if and only if a brute force
+CounterexampleFinder(c, d), which enumerates
+formulas until it finds a satisfiable one that
+defeats A(c, d), eventually halts for every fixed
+pair c, d. If P is not equal to NP, the
+counterexamples for each pair must be arbitrarily
+large, because finitely many exceptions could be
+hard coded into a polynomial time solver. The
+ledger's caution stands beside the statement:
+observing that many particular finders halt does not
+prove that all of them halt; a proof of their
+universal termination is what would carry the
+separation.
+
+Assuming future data, at four strengths. A claim
+keeps the strength it was proved at, and premises
+are never exchanged between strengths. Strength 1:
+any finite test inputs we want. This designs
+experiments and falsifies proposed rules; it
+supplies no true answers and covers no unbounded
+lengths. Strength 2: an ideal finite corpus covering
+every input of a fixed, named domain, with a trusted
+oracle giving the expected answers. Exhaustive
+agreement then establishes the scoped finite claim,
+and nothing outside the domain. Strength 3: an
+oracle answering every formula. A solver can then be
+fast relative to that oracle; ordinary P = NP does
+not follow. Strength 4: a single uniform algorithm,
+on arbitrarily large inputs, producing sound bounds
+and satisfying a gap closing rule in polynomial
+time. This strength is equivalent to the result
+itself, so it must never be smuggled in as merely
+having a great deal of fuzz data. If a corpus or a
+table is generated or read by a proposed algorithm,
+its size, its generation time, its lookup time, and
+its dependence on the input are charged in the
+ledger like any other work.
+
+The squeeze, over one object. A squeeze in this file
+is three sets: L, the behaviours definitely realized
+or otherwise established; B, all actual behaviours
+in the frozen scope; U, the behaviours a sound
+over-approximation allows. L inside B inside U pins
+B exactly only when all three sets describe the same
+object: the same observation alphabet, the same
+build, the same configuration, the same
+environments, and the same starting conditions.
+Token counts, test counts, model states, counts of
+unresolved assumptions, behaviour sets, and security
+guarantees are different objects. A gap closing in
+one of them motivates work in another; it does not
+close it.
+
+A correction about compression. A note in the forum
+record says a fuzz log of about 41.9 MB compresses
+to about 4.7 MB, and concludes that at least 89
+percent of the log carries no new information.
+Compression establishes less than that. The chosen
+compressor encodes the file in about 11 percent of
+its original bytes, under that representation and
+those settings: evidence of representational
+redundancy. It is not a measured value of the file's
+Kolmogorov complexity, it establishes no minimum
+description length, and it does not show that any
+particular share of the records is semantically
+redundant or safe to discard. Two records that look
+alike can still differ in seed, timing, environment,
+build, or the sequence that caused a failure.
+
+Name the measure. Symmetry of information is proven
+to fail, unconditionally, for the randomized measure
+rKt and for pKt (Hu, Manor and Oliveira, "Failure of
+Symmetry of Information for Randomized
+Computations," ECCC report TR26-021, February 2026).
+The deterministic conditional Kt chain rule above is
+untouched by that result. Every statement in this
+project about an information principle names its
+measure exactly: conditional Kt, deterministic, with
+its error regime. A sentence that says chain rule,
+or symmetry of information, without the measure
+named is one citation away from being wrong.
