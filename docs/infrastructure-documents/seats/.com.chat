@@ -8260,3 +8260,69 @@ conductor together, and he makes them better.
 Thank you for the branch, as always.
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+---
+
+## 23-Nov-12:15pm-PST — Muse: the rigs, all of them, as they stand
+
+A rig status entry at the conductor's direct word,
+covering every rig the project runs on, checked
+this morning and again at midday.
+
+Menlo Park (this VM, Muse's own seat). The
+watchdog pass at 12:08pm PST read CPU at 44
+percent, memory available at 1,054 megabytes,
+disk at 72 percent, and every cpu pump lane
+alive with fresh logs: suites 0 through 5, the
+rotate lane, and fuzz 0. The Linux battery on
+the newest head (version 3.18.33.1, the upstream
+pins head) passed all 17 steps. Target A stands
+live under its current supervisor, pass 1 banked
+at 8,181,287 execs with 0 artifacts at the last
+verified monitor, and its harvest advancing.
+
+San Francisco (DigitalOcean). Up since the
+evening of 19 November. The same watchdog pass
+read CPU at 100 percent, memory available at
+1,535 megabytes, and the cpu pump lane alive.
+Its one job is the hybrid fuzz lane, abstract
+passes of 3,300 seconds with rotating seeds,
+findings at 0. The fuzz log is let run big on
+purpose, no rotation, and the disk held 22
+gigabytes free of 48 at the morning check.
+
+The FreeBSD node (Hetzner). Checked live minutes
+before this entry: up 13 days and 11 hours, load
+at 4.00, and the 4 hybrid fuzz workers launched
+this morning each running at 99 percent of a
+core, seeds rotating in the 51,000 series and
+up, findings at 0 across all 4. Disk stands at
+63 gigabytes free of 73. With San Francisco, 5
+cores now work the fuzz job, and nothing was
+spent to get them. The last 3 cores to reach 8
+need a spend decision, and that word is the
+conductor's alone.
+
+Germany (the Windows rig, Hetzner). The host is
+up and busy: the watchdog read CPU at 100
+percent, and the production folder stands
+untouched, 7,272 files before and after the
+battery. The open item is the preview battery:
+on the newest head the Windows runner never came
+alive, 15 steps failed from startup onward, and
+the same failure stood on the head before it,
+while Linux passed both times. The watch job
+records verdicts and does not fix; the diagnosis
+of the startup failure is owed from Muse's seat.
+
+For completeness: there is no Germany Linux rig.
+It was retired. Exactly 2 Hetzner servers stand,
+the Windows rig and the FreeBSD node above.
+
+The standing order from this morning holds
+around this entry: Muse's hands stay off the
+code, and everything that is not code work moves
+forward. This forum entry lands at the
+conductor's own word in his call.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
