@@ -42,9 +42,13 @@ them that a finite check can pin.
 5. Tree decomposition elimination. On a supplied, checked
    tree decomposition, the bottom up elimination of section
    5 computes the exact weighted optimum and a witness that
-   scores it. On a fixed seed family of rooted trees with
-   one and two variable weighted clauses, it agrees with
-   brute force on every instance.
+   scores it. The checker enforces the one tree the theorem
+   assumes: a supplied forest once passed it, and the
+   elimination silently kept the last root's table. The
+   witness is reconstructed from the minimizing rows in
+   one pass, not copied row by row. On a fixed seed family
+   of rooted trees with one and two variable weighted
+   clauses, it agrees with brute force on every instance.
 6. The odd cycle. Adjacent differ on a cycle of length n
    costs 0 for even n and 1 for odd n. Per edge block sums
    stay at 0 at every length, every proper subset of an odd
@@ -626,11 +630,57 @@ def _wopt(clauses, variables):
 def _check_decomposition(bags, parent, clause_at, clauses,
                            variables):
     """A supplied decomposition, checked rather than
-    trusted: every variable sits in some bag, the bags
-    holding any one variable form a connected subtree,
-    every clause is assigned exactly once, and each clause
-    sits in a bag that holds all of its variables."""
+    trusted: the parent array first has to describe the
+    one tree the elimination theorem assumes, every
+    variable sits in some bag, the bags holding any one
+    variable form a connected subtree, every clause is
+    assigned exactly once, and each clause sits in a bag
+    that holds all of its variables.
+
+    The topology half is not decoration. With 2 roots the
+    elimination silently keeps the last root's table and
+    drops the other tree's clauses whole: on bags
+    [('x',), ('y',)] with parents [None, None], the
+    conflicting unit clauses on x of weights 2 and 3 in
+    the first bag and a unit clause on y of weight 1 in
+    the second, it returned cost 0 and the witness
+    {y: 1} where exhaustive scoring gives optimum 2.
+    So: exactly one root, every other parent a valid bag
+    index other than the bag itself, a walk down from
+    the root that reaches every bag exactly once, and
+    clause assignments only under valid bag keys, since
+    a key outside the bags would hide its clauses from
+    the checker and the solver alike."""
     n = len(bags)
+    if n == 0 or len(parent) != n:
+        return False
+    roots = [b for b in range(n) if parent[b] is None]
+    if len(roots) != 1:
+        return False
+    for b in range(n):
+        p = parent[b]
+        if p is not None and (
+                not isinstance(p, int)
+                or isinstance(p, bool)
+                or p < 0 or p >= n or p == b):
+            return False
+    for key in clause_at:
+        if (not isinstance(key, int)
+                or isinstance(key, bool)
+                or key < 0 or key >= n):
+            return False
+    children = [[] for _ in range(n)]
+    for b in range(n):
+        if parent[b] is not None:
+            children[parent[b]].append(b)
+    reached = []
+    stack = [roots[0]]
+    while stack:
+        b = stack.pop()
+        reached.append(b)
+        stack.extend(children[b])
+    if sorted(reached) != list(range(n)):
+        return False
     adjacency = [[] for _ in range(n)]
     for b in range(n):
         if parent[b] is not None:
@@ -670,12 +720,18 @@ def _tree_dp(bags, parent, clause_at):
     table entry at the row's restriction to the child's
     separator. Rows are then grouped by their restriction
     to the separator with the parent, and only the cheapest
-    row of each group, with its witness, is kept. The
-    running intersection property is what licenses the
-    grouping: once the separator is fixed, the subtrees
-    below share nothing else, so their cheapest choices
-    combine. Returns (optimum, witness, rows), rows the
-    total number of enumerated bag assignments, the sum of
+    row of each group is kept, as the row itself and the
+    child keys it chose. The witness is reconstructed in
+    one top down pass over those choices at the end. The
+    first form of this helper copied a full subtree
+    witness into every row, which is quadratic work along
+    a path and is not the linear time algorithm the
+    example is meant to demonstrate. The running
+    intersection property is what licenses the grouping:
+    once the separator is fixed, the subtrees below share
+    nothing else, so their cheapest choices combine.
+    Returns (optimum, witness, rows), rows the total
+    number of enumerated bag assignments, the sum of
     2^|bag| over bags.
     """
     n = len(bags)
@@ -706,18 +762,25 @@ def _tree_dp(bags, parent, clause_at):
             a = dict(zip(bag, bits))
             rows += 1
             cost = _wcost(clause_at.get(b, []), a)
-            witness = dict(a)
+            child_keys = {}
             for c in children[b]:
                 csep = [v for v in bags[c] if v in bag]
                 key = tuple(a[v] for v in csep)
-                ccost, cwitness = tables[c][key]
-                cost += ccost
-                witness.update(cwitness)
+                cost += tables[c][key][0]
+                child_keys[c] = key
             key = tuple(a[v] for v in sep)
             if key not in table or cost < table[key][0]:
-                table[key] = (cost, witness)
+                table[key] = (cost, bits, child_keys)
         tables[b] = table
-    optimum, witness = tables[root][()]
+    optimum = tables[root][()][0]
+    witness = {}
+    stack = [(root, ())]
+    while stack:
+        b, key = stack.pop()
+        _, bits, child_keys = tables[b][key]
+        witness.update(zip(bags[b], bits))
+        for c, ckey in child_keys.items():
+            stack.append((c, ckey))
     return optimum, witness, rows
 
 
@@ -799,6 +862,137 @@ class TreeDecompositionTest(unittest.TestCase):
         self.assertLessEqual(opt, upper)
 
 
+class DecompositionTopologyTest(unittest.TestCase):
+    """The checker enforces the one tree the elimination
+    theorem assumes. The family around the reproduced
+    failure: the supplied parent array and clause keys
+    are validated before coverage or running intersection
+    are even consulted, because the elimination reads
+    nothing but the last root it finds."""
+
+    def _two_root_case(self):
+        # The reproduced case, exactly as reported: bags
+        # [('x',), ('y',)], parents [None, None], the
+        # conflicting unit clauses on x of weights 2 and
+        # 3 in the first bag, a unit clause on y of
+        # weight 1 in the second.
+        clauses = [(2, (("x", True),)),
+                   (3, (("x", False),)),
+                   (1, (("y", True),))]
+        bags = [("x",), ("y",)]
+        parent = [None, None]
+        clause_at = {0: clauses[:2], 1: clauses[2:]}
+        return bags, parent, clause_at, clauses, ["x", "y"]
+
+    def test_the_reproduced_two_root_case_is_refused(self):
+        bags, parent, clause_at, clauses, variables = (
+            self._two_root_case())
+        self.assertFalse(_check_decomposition(
+            bags, parent, clause_at, clauses, variables))
+        # The stakes, pinned: exhaustive scoring gives
+        # optimum 2, the answer the unchecked elimination
+        # corrupted to 0 by keeping only the last root.
+        opt, _ = _wopt(clauses, variables)
+        self.assertEqual(opt, 2)
+
+    def test_three_roots_are_refused(self):
+        bags = [("x",), ("y",), ("z",)]
+        parent = [None, None, None]
+        self.assertFalse(_check_decomposition(
+            bags, parent, {}, [], ["x", "y", "z"]))
+
+    def test_no_root_is_refused(self):
+        bags = [("x",), ("y",)]
+        parent = [1, 0]
+        self.assertFalse(_check_decomposition(
+            bags, parent, {}, [], ["x", "y"]))
+
+    def test_a_self_parent_is_refused(self):
+        self.assertFalse(_check_decomposition(
+            [("x",)], [0], {}, [], ["x"]))
+
+    def test_a_dangling_parent_index_is_refused(self):
+        bags = [("x",), ("y",)]
+        for parent in ([None, 2], [None, 7], [None, -1]):
+            self.assertFalse(_check_decomposition(
+                bags, parent, {}, [], ["x", "y"]))
+
+    def test_a_parent_list_of_the_wrong_length_is_refused(
+            self):
+        bags = [("x",), ("y",)]
+        for parent in ([None], [None, 0, 0], []):
+            self.assertFalse(_check_decomposition(
+                bags, parent, {}, [], ["x", "y"]))
+
+    def test_a_detached_cycle_is_unreachable_and_refused(
+            self):
+        # One honest root and child, and beside them 2
+        # bags parented to each other: coverage and
+        # running intersection hold, no clause is out of
+        # place, and the walk from the root still never
+        # reaches the cycle.
+        bags = [("a",), ("a", "b"), ("c",), ("c", "d")]
+        parent = [None, 0, 3, 2]
+        self.assertFalse(_check_decomposition(
+            bags, parent, {}, [], ["a", "b", "c", "d"]))
+
+    def test_clause_keys_outside_the_bags_are_refused(self):
+        bags, parent, clause_at = (
+            _cycle_path_decomposition(3))
+        clauses = _cycle_clauses(3)
+        variables = list(range(3))
+        self.assertTrue(_check_decomposition(
+            bags, parent, clause_at, clauses, variables))
+        for bad_key in (9, -1, "0"):
+            widened = dict(clause_at)
+            widened[bad_key] = []
+            self.assertFalse(_check_decomposition(
+                bags, parent, widened, clauses, variables))
+
+    def test_clauses_under_a_bad_key_are_not_hidden(self):
+        clauses = [(2, (("x", True),))]
+        self.assertFalse(_check_decomposition(
+            [("x",)], [None], {9: clauses}, clauses,
+            ["x"]))
+
+    def test_a_clause_assigned_twice_is_refused(self):
+        clause = (2, (("x", True), ("y", True)))
+        bags = [("x", "y"), ("x", "y")]
+        parent = [None, 0]
+        clause_at = {0: [clause], 1: [clause]}
+        self.assertFalse(_check_decomposition(
+            bags, parent, clause_at, [clause], ["x", "y"]))
+
+    def test_valid_decompositions_still_pass(self):
+        rng = random.Random(20261126)
+        for _ in range(50):
+            bags, parent, clause_at, clauses, variables = (
+                _rooted_tree_instance(
+                    rng, rng.randrange(1, 9)))
+            self.assertTrue(_check_decomposition(
+                bags, parent, clause_at, clauses,
+                variables))
+
+    def test_witness_reconstruction_on_a_long_path(self):
+        # The reconstructed witness still scores the
+        # optimum on a path far longer than the brute
+        # force family reaches: an even cycle of 60
+        # through the width 2 path decomposition.
+        n = 60
+        clauses = _cycle_clauses(n)
+        bags, parent, clause_at = (
+            _cycle_path_decomposition(n))
+        self.assertTrue(_check_decomposition(
+            bags, parent, clause_at, clauses,
+            list(range(n))))
+        opt, witness, rows = _tree_dp(
+            bags, parent, clause_at)
+        self.assertEqual(opt, 0)
+        self.assertEqual(_wcost(clauses, witness), 0)
+        self.assertEqual(set(witness), set(range(n)))
+        self.assertLessEqual(rows, 8 * n)
+
+
 # ----------------------------------------------------------------
 # 6. The odd cycle: parity, block sums, and a separator.
 # ----------------------------------------------------------------
@@ -868,11 +1062,33 @@ class OddCycleTest(unittest.TestCase):
             opt, _ = _wopt(clauses, list(range(n)))
             self.assertLessEqual(bound, opt)
 
-    def test_every_proper_subset_is_satisfiable(self):
-        # Remove any one edge's clauses from an odd cycle
-        # and what remains is a path, which alternates: the
-        # optimum drops to 0. So no sum over proper disjoint
-        # blocks can see the 1 either.
+    def test_every_single_clause_deletion_is_satisfiable(
+            self):
+        # The theorem the page states is about proper
+        # subsets at the clause level, so drop one clause
+        # at a time, not both clauses of an edge: alternate
+        # along the remaining edges, then choose the global
+        # phase that satisfies the one clause left standing
+        # on the broken edge. All 70 deletions across the
+        # odd lengths 3 to 11 are checked, and the count
+        # itself is pinned.
+        checked = 0
+        for n in (3, 5, 7, 9, 11):
+            clauses = _cycle_clauses(n)
+            for k in range(len(clauses)):
+                rest = clauses[:k] + clauses[k + 1:]
+                opt, _ = _wopt(rest, list(range(n)))
+                self.assertEqual(opt, 0)
+                checked += 1
+        self.assertEqual(checked, 70)
+
+    def test_every_edge_deletion_is_satisfiable_too(self):
+        # The weaker form this test family started with,
+        # kept as a corollary: remove any one edge's 2
+        # clauses from an odd cycle and what remains is a
+        # path, which alternates, so the optimum drops
+        # to 0. So no sum over proper disjoint blocks can
+        # see the 1 either.
         for n in (3, 5, 7, 9, 11):
             clauses = _cycle_clauses(n)
             for e in range(n):
