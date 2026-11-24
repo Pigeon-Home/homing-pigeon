@@ -105,4 +105,34 @@ the living surfaces are.
 
 ## Conclusions
 
-(Appended after the tests run.)
+Appended 2026-11-23, after the tests ran. The supposition
+held at every point:
+
+- The exact-copy fixture (two identical two-line text files)
+  reads tree lines 4, near-duplicate 0.0%, exact copies
+  50.0%, total latent 50.0%, non_latent_percent 50.0, and
+  not_near_duplicate_percent_tree 100.0: the two definitions
+  separated by the full exact share, as written above before
+  the code changed.
+- The templated fixture (a 12-line file whose only marks are
+  the 10 templated lines of a written-out list) reads total
+  latent 83.33%, non_latent_percent 16.67, and
+  not_near_duplicate_percent_tree 100.0.
+- The whole-measure fixture, whose latent marks are all near
+  marks, still reads the two quantities equal, now pinned as
+  a coincidence of that fixture rather than as the
+  definition.
+- The tool's summary now prints "not marked near-duplicate"
+  beside the near figures and "non-latent (the complement of
+  total latent)" beside the total, and a test pins both
+  labels on the exact-copy fixture.
+
+The change the numbers support is the one the resolution
+chose: non_latent_percent is the complement of
+total_latent_percent_tree in the tool, as it already was in
+the record, and the near-only quantity stands under its own
+name. The statistics record's account of the figure carries
+the overlap note and the tree-line label, and the same note
+stands beside the quoted percentages in AGENTS.md and
+PROTOCOL.md. The audit module's tests stand at 23, all
+passing, 3 of them new with this fix.

@@ -42,7 +42,16 @@ The recorded line, in the display form settled for publication:
   total latent code held at 3.69% of the tree, with 3.11% in
   near copies, 0.63% in templated lines (the lines of a
   written-out list, equal once the one varying token is
-  masked) and 0.02% in exact copies. The audit supersedes
+  masked) and 0.02% in exact copies. The 3 category
+  percentages are each family's own share of the tree; they
+  do not sum to the 3.69% total, because a line marked by 2
+  families is counted once in the total. The 96.31% figure
+  is this audit's measured tree-line share: its denominator
+  is all tracked tree lines, the near and templated
+  detection runs over the Python files, and exact copies
+  are counted over tracked files; it does not by itself
+  measure what share of the code is active or useful. The
+  audit supersedes
   the 2026-11-13 audit's figures (96.16%, from 3.84%
   total latent, measured before and after the Q172
   fold), whose record stands in
