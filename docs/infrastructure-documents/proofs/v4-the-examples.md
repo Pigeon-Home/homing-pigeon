@@ -9,7 +9,11 @@ result of this project, and nothing here claims P = NP or
 P ≠ NP. What the project adds is the same discipline it
 asks of its own proofs: the statement, the mechanism, the
 checked cases, and the argument connecting them, each
-labeled as what it is.
+labeled as what it is. Four MaxSAT controls followed in
+the same day's later emails, checked by their sender in
+scratch work and rechecked here; they stand as sections 5
+to 8, gathered around section 3, whose two lines they
+exercise.
 
 `runner/tests/test_v4_the_examples.py` holds the finite
 parts.
@@ -31,6 +35,22 @@ The tests were expected to find all of the following.
   returns the lexicographically first hard table. Which
   table that is was not predicted; the test compares the
   extension against brute force instead.
+- Tree decomposition elimination on the fixed seed rooted
+  tree family agrees with brute force on the optimum and
+  on the reconstructed witness, on every instance.
+- The odd cycle's minimum cost is 0 at even lengths and 1
+  at odd lengths, for lengths 3 to 12, while the per edge
+  block sums stay at 0 at every length, and removing any
+  one edge's clauses from an odd cycle leaves optimum 0.
+- The width 2 path decomposition closes the cycle gap
+  with at most 8 enumerated rows per bag and at most n
+  bags.
+- Merging blocks never lowers the summed lower bound on
+  the random weighted instances, and on the odd cycle the
+  bound stays at 0 until the final merge.
+- The threshold ledger at least halves the gap at every
+  step, the lines meet at OPT, and the threshold 0
+  question agrees with brute force satisfiability.
 
 ## 1. The equality family
 
@@ -258,6 +278,159 @@ standing in for the assumed polynomial queries, and
 checks the result against the full enumeration of hard
 tables.
 
+## 5. Tree decomposition elimination, a positive control
+
+Section 3 keeps two lines about one object and asks what a
+uniform procedure would have to do to close the gap
+between them. This control closes the gap outright, on a
+family where the structure is supplied. Take a weighted
+formula: each clause carries a positive integer weight,
+and the cost of an assignment is the total weight of the
+clauses it makes false. OPT is the minimum cost. The
+discipline is the one section 3 states, unchanged: the
+same formula, the same weights, and the same objective
+for both lines, with L at most OPT at most U throughout.
+
+Suppose a tree decomposition of the variable interaction
+graph is supplied and checked: a tree of bags of
+variables, every clause's variables together in some bag,
+and the running intersection property, that the bags
+holding any one variable form a connected subtree.
+Assign each clause exactly once, to a bag that holds all
+of its variables. Then eliminate, bottom up. At each bag,
+for each assignment to the bag's separator with its
+parent, take the minimum, over the bag assignments that
+extend it, of the local violated weight plus the optimal
+child costs at their separators. Running intersection
+justifies the join: once a separator is fixed, the
+subtrees below it share no other variable, so their
+cheapest choices combine without interference. Induction
+up the tree gives the root optimum, and backtracking the
+minimizing choices reconstructs an assignment that scores
+it. The elimination supplies both lines at once: the root
+value is a lower bound by the induction, and the
+reconstructed assignment is an upper bound by direct
+scoring, and the two agree.
+
+The running time is 2^(w + 1) times a polynomial in the
+input size, where w is the width, the largest bag size
+minus 1, and the polynomial charges the bit cost of the
+weights along with the counts. With width O(log n) and a
+polynomial size supplied decomposition, the whole
+computation is polynomial. If a proposed solver has to
+discover the decomposition itself, that search is charged
+work too; it is not smuggled in as a gift. The method is
+standard exact elimination, Dechter's bucket elimination
+in another dress, and the page claims nothing more for it
+than this: a positive control, a place where the gap
+provably closes, against which a proposed gap closer can
+be measured.
+
+The test checks the decomposition rather than trusting
+it, then runs the elimination on a fixed seed family of
+rooted trees with one and two variable weighted clauses,
+1 to 8 variables, 800 instances, and compares the optimum
+and the reconstructed witness against direct scoring of
+every assignment. It also runs the weighted form of
+section 3's smallest control, (x) AND (NOT x) with
+weights 2 and 3, where every assignment violates exactly
+one clause and the lines meet at 2.
+
+## 6. The odd cycle: parity, block sums, and a separator
+
+Take the cycle of n variables where each adjacent pair is
+constrained to differ, written as weighted clauses of
+weight 1: each edge contributes (x_i OR x_j) and
+(NOT x_i OR NOT x_j), so an assignment pays exactly 1 for
+each edge whose ends agree and 0 for each edge whose ends
+differ. Alternating values satisfy every edge, and an
+alternating assignment closes consistently exactly when n
+is even. The minimum cost is 0 for even n and 1 for odd
+n: on an odd cycle some edge must agree, and an
+assignment that alternates until the final edge pays for
+that edge alone. The test pins lengths 3 to 12 against
+brute force.
+
+Now watch the lower bounds. Give each edge its own block
+and minimize each block independently: every block
+reaches 0, so the summed lower bound is 0 at every
+length, while OPT is 1 at the odd lengths. The bound is
+sound and stuck. Stronger, every proper subset of an odd
+cycle's clauses is satisfiable: remove one edge and the
+path that remains alternates, so no sum over proper
+disjoint blocks sees the 1 either. The information the
+local bounds lose is the parity, and it is lost exactly
+at the join, where the two ends of the chain must agree
+about a variable that neither block owns outright.
+
+A small separator recovers it. The path decomposition of
+section 5, with bags of 3 variables and width 2, carries
+the shared assignments the block sums threw away, and the
+elimination closes the gap on this family in linear time:
+at most n bags, at most 8 enumerated rows in each. The
+test runs it at lengths 3 to 12 and checks the optimum,
+the witness, and the row count.
+
+## 7. Block merge monotonicity
+
+Partition the clauses of a weighted formula into blocks,
+minimize each block on its own, and add the minima. The
+sum is a lower bound on OPT, because any one assignment
+pays at least each block's minimum. Merging blocks can
+only raise the sum: the merged block is minimized under
+one common assignment, where the separate blocks each had
+an assignment of their own, so the merged minimum is at
+least the sum of the minima it replaces. That is the
+whole theorem, and it is short: block sums are sound, and
+merging blocks moves L upward or leaves it standing.
+
+The odd cycle shows what the theorem does not give. From
+one block per edge to a single block, the bound on an odd
+cycle sits at 0 through every merge until the last one,
+which closes it at once. Monotonicity promises movement,
+never a rate; a contraction claim needs more than it.
+What the example tracks, and what any merge based closer
+would have to report, is the size of the blocks and
+separators involved, the work spent choosing a merge, and
+the improvement of L that the merge bought. The test pins
+the monotonicity on random weighted instances, with each
+merged bound checked against the single block bound,
+which is OPT itself, and pins the flat then sudden
+profile on the odd cycles of lengths 5, 7, and 9.
+
+## 8. The threshold query
+
+Between the lines of section 3 there is a sharper
+question. With integer costs, ask whether an assignment
+of cost at most floor((L + U) / 2) exists. A yes answer
+is worth anything only with the assignment in hand,
+verified by scoring: it lowers U to that assignment's
+cost. A correct no answer raises L above the threshold.
+Either way the gap at least halves, so logarithmically
+many threshold answers close it, and a ledger that
+records the cost and the source of every update, which
+line moved and on which answer, is what makes the closing
+auditable rather than asserted. Certifying MaxSAT already
+works in this discipline: the work of Berg and colleagues
+logs proof steps in VeriPB, so the lower line travels
+with a checkable certificate instead of a claim.
+
+The zero case is the hinge. At threshold 0 the question
+is whether a cost 0 assignment exists, which in the
+unweighted reading is satisfiability itself. So a
+polynomial threshold decider gives a polynomial exact
+solver: halve down to OPT, then reconstruct a witness by
+fixing variables one at a time and asking again. Under
+P = NP the threshold question is in P, because it is in
+NP, and the solver exists; that is the same equivalence
+section 3 states for Improve, seen from the threshold
+side. The test pins the finite part: the halving ledger
+on toy formulas and on the cycles, with the source of
+every step recorded, the lines meeting at OPT beside a
+witness that scores it, and the threshold 0 question
+agreeing with brute force satisfiability on random
+instances.
+
 ## What was found
 
 The run agreed with the supposition on every point.
@@ -281,6 +454,26 @@ The run agreed with the supposition on every point.
   and the extension returns (0, 0, 1, 0), the table that
   is 1 only on the assignment (1, 0). Brute force agrees
   it is the lexicographically first of the 7 hard tables.
+- Tree elimination: 800 rooted tree instances, 53,272
+  assignments scored by the brute force comparison, and
+  the optimum and the reconstructed witness agreed with
+  direct scoring on every instance. The weighted control
+  meets at 2, as stated.
+- The odd cycle: minimum cost matched the parity at every
+  length from 3 to 12, the per edge block sums stayed at
+  0 at every length, and every single edge removal on the
+  odd lengths left optimum 0. The width 2 elimination
+  closed the same gap with at most 8 rows per bag.
+- Block merges: on 200 random weighted instances the
+  summed bound never fell under a merge and never passed
+  OPT, and on the odd cycles of lengths 5, 7, and 9 it
+  sat at 0 until the single block merge closed it at 1.
+- The threshold ledger: on the toy formulas and the
+  cycles of lengths 3 to 9, every step at least halved
+  the gap, every update named its source, and the lines
+  met at OPT beside a witness that scores it. At
+  threshold 0 the question agreed with brute force
+  satisfiability on 100 random instances.
 
 ## What this is not
 
@@ -290,5 +483,5 @@ itself; the v4 pages keep their own scope, and this page
 borrows only their habit of naming it. The constructions
 are a meeting place: when a new mechanism is proposed in
 the discussion, this page is where its statement can be
-set beside these four, each with its assumptions on its
+set beside these, each with its assumptions on its
 face, and checked the same way.

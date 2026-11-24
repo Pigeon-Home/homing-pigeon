@@ -39,6 +39,28 @@ them that a finite check can pin.
    the construction the doc states, with brute force in
    place of the assumed polynomial queries.
 
+5. Tree decomposition elimination. On a supplied, checked
+   tree decomposition, the bottom up elimination of section
+   5 computes the exact weighted optimum and a witness that
+   scores it. On a fixed seed family of rooted trees with
+   one and two variable weighted clauses, it agrees with
+   brute force on every instance.
+6. The odd cycle. Adjacent differ on a cycle of length n
+   costs 0 for even n and 1 for odd n. Per edge block sums
+   stay at 0 at every length, every proper subset of an odd
+   cycle's clauses is satisfiable, and a width 2 path
+   decomposition closes the gap in linear time.
+7. Block merge monotonicity. Summing the independent
+   minima of a partition of the clauses is a lower bound
+   on OPT, and merging blocks never lowers it. On the odd
+   cycle the bound stays at 0 until the final merge, so
+   monotonicity alone gives no contraction rate.
+8. The threshold query. Asking whether an assignment of
+   cost at most floor((L + U) / 2) exists, and recording
+   the cost and source of each update, at least halves the
+   gap per answer and ends with the lines meeting at OPT.
+   At threshold 0 the question is satisfiability itself.
+
 The asymptotic claims themselves are not tested here, and
 the doc says so. What is tested is the finite arithmetic
 each claim rests on.
@@ -46,6 +68,7 @@ each claim rests on.
 import itertools
 import math
 import os
+import random
 import sys
 import unittest
 
@@ -410,6 +433,492 @@ class HardTableTest(unittest.TestCase):
         self.assertEqual(found, min(all_tables - computable))
 
 
+# ----------------------------------------------------------------
+# 5. Weighted MaxSAT and tree decomposition elimination.
+# ----------------------------------------------------------------
+
+def _wcost(clauses, assignment):
+    """The violated weight of a weighted formula. A weighted
+    clause is (weight, literals), literals as in _violated.
+    This is the one objective every bound on this page is
+    about: the same formula, the same weights, the same
+    cost."""
+    total = 0
+    for weight, literals in clauses:
+        if not any(assignment[v] == wanted
+                   for v, wanted in literals):
+            total += weight
+    return total
+
+
+def _wopt(clauses, variables):
+    """Brute force optimum and one witness, by direct
+    scoring over every assignment."""
+    best = None
+    best_a = None
+    for bits in itertools.product((0, 1),
+                                  repeat=len(variables)):
+        a = dict(zip(variables, bits))
+        c = _wcost(clauses, a)
+        if best is None or c < best:
+            best = c
+            best_a = a
+    return best, best_a
+
+
+def _check_decomposition(bags, parent, clause_at, clauses,
+                           variables):
+    """A supplied decomposition, checked rather than
+    trusted: every variable sits in some bag, the bags
+    holding any one variable form a connected subtree,
+    every clause is assigned exactly once, and each clause
+    sits in a bag that holds all of its variables."""
+    n = len(bags)
+    adjacency = [[] for _ in range(n)]
+    for b in range(n):
+        if parent[b] is not None:
+            adjacency[b].append(parent[b])
+            adjacency[parent[b]].append(b)
+    for v in variables:
+        holders = [b for b in range(n) if v in bags[b]]
+        if not holders:
+            return False
+        seen = {holders[0]}
+        stack = [holders[0]]
+        while stack:
+            b = stack.pop()
+            for nb in adjacency[b]:
+                if nb not in seen and v in bags[nb]:
+                    seen.add(nb)
+                    stack.append(nb)
+        if any(b not in seen for b in holders):
+            return False
+    assigned = []
+    for b in range(n):
+        for clause in clause_at.get(b, []):
+            assigned.append(clause)
+            if not all(v in bags[b] for _, lits in [clause]
+                       for v, _ in lits):
+                return False
+    return sorted(map(repr, assigned)) == sorted(
+        map(repr, clauses))
+
+
+def _tree_dp(bags, parent, clause_at):
+    """Exact elimination over a supplied tree decomposition.
+
+    Bottom up: at each bag, enumerate its assignments; the
+    cost of a row is the violated weight of the clauses
+    assigned to that bag plus, for each child, the child's
+    table entry at the row's restriction to the child's
+    separator. Rows are then grouped by their restriction
+    to the separator with the parent, and only the cheapest
+    row of each group, with its witness, is kept. The
+    running intersection property is what licenses the
+    grouping: once the separator is fixed, the subtrees
+    below share nothing else, so their cheapest choices
+    combine. Returns (optimum, witness, rows), rows the
+    total number of enumerated bag assignments, the sum of
+    2^|bag| over bags.
+    """
+    n = len(bags)
+    children = [[] for _ in range(n)]
+    root = None
+    for b in range(n):
+        if parent[b] is None:
+            root = b
+        else:
+            children[parent[b]].append(b)
+    order = []
+    stack = [root]
+    while stack:
+        b = stack.pop()
+        order.append(b)
+        stack.extend(children[b])
+    tables = {}
+    rows = 0
+    for b in reversed(order):
+        bag = list(bags[b])
+        if parent[b] is None:
+            sep = []
+        else:
+            sep = [v for v in bag if v in bags[parent[b]]]
+        table = {}
+        for bits in itertools.product((0, 1),
+                                      repeat=len(bag)):
+            a = dict(zip(bag, bits))
+            rows += 1
+            cost = _wcost(clause_at.get(b, []), a)
+            witness = dict(a)
+            for c in children[b]:
+                csep = [v for v in bags[c] if v in bag]
+                key = tuple(a[v] for v in csep)
+                ccost, cwitness = tables[c][key]
+                cost += ccost
+                witness.update(cwitness)
+            key = tuple(a[v] for v in sep)
+            if key not in table or cost < table[key][0]:
+                table[key] = (cost, witness)
+        tables[b] = table
+    optimum, witness = tables[root][()]
+    return optimum, witness, rows
+
+
+def _rooted_tree_instance(rng, nvars):
+    """One random weighted instance on a rooted variable
+    tree: variable 0 is the root, each later variable has
+    an earlier parent. Bags hold a variable and its parent,
+    so every clause over a variable alone or over a
+    parent and child pair has a home. Weights are positive
+    integers, some of them large."""
+    parents = [None] + [rng.randrange(i) for i in
+                        range(1, nvars)]
+    bags = []
+    parent = []
+    clause_at = {}
+    clauses = []
+    for v in range(nvars):
+        bag = (v,) if parents[v] is None else (
+            parents[v], v)
+        bags.append(bag)
+        parent.append(parents[v])
+        clause_at[v] = []
+    pairs = [(v,) for v in range(nvars)] + [
+        (parents[v], v) for v in range(1, nvars)]
+    for _ in range(rng.randrange(1, 3 * nvars + 1)):
+        vs = pairs[rng.randrange(len(pairs))]
+        literals = tuple((v, rng.random() < 0.5)
+                         for v in vs)
+        weight = rng.choice([1, 1, 2, 3, 7, 10 ** 6 + 5])
+        clause = (weight, literals)
+        clauses.append(clause)
+        home = vs[-1]
+        clause_at[home].append(clause)
+    return bags, parent, clause_at, clauses, list(
+        range(nvars))
+
+
+class TreeDecompositionTest(unittest.TestCase):
+    """The elimination is exact on the checked instances:
+    its optimum and its reconstructed witness agree with
+    direct scoring, and L at most OPT at most U holds with
+    the elimination supplying both lines at once."""
+
+    def test_fixed_seed_rooted_trees_agree_with_brute_force(
+            self):
+        rng = random.Random(20261123)
+        checked_assignments = 0
+        for _ in range(800):
+            nvars = rng.randrange(1, 9)
+            bags, parent, clause_at, clauses, variables = (
+                _rooted_tree_instance(rng, nvars))
+            self.assertTrue(_check_decomposition(
+                bags, parent, clause_at, clauses, variables))
+            opt, witness, rows = _tree_dp(
+                bags, parent, clause_at)
+            brute, _ = _wopt(clauses, variables)
+            checked_assignments += 2 ** nvars
+            self.assertEqual(opt, brute)
+            self.assertEqual(_wcost(clauses, witness), opt)
+            self.assertLessEqual(
+                rows, sum(2 ** len(bag) for bag in bags))
+        self.assertGreater(checked_assignments, 10000)
+
+    def test_both_lines_about_the_same_object(self):
+        # The control from section 3, weighted: (x) AND
+        # (NOT x) with weights 2 and 3. Every assignment
+        # violates exactly one clause, so L = OPT = U = 2,
+        # met by the elimination in one pass.
+        clauses = [(2, (("x", True),)),
+                   (3, (("x", False),))]
+        bags = [("x",)]
+        parent = [None]
+        clause_at = {0: clauses}
+        opt, witness, _ = _tree_dp(bags, parent, clause_at)
+        self.assertEqual(opt, 2)
+        self.assertEqual(_wcost(clauses, witness), 2)
+        lower, upper = opt, _wcost(clauses, witness)
+        self.assertLessEqual(lower, opt)
+        self.assertLessEqual(opt, upper)
+
+
+# ----------------------------------------------------------------
+# 6. The odd cycle: parity, block sums, and a separator.
+# ----------------------------------------------------------------
+
+def _cycle_clauses(n):
+    """Adjacent differ on a cycle of n variables, as
+    weighted clauses of weight 1: each edge contributes
+    (x_i OR x_j) and (NOT x_i OR NOT x_j), so an assignment
+    pays exactly 1 for each monochromatic edge and 0 for
+    each edge whose ends differ."""
+    clauses = []
+    for i in range(n):
+        j = (i + 1) % n
+        clauses.append((1, ((i, True), (j, True))))
+        clauses.append((1, ((i, False), (j, False))))
+    return clauses
+
+
+def _cycle_path_decomposition(n):
+    """A width 2 path decomposition of the cycle: bag i
+    holds variables 0, i, i + 1, the chain runs over the
+    path edges, and the closing edge between n - 1 and 0
+    is assigned to the last bag, which holds both."""
+    bags = []
+    parent = []
+    clause_at = {}
+    for i in range(n - 1):
+        bags.append((0, i, i + 1) if i else (0, 1))
+        parent.append(i - 1 if i else None)
+        clause_at[i] = []
+    for i in range(n):
+        j = (i + 1) % n
+        pair = [(1, ((i, True), (j, True))),
+                (1, ((i, False), (j, False)))]
+        home = i if i < n - 1 else n - 2
+        clause_at[home].extend(pair)
+    return bags, parent, clause_at
+
+
+class OddCycleTest(unittest.TestCase):
+    """Parity decides the cycle: minimum cost 0 for even
+    length, 1 for odd, lengths 3 to 12. Local lower bounds
+    lose the parity at the join; a width 2 separator
+    dynamic program keeps it and closes the gap in linear
+    time."""
+
+    def test_minimum_cost_is_the_parity(self):
+        for n in range(3, 13):
+            opt, witness = _wopt(
+                _cycle_clauses(n), list(range(n)))
+            self.assertEqual(opt, n % 2)
+            self.assertEqual(
+                _wcost(_cycle_clauses(n), witness), opt)
+
+    def test_block_sums_stay_at_zero_on_odd_cycles(self):
+        # One block per edge. Each block alone reaches 0,
+        # so the summed lower bound is 0 at every length,
+        # while the odd lengths have OPT 1: the bound is
+        # sound and stuck.
+        for n in range(3, 13):
+            clauses = _cycle_clauses(n)
+            blocks = [clauses[2 * i:2 * i + 2]
+                      for i in range(n)]
+            bound = sum(_wopt(block, list(range(n)))[0]
+                        for block in blocks)
+            self.assertEqual(bound, 0)
+            opt, _ = _wopt(clauses, list(range(n)))
+            self.assertLessEqual(bound, opt)
+
+    def test_every_proper_subset_is_satisfiable(self):
+        # Remove any one edge's clauses from an odd cycle
+        # and what remains is a path, which alternates: the
+        # optimum drops to 0. So no sum over proper disjoint
+        # blocks can see the 1 either.
+        for n in (3, 5, 7, 9, 11):
+            clauses = _cycle_clauses(n)
+            for e in range(n):
+                rest = [c for k, c in enumerate(clauses)
+                        if k // 2 != e]
+                opt, _ = _wopt(rest, list(range(n)))
+                self.assertEqual(opt, 0)
+
+    def test_separator_dp_closes_the_gap_in_linear_time(
+            self):
+        for n in range(3, 13):
+            clauses = _cycle_clauses(n)
+            bags, parent, clause_at = (
+                _cycle_path_decomposition(n))
+            self.assertTrue(_check_decomposition(
+                bags, parent, clause_at, clauses,
+                list(range(n))))
+            self.assertTrue(
+                all(len(bag) <= 3 for bag in bags))
+            opt, witness, rows = _tree_dp(
+                bags, parent, clause_at)
+            self.assertEqual(opt, n % 2)
+            self.assertEqual(_wcost(clauses, witness), opt)
+            # Linear at fixed width: at most n bags, each
+            # enumerating at most 2^3 rows.
+            self.assertLessEqual(len(bags), n)
+            self.assertLessEqual(rows, 8 * n)
+
+
+# ----------------------------------------------------------------
+# 7. Block merge monotonicity.
+# ----------------------------------------------------------------
+
+def _block_bound(blocks, variables):
+    """The summed lower bound: minimize each block on its
+    own and add the minima."""
+    return sum(_wopt(block, variables)[0]
+               for block in blocks)
+
+
+def _random_weighted_formula(rng, nvars, nclauses):
+    clauses = []
+    for _ in range(nclauses):
+        width = rng.randrange(1, min(3, nvars) + 1)
+        vs = rng.sample(range(nvars), width)
+        literals = tuple((v, rng.random() < 0.5)
+                         for v in vs)
+        clauses.append((rng.choice([1, 2, 5]), literals))
+    return clauses
+
+
+class BlockMergeTest(unittest.TestCase):
+    """Merging blocks can only raise the summed lower
+    bound: the merged block must be minimized under one
+    common assignment, where the separate blocks each had
+    their own. The bound stays sound throughout, at most
+    OPT."""
+
+    def test_merging_never_lowers_the_bound(self):
+        rng = random.Random(20261124)
+        for _ in range(200):
+            nvars = rng.randrange(1, 7)
+            clauses = _random_weighted_formula(
+                rng, nvars, rng.randrange(1, 13))
+            variables = list(range(nvars))
+            order = list(clauses)
+            rng.shuffle(order)
+            cut = rng.randrange(len(order) + 1)
+            blocks = [order[:cut], order[cut:]]
+            before = _block_bound(blocks, variables)
+            after = _block_bound([order], variables)
+            opt, _ = _wopt(clauses, variables)
+            self.assertLessEqual(before, after)
+            self.assertLessEqual(after, opt)
+            self.assertEqual(after, opt)
+
+    def test_the_odd_cycle_shows_no_contraction_rate(self):
+        # All the way from one block per edge to a single
+        # block, the bound on an odd cycle sits at 0 until
+        # the last merge closes it at once: monotonicity
+        # alone promises movement, never a rate.
+        for n in (5, 7, 9):
+            clauses = _cycle_clauses(n)
+            variables = list(range(n))
+            blocks = [clauses[2 * i:2 * i + 2]
+                      for i in range(n)]
+            self.assertEqual(
+                _block_bound(blocks, variables), 0)
+            merged = [c for block in blocks for c in block]
+            self.assertEqual(
+                _block_bound([merged], variables), 1)
+
+
+# ----------------------------------------------------------------
+# 8. The threshold query.
+# ----------------------------------------------------------------
+
+def _threshold_run(clauses, variables, start):
+    """The halving loop. Each round asks the threshold
+    question at t = floor((L + U) / 2): is there an
+    assignment of cost at most t? Brute force answers here,
+    standing in for the decider the discussion assumes.
+    A yes comes with a verified assignment and lowers U to
+    its cost; a no raises L above t. Every state of the
+    two lines is recorded with the source of its update.
+    Returns (ledger, witness); the ledger holds (L, U,
+    source) triples, the starting state first."""
+    upper = _wcost(clauses, start)
+    witness = dict(start)
+    lower = 0
+    ledger = [(lower, upper,
+               "start: the supplied assignment sets U, "
+               "L = 0")]
+    while upper > lower:
+        t = (lower + upper) // 2
+        hit = None
+        for bits in itertools.product(
+                (0, 1), repeat=len(variables)):
+            a = dict(zip(variables, bits))
+            c = _wcost(clauses, a)
+            if c <= t:
+                hit = (c, a)
+                break
+        if hit is not None:
+            upper = hit[0]
+            witness = hit[1]
+            ledger.append((lower, upper,
+                           "threshold %d answered yes: a "
+                           "verified assignment of cost %d "
+                           "lowers U" % (t, hit[0])))
+        else:
+            lower = t + 1
+            ledger.append((lower, upper,
+                           "threshold %d answered no: L "
+                           "rises above the threshold" % t))
+    return ledger, witness
+
+
+class ThresholdQueryTest(unittest.TestCase):
+    """Each answer at least halves the gap, the lines meet
+    at OPT, and the ledger names the cost and the source
+    of every update."""
+
+    def _check_run(self, clauses, variables):
+        start = {v: False for v in variables}
+        opt, _ = _wopt(clauses, variables)
+        ledger, witness = _threshold_run(
+            clauses, variables, start)
+        self.assertEqual(ledger[-1][0], opt)
+        self.assertEqual(ledger[-1][1], opt)
+        self.assertEqual(_wcost(clauses, witness), opt)
+        for (l0, u0, _), (l1, u1, source) in zip(
+                ledger, ledger[1:]):
+            self.assertLessEqual(l1, opt)
+            self.assertLessEqual(opt, u1)
+            self.assertLessEqual(l0, l1)
+            self.assertLessEqual(u1, u0)
+            self.assertLessEqual(
+                u1 - l1, max(1, (u0 - l0 + 1) // 2))
+            self.assertIn("threshold", source)
+        return ledger
+
+    def test_threshold_run_on_toy_formulas(self):
+        formulas = [
+            [(1, (("x", True), ("y", True)))],
+            [(2, (("x", True),)), (3, (("x", False),))],
+            [(1, (("x", True), ("y", False))),
+             (4, (("y", True), ("z", True))),
+             (1, (("x", False), ("z", False)))],
+            [(5, (("x", True),)), (5, (("y", True),)),
+             (1, (("x", False), ("y", False),
+                  ("z", True)))],
+        ]
+        for clauses in formulas:
+            variables = sorted({v for _, lits in clauses
+                                for v, _ in lits})
+            self._check_run(clauses, variables)
+
+    def test_threshold_run_on_cycles(self):
+        for n in range(3, 10):
+            self._check_run(
+                _cycle_clauses(n), list(range(n)))
+
+    def test_threshold_zero_is_the_sat_question(self):
+        # At t = 0 the threshold question is satisfiability
+        # itself: a cost 0 assignment exists exactly when
+        # OPT is 0. This is the case that makes the loop,
+        # under P = NP, a polynomial exact solver.
+        rng = random.Random(20261125)
+        for _ in range(100):
+            nvars = rng.randrange(1, 7)
+            clauses = _random_weighted_formula(
+                rng, nvars, rng.randrange(1, 10))
+            variables = list(range(nvars))
+            opt, _ = _wopt(clauses, variables)
+            exists_zero = any(
+                _wcost(clauses, dict(zip(
+                    variables, bits))) <= 0
+                for bits in itertools.product(
+                    (0, 1), repeat=len(variables)))
+            self.assertEqual(exists_zero, opt == 0)
+
+
 class PageTest(unittest.TestCase):
     """The page exists and says what this file pins."""
 
@@ -418,6 +927,15 @@ class PageTest(unittest.TestCase):
             text = fh.read()
         for needle in ("2^m", "L(F)", "0.61",
                        "truth table"):
+            self.assertIn(needle, text)
+
+    def test_page_states_the_maxsat_controls(self):
+        with open(PAGE, encoding="utf-8") as fh:
+            text = fh.read()
+        for needle in ("tree decomposition", "odd cycle",
+                       "Block merge monotonicity",
+                       "threshold", "VeriPB",
+                       "bucket elimination"):
             self.assertIn(needle, text)
 
 

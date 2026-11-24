@@ -420,10 +420,15 @@ A finding is most useful when it points at the file and the line
   against at most 3 residuals interleaved, the Levin style
   measure L(F) and its budget search, the MaxSAT gap
   closer Improve and its equivalence with P = NP, and the
-  hard truth table built under that assumption. None is a
+  hard truth table built under that assumption. Four
+  MaxSAT controls from the same day's later emails stand
+  beside them: tree decomposition elimination as a
+  positive control, the odd cycle and its parity, block
+  merge monotonicity, and the threshold query. None is a
   result of this project. `runner/tests/test_v4_the_examples.py`
   holds the finite parts: the residual counts, the
-  contraction arithmetic, and the counting.
+  contraction arithmetic, the counting, and the controls'
+  checked cases.
 - `v4-the-grammar.md`: the grammar the induction covers. A
   script of the rung is 1 of 22 atoms, or a script of the
   rung, 1 of 4 joiners, and an atom. The induction is a
