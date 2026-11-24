@@ -64,10 +64,10 @@ lines, which that landing left unrecorded, and again on
 (runner/guard/macos_confine.py) joined the canonical list and
 its wiring grew runner/ops, runner/guard and the runner proper,
 the as-assembled set stands at
-<!--hp-fig:core_assembled_lines-->73,036<!--/hp-fig--> lines
-(<!--hp-fig:core_assembled_nonblank-->66,260<!--/hp-fig-->
+<!--hp-fig:core_assembled_lines-->73,341<!--/hp-fig--> lines
+(<!--hp-fig:core_assembled_nonblank-->66,546<!--/hp-fig-->
 non-blank) and a
-<!--hp-fig:core_assembled_zip_bytes-->939,691<!--/hp-fig-->-byte
+<!--hp-fig:core_assembled_zip_bytes-->943,461<!--/hp-fig-->-byte
 zip, and the project's own estimator counts it at
 <!--hp-fig:core_assembled_tokens-->804,154<!--/hp-fig--> tokens;
 the Gemini figure above still describes the 2026-11-04 assembly.
@@ -91,7 +91,7 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 7,444 lines; the core around it is
-65,592. The set as assembled, part by part (re-measured
+65,897. The set as assembled, part by part (re-measured
 2026-11-24):
 
 - runner/ops: 24,446 lines
@@ -100,7 +100,7 @@ The runner proper is 7,444 lines; the core around it is
 - runner/runner.py: 7,444
 - runner/oracle: 5,423
 - runner/transport_extensions: 2,778
-- runner/guard: 9,545
+- runner/guard: 9,850
 - runner/cloud: 2,350
 - runner/hosting: 1,711
 - runner/__init__.py: 23

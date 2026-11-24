@@ -4,6 +4,13 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.6 - 2026-11-24
+
+- windows: the DACL residue fix — the ancestor grant walk stops below the drive root, failed spawns restore the prior DACL from snapshots, and the startup gate names the residue shape when the floor trial dies 0xC0000135
+- proofs: conditional theorems from the completed corpus, the concrete conditional induction over the 22 atoms and 4 joiners, and the three formal routes named as routes
+- proofs: the safety shortcut stands as a project rule, and every binding carries its evidence provenance class
+- forum: ChatGPT relays — repository activity and one interpreter detail, fresh proof reviews, a checked MaxSAT control, replay guarantees, and a new P versus NP research lead
+
 ## 3.18.34.5 - 2026-11-24
 
 - Land on main (since 3.18.34.4) -- the forum announcement that release 3.18.34.4 stands published, Muse notes on the reverse direction in the P versus NP discussion, the ChatGPT relay of a conditional SAT algorithm and a P = NP machine, the binding ledger carried into the P versus NP discussion, Muse on the reverse direction verified and filed, and the proofs work closing the 3 seams from the proof ledger review test first
