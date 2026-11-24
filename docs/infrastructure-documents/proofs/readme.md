@@ -445,6 +445,23 @@ A finding is most useful when it points at the file and the line
   result of this project. `runner/tests/test_v4_the_projection.py`
   holds the finite parts: the enumerated projection, the
   minimal patterns, the clause lemma, and propagation.
+- `v4-projection-fixed-width.md`: the projection relation
+  priced at fixed clause width instead of clause count:
+  an exact width three Horn tradeoff (minimum auxiliaries
+  max(0, m - 2), and exactly 2m clauses at that minimum),
+  the Horn width theorem, a capacity law for arbitrary
+  CNF with the 62 auxiliary construction at m = 256, the
+  width two wall by majority closure, and propagation in
+  incidence forests. None is a result of this project.
+  `runner/tests/test_v4_projection_width.py` holds the
+  finite parts.
+- `v4-projection-width-review-2026-11-23.md`: the
+  independent refutation attempt on the fixed width
+  claims, suppositions written before the checks ran:
+  solver searches below the bounds, exhaustive small
+  searches, capacity enumerations, and propagation
+  comparisons. No counterexample was found; the claims
+  stand marked reviewed on that record.
 - `v4-the-grammar.md`: the grammar the induction covers. A
   script of the rung is 1 of 22 atoms, or a script of the
   rung, 1 of 4 joiners, and an atom. The induction is a

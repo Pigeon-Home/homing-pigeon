@@ -250,6 +250,103 @@ exactly at m = w - 1.
 
 ## Outcome
 
-Appended below after the runs, with the verdict per
-claim and the test module that pins the finite parts:
-`runner/tests/test_v4_projection_width.py`.
+Run the same evening, 23 November 2026. Verdict first:
+no counterexample was found. Every claim in both
+emails survived every attack below, in the finite
+ranges stated. The theorem page
+`v4-projection-fixed-width.md` is landed beside the
+projection page and marked reviewed, with this page as
+its record. The finite checks stand as committed tests
+in `runner/tests/test_v4_projection_width.py`; the
+solver search needs a SAT solver and is recorded here
+only.
+
+- Claim 1, minimum auxiliaries max(0, m - 2): survived.
+  The solver search (attack A1) found no encoding at
+  m = 3 with 0 auxiliaries and at most 10 clauses, and
+  none at m = 4 with 1 auxiliary and at most 10 clauses,
+  over the full clause spaces of 218 and 636 clauses.
+  The exhaustive subset search (A2) found no encoding
+  of R_2 with at most 3 clauses. The zero auxiliary
+  boundary enumeration (A3) matched the counting
+  argument at w = 3, 4, 5: no rule body meeting every
+  pair sits inside one minimal pattern at m = w, and
+  exactly 2^(w - 1) such bodies exist at m = w - 1.
+- Claim 2, exactly 2m clauses at the minimum, with the
+  construction propagating: survived. The block
+  construction (A4) projected exactly onto R_m for
+  m = 1 to 7 with exactly 2m clauses and max(0, m - 2)
+  auxiliaries each time. The solver found no encoding
+  at m = 3 with 1 auxiliary and at most 5 clauses, one
+  below 2m, and its controls recovered the claimed
+  constructions at m = 2 (4 clauses, 0 auxiliaries) and
+  m = 3 (6 clauses, 1 auxiliary), with both projections
+  verified exact. The first encoding of R_1 found by
+  exhaustive search has exactly 2 clauses.
+- Claim 3, the Horn width theorem: survived at its
+  finite content. The group construction projected
+  exactly at the boundary points (w, k, m) = (3, 1, 3)
+  with 6 clauses, (4, 0, 3) with 8, (4, 1, 5) with 12,
+  and (5, 1, 7) with 24, and the necessity side at
+  w = 3 is the solver and enumeration results of
+  claims 1 and 2. The general width statement stands
+  on the occurrence counting argument in the hand
+  analysis; no finite check can cover it, and none is
+  claimed to.
+- Claim 4, the capacity law and the 62 bit
+  construction: survived at every finite point
+  checked. The minimally unsatisfiable enumeration
+  (A7) found 1, 2, 12, and 870 formulas for k = 0, 1,
+  2, 3 and capacities C(k, 3) = 3, 4, 5, 6, the 870
+  and the 6 exactly as the email reports; the exact
+  regime C(k, w) = (w - k) 2^k held at (k, w) = (1, 2)
+  and (2, 4). The selector construction (A4) projected
+  exactly for m = 1 to 7 with the stated counts, and
+  the m = 256 arithmetic recomputed to 62 auxiliaries
+  and 575 clauses. Scope, stated plainly: the general
+  characterization, encoding if and only if m + 1 <=
+  C(k, w), is the email's two direction argument; the
+  review verified its finite content (the capacities
+  at k up to 3, the construction family at small m,
+  the boundary arithmetic), not an independent reproof
+  of the equivalence at general k.
+- Claim 5, the width two wall: survived. The majority
+  witnesses were verified in R_m with majority outside
+  for m = 2 to 7; all 51 clauses of width at most 2
+  over 5 variables are majority closed; R_1 is
+  majority closed and its width two encoding projects
+  exactly.
+- Claim 6, propagation in incidence forests: survived,
+  and the comparison has teeth. Unit propagation agreed
+  with exact entailment, computed by enumerating
+  completions, on: the block construction at every
+  partial visible assignment for m = 1 to 4 (22,140
+  assignments) and at m = 5 on the 170,304 assignments
+  fixing at least 5 of 11 visible variables, with
+  entailment there read off the R_m table (the
+  reduction itself is the brute force comparison at
+  m = 4, a different code path to the same entailment);
+  the original chain at every partial assignment of
+  all its variables for m = 1 (243) and m = 2 (19,683),
+  and at m = 3 on the 221,184 assignments fixing at
+  least 11 of 13 variables; a second oracle for the
+  chain, least model closure instead of completion
+  enumeration, agreeing with propagation on 20,000
+  sampled partial assignments at m = 3; 200 random
+  Horn formulas whose incidence graph is a forest, on
+  all 30,780 of their partial assignments. The cyclic
+  example of section 5 of the theorem page registered
+  exactly the predicted miss: the formula entails not
+  a and propagation derives nothing, so the forest
+  condition is doing the work the claim says it does.
+  My totals differ from the email's 84,159 checks
+  because the families and ranges differ; the shapes
+  match (complete agreement inside forests, a miss
+  exactly at a cycle).
+
+On the suppositions: S1 through S7 all held as
+written. The one number I could not guess blind, the
+k = 3 minimally unsatisfiable count, came out at
+exactly the email's 870, and the enumeration ran in
+about a second, so it stands in the committed tests
+alongside k = 0 to 2.
