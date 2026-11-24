@@ -55,6 +55,12 @@ clauses below are read with no bound in force.
   names one window, in which a result that cannot be
   stashed leaves the job uncommitted and the next poll
   runs it again.
+- The 2 propositions stay separate. The handoff, with
+  its at most once bound inside one handling, is the
+  claim of this page. That an eligible job eventually
+  executes is a different proposition, about the poll
+  loop running and the box staying up, and no sentence
+  here carries it.
 
 C5 is the signature. C2 is the script cap. Both are already
 defined.

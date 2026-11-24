@@ -116,7 +116,8 @@ times its character count. 3 consequences follow.
    outside P1(49). The production cap of 1,048,576 bytes
    joins P1(1048576), which is the last rung argument of
    `properties.md` stated from the other side.
-2. **A character bound alone implies no byte cap.** A
+2. **A character bound alone gives no equal-sized
+   byte cap.** A
    character bound of B, for scripts in general, allows
    as many as 4B UTF-8 bytes. 26 copies of é are 26
    characters and 52 UTF-8 bytes: inside the character

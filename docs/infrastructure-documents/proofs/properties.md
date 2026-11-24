@@ -1259,8 +1259,61 @@ the hardness assumption named, and proving the chain
 rule outright would settle at least as much as the
 conjunction's two parts.
 
+The asymmetry, and a correction to the shorthand.
+One direction of the clean form needs less than the
+headline suggests. P = NP implies the exact
+deterministic conditional chain rule in the Kabanets
+and Kolokolova formulation on its own, with no
+GapMcKtP hardness premise, so a refutation of that
+exact rule would by itself imply P is not equal to
+NP. The hardness premise is needed only for the
+converse, the direction that reads the chain rule as
+evidence for P = NP. The premise also has to be
+carried as what it is. In the paper's numbering, the
+hardness of GapMcKtP (its Theorem 7.6) is an explicit
+assumption the clean form takes as a hypothesis; it
+is not discharged by the related hardness evidence
+of Huang, Ilango and Ren (cited there as Theorem
+7.5), which rests on subexponentially secure witness
+encryption in a particular parameter regime and
+proceeds by randomized reductions. That evidence is
+related support for the hypothesis, not a discharge
+of it. The randomized step fixes the shape of what
+the converse delivers: a polynomial time gap solver
+together with the hardness places NP inside BPP, and
+the chain rule side supplies the circuit lower bound
+the BPP = P step needs. Whenever this ledger imports
+the equivalence, it imports the paper's quantifiers
+with it: the clock expansion in the time bounds, the
+additive error term, and the quantification over
+multiple strings. The neighbouring negative results
+for randomized rKt and for pKt are stated under
+different definitions and different error regimes,
+and nothing here transfers between those measures
+and the deterministic conditional one.
+
 The counterexample dual. Fix a universal interpreter
-U. For fixed positive constants c and d, the machine
+U, and fix what universal has to mean here, because
+plain computability universality is too weak to carry
+the equivalence. U is efficient in both directions
+the argument uses. In the first direction, a
+polynomial time witness finder for formulas, written
+as a program for U, runs on U with only polynomial
+overhead: a finder that runs in time t has a U
+program that runs in time polynomial in t and the
+input size. In the second direction, the reference
+machine that drives the enumeration can simulate a
+bounded run of U, at most (n + 2)^d steps of it, and
+verify the output the run produces, each in
+polynomial time. The formula encoding and the
+interpretation of one U step stay fixed throughout.
+A universal interpreter that delays every output by
+2^n steps is universal in the computability sense
+and useless here: under it no short program runs
+fast, and the equivalence below would fail for
+reasons that say nothing about P and NP. With the
+efficiency fixed, the statement is this. For fixed
+positive constants c and d, the machine
 A(c, d) enumerates every U program of length at most
 c log2(n + 2), runs each on the formula F for at
 most (n + 2)^d steps, and returns any verified
@@ -1319,6 +1372,14 @@ unresolved assumptions, behaviour sets, and security
 guarantees are different objects. A gap closing in
 one of them motivates work in another; it does not
 close it.
+
+The equality case, stated once. Under the same
+alphabet, the same build, the same configuration
+and the same scope, L inside B inside U gives bounds
+on B and nothing more. Add L = U, and the 2 bounds
+meet: B = L = U, and B is characterised exactly.
+Without that added equality, a squeeze in this file
+is a pair of bounds, not an identification.
 
 The safety shortcut. The squeeze is not the only
 shape a claim in this ledger can take, and for one
