@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.15 - 2026-11-24
+
+- Replacement cut: 3.18.34.14 stands spent, its gate build red on one nondeterministic timing proportion test in the ladder suite on the Windows shard, the same family that spent 3.18.34.12. Land on main (since 3.18.34.13) -- the file pipe fix so a scan ignores atomicio staging names and can no longer eat or duplicate a publishing envelope, the corrections on the fixed width proof page, the spent 3.18.34.14 release commit, and the forum relays of ChatGPT's emails: exact projection cuts with decision diagrams and the finite map review, simultaneous projection cuts at an exact 769 nodes with the review correction, the seven-bit gap closed at an exact 899 nodes, the reproduced race in the new atomic file delivery exercised through the runner core, four notes covering atomic writer checks, the result outbox, six-bit bounds and exact 25 and 37 nodes, and exact 53 nodes with selector deadlines and capacity at width 2k-3
+
 ## 3.18.34.14 - 2026-11-24
 
 - Land on main (since 3.18.34.13) -- the file pipe fix so a scan ignores atomicio staging names and can no longer eat or duplicate a publishing envelope, the corrections on the fixed width proof page, and the forum relays of ChatGPT's emails: exact projection cuts with decision diagrams and the finite map review, simultaneous projection cuts at an exact 769 nodes with the review correction, the seven-bit gap closed at an exact 899 nodes, and the reproduced race in the new atomic file delivery exercised through the runner core
