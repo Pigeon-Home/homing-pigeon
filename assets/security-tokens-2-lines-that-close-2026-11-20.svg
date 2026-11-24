@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="Helvetica, Arial, sans-serif">
-  <title>2 lines that close: a ceiling for the fuzz run log at 21.0 million closing onto the line of everything else at 17.6 million by at least 0.39 of the gap a week, the gap of 3,393,230 between them closing to 0 in 30 weeks, and the whole tree at 35.2 million where the 2 lines meet</title>
+  <title>2 lines that close: a ceiling for the fuzz run log at 21.0 million closing onto the line of everything else at 17.6 million by at least 0.39 of the gap a week, the gap of 3,393,230 between them closing to 0 by week 30 at the latest, and the whole tree at 35.2 million where the 2 lines meet</title>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#2b060d"/>
@@ -61,6 +61,9 @@
   <text x="612.8" y="225.2" font-weight="bold" fill="#ffffff" font-size="12.5">0.47M</text>
   <path d="M 663.5 236.2 L 663.5 233.1" fill="none" stroke="#ff8a2a" stroke-width="6"/>
   <text x="669.5" y="227.1" font-weight="bold" fill="#ffffff" font-size="12.5">0.29M</text>
+  <text x="700" y="254" text-anchor="end" fill="#ffd7de" font-size="12.5">on the slowest closing the rule allows:</text>
+  <text x="700" y="270" text-anchor="end" fill="#ffd7de" font-size="12.5">gap 1 at week 29, 0 at week 30</text>
+  <text x="700" y="286" text-anchor="end" fill="#ffd7de" font-size="12.5">a faster closing reaches 0 sooner</text>
   <!-- the run log: counted, then at most the ceiling -->
   <path d="M 379.8 245.4 L 387.9 237.8 L 396.1 230.7 L 404.2 224.1 L 412.3 217.9 L 420.4 212.1 L 428.5 212.5 L 436.6 214.1 L 444.7 215.6 L 452.8 217 L 460.9 218.3 L 469 219.5 L 477.1 220.7 L 485.2 221.7 L 493.3 222.7 L 501.4 223.6 L 509.5 224.5 L 517.6 225.3 L 525.7 226 L 533.8 226.7 L 541.9 227.4 L 550 228 L 558.1 228.5 L 566.2 229.1 L 574.3 229.5 L 582.4 230 L 590.5 230.4 L 598.6 230.8 L 606.8 231.2 L 614.9 231.5 L 623 231.8 L 631.1 232.1 L 639.2 232.4 L 647.3 232.7 L 655.4 232.9 L 663.5 233.1 L 671.6 233.3 L 679.7 233.5 L 687.8 233.7 L 695.9 233.9 L 704 234" fill="none" stroke="#c98500" stroke-width="3" stroke-dasharray="9 6" stroke-linejoin="round" stroke-linecap="round"/>
   <!-- everything else: counted, then its own rule -->
@@ -81,8 +84,9 @@
   <text x="718" y="122" font-weight="bold" fill="#ffffff" font-size="17">3.39M</text>
   <text x="718" y="139" fill="#ffd7de" font-size="13">the gap on 21 November</text>
   <text x="718" y="178" font-weight="bold" fill="#ffffff" font-size="17">0</text>
-  <text x="718" y="195" fill="#ffd7de" font-size="13">the gap in 30 weeks,</text>
-  <text x="718" y="211" fill="#ffd7de" font-size="13">exactly, in whole tokens</text>
+  <text x="718" y="195" fill="#ffd7de" font-size="13">the gap by week 30 at</text>
+  <text x="718" y="211" fill="#ffd7de" font-size="13">the latest, exactly, in</text>
+  <text x="718" y="227" fill="#ffd7de" font-size="13">whole tokens</text>
   <text x="718" y="250" font-weight="bold" fill="#ffffff" font-size="17">17.6M</text>
   <text x="718" y="267" fill="#ffd7de" font-size="13">where the 2 lines meet.</text>
   <text x="718" y="283" fill="#ffd7de" font-size="13">a result, not a target</text>

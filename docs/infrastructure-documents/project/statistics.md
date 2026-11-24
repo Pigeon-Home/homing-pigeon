@@ -516,14 +516,17 @@ log at 21.0 million, closing onto the
 line of everything else at 17.6 million by at least
 0.39 of the gap a week.
 The gap between the 2 lines is 3,393,230 at the count
-of 2026-11-19, and at that minimum rate of closing it
-reaches 0 after 30 weeks. Where the 2 lines meet, both parts stand at 17.6
+of 2026-11-19, and at that minimum rate of closing 0
+is guaranteed by week 30: the slowest trajectory the
+rule allows stands at 1 in week 29 and at 0 in week
+30, and a faster closing the rule also allows may
+arrive earlier. Where the 2 lines meet, both parts stand at 17.6
 million and the whole tree at 35.2 million. This reading
 names no limit first either: the 2 starting lines and
 the rate are given, and the meeting point follows from
 them.
 
-![2 lines that close: a ceiling for the fuzz run log at 21.0 million closing onto the line of everything else at 17.6 million by at least 0.39 of the gap a week, the gap of 3,393,230 between them closing to 0 in 30 weeks, and the whole tree at 35.2 million where the 2 lines meet](../../../assets/security-tokens-2-lines-that-close-2026-11-20.svg)
+![2 lines that close: a ceiling for the fuzz run log at 21.0 million closing onto the line of everything else at 17.6 million by at least 0.39 of the gap a week, the gap of 3,393,230 between them closing to 0 by week 30 at the latest, and the whole tree at 35.2 million where the 2 lines meet](../../../assets/security-tokens-2-lines-that-close-2026-11-20.svg)
 
 What the 0 means. Zero is where the gap closes: nothing
 of the run log stands above the line of everything else,

@@ -491,13 +491,17 @@ class TestFifthSnapshot(unittest.TestCase):
         chart = _read(path)
         for stated in ("21.0M: the run log's ceiling",
                        "17.6M: everything else's floor",
-                       "3.39M", "35.2M"):
+                       "3.39M", "35.2M",
+                       "gap 1 at week 29, 0 at week 30",
+                       "a faster closing reaches 0 sooner"):
             self.assertIn(stated, chart, stated)
         lines = text.splitlines()
         section = "\n".join(lines[lines.index(self.HEADING):
                                   lines.index("## Where the project stands")])
         self.assertIn("The gap between the 2 lines is 3,393,230", section)
         self.assertIn("the whole tree at 35.2 million", section)
+        self.assertIn("is guaranteed by week 30", section)
+        self.assertIn("stands at 1 in week 29 and at 0 in week", section)
 
 
 class TestRecordSlots(unittest.TestCase):

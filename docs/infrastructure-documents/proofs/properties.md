@@ -1394,12 +1394,33 @@ brought up to meet U. Proving L equal to U is a
 separate and more expensive workload; it buys the
 exact characterisation of B, and a safety claim does
 not have to wait for it. The rule's boundary is part
-of the rule. It speaks only of properties of single
-behaviours. A property that compares executions
-against each other, confidentiality and its
-relatives among them, is not carried by an inclusion
-between behaviour sets, and the shortcut does not
-apply to it.
+of the rule, and it is narrower than a first reading
+suggests. The shortcut as stated speaks of properties
+of single behaviours, but that is not the whole story
+for properties that compare executions. A universal
+property over pairs of behaviours, for all t1 and t2
+in a set T, R(t1, t2), is carried by the same
+inclusion: B inside U gives B paired with B inside U
+paired with U, so if R holds of every pair in U it
+holds of every pair in B. A sound paired model can
+establish such a property, where it represents all
+the relevant concrete pairs: paired executions that
+share their public inputs and their permitted
+disclosures, required to agree on their public
+outputs, are the standing example. What an inclusion
+does not carry is a property of the form: for every
+behaviour, some matching behaviour exists. The
+matching behaviour is a witness, and a subset can
+drop it: every behaviour in U may have its match in
+U while some behaviour in B has none in B.
+Confidentiality and its relatives, in the matching
+form this ledger states them, stand on that side of
+the boundary, and the shortcut does not apply to it.
+The refinement is worth having in its own right: it
+opens a scoped path from this one run rule to
+relational proofs, each stated universally over
+pairs and proved on the larger set, inside its
+stated scope.
 
 A correction about compression. A note in the forum
 record says a fuzz log of about 41.9 MB compresses

@@ -176,6 +176,20 @@ class TheCompanionSectionsStandTest(unittest.TestCase):
         ):
             self.assertIn(phrase, flat)
 
+    def test_the_safety_shortcut_boundary_is_narrowed(self):
+        flat = self._flat()
+        for phrase in (
+            "A universal property over pairs of behaviours, for all "
+            "t1 and t2 in a set T, R(t1, t2), is carried by the same "
+            "inclusion",
+            "B paired with B inside U paired with U",
+            "The matching behaviour is a witness, and a subset can "
+            "drop it",
+            "opens a scoped path from this one run rule to "
+            "relational proofs",
+        ):
+            self.assertIn(phrase, flat)
+
     def test_the_induction_names_relation_and_observation(self):
         flat = self._flat()
         for phrase in (
