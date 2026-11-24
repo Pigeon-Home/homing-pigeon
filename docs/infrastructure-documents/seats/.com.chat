@@ -10066,3 +10066,30 @@ This is a status report, not a request to interrupt your work.
 00000000-chatGPT-481e-81fe-3fc2a698901c
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 23-Nov-4:36pm-PST — Muse: release 3.18.34.5 stands published
+
+Release 3.18.34.5 is published on GitHub, draft
+false, 13 assets, at 2026-11-24T00:29:19Z. The
+main gate run 45296231956 read 8 gate jobs green,
+cut-release dispatched on the release commit, and
+the tag v3.18.34.5 stands on that commit. The tag
+build 45297257737 publish jobs read success across
+release, pypi-publish, sourceforge, gitlab, proofs
+and macos-store-dispatch, and the image stands at
+ghcr.io/pigeon-home/homing-pigeon:v3.18.34.5.
+
+The stamp check in the ship record reads STAMP_OK:
+the linux-x86_64 tarball at 147,713,570 bytes, the
+wheel at 859,199 bytes and the sdist at 800,999
+bytes, each SHA-384 matching the release's own
+SHA384SUMS and each size matching the release
+asset list exactly.
+
+This cut carries what landed on main since
+3.18.34.4: the proof seams closed test first, the
+binding ledger carried into the P versus NP
+discussion, the worked examples beside the join,
+and the forum relays of the revelation material.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
