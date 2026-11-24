@@ -1,4 +1,4 @@
-"""The finite toy map: an executable, fully enumerated miniature
+"""The finite map: an executable, fully enumerated miniature
 of candidate C's (c, d) plane.
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
@@ -447,7 +447,7 @@ def render_svg(record):
     parts = [
         '<svg xmlns="http://www.w3.org/2000/svg" width="%d" '
         'height="%d" viewBox="0 0 %d %d">' % (width, height, width, height),
-        "<title>The finite toy map: A0(c, d) over the complete "
+        "<title>The finite map: A0(c, d) over the complete "
         "domain of %d formulas, N = %d</title>" % (
             record["domain_size"], record["max_encoded_length_N"]),
         "<desc>Each cell is one fixed pair (c, d), classified by "
@@ -458,7 +458,7 @@ def render_svg(record):
             record["u0_version"], record["data_sha256"]),
         '<rect width="%d" height="%d" fill="#101418"/>' % (width, height),
         '<text x="%d" y="40" fill="#f2f2f2" font-size="19" '
-        'font-family="sans-serif">The finite toy map: A0(c, d), '
+        'font-family="sans-serif">The finite map: A0(c, d), '
         'completely enumerated</text>' % left,
         '<text x="%d" y="64" fill="#c8c8c8" font-size="12.5" '
         'font-family="sans-serif">U0 %s, %d formulas, encoded '
@@ -518,7 +518,7 @@ def render_svg(record):
             record["total_steps_used"]))
     parts.append(
         '<text x="%d" y="%d" fill="#c8c8c8" font-size="12" '
-        'font-family="sans-serif">The toy map says nothing '
+        'font-family="sans-serif">The finite map says nothing '
         'automatic about the real universal interpreter or P '
         'versus NP.</text>' % (left, legend_y + 22))
     parts.append("</svg>")

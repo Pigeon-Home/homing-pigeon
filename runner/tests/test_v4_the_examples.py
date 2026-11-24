@@ -26,7 +26,7 @@ them that a finite check can pin.
    clauses of F that a makes false, and OPT(F) is its
    minimum. The contraction g -> floor(0.61 * g) reaches 0
    from the statistics page's starting gap of 3,393,230 in
-   the number of rounds the doc records. On toy formulas a
+   the number of rounds the doc records. On small formulas a
    brute force Improve, standing in for the assumed
    polynomial one, closes the gap in one step and keeps both
    lines sound.
@@ -302,7 +302,7 @@ def _contract(gap):
 
 class ImproveTest(unittest.TestCase):
     """The contraction arithmetic, and the two lines staying
-    sound on toy formulas."""
+    sound on small formulas."""
 
     def test_contraction_reaches_zero_from_the_page_gap(self):
         # The statistics page's thought experiment starts at
@@ -1664,7 +1664,7 @@ class ThresholdQueryTest(unittest.TestCase):
             self.assertIn("threshold", source)
         return ledger
 
-    def test_threshold_run_on_toy_formulas(self):
+    def test_threshold_run_on_small_formulas(self):
         formulas = [
             [(1, (("x", True), ("y", True)))],
             [(2, (("x", True),)), (3, (("x", False),))],

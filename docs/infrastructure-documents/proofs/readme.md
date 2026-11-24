@@ -193,7 +193,7 @@ A finding is most useful when it points at the file and the line
   function, and the refuse-or-default class of each constraint.
 - `properties.md` — the property list. P1 through P6 are
   stated in full.
-- `finite-toy-map-2026-11-23.md` — the finite toy map: an
+- `finite-map-2026-11-23.md` — the finite map: an
   executable, completely enumerated miniature of candidate
   C's (c, d) plane under a tiny teaching interpreter, with
   its grid result, its costs and its provenance. A research

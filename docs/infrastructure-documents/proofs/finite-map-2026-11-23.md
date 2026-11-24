@@ -1,4 +1,4 @@
-# The finite toy map: candidate C, made executable at toy size
+# The finite map: candidate C, made executable at finite size
 
 This page records a small research instrument built on
 2026-11-23, proposed in ChatGPT's signed review of that
@@ -7,7 +7,7 @@ candidate C's (c, d) plane. Candidate C stands in
 [the three chart candidates](../project/three-chart-candidates-2026-11-23.md).
 Its plane is a definition map for a real universal
 interpreter, and today no pair on it carries a checked
-counterexample for that machine. The toy map is the same
+counterexample for that machine. The finite map is the same
 shape of question asked of a machine small enough to check
 completely: a teaching and control machine, not the
 universal machine of the theorem. Nothing on this page says
@@ -18,7 +18,7 @@ described.
 ## The machine U0
 
 U0, version U0-1.0, is specified completely in
-`runner/tools/toy_map.py`, and the specification is short
+`runner/tools/finite_map.py`, and the specification is short
 enough to state here in full. A program is a finite bit
 string. The program bits are read as a candidate assignment:
 bit i of the program is the value of variable x_i, and
@@ -120,7 +120,7 @@ only on the finished grid.
 
 ## The result
 
-![The finite toy map: a 3 by 3 grid of (c, d) pairs, each cell marked by shape as well as colour, circles for PASS UP TO N at (1, 1), (2, 1), (1, 2) and (2, 2), squares carrying an X for FAIL at (0, 0), (1, 0), (2, 0), (0, 1) and (0, 2), no triangles, with the total enumeration cost and the data hash on the figure](../../../assets/finite-toy-map-2026-11-23.svg)
+![The finite map: a 3 by 3 grid of (c, d) pairs, each cell marked by shape as well as colour, circles for PASS UP TO N at (1, 1), (2, 1), (1, 2) and (2, 2), squares carrying an X for FAIL at (0, 0), (1, 0), (2, 0), (0, 1) and (0, 2), no triangles, with the total enumeration cost and the data hash on the figure](../../../assets/finite-map-2026-11-23.svg)
 
 The run matched the supposition cell for cell. FAIL at
 (0, 0), (1, 0), (2, 0), (0, 1) and (0, 2): 5 cells. PASS
@@ -170,7 +170,7 @@ cells carry the full domain cost.
 ## Provenance
 
 The record of the run, produced by
-`python3 -m runner.tools.toy_map`, carries: the
+`python3 -m runner.tools.finite_map`, carries: the
 interpreter version, U0-1.0; the grammar, CNF over x0, x1,
 x2 with at most 3 distinct clauses per formula in canonical
 order; the maximum encoded length N = 20; the domain size,
@@ -186,7 +186,7 @@ costs and states; and a data hash over the record,
 sha256 e7229e46925cb5c7d57a1e1367a6afeedb982f0d58ddb24d785f11cf30e714ad,
 which also stands on the figure itself, so the picture and
 the record can be checked against each other. The unit
-tests in `runner/tests/test_toy_map.py` re-derive the grid
+tests in `runner/tests/test_finite_map.py` re-derive the grid
 from the code, re-check every named counterexample's
 enumeration in full, and pin the monotonicity property per
 formula.
@@ -194,7 +194,7 @@ formula.
 ## The budget repair: supposition, written before the fix
 
 A review on the evening of 2026-11-23 (ChatGPT's signed
-emails of 7:19 PM and 7:24 PM) found a gap in the toy's
+emails of 7:19 PM and 7:24 PM) found a gap in the map's
 resource contract. The per cell program budget was checked
 only after a whole formula's candidate search completed,
 so the budget was a report, not a limit. The control is
@@ -262,12 +262,12 @@ so the figure and the provenance above stand as published.
 The strengthened output test was also run against the
 mutation itself, a U0 replaced by a function that always
 returns no output: the test now fails on that mutation,
-where the earlier shape passed it untouched. The toy map
+where the earlier shape passed it untouched. The finite map
 suite stands at 42 tests, all passing, with 10 of them
 pinning the budget contract at allowances of 0, 1,
 exactly enough, and 1 short.
 
-## What the toy map does and does not teach
+## What the finite map does and does not teach
 
 It teaches the quantifier shape honestly, at a size where
 every mark on the map is a checked fact: a finite domain

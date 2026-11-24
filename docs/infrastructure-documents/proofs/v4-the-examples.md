@@ -229,7 +229,7 @@ aided.
 
 The test pins the contraction arithmetic, including the
 30 rounds from the statistics page's starting gap of
-3,393,230, and runs a brute force Improve on toy formulas
+3,393,230, and runs a brute force Improve on small formulas
 to check that both lines stay sound and the gap closes.
 The brute force stands in for the assumed polynomial
 procedure; it demonstrates the bookkeeping, not the
@@ -445,7 +445,7 @@ P = NP the threshold question is in P, because it is in
 NP, and the solver exists; that is the same equivalence
 section 3 states for Improve, seen from the threshold
 side. The test pins the finite part: the halving ledger
-on toy formulas and on the cycles, with the source of
+on small formulas and on the cycles, with the source of
 every step recorded, the lines meeting at OPT beside a
 witness that scores it, and the threshold 0 question
 agreeing with brute force satisfiability on random
@@ -488,7 +488,7 @@ The run agreed with the supposition on every point.
   summed bound never fell under a merge and never passed
   OPT, and on the odd cycles of lengths 5, 7, and 9 it
   sat at 0 until the single block merge closed it at 1.
-- The threshold ledger: on the toy formulas and the
+- The threshold ledger: on the small formulas and the
   cycles of lengths 3 to 9, every step at least halved
   the gap, every update named its source, and the lines
   met at OPT beside a witness that scores it. At

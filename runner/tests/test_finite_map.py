@@ -1,4 +1,4 @@
-"""Tests for the finite toy map (runner/tools/toy_map.py).
+"""Tests for the finite map (runner/tools/finite_map.py).
 
 Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
 
@@ -17,7 +17,7 @@ import json
 import string
 import unittest
 
-from runner.tools import toy_map as TM
+from runner.tools import finite_map as TM
 
 FORMULAS = TM.all_formulas()
 RECORD = None

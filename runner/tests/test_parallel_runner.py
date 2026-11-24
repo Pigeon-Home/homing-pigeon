@@ -588,7 +588,7 @@ class ReadableFromTheRunPageTest(_OutsideActions):
         if sys.version_info >= (3, 12):
             # The block is kept whole: its header, through the
             # summary lines unittest prints after it. (Sub-millisecond
-            # tests are hidden by unittest without -v, so a toy suite
+            # tests are hidden by unittest without -v, so a miniature suite
             # shows the header and the hidden-count note, not ids.)
             self.assertIn("Slowest test durations", text)
             self.assertLess(text.index("Slowest test durations"),

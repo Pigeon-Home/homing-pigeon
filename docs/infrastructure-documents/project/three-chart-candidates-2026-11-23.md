@@ -410,7 +410,7 @@ rather than a picture of the day's work, and the chain
 rule hinge and the symmetry results do not stand on it
 at all.
 
-The finite toy version of this plane, completely enumerated under a tiny teaching interpreter, stands at [the finite toy map](../proofs/finite-toy-map-2026-11-23.md).
+The finite version of this plane, completely enumerated under a tiny teaching interpreter, stands at [the finite map](../proofs/finite-map-2026-11-23.md).
 
 ## Sources
 
