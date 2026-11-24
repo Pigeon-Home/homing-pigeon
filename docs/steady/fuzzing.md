@@ -69,13 +69,13 @@ the as-assembled set stands at
 non-blank) and a
 <!--hp-fig:core_assembled_zip_bytes-->943,461<!--/hp-fig-->-byte
 zip, and the project's own estimator counts it at
-<!--hp-fig:core_assembled_tokens-->804,154<!--/hp-fig--> tokens;
+<!--hp-fig:core_assembled_tokens-->804,209<!--/hp-fig--> tokens;
 the Gemini figure above still describes the 2026-11-04 assembly.
 The project's own estimator counts the canonical
 <!--hp-fig:core_files-->139<!--/hp-fig-->-file list at
-<!--hp-fig:core_tokens-->792,575<!--/hp-fig--> tokens across
-<!--hp-fig:core_lines-->72,222<!--/hp-fig--> lines
-(<!--hp-fig:core_lines_nonblank-->65,545<!--/hp-fig-->
+<!--hp-fig:core_tokens-->792,630<!--/hp-fig--> tokens across
+<!--hp-fig:core_lines-->72,226<!--/hp-fig--> lines
+(<!--hp-fig:core_lines_nonblank-->65,549<!--/hp-fig-->
 non-blank); the 2 token counts come from different counters and
 are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
