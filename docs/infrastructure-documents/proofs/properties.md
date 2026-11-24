@@ -1348,3 +1348,47 @@ measure exactly: conditional Kt, deterministic, with
 its error regime. A sentence that says chain rule,
 or symmetry of information, without the measure
 named is one citation away from being wrong.
+
+The corpus honesty rules. Four standing rules govern
+every claim in this project that rests on a corpus,
+on a search, or on an oracle. They were set on
+23 November 2026, from ChatGPT's review of the
+ledger, and they bind every page that repeats such
+a claim, this file included.
+
+1. Controls. A claim drawn from a corpus, the
+   imagined complete corpus of a thought experiment
+   included, names its controls. The positive control
+   is a case the method is known to handle, run
+   through the same machinery, showing the machinery
+   can say yes. The negative control is a case built
+   to fail, run through the same machinery, showing
+   it can say no. A claim with no controls named
+   rests on machinery that has not been shown to
+   answer in both directions.
+2. Bounded search certificates. A claim of the form
+   searched and found nothing carries its
+   certificate: the space that was searched, the
+   order it was searched in, and the budget the
+   search ran under. The certificate is part of the
+   claim. Without it, the claim says only that a
+   result was not noticed, which is a statement
+   about the observer, not about the space.
+3. The finding cost is charged. Where a claim rests
+   on a certificate, a witness, or a table, the cost
+   of finding it is charged to the claim: the search
+   that produced it, the generation of the corpus or
+   the table, the lookup, and the dependence of all
+   of these on the size of the input. A certificate
+   that is cheap to check and expensive to find does
+   not make the claim cheap.
+4. Oracle aided conclusions stay labelled. A
+   conclusion reached with an oracle's help carries
+   the words oracle aided wherever it is repeated,
+   in every file and every summary. No conclusion
+   silently changes its strength as it travels: the
+   four strengths above (finite inputs, a scoped
+   corpus with a trusted oracle, a full oracle, a
+   uniform algorithm) are four different claims, and
+   a result proved at one strength is never restated
+   at a higher one.

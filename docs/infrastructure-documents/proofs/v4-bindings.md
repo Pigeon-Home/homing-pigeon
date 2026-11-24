@@ -134,7 +134,15 @@ The fuzz campaign's log (`runner/tests/de_dust/runs.jsonl`)
 records 35,270 grow runs over 31 targets. Together they tried
 651,086,719 inputs against the readers' contracts. The
 corpus those runs kept stands at 2,664 corpus entries, and no
-crash stands open in it.
+crash stands open in it. That last claim carries the
+certificate the ledger's second honesty rule asks for
+(`properties.md`, the corpus honesty rules): the space is
+the inputs those recorded runs tried, the order is the
+campaign's own order in the log, and the budget is the
+runs themselves, with every child held at or under 16,384
+bytes, as the sizes section below records. A crash on an
+input outside that space, that order, or that budget is
+not a crash this sentence speaks about.
 
 A fuzz target is bound to a constraint when its corpus
 enters a function the constraint names. The count is made by
@@ -184,6 +192,20 @@ already presses on which constraint, and where none does.
 Each bound target's corpus is replayed against its contract
 on every suite run by `CorpusReplayTest` in
 `runner/tests/test_de_dust_corpus.py`.
+
+The controls for the claims of this section, under the
+ledger's first honesty rule (`properties.md`, the corpus
+honesty rules). The positive control is the replay itself:
+every kept entry is run again through its target's check on
+every suite run, and the check's answer on it is the answer
+its contract requires, so the machinery is shown saying yes
+and no on known inputs each time. The negative controls
+stand at the doors, in the section below: arrivals turned 3
+ways (1 digit of the signature changed, the body changed
+under its signature, a key the runner does not hold) run
+nothing, and a job 1 byte past a cap is refused. The
+machinery is shown refusing what it must refuse, on inputs
+built for that answer.
 
 ## The sizes beside the reach
 
