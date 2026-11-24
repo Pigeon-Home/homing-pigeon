@@ -64,18 +64,18 @@ lines, which that landing left unrecorded, and again on
 (runner/guard/macos_confine.py) joined the canonical list and
 its wiring grew runner/ops, runner/guard and the runner proper,
 the as-assembled set stands at
-<!--hp-fig:core_assembled_lines-->73,354<!--/hp-fig--> lines
-(<!--hp-fig:core_assembled_nonblank-->66,559<!--/hp-fig-->
+<!--hp-fig:core_assembled_lines-->73,362<!--/hp-fig--> lines
+(<!--hp-fig:core_assembled_nonblank-->66,567<!--/hp-fig-->
 non-blank) and a
-<!--hp-fig:core_assembled_zip_bytes-->943,775<!--/hp-fig-->-byte
+<!--hp-fig:core_assembled_zip_bytes-->944,045<!--/hp-fig-->-byte
 zip, and the project's own estimator counts it at
-<!--hp-fig:core_assembled_tokens-->804,388<!--/hp-fig--> tokens;
+<!--hp-fig:core_assembled_tokens-->804,477<!--/hp-fig--> tokens;
 the Gemini figure above still describes the 2026-11-04 assembly.
 The project's own estimator counts the canonical
 <!--hp-fig:core_files-->139<!--/hp-fig-->-file list at
-<!--hp-fig:core_tokens-->792,809<!--/hp-fig--> tokens across
-<!--hp-fig:core_lines-->72,235<!--/hp-fig--> lines
-(<!--hp-fig:core_lines_nonblank-->65,558<!--/hp-fig-->
+<!--hp-fig:core_tokens-->792,898<!--/hp-fig--> tokens across
+<!--hp-fig:core_lines-->72,243<!--/hp-fig--> lines
+(<!--hp-fig:core_lines_nonblank-->65,566<!--/hp-fig-->
 non-blank); the 2 token counts come from different counters and
 are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,

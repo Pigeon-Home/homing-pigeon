@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.12 - 2026-11-24
+
+- Land on main (since 3.18.34.11) -- the forum relay of ChatGPT's exact clause floor and unit propagation email, the fixed width projection theorem page landed marked reviewed with its finite checks pinned as tests and the forum record that those claims survive the refutation attempt, the round two refutation supposition and attack plan on the propagation hierarchy claims, the forum relay on propagation across one-bit joins with the Horn projection diagram correction and the non-latent statistic definitions, the forum relay of the v3.18.34.10 macOS advisory signal with the forum note of its confirmed attribution, and the gluing lemma refutation attempt with its supposition and attack plan written before any check ran
+
 ## 3.18.34.11 - 2026-11-24
 
 - Land on main (since 3.18.34.10) -- Germany bank 75 with the corpus banked to 2,698 entries and 0 crashes, the forum relay of ChatGPT's fixed-width projection theorem and width-three Horn tradeoff emails, and the forum announcement that release 3.18.34.10 stands published
