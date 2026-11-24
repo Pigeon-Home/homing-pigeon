@@ -23,7 +23,13 @@ The 4 rules stand in the ledger itself,
    stands open in the corpus) still carries its
    certificate beside it: the space, the order, and the
    child cap that bounds the budget.
-3. Every found nothing claim on the live proof shelf
+3. The companion sections of the 2026-11-23 completion
+   checklist (items 16, 18 and 19: the conditional
+   theorems, the concrete conditional induction, and
+   the three formal routes; item 17, the safety
+   shortcut, stands beside the squeeze) stand in the
+   ledger's closing section, at their proved strengths.
+4. Every found nothing claim on the live proof shelf
    (no crash, no findings, 0 disagreements, 0 differences,
    found nothing) sits near a stated count or bound, so a
    new unbounded claim of that shape fails here by name.
@@ -110,6 +116,92 @@ class TheRepairedClaimTest(unittest.TestCase):
         text = _read(*_PROOFS, "v4-bindings.md")
         self.assertIn("The positive control is the replay itself", text)
         self.assertIn("The negative controls", text)
+
+
+class TheCompanionSectionsStandTest(unittest.TestCase):
+    """Items 16, 18 and 19 of the 2026-11-23 completion checklist.
+
+    The conditional theorems from the completed corpus,
+    the concrete conditional induction, and the three
+    formal routes stand in the closing section of
+    properties.md, each at its proved strength, and none
+    of them reads as proving P = NP or its negation.
+    Item 17, the safety shortcut, stands beside the
+    squeeze in the same section and is pinned here too.
+    """
+
+    def _flat(self):
+        text = _read(*_PROOFS, "properties.md")
+        return re.sub(r"\s+", " ", text)
+
+    def test_the_section_and_its_parts_stand(self):
+        flat = self._flat()
+        for phrase in (
+            "## Design from the completed corpus, and two companions",
+            "Design from the completed corpus, as conditional theorems.",
+            "The concrete conditional induction.",
+            "The three formal routes.",
+            "The safety shortcut. The squeeze is not the only shape",
+        ):
+            self.assertIn(phrase, flat)
+
+    def test_the_conditional_theorems_carry_their_strengths(self):
+        flat = self._flat()
+        for phrase in (
+            "Theorem 1, at strength 2.",
+            "Theorem 2, at strength 4.",
+            "Theorem 3, at strength 4.",
+            "Theorem 4, at strength 4.",
+            "The equivalence is the theorem.",
+            "no finite corpus establishes",
+        ):
+            self.assertIn(phrase, flat)
+
+    def test_the_safety_shortcut_keeps_equality_separate(self):
+        flat = self._flat()
+        for phrase in (
+            "If B sits inside U, and every behaviour in U has the "
+            "property, then every behaviour in B has it.",
+            "Proving L equal to U is a separate and more expensive "
+            "workload",
+            "the shortcut does not apply to it",
+        ):
+            self.assertIn(phrase, flat)
+
+    def test_the_induction_names_relation_and_observation(self):
+        flat = self._flat()
+        for phrase in (
+            "one of the 22 atoms",
+            "one of the 4 joiners",
+            "The abstract state is a pair: the status so far, "
+            "and whether the pipeline in hand is running.",
+            "The observation semantics is chosen deliberately",
+            "the observation of a run is its output, its exit status, "
+            "and the set of commands that ran.",
+            "The 352 steps of M are the whole step table.",
+            "the premise is named, not proved",
+        ):
+            self.assertIn(phrase, flat)
+
+    def test_the_three_routes_are_named_with_their_bounds(self):
+        flat = self._flat()
+        for phrase in (
+            "Route 1, parametric induction.",
+            "Route 2, bounded exhaustive checking.",
+            "Route 3, the ideal teacher.",
+            "74,072,330,493, and that count was not exhausted",
+            "858,319 scripts",
+            "19,360 rows",
+            "the conclusion stays labelled oracle aided",
+        ):
+            self.assertIn(phrase, flat)
+
+    def test_nothing_in_the_section_claims_the_open_problem(self):
+        flat = self._flat()
+        self.assertIn(
+            "None of them proves P = NP, and none of them proves "
+            "its negation.",
+            flat)
 
 
 class FoundNothingClaimsCarryBoundsTest(unittest.TestCase):

@@ -1412,3 +1412,203 @@ a claim, this file included.
    uniform algorithm) are four different claims, and
    a result proved at one strength is never restated
    at a higher one.
+
+## Design from the completed corpus, and two companions
+
+Three pieces of writing were named as still owed on
+23 November 2026, in the completion checklist of
+that day, and they stand here together: design from
+the completed corpus, written as conditional
+theorems; the concrete conditional induction over
+the atoms and joiners; and the three formal routes,
+named as routes. The fourth piece named beside
+them, the safety shortcut, stands above, beside the
+squeeze it belongs with. Each piece here is stated
+at the strength it can carry. None of them proves
+P = NP, and none of them proves its negation.
+
+Design from the completed corpus, as conditional
+theorems. The premise discipline stands above,
+under the four strengths of assuming future data.
+The theorems themselves are conditional: each one
+names its premise, and its conclusion holds exactly
+where the premise holds.
+
+Theorem 1, at strength 2. Let D be a fixed, named,
+finite domain. Suppose a corpus covers every input
+of D, a trusted oracle gives the expected answer
+for every input of D, and a candidate procedure
+agrees with the oracle on every input of D. Then
+the candidate is correct on D. The conclusion names
+D and nothing outside D: agreement on a completed
+corpus of one domain is a theorem about that
+domain, and it lifts to no larger domain by itself.
+
+Theorem 2, at strength 4. Suppose one fixed
+deterministic procedure Improve, running in time
+bounded by a polynomial in the size of its input,
+takes a formula, a current assignment, and a valid
+lower bound on the number of clauses every
+assignment leaves unsatisfied, and returns a new
+assignment and a new lower bound, both lines sound,
+with the gap between them closed by a fixed factor
+below one, or by at least one, on every valid
+state. Then SAT is decidable in polynomial time, so
+P = NP. The converse holds as well: if P = NP, such
+an Improve exists, because the decision problem of
+whether an assignment violating at most k clauses
+exists is in NP, and polynomially many such
+decisions, with the standard self reduction,
+compute the optimum and an assignment attaining it.
+The equivalence is the theorem. Whether such an
+Improve exists is the open question, and this
+project claims neither side of it.
+
+Theorem 3, at strength 4. Fix the universal
+interpreter of the counterexample dual above, with
+its simulation conditions. If fixed constants a and
+c bound the combined description and time cost
+L(F) by a log2(n + 2) + c for every satisfiable
+formula F of length n, then the bounded search at
+that budget is a polynomial time SAT decider, so
+P = NP. A completed corpus, at any size, is
+evidence about the bound on the formulas it covers;
+by Theorem 1 it is a theorem about those formulas
+only, and the uniform bound over all lengths is a
+separate claim that no finite corpus establishes.
+
+Theorem 4, at strength 4. Suppose a deterministic
+compressor, running in polynomial time, reduces the
+list of retained prefixes of a formula at every
+level to at most a polynomial number of prefixes,
+and keeps the contract that some prefix in the
+original list can be completed to a satisfying
+assignment exactly when some prefix in the reduced
+list can. Then following the retained prefixes to
+complete assignments decides SAT in polynomial
+time. The contract is the premise. Naming a live
+prefix is a specification; a cheap rule that finds
+one is the research, and a proof that a small list
+exists gives no bound on the cost of finding it.
+
+The concrete conditional induction. The bounded
+script claim of this project rests on one
+induction, stated here with its relation and its
+observation semantics named, so the claim can be
+read at its proved strength.
+
+The grammar is the one in v4-the-grammar.md: a
+script of the rung is one of the 22 atoms, or a
+script of the rung, then one of the 4 joiners
+(` && `, ` || `, `; `, ` | `), then an atom, and
+every script of the rung has exactly one such cut.
+The concrete state at a cut is the state of the
+shell running the script: the working directory,
+the environment as the runner passes it in, the
+effects on files so far, the input stream, and the
+status so far. The abstract state is a pair: the
+status so far, and whether the pipeline in hand is
+running. The relation between them is abstraction:
+a concrete state is related to the abstract pair it
+projects to, and the induction needs the next step
+of a script to depend on the concrete state only
+through that pair. That dependence is premise P-b
+of the bound page. For this grammar it rests on
+premise P-a, read off the 22 atom texts: no atom
+assigns or expands a variable it has set, changes
+the directory, reads its input, redirects (the one
+atom `echo a > /dev/null` excepted), loops, or
+calls eval, source, exec, set, or trap. P-a is a
+fact about these 22 texts. P-b is a fact about this
+grammar. Neither is a fact about the shell in
+general.
+
+The observation semantics is chosen deliberately,
+and it is this: the observation of a run is its
+output, its exit status, and the set of commands
+that ran. The order of the two sides of a pipe is
+not part of the observation, and no claim in this
+induction speaks about it. Timing and interleaving
+are not observed either. A property that needs an
+observation outside this list needs a wider
+semantics and a new induction, not a wider reading
+of this one.
+
+The induction itself. Base: each of the 22 atoms,
+run alone, has the result the abstract machine M
+gives it; the 22 atoms fall into 2 abstract kinds.
+Step: if every script of at most k atoms has the
+result M gives it, then a script of k + 1 atoms
+cuts, uniquely, into a script of k atoms, one
+joiner, and one atom; the joined result is computed
+from the two abstract tables, with no walk through
+the atoms, and closing the 2 kinds under every
+joiner gives 14 kinds, which are closed. The 352
+steps of M are the whole step table. Conclusion,
+conditional: every script of the rung, of any
+number of atoms, has the result M gives it, under
+the observation semantics above. The condition is
+the correspondence premise: that the shell realizes
+M on those observations. For bash 5.2.15 that
+correspondence stands as evidence, 19,360 rows in
+which the output, the status, and the commands that
+ran were the machine's, and evidence is the word:
+the premise is named, not proved, in
+v4-the-ladder.md, and the theorem is exactly as
+strong as the premise.
+
+The three formal routes. Three routes can carry a
+claim of this project from its premises to its
+conclusion, and a claim names the route it took.
+
+Route 1, parametric induction. The statement is
+proved for an arbitrary value of a size parameter:
+a base case, and a step that carries the statement
+from each size to the next, as in the induction
+above, where the parameter is the number of atoms.
+Its strength is uniform over every size the
+parameter ranges over, inside the scope the
+premises name. Its obligations are the base, the
+step, and every premise the step uses.
+
+Route 2, bounded exhaustive checking. Every case
+inside stated bounds is checked, and the claim is
+exactly the bounded claim. The bounds are part of
+the claim, and they are stated here for the checks
+this project leans on: the 352 steps of the
+abstract machine, each one checked; scripts of 1
+atom and of 2 atoms, each one cut back to the atoms
+and joiners it was built from; the shell
+correspondence evidence, 19,360 rows; and the
+sample of 858,319 scripts named in
+v4-at-a-bound.md, which is a sample and not an
+exhaustion. The full count of scripts of at most 49
+characters under this grammar is 74,072,330,493,
+and that count was not exhausted; no bounded check
+in this list establishes anything about a case
+outside its bound.
+
+Route 3, the ideal teacher. A claim may be
+developed with an ideal teacher: an oracle that
+answers every question put to it, correctly. Every
+assumption about the teacher is then an obligation
+of the claim, and the obligations are these.
+Soundness: each answer the claim uses must be
+checked by means that do not assume the teacher, or
+the conclusion stays labelled oracle aided under
+the corpus honesty rules above. Coverage: the
+domain the teacher is assumed to cover must be
+named, and the conclusion reaches no further than
+that domain. Cost: the size of the teacher's
+answers, and the work of obtaining them, are
+charged in the ledger like any other work.
+Uniformity: before a conclusion developed with a
+teacher is restated as a claim about a uniform
+algorithm, the teacher must be replaced by that
+algorithm, exhibited, with its own bounds proved;
+until then the claim stands at the strength of the
+teacher it assumed, under the four strengths above.
+A route 3 claim that has discharged none of its
+obligations is a conditional statement about a
+world with that teacher in it, and it is read as
+one.
