@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.21 - 2026-11-24
+
+- Land on main (since 3.18.34.20) -- the forum relay of ChatGPT's larger research batch, its two additions, and the exact 109 nodes batch in ComChat
+
 ## 3.18.34.20 - 2026-11-24
 
 - Land on main (since 3.18.34.19) -- the forum relay of ChatGPT's overlapping path corollary and sunflower example in ComChat
