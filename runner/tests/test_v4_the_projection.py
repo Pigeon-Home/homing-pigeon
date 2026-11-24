@@ -244,6 +244,10 @@ class TestPropagation(unittest.TestCase):
                                     f"m={m} vis={vis}")
 
 
+FIGURE = os.path.join(
+    ROOT, "assets", "horn-projection-flat-boundary-2026-11-23.svg")
+
+
 class TestThePage(unittest.TestCase):
     def test_page_states_the_construction(self):
         with open(PAGE, encoding="utf-8") as f:
@@ -252,6 +256,23 @@ class TestThePage(unittest.TestCase):
                        "Supposition, written before the tests ran",
                        "test_v4_the_projection.py"):
             self.assertIn(needle, text)
+
+    def test_figure_labels_the_chain_as_forcing(self):
+        # The figure correction of 23 November 2026: the Horn
+        # rule is an implication, so the left panel labels it
+        # as forcing in the least completion, never as an
+        # equality holding in every completion, and the right
+        # panel states the canonical clause direction.
+        with open(FIGURE, encoding="utf-8") as f:
+            text = f.read()
+        for needle in ("r_(i-1) and t_i together force r_i",
+                       "t_1 forces r_1",
+                       "Each minimal pattern falsifies exactly "
+                       "one canonical clause"):
+            self.assertIn(needle, text)
+        for absent in ("r_i = r_(i-1) and t_i",
+                       "defeats every clause but its own"):
+            self.assertNotIn(absent, text)
 
 
 if __name__ == "__main__":

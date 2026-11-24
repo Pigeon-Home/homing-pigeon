@@ -29,15 +29,25 @@
   </g>
   <text x="150" y="180" font-size="13" fill="#9fb4c0">a_i or b_i forces t_i</text>
 
-  <!-- t to r chain -->
+  <!-- t to r chain: t_1 alone forces r_1; each later r_i is forced jointly by
+       r_(i-1) and t_i, meeting at the AND junction dots, arrows into each r_i -->
   <g stroke="#4fb3a9" stroke-width="2" fill="none">
-    <line x1="255" y1="198" x2="330" y2="198"/>
-    <line x1="255" y1="258" x2="330" y2="258"/>
-    <line x1="255" y1="318" x2="330" y2="318"/>
-    <line x1="255" y1="378" x2="330" y2="378"/>
-    <line x1="385" y1="210" x2="385" y2="246"/>
-    <line x1="385" y1="270" x2="385" y2="306"/>
-    <line x1="385" y1="330" x2="385" y2="366"/>
+    <line x1="255" y1="198" x2="326" y2="198"/>
+    <line x1="255" y1="258" x2="326" y2="258"/>
+    <line x1="255" y1="318" x2="326" y2="318"/>
+    <line x1="255" y1="378" x2="326" y2="378"/>
+    <polyline points="385,210 385,234 300,234 300,254"/>
+    <polyline points="385,270 385,294 300,294 300,314"/>
+    <polyline points="385,330 385,354 300,354 300,374"/>
+  </g>
+  <g fill="#4fb3a9">
+    <circle cx="300" cy="258" r="4.5"/>
+    <circle cx="300" cy="318" r="4.5"/>
+    <circle cx="300" cy="378" r="4.5"/>
+    <polygon points="326,193 337,198 326,203"/>
+    <polygon points="326,253 337,258 326,263"/>
+    <polygon points="326,313 337,318 326,323"/>
+    <polygon points="326,373 337,378 326,383"/>
   </g>
   <g font-size="15" fill="#4fb3a9">
     <text x="338" y="203">r_1</text>
@@ -45,10 +55,12 @@
     <text x="338" y="323">r_3</text>
     <text x="338" y="383">r_m</text>
   </g>
-  <text x="300" y="180" font-size="13" fill="#9fb4c0">r_i = r_(i-1) and t_i</text>
+  <text x="300" y="180" font-size="13" fill="#9fb4c0">r_(i-1) and t_i together force r_i</text>
+  <text x="292" y="224" text-anchor="middle" font-size="12" fill="#9fb4c0">t_1 forces r_1</text>
 
   <!-- r_m to z -->
-  <line x1="375" y1="378" x2="470" y2="378" stroke="#e8e2d4" stroke-width="2"/>
+  <line x1="375" y1="378" x2="461" y2="378" stroke="#e8e2d4" stroke-width="2"/>
+  <polygon points="461,373 472,378 461,383" fill="#e8e2d4"/>
   <text x="478" y="383" font-size="16" fill="#e8e2d4">z</text>
   <text x="420" y="360" font-size="13" fill="#9fb4c0">r_m forces z</text>
 
@@ -81,6 +93,7 @@
     <text x="1116" y="490">m = 5</text>
   </g>
   <line x1="670" y1="470" x2="1170" y2="470" stroke="#3d4a54" stroke-width="1.5"/>
-  <text x="920" y="200" text-anchor="middle" font-size="14" fill="#9fb4c0">Each of the 2^m minimal patterns, z false with exactly</text>
-  <text x="920" y="222" text-anchor="middle" font-size="14" fill="#9fb4c0">1 true bit per pair, defeats every clause but its own.</text>
+  <text x="920" y="192" text-anchor="middle" font-size="14" fill="#9fb4c0">Each of the 2^m minimal patterns has z false and</text>
+  <text x="920" y="214" text-anchor="middle" font-size="14" fill="#9fb4c0">exactly 1 true bit per pair.</text>
+  <text x="905" y="242" text-anchor="middle" font-size="13" fill="#9fb4c0">Each minimal pattern falsifies exactly one canonical clause</text>
 </svg>
