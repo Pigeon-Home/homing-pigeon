@@ -10110,6 +10110,79 @@ def check(target, entry):
         _drop_tmp_since(mark)
 
 
+# ------------------------------------------------------------------
+# Controls: the corpus's calibration pair
+# ------------------------------------------------------------------
+# The corpus grows by mutation and keeps what reaches new arcs,
+# so its accepted and refused shares drift with the campaign. The
+# controls are the fixed point that drift is measured against: a
+# pair of entries the tool builds itself, one the target's reader
+# must accept and one it must refuse, stated in the research mail
+# of 23 November 2026 as the positive and negative controls a
+# corpus claim needs. They are not corpus entries and are never
+# written to a corpus file; they are run, by check_controls and
+# by the controls command, against the live reader. A reader
+# whose accept or refuse side has silently inverted, or gone
+# uniformly one way, fails its controls before any corpus verdict
+# built on it is trusted.
+
+def _control_pair_wire():
+    """A body signed under the corpus secret, and the same body
+    signed under the wrong one. The first is the wire contract's
+    whole point; the second is a forgery in miniature."""
+    payload = _job(script="echo control", shell="sh")
+    return (make_entry("text", V.sign_payload(payload, SECRET),
+                       "control:positive", "control"),
+            make_entry("text", V.sign_payload(payload, WRONG),
+                       "control:negative", "control"))
+
+
+def _control_pair_v2():
+    """A determination in the protocol's own shape, and the same
+    object with its version cut back to the retired one."""
+    good = _v2("determination")
+    bad = _v2("determination")
+    bad["v"] = 1
+    return (make_entry("payload", good, "control:positive",
+                       "control"),
+            make_entry("payload", bad, "control:negative",
+                       "control"))
+
+
+CONTROL_PAIRS = {
+    "wire": _control_pair_wire,
+    "cloud": _control_pair_wire,
+    "v2": _control_pair_v2,
+}
+
+
+def control_entries(target):
+    """(positive, negative) for a target that has a pair, else
+    None. The pair is rebuilt on every call, so the controls test
+    the reader as it stands, never a stored copy of it."""
+    build = CONTROL_PAIRS.get(target)
+    if build is None:
+        return None
+    return build()
+
+
+def check_controls(target):
+    """Run the target's control pair through the target's own
+    checker: (positive_outcome, negative_outcome). A pair that
+    does not come back (accepted, refused) raises a Crash of the
+    control kind: the reader, not the corpus, is what failed."""
+    pair = control_entries(target)
+    if pair is None:
+        raise Crash("control", f"{target}: no control pair is "
+                    "defined for this target")
+    positive, negative = pair
+    got = (check(target, positive), check(target, negative))
+    if got != ("accepted", "refused"):
+        raise Crash("control", f"{target}: the controls came back "
+                    f"{got[0]}/{got[1]}, not accepted/refused")
+    return got
+
+
 def runs_path():
     return os.path.join(CORPUS_DIR, "runs.jsonl")
 
@@ -12355,11 +12428,34 @@ def cmd_dictionary(args, out=print):
     return 0
 
 
+def cmd_controls(args, out=print):
+    """Each target's control pair against its live reader: one
+    line per target, exit 1 when any pair misbehaves."""
+    targets = (list(CONTROL_PAIRS) if args.target == "all"
+               else [args.target])
+    bad = 0
+    for target in targets:
+        try:
+            got = check_controls(target)
+        except Crash as c:
+            out(f"{target}: controls FAILED: {c.detail}")
+            bad += 1
+            continue
+        out(f"{target}: controls {got[0]}/{got[1]}")
+    return 1 if bad else 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
     p = sub.add_parser("dictionary")
     p.set_defaults(fn=cmd_dictionary)
+    p = sub.add_parser("controls", help="run each target's control pair "
+                                        "against its live reader; exit 1 "
+                                        "on a pair that misbehaves")
+    p.add_argument("--target", default="all",
+                   help="one of %s, or all" % ", ".join(TARGETS))
+    p.set_defaults(fn=cmd_controls)
     p = sub.add_parser("watch", help="the ten-minute watch: floors, workers, "
                                      "stall; exit 1 on a breach")
     p.add_argument("--rig", default=None, help="this rig's name (HP_DE_DUST_RIG)")
