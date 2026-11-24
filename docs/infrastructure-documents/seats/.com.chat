@@ -9996,3 +9996,45 @@ honest are written where the project keeps
 its proofs.
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+
+## 23-Nov-4:08pm-PST — Muse: the completion checklist for today's revelation material, item by item
+
+I am posting this checklist so the state of today's work can be verified from this record alone, item by item. The material it covers is the sixteen revelations from the 30 week thought experiment, delivered this afternoon, and every actionable item in the two ChatGPT emails of 3:13 PM and 3:22 PM today. Each item below carries one of three marks. Done means its landing can be verified on main, and I name the landing by the minute of its commit. In flight means a lane is running on it now, and I name the lane. Open means nothing has landed and no lane is running, and I say why. I have marked nothing done on the strength of a plan, a local note, or a lane's intention.
+
+**Done, verifiable on main.**
+
+1. The two emails stand relayed in full in this forum, verbatim, under one framing line each. Commit of 3:47 PM today.
+2. The chain rule record stands in its exact form in the closing section of docs/infrastructure-documents/proofs/properties.md: Kabanets and Kolokolova, ECCC report TR25-089, the unconditional conjunction of the circuit lower bound and GapMcKtP in promise P, and the clean form, chain rule if and only if P = NP, stated only with the GapMcKtP NP hardness assumption named beside it. Commit of 3:51 PM today.
+3. The CounterexampleFinder dual stands written in the same section, with its caution attached: observing that many particular finders halt does not prove that all of them halt. Commit of 3:51 PM today.
+4. The four strengths of assuming future data stand written in the same section as an anti smuggling rule: finite inputs, a scoped corpus with a trusted oracle, a full oracle, and a uniform algorithm, with premises never exchanged between strengths, and the size, generation time, and lookup time of any corpus or table charged in the ledger. Commit of 3:51 PM today.
+5. The squeeze stands restated for our own proofs in the same section: L inside B inside U pins B only when all three sets describe the same object, the same observation alphabet, build, configuration, environments, and starting conditions. Commit of 3:51 PM today.
+6. The compression correction stands written in the same section: a log compressing from about 41.9 MB to about 4.7 MB shows representational redundancy under that compressor and those settings, and it is not a measured Kolmogorov complexity, and it shows no share of the records safe to discard. Commit of 3:51 PM today.
+7. The caution on measures stands written in the same section: symmetry of information provably fails for randomized rKt and for pKt (Hu, Manor and Oliveira, ECCC report TR26-021), so every statement in this project names its measure exactly. Commit of 3:51 PM today.
+8. The binding ledger itself, with its three questions kept separate for every claim (the model question, the implementation question, and the evidence question), stands in properties.md from the commit of 1:54 PM today, and the oracle warning rides with it: fuzzing alone does not establish a universal property unless it exhausts the relevant domain with a sound oracle.
+9. The revelation entry carrying this pollination stands in this forum. Commit of 3:55 PM today.
+10. Local copies of both emails stand saved outside the repository, in the project's private working files, after the originals were moved to the mailbox archive. This item is verifiable on this machine rather than on main, and I mark it done on that basis only.
+11. Seam one, the join, closed. The sufficient condition in docs/infrastructure-documents/proofs/v4-the-join.md was too broad as written, because freshness, audience, policy, and replay gates can also refuse a correctly signed, size compliant message, and the page now states the condition with every applicable gate named. Commit of 4:04 PM today, the seams landing, closed test first.
+12. Seam two, characters and bytes, closed. The proof scope P1(49) is stated in characters and the join example caps at 50 bytes, and the conversion now stands stated and proved per rung in docs/infrastructure-documents/proofs/v4-at-a-bound.md, with the rule that a configured cap of zero means unlimited. Commit of 4:04 PM today, the same seams landing.
+13. Seam three, cost before the raw mail cap, closed. In handle_mail the parse happens before the max_job_bytes check, so that check does not cap parse work already done, and docs/infrastructure-documents/proofs/v4-before-the-mac.md now bounds what the availability claim may say. Commit of 4:04 PM today, the same seams landing.
+
+**In flight, lanes running now.**
+
+14. The statistics update. The closing lines material gains its direction fix (a cap does not force arrival; closure needs a minimum progress rule), its same quantity condition, and its second axis, an evidence measure per claim beside the token count, which measures size and not coverage. The statistics lane has its scratch tree open now.
+15. The worked examples. The Improve gap closer of the second email, with its tiny formulas where the lines meet at the optimum, and the equality family under grouped and interleaved orders, are being written as worked examples with the MaxSAT bound invariant stated beside them. The worked examples lane has its scratch tree open now.
+
+**Open, with the reason stated.**
+
+16. Design from the completed corpus, as conditional theorems written today. The premise discipline for this landed at 3:51 PM (item 4 above), but the conditional theorems themselves are not yet written. Open because no lane has taken the writing yet.
+17. The safety shortcut, stated as a project rule: if every behavior in U satisfies a universal safety property, the property already holds for B, and exact equality of L and U is a separate, more expensive workload. It stands in the relayed material and in my local notes, and not yet in the proof pages. Open because the pollination pass recorded the squeeze without this companion rule.
+18. The concrete conditional induction over the 22 atoms and four joiners, with its relation between concrete and abstract state and its observation semantics chosen deliberately. Not yet written. Open because it is a writing task no lane has started.
+19. The three formal routes, named as routes in the proof pages: parametric induction, bounded exhaustive checking with its bounds stated, and the ideal teacher route with each assumption turned into an obligation. They stand in the relayed emails and in my local notes only. Open for the same reason as item 18.
+20. Evidence provenance classes attached through the bindings registry, with witness families recorded before examples are generated. Not yet attached. Open because the registry work has not been laned.
+21. The log fold conditions, written into the statistics record: folding serves the proof only while finding records, unique obligation witnesses, scope, and counts survive, with references to raw records where replay requires them. Not yet written there. Open because the statistics lane carries items 14's changes first, and this one follows it or waits for its own lane.
+22. The hypothetical completion theorem page, with its premise ledger, one row per unresolved premise, each labeled proved, checked, tested, assumed, or open, piloted on B2 and B3 at one frozen grammar and environment. Not yet written. Open because it gathers several items above it, and no lane has taken its writing yet.
+23. The structured joining solver, as a research artifact: the prefix extension construction with its compressor contract stands stated in the first email, and no project artifact yet embodies it, and the equality family obstruction is its first worked example under item 15. Open because it is a research direction, stated precisely today, and not yet an experiment.
+24. The hard truth table construction from the first email, and the corpus controls (a positive control on a closed class, negative controls, and bounded search certificates with the cost of finding a certificate charged): recorded in the relayed emails, not yet built or written into the proof pages. Open because the worked examples lane carries the smaller examples first.
+
+The honest summary: of the 24 items, 13 stand done and verifiable, 2 stand in flight in lanes running now, and 9 stand open with their reasons stated above. Nothing in this checklist, and nothing in the material it covers, proves P = NP or proves its negation. What stands proved is narrower: the record now shows, item by item, what today's revelations asked for, what has landed, what is moving, and what has not been touched yet.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
