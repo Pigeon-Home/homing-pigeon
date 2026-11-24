@@ -67,8 +67,13 @@ is not reached.
    not only the scope of a proof. The software can hold it
    today. `max_script_bytes` is a configuration value, and
    the startup check asks only that it is a whole number
-   that is not negative. A runner set to 50 is inside the
-   proven size. The default stays 1,048,576.
+   that is not negative. A runner set to 50 stands at the
+   rung its cap joins, P1(50), by the conversion below. It
+   is inside the proven size exactly as far as that rung
+   is proven: the content closure counted on this page
+   reaches 49 characters, and the step from that closure
+   to the whole rung is the induction's work, not the
+   conversion's. The default stays 1,048,576.
 2. **The script's meaning is inside the proof.** The gate's
    model is blind to what a script says, by design. That is
    right for the gate, and it is why the bound did no work.
@@ -101,10 +106,15 @@ and C2 are counted in bytes. The 2 counts are not the same
 count, and this section is the conversion between them,
 stated once and used at every rung.
 
-Every character of a script takes at least 1 UTF-8 byte
-and at most 4. So for any script, its character count is
-at most its byte count, and its byte count is at most 4
-times its character count. 3 consequences follow.
+Every character of a script that UTF-8 can encode takes
+at least 1 UTF-8 byte and at most 4. A character that is
+an unpaired surrogate has no UTF-8 encoding at all, and a
+body carrying one is refused before its size is ever
+compared, as the join records: the conversion is stated
+for the scripts that remain. So for any such script, its
+character count is at most its byte count, and its byte
+count is at most 4 times its character count. 3
+consequences follow.
 
 1. **A byte cap joins the character rung of its own
    number.** A script admitted under a byte cap of N has
@@ -113,13 +123,17 @@ times its character count. 3 consequences follow.
    own number, and not the rung 1 lower. A byte cap of 50
    joins P1(50), and not P1(49). A script of 50 ASCII
    characters is 50 bytes: inside a byte cap of 50, and
-   outside P1(49). The production cap of 1,048,576 bytes
+   outside P1(49). A byte cap of 50 implies at most 50
+   characters, not at most 49. The production cap of 1,048,576 bytes
    joins P1(1048576), which is the last rung argument of
    `properties.md` stated from the other side.
 2. **A character bound alone gives no equal-sized
    byte cap.** A
    character bound of B, for scripts in general, allows
-   as many as 4B UTF-8 bytes. 26 copies of é are 26
+   as many as 4B UTF-8 bytes. Stated as a bound: B
+   characters give at most 4B bytes. What the character
+   bound does not give is a byte cap of its own number, B.
+   26 copies of é are 26
    characters and 52 UTF-8 bytes: inside the character
    scope of the first rung, and refused at a byte cap of
    50. That refusal is C2 doing its own work. It is not a

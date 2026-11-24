@@ -47,13 +47,20 @@ it stands, `email.message_from_bytes(raw)` runs on the
 whole raw mail before the C1 check is reached, and the
 subject and the sender header are read from the parsed
 mail. The panic match runs on that subject, still in front
-of the cap. So what C1 bounds is the work from its check
-onward, signature work included: a marked mail over the
-cap is refused there, and no dispatch, no signature work
-and no execution follows from it. The parse, the subject
-read and the panic match stand outside what C1 bounds,
-and so does every cost paid before `handle_mail` is
-called, where the mail is fetched and copied.
+of the cap. So what C1 bounds is a size: the marked
+message's bytes. A marked mail over the cap is refused
+there, and no dispatch, no signature work and no execution
+follows from it. The work from its check onward is bounded
+only through that size. The cap's unit is bytes of a
+marked message, and the cap alone is not a bound on the
+CPU, the memory or the time the steps after the check
+spend on a message under the cap: a bound of that kind
+would need the cost of each of those steps, and the limits
+of the machine it runs on, stated beside it. The parse,
+the subject read and the panic match stand outside what
+C1 bounds, and so does every cost paid before
+`handle_mail` is called, where the mail is fetched and
+copied.
 
 2 consequences are recorded so the claims of this page
 are read at their true size.
@@ -76,6 +83,72 @@ to be stated and measured from an earlier point, where
 the bytes are fetched, copied and parsed, and it would
 have to cover mail that carries no marker as well. That
 claim is not made here.
+
+## The fetch path: a resource budget study, opened
+
+Everything above this section begins where `handle_mail`
+is called. The mail arrives before that, and the arrival
+has its own costs, which no cap on this page bounds. This
+section opens the study of them. It makes no finding and
+claims no bound.
+
+**Where the mail is fetched.** `fetch_job_mails` in
+`runner/wire/mailbox.py` searches the mailbox for unseen
+mail whose subject carries the marker, fetches each match
+whole with `BODY.PEEK[]`, and appends each message's raw
+bytes to a list. The peek is deliberate: the fetch does
+not mark the message seen, and marking seen stays the
+consumer's own later act. The handling of the list begins
+only when the search and the fetches are done.
+
+**The quantities a budget would have to name.** Each is
+separate, and each stands open.
+
+- Per-message bytes at the fetch. No cap is applied
+  there. C1 stands later, inside `handle_mail`, after the
+  parse, so a message's bytes are fetched and copied in
+  full whatever C1 will say about them.
+- Messages per poll. The search returns every unseen
+  marked message in the mailbox. No batch limit is stated
+  in the fetch code.
+- Batching. The whole list is gathered before any of it
+  is handled, so the poll pays the full fetch cost before
+  the first message on the list is refused or run.
+- Peak memory. The list holds every fetched message's
+  bytes at once, and each message is then parsed whole.
+  What the 2 come to together, at the largest mailbox the
+  runner will meet, is not measured.
+- Timeout and failure semantics. A failed search, or 1
+  failed fetch, is noted and skipped, and the poll goes
+  on. How long a slow fetch may hold a poll, and what the
+  poll holds while it waits, is bounded by nothing stated
+  here.
+
+**Where the classification cost lives.** The search is
+the classification on this path: the server reads the
+subjects, and the runner fetches whole what the search
+returns. The cost must live somewhere, and a thought
+experiment shows it cannot live in a bounded prefix. A
+reader that classifies a message by reading only a
+bounded prefix of it cannot classify a message whose
+subject stands past the prefix: 2 messages can agree on
+every byte of the prefix and differ in whether the later
+subject carries the marker, and the bounded reader cannot
+tell them apart. A design must name its place: the
+server's search, a full fetch, or a header budget with
+the ambiguous mail deferred. This design names the first
+2, and pays for them at the fetch.
+
+**The tests at this boundary.** Panic handling has its
+own tests: the F13 tests and the test that the panic word
+fires in front of the cap and the signature, in
+`runner/tests/test_v4_before_the_mac.py`. Leaving
+unrelated mail alone has its own test in the same suite:
+the fetch returns only what the search names, fetches it
+with a peek, and marks nothing seen. Open, and named here
+until a measure closes them: a measure of the 5
+quantities above, in the shape of this page's other
+measures, and a budget stated from it.
 
 ## The candidate
 
@@ -599,6 +672,9 @@ signature on, which `general.tla` has.
   and the real gate asked on its arrivals.
 - Made: the checker's run on the model, with no error and
   the predicted counts.
+- Opened: the resource budget study of the fetch path.
+  Its 5 quantities are named in their own section above
+  and stand unmeasured.
 - Next: a row for the candidate in the registry, kept apart
   from the 31 until the owner's word.
 - F12 and F13 are closed on the branch. They reach main at

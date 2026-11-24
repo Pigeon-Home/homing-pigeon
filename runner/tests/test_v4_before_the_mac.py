@@ -1128,16 +1128,72 @@ class TheGateDecidesAsTheModelDoes(unittest.TestCase):
         # The cap is checked after the parse, so the page must
         # say what the cap cannot cover, and must not let the
         # model's pass count be read as a bound on that parse.
+        # The cap's claim carries its unit: bytes of a marked
+        # message, not the CPU, memory or time after the check.
         page = MODELS._flat(PAGE)
         for stated in (
                 "The cap does not reach back over the parse.",
                 "`email.message_from_bytes(raw)` runs on the whole "
                 "raw mail before the C1 check is reached",
-                "what C1 bounds is the work from its check onward",
+                "what C1 bounds is a size: the marked message's bytes",
+                "not a bound on the CPU, the memory or the time",
                 "The parse, the subject read and the panic match "
                 "stand outside what C1 bounds",
                 "A cap of 0 switches C1 off: unlimited, and not a "
                 "bound of 0 bytes"):
+            self.assertIn(stated, page, stated)
+
+
+class _FetchBox:
+    """A mailbox of 3 messages. The search names only the
+    second, as a server's subject search names only the mail
+    whose subject carries the marker."""
+
+    def __init__(self):
+        self.fetched = []
+        self.stored = []
+
+    def search(self, charset, *criteria):
+        return "OK", [b"2"]
+
+    def fetch(self, num, spec):
+        self.fetched.append((num, spec))
+        return "OK", [(num, b"raw bytes of the second message")]
+
+    def store(self, *args):
+        self.stored.append(args)
+        return "OK", []
+
+
+class TheFetchPath(unittest.TestCase):
+    """The fetch in front of handle_mail, at the boundary the
+    page's resource budget study opens: unrelated mail is
+    left alone."""
+
+    def test_the_fetch_leaves_unrelated_mail_alone(self):
+        from runner.wire import mailbox as MAILBOX
+        box = _FetchBox()
+        mails = MAILBOX.fetch_job_mails(box)
+        self.assertEqual(
+            [("2", b"raw bytes of the second message")], mails)
+        # Only the message the search named was fetched, and
+        # by peek, so the fetch itself marked nothing seen:
+        # the 2 neighbours were never read and never flagged.
+        self.assertEqual([(b"2", "(BODY.PEEK[])")], box.fetched)
+        self.assertEqual([], box.stored)
+
+    def test_the_page_opens_the_fetch_study(self):
+        page = MODELS._flat(PAGE)
+        for stated in (
+                "The fetch path: a resource budget study, opened",
+                "Per-message bytes at the fetch",
+                "Messages per poll",
+                "Peak memory",
+                "Timeout and failure semantics",
+                "2 messages can agree on every byte of the prefix "
+                "and differ in whether the later subject carries "
+                "the marker",
+                "Leaving unrelated mail alone has its own test"):
             self.assertIn(stated, page, stated)
 
 

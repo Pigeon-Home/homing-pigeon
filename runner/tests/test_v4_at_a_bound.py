@@ -663,6 +663,15 @@ class ThePageRecordsTheMeasure(unittest.TestCase):
                 "rung of its own number, and not the rung 1 lower",
                 "A character bound of B, for scripts in general, "
                 "allows as many as 4B UTF-8 bytes",
+                "B characters give at most 4B bytes",
+                "What the character bound does not give is a byte "
+                "cap of its own number, B.",
+                "A character that is an unpaired surrogate has no "
+                "UTF-8 encoding at all",
+                "A byte cap of 50 implies at most 50 characters, "
+                "not at most 49",
+                "A runner set to 50 stands at the rung its cap "
+                "joins, P1(50)",
                 "A configured cap of 0 means unlimited for C1 and "
                 "for C2 alike: it is not a bound of 0 bytes, and "
                 "it joins no finite rung by itself."):

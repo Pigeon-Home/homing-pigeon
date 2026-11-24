@@ -176,6 +176,10 @@ class TheJoin(unittest.TestCase):
                 "the claim under C15",
                 "Once in this handling means the script is handed "
                 "to M at most once in that handling.",
+                "The words longer than N are read with N > 0: at "
+                "N = 0 the cap is off",
+                "its UTF-8 length satisfies N = 0 or "
+                "utf8_length(script) <= N",
                 "no unconditional claim of exactly once across "
                 "deliveries",
                 "| N bytes, signature turned | no |",

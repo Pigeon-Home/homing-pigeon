@@ -19,7 +19,10 @@ clauses below are read with no bound in force.
 - A message that passes C5, and whose script is longer than
   N bytes, never reaches M. C2 refuses it after the
   signature and before execution, and a refusal at an
-  earlier gate ends the handling sooner still.
+  earlier gate ends the handling sooner still. The words
+  longer than N are read with N > 0: at N = 0 the cap is
+  off, and no script is longer than a bound that is not in
+  force.
 - A message that passes C5, and whose script is at most N
   bytes, does not reach M on those 2 facts alone. The
   signature and the size are necessary. They are not
@@ -46,7 +49,8 @@ clauses below are read with no bound in force.
   enforce mode, and no refusal of a repaired job when it
   is judged again.
 - When all of that holds, the script M is given is that
-  script, its UTF-8 length is at most N, and it is handed
+  script, its UTF-8 length satisfies N = 0 or
+  utf8_length(script) <= N, and it is handed
   to M in that handling. Once in this handling means the
   script is handed to M at most once in that handling.
   This page makes no unconditional claim of exactly once
