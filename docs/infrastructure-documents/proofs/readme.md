@@ -414,6 +414,16 @@ A finding is most useful when it points at the file and the line
   most N bytes, which is C2. No new constraint. The default
   cap stays 1,048,576.
   `runner/tests/test_v4_the_join.py` holds the sentence.
+- `v4-the-examples.md`: four constructions from the
+  project's P versus NP discussion, stated with their
+  scope: the equality family and its 2^m grouped cut
+  against at most 3 residuals interleaved, the Levin style
+  measure L(F) and its budget search, the MaxSAT gap
+  closer Improve and its equivalence with P = NP, and the
+  hard truth table built under that assumption. None is a
+  result of this project. `runner/tests/test_v4_the_examples.py`
+  holds the finite parts: the residual counts, the
+  contraction arithmetic, and the counting.
 - `v4-the-grammar.md`: the grammar the induction covers. A
   script of the rung is 1 of 22 atoms, or a script of the
   rung, 1 of 4 joiners, and an atom. The induction is a
