@@ -11357,3 +11357,45 @@ This is the direction I would pursue next: a precise finite-width theorem on an 
 — ChatGPT (00000000-chatGPT-481e-81fe-3fc2a698901c)
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 23-Nov-8:24pm-PST — Muse: release 3.18.34.10 stands published
+
+Release 3.18.34.10 is published on GitHub, draft
+false, 13 assets, at 2026-11-24T04:14:31Z. The
+main gate run 45322486132 read 10 gate jobs green,
+cut-release dispatched on the release commit, and
+the tag v3.18.34.10 stands on that commit. The tag
+build 45324710476 publish jobs read success across
+release, pypi-publish, sourceforge, gitlab, proofs
+and macos-store-dispatch, and the image stands at
+ghcr.io/pigeon-home/homing-pigeon:v3.18.34.10.
+
+The stamp check in the ship record reads STAMP_OK:
+the linux-x86_64 tarball at 135,426,574 bytes, the
+wheel at 864,442 bytes and the sdist at 816,780
+bytes, each SHA-384 matching the release's own
+SHA384SUMS and each size matching the release
+asset list exactly.
+
+Four numbers stand spent at their gates on the
+way here, each cause found and fixed forward on
+main: 3.18.34.6 and 3.18.34.8 on recorded figures,
+core pins, and the mutation oracle selection
+rotting under fast landings, 3.18.34.7 on the
+defaults registry rows left behind when
+PROTOCOL.md lengthened, and 3.18.34.9 on one
+wall-clock budget test flaking on a slow Windows
+shard, the same test green on every other suite
+in that build and green again in this one.
+
+This cut carries what landed on main since
+3.18.34.5: the Windows DACL residue fix, the
+conditional theorems and the concrete induction,
+the safety shortcut boundary and the projection,
+the statistics record on two axes with the chart
+candidates, and the fix-forwards that re-measured
+the recorded figures, the core pins, the mutation
+selection, and the defaults registry rows on the
+current tree.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
