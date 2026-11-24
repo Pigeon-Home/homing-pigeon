@@ -51,6 +51,13 @@ refuse-class setting it stops the runner before any job is read.
   itself is at lines 67 to 70, and it applies only when the
   subject carries the `[HOMING-PIGEON]` marker; unmarked mail is
   not a job message and is left to the dispatcher.
+- **Scope of the bound:** the check stands in `handle_mail`
+  after the mail has been parsed and its subject read, and
+  after the panic match. C1 refuses a marked mail before any
+  signature work, and it bounds no work in front of its own
+  check: not the parse, and not the fetching or the copying
+  of the mail before `handle_mail` is called.
+  `v4-before-the-mac.md` states the boundary in full.
 - **Class:** refuse class at startup, with a defensive default at
   runtime. `runner/runner.py`, `_validate_size_caps`, line 4707,
   requires the value, when present, to be a non-negative integer —

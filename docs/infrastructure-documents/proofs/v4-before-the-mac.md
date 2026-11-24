@@ -40,6 +40,43 @@ marker:
    the body, which is the opener search where F10 was, and
    the MAC is computed.
 
+## What the size cap does not cover
+
+The cap does not reach back over the parse. In the code as
+it stands, `email.message_from_bytes(raw)` runs on the
+whole raw mail before the C1 check is reached, and the
+subject and the sender header are read from the parsed
+mail. The panic match runs on that subject, still in front
+of the cap. So what C1 bounds is the work from its check
+onward, signature work included: a marked mail over the
+cap is refused there, and no dispatch, no signature work
+and no execution follows from it. The parse, the subject
+read and the panic match stand outside what C1 bounds,
+and so does every cost paid before `handle_mail` is
+called, where the mail is fetched and copied.
+
+2 consequences are recorded so the claims of this page
+are read at their true size.
+
+- The counts of passes in the model below count the
+  gate's own passes over a message it has already parsed.
+  They are not a bound on the mail library's work inside
+  the parse, and nothing on this page bounds the CPU time
+  or the allocation of that parse. F13 below is the
+  standing example of why the distinction matters: a step
+  in front of the cap once cost time that grew with the
+  square of the subject, and it was closed by bounding
+  what that step reads, not by C1.
+- A cap of 0 switches C1 off: unlimited, and not a bound
+  of 0 bytes. With the cap off, a marked mail of any size
+  goes on to the dispatcher and the signature.
+
+A bound on all the work a stranger can cause would have
+to be stated and measured from an earlier point, where
+the bytes are fetched, copied and parsed, and it would
+have to cover mail that carries no marker as well. That
+claim is not made here.
+
 ## The candidate
 
 **C32, a candidate. The work in front of the MAC.** For a

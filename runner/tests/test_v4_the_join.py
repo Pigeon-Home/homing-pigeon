@@ -4,8 +4,9 @@
 docs/infrastructure-documents/proofs/v4-the-join.md states one
 sentence. A message that fails C5 never reaches M. A message
 that passes C5 reaches M only when its script is at most N
-bytes, and the script M is given is that script. N is
-max_script_bytes. No new constraint is added.
+bytes and every other applicable gate in P1 also passes, and
+the script M is given is that script. N is max_script_bytes.
+No new constraint is added.
 """
 import copy
 import os
@@ -54,6 +55,20 @@ class TheJoin(unittest.TestCase):
             return PRE.arrive(
                 body, folder, cfg_extra={"max_script_bytes": cap})
 
+    def arrive_payload(self, payload, script, extra=None, seen=None,
+                       policies=None, folder=None):
+        """1 arrival of a varied corpus job, signed again, at a
+        script cap of 50 unless `extra` says otherwise."""
+        body = raw(payload, self.job_id, script, False)
+        cfg = {"max_script_bytes": 50}
+        cfg.update(extra or {})
+        if folder is not None:
+            return PRE.arrive(body, folder, cfg_extra=cfg, seen=seen,
+                              policies=policies)
+        with tempfile.TemporaryDirectory() as fold:
+            return PRE.arrive(body, fold, cfg_extra=cfg, seen=seen,
+                              policies=policies)
+
     def test_a_bad_signature_never_reaches_the_machine(self):
         for cap in RUNGS:
             for script in ("#" * cap, "#" * (cap + 1)):
@@ -100,14 +115,78 @@ class TheJoin(unittest.TestCase):
                 for note in refused.notes),
             refused.notes)
 
+    def test_a_good_signature_and_a_script_at_the_bound_are_not_enough(self):
+        # Freshness: the same job, signed again, dated outside
+        # the window of C12.
+        stale = copy.deepcopy(self.payload)
+        stale["issued_at"] = BIND._stamp(-3700)
+        out = self.arrive_payload(stale, "#" * 50)
+        self.assertEqual([], out.executed)
+        self.assertTrue(
+            any("issued_at outside allowed window" in note
+                for note in out.notes), out.notes)
+        # Audience: the same job naming another box, with C10
+        # in enforce mode and a runner id configured.
+        moved = copy.deepcopy(self.payload)
+        moved["aud"] = "other-box"
+        out = self.arrive_payload(
+            moved, "#" * 50,
+            extra={"runner_id": "this-box",
+                   "security": {"modes": {"audience": "enforce"}}})
+        self.assertEqual([], out.executed)
+        self.assertTrue(
+            any("security policy (audience)" in note
+                for note in out.notes), out.notes)
+        # Key policy: the job's kind is exec, and the key's
+        # policy under C14 allows ping only.
+        out = self.arrive_payload(
+            self.payload, "#" * 50,
+            policies={"": {"allowed_kinds": ["ping"]}})
+        self.assertEqual([], out.executed)
+        self.assertTrue(
+            any("key policy" in note for note in out.notes),
+            out.notes)
+
+    def test_a_second_delivery_of_a_claimed_job_does_not_reach_m_again(self):
+        with tempfile.TemporaryDirectory() as folder:
+            first = self.arrive_payload(
+                self.payload, "#" * 50, folder=folder)
+            self.assertEqual(1, len(first.executed))
+            second = self.arrive_payload(
+                self.payload, "#" * 50, folder=folder,
+                seen=first.seen)
+            self.assertEqual([], second.executed)
+
+    def test_a_script_cap_of_zero_is_unlimited_not_zero_bytes(self):
+        out = self.arrive("#" * 5001, 0, turn=False)
+        self.assertEqual(1, len(out.executed))
+        self.assertEqual("#" * 5001, out.executed[0]["script"])
+
     def test_the_page_states_the_sentence(self):
         page = MODELS._flat(PAGE)
         for stated in (
                 "A message that fails C5 never reaches M.",
                 "adds no constraint",
                 "The default in the code stays 1,048,576.",
+                "A message that passes C5, and whose script is at "
+                "most N bytes, does not reach M on those 2 facts alone.",
+                "freshness under C12",
+                "the audience decision under C10",
+                "key policy under C14",
+                "the claim under C15",
+                "Once in this handling means the script is handed "
+                "to M at most once in that handling.",
+                "no unconditional claim of exactly once across "
+                "deliveries",
                 "| N bytes, signature turned | no |",
                 "| N bytes, signature good | yes, that script |",
+                "| N bytes, signature good, stale under C12 | no |",
+                "| N bytes, signature good, wrong audience with "
+                "C10 in enforce mode | no |",
+                "| N bytes, signature good, kind forbidden by "
+                "C14 | no |",
+                "| N bytes, signature good, job id already claimed "
+                "under C15 | no |",
                 "26 copies of é, N = 50 (52 bytes)"):
             self.assertIn(stated, page, stated)
 

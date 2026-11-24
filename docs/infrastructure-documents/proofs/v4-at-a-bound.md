@@ -94,6 +94,55 @@ For a runner set to a bound of B bytes, and the atom list:
 
 B2 is the new part. M is below.
 
+## Characters and bytes: the conversion at each rung
+
+The rungs of P1 are counted in characters. The caps of C1
+and C2 are counted in bytes. The 2 counts are not the same
+count, and this section is the conversion between them,
+stated once and used at every rung.
+
+Every character of a script takes at least 1 UTF-8 byte
+and at most 4. So for any script, its character count is
+at most its byte count, and its byte count is at most 4
+times its character count. 3 consequences follow.
+
+1. **A byte cap joins the character rung of its own
+   number.** A script admitted under a byte cap of N has
+   at most N bytes, and so at most N characters. So the
+   rung a byte cap can join is the character rung of its
+   own number, and not the rung 1 lower. A byte cap of 50
+   joins P1(50), and not P1(49). A script of 50 ASCII
+   characters is 50 bytes: inside a byte cap of 50, and
+   outside P1(49). The production cap of 1,048,576 bytes
+   joins P1(1048576), which is the last rung argument of
+   `properties.md` stated from the other side.
+2. **A character bound alone implies no byte cap.** A
+   character bound of B, for scripts in general, allows
+   as many as 4B UTF-8 bytes. 26 copies of é are 26
+   characters and 52 UTF-8 bytes: inside the character
+   scope of the first rung, and refused at a byte cap of
+   50. That refusal is C2 doing its own work. It is not a
+   gap in the proof at the rung, whose claim is about the
+   scripts the atoms build.
+3. **In the closure the 2 counts agree.** Every atom and
+   every joiner is ASCII, so in the closure a script's
+   character count and its UTF-8 byte count are the same
+   number. The 74,072,330,493 scripts of at most 49
+   characters are scripts of at most 49 bytes, and they
+   pass a byte cap of 50 with 1 byte to spare. The rows
+   run at the upper rungs, of 498 to 500 characters and of
+   4,998 to 5,000 characters, are likewise rows of that
+   many bytes. The conversion the closure needs is this
+   identity, and the suite checks it on every atom, every
+   joiner, and every row of up to 2 atoms.
+
+A configured cap of 0 means unlimited for C1 and for C2
+alike: it is not a bound of 0 bytes, and it joins no
+finite rung by itself. A runner with a script cap of 0
+admits scripts of any size the rest of the gate allows,
+and no P1(B) covers its scripts on the strength of the
+cap.
+
 ## The machine M
 
 A script here is a row of atoms with a joiner between each 2:

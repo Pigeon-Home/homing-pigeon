@@ -574,6 +574,53 @@ class TheDoorAtTheBound(unittest.TestCase):
             self.assertFalse(ok, cap)
 
 
+class CharactersAndBytes(unittest.TestCase):
+    """The conversion between the character rungs of P1 and
+    the byte caps of C2, at the gate itself."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.payload, cls.job_id = honest_job()
+
+    def test_the_closure_s_atoms_and_joiners_are_ascii(self):
+        # In the closure the 2 counts are the same number,
+        # because every building block is 1 byte per character.
+        for block in ATOMS + JOINERS:
+            self.assertEqual(len(block), len(block.encode("ascii")),
+                             block)
+        for atoms, joiners in rows(max_atoms=2):
+            script = text(atoms, joiners)
+            self.assertEqual(len(script),
+                             len(script.encode("utf-8")), script)
+
+    def test_the_conversion_at_the_first_rung(self):
+        # (script, characters, UTF-8 bytes, admitted at a byte
+        # cap of 50, inside the character scope of P1(49))
+        cases = (
+            ("#" * 49, 49, 49, True, True),
+            ("#" * 50, 50, 50, True, False),
+            ("é" * 25, 25, 50, True, True),
+            ("é" * 26, 26, 52, False, True),
+            ("\U0001f600" * 13, 13, 52, False, True),
+        )
+        for script, chars, size, admitted_at_50, in_scope in cases:
+            self.assertEqual(chars, len(script), script[:8])
+            self.assertEqual(size, len(script.encode("utf-8")),
+                             script[:8])
+            self.assertEqual(chars <= 49, in_scope, script[:8])
+            # Every character takes at least 1 UTF-8 byte and
+            # at most 4: the whole conversion in 1 line.
+            self.assertTrue(chars <= size <= 4 * chars, script[:8])
+            ok, _notes = admitted(self.payload, self.job_id,
+                                  script, 50)
+            self.assertEqual(admitted_at_50, ok, script[:8])
+
+    def test_a_script_cap_of_zero_is_unlimited_not_zero_bytes(self):
+        ok, _notes = admitted(self.payload, self.job_id,
+                              "#" * 5001, 0)
+        self.assertTrue(ok)
+
+
 class TheFuzzDataAtTheRungs(unittest.TestCase):
     """B4: where the corpus's scripts stand on the 3 rungs."""
 
@@ -600,6 +647,25 @@ class ThePageRecordsTheMeasure(unittest.TestCase):
                 "4 × 4 × 22 = 352 steps",
                 "858,319 scripts",
                 "0 disagreements"):
+            self.assertIn(stated, page, stated)
+
+    def test_the_page_states_the_character_and_byte_conversion(self):
+        page = MODELS._flat(PAGE)
+        for stated in (
+                "Characters and bytes: the conversion at each rung",
+                "Every atom and every joiner is ASCII, so in the "
+                "closure a script's character count and its UTF-8 "
+                "byte count are the same number.",
+                "A script of 50 ASCII characters is 50 bytes: "
+                "inside a byte cap of 50, and outside P1(49).",
+                "26 copies of é are 26 characters and 52 UTF-8 bytes",
+                "the rung a byte cap can join is the character "
+                "rung of its own number, and not the rung 1 lower",
+                "A character bound of B, for scripts in general, "
+                "allows as many as 4B UTF-8 bytes",
+                "A configured cap of 0 means unlimited for C1 and "
+                "for C2 alike: it is not a bound of 0 bytes, and "
+                "it joins no finite rung by itself."):
             self.assertIn(stated, page, stated)
 
 

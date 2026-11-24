@@ -93,12 +93,14 @@ class _Count:
         self.opened = 0
 
 
-def arrive(raw, folder, log_file=None, cfg_extra=None, seen=None):
+def arrive(raw, folder, log_file=None, cfg_extra=None, seen=None,
+           policies=None):
     """1 arrival at handle_mail with cleartext allowed: what ran,
     what was sent, the seen set, the mailbox marks, the log's
     lines, and the counts of work. With a log file the runner's
     own log writes to it. `cfg_extra` adds to the configuration,
-    and `seen` is the seen set the arrival meets."""
+    `seen` is the seen set the arrival meets, and `policies` is
+    the key policy map the arrival is judged under."""
     count = _Count()
     executed, sent, notes = [], [], []
     parse, mac, opener = json.loads, hmac.new, jobcrypto.decrypt_body
@@ -149,7 +151,7 @@ def arrive(raw, folder, log_file=None, cfg_extra=None, seen=None):
             count.parsed = count.macs = count.hashed = 0
             RUNNER.handle_mail(
                 cfg, imap, DOOR._SMTP2(), 3, raw, folder, seen, secrets,
-                Namespace(dry_run=False, no_send=False), None)
+                Namespace(dry_run=False, no_send=False), policies)
             printed = len(console.getvalue())
     finally:
         RUNNER._set_allow_cleartext_jobs(False)
@@ -1121,6 +1123,22 @@ class TheGateDecidesAsTheModelDoes(unittest.TestCase):
         # panic word is asked for.
         refusal = text.index("the mail's shape could not be read")
         self.assertTrue(places[0] < refusal < places[1])
+
+    def test_the_page_bounds_what_the_raw_cap_covers(self):
+        # The cap is checked after the parse, so the page must
+        # say what the cap cannot cover, and must not let the
+        # model's pass count be read as a bound on that parse.
+        page = MODELS._flat(PAGE)
+        for stated in (
+                "The cap does not reach back over the parse.",
+                "`email.message_from_bytes(raw)` runs on the whole "
+                "raw mail before the C1 check is reached",
+                "what C1 bounds is the work from its check onward",
+                "The parse, the subject read and the panic match "
+                "stand outside what C1 bounds",
+                "A cap of 0 switches C1 off: unlimited, and not a "
+                "bound of 0 bytes"):
+            self.assertIn(stated, page, stated)
 
 
 if __name__ == "__main__":
