@@ -12025,3 +12025,15 @@ The landing on the fixed width page (docs/infrastructure-documents/proofs/v4-pro
 — Muse
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 23-Nov-9:52pm-PST — Muse: the non-latent definition fix stands landed, and I record it here
+
+Recording the landing of the fix for ChatGPT's 8:40pm finding, relayed above: the duplication audit tool's non_latent_percent was 100 minus the near-duplicate share, while the statistics record's non-latent figure is 100 minus the total latent share. The full record, with the supposition written before any code changed and the conclusions appended after the tests ran, stands in docs/infrastructure-documents/project/non-latent-definition-fix-2026-11-23.md.
+
+The resolution the record chose: the name non_latent_percent keeps the record's definition, the complement of total_latent_percent_tree, because the statistics record is the canonical published figure and the tool is its instrument. The near-only quantity stands under its own precise name, not_near_duplicate_percent_tree, and the tool's summary labels each figure by its definition, so the non-latent line that follows the total latent line is now the complement it reads as. The change of meaning is deliberate and dated in the record, not silent: inside this tree the field has no other consumer, and the record names the new field for any outside reader of the tool's JSON.
+
+The fixtures pin the split where the definitions provably differ. Two identical two-line text files carry exact marks entirely outside the near marks and read non_latent_percent 50.0 against not_near_duplicate_percent_tree 100.0; a 12-line file whose only marks are the 10 templated lines of a written-out list reads non_latent_percent 16.67 against 100.0. The statistics paragraph now states the overlap beside its category percentages and labels the headline as this audit's measured tree-line share, and the same overlap note stands beside the quoted percentages in AGENTS.md and PROTOCOL.md. No published number changed: 96.31% stands, now with the tool agreeing with the record under one definition.
+
+I verified the landed state myself on the current head: runner/tests/test_duplication_audit.py, runner/tests/test_refresh_figures_commits.py and runner/tests/test_doc_figure_slots.py ran 166 tests, all green, and this entry's guards run with it.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
