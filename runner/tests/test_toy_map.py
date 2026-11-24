@@ -289,6 +289,74 @@ class TestProgramBudgetEnforcement(unittest.TestCase):
         self.assertEqual(result["programs_run"], 511)
 
 
+class TestCellReportingHonesty(unittest.TestCase):
+    """The cell record says only what the work supports:
+    formulas_checked counts completed searches, never a
+    search the budget stopped mid enumeration, and a PASS
+    earned over a supplied subset names that subset rather
+    than claiming the domain. Both points are ChatGPT's,
+    from the signed review of 2026-11-23: a limit of zero
+    returned formulas_checked = 1 with zero programs run,
+    because the count was incremented before the stopped
+    branch."""
+
+    def test_budget_zero_checks_no_formula(self):
+        cell = TM.evaluate_cell(2, 0, [X0_AND_X1], program_budget=0)
+        self.assertEqual(cell["state"], TM.UNKNOWN)
+        self.assertEqual(cell["programs_run"], 0)
+        self.assertEqual(cell["formulas_checked"], 0)
+
+    def test_a_budget_of_one_stops_inside_the_first_formula(self):
+        cell = TM.evaluate_cell(2, 0, [X0_AND_X1], program_budget=1)
+        self.assertEqual(cell["state"], TM.UNKNOWN)
+        self.assertEqual(cell["programs_run"], 1)
+        self.assertEqual(cell["formulas_checked"], 0)
+
+    def test_a_stopped_search_is_attempted_not_checked(self):
+        # NOT_X0 is found by the first program at (2, 1);
+        # X0_AND_X1 needs 7 programs there. A budget of 4
+        # completes the first search and stops inside the
+        # second, so exactly 1 formula stands checked.
+        cell = TM.evaluate_cell(
+            2, 1, [NOT_X0, X0_AND_X1], program_budget=4)
+        self.assertEqual(cell["state"], TM.UNKNOWN)
+        self.assertEqual(cell["programs_run"], 4)
+        self.assertEqual(cell["formulas_checked"], 1)
+
+    def test_completed_searches_are_counted(self):
+        cell = TM.evaluate_cell(2, 1, [NOT_X0], program_budget=10)
+        self.assertEqual(cell["state"], TM.PASS)
+        self.assertEqual(cell["formulas_checked"], 1)
+        # An exhausted search is completed work too: the
+        # FAIL cell counts the formula it exhausted.
+        cell = TM.evaluate_cell(2, 0, [X0_AND_X1], program_budget=511)
+        self.assertEqual(cell["state"], TM.FAIL)
+        self.assertEqual(cell["formulas_checked"], 1)
+
+    def test_pass_over_a_subset_names_the_subset(self):
+        cell = TM.evaluate_cell(2, 1, [NOT_X0, X2], program_budget=100)
+        self.assertEqual(cell["state"], TM.PASS)
+        self.assertEqual(cell["formulas_checked"], 2)
+        self.assertIn("the supplied set of 2 formulas", cell["reason"])
+        self.assertNotIn("in the domain", cell["reason"])
+
+    def test_pass_over_a_named_set_uses_the_name(self):
+        cell = TM.evaluate_cell(
+            2, 1, [NOT_X0], program_budget=10,
+            set_name="the one formula probe set")
+        self.assertEqual(cell["state"], TM.PASS)
+        self.assertIn("the one formula probe set", cell["reason"])
+        self.assertNotIn("in the domain", cell["reason"])
+
+    def test_the_grid_keeps_the_domain_wording(self):
+        # The grid driver evaluates the whole domain, so its
+        # PASS cells keep the full domain wording, and the
+        # published record is untouched by the subset rule.
+        for cell in RECORD["cells"]:
+            if cell["state"] == TM.PASS:
+                self.assertIn("in the domain", cell["reason"])
+
+
 class TestGridStates(unittest.TestCase):
     def _cell(self, c, d):
         for cell in RECORD["cells"]:

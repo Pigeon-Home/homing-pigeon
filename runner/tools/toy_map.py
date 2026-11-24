@@ -327,8 +327,9 @@ def formula_name(formula):
     return " & ".join(names)
 
 
-def evaluate_cell(c, d, formulas, program_budget=DEFAULT_PROGRAM_BUDGET):
-    """Evaluate one grid cell over the whole domain.
+def evaluate_cell(c, d, formulas, program_budget=DEFAULT_PROGRAM_BUDGET,
+                  set_name=None):
+    """Evaluate one grid cell over the given formulas.
 
     Returns a dict with the cell state and its evidence. The
     program budget is the cell's hard resource limit: each
@@ -337,7 +338,18 @@ def evaluate_cell(c, d, formulas, program_budget=DEFAULT_PROGRAM_BUDGET):
     the cell never pass the budget. A search the budget
     stops leaves the cell UNKNOWN; only a completed
     enumeration with no witness establishes FAIL.
+
+    formulas_checked counts completed searches only: a
+    search the budget stops mid enumeration was attempted,
+    not checked, and does not move the count. The PASS
+    reason names the set the pass was earned over: set_name
+    when the caller supplies one, and otherwise the
+    supplied set by its size. The full domain wording
+    belongs to the grid driver, which passes the domain's
+    name for the whole domain.
     """
+    scope = set_name if set_name is not None else (
+        "the supplied set of %d formulas" % len(formulas))
     programs_total = 0
     steps_total = 0
     checked = 0
@@ -350,7 +362,6 @@ def evaluate_cell(c, d, formulas, program_budget=DEFAULT_PROGRAM_BUDGET):
             program_allowance=program_budget - programs_total)
         programs_total += result["programs_run"]
         steps_total += result["steps_used"]
-        checked += 1
         if result["status"] == STOPPED:
             return {"c": c, "d": d, "state": UNKNOWN,
                     "reason": "program budget %d stopped the "
@@ -360,6 +371,7 @@ def evaluate_cell(c, d, formulas, program_budget=DEFAULT_PROGRAM_BUDGET):
                     "steps_used": steps_total,
                     "formulas_checked": checked,
                     "counterexample": None}
+        checked += 1
         if not result["found"]:
             return {"c": c, "d": d, "state": FAIL,
                     "reason": "complete bounded enumeration found "
@@ -374,8 +386,8 @@ def evaluate_cell(c, d, formulas, program_budget=DEFAULT_PROGRAM_BUDGET):
                         "programs_run_for_formula": result["programs_run"],
                         "steps_used_for_formula": result["steps_used"]}}
     return {"c": c, "d": d, "state": PASS,
-            "reason": "every satisfiable formula in the domain "
-                      "was checked and a verified witness found",
+            "reason": "every satisfiable formula in %s was "
+                      "checked and a verified witness found" % scope,
             "programs_run": programs_total,
             "steps_used": steps_total,
             "formulas_checked": checked,
@@ -386,7 +398,8 @@ def run_grid(program_budget=DEFAULT_PROGRAM_BUDGET):
     """Run the whole grid and build the provenance record."""
     formulas = all_formulas()
     started = time.perf_counter()
-    cells = [evaluate_cell(c, d, formulas, program_budget)
+    cells = [evaluate_cell(c, d, formulas, program_budget,
+                           set_name="the domain")
              for d in GRID_D for c in GRID_C]
     elapsed = time.perf_counter() - started
     record = {
