@@ -1346,6 +1346,81 @@ class ConfinementTrialProblemTest(unittest.TestCase):
         self.assertTrue(holder["proc"].closed)
 
 
+class GrantResidueNamingTest(unittest.TestCase):
+    """The startup gate names the DACL residue shape (the
+    2026-11-23 rig diagnosis).
+
+    The battery spent a day reading one failure as a startup
+    failure on every head: a failed AppContainer spawn left
+    its grant standing on the interpreter's own directory,
+    and every later floor trial died at load with exit
+    0xC0000135 before the confined process ran a line. When
+    the floor trial dies in exactly that shape and the
+    interpreter directory carries the container SID, the
+    gate's answer names the residue and what clears it,
+    instead of the bare trial problem. The recognition and
+    the message are platform neutral and pinned here; the
+    DACL read behind them is Windows only.
+    """
+
+    _RIG_PROBLEM = ("a confined process could not read its "
+                    "staged file (exit -1073741515: no output)")
+
+    def test_the_rig_shape_is_recognized(self):
+        self.assertTrue(
+            WC.floor_trial_dll_not_found(self._RIG_PROBLEM))
+
+    def test_the_unsigned_exit_is_recognized(self):
+        problem = ("a confined process could not read its "
+                   "staged file (exit 3221225781: no output)")
+        self.assertTrue(WC.floor_trial_dll_not_found(problem))
+
+    def test_other_exits_are_not_the_shape(self):
+        for problem in (
+                "a confined process could not read its staged "
+                "file (exit 1: PermissionError)",
+                "a confined process could not read its staged "
+                "file (exit -1073741502: no output)",
+                "a confined process read its staged file but "
+                "could not write its work directory "
+                "(exit -1073741515: no output)",
+                "confined trial spawn failed: boom",
+                None, ""):
+            with self.subTest(problem=problem):
+                self.assertFalse(
+                    WC.floor_trial_dll_not_found(problem))
+
+    def test_the_message_names_the_shape_and_the_clearing(self):
+        message = WC.grant_residue_problem(
+            self._RIG_PROBLEM, "C:\\hp-tools\\python")
+        # The trial's own words stand first: the naming adds
+        # to the verdict, it does not replace it.
+        self.assertTrue(message.startswith(self._RIG_PROBLEM))
+        self.assertIn("STATUS_DLL_NOT_FOUND", message)
+        self.assertIn("0xC0000135", message)
+        self.assertIn("residue", message)
+        self.assertIn("C:\\hp-tools\\python", message)
+        self.assertIn("AppContainer SID", message)
+        self.assertIn("icacls", message)
+        self.assertIn("/reset", message)
+
+    def test_the_gate_consults_the_residue_check(self):
+        # The wiring, pinned by source shape: the floor
+        # verdict passes the residue check before it is
+        # cached, so the cached verdict the gate answers with
+        # is the named one.
+        path = os.path.join(
+            _REPO, "runner", "guard", "windows_confine.py")
+        with open(path, encoding="utf-8") as fh:
+            source = fh.read()
+        start = source.index(
+            "def windows_confinement_problem(cfg=None, "
+            "timeout=15):")
+        body = source[start:start + 6000]
+        self.assertIn("floor_trial_dll_not_found", body)
+        self.assertIn("_grant_residue_verdict", body)
+
+
 class ConfinementTrialStagingTest(unittest.TestCase):
     """The trial's staging shape (the Q134 addendum).
 

@@ -92,7 +92,13 @@ What the floor does not provide, plainly: no filesystem
 namespace isolation. A job at the floor can still read any
 path its token can read; low integrity stops it writing to
 medium- or higher-integrity objects outside its workspace, it
-does not hide the filesystem, and it isolates no network. At
+does not hide the filesystem, and it isolates no network. And
+the measured bound on the write side stands beside that: on
+the project's own Windows rig on 2026-11-23, on a run where
+the AppContainer control was unavailable and the jobs ran
+under the floor alone, the rig battery's escape write
+landed. A blocked escape write is a property of the
+AppContainer shape, not of the floor. At
 `enforce` the startup gate probes the backend (Job Object
 creation plus restricted-token creation plus the
 integrity-level set) and refuses to start when the probe
@@ -104,11 +110,14 @@ derives the container SID from a fixed container name, builds
 its security capabilities with no capability SIDs at all (a
 container with no network capability has no network), grants
 that SID the job's work directory, the ancestors of that
-directory at read and execute only, and the read paths a
-caller names, points the job's temporary folders at its work
-directory, and assigns the Job Object before the process
-resumes. A failed AppContainer start revokes the grants it
-made. Where that shape engages, the audit and startup record
+directory below the drive root at read and execute only, and
+the read paths a caller names, points the job's temporary
+folders at its work directory, and assigns the Job Object
+before the process resumes. A failed AppContainer start
+restores the prior DACLs of the paths it granted, from
+snapshots taken before the first grant stood, so no grant
+residue survives it. Where that shape engages, the audit and
+startup record
 names a different string, exactly:
 
 ```

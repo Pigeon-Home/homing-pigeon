@@ -177,7 +177,6 @@ class GrantSetTests(unittest.TestCase):
         self.assertEqual(grants, [("/work", "read_write_execute"),
                                   ("/ro/one", "read_execute"),
                                   ("/ro/two", "read_execute"),
-                                  ("/", "read_execute"),
                                   ("/ro", "read_execute")])
 
     def test_only_the_named_paths_and_their_ancestors(self):
@@ -186,32 +185,46 @@ class GrantSetTests(unittest.TestCase):
         # them, and nothing else. A relative work directory
         # names no ancestor and gains none.
         grants = WC.app_container_grant_set("/work")
-        self.assertEqual(grants, [("/work", "read_write_execute"),
-                                  ("/", "read_execute")])
+        self.assertEqual(grants, [("/work", "read_write_execute")])
         self.assertNotIn("/etc", [p for p, _ in grants])
         grants = WC.app_container_grant_set("work")
         self.assertEqual(grants, [("work", "read_write_execute")])
 
-    def test_ancestors_nearest_first_to_the_root(self):
+    def test_ancestors_nearest_first_stopping_below_the_root(self):
+        # The walk stops below the root of the drive or tree
+        # and never names it (the 2026-11-23 residue fix): a
+        # grant on the root is a grantor call on the one path
+        # whose security write hung on the project's own rig,
+        # and no contained process needs it, because every
+        # ancestor below the root still stands in the set and
+        # a host whose root names nothing the token holds
+        # fails the trial and falls back to the floor.
         self.assertEqual(
             WC.app_container_ancestor_dirs("/a/b/c"),
-            ["/a/b", "/a", "/"])
+            ["/a/b", "/a"])
         self.assertEqual(WC.app_container_ancestor_dirs("/a"),
-                         ["/"])
+                         [])
         self.assertEqual(WC.app_container_ancestor_dirs("a"), [])
         grants = WC.app_container_grant_set("/a/b/c")
         self.assertEqual(grants, [("/a/b/c", "read_write_execute"),
                                   ("/a/b", "read_execute"),
-                                  ("/a", "read_execute"),
-                                  ("/", "read_execute")])
+                                  ("/a", "read_execute")])
+
+    def test_no_grant_set_ever_names_the_root(self):
+        for work in ("/a", "/a/b", "/a/b/c/d", "/work"):
+            with self.subTest(work=work):
+                grants = WC.app_container_grant_set(
+                    work, ["/ro/one", "/ro/two/deep"])
+                self.assertNotIn("/", [p for p, _ in grants])
+                self.assertNotIn(
+                    "/", WC.app_container_ancestor_dirs(work))
 
     def test_duplicates_collapse_in_order(self):
         grants = WC.app_container_grant_set(
             "/work", ["/ro", "/ro", "/work", "/other", "/ro"])
         self.assertEqual(grants, [("/work", "read_write_execute"),
                                   ("/ro", "read_execute"),
-                                  ("/other", "read_execute"),
-                                  ("/", "read_execute")])
+                                  ("/other", "read_execute")])
 
     def test_empty_work_dir_is_an_error(self):
         for bad in ("", None, 7):
@@ -224,6 +237,105 @@ class GrantSetTests(unittest.TestCase):
             WC.app_container_grant_set("/work", [""])
         with self.assertRaises(ValueError):
             WC.app_container_grant_set("/work", [None])
+
+
+class DaclSnapshotTests(unittest.TestCase):
+    """The failed spawn's cleanup, as orchestration (the
+    2026-11-23 residue fix).
+
+    The rig diagnosis proved the cycle: a failed AppContainer
+    spawn's cleanup edited grant entries back out one call per
+    path, a call on this host can sit past its timeout, and
+    the entry that survived on the interpreter's own directory
+    broke every later floor trial at load. The cleanup now
+    snapshots each granted path's DACL before the first grant
+    stands and writes the snapshots back whole on failure.
+    The OS calls are Windows only; what is pinned here is the
+    orchestration the backend wires them through, plus the
+    source shape of that wiring.
+    """
+
+    def test_snapshots_cover_every_path_in_order(self):
+        seen = []
+
+        def _snapshot(path):
+            seen.append(path)
+            return "D:SNAP(%s)" % path, None
+
+        snapshots, problem = WC.take_dacl_snapshots(
+            ["/a", "/b", "/c"], _snapshot)
+        self.assertIsNone(problem)
+        self.assertEqual(seen, ["/a", "/b", "/c"])
+        self.assertEqual(snapshots, [("/a", "D:SNAP(/a)"),
+                                     ("/b", "D:SNAP(/b)"),
+                                     ("/c", "D:SNAP(/c)")])
+
+    def test_a_path_that_cannot_be_snapshotted_grants_nothing(self):
+        # All or nothing: the first snapshot problem answers
+        # with no snapshots at all, so the caller grants
+        # nothing it cannot put back whole.
+        def _snapshot(path):
+            if path == "/b":
+                return None, "GetNamedSecurityInfoW(/b) failed: 5"
+            return "D:SNAP(%s)" % path, None
+
+        snapshots, problem = WC.take_dacl_snapshots(
+            ["/a", "/b", "/c"], _snapshot)
+        self.assertEqual(snapshots, [])
+        self.assertIn("GetNamedSecurityInfoW(/b) failed: 5",
+                      problem)
+
+    def test_restore_writes_every_snapshot_back_in_reverse(self):
+        written = []
+
+        def _set_dacl(path, sddl):
+            written.append((path, sddl))
+            return None
+
+        failed = WC.restore_dacl_snapshots(
+            [("/a", "D:ONE"), ("/b", "D:TWO"), ("/c", "D:THREE")],
+            _set_dacl)
+        self.assertEqual(failed, [])
+        self.assertEqual(written, [("/c", "D:THREE"),
+                                   ("/b", "D:TWO"),
+                                   ("/a", "D:ONE")])
+
+    def test_restore_reports_the_paths_it_could_not_put_back(self):
+        def _set_dacl(path, sddl):
+            if path == "/b":
+                return "SetNamedSecurityInfoW(/b) failed: 5"
+            return None
+
+        failed = WC.restore_dacl_snapshots(
+            [("/a", "D:ONE"), ("/b", "D:TWO")], _set_dacl)
+        self.assertEqual(failed, ["/b"])
+
+    def test_spawn_snapshots_before_it_grants(self):
+        # The wiring, pinned by source shape as the ACL
+        # helper's inheritance shape is: the spawn takes its
+        # grants through the snapshot carrying grant, and its
+        # failure paths restore the snapshots instead of
+        # editing entries back out.
+        source = self._source()
+        grant = source.index("def _grant_app_container_paths"
+                             "_with_snapshots")
+        body = source[grant:grant + 4000]
+        self.assertLess(body.index("take_dacl_snapshots"),
+                        body.index("_set_entries_in_acl"))
+        self.assertIn("restore_dacl_snapshots", body)
+        spawn = source.index(
+            "def spawn_app_container_process(argv, cwd=None, "
+            "env=None,")
+        spawn_body = source[spawn:spawn + 12000]
+        self.assertIn("_grant_app_container_paths_with_snapshots",
+                      spawn_body)
+        self.assertIn("_restore_failed_spawn_dacls", spawn_body)
+
+    def _source(self):
+        path = os.path.join(
+            _REPO, "runner", "guard", "windows_confine.py")
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
 
 
 class SessionGrantTests(unittest.TestCase):
@@ -815,17 +927,28 @@ class ProfileCallShapeTests(unittest.TestCase):
         # The Lane 6 third measurement: a container SID entry
         # left standing on a library file's DACL makes the
         # floor's restricted token fail at load, so a spawn
-        # that fails after granting must revoke before the
+        # that fails after granting must clean up before the
         # failure travels, not leave the grant for a process
-        # close that will never happen.
+        # close that will never happen. The cleanup's shape
+        # changed with the 2026-11-23 residue fix: the spawn
+        # restores the DACL snapshots it took before granting
+        # (the entry surgery this test once pinned is the
+        # mechanism the rig diagnosis proved leaves the
+        # residue), with the recorded revocation kept as the
+        # fallback for a path the restore cannot put back.
         source = self._source()
         self.assertIn(
             "except Exception:\n"
-            "                # A failed spawn revokes the "
+            "                # A failed spawn puts back the "
             "grants it made",
             source)
         self.assertIn(
-            "remove_app_container_grants(sid, grants)",
+            "_restore_failed_spawn_dacls(\n"
+            "                        snapshots, sid, grants)",
+            source)
+        self.assertIn(
+            "remove_app_container_grants(\n"
+            "                    sid, [(path, by_path[path])",
             source)
 
     def test_live_binding_carries_six_parameters(self):

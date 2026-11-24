@@ -545,6 +545,41 @@ directory object alone, so the granted path can be
 walked to), which the re run's trial and battery then
 judge on their own facts.
 
+The DACL residue cycle, and its fix (2026-11-23): the rig
+diagnosis of that day proved a self poisoning cycle end to
+end. The AppContainer trial's ancestor grant walk reached
+the drive root itself, the security write on the root did
+not return inside its timeout on that host, the trial spawn
+failed, and its cleanup left the container grant standing
+on the interpreter's own directory, in the DACL shape the
+confined loader cannot use; every later start then died at
+the floor trial with STATUS_DLL_NOT_FOUND until the DACL
+was reset by hand, and one reset bought exactly one clean
+start. Three durable fixes stand in this module now. The
+ancestor walk stops below the root of the drive or tree,
+so no grant set names the root and the hanging call is
+never made. A spawn snapshots the prior DACL of every path
+it grants before the first grant stands, and a failed spawn
+restores those snapshots whole instead of editing entries
+back out under the same timeouts that left the residue; a
+path that cannot be snapshotted is not granted. And when
+the floor trial dies in the residue shape (the staged read
+at exit 0xC0000135) and the interpreter's DACL carries the
+container SID, the startup gate names the shape and what
+clears it, instead of answering the bare trial failure.
+The same diagnosis bounded the floor: on the one clean run
+the jobs ran under the floor alone, the AppContainer
+control being unavailable, and the battery's escape write
+landed, because the floor has no filesystem isolation. That
+limit is stated where the claim lives, in the support
+matrix and the Windows security page: a blocked escape
+write is a property of the AppContainer shape, not of the
+floor. The record of the supposition and the unit level
+conclusions stands in docs/infrastructure-documents/
+project/windows-dacl-residue-fix-2026-11-23.md; the live
+proof is the rig battery watch's on the heads that carry
+this fix.
+
 Handle lifetime: apply_windows_containment returns the job handle
 with the status; the caller owns it and closes it with
 close_job_handle once the job's process has exited. A confined
@@ -815,6 +850,12 @@ else:
     advapi32.ConvertStringSecurityDescriptorToSecurityDescriptorW.argtypes = [
         wintypes.LPCWSTR, wintypes.DWORD,
         ctypes.POINTER(wintypes.LPVOID),
+        ctypes.POINTER(wintypes.DWORD)]
+    advapi32.ConvertSecurityDescriptorToStringSecurityDescriptorW.restype \
+        = wintypes.BOOL
+    advapi32.ConvertSecurityDescriptorToStringSecurityDescriptorW.argtypes = [
+        wintypes.LPVOID, wintypes.DWORD, wintypes.DWORD,
+        ctypes.POINTER(wintypes.LPWSTR),
         ctypes.POINTER(wintypes.DWORD)]
     advapi32.GetSecurityDescriptorSacl.restype = wintypes.BOOL
     advapi32.GetSecurityDescriptorSacl.argtypes = [
@@ -1238,6 +1279,45 @@ else:
     _trial_lock = threading.Lock()
     _trial_verdict = []
 
+    def _grant_residue_verdict(floor_problem):
+        """The residue naming for a floor verdict, or None
+        when the shape is not proved on this host.
+
+        The container SID is derived and the interpreter's
+        own directory and file are read for it: the measured
+        residue stood on the directory, inherited by every
+        file under it. A read that fails proves nothing and
+        names nothing, and neither does a derivation that
+        fails: the bare verdict stands, exactly as it did
+        before the naming existed. Never raises.
+        """
+        try:
+            sid, problem = _derive_app_container_sid()
+            if problem is not None:
+                return None
+            try:
+                sid_text, problem = _sid_to_string(sid)
+                if problem is not None:
+                    return None
+                exe = sys.executable
+                for path in (os.path.dirname(exe), exe):
+                    if not path:
+                        continue
+                    sddl, problem = _read_dacl_sddl(path)
+                    # The SID as an ACE's trustee is followed
+                    # by the ACE's closing parenthesis in SDDL;
+                    # the bare string could be the prefix of a
+                    # longer SID and prove nothing.
+                    if problem is None and sddl \
+                            and (sid_text + ")") in sddl:
+                        return grant_residue_problem(
+                            floor_problem, path)
+                return None
+            finally:
+                kernel32.LocalFree(sid)
+        except Exception:
+            return None
+
     def windows_confinement_problem(cfg=None, timeout=15):
         """None when the confinement controls can engage here.
 
@@ -1268,10 +1348,19 @@ else:
         kernel32.CloseHandle(token)
         with _trial_lock:
             if not _trial_verdict:
-                _trial_verdict.append(
-                    confinement_trial_problem(
-                        _spawn_floor_confined_process,
-                        grant=_grant_users_read_execute))
+                verdict = confinement_trial_problem(
+                    _spawn_floor_confined_process,
+                    grant=_grant_users_read_execute)
+                if floor_trial_dll_not_found(verdict):
+                    # The floor died at load in the residue
+                    # shape: name it, if the interpreter's
+                    # DACL proves it, before the verdict is
+                    # cached, so the gate answers with the
+                    # diagnosis and not the bare failure.
+                    named = _grant_residue_verdict(verdict)
+                    if named is not None:
+                        verdict = named
+                _trial_verdict.append(verdict)
             verdict = _trial_verdict[0]
         if verdict is None:
             # The floor stands on this host. The AppContainer
@@ -1721,6 +1810,44 @@ else:
         finally:
             kernel32.LocalFree(sd)
 
+    def _read_dacl_sddl(path):
+        """(sddl, problem): the DACL `path` carries, as SDDL,
+        or the problem that kept it from being read. The
+        snapshot half of the grant cleanup: the string is the
+        DACL in the form the operating system itself round
+        trips, and _set_dacl_sddl writes exactly it back, so
+        a snapshot restored is the prior DACL as the OS
+        serializes it: every ACE, in its order, with its
+        flags.
+        """
+        psid_owner = wintypes.LPVOID()
+        psid_group = wintypes.LPVOID()
+        dacl = wintypes.LPVOID()
+        sd = wintypes.LPVOID()
+        rc = advapi32.GetNamedSecurityInfoW(
+            ctypes.create_unicode_buffer(path), SE_FILE_OBJECT,
+            DACL_SECURITY_INFORMATION, ctypes.byref(psid_owner),
+            ctypes.byref(psid_group), ctypes.byref(dacl), None,
+            ctypes.byref(sd))
+        if rc != 0:
+            return None, ("GetNamedSecurityInfoW(%s) failed: %d"
+                          % (path, rc))
+        try:
+            text = wintypes.LPWSTR()
+            if not advapi32.ConvertSecurityDescriptorToStringSecurityDescriptorW(
+                    sd, SDDL_REVISION_1, DACL_SECURITY_INFORMATION,
+                    ctypes.byref(text), None):
+                return None, (
+                    "ConvertSecurityDescriptorToStringSecurity"
+                    "DescriptorW(%s) failed: %d"
+                    % (path, ctypes.get_last_error()))
+            try:
+                return ctypes.wstring_at(text), None
+            finally:
+                kernel32.LocalFree(text)
+        finally:
+            kernel32.LocalFree(sd)
+
     def _set_entries_in_acl(path, sid, mask, mode, inherit=True):
         """None once one entry for `sid` at `mask` has been
         added to (GRANT_ACCESS) or revoked from (REVOKE_ACCESS)
@@ -1810,20 +1937,34 @@ else:
         finally:
             kernel32.LocalFree(sd)
 
-    def _grant_app_container_paths(sid, work_dir, read_paths=()):
-        """(granted, problem): additively grant the container
-        SID read, write and execute on the work directory and
-        read plus execute on each read path, and nothing
-        anywhere else. `granted` is the recorded grant set
-        (app_container_grant_set's shape) once every grant
-        stands, so the caller can report exactly what was
-        granted and revoke exactly that at job end; on a
-        problem it is empty and no spawn follows.
+    def _grant_app_container_paths_with_snapshots(
+            sid, work_dir, read_paths=()):
+        """(granted, snapshots, problem): the grant below,
+        with the prior DACL of every granted path snapshotted
+        before the first grant stands.
+
+        The snapshots are the failed spawn's way back: a
+        spawn that fails after granting restores them whole
+        (see _restore_failed_spawn_dacls) instead of editing
+        the entries it added back out. The snapshots are
+        taken for the whole set first, all or nothing: a
+        path whose DACL cannot be read is never granted,
+        because a grant this spawn cannot put back is a
+        grant it does not make. On a grant problem partway,
+        every snapshot stands restored before the problem is
+        answered, and a path the restore itself could not
+        put back is named in the problem, so the residue is
+        reported where it stands instead of discovered by
+        the next start.
         """
         try:
             grants = app_container_grant_set(work_dir, read_paths)
         except ValueError as e:
-            return [], "%s" % (e,)
+            return [], [], "%s" % (e,)
+        snapshots, problem = take_dacl_snapshots(
+            [path for path, access in grants], _read_dacl_sddl)
+        if problem is not None:
+            return [], [], problem
         named = {work_dir} | set(read_paths or ())
         ancestors = set()
         for path in named:
@@ -1837,8 +1978,54 @@ else:
                 path, sid, mask, GRANT_ACCESS,
                 inherit=path not in ancestors)
             if problem is not None:
-                return [], problem
-        return grants, None
+                failed = restore_dacl_snapshots(
+                    snapshots, _set_dacl_sddl)
+                if failed:
+                    problem = (
+                        "%s; the prior DACL could not be "
+                        "restored on: %s"
+                        % (problem, ", ".join(failed)))
+                return [], snapshots, problem
+        return grants, snapshots, None
+
+    def _grant_app_container_paths(sid, work_dir, read_paths=()):
+        """(granted, problem): additively grant the container
+        SID read, write and execute on the work directory and
+        read plus execute on each read path, and nothing
+        anywhere else. `granted` is the recorded grant set
+        (app_container_grant_set's shape) once every grant
+        stands, so the caller can report exactly what was
+        granted and revoke exactly that at job end; on a
+        problem it is empty and no spawn follows.
+        """
+        grants, snapshots, problem = \
+            _grant_app_container_paths_with_snapshots(
+                sid, work_dir, read_paths)
+        return grants, problem
+
+    def _restore_failed_spawn_dacls(snapshots, sid, grants):
+        """Put a failed spawn's granted paths back exactly as
+        they were found: write every DACL snapshot back
+        whole, and for any path the restore could not put
+        back, fall back to revoking the recorded grant's
+        entry, the older cleanup, so the path gets both
+        chances. Best effort throughout, and never raises:
+        this runs on a failure path whose own error is the
+        one that must travel.
+        """
+        try:
+            failed = restore_dacl_snapshots(
+                snapshots, _set_dacl_sddl)
+        except Exception:
+            failed = [path for path, sddl in snapshots]
+        if failed:
+            try:
+                by_path = dict(grants)
+                remove_app_container_grants(
+                    sid, [(path, by_path[path])
+                          for path in failed if path in by_path])
+            except Exception:
+                pass
 
     def remove_app_container_grants(sid, grants):
         """Revoke exactly the recorded grant set: the job end
@@ -2037,8 +2224,9 @@ else:
             sid_text, problem = _sid_to_string(sid)
             if problem is not None:
                 raise RuntimeError(problem)
-            grants, problem = _grant_app_container_paths(
-                sid, cwd, read_paths)
+            grants, snapshots, problem = \
+                _grant_app_container_paths_with_snapshots(
+                    sid, cwd, read_paths)
             if problem is not None:
                 raise RuntimeError(problem)
             # The session object grants stand beside the path
@@ -2054,7 +2242,8 @@ else:
                 _grant_app_container_session_objects(sid)
             if problem is not None:
                 try:
-                    remove_app_container_grants(sid, grants)
+                    _restore_failed_spawn_dacls(
+                        snapshots, sid, grants)
                 except Exception:
                     pass
                 raise RuntimeError(problem)
@@ -2073,7 +2262,8 @@ else:
                 except Exception:
                     pass
                 try:
-                    remove_app_container_grants(sid, grants)
+                    _restore_failed_spawn_dacls(
+                        snapshots, sid, grants)
                 except Exception:
                     pass
                 raise RuntimeError(problem)
@@ -2089,7 +2279,7 @@ else:
                 proc = _spawn_suspended(argv, cwd, ac_env, job,
                                         None, capabilities=caps)
             except Exception:
-                # A failed spawn revokes the grants it made
+                # A failed spawn puts back the grants it made
                 # before the failure travels: a container SID
                 # entry left standing on a granted path is not
                 # inert. On a library file it makes the floor's
@@ -2099,11 +2289,18 @@ else:
                 # measurement, isolated in both directions on
                 # the rig), so a leaked grant on an interpreter
                 # tree silently breaks the floor the spawn was
-                # supposed to fall back to. The successful
+                # supposed to fall back to. The putting back is
+                # the snapshot restore, not entry surgery: the
+                # 2026-11-23 rig diagnosis proved the surgery
+                # itself leaves the residue when a revoke call
+                # does not return inside its timeout, while a
+                # snapshot written back whole leaves the path
+                # exactly as it was found. The successful
                 # spawn's grants are revoked at job end by the
                 # process's close, exactly as before.
                 try:
-                    remove_app_container_grants(sid, grants)
+                    _restore_failed_spawn_dacls(
+                        snapshots, sid, grants)
                 except Exception:
                     pass
                 try:
@@ -2574,20 +2771,33 @@ def proc_thread_attribute_spec(capabilities):
 
 
 def app_container_ancestor_dirs(path):
-    """The ancestor directories of `path`, nearest first, up
-    to and including the root of its drive or tree: for a
-    path three levels deep, its parent, its grandparent and
-    the root. A relative path with no directory part has
-    none. Pure path arithmetic, on any host, so the grant
-    set's shape can be pinned by the suite anywhere.
+    """The ancestor directories of `path`, nearest first,
+    stopping below the root of its drive or tree: for a path
+    three levels deep, its parent and its grandparent, and
+    never the root itself. A relative path with no directory
+    part has none. Pure path arithmetic, on any host, so the
+    grant set's shape can be pinned by the suite anywhere.
+
+    The root stands outside the walk on purpose (the
+    2026-11-23 residue fix). The grant this list feeds is a
+    security write on every ancestor, and on the project's
+    own rig the write on the drive root did not return
+    inside its timeout, which is the hang the whole residue
+    cycle hangs from. No contained process needs the root
+    granted: it walks the ancestors below the root, which
+    all stand in the set, and a host whose root names
+    nothing the container token holds fails the AppContainer
+    trial and falls back to the floor, the designed answer,
+    instead of hanging a grantor call on the one path every
+    other path hangs under.
     """
     out = []
     node = os.path.dirname(path)
     while node and node not in out:
-        out.append(node)
         parent = os.path.dirname(node)
         if parent == node:
             break
+        out.append(node)
         node = parent
     return out
 
@@ -2640,6 +2850,101 @@ def app_container_grant_set(work_dir, read_paths=()):
             seen.add(ancestor)
             grants.append((ancestor, "read_execute"))
     return grants
+
+
+def take_dacl_snapshots(paths, snapshot):
+    """(snapshots, problem): the DACL snapshot of every path
+    in `paths`, in order, taken before any grant stands.
+
+    `snapshot(path)` answers (sddl, problem): the path's DACL
+    in SDDL, the form the operating system itself round
+    trips, or the problem that kept it from being read. The
+    snapshots are all or nothing: the first path that cannot
+    be snapshotted answers its problem with no snapshots at
+    all, because the caller's rule is that a grant it cannot
+    put back whole is a grant it does not make (the
+    2026-11-23 residue fix: a failed spawn restores these
+    snapshots whole instead of editing the entries it added
+    back out, one timed call per path, which is the surgery
+    that left the residue standing).
+    """
+    snapshots = []
+    for path in paths:
+        sddl, problem = snapshot(path)
+        if problem is not None:
+            return [], problem
+        snapshots.append((path, sddl))
+    return snapshots, None
+
+
+def restore_dacl_snapshots(snapshots, set_dacl):
+    """The paths whose snapshot could not be put back, in
+    the order attempted: every snapshot is written back,
+    in reverse order, through `set_dacl(path, sddl)`, which
+    answers None once the DACL stands or the problem. One
+    path's failure does not stop the rest: a partial restore
+    reported whole is worth more than a restore that gives
+    up at its first failure and leaves the remainder
+    unreported.
+    """
+    failed = []
+    for path, sddl in reversed(list(snapshots)):
+        if set_dacl(path, sddl) is not None:
+            failed.append(path)
+    return failed
+
+
+# The floor trial's death at load: the confined process's
+# exit when the loader cannot map the interpreter's own
+# libraries, as a signed and an unsigned value. Python
+# reports the exit as the signed NTSTATUS on Windows; the
+# unsigned form is the same code read as a process exit
+# code, and the gate accepts either spelling.
+DLL_NOT_FOUND_EXIT_SIGNED = -1073741515
+DLL_NOT_FOUND_EXIT_UNSIGNED = 3221225781
+
+
+def floor_trial_dll_not_found(problem):
+    """True when a floor trial problem is the staged read
+    failure with exit STATUS_DLL_NOT_FOUND (0xC0000135):
+    the confined process died at load, before it ran a line,
+    which is the shape a poisoned interpreter DACL leaves.
+    Any other failure, including the same exit at the write
+    stage, is not this shape: a process that read its staged
+    file got past the loader, so its death has another cause
+    and the gate must not name this one.
+    """
+    if not problem:
+        return False
+    if "could not read its staged file" not in problem:
+        return False
+    return ("exit %d" % DLL_NOT_FOUND_EXIT_SIGNED) in problem \
+        or ("exit %d" % DLL_NOT_FOUND_EXIT_UNSIGNED) in problem
+
+
+def grant_residue_problem(floor_problem, interpreter_path):
+    """The startup gate's name for the grant residue shape:
+    the floor trial's own problem, then what the shape is
+    and what clears it. `interpreter_path` is the path whose
+    DACL carries the container SID (the interpreter's own
+    directory, in the measured case). The trial's words
+    stand first and whole: this naming adds the diagnosis,
+    it does not replace the verdict it was read from.
+    """
+    return (
+        "%s This failure has the AppContainer grant residue "
+        "shape: the confined trial process died with "
+        "STATUS_DLL_NOT_FOUND (0xC0000135) before running a "
+        "line, and %s carries a grant for the AppContainer "
+        "SID, left standing by a failed AppContainer spawn. "
+        "The confined loader cannot map the interpreter's "
+        "own libraries through that DACL, so every start "
+        "fails the same way until the grant is gone. Reset "
+        "the DACL of %s to its inherited defaults (icacls "
+        "\"%s\" /reset /T), or remove the AppContainer SID's "
+        "entry from it, then start again."
+        % (floor_problem, interpreter_path, interpreter_path,
+           interpreter_path))
 
 
 def app_container_session_grant_set():
