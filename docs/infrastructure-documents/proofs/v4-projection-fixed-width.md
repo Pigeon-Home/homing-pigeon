@@ -59,9 +59,14 @@ The construction attaining both bounds: the first two
 pairs meet in one flag, set by 4 rules, one per choice
 of a true bit from each pair; each later pair advances
 the flag with 2 rules; the last pair heads z instead of
-a new flag. The flags are the truth of "every pair so
-far is hit", so the projection is R_m by the same
-canonical completion argument as the projection page.
+a new flag. In the canonical completion, set each flag
+to the truth of "every pair so far is hit", so the
+projection is R_m by the same canonical completion
+argument as the projection page. The clauses do not
+force each flag to equal that value in every satisfying
+completion; the equality is the choice the canonical
+completion makes, and the existential projection
+argument needs only that choice.
 The construction also derives every implied visible
 literal by unit propagation under any partial visible
 assignment, or derives a contradiction when the
@@ -115,7 +120,12 @@ up to w - 1 pairs, each later group up to w - 2, one
 flag per group boundary, the last group heading z.
 Equivalently, k >= max(0, ceil((m - 1) / (w - 2)) - 1),
 and that auxiliary bound is tight when the clause
-count is allowed to vary.
+count is allowed to vary. That rearrangement and the
+group construction above are stated for w from 3 up:
+the division by (w - 2) has no meaning at w = 2. The
+inequality m <= 1 + (k + 1)(w - 2) itself still makes
+sense at w = 2, where it gives m <= 1, and section 4
+handles w = 2 separately, by the majority argument.
 
 ## 3. Arbitrary CNF: the capacity law
 
@@ -132,15 +142,34 @@ encoding of R_m with k auxiliaries exists if and only
 if m + 1 <= C(k, w). Necessity restricts the encoding
 to one minimal pattern and reads a minimally
 unsatisfiable core over the auxiliaries; the landed
-flat clause lemma of the projection page forces each
-core clause to carry at least m + 1 visible literals
-in total. Sufficiency assigns the m pairs and z to the
-free literal slots of a core attaining the capacity
+flat clause lemma of the projection page, applied to
+the core as a whole, gives a combined visible
+disjunction carrying at least m + 1 distinct visible
+literals. The disjunction of the visible parts of all
+clauses in the core is entailed by R_m and falsified
+at the selected minimal pattern, so it contains z and
+one selected negative bit per pair. Individual core
+clauses can carry far fewer visible literals: at
+width 3 and m from 3 up, no single clause could carry
+m + 1 of them. The count belongs to the disjunction,
+not to each clause. Sufficiency assigns the m pairs
+and z to the free literal slots of a core attaining the capacity
 and distributes. A clause of width d in such a core is
 false on a subcube of dimension k - d, so the
 characterization is equivalently about irredundant
 covers of a Boolean cube, each clause holding a
 private point.
+
+A concrete case at m = 3, from the correcting email:
+fix a_1 = a_2 = a_3 = 1, b_1 = b_2 = b_3 = z = 0 in
+the six clause compact Horn encoding. One residual
+core is {s, not s}, coming from the original clauses
+(not a_1 or not a_2 or s) and (not s or not a_3 or z).
+Each of those clauses contributes only 2 visible
+literals, while their combined visible disjunction is
+(not a_1 or not a_2 or not a_3 or z), with m + 1 = 4
+distinct visible literals. The example is pinned in
+`runner/tests/test_v4_projection_width.py`.
 
 The small values, enumerated in full: the minimally
 unsatisfiable counts for k = 0, 1, 2, 3 are 1, 2, 12,
@@ -348,7 +377,11 @@ construction" (7:59 PM) and "an exact width-three Horn
 tradeoff and a new 2026 paper" (8:00 PM). A fourth
 email the same day, "propagation across one-bit joins
 and a smaller 256-pair grid" (8:38 PM), is the source
-of section 7. The reviews:
+of section 7. A fifth email the same day, "one
+correction and two clarifications in the fixed-width
+proof" (9:14 PM), corrects the mechanism stated in
+section 3 and clarifies sections 1 and 2; the review
+page records the corrections. The reviews:
 `v4-projection-width-review-2026-11-23.md`,
 `v4-projection-gluing-review-2026-11-23.md`, and
 `v4-projection-round3-review-2026-11-23.md`. The

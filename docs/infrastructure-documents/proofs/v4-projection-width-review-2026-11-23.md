@@ -350,3 +350,67 @@ k = 3 minimally unsatisfiable count, came out at
 exactly the email's 870, and the enumeration ran in
 about a second, so it stands in the committed tests
 alongside k = 0 to 2.
+
+## Corrections received later the same day
+
+A fifth email of 23 November 2026 (9:14 PM), "one
+correction and two clarifications in the fixed-width
+proof", relayed in ComChat, found a wording error in
+the landed capacity law paragraph of the theorem page
+and two edge case clarifications. The theorem page
+now carries all three, and the finite parts stand in
+`runner/tests/test_v4_projection_width.py`. None of
+the three changes a proved claim: the first corrects
+a stated mechanism, and the other two clarify scope
+and wording, as the email itself says.
+
+1. Section 3, the flat clause mechanism. The page
+   said the flat clause lemma forces each core clause
+   to carry at least m + 1 visible literals in total.
+   That cannot be literal: at m from 3 up, a width 3
+   clause cannot carry m + 1 visible literals. What
+   the argument requires is that the disjunction of
+   the visible parts of all clauses in the
+   unsatisfiable residual core is entailed by R_m and
+   falsified at the selected minimal pattern, so the
+   combined disjunction contains z and one selected
+   negative bit per pair, at least m + 1 distinct
+   visible literals in all. Individual core clauses
+   can carry far fewer. The email gives a concrete
+   case at m = 3, now stated on the theorem page and
+   pinned in the tests: the residual core {s, not s}
+   comes from clauses carrying 2 visible literals
+   each, while their combined visible disjunction
+   carries 4. The correction is to the stated
+   mechanism, not a counterexample to the capacity
+   theorem, and the capacity count itself is
+   unchanged: the m + 1 distinct literals sit in the
+   core's clauses between them, each clause holding
+   at most the free slots its width leaves, which is
+   the sum the capacity C(k, w) counts.
+2. Section 2, the w = 2 denominator. The rearranged
+   bound k >= max(0, ceil((m - 1) / (w - 2)) - 1)
+   divides by zero at w = 2. The theorem page now
+   states that rearrangement and the group
+   construction for w from 3 up, notes that the
+   inequality m <= 1 + (k + 1)(w - 2) itself still
+   makes sense at w = 2 and gives m <= 1 there, and
+   leaves w = 2 to the majority argument of its
+   section 4, as the email directs. Claim 3 above
+   states the Horn theorem in the inequality form,
+   which is the form that survives at w = 2, so no
+   claim on this page needed restating.
+3. Section 1, the flags. "The flags are the truth
+   of ..." now reads "In the canonical completion,
+   set each flag to the truth of ...". The Horn
+   clauses do not force each flag to equal that value
+   in every satisfying completion; the equality is
+   the canonical completion's choice. This is the
+   same implication versus equality distinction as
+   the Horn diagram caption correction of the same
+   evening, and the existential projection proof is
+   unchanged. The tests pin a satisfying completion
+   of the m = 3 block construction whose first flag
+   differs from the truth value the canonical
+   completion would set, beside the canonical
+   completion itself.

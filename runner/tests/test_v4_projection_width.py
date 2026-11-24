@@ -60,6 +60,15 @@ recorded in the review page, not tested here. What is
 tested is the finite enumeration those arguments rest
 on, and the small cases a counterexample would most
 likely inhabit.
+7. The corrections of the 9:14 PM email of the same
+   day: the m = 3 residual core whose combined visible
+   disjunction carries m + 1 distinct visible literals
+   while each core clause carries only 2; the w = 2
+   boundary of the rearranged Horn bound; and a
+   satisfying completion of the block construction
+   whose flag differs from the value the canonical
+   completion sets, beside the canonical completion
+   itself.
 """
 import itertools
 import math
@@ -726,6 +735,109 @@ class TestForestPropagation(unittest.TestCase):
         sat, implied = _entailment(clauses, 0, 0, 3)
         self.assertTrue(sat)
         self.assertEqual(implied.get(0), 0)
+
+
+class TestLateCorrections(unittest.TestCase):
+    """The 9:14 PM email: one correction and two
+    clarifications, pinned where they are test backed."""
+
+    def test_core_disjunction_not_each_clause(self):
+        # m = 3, layout as the module header: a_i at i,
+        # b_i at 3 + i, z at 6, the auxiliary s at 7.
+        m = 3
+        a = [1 << i for i in range(m)]
+        z = 1 << (2 * m)
+        s = 1 << (2 * m + 1)
+        vis_mask = (1 << (2 * m + 1)) - 1
+        # (not a_1 or not a_2 or s) and
+        # (not s or not a_3 or z), 1-indexed in words.
+        core = [(s, a[0] | a[1]), (z, s | a[2])]
+        # Each core clause carries only 2 visible
+        # literals, fewer than m + 1 = 4.
+        for pos, neg in core:
+            self.assertEqual(
+                _popcnt((pos | neg) & vis_mask), 2)
+        # The selected minimal pattern: every a_i true,
+        # every b_i false, z false.
+        pattern = a[0] | a[1] | a[2]
+        self.assertFalse(_in_R(pattern, m))
+        # The residual core is {s, not s}: unsatisfiable
+        # together, satisfiable one clause at a time.
+        self.assertFalse(_satisfies(core, pattern))
+        self.assertFalse(_satisfies(core, pattern | s))
+        self.assertTrue(_satisfies(core[:1], pattern | s))
+        self.assertTrue(_satisfies(core[1:], pattern))
+        # The combined visible disjunction (not a_1 or
+        # not a_2 or not a_3 or z) carries m + 1 = 4
+        # distinct visible literals: z and one selected
+        # negative bit per pair.
+        disj = (z, a[0] | a[1] | a[2])
+        self.assertEqual(_popcnt(disj[0] | disj[1]), m + 1)
+        # It is falsified at the selected pattern and
+        # entailed by R_m on every visible assignment.
+        self.assertFalse(_satisfies([disj], pattern))
+        for vis in range(1 << (2 * m + 1)):
+            if _in_R(vis, m):
+                self.assertTrue(_satisfies([disj], vis),
+                                f"vis={vis}")
+
+    def test_w2_rearrangement_boundary(self):
+        # The inequality m <= 1 + (k + 1)(w - 2) makes
+        # sense at w = 2 and gives m <= 1 for every k;
+        # the rearranged form divides by (w - 2) and is
+        # stated for w from 3 up only.
+        for k in range(6):
+            self.assertEqual(1 + (k + 1) * (2 - 2), 1)
+        for w in (3, 4, 5):
+            for k in range(4):
+                bound = 1 + (k + 1) * (w - 2)
+                got = max(
+                    0, math.ceil((bound - 1) / (w - 2)) - 1)
+                self.assertLessEqual(got, k)
+
+    def test_flags_are_a_canonical_choice(self):
+        # In the m = 3 block construction the flag for
+        # the first two pairs can stand at either value
+        # in a satisfying completion when the second
+        # pair is empty and z is true; the canonical
+        # completion sets it to the truth of "every pair
+        # so far is hit", which is false here.
+        m = 3
+        clauses, naux = _block_construction(m)
+        self.assertEqual(naux, 1)
+        flag = 1 << (2 * m + 1)
+        vis = (1 << 0) | (1 << 2) | (1 << (2 * m))
+        self.assertTrue(_in_R(vis, m))
+        canonical_truth = (
+            ((vis >> 0) & 1 or (vis >> 3) & 1)
+            and ((vis >> 1) & 1 or (vis >> 4) & 1))
+        self.assertFalse(canonical_truth)
+        self.assertTrue(_satisfies(clauses, vis))
+        self.assertTrue(_satisfies(clauses, vis | flag))
+
+    def test_pages_carry_the_corrections(self):
+        with open(os.path.join(
+                PROOFS, "v4-projection-fixed-width.md"),
+                encoding="utf-8") as f:
+            theorem = " ".join(f.read().split())
+        for needle in (
+                "In the canonical completion, set each flag",
+                "disjunction of the visible parts of all "
+                "clauses in the core",
+                "stated for w from 3 up",
+                "one correction and two clarifications in "
+                "the fixed-width proof"):
+            self.assertIn(needle, theorem)
+        for absent in ("The flags are the truth of",
+                       "forces each core clause to carry"):
+            self.assertNotIn(absent, theorem)
+        with open(os.path.join(
+                PROOFS,
+                "v4-projection-width-review-2026-11-23.md"),
+                encoding="utf-8") as f:
+            review = " ".join(f.read().split())
+        self.assertIn("Corrections received later the "
+                      "same day", review)
 
 
 class TestThePages(unittest.TestCase):
