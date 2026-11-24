@@ -33,6 +33,14 @@ The 4 rules stand in the ledger itself,
    (no crash, no findings, 0 disagreements, 0 differences,
    found nothing) sits near a stated count or bound, so a
    new unbounded claim of that shape fails here by name.
+5. The replay certificate naming rule (set 2026-11-23
+   from the follow-up review of the worked examples)
+   stands in the ledger, and the bindings page names
+   its fuzz record under it: a replay certificate over
+   the kept corpus, a scoped search record over the
+   tried space, with the run's dimensions (per child
+   size cap, total attempts, execution budget, replay
+   availability) recorded separately.
 
 Dated records are not scanned: the stage records and the
 archive describe what was true when they were written.
@@ -202,6 +210,60 @@ class TheCompanionSectionsStandTest(unittest.TestCase):
             "None of them proves P = NP, and none of them proves "
             "its negation.",
             flat)
+
+
+class TheReplayCertificateNamingTest(unittest.TestCase):
+    """The naming rule, and the bindings page under it.
+
+    A record earns the name replay certificate only
+    when it carries a reproducible candidate stream or
+    the retained inputs, the exact build, harness and
+    verdict, and an independent way to check
+    completeness for the stated claim. The fuzz record
+    on the bindings page is named by that rule, and its
+    dimensions stand separately.
+    """
+
+    def _flat(self, name):
+        text = _read(*_PROOFS, name)
+        return re.sub(r"\s+", " ", text)
+
+    def test_the_naming_rule_stands_in_the_ledger(self):
+        flat = self._flat("properties.md")
+        for phrase in (
+            "earns the name replay certificate only when it "
+            "carries all three of these",
+            "a reproducible candidate stream, or the retained "
+            "inputs themselves",
+            "the exact build, the harness, and the verdict the "
+            "search ran under",
+            "an independent way to check completeness for the "
+            "stated claim",
+            "a scoped search record",
+            "the per child size cap, the total attempts, the "
+            "execution budget",
+            "A size cap is not a budget, and a budget is not a "
+            "count of attempts.",
+        ):
+            self.assertIn(phrase, flat)
+
+    def test_the_bindings_record_is_named_under_the_rule(self):
+        flat = self._flat("v4-bindings.md")
+        for phrase in (
+            "As a replay certificate, the record earns the name "
+            "over the kept corpus only",
+            "the record is a scoped search record, not a replay "
+            "certificate",
+            "completeness over the tried space rests on the log "
+            "alone, with no independent check",
+            "The dimensions of the run stand separately.",
+            "The per child size cap is 16,384 bytes.",
+            "The total attempts are the 651,086,719 inputs, over "
+            "the 35,270 grow runs.",
+            "Replay is available over the kept corpus, and not "
+            "over the tried stream.",
+        ):
+            self.assertIn(phrase, flat)
 
 
 class FoundNothingClaimsCarryBoundsTest(unittest.TestCase):

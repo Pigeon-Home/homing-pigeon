@@ -213,6 +213,28 @@ bytes, as the sizes section below records. A crash on an
 input outside that space, that order, or that budget is
 not a crash this sentence speaks about.
 
+What the record is named, under the naming rule that
+stands with those honesty rules in `properties.md`. The
+certificate above is the second rule's certificate:
+space, order, and budget. As a replay certificate, the
+record earns the name over the kept corpus only: the
+2,664 entries are retained, the harness is each
+target's own check, run by `CorpusReplayTest` on every
+suite run, the verdict on each entry is the answer its
+contract requires, and completeness over the kept
+corpus is checked by that replay, independently of the
+log. Over the whole space the runs tried, the record
+is a scoped search record, not a replay certificate:
+the tried inputs were not retained, only the entries
+the runs kept, so completeness over the tried space
+rests on the log alone, with no independent check. The
+dimensions of the run stand separately. The per child
+size cap is 16,384 bytes. The total attempts are the
+651,086,719 inputs, over the 35,270 grow runs. The
+execution budget is the runs themselves, as recorded
+in the log. Replay is available over the kept corpus,
+and not over the tried stream.
+
 A fuzz target is bound to a constraint when its corpus
 enters a function the constraint names. The count is made by
 replaying every corpus entry of every target under a

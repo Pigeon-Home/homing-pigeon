@@ -1413,6 +1413,21 @@ a claim, this file included.
    a result proved at one strength is never restated
    at a higher one.
 
+One naming consequence of the second rule. A search
+record earns the name replay certificate only when it
+carries all three of these: a reproducible candidate
+stream, or the retained inputs themselves; the exact
+build, the harness, and the verdict the search ran
+under; and an independent way to check completeness
+for the stated claim. A record that carries less is
+named for what it carries, a scoped search record,
+with its scope stated where the claim stands. And the
+dimensions of a run are recorded separately, never
+traded for one another: the per child size cap, the
+total attempts, the execution budget, and whether
+replay is available, and over what. A size cap is not
+a budget, and a budget is not a count of attempts.
+
 ## Design from the completed corpus, and two companions
 
 Three pieces of writing were named as still owed on
