@@ -372,8 +372,10 @@ def _code(site):
 
 
 def render_constraints(reg):
-    lines = ["| ID | Constraint | Stated by | Code | Pins | Fuzz data |",
-             "|----|------------|-----------|------|------|-----------|"]
+    lines = ["| ID | Constraint | Stated by | Code | Pins | Fuzz data |"
+             " Evidence |",
+             "|----|------------|-----------|------|------|-----------|"
+             "----------|"]
     for row in reg["constraints"]:
         stated = "; ".join("%s %s" % pair if pair[1] != "the whole property"
                            else "%s, the whole property" % pair[0]
@@ -384,29 +386,30 @@ def render_constraints(reg):
                 by_target.get(tie["target"], 0), tie["entries"])
         fuzz = ", ".join("`%s` %s" % (target, _n(hits))
                          for target, hits in by_target.items()) or "none"
-        lines.append("| %s | %s | %s | %s | %d | %s |" % (
+        lines.append("| %s | %s | %s | %s | %d | %s | %s |" % (
             row["id"], row["name"], stated,
             "; ".join(_code(site) for site in row["code"]),
-            len(row["pins"]), fuzz))
+            len(row["pins"]), fuzz, ", ".join(row["evidence"])))
     return "\n".join(lines)
 
 
 def render_properties(reg):
     lines = ["| Property | Stated in | Model | Checked invariants | "
              "Conformance | Steps in `general.tla` | "
-             "Seams that carry it |",
+             "Seams that carry it | Evidence |",
              "|----------|-----------|-------|--------------------|"
              "-------------|-------------------------|"
-             "---------------------|"]
+             "---------------------|----------|"]
     for pid, row in reg["properties"].items():
-        lines.append("| %s | `%s` | %s | %s | %s | %s | %s |" % (
+        lines.append("| %s | `%s` | %s | %s | %s | %s | %s | %s |" % (
             pid, row["stated"],
             "`%s`" % row["model"] if row["model"] else "none",
             ", ".join("`%s`" % name for name in row["holds"]) or "none",
             ", ".join("`%s`" % name.split("/")[-1]
                       for name in row["conformance"]),
             ", ".join("`%s`" % step for step in row["general"]),
-            ", ".join("`%s`" % seam for seam in row["seams"])))
+            ", ".join("`%s`" % seam for seam in row["seams"]),
+            ", ".join(row["evidence"])))
     return "\n".join(lines)
 
 
@@ -500,6 +503,47 @@ def totals(reg):
          sum(row["bands"][3] for row in fuzz)),
         ("largest entry", max(row["largest"] for row in fuzz
                               if row["largest"] is not None))])
+
+
+# ---- evidence provenance, held
+
+def provenance_problems(reg):
+    """The registry's evidence record, read as a list of
+    problems: a binding that carries no provenance class, a
+    class the record does not define, a class the binding's
+    own ties contradict. The empty list is the registry as
+    it should stand. A property's conformance suite and a
+    constraint's pins run the real code, so observed
+    execution stands among the classes of each; a model
+    check stands there exactly when a model does."""
+    problems = []
+    defined = reg["provenance"]
+    modelled = {pid for pid, row in reg["properties"].items()
+                if row["model"] is not None}
+
+    def held(owner, classes, wants_model):
+        if not classes:
+            problems.append("%s carries no evidence class" % owner)
+            return
+        for name in classes:
+            if name not in defined:
+                problems.append(
+                    "%s names a class the record does not define: %s"
+                    % (owner, name))
+        if "observed execution" not in classes:
+            problems.append(
+                "%s: its tests run the real code, so observed "
+                "execution stands among its classes" % owner)
+        if ("model check" in classes) != wants_model:
+            problems.append(
+                "%s: its model and its classes disagree" % owner)
+
+    for pid, row in reg["properties"].items():
+        held(pid, row.get("evidence"), pid in modelled)
+    for row in reg["constraints"]:
+        wants = any(pid in modelled for pid in row["properties"])
+        held(row["id"], row.get("evidence"), wants)
+    return problems
 
 
 # ---- the ties, held
@@ -989,6 +1033,100 @@ class Page(unittest.TestCase):
         self.assertIn("v4-bindings.md", index)
         self.assertIn("v4-bindings.json", index)
         self.assertIn("test_v4_bindings.py", index)
+
+
+class Provenance(unittest.TestCase):
+    """Every binding carries the provenance classes of its
+    evidence, from the record the registry keeps, and the
+    witness families stand recorded before the examples
+    they name are generated."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.reg = registry()
+        cls.page = _read(PAGE_PATH)
+
+    def test_the_record_defines_the_classes_in_the_terms_given(self):
+        # The 4 classes a result is qualified by, and the
+        # synthetic row's own mark, as the ledger work of
+        # 23 November 2026 names them.
+        self.assertEqual(
+            ["candidate input", "observed execution", "model check",
+             "independently checked certificate", "synthetic"],
+            list(self.reg["provenance"]))
+        for name, means in self.reg["provenance"].items():
+            self.assertTrue(means.strip(), name)
+
+    def test_the_witness_families_stand_recorded(self):
+        self.assertEqual(
+            ["grammar productions", "boundary lengths",
+             "observable outcome classes",
+             "supported environment profiles"],
+            list(self.reg["witness_families"]))
+        for name, means in self.reg["witness_families"].items():
+            self.assertTrue(means.strip(), name)
+
+    def test_every_binding_carries_its_evidence_classes(self):
+        self.assertEqual([], provenance_problems(self.reg))
+
+    def test_a_binding_with_no_class_is_refused(self):
+        # The registry read again with 1 property's classes
+        # struck out and 1 constraint's emptied: each is named
+        # as a problem, by name.
+        bare = json.loads(json.dumps(self.reg))
+        del bare["properties"]["P1"]["evidence"]
+        bare["constraints"][0]["evidence"] = []
+        problems = provenance_problems(bare)
+        self.assertIn("P1 carries no evidence class", problems)
+        self.assertIn("C1 carries no evidence class", problems)
+
+    def test_a_class_the_record_does_not_define_is_refused(self):
+        bare = json.loads(json.dumps(self.reg))
+        bare["properties"]["P2"]["evidence"] = ["a good feeling"]
+        problems = provenance_problems(bare)
+        self.assertTrue(any(
+            problem.startswith("P2 names a class")
+            for problem in problems), problems)
+
+    def test_a_class_its_ties_contradict_is_refused(self):
+        # P9 admits no model. A model check claimed for it is a
+        # class its own ties contradict.
+        bare = json.loads(json.dumps(self.reg))
+        bare["properties"]["P9"]["evidence"] = [
+            "observed execution", "model check"]
+        problems = provenance_problems(bare)
+        self.assertIn("P9: its model and its classes disagree",
+                      problems)
+
+    def test_the_classes_carried_are_the_ones_the_ties_support(self):
+        # No binding yet stands on a candidate input, on an
+        # independently checked certificate, or on a synthetic
+        # row: those classes stand defined for the evidence
+        # that will carry them, and nothing is read as a
+        # stronger class than it is.
+        carried = {name for row in self.reg["constraints"]
+                   for name in row["evidence"]}
+        carried |= {name for row in self.reg["properties"].values()
+                    for name in row["evidence"]}
+        self.assertEqual({"observed execution", "model check"},
+                         carried)
+        # P9 admits no model, so it carries no model check,
+        # and C30, the 1 constraint P9 states alone, is the 1
+        # constraint that does the same.
+        self.assertEqual(["observed execution"],
+                         self.reg["properties"]["P9"]["evidence"])
+        rows = {row["id"]: row for row in self.reg["constraints"]}
+        self.assertEqual(["observed execution"],
+                         rows["C30"]["evidence"])
+        for cid, row in rows.items():
+            if cid != "C30":
+                self.assertIn("model check", row["evidence"], cid)
+
+    def test_the_page_states_the_classes_and_the_families(self):
+        flat = " ".join(self.page.split())
+        for name in (list(self.reg["provenance"])
+                     + list(self.reg["witness_families"])):
+            self.assertIn(name, flat, name)
 
 
 # ---- the corpus at the mail gate

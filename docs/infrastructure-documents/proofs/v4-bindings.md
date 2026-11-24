@@ -51,6 +51,15 @@ the registry to the tree and this page to the registry.
    the 2 sections on the fuzz data below. Held by replaying
    the witness under a profiler on every suite run, and by
    sizing it again.
+8. **Binding to evidence.** The provenance classes of the
+   evidence that stands behind each property and each
+   constraint, in the registry's Evidence column, stated in
+   the terms the section on evidence provenance below
+   defines. Held by the provenance tests in
+   `runner/tests/test_v4_bindings.py`: a binding that
+   carries no class, a class the registry's record does not
+   define, or a class its own ties contradict fails there
+   by name.
 
 ## The counts
 
@@ -63,59 +72,63 @@ fuzz ties. The fuzz part was counted on 2026-11-20.
 The Pins column is the number of tests bound by name. The
 Fuzz data column names each target bound to the constraint
 and the largest number of its corpus entries that enter 1 of
-the constraint's functions.
+the constraint's functions. The Evidence column names the
+provenance classes of the evidence behind the constraint,
+as the section on evidence provenance below defines them;
+the properties table carries the same column for each
+property.
 
-| ID | Constraint | Stated by | Code | Pins | Fuzz data |
-|----|------------|-----------|------|------|-----------|
-| C1 | `max_job_bytes` | P1 clause 1 | `handle_mail` in `runner/ops/mail.py` | 4 | `gate` 15 |
-| C2 | `max_script_bytes` | P1 clause 5 | `handle_mail` in `runner/ops/mail.py` | 4 | `gate` 15 |
-| C3 | `max_result_bytes` | P11, the whole property | `_max_result_bytes` in `runner/runner.py`; `_fit_result_body` in `runner/runner.py` | 2 | `gate` 2 |
-| C4 | `_LOCAL_ENVELOPE_MAX_BYTES` | P12, the whole property | `_ingest_local_envelope_inner` in `runner/runner.py`; `_scan_local_inbox` in `runner/runner.py` | 3 | `local` 518, `query` 32, `local_inbox` 23 |
-| C5 | Signature | P1 clause 2 | `sign_payload` in `runner/wire/verify.py`; `verify_body_keyed` in `runner/wire/verify.py`; `_verify_and_decrypt` in `runner/runner.py` | 3 | `wire` 116, `gate` 9 |
-| C6 | Secret entropy floor | P13, the whole property | `validate_shared_secret` in `runner/guard/security.py`; `build_secrets` in `runner/wire/verify.py` | 3 | `secret` 26, `local` 518, `query` 183 |
-| C7 | Key fingerprint | P1 clause 2; P4 clause 1 | `key_fingerprint` in `runner/guard/security.py` | 1 | `local` 518, `query` 183 |
-| C8 | Cleartext | P1 clause 3 | `_cleartext_jobs_allowed` in `runner/runner.py` | 2 | `query` 3, `v2_mail` 3, `board_mail` 2, `gate` 1 |
-| C9 | AEAD | P1 clause 3 | `decrypt_body` in `runner/wire/jobcrypto.py` | 2 | `crypto` 73 |
-| C10 | Audience | P1 clause 4 | `check_audience` in `runner/wire/verify.py`; `audience_allows` in `runner/wire/verify.py` | 1 | `query` 176, `board_mail` 95 |
-| C11 | Nine security modes | P1 clauses 4 and 8; P4 clause 11 | `sec_mode` in `runner/guard/security.py`; `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` | 2 | `query` 176, `board_mail` 95 |
-| C12 | `max_job_age_sec` | P1 clause 7 | `handle_mail` in `runner/ops/mail.py` | 2 | `gate` 15 |
-| C13 | Protocol version | P1 clause 6 | `_version_ok` in `runner/runner.py`; `handle_mail` in `runner/ops/mail.py` | 4 | `local` 518, `query` 176, `board_mail` 95, `local_inbox` 23, `gate` 15 |
-| C14 | Key policies | P1 clause 8; P4, the whole property | `check_key_policy` in `runner/wire/verify.py`; `_build_key_policies` in `runner/wire/verify.py` | 9 | `keydir` 35, `local` 518, `query` 163 |
-| C15 | Execution semantics | P1 clause 9; P5, the whole property | `handle_mail` in `runner/ops/mail.py`; `stash_result` in `runner/runner.py`; `load_sent_result` in `runner/runner.py` | 2 | `gate` 15, `race_stash` 180 |
-| C16 | Transport credentials | P3, the whole property | `__init__` in `runner/transport_extensions/nats/__main__.py`; `fetch_channel_messages` in `runner/wire/transports.py` | 2 | `inbox` 29, `channels` 11 |
-| C17 | Result-policy ceiling | P2 clauses 5, 6 and 8 | `apply_result_policy` in `runner/ops/policy.py` | 7 | `queries` 134 |
-| C18 | Sandbox shape | P2 clauses 1 to 4 | `build_bwrap_command` in `runner/guard/sandbox.py`; `_confinement_cfg` in `runner/guard/sandbox.py` | 3 | none |
-| C19 | Queues edge gates | P3 clause 8 | `bearerMatches` in `runner/cloud/queues-worker/src/index.js` | 2 | none |
-| C20 | Transport gate postures | P3 clauses 4 to 8 | `scan_jobs` in `runner/transport_extensions/file/__main__.py`; `feed_authenticated` in `runner/wire/dtlsproto.py`; `service_channel` in `runner/wire/transports.py` | 4 | `dtls` 7, `dtls_session` 7, `inbox` 29 |
-| C21 | Key directory precedence | P4 clauses 2 and 9 | `key_directory_verdict` in `runner/wire/verify.py`; `load_key_directory` in `runner/wire/verify.py` | 1 | `keydir` 38 |
-| C22 | Upgrade key arrangement | P4 clauses 5, 7, 8 and 11 | `check_key_policy` in `runner/wire/verify.py` | 1 | `keydir` 35 |
-| C23 | Replay-cache keep horizon | P5 clauses 5 and 8 | `seen_keep_sec` in `runner/runner.py`; `_write_seen_kept` in `runner/runner.py`; `save_seen` in `runner/runner.py` | 3 | `race_state` 217, `board_mail` 78, `v2_mail` 32, `gate` 2 |
-| C24 | Claim stale rule | P5 clause 4 | `_disk_owns` in `runner/ops/misc.py`; `_disk_release` in `runner/runner.py` | 2 | `gate` 2 |
-| C25 | Record retention and delivery window | P5 clauses 9 and 10 | `prune_sent` in `runner/runner.py`; `deliver_stash` in `runner/runner.py`; `resend_stashed` in `runner/runner.py` | 1 | `race_stash` 179, `gate` 2 |
-| C26 | Default-class reader | P6 clauses 1, 2, 3 and 5 | `integer` in `runner/guard/confval.py`; `number` in `runner/guard/confval.py`; `reload_hot_config` in `runner/ops/attest.py` | 3 | `local` 518, `race_state` 217 |
-| C27 | Refuse class at startup | P6 clauses 4 and 6 | `_validate_size_caps` in `runner/runner.py`; `_port` in `runner/wire/mailbox.py` | 2 | none |
-| C28 | Disk guard | P7, the whole property | `guard_disk` in `runner/oracle/resources.py`; `disk_guard_enabled` in `runner/oracle/resources.py` | 4 | none |
-| C29 | v3 hybrid group | P8, the whole property | `begin` in `runner/wire/dtlsproto.py` | 1 | `dtls_session` 42, `dtls` 31, `dtls_hostile` 14 |
-| C30 | DTLS framing | P9, the whole property | `_split_records` in `runner/wire/dtlsproto.py`; `_accept_seq` in `runner/wire/dtlsproto.py` | 2 | `dtls` 61, `dtls_session` 55, `dtls_hostile` 39 |
-| C31 | macOS confinement probe | P10, the whole property | `macos_confinement_problem` in `runner/guard/macos_confine.py`; `_confinement_argv` in `runner/runner.py`; `confinement_startup_problem` in `runner/ops/remediation_ops.py` | 2 | none |
+| ID | Constraint | Stated by | Code | Pins | Fuzz data | Evidence |
+|----|------------|-----------|------|------|-----------|----------|
+| C1 | `max_job_bytes` | P1 clause 1 | `handle_mail` in `runner/ops/mail.py` | 4 | `gate` 15 | observed execution, model check |
+| C2 | `max_script_bytes` | P1 clause 5 | `handle_mail` in `runner/ops/mail.py` | 4 | `gate` 15 | observed execution, model check |
+| C3 | `max_result_bytes` | P11, the whole property | `_max_result_bytes` in `runner/runner.py`; `_fit_result_body` in `runner/runner.py` | 2 | `gate` 2 | observed execution, model check |
+| C4 | `_LOCAL_ENVELOPE_MAX_BYTES` | P12, the whole property | `_ingest_local_envelope_inner` in `runner/runner.py`; `_scan_local_inbox` in `runner/runner.py` | 3 | `local` 518, `query` 32, `local_inbox` 23 | observed execution, model check |
+| C5 | Signature | P1 clause 2 | `sign_payload` in `runner/wire/verify.py`; `verify_body_keyed` in `runner/wire/verify.py`; `_verify_and_decrypt` in `runner/runner.py` | 3 | `wire` 116, `gate` 9 | observed execution, model check |
+| C6 | Secret entropy floor | P13, the whole property | `validate_shared_secret` in `runner/guard/security.py`; `build_secrets` in `runner/wire/verify.py` | 3 | `secret` 26, `local` 518, `query` 183 | observed execution, model check |
+| C7 | Key fingerprint | P1 clause 2; P4 clause 1 | `key_fingerprint` in `runner/guard/security.py` | 1 | `local` 518, `query` 183 | observed execution, model check |
+| C8 | Cleartext | P1 clause 3 | `_cleartext_jobs_allowed` in `runner/runner.py` | 2 | `query` 3, `v2_mail` 3, `board_mail` 2, `gate` 1 | observed execution, model check |
+| C9 | AEAD | P1 clause 3 | `decrypt_body` in `runner/wire/jobcrypto.py` | 2 | `crypto` 73 | observed execution, model check |
+| C10 | Audience | P1 clause 4 | `check_audience` in `runner/wire/verify.py`; `audience_allows` in `runner/wire/verify.py` | 1 | `query` 176, `board_mail` 95 | observed execution, model check |
+| C11 | Nine security modes | P1 clauses 4 and 8; P4 clause 11 | `sec_mode` in `runner/guard/security.py`; `sec_decide` in `runner/guard/security.py`; `validate_security_config` in `runner/guard/security.py` | 2 | `query` 176, `board_mail` 95 | observed execution, model check |
+| C12 | `max_job_age_sec` | P1 clause 7 | `handle_mail` in `runner/ops/mail.py` | 2 | `gate` 15 | observed execution, model check |
+| C13 | Protocol version | P1 clause 6 | `_version_ok` in `runner/runner.py`; `handle_mail` in `runner/ops/mail.py` | 4 | `local` 518, `query` 176, `board_mail` 95, `local_inbox` 23, `gate` 15 | observed execution, model check |
+| C14 | Key policies | P1 clause 8; P4, the whole property | `check_key_policy` in `runner/wire/verify.py`; `_build_key_policies` in `runner/wire/verify.py` | 9 | `keydir` 35, `local` 518, `query` 163 | observed execution, model check |
+| C15 | Execution semantics | P1 clause 9; P5, the whole property | `handle_mail` in `runner/ops/mail.py`; `stash_result` in `runner/runner.py`; `load_sent_result` in `runner/runner.py` | 2 | `gate` 15, `race_stash` 180 | observed execution, model check |
+| C16 | Transport credentials | P3, the whole property | `__init__` in `runner/transport_extensions/nats/__main__.py`; `fetch_channel_messages` in `runner/wire/transports.py` | 2 | `inbox` 29, `channels` 11 | observed execution, model check |
+| C17 | Result-policy ceiling | P2 clauses 5, 6 and 8 | `apply_result_policy` in `runner/ops/policy.py` | 7 | `queries` 134 | observed execution, model check |
+| C18 | Sandbox shape | P2 clauses 1 to 4 | `build_bwrap_command` in `runner/guard/sandbox.py`; `_confinement_cfg` in `runner/guard/sandbox.py` | 3 | none | observed execution, model check |
+| C19 | Queues edge gates | P3 clause 8 | `bearerMatches` in `runner/cloud/queues-worker/src/index.js` | 2 | none | observed execution, model check |
+| C20 | Transport gate postures | P3 clauses 4 to 8 | `scan_jobs` in `runner/transport_extensions/file/__main__.py`; `feed_authenticated` in `runner/wire/dtlsproto.py`; `service_channel` in `runner/wire/transports.py` | 4 | `dtls` 7, `dtls_session` 7, `inbox` 29 | observed execution, model check |
+| C21 | Key directory precedence | P4 clauses 2 and 9 | `key_directory_verdict` in `runner/wire/verify.py`; `load_key_directory` in `runner/wire/verify.py` | 1 | `keydir` 38 | observed execution, model check |
+| C22 | Upgrade key arrangement | P4 clauses 5, 7, 8 and 11 | `check_key_policy` in `runner/wire/verify.py` | 1 | `keydir` 35 | observed execution, model check |
+| C23 | Replay-cache keep horizon | P5 clauses 5 and 8 | `seen_keep_sec` in `runner/runner.py`; `_write_seen_kept` in `runner/runner.py`; `save_seen` in `runner/runner.py` | 3 | `race_state` 217, `board_mail` 78, `v2_mail` 32, `gate` 2 | observed execution, model check |
+| C24 | Claim stale rule | P5 clause 4 | `_disk_owns` in `runner/ops/misc.py`; `_disk_release` in `runner/runner.py` | 2 | `gate` 2 | observed execution, model check |
+| C25 | Record retention and delivery window | P5 clauses 9 and 10 | `prune_sent` in `runner/runner.py`; `deliver_stash` in `runner/runner.py`; `resend_stashed` in `runner/runner.py` | 1 | `race_stash` 179, `gate` 2 | observed execution, model check |
+| C26 | Default-class reader | P6 clauses 1, 2, 3 and 5 | `integer` in `runner/guard/confval.py`; `number` in `runner/guard/confval.py`; `reload_hot_config` in `runner/ops/attest.py` | 3 | `local` 518, `race_state` 217 | observed execution, model check |
+| C27 | Refuse class at startup | P6 clauses 4 and 6 | `_validate_size_caps` in `runner/runner.py`; `_port` in `runner/wire/mailbox.py` | 2 | none | observed execution, model check |
+| C28 | Disk guard | P7, the whole property | `guard_disk` in `runner/oracle/resources.py`; `disk_guard_enabled` in `runner/oracle/resources.py` | 4 | none | observed execution, model check |
+| C29 | v3 hybrid group | P8, the whole property | `begin` in `runner/wire/dtlsproto.py` | 1 | `dtls_session` 42, `dtls` 31, `dtls_hostile` 14 | observed execution, model check |
+| C30 | DTLS framing | P9, the whole property | `_split_records` in `runner/wire/dtlsproto.py`; `_accept_seq` in `runner/wire/dtlsproto.py` | 2 | `dtls` 61, `dtls_session` 55, `dtls_hostile` 39 | observed execution |
+| C31 | macOS confinement probe | P10, the whole property | `macos_confinement_problem` in `runner/guard/macos_confine.py`; `_confinement_argv` in `runner/runner.py`; `confinement_startup_problem` in `runner/ops/remediation_ops.py` | 2 | none | observed execution, model check |
 
 ## Every property, tied
 
-| Property | Stated in | Model | Checked invariants | Conformance | Steps in `general.tla` | Seams that carry it |
-|----------|-----------|-------|--------------------|-------------|-------------------------|---------------------|
-| P1 | `properties.md` | `gate.tla` | `P1Inv`, `SensorInv`, `AudienceWasRequired`, `NamedByTheSignedId`, `OneVersionBeforeTheBody` | `test_proof_conformance.py`, `test_v4_behind_the_mac.py` | `Handle`, `Local` | `LocalFilesOnly`, `GateVerifies`, `GateFresh` |
-| P2 | `properties.md` | `confine.tla` | `P2Inv`, `EffViewExact`, `EffBudgetExact` | `test_proof_conformance_p2.py` | `Handle` | `SpawnProbes` |
-| P3 | `properties.md` | `transgate.tla` | `P3Inv`, `GateBlocks`, `PresentedExact`, `AcceptedExact` | `test_proof_conformance_p3.py` | `Handle` | `TransportGates` |
-| P4 | `properties.md` | `keypolicy.tla` | `P4Inv`, `PinBinds`, `PolicyExact` | `test_proof_conformance_p4.py` | `Handle` | `GatePolicy` |
-| P5 | `properties.md` | `replay.tla` | `P5Inv`, `SeenImpliesRecord`, `DeliveredImpliesRecord` | `test_proof_conformance_p5.py` | `Handle`, `Local` | `GuardSparesFresh`, `LocalFilesOnly`, `GateFresh` |
-| P6 | `properties.md` | `decision.tla` | `P6Inv` | `test_proof_conformance_p6.py` | `Start` | `StartValidates` |
-| P7 | `v4-properties.md` | `diskguard.tla` | `NeverStops`, `OrderRespected`, `RecordedFaithfully` | `test_v4_models.py::Conformance`, `test_disk_guard.py` | `Guard` | `GuardSparesCache` |
-| P8 | `v4-properties.md` | `hybridselect.tla` | `P8Inv`, `OnlyOffered` | `test_v4_models.py::HybridSelectConformance` | `Agree` | `PrefersHybrid` |
-| P9 | `v4-properties.md` | none | none | `test_v4_models.py::FramingScopePin` | `Agree` | `SameSideOnly` |
-| P10 | `v4-properties.md` | `probegate.tla` | `P10Inv`, `RefusesOnlyItsOwn` | `test_v4_models.py::ProbeGateConformance` | `Start`, `Handle` | `SpawnProbes` |
-| P11 | `v4-properties.md` | `resultfit.tla` | `MarkedWhenCut`, `CapZeroAsIs`, `FitsAsIs`, `P11Floor` | `test_v4_models.py::ResultFitConformance` | `Commit` | `FitMarks` |
-| P12 | `v4-properties.md` | `localgate.tla` | `P12Inv`, `SymlinkUnread`, `ReadBounded`, `OverCapRefusedForSize` | `test_v4_models.py::LocalGateConformance` | `Local` | `LocalBounds` |
-| P13 | `v4-properties.md` | `secretfloor.tla` | `P13Inv`, `NamesACause` | `test_v4_models.py::SecretFloorConformance` | `Start`, `PollBegin`, `Local` | `PollRebuilds` |
+| Property | Stated in | Model | Checked invariants | Conformance | Steps in `general.tla` | Seams that carry it | Evidence |
+|----------|-----------|-------|--------------------|-------------|-------------------------|---------------------|----------|
+| P1 | `properties.md` | `gate.tla` | `P1Inv`, `SensorInv`, `AudienceWasRequired`, `NamedByTheSignedId`, `OneVersionBeforeTheBody` | `test_proof_conformance.py`, `test_v4_behind_the_mac.py` | `Handle`, `Local` | `LocalFilesOnly`, `GateVerifies`, `GateFresh` | observed execution, model check |
+| P2 | `properties.md` | `confine.tla` | `P2Inv`, `EffViewExact`, `EffBudgetExact` | `test_proof_conformance_p2.py` | `Handle` | `SpawnProbes` | observed execution, model check |
+| P3 | `properties.md` | `transgate.tla` | `P3Inv`, `GateBlocks`, `PresentedExact`, `AcceptedExact` | `test_proof_conformance_p3.py` | `Handle` | `TransportGates` | observed execution, model check |
+| P4 | `properties.md` | `keypolicy.tla` | `P4Inv`, `PinBinds`, `PolicyExact` | `test_proof_conformance_p4.py` | `Handle` | `GatePolicy` | observed execution, model check |
+| P5 | `properties.md` | `replay.tla` | `P5Inv`, `SeenImpliesRecord`, `DeliveredImpliesRecord` | `test_proof_conformance_p5.py` | `Handle`, `Local` | `GuardSparesFresh`, `LocalFilesOnly`, `GateFresh` | observed execution, model check |
+| P6 | `properties.md` | `decision.tla` | `P6Inv` | `test_proof_conformance_p6.py` | `Start` | `StartValidates` | observed execution, model check |
+| P7 | `v4-properties.md` | `diskguard.tla` | `NeverStops`, `OrderRespected`, `RecordedFaithfully` | `test_v4_models.py::Conformance`, `test_disk_guard.py` | `Guard` | `GuardSparesCache` | observed execution, model check |
+| P8 | `v4-properties.md` | `hybridselect.tla` | `P8Inv`, `OnlyOffered` | `test_v4_models.py::HybridSelectConformance` | `Agree` | `PrefersHybrid` | observed execution, model check |
+| P9 | `v4-properties.md` | none | none | `test_v4_models.py::FramingScopePin` | `Agree` | `SameSideOnly` | observed execution |
+| P10 | `v4-properties.md` | `probegate.tla` | `P10Inv`, `RefusesOnlyItsOwn` | `test_v4_models.py::ProbeGateConformance` | `Start`, `Handle` | `SpawnProbes` | observed execution, model check |
+| P11 | `v4-properties.md` | `resultfit.tla` | `MarkedWhenCut`, `CapZeroAsIs`, `FitsAsIs`, `P11Floor` | `test_v4_models.py::ResultFitConformance` | `Commit` | `FitMarks` | observed execution, model check |
+| P12 | `v4-properties.md` | `localgate.tla` | `P12Inv`, `SymlinkUnread`, `ReadBounded`, `OverCapRefusedForSize` | `test_v4_models.py::LocalGateConformance` | `Local` | `LocalBounds` | observed execution, model check |
+| P13 | `v4-properties.md` | `secretfloor.tla` | `P13Inv`, `NamesACause` | `test_v4_models.py::SecretFloorConformance` | `Start`, `PollBegin`, `Local` | `PollRebuilds` | observed execution, model check |
 
 P9 has no model. It is a statement of scope, held by its
 pin, and `v4-working.md` records why it admits none.
@@ -127,6 +140,62 @@ properties listed against it, and its witness configuration
 shows the checker doing so. `v4-general.md` has the counts,
 the checker's run, and what holds each seam to the real
 code.
+
+## Evidence provenance
+
+Every result this registry rests on is qualified by what
+kind of evidence it is. The registry keeps a provenance
+record: 5 classes, in the terms the ledger work of
+23 November 2026 gives them, and every property and every
+constraint in the tables above carries the classes of the
+evidence that stands behind it, in an Evidence column.
+
+The classes are these. A **candidate input** is an example
+or a row produced to be tried; on its own it establishes
+nothing about the runner, because nothing has run. An
+**observed execution** is the real code running on an
+input, with the result observed; it speaks for the build,
+the configuration and the environment it ran under, and
+for no other. A **model check** is a check of the abstract
+model by the model checker, under the model's own
+assumptions and bounds; it establishes the statement about
+the model, and the step from the model to the code is a
+separate obligation. An **independently checked
+certificate** is a certificate produced by one party and
+checked by another that does not share its workings; the
+certificate carries its own bound, and the cost of finding
+it is charged to the claim it supports. A **synthetic**
+row is a row made to exercise the reporting pipeline; it
+carries no observation of the runner, and it counts as
+evidence of nothing about the runner until the execution
+it stands for is performed.
+
+What the registry carries today, read off the tables:
+every property and every constraint stands on observed
+executions, the suites and pins that run the real code
+and, for the constraints that carry them, the corpus
+replays. Every property with a model stands on a model
+check as well, and so does every constraint a modelled
+property states. P9 admits no model, so P9 stands on
+observed executions alone, and C30, the 1 constraint P9
+states alone, does the same. No binding in the registry
+yet stands on a candidate input, on an independently
+checked certificate, or on a synthetic row. Those classes
+stand defined so that evidence of those kinds is labelled
+with its class when it arrives, and never read as a
+stronger class than it is.
+
+Beside the classes, the registry records the witness
+families the evidence is drawn from, recorded before the
+examples they name are generated: **grammar productions**,
+the productions of the bounded script grammar; **boundary
+lengths**, lengths at and beside every bound the claims
+use, in characters and in UTF-8 bytes; **observable
+outcome classes**, the outcomes the specification allows
+an arrival or a run to have; and **supported environment
+profiles**, the environments the support matrix names. An
+example generated for this registry names its family when
+it is recorded, the way a result names its class.
 
 ## The fuzz data
 

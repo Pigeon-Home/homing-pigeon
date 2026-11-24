@@ -1,6 +1,19 @@
 {
- "about": "The v4 binding's constraint spec. Every constraint of constraints.md is tied here to the properties that state it, its code, its pins and its fuzz data, and every property to its model, its conformance suite and its steps in general.tla. runner/tests/test_v4_bindings.py holds each tie to the tree and re-measures the fuzz part.",
+ "about": "The v4 binding's constraint spec. Every constraint of constraints.md is tied here to the properties that state it, its code, its pins and its fuzz data, and every property to its model, its conformance suite and its steps in general.tla. runner/tests/test_v4_bindings.py holds each tie to the tree and re-measures the fuzz part. Every binding carries the provenance classes of the evidence that stands behind it, from the provenance record the registry keeps, and the witness families the evidence is drawn from stand recorded there.",
  "counted": "2026-11-20",
+ "provenance": {
+  "candidate input": "An example or a row produced to be tried. On its own it establishes nothing about the runner, because nothing has run. It becomes evidence of a stronger class only when the run it stands for is performed and observed.",
+  "observed execution": "The real code ran on the input and the result was observed. It speaks for the build, the configuration and the environment it ran under, and for no other.",
+  "model check": "A check of the abstract model, by the model checker, under the model's own assumptions and bounds. It establishes the statement about the model; the step from the model to the code is a separate obligation.",
+  "independently checked certificate": "A certificate produced by one party and checked by another that does not share its workings: the checking is independent of the producing. The certificate carries its own bound, and the cost of finding it is charged to the claim it supports.",
+  "synthetic": "A row made to exercise the reporting pipeline. It carries no observation of the runner, and it counts as evidence of nothing about the runner until the execution it stands for is performed."
+ },
+ "witness_families": {
+  "grammar productions": "The productions of the bounded script grammar, 22 atoms and 4 joiners. Examples drawn from this family press on composition over the grammar.",
+  "boundary lengths": "Lengths at and beside every bound the claims use, counted in characters and in UTF-8 bytes: the rungs of the size ladder, each cap itself, and 1 past each cap.",
+  "observable outcome classes": "The outcomes the specification allows an arrival or a run to have: accepted and refused, and the reason for each refusal, executed once and executed never.",
+  "supported environment profiles": "The environments the support matrix names: each platform, and each confinement posture the runner claims on it."
+ },
  "properties": {
   "P1": {
    "title": "The acceptance gate",
@@ -31,6 +44,10 @@
     "LocalFilesOnly",
     "GateVerifies",
     "GateFresh"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   },
   "P2": {
@@ -53,6 +70,10 @@
    ],
    "seams": [
     "SpawnProbes"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   },
   "P3": {
@@ -76,6 +97,10 @@
    ],
    "seams": [
     "TransportGates"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   },
   "P4": {
@@ -98,6 +123,10 @@
    ],
    "seams": [
     "GatePolicy"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   },
   "P5": {
@@ -123,6 +152,10 @@
     "GuardSparesFresh",
     "LocalFilesOnly",
     "GateFresh"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   },
   "P6": {
@@ -143,6 +176,10 @@
    ],
    "seams": [
     "StartValidates"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   },
   "P7": {
@@ -166,6 +203,10 @@
    ],
    "seams": [
     "GuardSparesCache"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   },
   "P8": {
@@ -187,6 +228,10 @@
    ],
    "seams": [
     "PrefersHybrid"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   },
   "P9": {
@@ -203,6 +248,9 @@
    ],
    "seams": [
     "SameSideOnly"
+   ],
+   "evidence": [
+    "observed execution"
    ]
   },
   "P10": {
@@ -225,6 +273,10 @@
    ],
    "seams": [
     "SpawnProbes"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   },
   "P11": {
@@ -248,6 +300,10 @@
    ],
    "seams": [
     "FitMarks"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   },
   "P12": {
@@ -271,6 +327,10 @@
    ],
    "seams": [
     "LocalBounds"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   },
   "P13": {
@@ -294,6 +354,10 @@
    ],
    "seams": [
     "PollRebuilds"
+   ],
+   "evidence": [
+    "observed execution",
+    "model check"
    ]
   }
  },
@@ -341,7 +405,11 @@
      0,
      2
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C2",
@@ -386,7 +454,11 @@
      0,
      2
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C3",
@@ -445,7 +517,11 @@
      0,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C4",
@@ -535,7 +611,11 @@
      32,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C5",
@@ -611,7 +691,11 @@
      2,
      2
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C6",
@@ -686,7 +770,11 @@
      37,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C7",
@@ -744,7 +832,11 @@
      37,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C8",
@@ -832,7 +924,11 @@
      0,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C9",
@@ -875,7 +971,11 @@
      1,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C10",
@@ -963,7 +1063,11 @@
      40,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C11",
@@ -1027,7 +1131,11 @@
      40,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C12",
@@ -1070,7 +1178,11 @@
      0,
      2
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C13",
@@ -1191,7 +1303,11 @@
      42,
      2
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C14",
@@ -1273,7 +1389,11 @@
      37,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C15",
@@ -1364,7 +1484,11 @@
      4,
      3
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C16",
@@ -1425,7 +1549,11 @@
      1,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C17",
@@ -1473,7 +1601,11 @@
      5,
      1
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C18",
@@ -1495,7 +1627,11 @@
     "runner/guard/sandbox.py:build_bwrap_command",
     "runner/guard/sandbox.py:_confinement_cfg"
    ],
-   "reach": null
+   "reach": null,
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C19",
@@ -1514,7 +1650,11 @@
    "unfuzzed": [
     "runner/cloud/queues-worker/src/index.js:bearerMatches"
    ],
-   "reach": null
+   "reach": null,
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C20",
@@ -1593,7 +1733,11 @@
      5,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C21",
@@ -1651,7 +1795,11 @@
      0,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C22",
@@ -1693,7 +1841,11 @@
      0,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C23",
@@ -1904,7 +2056,11 @@
      10,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C24",
@@ -1950,7 +2106,11 @@
      0,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C25",
@@ -2026,7 +2186,11 @@
      4,
      1
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C26",
@@ -2119,7 +2283,11 @@
      8,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C27",
@@ -2140,7 +2308,11 @@
     "runner/runner.py:_validate_size_caps",
     "runner/wire/mailbox.py:_port"
    ],
-   "reach": null
+   "reach": null,
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C28",
@@ -2163,7 +2335,11 @@
     "runner/oracle/resources.py:guard_disk",
     "runner/oracle/resources.py:disk_guard_enabled"
    ],
-   "reach": null
+   "reach": null,
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C29",
@@ -2235,7 +2411,11 @@
      5,
      0
     ]
-   }
+   },
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   },
   {
    "id": "C30",
@@ -2324,7 +2504,10 @@
      5,
      1
     ]
-   }
+   },
+   "evidence": [
+    "observed execution"
+   ]
   },
   {
    "id": "C31",
@@ -2347,7 +2530,11 @@
     "runner/runner.py:_confinement_argv",
     "runner/ops/remediation_ops.py:confinement_startup_problem"
    ],
-   "reach": null
+   "reach": null,
+   "evidence": [
+    "observed execution",
+    "model check"
+   ]
   }
  ],
  "fuzz": {

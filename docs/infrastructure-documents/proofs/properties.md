@@ -1320,6 +1320,26 @@ guarantees are different objects. A gap closing in
 one of them motivates work in another; it does not
 close it.
 
+The safety shortcut. The squeeze is not the only
+shape a claim in this ledger can take, and for one
+kind of claim it is more than the claim needs. Take
+a universal safety property: a property of single
+behaviours, one that every behaviour in a set either
+has or has not. If B sits inside U, and every
+behaviour in U has the property, then every
+behaviour in B has it. The lower line plays no part:
+nothing in L needs to be realized, counted, or
+brought up to meet U. Proving L equal to U is a
+separate and more expensive workload; it buys the
+exact characterisation of B, and a safety claim does
+not have to wait for it. The rule's boundary is part
+of the rule. It speaks only of properties of single
+behaviours. A property that compares executions
+against each other, confidentiality and its
+relatives among them, is not carried by an inclusion
+between behaviour sets, and the shortcut does not
+apply to it.
+
 A correction about compression. A note in the forum
 record says a fuzz log of about 41.9 MB compresses
 to about 4.7 MB, and concludes that at least 89
