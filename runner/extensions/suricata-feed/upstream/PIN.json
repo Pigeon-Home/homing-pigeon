@@ -1,6 +1,6 @@
 {
   "bytes": 453018,
-  "fetched_at": "2026-11-19T16:45:48Z",
+  "fetched_at": "2026-11-24T19:04:05Z",
   "files": {
     "LICENSE": {
       "bytes": 18092,
@@ -12,7 +12,7 @@
     }
   },
   "license": "GPL-2.0-only",
-  "pin": "5c7787ed61adb1aa7a26c23e093992350fc97d62",
+  "pin": "820fa845c7cd53fa286f570d79791ead602d4049",
   "ref": "main",
   "repo": "https://github.com/OISF/suricata"
 }

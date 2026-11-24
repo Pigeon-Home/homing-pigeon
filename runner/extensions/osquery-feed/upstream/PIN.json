@@ -1,6 +1,6 @@
 {
   "bytes": 6317,
-  "fetched_at": "2026-11-20T16:21:04Z",
+  "fetched_at": "2026-11-24T19:04:04Z",
   "files": {
     "LICENSE": {
       "bytes": 373,
@@ -20,7 +20,7 @@
     }
   },
   "license": "Apache-2.0 OR GPL-2.0-only",
-  "pin": "b3677d269d6db82a64517ebb3234d1d0ff847ce7",
+  "pin": "31d46fd15f1afbcb2e9436a11216d31d1e48e127",
   "ref": "master",
   "repo": "https://github.com/osquery/osquery"
 }
