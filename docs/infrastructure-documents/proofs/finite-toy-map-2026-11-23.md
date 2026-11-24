@@ -243,6 +243,30 @@ code runs:
   otherwise. A U0 replaced by one that always returns no
   output fails this test.
 
+## The budget repair: the result
+
+The run matched the supposition point for point. The
+control at budget 1 reports UNKNOWN after exactly 1
+program run, at budget 0 after exactly 0, and at budget
+10 after exactly 10. On (x0) and (x1) at c = 2, d = 1 an
+allowance of 7 gives FOUND at 7 programs with the witness
+(1, 1, 0), an allowance of 6 gives STOPPED at 6, and an
+allowance of 0 gives STOPPED at 0. At c = 2, d = 0 an
+allowance of 511 gives EXHAUSTED at 511 and the cell
+FAILs, and an allowance of 510 gives STOPPED and the cell
+stays UNKNOWN. The default grid record is unchanged, as
+predicted: the same 9 states, the same totals of 52,440
+programs and 87,331 steps, and the same data hash,
+sha256 e7229e46925cb5c7d57a1e1367a6afeedb982f0d58ddb24d785f11cf30e714ad,
+so the figure and the provenance above stand as published.
+The strengthened output test was also run against the
+mutation itself, a U0 replaced by a function that always
+returns no output: the test now fails on that mutation,
+where the earlier shape passed it untouched. The toy map
+suite stands at 42 tests, all passing, with 10 of them
+pinning the budget contract at allowances of 0, 1,
+exactly enough, and 1 short.
+
 ## What the toy map does and does not teach
 
 It teaches the quantifier shape honestly, at a size where

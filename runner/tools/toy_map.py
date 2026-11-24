@@ -75,7 +75,16 @@ Cell states, over the whole named domain:
 - UNKNOWN: a stated resource limit (a per cell program
   budget) stopped the enumeration before the domain was
   completely checked. A timeout or a budget stop is UNKNOWN,
-  never a counterexample.
+  never a counterexample. The program budget is a hard
+  limit, not a report: each formula's search receives the
+  allowance that remains, checks it before every program,
+  and the programs run for a cell never pass the budget.
+  One formula's search ends in exactly 1 of 3 outcomes:
+  FOUND (a verified witness stopped it), EXHAUSTED (the
+  whole permitted enumeration completed with no witness),
+  or STOPPED (the allowance ran out mid enumeration).
+  Only EXHAUSTED on a satisfiable formula establishes
+  FAIL; STOPPED leaves the cell UNKNOWN.
 
 Monotonicity, the property the map exists to show: for the
 same formula and the same interpreter, raising c or d never
@@ -104,6 +113,11 @@ DEFAULT_PROGRAM_BUDGET = 10_000_000
 FAIL = "FAIL"
 PASS = "PASS UP TO N"
 UNKNOWN = "UNKNOWN"
+
+# The 3 outcomes of one formula's candidate search.
+FOUND = "FOUND"
+EXHAUSTED = "EXHAUSTED"
+STOPPED = "STOPPED"
 
 # Clause literal codes.
 ABSENT = 0
@@ -252,27 +266,47 @@ def step_budget(formula, d):
     return (n + 2) ** d
 
 
-def candidate_search(formula, c, d):
+def candidate_search(formula, c, d, program_allowance=None):
     """A0(c, d) on one formula: enumerate the permitted
     programs in the stated order, run each under the step
     budget, and stop at the first whose output verifies.
-    Returns a dict with the outcome and the exact cost."""
+    Returns a dict with the outcome and the exact cost.
+
+    program_allowance is the caller's remaining program
+    budget, or None for no limit. The allowance is checked
+    before every program, so the programs run never pass
+    it. The result's status is FOUND when a verified
+    witness stopped the search, EXHAUSTED when the whole
+    permitted enumeration completed with no witness, and
+    STOPPED when the allowance ran out first. Only
+    EXHAUSTED completes the enumeration, so only it can
+    ground a negative claim about the formula."""
     cap = program_cap(formula, c)
     budget = step_budget(formula, d)
     programs_run = 0
     steps_used = 0
     for length in range(cap + 1):
         for value in range(2 ** length):
+            if (program_allowance is not None
+                    and programs_run >= program_allowance):
+                return {"status": STOPPED, "found": False,
+                        "programs_run": programs_run,
+                        "steps_used": steps_used,
+                        "witness_program_length": None,
+                        "witness_program_value": None,
+                        "witness_assignment": None}
             programs_run += 1
             output, steps = u0_run(value, length, formula, budget)
             steps_used += steps
             if output is not None and verify_witness(formula, output):
-                return {"found": True, "programs_run": programs_run,
+                return {"status": FOUND, "found": True,
+                        "programs_run": programs_run,
                         "steps_used": steps_used,
                         "witness_program_length": length,
                         "witness_program_value": value,
                         "witness_assignment": output}
-    return {"found": False, "programs_run": programs_run,
+    return {"status": EXHAUSTED, "found": False,
+            "programs_run": programs_run,
             "steps_used": steps_used, "witness_program_length": None,
             "witness_program_value": None, "witness_assignment": None}
 
@@ -297,9 +331,12 @@ def evaluate_cell(c, d, formulas, program_budget=DEFAULT_PROGRAM_BUDGET):
     """Evaluate one grid cell over the whole domain.
 
     Returns a dict with the cell state and its evidence. The
-    program budget is the cell's resource limit: if the
-    cumulative programs run would pass it before the domain
-    is completely checked, the cell is UNKNOWN.
+    program budget is the cell's hard resource limit: each
+    formula's search receives the allowance that remains and
+    checks it before every program, so the programs run for
+    the cell never pass the budget. A search the budget
+    stops leaves the cell UNKNOWN; only a completed
+    enumeration with no witness establishes FAIL.
     """
     programs_total = 0
     steps_total = 0
@@ -308,14 +345,17 @@ def evaluate_cell(c, d, formulas, program_budget=DEFAULT_PROGRAM_BUDGET):
         witnesses = satisfying_assignments(formula)
         if not witnesses:
             continue
-        result = candidate_search(formula, c, d)
+        result = candidate_search(
+            formula, c, d,
+            program_allowance=program_budget - programs_total)
         programs_total += result["programs_run"]
         steps_total += result["steps_used"]
         checked += 1
-        if programs_total > program_budget:
+        if result["status"] == STOPPED:
             return {"c": c, "d": d, "state": UNKNOWN,
-                    "reason": "program budget %d passed after %d "
-                              "satisfiable formulas" % (program_budget, checked),
+                    "reason": "program budget %d stopped the "
+                              "enumeration after %d satisfiable "
+                              "formulas" % (program_budget, checked),
                     "programs_run": programs_total,
                     "steps_used": steps_total,
                     "formulas_checked": checked,

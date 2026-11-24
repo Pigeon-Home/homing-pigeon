@@ -122,17 +122,24 @@ class TestU0AndVerifier(unittest.TestCase):
 
     def test_u0_output_always_verifies_and_matches_truth_table(self):
         # For every formula and every program of length at most
-        # 3, U0 outputs an assignment exactly when that
-        # assignment satisfies the formula, given steps enough.
+        # 3, with steps enough, U0 returns exactly the decoded
+        # assignment when the independent verifier says that
+        # assignment satisfies the formula, and returns no
+        # output otherwise. Both directions are asserted for
+        # every program, with no skip: an earlier shape of this
+        # test continued past every None output, and a U0 that
+        # never outputs anything passed it untouched.
         for formula in FORMULAS:
-            truth = set(TM.satisfying_assignments(formula))
             for length in range(4):
                 for value in range(2 ** length):
                     output, _ = TM.u0_run(value, length, formula, 99)
-                    if output is None:
-                        continue
-                    self.assertIn(output, truth)
-                    self.assertTrue(TM.verify_witness(formula, output))
+                    decoded = tuple(
+                        (value >> var) & 1 if var < length else 0
+                        for var in range(TM.VARIABLE_COUNT))
+                    if TM.verify_witness(formula, decoded):
+                        self.assertEqual(output, decoded)
+                    else:
+                        self.assertIsNone(output)
 
     def test_u0_step_counter_counts_clause_checks(self):
         output, steps = TM.u0_run(0b011, 3, X0_AND_X1, 99)
@@ -197,6 +204,91 @@ class TestCandidateSearch(unittest.TestCase):
         self.assertEqual(result["programs_run"], 2 ** (cap + 1) - 1)
 
 
+class TestProgramBudgetEnforcement(unittest.TestCase):
+    """The per cell program budget is a hard limit, checked
+    before every program. The control is ChatGPT's, from the
+    signed reviews of 2026-11-23: (x0) and (x1) at c = 2,
+    d = 0 with a per cell budget of 1 reported UNKNOWN after
+    511 programs, because the budget was checked only after
+    a whole formula's search completed."""
+
+    def test_the_statuses_are_three_and_distinct(self):
+        self.assertEqual(len({TM.FOUND, TM.EXHAUSTED, TM.STOPPED}), 3)
+
+    def test_the_control_from_the_review(self):
+        cell = TM.evaluate_cell(2, 0, [X0_AND_X1], program_budget=1)
+        self.assertEqual(cell["state"], TM.UNKNOWN)
+        self.assertEqual(cell["programs_run"], 1)
+        cell = TM.evaluate_cell(2, 0, [X0_AND_X1], program_budget=0)
+        self.assertEqual(cell["state"], TM.UNKNOWN)
+        self.assertEqual(cell["programs_run"], 0)
+
+    def test_allowance_zero_stops_before_any_program(self):
+        result = TM.candidate_search(
+            X0_AND_X1, 2, 1, program_allowance=0)
+        self.assertEqual(result["status"], TM.STOPPED)
+        self.assertEqual(result["programs_run"], 0)
+        self.assertFalse(result["found"])
+
+    def test_allowance_one_runs_exactly_one_program(self):
+        result = TM.candidate_search(
+            X0_AND_X1, 2, 1, program_allowance=1)
+        self.assertEqual(result["status"], TM.STOPPED)
+        self.assertEqual(result["programs_run"], 1)
+
+    def test_exactly_enough_allowance_finds_the_witness(self):
+        # The witness (1, 1, 0) is the 7th program in the
+        # enumeration order at c = 2, d = 1.
+        result = TM.candidate_search(
+            X0_AND_X1, 2, 1, program_allowance=7)
+        self.assertEqual(result["status"], TM.FOUND)
+        self.assertTrue(result["found"])
+        self.assertEqual(result["programs_run"], 7)
+        self.assertEqual(result["witness_assignment"], (1, 1, 0))
+
+    def test_one_short_of_the_witness_is_stopped_not_exhausted(self):
+        result = TM.candidate_search(
+            X0_AND_X1, 2, 1, program_allowance=6)
+        self.assertEqual(result["status"], TM.STOPPED)
+        self.assertEqual(result["programs_run"], 6)
+        self.assertFalse(result["found"])
+
+    def test_exhausted_needs_the_whole_enumeration(self):
+        # At d = 0 no program can succeed on a 2 clause
+        # formula, and the permitted enumeration at c = 2
+        # is 511 programs.
+        result = TM.candidate_search(
+            X0_AND_X1, 2, 0, program_allowance=511)
+        self.assertEqual(result["status"], TM.EXHAUSTED)
+        self.assertEqual(result["programs_run"], 511)
+        result = TM.candidate_search(
+            X0_AND_X1, 2, 0, program_allowance=510)
+        self.assertEqual(result["status"], TM.STOPPED)
+        self.assertEqual(result["programs_run"], 510)
+
+    def test_fail_comes_only_from_a_completed_enumeration(self):
+        cell = TM.evaluate_cell(2, 0, [X0_AND_X1], program_budget=511)
+        self.assertEqual(cell["state"], TM.FAIL)
+        self.assertEqual(cell["programs_run"], 511)
+        cell = TM.evaluate_cell(2, 0, [X0_AND_X1], program_budget=510)
+        self.assertEqual(cell["state"], TM.UNKNOWN)
+        self.assertEqual(cell["programs_run"], 510)
+
+    def test_programs_run_never_pass_the_budget(self):
+        for budget in (0, 1, 2, 3, 10, 100, 1000):
+            cell = TM.evaluate_cell(2, 2, FORMULAS, program_budget=budget)
+            self.assertLessEqual(cell["programs_run"], budget)
+            self.assertEqual(cell["state"], TM.UNKNOWN)
+
+    def test_no_allowance_keeps_the_unbounded_behaviour(self):
+        result = TM.candidate_search(X0_AND_X1, 2, 1)
+        self.assertEqual(result["status"], TM.FOUND)
+        self.assertEqual(result["programs_run"], 7)
+        result = TM.candidate_search(X0_AND_X1, 2, 0)
+        self.assertEqual(result["status"], TM.EXHAUSTED)
+        self.assertEqual(result["programs_run"], 511)
+
+
 class TestGridStates(unittest.TestCase):
     def _cell(self, c, d):
         for cell in RECORD["cells"]:
@@ -239,6 +331,7 @@ class TestGridStates(unittest.TestCase):
         cell = TM.evaluate_cell(2, 2, FORMULAS, program_budget=10)
         self.assertEqual(cell["state"], TM.UNKNOWN)
         self.assertIsNone(cell["counterexample"])
+        self.assertEqual(cell["programs_run"], 10)
 
     def test_no_unknown_at_the_stated_budget(self):
         for cell in RECORD["cells"]:
