@@ -54,8 +54,8 @@ CLI output:
   590,053, not 619,845.
 
 Lines are counted live the same way, never recorded for the
-canonical list: the as-assembled set runs to 73,362 lines,
-66,567 of them non-blank (AS_ASSEMBLED_LINES and
+canonical list: the as-assembled set runs to 73,410 lines,
+66,610 of them non-blank (AS_ASSEMBLED_LINES and
 AS_ASSEMBLED_NONBLANK_LINES below), and the CLI prints the
 canonical list's own line count beside its token counts.
 

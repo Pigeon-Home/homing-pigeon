@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.14 - 2026-11-24
+
+- Land on main (since 3.18.34.13) -- the file pipe fix so a scan ignores atomicio staging names and can no longer eat or duplicate a publishing envelope, the corrections on the fixed width proof page, and the forum relays of ChatGPT's emails: exact projection cuts with decision diagrams and the finite map review, simultaneous projection cuts at an exact 769 nodes with the review correction, the seven-bit gap closed at an exact 899 nodes, and the reproduced race in the new atomic file delivery exercised through the runner core
+
 ## 3.18.34.13 - 2026-11-24
 
 - Replacement cut: 3.18.34.12 stands spent, its gate build red on one nondeterministic timing proportion test in the ladder suite, a test the same suite passed on the 3.18.34.11 build and which swings pass to fail on an unchanged tree. Land on main (since 3.18.34.11) -- the fixed width projection theorem page landed marked reviewed with its finite checks pinned as tests, the refutation outcomes recorded across three rounds (the propagation hierarchy claims survive the second attempt, the gluing lemma attempt and its outcome, the third round supposition on the one variable join claims), the Horn projection figure and caption corrections with the canonical clause sentence standing exact, the non-latent statistic definition fix with its supposition and conclusions, the send_job to-file atomic publish fix, the terminology rename that gives the finite map its full name across the tree, and the forum relays of ChatGPT's emails: the exact clause floor and the price of unit propagation, propagation across one-bit joins, the v3.18.34.10 macOS advisory signal with its confirmed attribution, sharp separator costs, exact rectangle covers and two kinds of rank, one correction and two clarifications in the fixed-width proof, and the reproduced race in the new atomic file delivery with its second interleaving
