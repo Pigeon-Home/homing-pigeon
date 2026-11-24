@@ -390,12 +390,167 @@ lemma new.
 
 ## Outcome
 
-Left for the runs. This section is written after the
-checks, in the same place, with the verdict per claim
-and the finite ranges actually checked. The landing
-this review supports, if the suppositions hold: the
-fixed width page gains the separator lemma with its
-scope stated, the 13 by 20 grid only alongside its
-visible propagation failure and never as a bare
-construction, and the propagation constrained
-non-Horn optimum posed as OPEN, in those words.
+Written after the runs, in the same place, with the
+verdict per claim and the finite ranges actually
+checked. Every supposition held. No attack found a
+counterexample, and the landing this review supports
+stands at the end of this section.
+
+Claim 1, the separator lemma and the strengthening:
+survives every attack I could build. The exhaustive
+construction checks (attack C1, first part) compared
+unit propagation against exact entailment from a
+bitset model mask on every partial assignment of
+every variable, flags included: the width three block
+construction at m = 1 to 4 over 183,978 partial
+assignments, the width 4 group construction at
+m = 1 to 4 over 61,506, and the width 5 group
+construction at m = 1 to 4 over 22,140, for 267,624
+comparisons in total and no disagreement anywhere.
+The counts came out at the email's numbers exactly,
+which also pins that the constructions I rebuilt from
+the fixed width page are the constructions the email
+measured. Beyond the constructions (attack C1, second
+part): 120 random pairs of fully PC formulas sharing
+exactly one variable, each side the full prime
+implicate CNF of a random three variable function and
+each side verified fully PC on its own first, every
+conjunction fully PC over all 243 partial assignments
+of its five variables; 20 random triples glued in
+chains at single variables, every full conjunction
+fully PC over all 2,187 partial assignments of its
+seven variables; the zero overlap case fully PC as a
+sanity control. The load bearing control behaved as
+the lemma predicts: the cyclic Horn example of the
+fixed width page, which is not fully PC, glued at one
+variable to a fully PC equivalence, gives a
+conjunction that is not fully PC, and propagation
+from the empty assignment still derives nothing while
+the conjunction entails not a. The hypothesis cannot
+be dropped, and where it holds, nothing in these
+ranges breaks the conclusion. The lemma itself, as
+an all sizes statement, stands on the gluing argument
+I verified by hand above; the checks pin its finite
+content and the shapes a counterexample would most
+likely inhabit.
+
+Claim 2, the negative control: exact. Both the
+difference formula and the equality formula are fully
+PC over all 9 partial assignments of x and y, by
+exhaustive comparison. Their conjunction has no model
+among the 4 total assignments, and unit propagation
+from the empty assignment derives no literal and no
+conflict. Two shared variables really do let the two
+sides hide a contradiction from propagation that one
+shared variable cannot hide, in this smallest case.
+
+The prime implicate step (attack C3): exact at every
+block shape checked. For block sizes 1 to 4 without a
+previous flag and sizes 1 to 3 with one, enumerating
+every clause over the block's variables and testing
+implicate status and primality against the block's
+model set gives a prime implicate set equal to the
+displayed clause set, clause for clause. The
+constructions' clause sets are exactly the unions of
+those blocks under relabeling, for the block
+construction at m = 1 to 7 and the group construction
+at widths 4 and 5 at m = 1 to 7, so the local step of
+claim 1 rests on the literature's prime implicate
+fact exactly as the email says, at every size where
+the constructions under review use it.
+
+Claim 4, the grid: the counts and the projection
+stand. Built from the statement, the 13 by 20
+construction at m = 256 has exactly 60 auxiliaries
+and 545 clauses, no clause wider than 3. Each of the
+256 empty pair witnesses and the z witness is an
+explicit total assignment the built clauses satisfy.
+Each of the 260 designated one hot row and column
+choices falsifies the built clauses. The forbidden
+direction is pinned by its structured pieces: under
+the visible assignment with every pair hit and z
+false, each of the 260 blockers is forced as a
+residual clause of the built formula; each group's
+clauses with all of its selectors false are
+unsatisfiable over its chain bits, by enumeration
+over all 1,024 row chain and 131,072 column chain
+assignments; and a model would need a true row
+selector and a true column selector, which their
+blocker forbids. So the projection is exactly R_256
+on the strength of the email's general argument, with
+every finite piece of that argument checked on the
+built object.
+
+Claim 5, the catch: reproduced on the built object,
+in its sharpest form. Unit propagation under the
+email's named assignment (z false, a_i true and b_i
+false for every pair) derives no conflict and no new
+literal at all: the assignment after propagation is
+the assignment before it. The structured argument of
+claim 4 shows that same assignment has no completion,
+since it is the all hit, z false assignment. The
+failure is therefore a propagation failure of an
+exact encoding, not a defect of the construction, and
+the grid must never be presented without it. The
+template arithmetic (attack C5) also holds: over
+group sizes 1 to 40 with rc >= 257, the auxiliary
+minimum within the two group rectangular template is
+60 and the clause minimum at that point is 545,
+attained only at 13 by 20 and at 20 by 13.
+
+Claim 6, the priority check (attack C6): I searched
+the literature the email names and the shelves around
+it, and I did not locate a statement of the singleton
+overlap gluing lemma in the sources searched. That is
+a search result with a scope, not a proof of novelty,
+and nothing in this review calls the lemma new. What
+the literature does hold, and what this review rests
+on: Kucera and Savicky, "Bounds on the size of PC and
+URC formulas" (arXiv:2001.00819, JAIR 69 (2020)),
+gives the standard definitions of propagation
+completeness and unit refutation completeness, the
+fact that the CNF of all prime implicates of a
+function is always propagation complete, and a Horn
+function characterization of PC formulas. Kucera and
+Savicky, "Propagation complete encodings of smooth
+DNNF theories" (arXiv:1909.06673, Constraints 27
+(2022)), distinguishes full PC over input and
+auxiliary variables from domain consistency on the
+inputs and builds PC encodings of DNNF theories.
+Kucera and Savicky, "Backdoor Decomposable Monotone
+Circuits and their Propagation Complete Encodings"
+(arXiv:1811.09435, AAAI 2021), treats PC encodings as
+a base class and states decomposability for circuits
+whose parts have disjoint variable sets. Bordeaux,
+Janota, Marques-Silva and Marquis, "On
+Unit-Refutation Complete Formulae with Existentially
+Quantified Variables" (KR 2012), treats unit
+refutation completeness under existential closure.
+Marquis, "Compile!" (AAAI 2015), states conjunctive
+separability for decomposable conjunctions whose
+conjuncts share no variables at all. Dechter's work
+on tractable structures is the background for
+separators and decomposition, and the SAT 2026
+cardinality encodings paper the email cites uses a
+visible variable notion of propagation completeness
+and notes the term has several variants. The pattern
+is consistent: the field states its gluing results at
+zero overlap, and the step from zero shared variables
+to one is exactly the step the email's lemma takes.
+Whether some source I did not reach states it, I
+cannot say; the honest sentence is that the lemma was
+not located in the sources searched, and the email's
+own caution against framing it as a new general
+theorem stands.
+
+The landing this review supports, now made on the
+fixed width page: the separator lemma recorded with
+its scope and its negative control; the full PC
+strengthening of the block and group constructions
+recorded as reviewed in the ranges above; the 13 by
+20 grid recorded only alongside its visible
+propagation failure, never as a bare construction;
+and the propagation constrained non-Horn optimum
+posed as OPEN, in those words, as the email poses it.
+`runner/tests/test_v4_projection_round3.py` holds the
+finite parts of this review.

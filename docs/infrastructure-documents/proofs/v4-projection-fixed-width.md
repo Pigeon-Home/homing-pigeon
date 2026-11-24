@@ -30,7 +30,13 @@ day, recorded in
 `v4-projection-gluing-review-2026-11-23.md`, covers the
 gluing claims of a fourth email: see section 7.
 `runner/tests/test_v4_projection_gluing.py` holds its
-finite parts.
+finite parts. A third review of the same email,
+recorded in
+`v4-projection-round3-review-2026-11-23.md`, attacked
+the claims independently and reached the same
+verdicts by different checks: see the end of
+section 7. `runner/tests/test_v4_projection_round3.py`
+holds its finite parts.
 
 Throughout, R_m is the relation of the projection page:
 visible variables a_i and b_i for i from 1 to m and one
@@ -303,6 +309,37 @@ of R_m that are visibly propagation complete, and then
 again for fully propagation complete encodings, is
 posed as OPEN; nothing here closes it.
 
+A third review of the same email, recorded in
+`v4-projection-round3-review-2026-11-23.md`, reached
+the same verdicts by different checks. Each block
+shape the constructions use had its prime implicate
+set enumerated clause by clause and found equal to
+its displayed clauses, and the constructions are
+exactly the unions of those blocks under relabeling.
+The lemma was attacked with 120 random fully PC pairs
+sharing exactly one variable and 20 random triples
+glued in chains at single variables, every conjunction
+fully PC, and with a control whose first side is not
+fully PC, where the conjunction fails as the
+hypothesis predicts. The grid's forbidden direction
+was pinned by its structured pieces: every blocker
+forced as a residual clause under the all hit, z false
+assignment, and each group's clauses unsatisfiable
+with all its selectors false, by enumeration over the
+chain bits. The template minimum over group sizes 1
+to 40 is attained only at 13 by 20 and 20 by 13. Its
+priority search names what the literature holds: the
+prime implicate fact and the PC and URC bounds of
+Kucera and Savicky, the distinction between full PC
+over all variables and consistency on the inputs in
+their DNNF encodings paper, decomposability at
+disjoint variable sets in their AAAI 2021 paper and
+in Marquis's survey, and unit refutation completeness
+under existential quantification in Bordeaux and
+coauthors. No statement of the singleton overlap form
+was located in the sources searched, which is a search
+result, not a proof of novelty.
+
 ## References
 
 The two source emails of 23 November 2026, relayed in
@@ -312,9 +349,44 @@ tradeoff and a new 2026 paper" (8:00 PM). A fourth
 email the same day, "propagation across one-bit joins
 and a smaller 256-pair grid" (8:38 PM), is the source
 of section 7. The reviews:
-`v4-projection-width-review-2026-11-23.md` and
-`v4-projection-gluing-review-2026-11-23.md`. The
+`v4-projection-width-review-2026-11-23.md`,
+`v4-projection-gluing-review-2026-11-23.md`, and
+`v4-projection-round3-review-2026-11-23.md`. The
 projection page: `v4-the-projection.md`.
+
+Kucera, P., and Savicky, P. Bounds on the size of PC
+and URC formulas. arXiv:2001.00819; Journal of
+Artificial Intelligence Research 69 (2020). The
+standard definitions of propagation completeness and
+unit refutation completeness, the fact that the CNF
+of all prime implicates of a function is always
+propagation complete, and a Horn function
+characterization of PC formulas.
+https://arxiv.org/abs/2001.00819
+
+Kucera, P., and Savicky, P. Propagation complete
+encodings of smooth DNNF theories. arXiv:1909.06673;
+Constraints 27 (2022). Full propagation completeness
+over input and auxiliary variables, distinguished
+from domain consistency on the inputs.
+https://arxiv.org/abs/1909.06673
+
+Kucera, P., and Savicky, P. Backdoor Decomposable
+Monotone Circuits and their Propagation Complete
+Encodings. arXiv:1811.09435; AAAI 2021. Propagation
+complete encodings as a base class, with
+decomposability stated for disjoint variable sets.
+https://arxiv.org/abs/1811.09435
+
+Bordeaux, L., Janota, M., Marques-Silva, J., and
+Marquis, P. On Unit-Refutation Complete Formulae with
+Existentially Quantified Variables. KR 2012. Unit
+refutation completeness under existential closure.
+
+Marquis, P. Compile! AAAI 2015. Conjunctive
+separability for decomposable conjunctions whose
+conjuncts share no variables, the zero overlap
+neighbour of the separator lemma of section 7.
 
 Krapivin, A., Przybocki, B., and Subercaseaux, B. The
 CNF Encoding Complexity of Boolean Functions.

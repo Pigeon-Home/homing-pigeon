@@ -452,9 +452,16 @@ A finding is most useful when it points at the file and the line
   the Horn width theorem, a capacity law for arbitrary
   CNF with the 62 auxiliary construction at m = 256, the
   width two wall by majority closure, and propagation in
-  incidence forests. None is a result of this project.
+  incidence forests. A later section adds the separator
+  lemma for propagation completeness across one
+  variable joins, the smaller 13 by 20 grid recorded
+  beside its visible propagation failure, and the
+  propagation constrained non-Horn optimum posed as
+  OPEN. None is a result of this project.
   `runner/tests/test_v4_projection_width.py` holds the
-  finite parts.
+  finite parts of the first sections and
+  `runner/tests/test_v4_projection_round3.py` the
+  finite parts of the later ones.
 - `v4-projection-width-review-2026-11-23.md`: the
   independent refutation attempt on the fixed width
   claims, suppositions written before the checks ran:
@@ -462,6 +469,26 @@ A finding is most useful when it points at the file and the line
   searches, capacity enumerations, and propagation
   comparisons. No counterexample was found; the claims
   stand marked reviewed on that record.
+- `v4-projection-gluing-review-2026-11-23.md`: the
+  refutation attempt on the gluing claims of the
+  fourth email of 23 November 2026: the separator
+  lemma attacked with random and structured pairs,
+  the constructions compared against exact entailment
+  at the email's own counts, the smaller grid verified
+  beside its stall, and the optimum posed as open. No
+  counterexample was found.
+- `v4-projection-round3-review-2026-11-23.md`: the
+  third refutation attempt, on the one variable join
+  material: the separator lemma for propagation
+  completeness attacked by exhaustive construction
+  checks at the email's own counts and by random glued
+  pairs, the equality and difference counterexample as
+  a negative control, the blocks verified prime
+  implicate complete, the 13 by 20 grid built at 60
+  auxiliaries and 545 clauses and caught stalling on
+  its named assignment, and a priority check that
+  reports what the literature holds. No counterexample
+  was found.
 - `v4-the-grammar.md`: the grammar the induction covers. A
   script of the rung is 1 of 22 atoms, or a script of the
   rung, 1 of 4 joiners, and an atom. The induction is a
