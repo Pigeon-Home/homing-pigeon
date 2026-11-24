@@ -16,6 +16,17 @@ The contract, for every writer here:
   with O_WRONLY | O_CREAT | O_EXCL plus O_NOFOLLOW and O_BINARY
   where the platform has them, so a symlink planted at the temp
   name is not written through and two writers never share one.
+- That suffix is a reserved name convention, defined in this
+  module alone (`is_temp_name`): a file whose name ends in the
+  exact suffix is a staging file, never a finished one, and a
+  directory scanner that consumes finished files (the file
+  transport's watched inbox is the standing case) must ignore
+  it. A scanner must never consume, deliver, or delete one,
+  however old it looks: age cannot tell a crashed writer's
+  orphan from a slow writer still holding the descriptor. The
+  writer unlinks its own temp on failure; an orphan left by a
+  crash stays under its reserved name, ignored, until a person
+  removes it with no writer running.
 - The bytes are written in full (and fsynced when asked), then
   os.replace moves the temp over `path`. A reader sees the old
   file or the new one, never a hole; a symlink at `path` is
@@ -32,6 +43,7 @@ cloud senders use it too.
 """
 import json
 import os
+import re
 import time
 import threading
 
@@ -39,6 +51,24 @@ import threading
 def _temp_name(path):
     return "%s.tmp.%d.%d.%s" % (path, os.getpid(), threading.get_ident(),
                                 os.urandom(4).hex())
+
+
+# The reserved staging suffix, exactly as _temp_name builds it:
+# a non-empty stem, `.tmp.`, the pid in decimal, the thread id in
+# decimal, and the nonce as exactly 8 lowercase hex digits, at the
+# very end of the name. Anything looser would reclassify real
+# files as staging; anything narrower would let a real staging
+# file through to a scanner.
+_TEMP_NAME_RE = re.compile(r".+\.tmp\.\d+\.\d+\.[0-9a-f]{8}\Z")
+
+
+def is_temp_name(name):
+    """True when `name` (a file name or a path) is an atomicio
+    staging name under the reserved convention above. Scanners
+    that consume finished files from a directory an atomicio
+    writer publishes into ask this one definition and skip what
+    it flags, leaving the file exactly where it lies."""
+    return bool(_TEMP_NAME_RE.match(os.path.basename(name or "")))
 
 
 def _open_new(path, mode):

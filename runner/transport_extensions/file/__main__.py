@@ -22,6 +22,18 @@ offer jobs. The HMAC signature stays the runner's gate.
 A job file that is a symlink, oversize, or malformed is
 refused with the reason left in <inbox>/done/<name>.refused.txt
 -- never silently dropped, never executed.
+
+One name shape is not a job file at all: the atomic writer's
+staging name (guard/atomicio's reserved suffix, asked through
+`atomicio.is_temp_name`). A sender publishing into the watched
+inbox stages its envelope under that name in this same
+directory and renames it whole onto its final name, so a scan
+can meet the staging file empty or complete. Either way the
+scan leaves it exactly where it lies -- never read, never
+delivered, never moved, never deleted, however old it looks:
+age cannot tell a crashed writer's orphan from a slow writer
+still holding the descriptor. Only the finished name is ever
+processed, so each published envelope is delivered once.
 """
 
 import os
@@ -90,6 +102,12 @@ class FilePipe:
     def scan_jobs(self):
         for fname in sorted(os.listdir(self.inbox)):
             if fname == "done":
+                continue
+            if ch._atomicio.is_temp_name(fname):
+                # An atomicio staging file, empty or complete:
+                # not a job yet. Leave it in place for its
+                # writer's rename; the finished name is the
+                # only one this scan may process.
                 continue
             path = os.path.join(self.inbox, fname)
             if os.path.isdir(path) and not os.path.islink(path):
