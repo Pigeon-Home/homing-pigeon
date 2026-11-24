@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="780" viewBox="0 0 900 780" font-family="Helvetica, Arial, sans-serif">
-  <title>Trajectories: a family of panels. The main panel plots normalized Levin cost against scale, with a dotted fixed bound, dashed schematic fates, and the running maximum as the precise object; a side panel states the chain rule hinge as implications; a theorem panel keeps rKt and pKt apart as separate randomized measures; an evidence panel holds the finite checks off the axes</title>
+  <title>Trajectories: a family of panels. The main panel plots normalized Levin cost against scale, with a dotted fixed horizontal bound for the running maximum, dashed schematic fates, and the running maximum as the precise object; a side panel states the chain rule hinge as implications; a theorem panel keeps rKt and pKt apart as separate randomized measures; an evidence panel holds the finite checks off the axes</title>
   <desc>The precise object of the main panel is the running maximum of L(F) divided by log2(|F| + 2) over satisfiable formulas F of encoded length at most N, for the stated efficient interpreter: bounded if and only if P = NP, tending to infinity if and only if P != NP. A discovered program establishes an upper bound on L(F), not its exact minimum. The bounded and escaping curves are dashed because they are schematic possible behaviour, not measurements. Every curve label stands in the legend strip at the foot of the main panel, off the curves, keyed by a swatch of its own line.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
@@ -19,9 +19,8 @@
   <text x="66" y="130" fill="#f0c9c9" font-size="12">cost, defined in the text beside this chart</text>
   <text x="66" y="146" fill="#f0c9c9" font-size="12">a found program bounds L(F) from above, only</text>
 
-  <!-- fixed bound: a + c/log2(n+2), dotted, descending to a -->
-  <path d="M 75 185 C 200 232, 320 256, 530 266" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="2 5"/>
-  <path d="M 75 274 L 530 274" fill="none" stroke="#ffffff" stroke-width="1" stroke-dasharray="2 5"/>
+  <!-- fixed bound for the running maximum: the horizontal line A = a + max(c, 0), dotted -->
+  <path d="M 75 274 L 530 274" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="2 5"/>
 
   <!-- schematic fates, dashed -->
   <path d="M 75 312 C 220 306, 360 296, 530 292" fill="none" stroke="#f5b942" stroke-width="2.5" stroke-dasharray="9 6"/>
@@ -34,8 +33,8 @@
   <!-- legend strip: every curve label stands here, off the curves -->
   <path d="M 50 352 L 550 352" stroke="#6a2130" stroke-width="1"/>
   <path d="M 66 366 L 106 366" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="2 5"/>
-  <text x="116" y="370" fill="#ffffff" font-size="12.5">dotted, white: a fixed bound, a + c / log2(n + 2):</text>
-  <text x="116" y="388" fill="#ffffff" font-size="12.5">conditional, not a result; it settles to a</text>
+  <text x="116" y="370" fill="#ffffff" font-size="12.5">dotted, white: a fixed bound for the running maximum,</text>
+  <text x="116" y="388" fill="#ffffff" font-size="12.5">A = a + max(c, 0), horizontal; conditional, not a result</text>
   <path d="M 66 402 L 106 402" fill="none" stroke="#f5b942" stroke-width="2.5" stroke-dasharray="9 6"/>
   <text x="116" y="406" fill="#f5b942" font-size="12.5">dashed, amber: a bounded fate, schematic</text>
   <path d="M 66 420 L 106 420" fill="none" stroke="#2fd4c4" stroke-width="2.5" stroke-dasharray="9 6"/>

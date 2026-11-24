@@ -14,7 +14,7 @@ page stands alone. They stand there in the corrected form
 of ChatGPT's rendered review of the same evening (its
 emails of 6:29 PM and 6:32 PM): on candidate B the fates
 dashed as schematic, the finite checks off the axes, the
-bound drawn as its exact curve, and the hinge restated as
+bound first drawn as its exact curve, and the hinge restated as
 an implication panel; on candidate C the monotonicity as
 the picture, the frontier labelled hypothetical, the
 counts off the plane, and the exceptions sentence
@@ -25,10 +25,18 @@ candidate A included, and it is kept updated alongside
 the statistics page rather than deleted. The closing
 chart the statistics page already carries stays exactly
 as it is either way. Later the same evening the
-trajectories chart itself moved to the bottom of the
+trajectories chart itself moved to near the bottom of the
 README, redrawn so no label sits on any curve; its full
 treatment stays at the bottom of the statistics page,
 and the B section below carries the same redrawn chart.
+Later still, ChatGPT's signed email of 7:24 PM the same
+evening found a mathematical mismatch in that chart: the
+decreasing per formula envelope does not bound the
+running maximum the panel defines, since the maximum at
+N can be attained by a smaller formula. The bound now
+stands as the fixed horizontal line A = a + max(c, 0),
+in the chart and in both treatments, as the B section
+records.
 
 The reading rules bind all 3 candidates, and each chart
 carries them on its face.
@@ -153,14 +161,14 @@ hinge of the day does not stand on it.
 
 ## Candidate B: trajectories
 
-![Trajectories: a family of panels. The main panel plots normalized Levin cost against scale, with a dotted fixed bound drawn as a + c / log2(n + 2), 2 dashed schematic fates, bounded and escaping, and the running maximum as the precise object; a side panel states the chain rule hinge as implications; a theorem panel keeps rKt and pKt apart as separate randomized measures; an evidence panel holds the finite checks off the axes](../../../assets/security-tokens-trajectories-2026-11-23.svg)
+![Trajectories: a family of panels. The main panel plots normalized Levin cost against scale, with a dotted fixed horizontal bound, A = a + max(c, 0), 2 dashed schematic fates, bounded and escaping, and the running maximum as the precise object; a side panel states the chain rule hinge as implications; a theorem panel keeps rKt and pKt apart as separate randomized measures; an evidence panel holds the finite checks off the axes](../../../assets/security-tokens-trajectories-2026-11-23.svg)
 
 The drawing above is the redrawn chart: every label
 stands in a legend strip at the foot of the main panel,
 off every curve, after a photograph of the statistics
 page as rendered showed the first drawing's labels
 sitting on its lines. The same redrawn chart also stands
-at the bottom of the README, at the conductor's
+near the bottom of the README, at the conductor's
 direction; the full treatment of it stands both here and
 at the bottom of the statistics page.
 
@@ -201,13 +209,24 @@ establishes an upper bound on L(F) for its formula, never
 the exact minimum: the minimum is the quantity, and no
 single run measures it.
 
-The bound, drawn exactly. A fixed bound on the normalized
-cost is not the horizontal line y = a: it is the curve
-a + c / log2(n + 2), settling to a from above, and the
-panel draws it dotted, as a conditional line, not a
-result. There is no single P = NP line, because the claim
-is that some 1 fixed pair (a, c) bounds every satisfiable
-F.
+The bound, drawn exactly. A per formula bound
+L(F) <= a log2(|F| + 2) + c gives each formula's own
+normalized cost at most a + c / log2(|F| + 2), an envelope
+that decreases as the length grows. That envelope does
+not bound the running maximum M(N): the maximum at N can
+be attained by a smaller formula, whose normalized value
+the running maximum keeps while the envelope declines.
+The bound the panel draws for M(N) is therefore a fixed
+horizontal line, A = a + max(c, 0). Since
+log2(|F| + 2) >= 1 for every F, each formula's normalized
+cost stays at or under a + max(c, 0), so M(N) stays at or
+under A at every N; and a bounded running maximum in turn
+supplies a uniform normalized constant directly. The
+panel draws the line dotted, as a conditional line, not
+a result. There is no single P = NP line, because the
+claim is that some 1 fixed pair (a, c) bounds every
+satisfiable F, which is the same claim as some 1 fixed A
+bounding M(N).
 
 The fates, drawn dashed. The 2 fate curves stand dashed
 and labelled schematic possible behaviour, because solid

@@ -726,7 +726,7 @@ carries them on its face.
 
 ### Trajectories
 
-The chart itself stands at the bottom of
+The chart itself stands near the bottom of
 [the README](../../../README.md), moved there on the
 evening of 2026-11-23 at the conductor's direction. A
 photograph of this page as rendered showed the first
@@ -775,13 +775,24 @@ establishes an upper bound on L(F) for its formula, never
 the exact minimum: the minimum is the quantity, and no
 single run measures it.
 
-The bound, drawn exactly. A fixed bound on the normalized
-cost is not the horizontal line y = a: it is the curve
-a + c / log2(n + 2), settling to a from above, and the
-panel draws it dotted, as a conditional line, not a
-result. There is no single P = NP line, because the claim
-is that some 1 fixed pair (a, c) bounds every satisfiable
-F.
+The bound, drawn exactly. A per formula bound
+L(F) <= a log2(|F| + 2) + c gives each formula's own
+normalized cost at most a + c / log2(|F| + 2), an envelope
+that decreases as the length grows. That envelope does
+not bound the running maximum M(N): the maximum at N can
+be attained by a smaller formula, whose normalized value
+the running maximum keeps while the envelope declines.
+The bound the panel draws for M(N) is therefore a fixed
+horizontal line, A = a + max(c, 0). Since
+log2(|F| + 2) >= 1 for every F, each formula's normalized
+cost stays at or under a + max(c, 0), so M(N) stays at or
+under A at every N; and a bounded running maximum in turn
+supplies a uniform normalized constant directly. The
+panel draws the line dotted, as a conditional line, not
+a result. There is no single P = NP line, because the
+claim is that some 1 fixed pair (a, c) bounds every
+satisfiable F, which is the same claim as some 1 fixed A
+bounding M(N).
 
 The fates, drawn dashed. The 2 fate curves stand dashed
 and labelled schematic possible behaviour, because solid
