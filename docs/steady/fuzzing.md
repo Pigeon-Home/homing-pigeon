@@ -69,13 +69,13 @@ the as-assembled set stands at
 non-blank) and a
 <!--hp-fig:core_assembled_zip_bytes-->943,461<!--/hp-fig-->-byte
 zip, and the project's own estimator counts it at
-<!--hp-fig:core_assembled_tokens-->804,209<!--/hp-fig--> tokens;
+<!--hp-fig:core_assembled_tokens-->804,388<!--/hp-fig--> tokens;
 the Gemini figure above still describes the 2026-11-04 assembly.
 The project's own estimator counts the canonical
 <!--hp-fig:core_files-->139<!--/hp-fig-->-file list at
-<!--hp-fig:core_tokens-->792,630<!--/hp-fig--> tokens across
-<!--hp-fig:core_lines-->72,226<!--/hp-fig--> lines
-(<!--hp-fig:core_lines_nonblank-->65,549<!--/hp-fig-->
+<!--hp-fig:core_tokens-->792,809<!--/hp-fig--> tokens across
+<!--hp-fig:core_lines-->72,235<!--/hp-fig--> lines
+(<!--hp-fig:core_lines_nonblank-->65,558<!--/hp-fig-->
 non-blank); the 2 token counts come from different counters and
 are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -91,16 +91,16 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 7,444 lines; the core around it is
-65,897. The set as assembled, part by part (re-measured
+65,910. The set as assembled, part by part (re-measured
 2026-11-24):
 
 - runner/ops: 24,446 lines
 - runner/tools: 10,092
-- runner/wire: 9,214
+- runner/wire: 9,223
 - runner/runner.py: 7,444
 - runner/oracle: 5,423
 - runner/transport_extensions: 2,778
-- runner/guard: 9,850
+- runner/guard: 9,854
 - runner/cloud: 2,350
 - runner/hosting: 1,711
 - runner/__init__.py: 23
