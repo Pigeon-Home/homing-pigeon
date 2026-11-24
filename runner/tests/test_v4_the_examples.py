@@ -179,7 +179,14 @@ class EqualityFamilyTest(unittest.TestCase):
 # ----------------------------------------------------------------
 
 def _levin_cost(length, steps):
-    return length + math.ceil(math.log2(steps + 1))
+    # The log term is ceil(log2(steps + 1)), computed in
+    # exact integer arithmetic: for steps at least 0,
+    # steps.bit_length() is that ceiling. The float form
+    # math.ceil(math.log2(steps + 1)) loses the + 1 once
+    # steps + 1 passes 2^53 (it rounds back down to the
+    # power of two), and returns 53 at steps = 2^53 where
+    # the exact value is 54.
+    return length + steps.bit_length()
 
 
 def _budget_steps(b):
@@ -209,6 +216,35 @@ class LevinMeasureTest(unittest.TestCase):
     def test_budget_search_step_bound(self):
         for b in range(0, 9):
             self.assertLess(_budget_steps(b), (b + 1) * 2 ** b)
+
+    def test_cost_log_term_is_exact_at_the_float_edge(self):
+        # At steps = 2^53 the float form of the log term
+        # returns 53, because steps + 1 rounds back down
+        # to 2^53 before the logarithm is taken. The exact
+        # value is 54, and the helper must give it.
+        self.assertEqual(_levin_cost(0, 2 ** 53), 54)
+        self.assertEqual(_levin_cost(5, 2 ** 53), 59)
+
+    def test_cost_log_term_matches_an_integer_ceiling(self):
+        # An independent integer ceiling of log2, computed
+        # by doubling, held against the helper at the
+        # powers of two, one to each side of them, and at
+        # a spread of plain values, up to 2^70.
+        def ceil_log2(x):
+            k = 0
+            while (1 << k) < x:
+                k += 1
+            return k
+
+        values = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 15, 16,
+                  17, 100, 10 ** 6, 2 ** 53, 10 ** 30]
+        for k in range(1, 71):
+            values += [2 ** k - 1, 2 ** k, 2 ** k + 1]
+        for steps in values:
+            for length in (0, 1, 40):
+                self.assertEqual(
+                    _levin_cost(length, steps),
+                    length + ceil_log2(steps + 1))
 
     def test_fixed_program_gives_logarithmic_measure(self):
         # A fixed witness program of length l0 whose run
@@ -252,7 +288,12 @@ def _opt(clauses, variables):
 
 
 def _contract(gap):
-    return math.floor(0.61 * gap)
+    # floor(0.61 * gap) in exact integer arithmetic. The
+    # float form rounds the product once the gap passes
+    # 2^53: at gap 9,007,199,254,740,995 it gives
+    # 5,494,391,545,392,007, exactly one above the exact
+    # floor 5,494,391,545,392,006.
+    return 61 * gap // 100
 
 
 class ImproveTest(unittest.TestCase):
@@ -268,6 +309,29 @@ class ImproveTest(unittest.TestCase):
             gap = _contract(gap)
             rounds += 1
         self.assertEqual(rounds, 30)
+
+    def test_contraction_is_exact_at_the_float_edge(self):
+        # At this gap the float form of the contraction
+        # returns 5,494,391,545,392,007, exactly one above
+        # the exact floor. The helper must give the floor.
+        self.assertEqual(_contract(9007199254740995),
+                         5494391545392006)
+
+    def test_contraction_matches_the_exact_fraction(self):
+        # floor(61 * gap / 100) computed with exact
+        # fractions, held against the helper around the
+        # float edge and at a spread of plain gaps.
+        from fractions import Fraction
+
+        gaps = [0, 1, 2, 3, 99, 100, 101, 3393230,
+                2 ** 53 - 1, 2 ** 53, 2 ** 53 + 1,
+                2 ** 53 + 3, 9007199254740995, 10 ** 18,
+                10 ** 30 + 7]
+        for gap in gaps:
+            exact = Fraction(61 * gap, 100)
+            self.assertEqual(
+                _contract(gap),
+                exact.numerator // exact.denominator)
 
     def test_contraction_rounds_are_logarithmic(self):
         for start in (1, 2, 10, 100, 10 ** 6):
@@ -357,21 +421,60 @@ def _computable_tables(m, s):
     """Every truth table on m inputs that a circuit of at
     most s gates over the test basis computes. A table is a
     tuple of output bits over the assignments in counting
-    order."""
+    order.
+
+    Each partial circuit keeps its own wire list, and a
+    gate is appended to one circuit at a time, so the
+    wires a gate reads are always wires that circuit has
+    already paid for. The first form of this helper pooled
+    the wires of every partial circuit into one shared
+    list; a gate could then read two wires that each cost
+    a gate of their own and be charged as one round, which
+    computes a depth bound, not a gate bound: at m = 3,
+    s = 2 it reported 164 tables where the true count is
+    78."""
     rows = list(itertools.product((0, 1), repeat=m))
     inputs = [tuple(row[i] for row in rows) for i in range(m)]
     tables = set(inputs)
-    wires = list(inputs)
+    circuits = {tuple(inputs)}
     for _ in range(s):
-        new = set()
+        nxt = set()
+        for wires in circuits:
+            for op in _BASIS.values():
+                for a in wires:
+                    for b in wires:
+                        t = tuple(op(x, y)
+                                  for x, y in zip(a, b))
+                        tables.add(t)
+                        nxt.add(wires + (t,))
+        circuits = nxt
+    return tables
+
+
+def _tables_by_gate_sequences(m, s):
+    """The same set as _computable_tables, built the other
+    way: a recursion over explicit gate sequences, where
+    each sequence carries its own wire list and every wire
+    of every sequence of at most s gates is collected.
+    The regression tests hold the two constructions
+    against each other."""
+    rows = list(itertools.product((0, 1), repeat=m))
+    inputs = [tuple(row[i] for row in rows) for i in range(m)]
+    found = set(inputs)
+
+    def extend(wires, gates_left):
+        if gates_left == 0:
+            return
         for op in _BASIS.values():
             for a in wires:
                 for b in wires:
-                    new.add(tuple(op(x, y)
-                                  for x, y in zip(a, b)))
-        tables |= new
-        wires = wires + [t for t in new if t not in wires]
-    return tables
+                    t = tuple(op(x, y)
+                              for x, y in zip(a, b))
+                    found.add(t)
+                    extend(wires + [t], gates_left - 1)
+
+    extend(list(inputs), s)
+    return found
 
 
 def _first_hard_table(m, s):
@@ -424,6 +527,60 @@ class HardTableTest(unittest.TestCase):
         all_tables = set(itertools.product((0, 1), repeat=4))
         hard = all_tables - computable
         self.assertEqual(found, min(hard))
+
+    def test_three_inputs_two_gates_count_is_78(self):
+        # The regression for the pooled wires defect: the
+        # first form of _computable_tables reported 164
+        # tables here, a depth bound, not a gate bound.
+        # The gate bound count is 78.
+        self.assertEqual(len(_computable_tables(3, 2)), 78)
+
+    def test_the_phantom_table_needs_three_gates(self):
+        # (0,0,0,0,0,0,1,0) is x AND y AND (NOT z) in
+        # counting order: one gate for the NOT, then two
+        # ANDs, 3 gates in all. The pooled helper admitted
+        # it at 2 gates; the fixed one does not, and the
+        # plain AND of all 3 inputs, at exactly 2 gates,
+        # separates the two counts from the other side.
+        phantom = (0, 0, 0, 0, 0, 0, 1, 0)
+        self.assertNotIn(phantom, _computable_tables(3, 2))
+        self.assertIn(phantom, _computable_tables(3, 3))
+        and3 = (0, 0, 0, 0, 0, 0, 0, 1)
+        self.assertIn(and3, _computable_tables(3, 2))
+        self.assertNotIn(and3, _computable_tables(3, 1))
+
+    def test_tables_agree_with_gate_sequence_enumeration(self):
+        # The whole small family, both constructions: the
+        # level by level circuit lists against the
+        # recursion over explicit gate sequences.
+        for m, s in ((1, 0), (1, 1), (1, 2), (2, 0),
+                     (2, 1), (2, 2), (2, 3), (3, 0),
+                     (3, 1), (3, 2)):
+            self.assertEqual(_computable_tables(m, s),
+                             _tables_by_gate_sequences(m, s))
+
+    def test_table_counts_grow_and_inputs_stay(self):
+        # More gates never lose a table, the inputs are
+        # computable at every bound, and at m = 2 the
+        # second gate already reaches all 16 tables.
+        for m in (1, 2, 3):
+            rows = list(itertools.product((0, 1), repeat=m))
+            inputs = {tuple(row[i] for row in rows)
+                      for i in range(m)}
+            previous = set()
+            for s in (0, 1, 2):
+                tables = _computable_tables(m, s)
+                self.assertLessEqual(previous, tables)
+                self.assertLessEqual(inputs, tables)
+                previous = tables
+        self.assertEqual(len(_computable_tables(2, 2)), 16)
+
+    def test_zero_and_one_gate_counts_stand(self):
+        # The published small cases were inside the pooled
+        # helper's valid scope and do not move: 2 tables
+        # at 0 gates and 9 at 1 gate, for m = 2.
+        self.assertEqual(len(_computable_tables(2, 0)), 2)
+        self.assertEqual(len(_computable_tables(2, 1)), 9)
 
     def test_prefix_extension_agrees_for_zero_gates(self):
         found = _first_hard_table(2, 0)
