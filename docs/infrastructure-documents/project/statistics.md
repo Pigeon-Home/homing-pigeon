@@ -726,7 +726,17 @@ carries them on its face.
 
 ### Trajectories
 
-![Trajectories: a family of panels. The main panel plots normalized Levin cost against scale, with a dotted fixed bound drawn as a + c / log2(n + 2), 2 dashed schematic fates, bounded and escaping, and the running maximum as the precise object; a side panel states the chain rule hinge as implications; a theorem panel keeps rKt and pKt apart as separate randomized measures; an evidence panel holds the finite checks off the axes](../../../assets/security-tokens-trajectories-2026-11-23.svg)
+The chart itself stands at the bottom of
+[the README](../../../README.md), moved there on the
+evening of 2026-11-23 at the conductor's direction. A
+photograph of this page as rendered showed the first
+drawing's labels sitting on its curves, words over and
+under the dotted lines and unreadable in places; the
+redrawn chart keeps every label off every line, in a
+legend strip at the foot of its main panel, keyed by a
+swatch of its own line. The full treatment stands here,
+and the panels table below describes the chart as it
+stands there.
 
 What it shows. A family of panels, drawn in the grammar
 of the Schwarzschild trajectory diagrams of general

@@ -24,7 +24,11 @@ as the remnant that holds all 3 candidates together,
 candidate A included, and it is kept updated alongside
 the statistics page rather than deleted. The closing
 chart the statistics page already carries stays exactly
-as it is either way.
+as it is either way. Later the same evening the
+trajectories chart itself moved to the bottom of the
+README, redrawn so no label sits on any curve; its full
+treatment stays at the bottom of the statistics page,
+and the B section below carries the same redrawn chart.
 
 The reading rules bind all 3 candidates, and each chart
 carries them on its face.
@@ -150,6 +154,15 @@ hinge of the day does not stand on it.
 ## Candidate B: trajectories
 
 ![Trajectories: a family of panels. The main panel plots normalized Levin cost against scale, with a dotted fixed bound drawn as a + c / log2(n + 2), 2 dashed schematic fates, bounded and escaping, and the running maximum as the precise object; a side panel states the chain rule hinge as implications; a theorem panel keeps rKt and pKt apart as separate randomized measures; an evidence panel holds the finite checks off the axes](../../../assets/security-tokens-trajectories-2026-11-23.svg)
+
+The drawing above is the redrawn chart: every label
+stands in a legend strip at the foot of the main panel,
+off every curve, after a photograph of the statistics
+page as rendered showed the first drawing's labels
+sitting on its lines. The same redrawn chart also stands
+at the bottom of the README, at the conductor's
+direction; the full treatment of it stands both here and
+at the bottom of the statistics page.
 
 What it shows. A family of panels, drawn in the grammar
 of the Schwarzschild trajectory diagrams of general

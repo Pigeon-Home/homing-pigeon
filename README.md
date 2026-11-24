@@ -553,3 +553,18 @@ says so. [docs/steady/project/contributing.md](docs/steady/project/contributing.
 - "No problem, here is how you build one." (Lieutenant Barclay, S04E19)
 - CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/resume.txt
 - "Humor between a system and its user is load-bearing, not decoration." (Me)
+
+## The trajectories chart
+
+![Trajectories: a family of panels. The main panel plots normalized Levin cost against scale, with a dotted fixed bound drawn as a + c / log2(n + 2), 2 dashed schematic fates, bounded and escaping, and the running maximum as the precise object; a side panel states the chain rule hinge as implications; a theorem panel keeps rKt and pKt apart as separate randomized measures; an evidence panel holds the finite checks off the axes](assets/security-tokens-trajectories-2026-11-23.svg)
+
+The trajectories chart, drawn 2026-11-23 from that day's
+work on the chain rule and the Levin measure: a family of
+panels showing where the lines are heading, never when an
+answer arrives. Its full treatment stands at the bottom of
+[the statistics record](docs/infrastructure-documents/project/statistics.md),
+and the chart itself stands here, at the bottom of the
+README. A first drawing of it put its labels on its
+curves; this redraw keeps every label off every line, in
+a legend strip at the foot of the main panel, keyed by a
+swatch of its own line.
