@@ -105,6 +105,16 @@ format, and the verifier are fixed once. No advice, no
 per formula initial tape, and no advance knowledge of the
 answer is supplied.
 
+Two conditions on U carry the two directions of what
+follows. The enumeration direction rests on the one
+already stated: U is efficiently simulable, so the
+budget search below runs at polynomial overhead. The
+other direction rests on the matching condition: U can
+run a standard polynomial time witness finder with
+polynomial overhead, so a witness finder, if one
+exists, is one fixed program on U, of constant length,
+running in polynomially many U steps.
+
 The budget search: for a budget b, try every program of
 length l from 0 to b, each for at most 2^(b - l) - 1
 steps. At one length there are 2^l programs, so that
@@ -238,7 +248,12 @@ basis. Describing a circuit of at most S gates, gate by
 gate in topological order, each gate by its type and the
 indices of its two incoming wires, with the output named
 at the end, costs O(S * log(m + S)) bits, with slack at
-this choice of S. So the number of circuits with at most
+this choice of S. The at most is carried by the count
+itself: a description pads its gate list with unused
+gates up to exactly S, or encodes the gate count beside
+the gates, so shorter circuits are counted in the same
+scheme and add no factor of their own. So the number of
+circuits with at most
 S gates is less than 2^N, the number of N bit truth
 tables. Some table therefore needs more than S gates.
 
@@ -248,7 +263,12 @@ to the explicit length N: guess the circuit and check
 every row. Under the assumption, its absence is decidable
 in polynomial time in N. Given a prefix, whether some
 completion passes the hardness test is likewise in NP,
-hence in P under the assumption. Extend the prefix bit by
+hence in P under the assumption. The query is put to
+the assumed procedure in the length of the canvas, not
+of the prefix: it hands over unary 1^N, or a length N
+canvas with the prefix written on it, so the completion
+it guesses is polynomial in its encoded input length
+even when the prefix is empty. Extend the prefix bit by
 bit, 0 when a hard completion still exists and 1
 otherwise, and N queries build the lexicographically
 first hard table. The language that, on input x of length
@@ -474,6 +494,19 @@ The run agreed with the supposition on every point.
   met at OPT beside a witness that scores it. At
   threshold 0 the question agreed with brute force
   satisfiability on 100 random instances.
+- A correction, recorded on 23 November 2026 from the
+  review of these examples after they landed. The test
+  helper that computes the small case tables first
+  pooled the wires of different partial circuits, which
+  computes a depth bound rather than a gate bound: at
+  m = 3 and at most 2 gates it reported 164 tables
+  against the true 78. The helper now keeps each
+  partial circuit's wires together, the 3 input, 2 gate
+  case is pinned at 78, and the 0 and 1 gate counts
+  stand unchanged. The same review made the two float
+  helpers exact: the Levin log term and the contraction
+  are integer arithmetic now, each pinned at the edge
+  where the float form first errs.
 
 ## What this is not
 

@@ -1095,6 +1095,19 @@ class PageTest(unittest.TestCase):
                        "bucket elimination"):
             self.assertIn(needle, text)
 
+    def test_page_states_the_query_canvas_and_the_other_direction(self):
+        # The repairs of 23 November 2026: the counting
+        # argument carries its at most in the count, the
+        # prefix extension query is given in the length
+        # of the canvas, and the Levin section states
+        # the witness finder condition for the direction
+        # efficient simulability does not cover.
+        with open(PAGE, encoding="utf-8") as fh:
+            text = fh.read()
+        for needle in ("unused\ngates", "1^N",
+                       "standard polynomial time witness finder"):
+            self.assertIn(needle, text)
+
 
 if __name__ == "__main__":
     unittest.main()
