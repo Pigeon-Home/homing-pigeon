@@ -36,57 +36,100 @@ carries them on its face.
 
 ## Candidate A: the squeeze, second axis
 
-![The squeeze, second axis: coverage of 1 frozen scope, witnessed inside real inside permitted, the witnessed share of the permitted set rising under the closing rule toward the permitted boundary, with 18 of 31 targets bound and the modeled gap of 3,393,230 closing to 0 in week 30 under the rule](../../../assets/security-tokens-squeeze-second-axis-2026-11-23.svg)
+![The squeeze, second axis: a schematic of 1 frozen scope, witnessed inside actual inside permitted, the uncharacterized part hatched and marked unknown, beside 3 dated registry figures with their own denominators, and the illustrative conditional recurrence in a box of its own](../../../assets/security-tokens-squeeze-second-axis-2026-11-23.svg)
 
-What it shows. The proof work's own squeeze, drawn on the
-coverage axis the statistics page gained on 2026-11-23
-instead of the size axis. For 1 frozen scope, with the
+What it shows. The proof work's own squeeze, drawn as a
+schematic instead of a curve. For 1 frozen scope, with the
 object, the observation alphabet, the build, the
 configuration, the environments and the starting conditions
-all fixed, 3 sets stand inside each other: witnessed inside
-real inside permitted. Where witnessed and permitted meet,
-the scope is characterized exactly.
+all fixed, 3 sets stand inside each other: witnessed (L)
+inside actual (B) inside permitted (U), at 1 observation.
+The part of the scope not yet characterized is drawn
+hatched and marked unknown, because it is unknown: the
+chart gives it no size, no share and no boundary of its
+own. That B sits inside U is itself an obligation of the
+scope, to be argued, not a gift of the drawing. If L = U
+is established for the scope, the 2 inclusions give
+B = L = U at that observation; a coarse projection does
+not identify distinctions it has erased.
 
-Axes and quantities. The horizontal axis is weeks from the
-count of 2026-11-19, weeks 0 to 30; a weekly axis stands
-here because a measured weekly rule exists for this gap,
-the closing rule below. The vertical axis is behaviours in
-the frozen scope as a share of the permitted set, 0 to 1.
-The permitted set is the fixed top boundary at 1.0. The
-witnessed set rises from below. The band between the 2 is
-the uncharacterized remainder, and the orange bars read the
-gap between them the way the closing chart reads its gap.
+Why the curve is gone. The first drawing of this candidate
+plotted a rising witnessed share of the permitted set on
+its vertical axis, starting at 0.32. That start was
+208,556,359 divided by 651,086,719: the share of recorded
+attempts carried by targets tied to a constraint. A share
+of recorded attempts is not a fraction of permitted
+behaviours with checked witnesses. Attempts can repeat, or
+land on the same behaviour twice, and the permitted set is
+not the denominator of an attempt count. No measured
+coverage curve exists for this scope, so none is drawn.
+What would make one possible stands under its own heading
+below.
 
-Measured. The bindings count of 2026-11-20: 13 stated
-properties, 12 of them carrying a model; 15 conformance
-suites; 31 constraints; 31 fuzz targets; 651,086,719 inputs
-over 35,270 grow runs. 18 of the 31 targets stand bound,
-carrying 208,556,359 of the inputs, a witnessed share of
-0.32 by inputs at week 0. The modeled gap stands at
-3,393,230 at the count of 2026-11-19. The dotted line
-carries the per property reading of the same count: 12 of
-13 properties carry a model, and 1 property carries
-observed execution alone, with no model behind it.
+The figures beside the schematic. 3 dated figures stand in
+separate rows on the chart, each with its own date and its
+own denominator, all from the bindings count of
+2026-11-20:
 
-Assumed. Only the closing rule, drawn dashed: at least
-0.39 of the gap closes each week, so the gap never stands
-above 0.61 of itself from 1 week to the next, and under the
-rule alone it stands at 1 in week 29 and at 0 in week 30.
-The rule holds only while the counts keep it.
+- 18 of 31 fuzz targets tied to a constraint. The
+  denominator is the 31 targets.
+- 12 of 13 stated properties carrying a named model. The
+  denominator is the 13 properties; 1 property carries
+  observed execution alone, with no model behind it. This
+  is a property model share, a third quantity, distinct
+  from both of the others.
+- 208,556,359 of 651,086,719 recorded attempts on the tied
+  targets, about 32 percent. The denominator is the
+  recorded attempts; the same count stands at 35,270 grow
+  runs. It is not any set of behaviours.
 
-What it would mean, and what it would not. If the bands
+None of the 3 is a share of the permitted set, and the
+chart says so on its face.
+
+The recurrence, in a box of its own. The token thought
+experiment stands apart from the schematic, in a labelled
+box: an illustrative conditional recurrence. Its starting
+integer is stipulated: 3,393,230, the modeled token size
+gap at the count of 2026-11-19, a modeled token quantity
+and not a count of uncharacterized behaviours. Its rule is
+stipulated: at least 0.39 of the remainder closes each
+week, so under the rule alone the value stands at 1 in
+week 29 and at zero by week 30. An earlier draft of this
+page called the same rule measured in 1 sentence and
+assumed in the next; the rule is stipulated, and the page
+now says only that. The same draft also ran the count of
+2026-11-19 and the bindings count of 2026-11-20 together
+as 1 initial measurement; they are 2 distinct
+measurements, and they stand apart here. The recurrence
+supplies no transition rule for behaviour coverage, and
+its units are never labelled uncovered behaviours. The
+token trajectory itself stays in the closing chart the
+statistics page already carries, with its corrected
+by week 30 wording.
+
+What a true coverage curve would need. A fixed finite
+universe, or a specified finite quotient of one; a
+complete denominator; distinct behaviour IDs; and
+independently validated witness mappings, with an argument
+that the implementation's relevant behaviours lie within
+the abstraction. When those stand, an empirical coverage
+curve becomes possible, and not before.
+
+What it would mean, and what it would not. If the sets
 meet, this 1 frozen scope is characterized exactly, and a
 universal safety property over all permitted behaviours
 already holds of the real ones without the meeting. It
 would mean nothing about any other scope, and nothing
 about P versus NP. The chart says so on its face.
 
-Strength and limit. This is the safest candidate: every
-solid mark on it is the project's own proved or measured
-material, and it completes the second axis of the
-statistics page in the page's own grammar. Its limit is
-that it describes the proof work, not the day's P versus NP
-structure: the hinge of the day does not stand on it.
+Strength and limit. This is the safest candidate, and the
+rebuild keeps it that way: every solid mark on it is the
+project's own proved or measured material, each under its
+own denominator, and the 1 picture that used to borrow a
+denominator it had not earned is now a schematic that
+borrows nothing. Its limit is unchanged: it describes the
+proof work, not the day's P versus NP structure, and the
+hinge of the day does not stand on it.
 
 ## Candidate B: trajectories
 
