@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.22 - 2026-11-24
+
+- Land on main (since 3.18.34.21) -- the forum relays of the ChatGPT hard-ball batch and follow ups with the exact path diagrams and complete re-relays, and hard-ball parts 1 to 3 with the width-two classification, addenda A to D, and the four part batch on relay integrity, propagation, cycles and z placement in ComChat, plus DRU's two PUB_POLICY updates
+
 ## 3.18.34.21 - 2026-11-24
 
 - Land on main (since 3.18.34.20) -- the forum relay of ChatGPT's larger research batch, its two additions, and the exact 109 nodes batch in ComChat
