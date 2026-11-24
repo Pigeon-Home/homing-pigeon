@@ -230,6 +230,152 @@ class RecordedSelectionPinTest(unittest.TestCase):
                 os.path.isfile(os.path.join(ROOT, rel)), rel)
 
 
+class RecordedSelectionRotFamilyTest(unittest.TestCase):
+    """The rot family around the 2026-11-23 gate failure.
+
+    Build run 45303820640 (the 3.18.34.6 release head) went red
+    on every platform because four loader modules had landed
+    without the recorded selection being regenerated:
+    test_de_dust_controls, test_ledger_honesty,
+    test_raw_controls_pattern and test_v4_the_examples. Each
+    one is pinned by name below, the recorded list's shape is
+    pinned (sorted, unique, real paths), and the fixture tests
+    simulate the rot shapes -- a dropped entry, several dropped
+    entries, a phantom entry, a renamed loader -- so the check
+    is seen naming each of them in the right direction.
+    """
+
+    ROT_2026_11_23 = (
+        "runner/tests/test_de_dust_controls.py",
+        "runner/tests/test_ledger_honesty.py",
+        "runner/tests/test_raw_controls_pattern.py",
+        "runner/tests/test_v4_the_examples.py",
+    )
+
+    def test_each_rotted_module_is_recorded(self):
+        _derived, recorded = _real_lists()
+        for rel in self.ROT_2026_11_23:
+            self.assertIn(rel, recorded)
+
+    def test_each_rotted_module_is_derived(self):
+        derived, _recorded = _real_lists()
+        for rel in self.ROT_2026_11_23:
+            self.assertIn(rel, derived)
+
+    def test_each_rotted_module_exists_on_disk(self):
+        for rel in self.ROT_2026_11_23:
+            self.assertTrue(
+                os.path.isfile(os.path.join(ROOT, rel)), rel)
+
+    def test_the_recorded_list_is_sorted(self):
+        _derived, recorded = _real_lists()
+        self.assertEqual(sorted(recorded), recorded)
+
+    def test_the_recorded_list_has_no_duplicates(self):
+        _derived, recorded = _real_lists()
+        self.assertEqual(len(set(recorded)), len(recorded))
+
+    def test_every_recorded_path_exists(self):
+        _derived, recorded = _real_lists()
+        for rel in recorded:
+            self.assertTrue(
+                os.path.isfile(os.path.join(ROOT, rel)), rel)
+
+    def test_every_recorded_path_is_a_suite_test_module(self):
+        _derived, recorded = _real_lists()
+        for rel in recorded:
+            self.assertTrue(rel.startswith("runner/tests/test_"),
+                            rel)
+            self.assertTrue(rel.endswith(".py"), rel)
+
+    def _recorded_fixture(self, root, entries):
+        _fixture_tree(root)
+        _write(root, "pyproject.toml",
+               "[tool.mutmut]\n"
+               "pytest_add_cli_args_test_selection = [\n"
+               + "".join('    "%s",\n' % e for e in entries)
+               + "]\n")
+
+    def test_one_dropped_entry_is_named_as_only_derived(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(tmp, [
+                "runner/tests/test_direct.py",
+                "runner/tests/test_bare.py",
+                "runner/tests/test_deep.py",
+                "runner/tests/test_multi.py",
+                "runner/tests/test_lazy.py",
+                # test_helper_chain.py dropped: the rot shape.
+            ])
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            self.assertEqual(
+                ["runner/tests/test_helper_chain.py"], only_derived)
+            self.assertEqual([], only_recorded)
+
+    def test_several_dropped_entries_are_all_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(tmp, [
+                "runner/tests/test_direct.py",
+            ])
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            for rel in ("runner/tests/test_bare.py",
+                        "runner/tests/test_deep.py",
+                        "runner/tests/test_multi.py",
+                        "runner/tests/test_lazy.py",
+                        "runner/tests/test_helper_chain.py"):
+                self.assertIn(rel, only_derived)
+            self.assertEqual([], only_recorded)
+
+    def test_a_phantom_entry_is_named_as_only_recorded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(tmp, [
+                "runner/tests/test_direct.py",
+                "runner/tests/test_bare.py",
+                "runner/tests/test_deep.py",
+                "runner/tests/test_multi.py",
+                "runner/tests/test_lazy.py",
+                "runner/tests/test_helper_chain.py",
+                "runner/tests/test_phantom.py",
+            ])
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            self.assertEqual([], only_derived)
+            self.assertEqual(["runner/tests/test_phantom.py"],
+                             only_recorded)
+
+    def test_a_renamed_loader_rots_the_old_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(tmp, [
+                "runner/tests/test_direct.py",
+                "runner/tests/test_bare.py",
+                "runner/tests/test_deep.py",
+                "runner/tests/test_multi.py",
+                "runner/tests/test_lazy.py",
+                "runner/tests/test_helper_chain.py",
+            ])
+            _write(tmp, "runner/tests/test_direct_renamed.py",
+                   "from runner.guard import security  # noqa\n")
+            os.remove(os.path.join(
+                tmp, "runner/tests/test_direct.py"))
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            self.assertEqual(
+                ["runner/tests/test_direct_renamed.py"], only_derived)
+            self.assertEqual(["runner/tests/test_direct.py"],
+                             only_recorded)
+
+    def test_an_exact_fixture_record_checks_clean(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(tmp, [
+                "runner/tests/test_bare.py",
+                "runner/tests/test_deep.py",
+                "runner/tests/test_direct.py",
+                "runner/tests/test_helper_chain.py",
+                "runner/tests/test_lazy.py",
+                "runner/tests/test_multi.py",
+            ])
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            self.assertEqual([], only_derived)
+            self.assertEqual([], only_recorded)
+
+
 class MutantCopyHelperTest(unittest.TestCase):
     def test_outside_a_copy_the_helper_is_a_noop(self):
         with mock.patch.dict(os.environ, {}, clear=True):
