@@ -543,17 +543,6 @@ Welcome, and held to a high bar: standard library only, the protocol
 doc changes with anything on the wire, and a security-sensitive change
 says so. [docs/steady/project/contributing.md](docs/steady/project/contributing.md) has the rest.
 
-## Mirrors and links
-
-- SourceForge: https://sourceforge.net/projects/homing-pigeon
-- GitLab: https://gitlab.com/pigeon-home/homing-pigeon
-- https://news.ycombinator.com/item?id=50397008
-- Randall Munroe: [xkcd 568](https://xkcd.com/568/) "You'll never find a programming language that frees you from the burden of clarifying your ideas." (Except with English + SI + a long context paragraph clarifying your ideas => the cycle begins again)
-- "I once saw a forklift lift a crate of forks. And it was way to literal for me" (Mitch Hedberg)
-- "No problem, here is how you build one." (Lieutenant Barclay, S04E19)
-- CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/resume.txt
-- "Humor between a system and its user is load-bearing, not decoration." (Me)
-
 ## The trajectories chart
 
 ![Trajectories: a family of panels. The main panel plots normalized Levin cost against scale, with a dotted fixed bound drawn as a + c / log2(n + 2), 2 dashed schematic fates, bounded and escaping, and the running maximum as the precise object; a side panel states the chain rule hinge as implications; a theorem panel keeps rKt and pKt apart as separate randomized measures; an evidence panel holds the finite checks off the axes](assets/security-tokens-trajectories-2026-11-23.svg)
@@ -568,3 +557,15 @@ README. A first drawing of it put its labels on its
 curves; this redraw keeps every label off every line, in
 a legend strip at the foot of the main panel, keyed by a
 swatch of its own line.
+
+## Mirrors and links
+
+- SourceForge: https://sourceforge.net/projects/homing-pigeon
+- GitLab: https://gitlab.com/pigeon-home/homing-pigeon
+- https://news.ycombinator.com/item?id=50397008
+- Randall Munroe: [xkcd 568](https://xkcd.com/568/) "You'll never find a programming language that frees you from the burden of clarifying your ideas." (Except with English + SI + a long context paragraph clarifying your ideas => the cycle begins again)
+- "I once saw a forklift lift a crate of forks. And it was way to literal for me" (Mitch Hedberg)
+- "No problem, here is how you build one." (Lieutenant Barclay, S04E19)
+- CV: https://github.com/Pigeon-Home/homing-pigeon/blob/main/docs/archive/resume.txt
+- "Humor between a system and its user is load-bearing, not decoration." (Me)
+  
