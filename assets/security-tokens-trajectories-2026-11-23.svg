@@ -1,77 +1,82 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" role="img" aria-label="Trajectories: where the lines are heading. A conditional map of normalized Levin cost against scale, with converging, escaping and diverging trajectories. Not a prediction.">
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="730" viewBox="0 0 900 730" font-family="Helvetica, Arial, sans-serif">
+  <title>Trajectories: a family of panels. The main panel plots normalized Levin cost against scale, with a dotted fixed bound, dashed schematic fates, and the running maximum as the precise object; a side panel states the chain rule hinge as implications; a theorem panel keeps rKt and pKt apart as separate randomized measures; an evidence panel holds the finite checks off the axes</title>
+  <desc>The precise object of the main panel is the running maximum of L(F) divided by log2(|F| + 2) over satisfiable formulas F of encoded length at most N, for the stated efficient interpreter: bounded if and only if P = NP, tending to infinity if and only if P != NP. A discovered program establishes an upper bound on L(F), not its exact minimum. The bounded and escaping curves are dashed because they are schematic possible behaviour, not measurements.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#3d0a0a"/>
-      <stop offset="1" stop-color="#12030a"/>
+      <stop offset="0" stop-color="#2b060d"/>
+      <stop offset="1" stop-color="#17030a"/>
     </linearGradient>
-    <marker id="arrowAmber" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#f5b942"/></marker>
-    <marker id="arrowTeal" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#2fd4c4"/></marker>
     <marker id="arrowWhite" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ffffff"/></marker>
+    <marker id="arrowAmber" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#f5b942"/></marker>
   </defs>
-  <rect x="0" y="0" width="900" height="620" fill="url(#bg)"/>
-  <text x="450" y="34" text-anchor="middle" font-family="sans-serif" font-size="21" font-weight="bold" fill="#ffffff">Trajectories: where the lines are heading</text>
-  <text x="450" y="56" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#f0c9c9">A conditional map, not a prediction. Directions and fates, never dates.</text>
+  <rect width="900" height="730" fill="url(#bg)"/>
+  <text x="50" y="44" fill="#ffffff" font-size="24" font-weight="bold">Trajectories: where the lines are heading</text>
+  <text x="50" y="70" fill="#ffd7de" font-size="15">A family of panels: the cost axes, the hinge as implications, separate measures, the evidence</text>
 
-  <!-- hinge band -->
-  <rect x="452" y="86" width="52" height="368" fill="#ffffff" opacity="0.07"/>
-  <text x="478" y="468" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#ffffff">THE HINGE</text>
+  <!-- main panel -->
+  <rect x="50" y="95" width="500" height="300" fill="none" stroke="#6a2130" stroke-width="1.5"/>
+  <path d="M 70 360 L 530 360" stroke="#6a2130" stroke-width="1"/>
+  <text x="180" y="388" fill="#ffffff" font-size="13">scale: log2(n + 2), growing right; not time</text>
+  <text x="24" y="250" fill="#ffffff" font-size="13" transform="rotate(-90 24 250)">normalized Levin cost</text>
 
-  <!-- plot frame -->
-  <rect x="110" y="86" width="720" height="368" fill="none" stroke="#8a4a4a" stroke-width="1"/>
+  <!-- fixed bound: a + c/log2(n+2), dotted, descending to a -->
+  <path d="M 75 150 C 200 205, 320 232, 530 244" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="2 5"/>
+  <path d="M 75 252 L 530 252" fill="none" stroke="#ffffff" stroke-width="1" stroke-dasharray="2 5"/>
+  <text x="330" y="176" fill="#ffffff" font-size="12.5">a fixed bound: a + c / log2(n + 2), dotted:</text>
+  <text x="330" y="194" fill="#ffffff" font-size="12.5">conditional, not a result; it settles to a</text>
 
-  <!-- fixed bound family: dotted -->
-  <line x1="110" y1="180" x2="830" y2="180" stroke="#ffffff" stroke-width="1.2" stroke-dasharray="3 5" opacity="0.75"/>
-  <line x1="110" y1="272" x2="830" y2="272" stroke="#ffffff" stroke-width="1.2" stroke-dasharray="3 5" opacity="0.75"/>
-  <line x1="110" y1="364" x2="830" y2="364" stroke="#ffffff" stroke-width="1.2" stroke-dasharray="3 5" opacity="0.75"/>
-  <text x="118" y="172" font-family="sans-serif" font-size="10" fill="#ffffff" opacity="0.85">a fixed bound a (with its fixed c): conditional line, not a result</text>
-  <text x="118" y="264" font-family="sans-serif" font-size="10" fill="#ffffff" opacity="0.85">another fixed a: some ONE line holding for every satisfiable F is the P = NP side</text>
-  <text x="118" y="356" font-family="sans-serif" font-size="10" fill="#ffffff" opacity="0.85">a smaller fixed a</text>
+  <!-- schematic fates, dashed -->
+  <path d="M 75 330 C 220 322, 360 306, 530 300" fill="none" stroke="#f5b942" stroke-width="2.5" stroke-dasharray="9 6"/>
+  <text x="120" y="318" fill="#f5b942" font-size="12.5">dashed, amber: a bounded fate, schematic</text>
+  <path d="M 75 345 C 240 320, 400 240, 528 118" fill="none" stroke="#2fd4c4" stroke-width="2.5" stroke-dasharray="9 6" marker-end="url(#arrowWhite)"/>
+  <text x="238" y="238" fill="#2fd4c4" font-size="12.5" transform="rotate(-24 238 238)">dashed, teal: an escaping fate, schematic</text>
 
-  <!-- converging trajectory -->
-  <path d="M118,150 C260,210 360,258 500,282 C640,300 740,306 822,308" fill="none" stroke="#f5b942" stroke-width="3" marker-end="url(#arrowAmber)"/>
-  <text x="560" y="330" font-family="sans-serif" font-size="11" fill="#f5b942">CONVERGING: a family held under one fixed bound:</text>
-  <text x="560" y="345" font-family="sans-serif" font-size="11" fill="#f5b942">direction of the P = NP side. One family is not every formula.</text>
+  <text x="66" y="112" fill="#f0c9c9" font-size="12">the precise object: the running maximum of the normalized</text>
+  <text x="66" y="128" fill="#f0c9c9" font-size="12">cost, defined in the text beside this chart</text>
+  <text x="66" y="352" fill="#f0c9c9" font-size="12">a found program bounds L(F) from above, only</text>
 
-  <!-- escaping trajectory -->
-  <path d="M118,420 C300,400 470,330 610,240 C700,185 770,120 824,92" fill="none" stroke="#2fd4c4" stroke-width="3" marker-end="url(#arrowTeal)"/>
-  <text x="470" y="205" font-family="sans-serif" font-size="11" fill="#2fd4c4">ESCAPING: a counterexample family crossing</text>
-  <text x="470" y="220" font-family="sans-serif" font-size="11" fill="#2fd4c4">every fixed bound in turn: the shape the P != NP</text>
-  <text x="470" y="235" font-family="sans-serif" font-size="11" fill="#2fd4c4">side needs, for every (a, c), at arbitrarily large size.</text>
+  <!-- hinge panel -->
+  <rect x="575" y="95" width="295" height="300" fill="#1d040b" stroke="#6a2130" stroke-width="1"/>
+  <text x="591" y="121" fill="#ffffff" font-size="14" font-weight="bold">The hinge, as implications</text>
+  <rect x="591" y="140" width="80" height="34" fill="none" stroke="#ffffff" stroke-width="1.2"/>
+  <text x="603" y="162" fill="#ffffff" font-size="13">P = NP</text>
+  <path d="M 671 157 L 716 157" stroke="#ffffff" stroke-width="1.5" marker-end="url(#arrowWhite)"/>
+  <text x="676" y="149" fill="#f0e6e6" font-size="11">proved</text>
+  <rect x="720" y="140" width="134" height="34" fill="none" stroke="#ffffff" stroke-width="1.2"/>
+  <text x="730" y="156" fill="#ffffff" font-size="11.5">the chain rule</text>
+  <text x="730" y="170" fill="#ffffff" font-size="11.5">for K^t, conditional</text>
+  <path d="M 716 196 L 675 196" stroke="#c9a3a3" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#arrowWhite)"/>
+  <text x="591" y="190" fill="#f0c9c9" font-size="11">the way back needs a premise:</text>
+  <text x="591" y="216" fill="#f0c9c9" font-size="11">GapMcKtP hardness, quantified</text>
+  <text x="591" y="232" fill="#f0c9c9" font-size="11">in the text beside this chart</text>
+  <rect x="591" y="252" width="150" height="34" fill="none" stroke="#f5b942" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text x="601" y="268" fill="#f5b942" font-size="11.5">symmetry for pnKt:</text>
+  <text x="601" y="282" fill="#f5b942" font-size="11.5">an open antecedent</text>
+  <path d="M 741 269 L 776 269" stroke="#ffffff" stroke-width="1.5" marker-end="url(#arrowWhite)"/>
+  <text x="744" y="261" fill="#f0e6e6" font-size="11">proved</text>
+  <rect x="780" y="252" width="74" height="34" fill="none" stroke="#ffffff" stroke-width="1.2"/>
+  <text x="788" y="268" fill="#ffffff" font-size="11.5">TAUT not</text>
+  <text x="788" y="282" fill="#ffffff" font-size="11.5">in AM</text>
+  <text x="591" y="312" fill="#f0e6e6" font-size="11.5">hence P != NP; the error is a fixed</text>
+  <text x="591" y="328" fill="#f0e6e6" font-size="11.5">polylog; an oracle in the same paper</text>
+  <text x="591" y="344" fill="#f0e6e6" font-size="11.5">bars any relativizing proof of it</text>
+  <text x="591" y="372" fill="#ffd7de" font-size="11.5">K^t, Kt, pnKt, rKt, pKt: 5 measures,</text>
+  <text x="591" y="388" fill="#ffd7de" font-size="11.5">named apart, never merged</text>
 
-  <!-- diverging symmetry pair, lower left -->
-  <path d="M118,428 C200,420 260,408 330,392" fill="none" stroke="#ffffff" stroke-width="1.6" marker-end="url(#arrowWhite)"/>
-  <path d="M118,428 C200,432 260,442 330,452" fill="none" stroke="#ffffff" stroke-width="1.6" marker-end="url(#arrowWhite)"/>
-  <text x="118" y="404" font-family="sans-serif" font-size="10" fill="#ffffff">PUSHING APART: symmetry read two ways disagrees:</text>
-  <text x="118" y="390" font-family="sans-serif" font-size="10" fill="#ffffff">proved apart for rKt and for pKt (TR26-021). Name the measure.</text>
+  <!-- theorem panel -->
+  <rect x="50" y="420" width="820" height="92" fill="#1d040b" stroke="#6a2130" stroke-width="1"/>
+  <text x="66" y="446" fill="#ffffff" font-size="14" font-weight="bold">Separate measures, their own panel</text>
+  <text x="66" y="470" fill="#f0e6e6" font-size="12.5">For rKt and for pKt, symmetry of information fails, proved as a theorem (Hu, Manor and Oliveira, ECCC TR26-021).</text>
+  <text x="66" y="490" fill="#f0e6e6" font-size="12.5">Those are separate randomized measures: their result stands here, in words, and draws no path on the cost axes.</text>
 
-  <!-- measured points -->
-  <circle cx="140" cy="438" r="4" fill="#ffffff"/>
-  <circle cx="168" cy="432" r="4" fill="#ffffff"/>
-  <circle cx="196" cy="436" r="4" fill="#ffffff"/>
+  <!-- evidence panel -->
+  <rect x="50" y="532" width="820" height="104" fill="#1d040b" stroke="#6a2130" stroke-width="1"/>
+  <text x="66" y="558" fill="#ffffff" font-size="14" font-weight="bold">Finite checks, off the axes</text>
+  <text x="66" y="582" fill="#f0e6e6" font-size="12.5">Worked example check: 800 fixed seed tree instances, 53,272 assignments scored against brute force.</text>
+  <text x="66" y="602" fill="#f0e6e6" font-size="12.5">Corpus counts: 651,086,719 inputs over 35,270 grow runs; bindings count: 31 targets, 18 bound.</text>
+  <text x="66" y="622" fill="#ffd7de" font-size="12.5">They carry no coordinates on the cost axes: they can falsify a candidate, and they settle no bound.</text>
 
-  <!-- axes -->
-  <text x="470" y="492" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#ffffff">scale: log2(n + 2), formula size n growing to the right: scale, not time</text>
-  <text x="30" y="270" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#ffffff" transform="rotate(-90 30 270)">normalized Levin cost  L(F) / log2(n + 2)</text>
-  <text x="112" y="80" font-family="sans-serif" font-size="10" fill="#f0c9c9">L(F) = min over programs outputting a verified satisfying assignment of |p| + ceil(log2(t + 1))</text>
-
-  <!-- hinge label -->
-  <text x="478" y="104" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#ffffff">chain rule</text>
-  <text x="478" y="116" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#ffffff">for Kt</text>
-
-  <!-- bottom boxes -->
-  <rect x="24" y="508" width="540" height="88" fill="#000000" opacity="0.35" stroke="#8a4a4a"/>
-  <text x="38" y="528" font-family="sans-serif" font-size="11" font-weight="bold" fill="#ffffff">What would settle this picture: events, not dates:</text>
-  <text x="38" y="546" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">1. A proof that some fixed (a, c) bounds every satisfiable F; or</text>
-  <text x="38" y="562" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">2. a proof that for every (a, c) a defeating F exists; or</text>
-  <text x="38" y="578" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">3. a proof or refutation of the chain rule in its named error regime (TR25-089:</text>
-  <text x="38" y="592" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">    under GapMcKtP hardness, chain rule iff P = NP; P = NP alone needs no premise).</text>
-
-  <rect x="580" y="508" width="296" height="88" fill="#000000" opacity="0.35" stroke="#8a4a4a"/>
-  <text x="594" y="528" font-family="sans-serif" font-size="11" font-weight="bold" fill="#ffffff">Honest points, lower left:</text>
-  <text x="594" y="546" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">800 instances, 53,272 assignments checked;</text>
-  <text x="594" y="562" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">651,086,719 inputs, 35,270 grow runs;</text>
-  <text x="594" y="578" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">31 targets, 18 bound. Finite checks: they can</text>
-  <text x="594" y="592" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">falsify a candidate; they settle no bound.</text>
-
-  <text x="450" y="612" text-anchor="middle" font-family="sans-serif" font-size="9.5" fill="#c9a3a3">Drawing grammar borrowed from Schwarzschild trajectory diagrams: boundaries and fates. No field equation governs these curves. pnKt symmetry (TR26-290) is a hypothesis: if it holds, TAUT is not in AM, hence P != NP.</text>
+  <text x="50" y="668" fill="#f0c9c9" font-size="12.5">Solid: measured or proved. Dashed: schematic possible behaviour. Dotted: conditional under a named premise.</text>
+  <text x="50" y="690" fill="#f0c9c9" font-size="12.5">No field equation governs these curves. The panels show where the lines are heading, never when an answer arrives.</text>
+  <text x="50" y="712" fill="#f0c9c9" font-size="12.5">The whole tree stands at 34,415,959 tokens at the count of 2026-11-23: the 38 million line approached, never crossed.</text>
 </svg>

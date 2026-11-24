@@ -581,6 +581,23 @@ meeting point is not unique, and the total at the
 meeting requires the 2 actual counts to meet at the
 floor, not only their lines.
 
+What the meeting would prove, stated with its premises.
+The 2 lines are modeled lines, and their meeting is a
+meeting inside the model. The premises that map the
+modeled lines to the real counts are these: the ceiling
+line is the closing rule itself, a minimum progress rule
+the project holds the log to and checks at every measure;
+the floor line is the measured count of everything else,
+taken at its stated limit; and the gap the rule binds is
+the gap between the 2 real counts, read at the same
+measure. Under those premises, the modeled meeting says
+where the real counts meet if the rule keeps holding.
+Without them it says nothing: a modeled upper line
+reaching the modeled non-log line does not by itself
+prove that the actual log count reached it. The actual
+counts are read at each measure, and this record claims
+a meeting only where the counts themselves stand.
+
 The research reads the run log itself as well: 96.4% of
 its tokens are lines that say nothing new was found, and
 folded to 1 line of sums for each target and day, with 1
@@ -610,13 +627,16 @@ log is pronounced empty on its strength.
 
 Three further charts were drawn on 2026-11-23 from the
 work of that day, and they stand together on
-[the candidates page](three-chart-candidates-2026-11-23.md)
-for the conductor to choose from: the squeeze drawn on
-the coverage axis, a map of trajectories in the drawing
-grammar of Schwarzschild geometry, and a map of the
-(c, d) plane of candidate machines. None of them stands
-on this page yet, and the closing chart above stands
-exactly as it was.
+[the candidates page](three-chart-candidates-2026-11-23.md):
+the squeeze drawn on the coverage axis, a map of
+trajectories in the drawing grammar of Schwarzschild
+geometry, and a map of the (c, d) plane of candidate
+machines. The conductor has since chosen: the trajectories
+map and the (c, d) plane now stand at the bottom of this
+page, each with its full treatment, so this record stands
+alone; the squeeze stands on the candidates page only,
+summarised at the foot of this page. The closing chart
+above stands exactly as it was.
 
 ## Where the project stands
 
@@ -662,3 +682,313 @@ project has published 598 releases, counted on the
 project's release page on 2026-11-23, with the 600th
 release in sight on the same day. Six weeks and 1 day, at
 a pace of about 100 releases a week.
+
+## The charts of 2026-11-23: trajectories, and the (c, d) plane
+
+Three charts were drawn on 2026-11-23 from that day's
+work: the squeeze on its second axis, the chain rule for
+time bounded Kolmogorov complexity, and the 2 machines
+that state P versus NP as a pair of searches. They stand
+together on
+[the candidates page](three-chart-candidates-2026-11-23.md),
+which keeps all 3 and stays on the record. The conductor's
+choice, made the same evening: the trajectories chart and
+the (c, d) plane stand here, at the bottom of this page,
+each with its full treatment copied in, so this page
+stands alone and a reader needs no second page to read
+them. The squeeze is summarised briefly at the foot of
+this section; its chart and its full treatment stand on
+the candidates page.
+
+The reading rules bind both charts below, and each chart
+carries them on its face.
+
+- Solid marks are measured or proved. Dashed marks are a
+  stipulated rule, a counterfactual, or schematic possible
+  behaviour, labelled as which. Dotted marks are
+  conditional under a named premise, and the premise stands
+  in the label, on the chart.
+- Finite checks are drawn as points, with their counts.
+  A point never grows into a line, and a line never claims
+  an asymptotic result the points do not carry.
+- Every information principle names its measure and its
+  error regime: conditional Kt, pnKt, rnKt, rKt or pKt.
+  A curve drawn without its measure named is decoration,
+  not a claim.
+- The charts show trajectories: where the lines are
+  heading, whether they come together or push apart, and
+  what a crossing or an escape would mean. No chart is a
+  forecast, a timeline or a date for knowing an answer.
+- No milestone is claimed that the numbers do not show.
+  The whole tree stands at 34,415,959 tokens at the count
+  of 2026-11-23, and the 38 million line stands approached,
+  never crossed, on both charts here as on this record.
+
+### Trajectories
+
+![Trajectories: a family of panels. The main panel plots normalized Levin cost against scale, with a dotted fixed bound drawn as a + c / log2(n + 2), 2 dashed schematic fates, bounded and escaping, and the running maximum as the precise object; a side panel states the chain rule hinge as implications; a theorem panel keeps rKt and pKt apart as separate randomized measures; an evidence panel holds the finite checks off the axes](../../../assets/security-tokens-trajectories-2026-11-23.svg)
+
+What it shows. A family of panels, drawn in the grammar
+of the Schwarzschild trajectory diagrams of general
+relativity: boundaries that separate 2 regimes, and fates
+that end on a boundary, escape past every boundary, or
+push apart. The borrowed content is the drawing grammar
+only. No field equation governs these curves, and the
+chart says so on its face. The panels show where the
+lines are heading; they do not say when, or whether, the
+question settles.
+
+The panels, in brief:
+
+| Panel | What stands there | Its strength |
+|---|---|---|
+| The cost axes | The running maximum, the fixed bound, the 2 schematic fates | A defined quantity and its 2 possible fates |
+| The hinge | The chain rule as implications between named statements | 1 proved arrow; 1 arrow under a named premise |
+| Separate measures | The rKt and pKt symmetry failure | Proved, for those randomized measures only |
+| The evidence | The day's finite checks, as counts | They falsify candidates; they settle no bound |
+
+The main panel: the precise object. The horizontal axis
+is scale, log2(n + 2), with the formula size n growing to
+the right; it is labelled scale, not time, and no calendar
+stands anywhere on the chart. The vertical axis is
+normalized Levin cost. The precise curve the panel is
+about is a defined quantity: the running maximum, over
+satisfiable formulas F of encoded length at most N, of
+L(F) divided by log2(|F| + 2), for the efficient
+interpreter the proofs state, where L(F) is the minimum,
+over programs that output a verified satisfying
+assignment, of the program length plus the ceiling of
+log2(t + 1) for the running time t. That running maximum
+is bounded if and only if P = NP, and it tends to
+infinity if and only if P != NP. A discovered program
+establishes an upper bound on L(F) for its formula, never
+the exact minimum: the minimum is the quantity, and no
+single run measures it.
+
+The bound, drawn exactly. A fixed bound on the normalized
+cost is not the horizontal line y = a: it is the curve
+a + c / log2(n + 2), settling to a from above, and the
+panel draws it dotted, as a conditional line, not a
+result. There is no single P = NP line, because the claim
+is that some 1 fixed pair (a, c) bounds every satisfiable
+F.
+
+The fates, drawn dashed. The 2 fate curves stand dashed
+and labelled schematic possible behaviour, because solid
+on this page means measured or proved, and no fate is
+either. The amber dashed curve settles under the bound
+and stays there: the direction of the P = NP side, with
+the limit that 1 witness family is not every formula. The
+teal dashed curve crosses each fixed bound in turn and
+leaves the top right: the shape the P != NP side needs,
+for every pair (a, c), at arbitrarily large size, and
+still short of the universal proof on its own. The day's
+second machine pair, the procedure named Improve and its
+gap on 1 formula, stands behind the boundary family
+rather than in a panel of its own: a uniform polynomial
+time Improve closing every formula's gap between its 2
+sound bounds is equivalent to P = NP by the same
+equivalence, and 1 formula's closing would prove nothing
+asymptotic.
+
+The hinge panel: implications, not curves. The chain rule
+material stands in a side panel as an implication
+diagram, because it is a web of implications between
+named statements, not a path on the cost axes. Its
+measure is the deterministic conditional time bounded
+complexity K^t, labelled with its clock and its error
+regime in the text here. 1 arrow is proved outright:
+P = NP implies the specified conditional chain rule, with
+no hardness premise; refuting that exact rule would
+therefore imply P != NP. The arrow back is labelled with
+its premise, quantified in the proofs: the chain rule
+with error o(N) is equivalent to the conjunction of
+E outside io-SIZE[2^o(n)] and GapMcKtP in promise-P
+(Kabanets and Kolokolova, ECCC TR25-089; revision 1 of
+13 March 2026; STOC 2026), and under the GapMcKtP
+hardness assumption it collapses to chain rule if and
+only if P = NP. The 2 directions do not carry the same
+premises, and the panel does not draw them symmetrically.
+
+The pnKt arrow. In the same panel, an open antecedent
+stands in a dashed box: worst case symmetry of
+information for pnKt. From it, 1 proved arrow runs: if
+it holds, then TAUT is not in AM, hence P != NP
+(Goldberg, Hu, Lu, Lyu and Oliveira, ECCC TR26-290,
+14 October 2026, Theorem 2), with the error a fixed
+polylogarithmic term. The antecedent is open, so the
+arrow is a conditional result and is labelled so; and
+the same paper's Theorem 3 gives an oracle where the
+symmetry fails strongly, so any proof of the antecedent
+must be non-relativizing.
+
+The theorem panel: separate measures. For rKt and for
+pKt, symmetry of information fails, proved as a theorem
+(Hu, Manor and Oliveira, ECCC TR26-021, 16 February
+2026). Those are separate randomized measures, and their
+result stands in its own panel, in words: it draws no
+path on the cost axes, and it is not evidence about the
+deterministic measures. The 5 measures of the day, K^t,
+Kt, pnKt, rKt and pKt, are named apart wherever they
+stand, and never merged.
+
+The evidence panel: finite checks, off the axes. The
+day's finite checks carry no normalized Levin cost
+coordinates, so they stand in a panel of counts, not as
+points on the axes: the worked example check of 800 fixed
+seed tree instances with 53,272 assignments scored
+against brute force; the corpus counts of 651,086,719
+inputs over 35,270 grow runs; the bindings count of 31
+targets with 18 bound. What finite checks are: they can
+falsify a candidate, and they settle no bound.
+
+Settling events, stated as events. What would settle the
+picture: a proof that some fixed (a, c) bounds every
+satisfiable F; or a proof that for every (a, c) a
+defeating F exists; or a proof or a refutation of the
+chain rule in its named error regime. Until 1 of those
+happens, every fate curve on the chart is a direction,
+not a destination reached.
+
+Strength and limit. This candidate alone carries the
+whole of the day: the hinge with its asymmetric premises,
+the dual machines, the pnKt hypothesis with its
+consequence and its oracle barrier, and the proved rKt
+and pKt failure standing apart as the warning to name
+the measure. Its limit is density: it is a family of
+panels, its theorem details stand as ordinary text beside
+the figure rather than inside the plot, and a copy
+cropped away from that text is not the chart.
+
+### The (c, d) plane
+
+![The (c, d) plane: a map of candidate machines A(c, d), 1 point per fixed pair of constants, every point standing open today, with 1 schematic hypothetical point whose shaded south west box shows the monotonicity, the cofinal diagonal of pairs (k, k), a hypothetical dashed size frontier, and the evidence standing off the plane](../../../assets/security-tokens-cd-plane-2026-11-23.svg)
+
+What it shows. The day's 2 machines drawn as a map of the
+pairs they range over, with the monotonicity as the
+picture. Fix a universal interpreter U with efficient
+simulation in both directions. The machine A(c, d)
+enumerates every U program of length at most
+c log2(n + 2), runs each on the formula for at most
+(n + 2)^d steps, and verifies any satisfying assignment
+produced. P = NP if and only if some fixed c and d exist
+for which A(c, d) finds a witness for every satisfiable
+formula. The second machine, CounterexampleFinder(c, d),
+enumerates formulas by brute force and returns a
+satisfiable formula that defeats A(c, d), with its
+satisfying assignment, whenever 1 exists; every return is
+a real, finitely checkable fact about that 1 pair.
+
+Axes and quantities. Both axes are constants, not data.
+The horizontal axis is c, the program length constant.
+The vertical axis is d, the time exponent. A third
+quantity stands off the axes, in the panel beside the
+plot: the formula size limit a check has reached, without
+which a point's state says nothing.
+
+The marks, in brief:
+
+| Mark | Meaning |
+|---|---|
+| Open circle | A pair standing open; none checked against the general machine |
+| Shaded south west box | Every pair a checked defeat at its corner would defeat with it |
+| Dashed diagonal | The pairs (k, k), cofinal in the plane |
+| Dashed frontier | A size frontier, hypothetical and illustrative only |
+
+The monotonicity. A verified satisfiable formula
+defeating A(c, d) also defeats every pair to its lower
+left: a weaker machine, with a smaller length constant or
+a smaller time exponent, is defeated by the same formula.
+And a pair that passes a fixed finite corpus means every
+pair to its upper right passes that same corpus: a
+stronger machine finds at least what the weaker 1 found,
+on those formulas. So a single checked defeat shades a
+whole south west box of the plane, and a single corpus
+pass clears a whole north east region, for that corpus.
+The chart draws 1 schematic point, hypothetical and
+labelled so, with its shaded box, in place of a frontier
+of results: no pair has been checked against the general
+machine, and the chart says so.
+
+The diagonal. The pairs (k, k) are cofinal in the plane:
+every pair stands lower left of some diagonal pair. A
+separating proof can therefore target the diagonal:
+counterexamples for every diagonal point, of arbitrarily
+large size, would settle the separation, and the chart
+draws the diagonal dashed and named.
+
+The frontier, honestly labelled. A dashed line on the
+chart marks a size frontier, and it is hypothetical and
+illustrative only. The day's real checks, the worked
+example's tree instances and the runner's fuzz corpus,
+did not run A(c, d) at all, so their counts stand in an
+evidence panel off the plane, as counts: they colour no
+pair, and no frontier on this chart is drawn from them.
+
+Exceptions, stated correctly. Finitely many known
+exceptions do not move a dead pair 1 step right. They can
+in principle be patched into another fixed procedure,
+possibly needing larger constants on both axes at once;
+and hard-coding the known exceptions does not establish
+that no unknown exceptions exist. The separation side
+needs, for each pair, counterexamples of arbitrarily
+large size, not finitely many.
+
+Measured, assumed, conditional. Nothing on this plane is
+assumed, and nothing on it is conditional: the plane is a
+definition map, not evidence. What is measured is which
+pairs carry checked counterexamples at which sizes, and
+today that count for the general machine stands at none.
+Every point stands open. The P = NP side is the statement
+that at least 1 point never falls, at formulas of every
+size. The P != NP side is the statement that every point
+falls in the end. Many halted finders is not all finders
+halted.
+
+Strength and limit. This is the crispest picture of the
+honest core of the day: the monotonicity that makes 1
+checked fact shade a region, and why finite evidence,
+however large, cannot settle the question by accumulation.
+Its limit is the same honesty read from the other side: a
+nearly empty field reads as a map of what is not known
+rather than a picture of the day's work, and the chain
+rule hinge and the symmetry results do not stand on it
+at all.
+
+### The third chart, in brief
+
+The squeeze, second axis, is the third chart of the day,
+and its chart stands on the candidates page only. It draws
+this record's own squeeze on the coverage axis of the
+section above: for 1 frozen scope, witnessed inside real
+inside permitted, with the witnessed share of the permitted
+set rising under the closing rule toward the permitted
+boundary. Its measured ground is the bindings count of
+2026-11-20: 31 fuzz targets, 18 of them bound, carrying
+208,556,359 of 651,086,719 inputs, and the modeled gap of
+3,393,230 closing under the same rule the closing chart
+carries. If its bands meet, that 1 scope is characterized
+exactly; it would mean nothing about any other scope, and
+nothing about P versus NP. It is the safest of the 3
+charts, every solid mark on it the project's own proved or
+measured material; its limit is that the hinge of the day
+does not stand on it.
+
+### Sources
+
+The day's structures stand in the forum record of
+2026-11-23 and in the proofs: the Levin measure and its 2
+implications, the Improve equivalence and its dual, the
+squeeze on 1 frozen scope, and the chain rule as the hinge
+lemma with its verified form and its asymmetry. The papers
+are Kabanets and Kolokolova, ECCC TR25-089, revision 1 of
+13 March 2026, STOC 2026; Goldberg, Hu, Lu, Lyu and
+Oliveira, ECCC TR26-290 of 14 October 2026; and Hu, Manor
+and Oliveira, ECCC TR26-021 of 16 February 2026. The counts
+stand in this record and in the bindings registry it
+cites. The drawing grammar of the trajectories chart
+follows the trajectory diagrams of Schwarzschild geometry,
+and the profile curves of the algorithmic statistics
+literature stand behind its axes: Bennett's logical depth,
+the computational depth of Antunes and Fortnow, and the
+stochasticity profile of Vereshchagin and Shen.
