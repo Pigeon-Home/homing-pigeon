@@ -91,7 +91,7 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 7,444 lines; the core around it is
-65,910. The set as assembled, part by part (re-measured
+65,918. The set as assembled, part by part (re-measured
 2026-11-24):
 
 - runner/ops: 24,446 lines
@@ -101,7 +101,7 @@ The runner proper is 7,444 lines; the core around it is
 - runner/oracle: 5,423
 - runner/transport_extensions: 2,778
 - runner/guard: 9,854
-- runner/cloud: 2,350
+- runner/cloud: 2,358
 - runner/hosting: 1,711
 - runner/__init__.py: 23
 - runner/_version.py: 10

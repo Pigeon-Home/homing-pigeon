@@ -162,5 +162,131 @@ class CmdNew(unittest.TestCase):
         self.assertEqual(job["job_id"], job_id)
 
 
+class ToFilePublishesAtomically(unittest.TestCase):
+    """--to-file must publish the envelope atomically.
+
+    The file transport polls its watched inbox and refuses,
+    permanently, any file whose content does not parse at the
+    moment it is read: the refusal moves the file into done/
+    with a .refused.txt note, no result is ever produced, and
+    the job never runs. The --to-file write used to be a plain
+    buffered open() at the destination path, so the file was
+    visible in the folder from the moment it was created and
+    empty until the writer's close flushed it. On a loaded
+    machine the writer can sit descheduled inside that window
+    for seconds, long enough for a poll to read the empty
+    file and refuse a perfectly good envelope. It bit the
+    rig battery twice: 2026-11-23, the Linux battery's clock
+    step on 640e0452, and 2026-11-24, the same battery's
+    memory-ceiling step on a21fd7c1 -- the envelope recovered
+    from that inbox's done/ folder was complete and correctly
+    signed; only the read timing was wrong. The project's
+    rule for its state files is atomicio: a reader sees the
+    old file or the new one, never a hole. These tests pin
+    the --to-file publish to that rule.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="hp-atomic-")
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+        self.script = os.path.join(self.tmp, "job.py")
+        with open(self.script, "w", encoding="utf-8") as fh:
+            fh.write("print('hello from the built job')\n")
+        self.target = os.path.join(self.tmp, "job.txt")
+
+    def _new(self, argv, secret=SECRET):
+        out, err = io.StringIO(), io.StringIO()
+        full = ["send_job.py", "new", "--secret", secret] + argv
+        with mock.patch.object(sys, "argv", full):
+            with redirect_stdout(out), redirect_stderr(err):
+                rc = send_job.main()
+        return rc, out.getvalue(), err.getvalue()
+
+    def _publish(self):
+        return self._new(["--script-file", self.script,
+                          "--to-file", self.target])
+
+    def test_the_destination_is_never_opened_for_writing(self):
+        writes = []
+        real_open = open
+
+        def guard(file, mode="r", *args, **kwargs):
+            try:
+                same = (os.path.abspath(os.fspath(file))
+                        == os.path.abspath(self.target))
+            except TypeError:
+                same = False
+            if same and any(c in mode for c in "wax+"):
+                writes.append(mode)
+            return real_open(file, mode, *args, **kwargs)
+
+        with mock.patch("builtins.open", guard):
+            rc, _out, err = self._publish()
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(writes, [])
+        self.assertTrue(os.path.exists(self.target))
+
+    def test_the_envelope_goes_through_the_atomic_writer_whole(self):
+        calls = []
+        real_write_text = send_job._atomicio.write_text
+
+        def spy(path, text, **kwargs):
+            calls.append((path, text))
+            return real_write_text(path, text, **kwargs)
+
+        with mock.patch.object(send_job._atomicio, "write_text", spy):
+            rc, _out, err = self._publish()
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(len(calls), 1)
+        path, text = calls[0]
+        self.assertEqual(path, self.target)
+        self.assertTrue(text.startswith("[HOMING-PIGEON] job "))
+        self.assertIn("\n\n", text)
+        self.assertTrue(text.endswith("\n"))
+        self.assertFalse(text.endswith("\n\n"))
+        with open(self.target, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), text)
+
+    def test_a_preexisting_destination_is_replaced_whole(self):
+        with open(self.target, "w", encoding="utf-8") as fh:
+            fh.write("X" * 100000)
+        rc, _out, err = self._publish()
+        self.assertEqual(rc, 0, err)
+        with open(self.target, encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertNotIn("X" * 100, text)
+        self.assertLess(len(text), 100000)
+        self.assertTrue(text.startswith("[HOMING-PIGEON] job "))
+
+    def test_a_failed_publish_leaves_the_previous_file_untouched(self):
+        sentinel = "the previous envelope, kept whole\n"
+        with open(self.target, "w", encoding="utf-8") as fh:
+            fh.write(sentinel)
+
+        def boom(path, text, **kwargs):
+            raise OSError("disk full")
+
+        with mock.patch.object(send_job._atomicio, "write_text", boom):
+            with self.assertRaises(OSError):
+                self._publish()
+        with open(self.target, encoding="utf-8") as fh:
+            self.assertEqual(fh.read(), sentinel)
+        self.assertEqual(sorted(os.listdir(self.tmp)),
+                         ["job.py", "job.txt"])
+
+    def test_no_temp_files_are_left_behind(self):
+        rc, _out, err = self._publish()
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(sorted(os.listdir(self.tmp)),
+                         ["job.py", "job.txt"])
+
+    @unittest.skipIf(os.name != "posix", "mode bits are POSIX")
+    def test_the_published_file_carries_the_atomic_mode(self):
+        rc, _out, err = self._publish()
+        self.assertEqual(rc, 0, err)
+        self.assertEqual(
+            oct(os.stat(self.target).st_mode & 0o777), "0o600")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

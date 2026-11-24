@@ -821,12 +821,20 @@ def cmd_new(args) -> int:
         return 1
     if getattr(args, "to_file", None):
         # The file transport's envelope is exactly what would
-        # have been printed; write it instead of printing.
-        with open(args.to_file, "w", encoding="utf-8") as f:
-            f.write(f"[HOMING-PIGEON] job {payload['job_id']}\n\n")
-            f.write(body)
-            if not body.endswith("\n"):
-                f.write("\n")
+        # have been printed; write it instead of printing. The
+        # publish goes through the atomic writer, never a plain
+        # buffered write at the destination: a watched inbox
+        # reads whatever file it finds, and a file caught
+        # between creation and the writer's close is read as
+        # an empty, malformed envelope and refused for good
+        # (the rig battery lost 2 jobs this way, 2026-11-23
+        # and 2026-11-24, to polls that landed inside the
+        # write window on a loaded machine). Through atomicio
+        # the envelope appears whole, or not at all.
+        text = f"[HOMING-PIGEON] job {payload['job_id']}\n\n" + body
+        if not body.endswith("\n"):
+            text += "\n"
+        _atomicio.write_text(args.to_file, text)
         print(f"wrote {args.to_file}", file=sys.stderr)
         return 0
     print(f"[HOMING-PIGEON] job {payload['job_id']}")
