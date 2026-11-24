@@ -183,6 +183,112 @@ with what it finds, before any wording about novelty.
 
 ## Outcome
 
-Left for the runs. This section is written after the
-checks, in the same place, with the verdict per claim
-and the finite ranges actually checked.
+The checks ran after the suppositions above were
+committed. `runner/tests/test_v4_projection_gluing.py`
+holds the finite parts. Verdicts per claim:
+
+Claim 1, the gluing lemma: SURVIVED. The checker was
+validated first on the two controls: the XOR and
+equality pair, each fully PC over its 9 partial
+assignments, whose conjunction it flags at the empty
+assignment, and the cyclic Horn example of the fixed
+width page, where it registers the missed literal.
+Against the lemma itself: 45 pairs of prime implicate
+complete formulas over 4 variables, 66 pairs of random
+formulas filtered to fully PC, 30 pairs of incidence
+forest Horn formulas over 4 and 5 variables, 12 chains
+of 3 blocks glued one variable at a time, and 28
+gluings of 7 hand built edge bases (a unit clause on
+the shared variable, a unit clause against it, an
+unsatisfiable block, an empty block, a block with the
+shared variable in one polarity, a block forcing it
+through a second variable, a block forcing it false)
+against verified PC partners: 181 conjunctions, each
+compared against exact entailment on every partial
+assignment of its 7 or 8 variables. No disagreement
+anywhere. One hand built base of mine, (v implies x)
+with (not x or not v), turned out not to be PC itself
+and was replaced by a verified base; the checker
+catching it is part of the evidence the machinery
+works. The finite checks do not prove the lemma; the
+email's gluing argument stands unrefuted, with its
+load bearing step, that a side allowing only one value
+of the shared variable would have propagated it,
+exercised by the forcing edge cases and never tripped.
+
+Claim 2, full PC of the constructions: SURVIVED at
+every finite range the email names. Each block was
+verified standalone on all of its partial assignments:
+the width three first block (243 assignments), its
+middle and last blocks (81 each), the m = 2 form (243),
+the width four group of 3 pairs (2,187) and its 1 pair
+tail block (81), the width five group of 4 pairs
+(19,683) and its 2 pair tail block (729). The whole
+constructions follow in claim 3.
+
+Claim 3, the finite counts: REPRODUCED EXACTLY. Width
+3, m = 1 to 4: 27, 243, 6,561 and 177,147 partial
+assignments, summing to 183,978. Width 4: 27, 243,
+2,187 and 59,049, summing to 61,506. Width 5: 27, 243,
+2,187 and 19,683, summing to 22,140. Total 267,624,
+and propagation agreed with exact entailment on every
+single one, auxiliaries included. S2 and S3 hold as
+written.
+
+Claim 4, the smaller grid: SURVIVED. The grid built
+from the email's description has exactly 60 auxiliary
+variables and 545 clauses, every clause of width at
+most 3. All 256 designated empty pair witnesses and
+the z true witness satisfy it outright; all 260
+forbidden one row and one column choices conflict
+under unit propagation alone; 4 representative all hit
+visible patterns with z false are unsatisfiable under
+a solver. The template arithmetic checks by direct
+enumeration: 2(r + c) - 6 auxiliaries for r and c at
+least 3, r + c at least 33 whenever rc reaches 257,
+and among covering rectangles with r + c = 33 the
+blocker minimum is 260, attained at 13 by 20. One slip
+was mine, not the email's: my first arithmetic test
+minimized the blocker count over all 33 selector
+rectangles and got 90 at 3 by 30, forgetting the
+covering condition the email states; with rc at least
+257 imposed, as written, 260 at 13 by 20 is exact.
+
+Claim 5, the grid's limit: CONFIRMED, and recorded
+beside claim 4 wherever the grid is stated, including
+section 7 of the fixed width page. Under the email's
+assignment, z false, every pair a true and b false,
+unit propagation derives no literal and no conflict:
+the assigned set after propagation is the visible
+assignment itself. A solver over the same assignment
+returns unsatisfiable. The smaller encoding is exact
+and visibly weaker, exactly as the email says.
+
+Claim 6, the open question: LEFT OPEN, as posed. This
+review records it in section 7 of the fixed width page
+and does not touch it.
+
+The literature check (S6) found the neighbourhood the
+email expects and no exact prior statement. Propagation
+completeness is Bordeaux and Marques-Silva's notion
+(2012); the canonical CNF of all prime implicates is
+always PC (Kucera and Savicky, Bounds on the size of
+PC and URC formulas, 2020, the paper the email cites);
+Kucera and Savicky's propagation complete encodings of
+smooth DNNF theories (2019) compose PC encodings over
+AND nodes whose variable sets are disjoint, which is
+the zero shared variable case with separators in the
+satisfying subtrees; Marquis (AAAI 2015) proves a
+conjunctive separability property for prime implicate
+formulas, a neighbouring decomposition of entailment
+across a conjunction. None of these states the one
+shared variable gluing lemma for arbitrary fully PC
+CNFs. Priority is therefore recorded as unverified:
+the lemma may be known under another name, and it is
+framed on the fixed width page as the email's
+candidate argument with this finite evidence, never as
+a new theorem.
+
+Suppositions: S1 through S5 hold as written. S6 holds
+in its careful form: neighbouring decomposition work
+found, no exact statement found, priority unverified.

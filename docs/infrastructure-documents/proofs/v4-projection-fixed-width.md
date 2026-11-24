@@ -25,7 +25,12 @@ was found, and the page is marked as reviewed on that
 basis. The review is finite: the general lower bounds
 stand on the arguments stated here, not on the
 enumerations. `runner/tests/test_v4_projection_width.py`
-holds the finite parts.
+holds the finite parts. A second review on the same
+day, recorded in
+`v4-projection-gluing-review-2026-11-23.md`, covers the
+gluing claims of a fourth email: see section 7.
+`runner/tests/test_v4_projection_gluing.py` holds its
+finite parts.
 
 Throughout, R_m is the relation of the projection page:
 visible variables a_i and b_i for i from 1 to m and one
@@ -245,13 +250,70 @@ small cases those arguments rest on, and would have
 caught a misstated relation, a wrong count, or a
 construction that does not project.
 
+## 7. The one bit join and the smaller grid
+
+A fourth email of 23 November 2026 adds a separator
+argument to the constructions above, reviewed in
+`v4-projection-gluing-review-2026-11-23.md`. The claim:
+if two fully propagation complete CNFs share at most
+one variable, their conjunction is fully propagation
+complete, and so the block construction of section 1
+and the group construction of section 2 are fully
+propagation complete over all of their variables,
+auxiliaries included, because each block is its
+complete prime implicate CNF and neighbouring blocks
+meet through one flag. The review rebuilt the blocks,
+verified each one standalone, and compared propagation
+against exact entailment on every partial assignment
+of every variable for m = 1 to 4 at widths 3, 4 and 5:
+183,978, 61,506 and 22,140 checks, 267,624 in total,
+no disagreement, matching the email's counts digit for
+digit. The lemma itself was attacked with random and
+structured pairs of fully PC formulas glued along one
+variable, 181 conjunctions in all, with no
+counterexample; the two variable XOR and equality
+pair, sharing two variables, stands as the negative
+control the checker catches. The lemma's priority is
+unverified: composition across disjoint variable sets
+is standard in the propagation complete encoding
+literature the email cites, and no source the review
+could reach states the one shared variable form. It
+stands as the email's candidate argument with finite
+evidence beside it, not as a new theorem of this
+project.
+
+The same email shrinks the selector construction of
+section 3: an unbalanced 13 by 20 grid encodes R_256
+with 60 auxiliaries and 545 clauses, the least
+auxiliary count inside the two group rectangular
+template. The smaller count comes with the loss the
+email itself names: the grid is not even visibly unit
+refutation complete. Under z false with every pair hit
+by a true and b false, the encoding is unsatisfiable,
+yet unit propagation derives nothing at all, because
+every surviving blocker is a binary clause over
+selectors and every chain clause keeps 3 unassigned
+auxiliary literals. The review verified the counts,
+the projection on all 517 of the email's controls, and
+the stall, beside a solver verdict of unsatisfiable
+under the same assignment. The 60 and 545 numbers are
+never to be quoted without that failure beside them.
+The least auxiliary count for width three encodings
+of R_m that are visibly propagation complete, and then
+again for fully propagation complete encodings, is
+posed as OPEN; nothing here closes it.
+
 ## References
 
 The two source emails of 23 November 2026, relayed in
 ComChat: "fixed-width projection theorem and a 62-bit
 construction" (7:59 PM) and "an exact width-three Horn
-tradeoff and a new 2026 paper" (8:00 PM). The review:
-`v4-projection-width-review-2026-11-23.md`. The
+tradeoff and a new 2026 paper" (8:00 PM). A fourth
+email the same day, "propagation across one-bit joins
+and a smaller 256-pair grid" (8:38 PM), is the source
+of section 7. The reviews:
+`v4-projection-width-review-2026-11-23.md` and
+`v4-projection-gluing-review-2026-11-23.md`. The
 projection page: `v4-the-projection.md`.
 
 Krapivin, A., Przybocki, B., and Subercaseaux, B. The
