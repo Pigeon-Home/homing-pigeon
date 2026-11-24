@@ -1688,3 +1688,48 @@ A route 3 claim that has discharged none of its
 obligations is a conditional statement about a
 world with that teacher in it, and it is read as
 one.
+
+The joining solver, run as an experiment. The
+structured solver of the first email, prefix
+extension under a compressor held to the
+extendibility equivalence, was implemented and run
+on small instances on 23 November 2026, with
+extendibility and the residual function of each
+prefix computed by exhaustive search, so the
+contract was checked at every round rather than
+assumed. On the equality family, with one
+representative kept per distinct residual function,
+the grouped order's residual state count peaked at
+2^m at the cut, for m from 1 to 7 (measured peaks
+2, 4, 8, 16, 32, 64, 128), and the interleaved
+order never exceeded 3 states at any level. On 80
+random 3-CNF instances on 10 variables, at clause
+ratios 2.0 and 4.26, the exact compressor's verdict
+agreed with brute force every time and the contract
+held in every round. A compressor that keeps only
+the first w prefixes, tried at w of 4 and of 16,
+violated the contract on most satisfiable instances
+and returned a wrong verdict on every instance it
+violated: once every live prefix is dropped, no
+later round recovers one. The positive control of
+the same email, the exact variable projection law
+on 2-CNF, was checked exhaustively on 1,013 small
+cases and held in every one. This experiment is a
+finite record about small instances. It establishes
+no asymptotic bound, and it stands here at strength
+1 of the four strengths above.
+
+The controls of rule 1 exist as machinery now, not
+only as a rule. The corpus tool builds a
+calibration pair for the wire, cloud and v2
+targets: for wire and cloud, a body signed under
+the corpus secret and the same body signed under
+the wrong one; for v2, a protocol object in its own
+shape and the same object at the retired version.
+Its controls command runs each pair against the
+live reader, and the pair must come back accepted
+and refused in that order, or the reader is what
+failed. Tests pin the pairs, and pin that they
+bite: a reader replaced by one that accepts
+everything, and by one that refuses everything,
+fails its controls both times.
