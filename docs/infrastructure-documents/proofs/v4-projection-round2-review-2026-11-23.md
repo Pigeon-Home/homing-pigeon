@@ -423,7 +423,108 @@ selector triple, and at most two clauses per used cell.
 
 ## Outcome
 
-Left for the runs, as the email's own framing suggests.
-This section is written after the checks, in the same
-place, with the verdict per claim and the finite ranges
-actually checked.
+The runs are done, and this section is their record,
+written after the checks as the plan promised. No
+attack found a counterexample. Every claim of the
+8:32 PM email survives in the finite ranges checked,
+and the review status of the fixed width page extends
+to this email on that basis, with the scope stated at
+the end of this section. The checks stand pinned in
+`runner/tests/test_v4_projection_round2.py`.
+
+B1 (claim 2, and the first control of claim 6).
+Propagation matched exact entailment everywhere it was
+compared, on partial assignments that may assign
+auxiliaries as well as visible variables. The original
+chain: every partial assignment of all its variables
+at m = 1 and m = 2 (243 and 19,683 assignments), and
+at m = 3 every assignment fixing at least 11 of its
+13 variables (221,184 assignments). The block chain:
+every partial assignment of all its variables at
+m = 1 to m = 3 (27, 243 and 6,561 assignments), and
+at m = 4 every assignment fixing at least 7 of its
+11 variables (125,952 assignments). 373,893
+assignments in all, and no disagreement. My counts
+differ from the email's 245,214 because the families
+and ranges differ, as T3 predicted; the shape matches.
+The cyclic example of the fixed width page missed its
+implied literal exactly as predicted, so the
+comparison has teeth. T3 held.
+
+B2 (claim 2's lower bound, the second control). The
+selector grid stalled under plain unit propagation on
+every minimal forbidden pattern tried: no conflict,
+and no derived literal at all. Every pattern at m = 2
+to m = 8 (508 patterns in all); at m = 30 the all a,
+all b and both alternating patterns and 2,000
+patterns drawn at random with a fixed seed; and the
+same shapes and sample at m = 256. One correction to
+the plan above: the grid as the fixed width page
+records it has 18 auxiliaries at m = 30, not 22 as
+the plan states. The line claim 2 draws at width
+three is k >= m - 2, which is 28 at m = 30, so the
+stall the plan predicted is the stall the bound
+requires at either count, and the correction does not
+touch the verdict. T4 held.
+
+B3 (claim 4, the third control). The one round
+procedure, implemented from the statement, agreed
+with exact entailment on every visible partial
+assignment at m = 1 to m = 4: 27, 243, 2,187 and
+19,683 assignments, 22,140 in all, the email's own
+count exactly. At m = 256 the procedure refuted the
+minimal forbidden pattern, derived z in the case
+forcing z, and derived both bits of the named pair
+false in the third case. T5 held.
+
+B4 (claim 1). The witness maximum came out at exactly
+2^(m - 1) for m = 1 to m = 5, attained only by
+clauses negating one bit in one pair or one bit in
+each of two pairs, and every pattern negating both
+bits of one pair scored 0, as the counting argument
+requires. The exhaustive subset search over arbitrary
+CNF clauses of width at most three over the visible
+variables alone at m = 2 (131 clauses, every subset
+of at most 3) found no encoding below the 4 clause
+floor, and the block construction's 4 clauses encode
+R_2 there, so the first encoding appears at exactly
+4. T2 held.
+
+B5 (claim 3). The block construction at m = 3 to
+m = 6 has exactly 2m clauses and m - 2 auxiliaries,
+rechecked. At m = 3, under each of the 8 minimal
+forbidden patterns, the residual formula over the
+auxiliaries is the two unit clauses of opposite sign
+in the single flag: a minimal unsatisfiable core
+containing a unit clause, refuted by unit
+propagation, exactly the mechanism claim 3 names.
+
+B6 (claim 5). The leaf sum's least k at w = 3: for
+m = 256, k = 85, 13 and 8 at h = 1, 2, 3; for
+m = 1,000,000, k = 333,333, 816 and 126. The capacity
+side of the first review, the least k with
+2k^2 + 2k + 3 at least m + 1, gives 11 and 707. The
+combined least k, the larger of the two sides at each
+h, runs 85, 13, 11 at m = 256 and 333,333, 816, 707
+at m = 1,000,000, scaling with measured exponents
+1.000, 0.501 and 0.503 against the predicted 1, 1/2
+and 1/2. The leaf sum alone at h = 3 scales with
+exponent 1/3 and is not the binding side; the
+capacity side binds there, which is what
+min(h, w - 1) records. The d = 3 upper bound
+construction, three selector groups at width four
+rebuilt from the statement, projects exactly onto
+R_m for m = 1 to m = 6, with 6 auxiliaries and
+m + 11 clauses, one OR clause per group, one
+blocking family per selector triple, and at most two
+clauses per used cell. T6 held, with the leaf sum
+note standing as part of the record.
+
+The verdicts on the suppositions: T1 held, T2 held,
+T3 held, T4 held, T5 held, T6 held with the note in
+B6. What this review does not do stands as the plan
+left it: the arguments are the email's, the checks
+are finite, and the ranges above are the whole of
+what was checked. Within those ranges the extension
+of the fixed width work is, as far as these attacks
+reach, exactly as stated.
