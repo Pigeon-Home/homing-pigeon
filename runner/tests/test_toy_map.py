@@ -32,9 +32,9 @@ def _formula(*clauses):
     return tuple(sorted(clauses))
 
 
-X0 = _formula(((TM.POSITIVE, TM.ABSENT, TM.ABSENT),))
-NOT_X0 = _formula(((TM.NEGATIVE, TM.ABSENT, TM.ABSENT),))
-X2 = _formula(((TM.ABSENT, TM.ABSENT, TM.POSITIVE),))
+X0 = ((TM.POSITIVE, TM.ABSENT, TM.ABSENT),)
+NOT_X0 = ((TM.NEGATIVE, TM.ABSENT, TM.ABSENT),)
+X2 = ((TM.ABSENT, TM.ABSENT, TM.POSITIVE),)
 X0_AND_X1 = _formula(
     (TM.POSITIVE, TM.ABSENT, TM.ABSENT),
     (TM.ABSENT, TM.POSITIVE, TM.ABSENT))
@@ -100,7 +100,9 @@ class TestEncoding(unittest.TestCase):
     def test_decode_rejects_unsorted_or_duplicated_clauses(self):
         clause_a = (TM.POSITIVE, TM.ABSENT, TM.ABSENT)
         clause_b = (TM.ABSENT, TM.POSITIVE, TM.ABSENT)
-        bits = "10" + TM.encode((clause_b,))[2:] + TM.encode((clause_a,))[2:]
+        # Canonical order sorts clause_b before clause_a, so
+        # clause_a first is not a legal encoding.
+        bits = "10" + TM.encode((clause_a,))[2:] + TM.encode((clause_b,))[2:]
         with self.assertRaises(ValueError):
             TM.decode(bits)
         bits = "10" + TM.encode((clause_a,))[2:] + TM.encode((clause_a,))[2:]

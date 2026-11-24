@@ -120,11 +120,76 @@ only on the finished grid.
 
 ## The result
 
-<!-- RESULTS: filled from the enumeration record after the run. -->
+![The finite toy map: a 3 by 3 grid of (c, d) pairs, each cell marked by shape as well as colour, circles for PASS UP TO N at (1, 1), (2, 1), (1, 2) and (2, 2), squares carrying an X for FAIL at (0, 0), (1, 0), (2, 0), (0, 1) and (0, 2), no triangles, with the total enumeration cost and the data hash on the figure](../../../assets/finite-toy-map-2026-11-23.svg)
+
+The run matched the supposition cell for cell. FAIL at
+(0, 0), (1, 0), (2, 0), (0, 1) and (0, 2): 5 cells. PASS
+UP TO N at (1, 1), (2, 1), (1, 2) and (2, 2): 4 cells.
+UNKNOWN at the stated budget: 0 cells. The grid is the
+predicted discrete monotone staircase.
+
+The named counterexamples, each with its satisfying
+assignment and the complete bounded enumeration behind the
+negative:
+
+- At c = 0, every d: the formula (x2), satisfied by the
+  assignment (0, 0, 1). The cap is 0 bits, so the only
+  permitted program is the empty one, which reads as the
+  all zero assignment. 1 program was enumerated for this
+  formula, and it is the whole permitted set. The
+  supposition named (x0) as its example of this shape; the
+  enumeration, which meets formulas in canonical order,
+  names (x2), the first unit formula in that order. The
+  shape and the reason are the ones derived.
+- At d = 0, c = 1 and c = 2: the formula (x2) and (x1),
+  satisfied by (0, 1, 1). The step budget is 1 and a
+  successful run costs 2 steps, 1 per clause. The complete
+  enumeration ran 31 programs at c = 1 (cap 4 bits) and 511
+  programs at c = 2 (cap 8 bits) for this formula, and none
+  produced a verified witness within the budget. Again the
+  supposition's example, (x0) and (x1), is the same shape;
+  canonical order names its own first instance.
+
+Each PASS cell checked all 2853 satisfiable formulas of
+the 2952 in the domain (99 are unsatisfiable, settled by
+the truth table) and found a verified witness for every
+one. The 4 PASS cells each cost 12,945 program runs and
+21,669 steps, identical across the 4 because the first
+verified witness for each formula is the same in each: a
+larger cap permits more programs, but the search stops at
+the first success and never reaches them.
+
+The cost of the complete enumeration, reported rather than
+hidden: 52,440 program runs and 87,331 steps across the 9
+cells, in 2.194 seconds of wall time on the machine that
+ran it. FAIL cells stop at their first named
+counterexample, so their cell costs are the cost up to and
+including that formula's complete enumeration; the PASS
+cells carry the full domain cost.
 
 ## Provenance
 
-<!-- PROVENANCE: filled from the enumeration record after the run. -->
+The record of the run, produced by
+`python3 -m runner.tools.toy_map`, carries: the
+interpreter version, U0-1.0; the grammar, CNF over x0, x1,
+x2 with at most 3 distinct clauses per formula in canonical
+order; the maximum encoded length N = 20; the domain size,
+2952 formulas; the grid, c in {0, 1, 2} and d in {0, 1, 2};
+the exact enumeration rule, program length ascending then
+program value ascending, stopping at the first verified
+witness; the cap and budget rules, floor(c log2(n + 2))
+bits and (n + 2)^d steps; the per cell program budget,
+10,000,000, which no cell approached; the witness
+verification method, the independent verifier with the
+complete truth table over the 8 assignments; the per cell
+costs and states; and a data hash over the record,
+sha256 e7229e46925cb5c7d57a1e1367a6afeedb982f0d58ddb24d785f11cf30e714ad,
+which also stands on the figure itself, so the picture and
+the record can be checked against each other. The unit
+tests in `runner/tests/test_toy_map.py` re-derive the grid
+from the code, re-check every named counterexample's
+enumeration in full, and pin the monotonicity property per
+formula.
 
 ## What the toy map does and does not teach
 
