@@ -29,7 +29,10 @@ by construction:
   them;
 - the whole-tree measure carries the keys the audit record
   and the statistics facts are written from, and the
-  non-latent figure is 100 minus the near-duplicate share.
+  non-latent figure is 100 minus the total latent share;
+  the near-only complement stands under its own name, and
+  fixtures where exact or templated marks sit outside the
+  near marks pin the two quantities apart.
 """
 import os
 import sys
@@ -297,7 +300,9 @@ class WholeMeasureTests(unittest.TestCase):
                         "near_duplicate_percent_python",
                         "near_duplicate_test_lines",
                         "near_duplicate_production_lines",
-                        "non_latent_percent", "exact_copy_lines",
+                        "non_latent_percent",
+                        "not_near_duplicate_percent_tree",
+                        "exact_copy_lines",
                         "templated_lines",
                         "templated_percent_tree",
                         "templated_percent_python",
@@ -312,9 +317,77 @@ class WholeMeasureTests(unittest.TestCase):
                 self.assertIn(key, result)
             self.assertEqual(16, result["near_duplicate_lines"])
             self.assertEqual(
-                round(100.0 - result["near_duplicate_percent_tree"], 2),
+                round(100.0 - result["total_latent_percent_tree"], 2),
                 result["non_latent_percent"])
+            self.assertEqual(
+                round(100.0 - result["near_duplicate_percent_tree"], 2),
+                result["not_near_duplicate_percent_tree"])
+            # On this fixture every latent mark is a near
+            # mark, so the two quantities coincide; the
+            # NonLatentDefinitionTests fixtures are where
+            # they separate.
+            self.assertEqual(
+                result["non_latent_percent"],
+                result["not_near_duplicate_percent_tree"])
             self.assertEqual([], result["unreferenced_python"])
+
+
+class NonLatentDefinitionTests(unittest.TestCase):
+    """The name non-latent names one quantity: the complement
+    of the total latent figure, the definition the statistics
+    record carries. The near-only complement is a different
+    quantity under its own name. These fixtures hold marks
+    outside the near marks, so the two definitions provably
+    differ on them (the resolution is recorded in
+    docs/infrastructure-documents/project/
+    non-latent-definition-fix-2026-11-23.md)."""
+
+    def test_exact_marks_outside_near_marks_separate_them(self):
+        with tempfile.TemporaryDirectory() as root:
+            body = ["alpha line", "beta line"]
+            _write(root, "x.txt", body)
+            _write(root, "y.txt", body)
+            result = DA.audit(root)
+            self.assertEqual(4, result["tree_lines"])
+            self.assertEqual(
+                0.0, result["near_duplicate_percent_tree"])
+            self.assertEqual(
+                50.0, result["exact_copy_percent_tree"])
+            self.assertEqual(
+                50.0, result["total_latent_percent_tree"])
+            self.assertEqual(50.0, result["non_latent_percent"])
+            self.assertEqual(
+                100.0, result["not_near_duplicate_percent_tree"])
+
+    def test_templated_marks_outside_near_marks_separate_them(self):
+        with tempfile.TemporaryDirectory() as root:
+            entries = ['    "entry shape sep_%s fires",' % ch
+                       for ch in "abcdefghij"]
+            _write(root, "list.py",
+                   ["ENTRIES = ["] + entries + ["]"])
+            result = DA.audit(root)
+            self.assertEqual(12, result["tree_lines"])
+            self.assertEqual(10, result["templated_lines"])
+            self.assertEqual(0, result["near_duplicate_lines"])
+            self.assertEqual(10, result["total_latent_lines"])
+            self.assertEqual(
+                83.33, result["total_latent_percent_tree"])
+            self.assertEqual(16.67, result["non_latent_percent"])
+            self.assertEqual(
+                100.0, result["not_near_duplicate_percent_tree"])
+
+    def test_summary_labels_each_figure_by_its_definition(self):
+        with tempfile.TemporaryDirectory() as root:
+            body = ["alpha line", "beta line"]
+            _write(root, "x.txt", body)
+            _write(root, "y.txt", body)
+            summary = DA._summary(DA.audit(root))
+            self.assertIn(
+                "non-latent (the complement of total latent): "
+                "50.0%", summary)
+            self.assertIn(
+                "not marked near-duplicate: 100.0% of the tree",
+                summary)
 
 
 if __name__ == "__main__":

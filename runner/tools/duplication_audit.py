@@ -36,6 +36,15 @@ The method, as the standing audit states it:
   line, plus the exact-copy lines.
 - Exact copies: tracked files grouped by content hash; the
   lines of every copy past the first count.
+- Non-latent: the complement of the total latent figure,
+  100 minus total_latent_percent_tree. The share the window
+  measure alone did not mark is a different quantity and
+  carries its own name, not_near_duplicate_percent_tree;
+  the two agree only when every latent mark is a near mark.
+  (Before 2026-11-23 the non_latent_percent field carried
+  the near-only reading; the resolution is recorded in
+  docs/infrastructure-documents/project/
+  non-latent-definition-fix-2026-11-23.md.)
 - Unreferenced Python files: a file counts as referenced when
   another tracked file names its module or its path, or when
   it stands where the suite's discovery reaches it
@@ -402,7 +411,10 @@ def audit(root):
             near_lines, python_lines),
         "near_duplicate_test_lines": test_lines,
         "near_duplicate_production_lines": prod_lines,
-        "non_latent_percent": round(100.0 - near_percent, 2),
+        "non_latent_percent": round(
+            100.0 - total_latent_percent, 2),
+        "not_near_duplicate_percent_tree": round(
+            100.0 - near_percent, 2),
         "templated_lines": templated_total,
         "templated_percent_tree": _percent(
             templated_total, tree_lines),
@@ -447,6 +459,8 @@ def _summary(result):
         "  in tests: %d — in production: %d" % (
             result["near_duplicate_test_lines"],
             result["near_duplicate_production_lines"]),
+        "  not marked near-duplicate: %s%% of the tree" % (
+            result["not_near_duplicate_percent_tree"]),
         "templated: %d lines \u2014 %s%% of the tree, %s%% of "
         "the Python" % (
             result["templated_lines"],
@@ -459,7 +473,8 @@ def _summary(result):
         "counted once): %d lines \u2014 %s%% of the tree" % (
             result["total_latent_lines"],
             result["total_latent_percent_tree"]),
-        "non-latent: %s%%" % result["non_latent_percent"],
+        "non-latent (the complement of total latent): %s%%" % (
+            result["non_latent_percent"]),
         "exact copies: %d lines beyond the first copy — %s%% "
         "of the tree" % (
             result["exact_copy_lines"],
