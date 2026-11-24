@@ -1421,6 +1421,115 @@ class GrantResidueNamingTest(unittest.TestCase):
         self.assertIn("_grant_residue_verdict", body)
 
 
+class GrantResidueNamingVariationsTest(unittest.TestCase):
+    """The residue recognition, shape by shape (the
+    2026-11-23 residue fix, variation family).
+
+    The recognition is deliberately narrow: the staged read
+    stage, and the loader death's exit in either spelling,
+    in the trial's own format. Everything near the shape
+    and not in it must stay unnamed, because a gate that
+    names the wrong cause sends the operator to reset DACLs
+    that are not the problem.
+    """
+
+    _READ = "a confined process could not read its staged file"
+
+    def _problem(self, exit_text, tail="no output"):
+        return "%s (exit %s: %s)" % (self._READ, exit_text,
+                                     tail)
+
+    def test_both_exit_spellings_are_recognized(self):
+        for exit_text in ("-1073741515", "3221225781"):
+            with self.subTest(exit_text=exit_text):
+                self.assertTrue(WC.floor_trial_dll_not_found(
+                    self._problem(exit_text)))
+
+    def test_the_exit_constants_are_the_same_code(self):
+        self.assertEqual(WC.DLL_NOT_FOUND_EXIT_UNSIGNED,
+                         0xC0000135)
+        self.assertEqual(
+            WC.DLL_NOT_FOUND_EXIT_SIGNED % (2 ** 32),
+            WC.DLL_NOT_FOUND_EXIT_UNSIGNED)
+
+    def test_neighbouring_exits_are_not_the_shape(self):
+        for exit_text in ("-1073741516", "-1073741514",
+                          "3221225780", "3221225782",
+                          "-1073741502", "0", "1", "-1"):
+            with self.subTest(exit_text=exit_text):
+                self.assertFalse(WC.floor_trial_dll_not_found(
+                    self._problem(exit_text)))
+
+    def test_a_longer_number_is_not_the_shape(self):
+        # The exit is only a prefix of this number: the
+        # trial's format puts a colon after the exit, and
+        # the recognition reads it, so a ten digit tail
+        # cannot borrow the loader death's name.
+        self.assertFalse(WC.floor_trial_dll_not_found(
+            self._problem("-10737415150")))
+        self.assertFalse(WC.floor_trial_dll_not_found(
+            self._problem("32212257811")))
+
+    def test_the_hex_spelling_is_not_the_shape(self):
+        self.assertFalse(WC.floor_trial_dll_not_found(
+            self._problem("0xC0000135")))
+
+    def test_the_exit_without_the_trial_format_is_not_it(self):
+        self.assertFalse(WC.floor_trial_dll_not_found(
+            "%s (exit -1073741515)" % self._READ))
+        self.assertFalse(WC.floor_trial_dll_not_found(
+            "exit -1073741515: no output"))
+
+    def test_other_stages_with_the_same_exit_are_not_it(self):
+        for problem in (
+                "a confined process read its staged file but "
+                "could not write its work directory "
+                "(exit -1073741515: no output)",
+                "confined trial timed out after 15s; a "
+                "confined process could not finish reading "
+                "its staged file and writing its work "
+                "directory",
+                "confined trial spawn failed: exit "
+                "-1073741515: no output",
+                "confined trial could not be staged: exit "
+                "-1073741515: no output"):
+            with self.subTest(problem=problem):
+                self.assertFalse(
+                    WC.floor_trial_dll_not_found(problem))
+
+    def test_the_tail_does_not_change_the_recognition(self):
+        for tail in ("no output", "", "Traceback (most "
+                     "recent call last)", "x" * 500):
+            with self.subTest(tail=tail[:12]):
+                self.assertTrue(WC.floor_trial_dll_not_found(
+                    self._problem("-1073741515", tail)))
+
+    def test_the_message_keeps_the_verdict_whole_and_first(self):
+        floor = self._problem("-1073741515")
+        message = WC.grant_residue_problem(
+            floor, "/srv/python")
+        self.assertTrue(message.startswith(floor + " "))
+        self.assertGreater(len(message), len(floor))
+
+    def test_the_message_names_the_given_path_everywhere(self):
+        message = WC.grant_residue_problem(
+            self._problem("3221225781"),
+            "C:\\hp-preview-test\\python")
+        self.assertGreaterEqual(
+            message.count("C:\\hp-preview-test\\python"), 3)
+        self.assertIn('icacls "C:\\hp-preview-test\\python" '
+                      '/reset /T', message)
+
+    def test_the_message_for_a_path_with_spaces_is_quoted(self):
+        message = WC.grant_residue_problem(
+            self._problem("-1073741515"),
+            "C:\\Program Files\\Python312")
+        self.assertIn(
+            'icacls "C:\\Program Files\\Python312" /reset /T',
+            message)
+        self.assertTrue(message.endswith("then start again."))
+
+
 class ConfinementTrialStagingTest(unittest.TestCase):
     """The trial's staging shape (the Q134 addendum).
 

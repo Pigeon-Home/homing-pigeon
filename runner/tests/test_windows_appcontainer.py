@@ -338,6 +338,195 @@ class DaclSnapshotTests(unittest.TestCase):
             return fh.read()
 
 
+class AncestorWalkVariationsTests(unittest.TestCase):
+    """The ancestor walk, shape by shape (the 2026-11-23
+    residue fix, variation family).
+
+    The one property every shape shares: the root of the
+    drive or tree is never in the walk, so no grant set built
+    from it can name the root. The shapes below pin the walk
+    exactly where the arithmetic is plain, and pin the shared
+    property where the spelling is odd.
+    """
+
+    def test_a_deep_chain_walks_every_level_but_the_root(self):
+        self.assertEqual(
+            WC.app_container_ancestor_dirs("/a/b/c/d/e/f/g/h"),
+            ["/a/b/c/d/e/f/g", "/a/b/c/d/e/f", "/a/b/c/d/e",
+             "/a/b/c/d", "/a/b/c", "/a/b", "/a"])
+
+    def test_two_levels_have_one_ancestor(self):
+        self.assertEqual(WC.app_container_ancestor_dirs("/a/b"),
+                         ["/a"])
+
+    def test_the_root_itself_has_no_ancestors(self):
+        self.assertEqual(WC.app_container_ancestor_dirs("/"),
+                         [])
+
+    def test_an_empty_path_has_no_ancestors(self):
+        self.assertEqual(WC.app_container_ancestor_dirs(""),
+                         [])
+
+    def test_relative_chains_stop_below_their_top(self):
+        self.assertEqual(
+            WC.app_container_ancestor_dirs("a/b/c"),
+            ["a/b", "a"])
+        self.assertEqual(WC.app_container_ancestor_dirs("a/b"),
+                         ["a"])
+        self.assertEqual(WC.app_container_ancestor_dirs("a"),
+                         [])
+
+    def test_a_trailing_separator_names_the_same_walk(self):
+        self.assertEqual(
+            WC.app_container_ancestor_dirs("/a/b/"),
+            ["/a/b", "/a"])
+
+    def test_odd_spellings_still_never_name_the_root(self):
+        for path in ("/a//b/c", "/a/./b", "//a/b", "/a/b/.",
+                     "/x//y//z", "/a/b/c/"):
+            with self.subTest(path=path):
+                self.assertNotIn(
+                    "/", WC.app_container_ancestor_dirs(path))
+
+    def test_no_generated_shape_names_the_root(self):
+        parts = ["a", "bb", "ccc", "d d", "e.f", "g-h"]
+        for depth in range(1, len(parts) + 1):
+            path = "/" + "/".join(parts[:depth])
+            with self.subTest(path=path):
+                ancestors = WC.app_container_ancestor_dirs(path)
+                self.assertNotIn("/", ancestors)
+                self.assertEqual(len(ancestors), depth - 1)
+                grants = WC.app_container_grant_set(
+                    path, ["/ro/one", "/ro"])
+                self.assertNotIn(
+                    "/", [p for p, _ in grants])
+
+    def test_a_top_level_read_path_contributes_no_ancestor(self):
+        grants = WC.app_container_grant_set("/a/b", ["/ro"])
+        self.assertEqual(
+            grants, [("/a/b", "read_write_execute"),
+                     ("/ro", "read_execute"),
+                     ("/a", "read_execute")])
+
+    def test_shared_ancestors_collapse_without_the_root(self):
+        grants = WC.app_container_grant_set(
+            "/deep/a/b/c", ["/deep/a/x", "/top"])
+        self.assertEqual(
+            grants, [("/deep/a/b/c", "read_write_execute"),
+                     ("/deep/a/x", "read_execute"),
+                     ("/top", "read_execute"),
+                     ("/deep/a/b", "read_execute"),
+                     ("/deep/a", "read_execute"),
+                     ("/deep", "read_execute")])
+
+    def test_the_work_dir_at_the_top_gains_no_ancestor(self):
+        grants = WC.app_container_grant_set("/work", ["/ro"])
+        self.assertEqual(
+            grants, [("/work", "read_write_execute"),
+                     ("/ro", "read_execute")])
+
+
+class DaclSnapshotVariationsTests(unittest.TestCase):
+    """The snapshot and restore orchestration, edge shapes
+    (the 2026-11-23 residue fix, variation family)."""
+
+    def test_no_paths_snapshot_to_nothing(self):
+        def _snapshot(path):
+            raise AssertionError("snapshot of nothing")
+
+        snapshots, problem = WC.take_dacl_snapshots(
+            [], _snapshot)
+        self.assertEqual(snapshots, [])
+        self.assertIsNone(problem)
+
+    def test_a_first_path_failure_snapshots_nothing_later(self):
+        seen = []
+
+        def _snapshot(path):
+            seen.append(path)
+            return None, "read failed: 5"
+
+        snapshots, problem = WC.take_dacl_snapshots(
+            ["/a", "/b", "/c"], _snapshot)
+        self.assertEqual(snapshots, [])
+        self.assertEqual(seen, ["/a"])
+        self.assertIn("read failed: 5", problem)
+
+    def test_a_last_path_failure_discards_earlier_snapshots(self):
+        def _snapshot(path):
+            if path == "/c":
+                return None, "read failed: 5"
+            return "D:SNAP(%s)" % path, None
+
+        snapshots, problem = WC.take_dacl_snapshots(
+            ["/a", "/b", "/c"], _snapshot)
+        self.assertEqual(snapshots, [])
+        self.assertIsNotNone(problem)
+
+    def test_duplicate_paths_are_snapshotted_per_occurrence(self):
+        snapshots, problem = WC.take_dacl_snapshots(
+            ["/a", "/a"],
+            lambda path: ("D:SNAP(%s)" % path, None))
+        self.assertIsNone(problem)
+        self.assertEqual(snapshots, [("/a", "D:SNAP(/a)"),
+                                     ("/a", "D:SNAP(/a)")])
+
+    def test_sddl_is_carried_verbatim(self):
+        odd = ["", "D:", "D:(A;;FA;;;SY)(A;;RX;;;BU)",
+               "D:(A;;FR;;;S-1-15-2-1-2-3)", "x" * 4096,
+               "D:(A;;FA;;;SY) trailing words"]
+        for sddl in odd:
+            with self.subTest(sddl=sddl[:20]):
+                snapshots, problem = WC.take_dacl_snapshots(
+                    ["/p"], lambda path: (sddl, None))
+                self.assertIsNone(problem)
+                self.assertEqual(snapshots, [("/p", sddl)])
+
+    def test_restoring_nothing_fails_nothing(self):
+        def _set_dacl(path, sddl):
+            raise AssertionError("restore of nothing")
+
+        self.assertEqual(
+            WC.restore_dacl_snapshots([], _set_dacl), [])
+
+    def test_restore_passes_each_sddl_verbatim(self):
+        written = []
+
+        def _set_dacl(path, sddl):
+            written.append((path, sddl))
+            return None
+
+        pairs = [("/a", "D:(A;;FA;;;SY)"),
+                 ("/b", ""), ("/c", "D:")]
+        self.assertEqual(
+            WC.restore_dacl_snapshots(pairs, _set_dacl), [])
+        self.assertEqual(written, list(reversed(pairs)))
+
+    def test_restore_reports_every_failure_in_attempt_order(self):
+        def _set_dacl(path, sddl):
+            return "write failed on %s" % path
+
+        failed = WC.restore_dacl_snapshots(
+            [("/a", "D:1"), ("/b", "D:2"), ("/c", "D:3")],
+            _set_dacl)
+        self.assertEqual(failed, ["/c", "/b", "/a"])
+
+    def test_restore_continues_past_a_middle_failure(self):
+        written = []
+
+        def _set_dacl(path, sddl):
+            written.append(path)
+            if path == "/b":
+                return "write failed: 5"
+            return None
+
+        failed = WC.restore_dacl_snapshots(
+            [("/a", "D:1"), ("/b", "D:2"), ("/c", "D:3")],
+            _set_dacl)
+        self.assertEqual(failed, ["/b"])
+        self.assertEqual(written, ["/c", "/b", "/a"])
+
+
 class SessionGrantTests(unittest.TestCase):
     """The Lane 7 regression pin (2026-11-21): powershell.exe
     and whoami.exe died inside the container with exit

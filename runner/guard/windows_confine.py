@@ -2918,8 +2918,12 @@ def floor_trial_dll_not_found(problem):
         return False
     if "could not read its staged file" not in problem:
         return False
-    return ("exit %d" % DLL_NOT_FOUND_EXIT_SIGNED) in problem \
-        or ("exit %d" % DLL_NOT_FOUND_EXIT_UNSIGNED) in problem
+    # The trial spells the exit as "(exit %s: ...)": the
+    # colon the format puts after the number is part of the
+    # match, so a longer number the exit is only a prefix
+    # of is not this shape either.
+    return ("exit %d:" % DLL_NOT_FOUND_EXIT_SIGNED) in problem \
+        or ("exit %d:" % DLL_NOT_FOUND_EXIT_UNSIGNED) in problem
 
 
 def grant_residue_problem(floor_problem, interpreter_path):

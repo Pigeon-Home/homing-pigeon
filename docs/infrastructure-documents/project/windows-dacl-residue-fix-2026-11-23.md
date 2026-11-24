@@ -101,18 +101,28 @@ asks.
 
 The tests were written first. Over the 2 Windows test modules
 the new and changed pins ran red before the code moved: 189
-tests, 9 failures and 14 errors, every one of them on a shape
+tests, 10 failures and 14 errors, every one of them on a shape
 this landing changes (the root standing in the grant set, the
 snapshot helpers not yet existing, the residue naming not yet
 wired). After the code: the same 189 tests pass, with 1 skip,
 the pre-existing live binding test that runs only on a
-Windows backend host. The neighboring modules pass beside
-them: the confinement fuzz module, the Windows platform
-proofs, the support matrix pins and the Q106 readers, 212
-tests; and the doc link, reader docs, posture reconciliation,
-security config and skip registry modules together with the
-2 Windows modules again, 331 tests, the same 1 skip. The
-shrink guard answers clean on the working tree.
+Windows backend host. A completing pass then widened each
+fix's family to the variation standard: 31 further tests over
+the walk's odd spellings and generated shapes, the snapshot
+orchestration's edge shapes, and the residue recognition's
+near shapes (neighbouring exits, the longer number the exit
+is only a prefix of, the hex spelling, the same exit at the
+other stages), every one of them red before the fix and green
+after it, and the recognition itself tightened to read the
+colon the trial's format puts after the exit, so the longer
+number cannot borrow the shape's name. The 2 Windows modules
+stand at 220 tests, all passing, the same 1 skip. The
+neighboring modules pass beside them in one run: the general
+confinement suite, the FreeBSD and macOS confinement suites,
+the support matrix pins, the Windows confinement fuzz module
+and the skip registry, 700 tests, all passing, with 119
+platform skips on this Linux host. The shrink guard answers
+clean on the working tree.
 
 Against the suppositions:
 
