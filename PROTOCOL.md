@@ -647,8 +647,11 @@ door policy is read, so it is silence whatever key signed it.
 
 Failures are logged, the mail is marked seen, and the job is **never**
 executed. **A verified job is executed at most once per handling of
-it, and its result is delivered at least once inside the stash
-window named below.** The moment a result
+it. The runner retries a stashed result while it remains eligible;
+delivery is not guaranteed if the channel or local storage fails,
+the record may be moved to `outbox/failed/` or require recovery,
+and duplicate delivery is possible when acknowledgement is
+uncertain.** The moment a result
 (or a rejection) is built and signed, the runner writes it to
 `<base_dir>/outbox/` and commits the job as seen, on disk, before the
 first send is attempted; the message is marked seen then too. Delivery
@@ -656,14 +659,35 @@ is a separate, retryable concern: a send that fails leaves the record
 waiting, later polls resend the same bytes (at least
 `result_resend_backoff_sec` apart, default 60), and a record not
 delivered within `result_stash_retention_sec` (default 86400) is given
-up into `outbox/failed/` with an audit entry, which is where the
-at-least-once promise ends; the script is never run twice for a
+up into `outbox/failed/` with an audit entry, which is where
+retry ends; the script is never run twice for a
 record that stands. A delivered record moves to
 `<base_dir>/sent/`, where a
 redelivered copy of the same job (bound to the job's received digest,
 so a different job under a reused id runs on its own) is answered from
 it and not run again; sent records age out with
 `output_retention_days`, and a redelivery after that executes again.
+One path ends retry sooner than the retention does. The record
+is claimed into `<base_dir>/sent/` before the sender is called.
+If the sender raises and the unclaim, the write that puts the
+record back in the outbox, also fails, the attempt returns
+failure with a warning logged and the record stays in `sent/`
+though nothing was sent. The resend pass reads only the waiting
+outbox, so it never retries that record; recovery is by hand,
+and until then `sent/` holds a record no delivery stands
+behind. A sender that raises after the channel accepted the
+message leaves delivery uncertain rather than proven absent:
+the record returns to the outbox and is sent again, so a
+duplicate can arrive.
+
+Recorded future work, not implemented: an explicit state
+distinct from SENT (an in-flight or delivery-unknown state) for
+a claimed record whose send is unconfirmed, with restart
+recovery that returns such records to the waiting outbox and a
+stated policy for uncertain acknowledgement. Until that state
+exists, `sent/` holds confirmed deliveries and the
+failed-unclaim residue above alike, and only the warning in the
+log tells them apart.
 The one window left is the commit itself: a crash between the
 execution and the record, or a stash write that reports failure,
 leaves the job uncommitted, and the next delivery of it executes
@@ -742,17 +766,20 @@ secret, in which case the runner refuses to start and names it
 - On timeout the whole process tree is killed (POSIX process group;
   `taskkill /T` on Windows).
 - **A job runs at most once per handling of its `job_id` on a
-  runner; its result is delivered at least once inside the stash
-  window (section 5).** The result is stashed and the job
-  committed as seen before the first send; a send that fails is
-  retried from the stash on later polls (section 5) and the job is not
-  executed again. Idempotent jobs are recommended practice (check before
+  runner; its result is retried from the stash while it remains
+  eligible, and delivery is not guaranteed (section 5).** The
+  result is stashed and the job committed as seen before the
+  first send; a send that fails is retried from the stash on
+  later polls (section 5) and the job is not executed again. Idempotent jobs are recommended practice (check before
   creating, use unique names, prefer upserts over blind inserts)
   because the windows are real: a crash between a run and its
   stash, or a stash write that fails, leaves the job uncommitted
   and the next delivery runs it again, once per failed stash; a
   job whose sent record aged out before its redelivery, or the
-  same job sent to a second runner, does run again.
+  same job sent to a second runner, does run again. Idempotence
+  covers what the job itself repeats; a job with external
+  effects, or one that can stop half done, needs its own
+  idempotency design for those effects.
 
 ## 7. Security model
 
@@ -1426,8 +1453,8 @@ workers on the same board and expect labels to save you.
 
 Workers return `task_result` messages shaped like the results in
 section 3.2, or attested answers where the task used a result policy (sections
-9, 10). Results carry the `task_id`; duplicates are deduped, so
-at-least-once redelivery is safe.
+9, 10). Results carry the `task_id`; duplicates are deduped by
+`task_id`, so a redelivered copy does not move the task twice.
 
 An attestation binds a worker to its claimed output. It says nothing
 about whether the output is correct. Correctness comes from review,

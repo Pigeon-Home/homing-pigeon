@@ -44,6 +44,13 @@ channel-refusal sweep the lane was aimed at first:
       nothing back and says False.
   except _deliver_stash_held (1806) -- a send that fails whose
       unclaim also fails is given up, False.
+  record location after a failed unclaim -- the two-failure
+      delivery edge pinned by where the record stands: in sent/
+      though nothing was sent, invisible to a direct retry and
+      to the resend pass, with the warning on the log; and the
+      uncertain send beside it, taken by the sender and then
+      reported lost, retried from the outbox and so delivered
+      twice.
   except result_digest (2014-2015) -- a result whose mapping
       raises while it is read cannot be signed, so no digest.
   except chain_commit (2059) -- an unsignable result commits
@@ -68,6 +75,7 @@ No production code is touched by this module.
 import os
 import shutil
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -420,6 +428,97 @@ class DeliverStashHeldGapsTest(unittest.TestCase):
                 R._deliver_stash_held(self.base, skey, sender,
                                       self.cfg))
         sender.assert_called_once()
+
+
+class FailedUnclaimRecordLocationTest(unittest.TestCase):
+    """The two-failure delivery edge, pinned by record location:
+    the sender raises and the unclaim write-back fails too. The
+    record stays in sent/ though nothing was sent, and neither a
+    direct retry nor the resend pass finds it again. Beside it,
+    the uncertain send: a sender that took the message and then
+    raised is retried from the outbox, so the same result is
+    delivered twice."""
+
+    def setUp(self):
+        self.base = tempfile.mkdtemp(prefix="hp-c2-stranded-")
+        self.addCleanup(shutil.rmtree, self.base, True)
+        self.cfg = _cfg()
+
+    def _strand(self, job_id):
+        """Drive one record into the failed-unclaim state: the
+        sender raises, and every write_json under the delivery
+        fails, so the unclaim cannot put the record back.
+        Returns the record's key and the captured log mock."""
+        skey = _plant_stash(self.base, self.cfg, job_id)
+        sender = mock.Mock(side_effect=RuntimeError("smtp down"))
+        with mock.patch.object(R._atomicio, "write_json",
+                               side_effect=OSError("disk full")):
+            with mock.patch.object(R, "log") as log:
+                result = R.deliver_stash(self.base, skey, sender,
+                                         self.cfg)
+        self.assertFalse(result)
+        sender.assert_called_once()
+        return skey, log
+
+    def test_a_failed_unclaim_leaves_the_record_in_sent_unsent(self):
+        skey, log = self._strand("job-stranded")
+        self.assertTrue(os.path.exists(R._sent_path(self.base, skey)))
+        self.assertFalse(
+            os.path.exists(R._stash_path(self.base, skey)))
+        self.assertIsNone(R.load_stash(self.base, skey))
+        rec = R._read_record(R._sent_path(self.base, skey))
+        self.assertIsNotNone(rec)
+        self.assertEqual(rec["job_id"], "job-stranded")
+        warnings = [c for c in log.call_args_list
+                    if len(c.args) > 1 and c.args[1] == "WARN"
+                    and "could not be put back in the outbox"
+                    in c.args[0]]
+        self.assertEqual(len(warnings), 1)
+
+    def test_no_retry_finds_a_stranded_record(self):
+        skey, _log = self._strand("job-stranded-retry")
+        sender = mock.Mock()
+        self.assertFalse(
+            R.deliver_stash(self.base, skey, sender, self.cfg))
+        sender.assert_not_called()
+        counts = R.resend_stashed(self.base, self.cfg, sender,
+                                  now=time.time() + 3600)
+        self.assertEqual(counts["attempted"], 0)
+        self.assertEqual(counts["waiting"], 0)
+        sender.assert_not_called()
+        self.assertTrue(os.path.exists(R._sent_path(self.base, skey)))
+        self.assertFalse(
+            os.path.exists(R._stash_path(self.base, skey)))
+
+    def test_an_uncertain_send_delivers_twice(self):
+        skey = _plant_stash(self.base, self.cfg, "job-uncertain")
+        received = []
+
+        def accepted_then_lost(subject, body, to):
+            received.append((subject, body, to))
+            raise RuntimeError("connection lost after accept")
+
+        self.assertFalse(R.deliver_stash(self.base, skey,
+                                         accepted_then_lost,
+                                         self.cfg))
+        self.assertTrue(
+            os.path.exists(R._stash_path(self.base, skey)))
+        self.assertFalse(os.path.exists(R._sent_path(self.base, skey)))
+        rec = R.load_stash(self.base, skey)
+        self.assertEqual(rec["attempts"], 1)
+        self.assertIn("connection lost after accept",
+                      rec["last_error"])
+
+        def clean_send(subject, body, to):
+            received.append((subject, body, to))
+
+        self.assertTrue(R.deliver_stash(self.base, skey, clean_send,
+                                        self.cfg))
+        self.assertEqual(len(received), 2)
+        self.assertEqual(received[0], received[1])
+        self.assertTrue(os.path.exists(R._sent_path(self.base, skey)))
+        self.assertFalse(
+            os.path.exists(R._stash_path(self.base, skey)))
 
 
 class HostileMapping(dict):

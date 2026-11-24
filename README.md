@@ -80,8 +80,9 @@ and the job message carries download URLs (with optional SHA-384).
 
 **Why email?** Because it's the only transport with all four properties
 on day one: reachable from anywhere, outbound-only polling (no inbound
-ports, NAT-proof), at-least-once delivery, and zero infrastructure to
-operate. The protocol does not care about the pipe. Every transport is
+ports, NAT-proof), delivery that survives a busy or down peer by
+retrying, and zero infrastructure to operate. The protocol does
+not care about the pipe. Every transport is
 an extension the runner supervises (a watched folder, core NATS, a
 direct DTLS session binding and the hosted HTTPS queue ship alongside
 email), but email stays the default; a credentialed transport adds its
@@ -430,22 +431,35 @@ The runner is fully inspectable, so audit what it would do before it does it, an
   `--allow-cleartext`. The shared secret is still required. One honest
   limit, stated wherever this is described: there is **no
   forward secrecy** unless it is provided by the transport layer.
-- Execution is at-most-once per handling, delivery at-least-once
-  inside the stash window: a result is stashed under
-  `<base_dir>/outbox/` and the job committed as seen before the
-  first send; a send that fails is resent from the stash on later
-  polls, never produced by a second run, and given up into
-  `outbox/failed/` after a day. One window stands open: a crash
-  between a run and its stash, or a stash write that fails,
-  leaves the job uncommitted, so the next delivery of it runs
-  again (once per failed stash); a redelivery that arrives after
-  the records have aged out runs again too. Neither write is
-  fsynced, so the promise rests on the writes completing, not on
-  surviving a machine that loses its buffers. Write jobs to be
-  idempotent (check before creating, unique names, upserts over
-  blind inserts): the windows above are rare, and an idempotent
-  job makes them harmless (`--inspect outbox`; PROTOCOL.md
-  section 5).
+- Execution is at-most-once per handling; delivery is retried
+  from the stash while the record remains eligible, and is not
+  guaranteed: a result is stashed under `<base_dir>/outbox/` and
+  the job committed as seen before the first send; a send that
+  fails is resent from the stash on later polls, never produced
+  by a second run, and given up into `outbox/failed/` after a
+  day. Delivery is not guaranteed if the channel or local
+  storage fails: every send may fail until the record is given
+  up, and one rarer path ends retry sooner. The record is
+  claimed into `sent/` before the sender is called; if the send
+  fails and the write that puts the record back in the outbox
+  (the unclaim) fails too, the record stays in `sent/` though
+  nothing was sent, the resend pass never finds it there, and
+  it needs recovery by hand. Duplicate delivery is possible
+  when acknowledgement is uncertain: a send the channel accepted
+  but reported as failed is retried from the stash, so the same
+  result can arrive twice. One window stands open on the
+  execution side: a crash between a run and its stash, or a
+  stash write that fails, leaves the job uncommitted, so the
+  next delivery of it runs again (once per failed stash); a
+  redelivery that arrives after the records have aged out runs
+  again too. Neither write is fsynced, so what stands rests on
+  the writes completing, not on surviving a machine that loses
+  its buffers. Write jobs to be idempotent (check before
+  creating, unique names, upserts over blind inserts):
+  idempotence is the job's own design and covers only what the
+  job controls; a job with external effects, or one that can
+  stop half done, needs its own idempotency design for those
+  effects (`--inspect outbox`; PROTOCOL.md section 5).
 - Size caps: `max_job_bytes` (default 4 MiB) bounds a raw job mail
   before its signature is checked.
 - Optional hardening controls (on by default at `enforce`; the size
