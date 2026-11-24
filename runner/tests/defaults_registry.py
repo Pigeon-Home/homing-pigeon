@@ -2527,6 +2527,31 @@ class DocDriftGuardTests(unittest.TestCase):
                          "doc lines moved or defaults changed; update "
                          "the registry row with the doc: %s" % (offenders,))
 
+    def test_inference_rows_share_one_protocol_line(self):
+        # The 2026-11-24 gate red: both inference rows point at one
+        # PROTOCOL.md line that phrases each key as `name` (default N).
+        # A docs edit above section 10.1 moved that line from 1147 to
+        # 1161; the defaults did not change, but the moved line
+        # tolerance missed the move because its near search looks for
+        # the full key, parenthetical scope and all, beside the token,
+        # and the shared line never carries that suffix. Pin the pair
+        # to the one line so the next move of this line is named here
+        # even when the tolerance misses it.
+        rows = {r["key"]: r for r in ROWS}
+        a = rows["timeout_sec (inference block)"]
+        b = rows["max_answer_chars (inference block)"]
+        self.assertEqual("PROTOCOL.md", a["doc_file"])
+        self.assertEqual(a["doc_file"], b["doc_file"])
+        self.assertEqual(a["doc_line"], b["doc_line"])
+        root = _root()
+        with open(os.path.join(root, a["doc_file"]),
+                  encoding="utf-8") as fh:
+            line = fh.read().splitlines()[a["doc_line"] - 1]
+        self.assertIn("timeout_sec", line)
+        self.assertIn("max_answer_chars", line)
+        self.assertIn("(default %s)" % (a["default"],), line)
+        self.assertIn("(default %s)" % (b["default"],), line)
+
     def test_unverified_set_is_exactly_the_known_set(self):
         unverified = {r["key"] for r in ROWS
                       if r["doc_status"] == "unverified"}
