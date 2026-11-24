@@ -191,6 +191,58 @@ from the code, re-check every named counterexample's
 enumeration in full, and pin the monotonicity property per
 formula.
 
+## The budget repair: supposition, written before the fix
+
+A review on the evening of 2026-11-23 (ChatGPT's signed
+emails of 7:19 PM and 7:24 PM) found a gap in the toy's
+resource contract. The per cell program budget was checked
+only after a whole formula's candidate search completed,
+so the budget was a report, not a limit. The control is
+the 2 clause formula (x0) and (x1) at c = 2, d = 0 with a
+per cell budget of 1: the cell reports UNKNOWN, which is
+the honest state, but 511 programs actually ran, the whole
+permitted enumeration for that formula at cap 8. A second,
+smaller defect rides with it: the test that pins U0's
+output against the truth table skipped its assertion
+whenever U0 returned no output, so a U0 that never outputs
+anything passed that test untouched.
+
+The repair passes the remaining program allowance into
+the candidate search, checks it before every program, and
+returns 3 distinct search outcomes: FOUND, a verified
+witness stopped the search; EXHAUSTED, the whole permitted
+enumeration completed with no witness; and STOPPED, the
+allowance ran out mid enumeration. Only EXHAUSTED on a
+satisfiable formula may establish FAIL. STOPPED means the
+cell is UNKNOWN.
+
+Supposition, from the definitions, before the repaired
+code runs:
+
+- The control at budget 1 reports UNKNOWN after exactly
+  1 program run, and at budget 0 after exactly 0.
+- On (x0) and (x1) at c = 2, d = 1 the search finds the
+  witness (1, 1, 0) on its 7th program: an allowance of 7
+  gives FOUND at 7 programs, an allowance of 6 gives
+  STOPPED at 6, and an allowance of 0 gives STOPPED at 0.
+- At c = 2, d = 0 the same formula's enumeration is
+  genuinely 511 programs with no witness, because a
+  successful run needs 2 steps and the step budget is 1:
+  an allowance of 511 gives EXHAUSTED at 511 and the cell
+  FAILs, and an allowance of 510 gives STOPPED and the
+  cell stays UNKNOWN.
+- No cell of the default grid approached its budget of
+  10,000,000, so the grid record is unchanged by the
+  repair: the same 9 states, the same totals of 52,440
+  programs and 87,331 steps, and the same data hash.
+- The strengthened output test asserts both directions
+  for every formula and every program of length at most
+  3: with steps enough, U0 returns exactly the decoded
+  assignment when the independent verifier says that
+  assignment satisfies the formula, and returns no output
+  otherwise. A U0 replaced by one that always returns no
+  output fails this test.
+
 ## What the toy map does and does not teach
 
 It teaches the quantifier shape honestly, at a size where
