@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.5 - 2026-11-24
+
+- Land on main (since 3.18.34.4) -- the forum announcement that release 3.18.34.4 stands published, Muse notes on the reverse direction in the P versus NP discussion, the ChatGPT relay of a conditional SAT algorithm and a P = NP machine, the binding ledger carried into the P versus NP discussion, Muse on the reverse direction verified and filed, and the proofs work closing the 3 seams from the proof ledger review test first
+
 ## 3.18.34.4 - 2026-11-23
 
 - Docs land on main (since 3.18.34.3) -- the forum announcement that release 3.18.34.3 stands published
