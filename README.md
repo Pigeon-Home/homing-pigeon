@@ -430,11 +430,21 @@ The runner is fully inspectable, so audit what it would do before it does it, an
   `--allow-cleartext`. The shared secret is still required. One honest
   limit, stated wherever this is described: there is **no
   forward secrecy** unless it is provided by the transport layer.
-- Execution is at-most-once, delivery at-least-once: a result is
-  stashed under `<base_dir>/outbox/` and the job committed as seen
-  before the first send; a send that fails is resent from the stash
-  on later polls, never produced by a second run, and given up into
-  `outbox/failed/` after a day (`--inspect outbox`; PROTOCOL.md
+- Execution is at-most-once per handling, delivery at-least-once
+  inside the stash window: a result is stashed under
+  `<base_dir>/outbox/` and the job committed as seen before the
+  first send; a send that fails is resent from the stash on later
+  polls, never produced by a second run, and given up into
+  `outbox/failed/` after a day. One window stands open: a crash
+  between a run and its stash, or a stash write that fails,
+  leaves the job uncommitted, so the next delivery of it runs
+  again (once per failed stash); a redelivery that arrives after
+  the records have aged out runs again too. Neither write is
+  fsynced, so the promise rests on the writes completing, not on
+  surviving a machine that loses its buffers. Write jobs to be
+  idempotent (check before creating, unique names, upserts over
+  blind inserts): the windows above are rare, and an idempotent
+  job makes them harmless (`--inspect outbox`; PROTOCOL.md
   section 5).
 - Size caps: `max_job_bytes` (default 4 MiB) bounds a raw job mail
   before its signature is checked.

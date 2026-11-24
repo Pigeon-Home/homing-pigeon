@@ -159,26 +159,57 @@ class ReplayDoorTest(base._GateCase):
         # Clause 5, priced: a crash between the run and its
         # result being stashed (here, a stash that reports
         # failure) leaves the job uncommitted, so the next
-        # delivery runs it once more -- and commits then.
+        # delivery runs it once more -- and commits then. The
+        # first run is required, not conditional: if the first
+        # handling raises or runs nothing, this test fails
+        # instead of passing on the later runs alone.
         job = base._job2("rp-8")
         raw = _raw(job)
         with tempfile.TemporaryDirectory() as td:
             broken = mock.patch.object(runner, "stash_result",
                                        return_value=False)
-            try:
-                first = base._run(raw=raw, base_dir=td,
-                                  patches=(broken,))
-            except Exception:
-                first = None
-            if first is not None:
-                self.assertEqual(len(first.executed), 1)
-                self.assertEqual(first.seen, {})
+            with broken:
+                first = base._run(raw=raw, base_dir=td)
+            self.assertEqual(len(first.executed), 1)
+            self.assertEqual(first.seen, {})
             second = base._run(raw=raw, base_dir=td, seen={})
             self.assertEqual(len(second.executed), 1)
             self.assertEqual(len(second.seen), 1)
             third = base._run(raw=raw, base_dir=td,
                               seen=second.seen)
             self.assertEqual(third.executed, [])
+
+    def test_repeated_stash_failures_buy_one_run_each(self):
+        # Clause 5, priced again: the window is per failed
+        # stash, not per job. A stash that fails three times
+        # and then lands buys one run per failure plus the run
+        # that commits -- the 1, 1, 1, 1, 0 shape: four
+        # deliveries that each execute once, then a fifth that
+        # the commit turns away. The failing stash delegates
+        # to the real one on its fourth call, so the commit
+        # that ends the shape is the code's own.
+        job = base._job2("rp-9")
+        raw = _raw(job)
+        real_stash = runner.stash_result
+        calls = []
+
+        def flaky(*args, **kwargs):
+            calls.append(1)
+            if len(calls) <= 3:
+                return False
+            return real_stash(*args, **kwargs)
+
+        with tempfile.TemporaryDirectory() as td:
+            counts = []
+            seen = {}
+            with mock.patch.object(runner, "stash_result", flaky):
+                for _ in range(5):
+                    out = base._run(raw=raw, base_dir=td, seen=seen)
+                    counts.append(len(out.executed))
+                    seen = out.seen
+            self.assertEqual(counts, [1, 1, 1, 1, 0])
+            self.assertEqual(len(calls), 4)
+            self.assertEqual(len(seen), 1)
 
 
 class RecordStoreTest(unittest.TestCase):
