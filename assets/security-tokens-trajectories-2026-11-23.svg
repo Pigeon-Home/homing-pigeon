@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" viewBox="0 0 900 620" role="img" aria-label="Trajectories: where the lines are heading. A conditional map of normalized Levin cost against scale, with converging, escaping and diverging trajectories. Not a prediction.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3d0a0a"/>
+      <stop offset="1" stop-color="#12030a"/>
+    </linearGradient>
+    <marker id="arrowAmber" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#f5b942"/></marker>
+    <marker id="arrowTeal" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#2fd4c4"/></marker>
+    <marker id="arrowWhite" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ffffff"/></marker>
+  </defs>
+  <rect x="0" y="0" width="900" height="620" fill="url(#bg)"/>
+  <text x="450" y="34" text-anchor="middle" font-family="sans-serif" font-size="21" font-weight="bold" fill="#ffffff">Trajectories: where the lines are heading</text>
+  <text x="450" y="56" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#f0c9c9">A conditional map, not a prediction. Directions and fates, never dates.</text>
+
+  <!-- hinge band -->
+  <rect x="452" y="86" width="52" height="368" fill="#ffffff" opacity="0.07"/>
+  <text x="478" y="468" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#ffffff">THE HINGE</text>
+
+  <!-- plot frame -->
+  <rect x="110" y="86" width="720" height="368" fill="none" stroke="#8a4a4a" stroke-width="1"/>
+
+  <!-- fixed bound family: dotted -->
+  <line x1="110" y1="180" x2="830" y2="180" stroke="#ffffff" stroke-width="1.2" stroke-dasharray="3 5" opacity="0.75"/>
+  <line x1="110" y1="272" x2="830" y2="272" stroke="#ffffff" stroke-width="1.2" stroke-dasharray="3 5" opacity="0.75"/>
+  <line x1="110" y1="364" x2="830" y2="364" stroke="#ffffff" stroke-width="1.2" stroke-dasharray="3 5" opacity="0.75"/>
+  <text x="118" y="172" font-family="sans-serif" font-size="10" fill="#ffffff" opacity="0.85">a fixed bound a (with its fixed c): conditional line, not a result</text>
+  <text x="118" y="264" font-family="sans-serif" font-size="10" fill="#ffffff" opacity="0.85">another fixed a: some ONE line holding for every satisfiable F is the P = NP side</text>
+  <text x="118" y="356" font-family="sans-serif" font-size="10" fill="#ffffff" opacity="0.85">a smaller fixed a</text>
+
+  <!-- converging trajectory -->
+  <path d="M118,150 C260,210 360,258 500,282 C640,300 740,306 822,308" fill="none" stroke="#f5b942" stroke-width="3" marker-end="url(#arrowAmber)"/>
+  <text x="560" y="330" font-family="sans-serif" font-size="11" fill="#f5b942">CONVERGING: a family held under one fixed bound:</text>
+  <text x="560" y="345" font-family="sans-serif" font-size="11" fill="#f5b942">direction of the P = NP side. One family is not every formula.</text>
+
+  <!-- escaping trajectory -->
+  <path d="M118,420 C300,400 470,330 610,240 C700,185 770,120 824,92" fill="none" stroke="#2fd4c4" stroke-width="3" marker-end="url(#arrowTeal)"/>
+  <text x="470" y="205" font-family="sans-serif" font-size="11" fill="#2fd4c4">ESCAPING: a counterexample family crossing</text>
+  <text x="470" y="220" font-family="sans-serif" font-size="11" fill="#2fd4c4">every fixed bound in turn: the shape the P != NP</text>
+  <text x="470" y="235" font-family="sans-serif" font-size="11" fill="#2fd4c4">side needs, for every (a, c), at arbitrarily large size.</text>
+
+  <!-- diverging symmetry pair, lower left -->
+  <path d="M118,428 C200,420 260,408 330,392" fill="none" stroke="#ffffff" stroke-width="1.6" marker-end="url(#arrowWhite)"/>
+  <path d="M118,428 C200,432 260,442 330,452" fill="none" stroke="#ffffff" stroke-width="1.6" marker-end="url(#arrowWhite)"/>
+  <text x="118" y="404" font-family="sans-serif" font-size="10" fill="#ffffff">PUSHING APART: symmetry read two ways disagrees:</text>
+  <text x="118" y="390" font-family="sans-serif" font-size="10" fill="#ffffff">proved apart for rKt and for pKt (TR26-021). Name the measure.</text>
+
+  <!-- measured points -->
+  <circle cx="140" cy="438" r="4" fill="#ffffff"/>
+  <circle cx="168" cy="432" r="4" fill="#ffffff"/>
+  <circle cx="196" cy="436" r="4" fill="#ffffff"/>
+
+  <!-- axes -->
+  <text x="470" y="492" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#ffffff">scale: log2(n + 2), formula size n growing to the right: scale, not time</text>
+  <text x="30" y="270" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#ffffff" transform="rotate(-90 30 270)">normalized Levin cost  L(F) / log2(n + 2)</text>
+  <text x="112" y="80" font-family="sans-serif" font-size="10" fill="#f0c9c9">L(F) = min over programs outputting a verified satisfying assignment of |p| + ceil(log2(t + 1))</text>
+
+  <!-- hinge label -->
+  <text x="478" y="104" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#ffffff">chain rule</text>
+  <text x="478" y="116" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#ffffff">for Kt</text>
+
+  <!-- bottom boxes -->
+  <rect x="24" y="508" width="540" height="88" fill="#000000" opacity="0.35" stroke="#8a4a4a"/>
+  <text x="38" y="528" font-family="sans-serif" font-size="11" font-weight="bold" fill="#ffffff">What would settle this picture: events, not dates:</text>
+  <text x="38" y="546" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">1. A proof that some fixed (a, c) bounds every satisfiable F; or</text>
+  <text x="38" y="562" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">2. a proof that for every (a, c) a defeating F exists; or</text>
+  <text x="38" y="578" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">3. a proof or refutation of the chain rule in its named error regime (TR25-089:</text>
+  <text x="38" y="592" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">    under GapMcKtP hardness, chain rule iff P = NP; P = NP alone needs no premise).</text>
+
+  <rect x="580" y="508" width="296" height="88" fill="#000000" opacity="0.35" stroke="#8a4a4a"/>
+  <text x="594" y="528" font-family="sans-serif" font-size="11" font-weight="bold" fill="#ffffff">Honest points, lower left:</text>
+  <text x="594" y="546" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">800 instances, 53,272 assignments checked;</text>
+  <text x="594" y="562" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">651,086,719 inputs, 35,270 grow runs;</text>
+  <text x="594" y="578" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">31 targets, 18 bound. Finite checks: they can</text>
+  <text x="594" y="592" font-family="sans-serif" font-size="10.5" fill="#f0e6e6">falsify a candidate; they settle no bound.</text>
+
+  <text x="450" y="612" text-anchor="middle" font-family="sans-serif" font-size="9.5" fill="#c9a3a3">Drawing grammar borrowed from Schwarzschild trajectory diagrams: boundaries and fates. No field equation governs these curves. pnKt symmetry (TR26-290) is a hypothesis: if it holds, TAUT is not in AM, hence P != NP.</text>
+</svg>

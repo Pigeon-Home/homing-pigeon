@@ -608,6 +608,16 @@ statement about representation: it measures neither the
 log's information nor its coverage, and no share of the
 log is pronounced empty on its strength.
 
+Three further charts were drawn on 2026-11-23 from the
+work of that day, and they stand together on
+[the candidates page](three-chart-candidates-2026-11-23.md)
+for the conductor to choose from: the squeeze drawn on
+the coverage axis, a map of trajectories in the drawing
+grammar of Schwarzschild geometry, and a map of the
+(c, d) plane of candidate machines. None of them stands
+on this page yet, and the closing chart above stands
+exactly as it was.
+
 ## Where the project stands
 
 The longer series changes what the shape can say. Across the
