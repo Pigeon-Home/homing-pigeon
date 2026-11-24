@@ -434,6 +434,17 @@ A finding is most useful when it points at the file and the line
   holds the finite parts: the residual counts, the
   contraction arithmetic, the counting, and the controls'
   checked cases.
+- `v4-the-projection.md`: a fifth construction from the
+  same discussion, grown out of the joining solver
+  experiment: a Horn chain of 3m + 1 clauses whose
+  projection onto its visible variables is the relation
+  that every pair having a true bit forces z, and whose
+  flat CNF over the visible variables alone needs exactly
+  2^m clauses at the checked sizes. A representation lower
+  bound after forgetting, not a hardness result. None is a
+  result of this project. `runner/tests/test_v4_the_projection.py`
+  holds the finite parts: the enumerated projection, the
+  minimal patterns, the clause lemma, and propagation.
 - `v4-the-grammar.md`: the grammar the induction covers. A
   script of the rung is 1 of 22 atoms, or a script of the
   rung, 1 of 4 joiners, and an atom. The induction is a
