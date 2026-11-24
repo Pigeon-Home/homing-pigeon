@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="Helvetica, Arial, sans-serif">
-  <title>2 lines that close: a ceiling for the fuzz run log at 21.0 million closing by 0.61 a week onto the line of everything else at 17.6 million, the gap of 3,393,230 between them closing to 0 in 30 weeks, and the whole tree at 35.2 million where the 2 lines meet</title>
+  <title>2 lines that close: a ceiling for the fuzz run log at 21.0 million closing onto the line of everything else at 17.6 million by at least 0.39 of the gap a week, the gap of 3,393,230 between them closing to 0 in 30 weeks, and the whole tree at 35.2 million where the 2 lines meet</title>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#2b060d"/>
@@ -48,7 +48,7 @@
   <path d="M 80 236.2 L 704 236.2" fill="none" stroke="#ffe14a" stroke-width="2.5" stroke-linecap="round"/>
   <!-- the red line: 21M as drawn, then closing on the yellow line -->
   <path d="M 80 200 L 379.8 200 L 387.9 202.5 L 396.1 204.8 L 404.2 206.9 L 412.3 208.9 L 420.4 210.8 L 428.5 212.5 L 436.6 214.1 L 444.7 215.6 L 452.8 217 L 460.9 218.3 L 469 219.5 L 477.1 220.7 L 485.2 221.7 L 493.3 222.7 L 501.4 223.6 L 509.5 224.5 L 517.6 225.3 L 525.7 226 L 533.8 226.7 L 541.9 227.4 L 550 228 L 558.1 228.5 L 566.2 229.1 L 574.3 229.5 L 582.4 230 L 590.5 230.4 L 598.6 230.8 L 606.8 231.2 L 614.9 231.5 L 623 231.8 L 631.1 232.1 L 639.2 232.4 L 647.3 232.7 L 655.4 232.9 L 663.5 233.1 L 671.6 233.3 L 679.7 233.5 L 687.8 233.7 L 695.9 233.9 L 704 234" fill="none" stroke="#d0202c" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
-  <!-- the gap, at each week's end: it is multiplied by 0.61 each week -->
+  <!-- the gap, at each week's end: at least 0.39 of it has closed, so it stands at most at 0.61 of the week before -->
   <path d="M 379.8 236.2 L 379.8 200" fill="none" stroke="#ff8a2a" stroke-width="6"/>
   <text x="385.8" y="194" font-weight="bold" fill="#ffffff" font-size="12.5">3.39M</text>
   <path d="M 436.6 236.2 L 436.6 214.1" fill="none" stroke="#ff8a2a" stroke-width="6"/>
@@ -91,11 +91,11 @@
   <text x="718" y="355" fill="#ffd7de" font-size="13">The 2 lines of today</text>
   <text x="718" y="371" fill="#ffd7de" font-size="13">add to 38.6M.</text>
   <path d="M 50 489.5 L 78 489.5" fill="none" stroke="#d0202c" stroke-width="3" stroke-linecap="round"/>
-  <text x="88" y="494" fill="#ffd7de" font-size="13.5">the ceiling: it closes by 0.61 a week</text>
-  <path d="M 376.7 489.5 L 404.7 489.5" fill="none" stroke="#ffe14a" stroke-width="3" stroke-linecap="round"/>
-  <text x="414.7" y="494" fill="#ffd7de" font-size="13.5">the floor</text>
-  <path d="M 504.6 489.5 L 532.6 489.5" fill="none" stroke="#ff8a2a" stroke-width="3" stroke-linecap="round"/>
-  <text x="542.6" y="494" fill="#ffd7de" font-size="13.5">the gap</text>
-  <path d="M 618.3 489.5 L 646.3 489.5" fill="none" stroke="#c98500" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>
-  <text x="656.3" y="494" fill="#ffd7de" font-size="13.5">the run log, bent down</text>
+  <text x="88" y="494" fill="#ffd7de" font-size="13.5">the ceiling: the gap closes at least 0.39 a week</text>
+  <path d="M 426.7 489.5 L 454.7 489.5" fill="none" stroke="#ffe14a" stroke-width="3" stroke-linecap="round"/>
+  <text x="464.7" y="494" fill="#ffd7de" font-size="13.5">the floor</text>
+  <path d="M 554.6 489.5 L 582.6 489.5" fill="none" stroke="#ff8a2a" stroke-width="3" stroke-linecap="round"/>
+  <text x="592.6" y="494" fill="#ffd7de" font-size="13.5">the gap</text>
+  <path d="M 668.3 489.5 L 696.3 489.5" fill="none" stroke="#c98500" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>
+  <text x="706.3" y="494" fill="#ffd7de" font-size="13.5">the run log, bent down</text>
 </svg>

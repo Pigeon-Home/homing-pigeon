@@ -1,7 +1,7 @@
 # The project's statistics: the 34-million-token measure
 
 Dated 2026-11-24. Measured on main at commit
-c2d0f2ccdb9c02589e880cfac6b1efbd0fe7fc07, the head this
+7ec9372844a2d6b3a718f92bb963924bb8ac029f, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
@@ -10,7 +10,7 @@ The recorded line, in the display form settled for publication:
 
 ## What stands behind each figure
 
-- Tokens: <!--hp-fig:tokens_exact-->34,303,544<!--/hp-fig-->, counted over the whole tree by the
+- Tokens: <!--hp-fig:tokens_exact-->34,415,959<!--/hp-fig-->, counted over the whole tree by the
   project's own estimator (runner/ops/version4.py). It is the
   measure the version number's 3rd component carries, in whole
   millions: <!--hp-fig:tokens_millions-->34<!--/hp-fig-->. The component holds its figure when a count
@@ -24,11 +24,11 @@ The recorded line, in the display form settled for publication:
   is sec-tokens. Verify it on any checkout:
   `python3 runner/ops/version4.py measure` prints the count and
   its whole millions.
-- Lines: <!--hp-fig:lines_tracked-->1,625,151<!--/hp-fig--> lines in tracked files at the measured
+- Lines: <!--hp-fig:lines_tracked-->1,632,328<!--/hp-fig--> lines in tracked files at the measured
   head. The display figure, <!--hp-fig:display_lines-->1,600,000<!--/hp-fig-->, is that count rounded.
 - Commits: the display figure, <!--hp-fig:display_commits-->7,000<!--/hp-fig-->, is rounded from a
   full-history count at the measured head, taken from a
-  complete clone, which counts <!--hp-fig:commits-->6,655<!--/hp-fig-->. The project's local
+  complete clone, which counts <!--hp-fig:commits-->6,661<!--/hp-fig-->. The project's local
   mirrors are shallow (the hook mirror reached 171 commits
   at the 3.16.25.27 head) and cannot count the whole
   history on their own, so every count rests on a complete
@@ -70,11 +70,11 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-24",
-  "commit": "c2d0f2ccdb9c02589e880cfac6b1efbd0fe7fc07",
+  "commit": "7ec9372844a2d6b3a718f92bb963924bb8ac029f",
   "counter": "runner/ops/version4.py",
-  "tokens": 34303544,
-  "lines_tracked": 1625151,
-  "commits": 6655,
+  "tokens": 34415959,
+  "lines_tracked": 1632328,
+  "commits": 6661,
   "display_commits": 7000,
   "display_lines": 1600000,
   "non_latent_percent": 96.31,
@@ -82,15 +82,74 @@ stays their source of truth.
   "latent_exact_percent": 0.02,
   "audit_date": "2026-11-16",
   "core_files": 139,
-  "core_lines": 71917,
-  "core_lines_nonblank": 65259,
-  "core_tokens": 789815,
+  "core_lines": 72222,
+  "core_lines_nonblank": 65545,
+  "core_tokens": 792575,
   "core_assembled_lines": 73036,
   "core_assembled_nonblank": 66260,
   "core_assembled_zip_bytes": 939691,
-  "core_assembled_tokens": 801394
+  "core_assembled_tokens": 804154
 }
 ```
+
+## The measure on 2 axes: size, and coverage
+
+The headline at the top of this record is the size axis.
+It counts the tree: <!--hp-fig:tokens_exact-->34,415,959<!--/hp-fig--> tokens in
+<!--hp-fig:lines_tracked-->1,632,328<!--/hp-fig--> lines of tracked files, and its
+denominator is the tree itself. A size says how much
+stands here. It does not say how much of what stands here
+is covered: how many of the project's claims carry
+evidence, and of what kind. The record therefore keeps a
+second axis beside the first. The 2 axes are never added,
+divided, or read as one another, and the token count is
+not a coverage denominator: a campaign run adds tokens
+whether or not it adds a witness, and an obligation can
+close without adding a line.
+
+The coverage axis, in the bindings registry's count of
+2026-11-20 and the curve's reading of 2026-11-19, each
+figure under its own date and never blended with the
+headline above:
+
+| Coverage measure | Stands at | Counted |
+|---|---|---|
+| Stated properties in the registry | 13, P1 to P13 | 2026-11-20 |
+| Of them, carrying a model in the registry | 12; P9 carries none named | 2026-11-20 |
+| Conformance suites named across the properties | 15 | 2026-11-20 |
+| Constraints tied to properties, code, pins and fuzz data | 31 | 2026-11-20 |
+| Fuzz targets pressing on the readers' contracts | 31 | 2026-11-20 |
+| Inputs tried against those contracts | 651,086,719, over 35,270 grow runs | 2026-11-20 |
+| Targets bound to at least 1 constraint | 18 of the 31 | 2026-11-20 |
+| Inputs tried by the bound targets | 208,556,359 | 2026-11-20 |
+| The modeled gap of the closing lines below | 3,393,230 | at the count of 2026-11-19 |
+
+The registry itself, with each property's model, suites
+and ties, stands in
+[the bindings record](../proofs/v4-bindings.md); the gap's
+reading stands in the fifth snapshot below and in
+[the curve's page](../proofs/v4-the-curve.md).
+
+The shape of the coverage axis is a squeeze, the same
+shape the closing lines below draw on the size axis. For
+1 frozen scope (the same observation alphabet, the same
+build, the same configuration, the same environments), 3
+sets stand in a row. The witnessed behaviors: each 1 with
+a checked existence witness behind it, a validated trace.
+The real behaviors: what the runner in that scope actually
+does. The permitted behaviors: what a sound abstraction
+of the runner still allows. The witnessed stand inside
+the real, and the real inside the permitted. Where the
+witnessed and the permitted meet, the scope's behavior
+set is characterized exactly, and the gap between them,
+counted in unique obligation or behavior ids, is the
+coverage axis's own measure of what remains open. Most
+claims need less than the meeting: if every permitted
+behavior satisfies a safety property, the property holds
+of the real behaviors already, however far the witnessed
+still stand from the permitted. A claim's evidence is
+read against its own denominator in this shape, never
+against the size of the tree.
 
 ## Verifying these figures against the artifacts
 
@@ -453,26 +512,28 @@ A further reading of the same counts, worked out on
 with the research that supports it. The view above lets
 the run log keep its own line toward 28.4 million. This
 reading bends that line down instead: a ceiling for the
-log at 21.0 million, closing by 0.61 a week onto the
-line of everything else at 17.6 million.
+log at 21.0 million, closing onto the
+line of everything else at 17.6 million by at least
+0.39 of the gap a week.
 The gap between the 2 lines is 3,393,230 at the count
-of 2026-11-19, and at that rate it reaches 0 after 30
-weeks. Where the 2 lines meet, both parts stand at 17.6
+of 2026-11-19, and at that minimum rate of closing it
+reaches 0 after 30 weeks. Where the 2 lines meet, both parts stand at 17.6
 million and the whole tree at 35.2 million. This reading
 names no limit first either: the 2 starting lines and
 the rate are given, and the meeting point follows from
 them.
 
-![2 lines that close: a ceiling for the fuzz run log at 21.0 million closing by 0.61 a week onto the line of everything else at 17.6 million, the gap of 3,393,230 between them closing to 0 in 30 weeks, and the whole tree at 35.2 million where the 2 lines meet](../../../assets/security-tokens-2-lines-that-close-2026-11-20.svg)
+![2 lines that close: a ceiling for the fuzz run log at 21.0 million closing onto the line of everything else at 17.6 million by at least 0.39 of the gap a week, the gap of 3,393,230 between them closing to 0 in 30 weeks, and the whole tree at 35.2 million where the 2 lines meet](../../../assets/security-tokens-2-lines-that-close-2026-11-20.svg)
 
 What the 0 means. Zero is where the gap closes: nothing
 of the run log stands above the line of everything else,
 the 2 parts stand at 1 figure, and the whole tree stands
 at 35.2 million. It is reached, not only approached.
 Tokens are whole numbers, and a gap of whole tokens that
-shrinks to at most 0.61 of itself each week does not
-fade toward 0 without arriving: it stands at 1 in the
-29th week and at 0 in the 30th. The reading is the one
+closes by at least 0.39 of itself each week, so it never
+stands above 0.61 of itself from one week to the next,
+does not fade toward 0 without arriving: it stands at 1
+in the 29th week and at 0 in the 30th. The reading is the one
 the v5 work is asked to carry: constraints from all
 directions, forcing the remaining unproven gap to 0 over
 time. A number held from 1 side only is a cap or a
@@ -495,6 +556,28 @@ and until a property has a checked model behind it the
 honest statement about it stands as the proofs state it:
 tested and reviewed, not proven.
 
+The rule, in the direction that forces the closing. The
+closing rate is a minimum progress rule, and it binds 1
+quantity: the gap. Each week at least 0.39 of the gap
+closes (in whole tokens, at least the smallest whole
+number not under 0.39 of the gap), so the gap never
+stands above 0.61 of itself from one week to the next.
+Stated as a cap alone, the same figures would force
+nothing: a cap on growth toward a ceiling does not force
+arrival, and a count can stall above the floor it was
+meant to meet. The 2 lines pin the whole only because
+they bound the same quantity, the gap between the 2
+parts; a ceiling for the log meeting a ceiling for
+everything else would by itself prove nothing about the
+2 counts. And the meeting point follows from the floor
+being fixed: the line of everything else stands at its
+limit while the ceiling descends to it, so the 2 lines
+meet at 17,606,770 and the whole there is 35,213,540,
+twice the point. With both lines free to move, the
+meeting point is not unique, and the total at the
+meeting requires the 2 actual counts to meet at the
+floor, not only their lines.
+
 The research reads the run log itself as well: 96.4% of
 its tokens are lines that say nothing new was found, and
 folded to 1 line of sums for each target and day, with 1
@@ -503,6 +586,25 @@ tokens. The bend this reading asks for is there to take.
 What a fold would cost the proof stands in the note in
 the archive.
 
+What a fold must keep, to serve the proof. Folding the
+log's repeated routine lines serves the proof only while
+the retained record keeps 4 things: the finding records
+themselves; the unique obligation witnesses, 1 standing
+for each obligation it discharges; the scope and the
+counts a reader needs to interpret the summaries; and
+references to the raw records, where replay or an
+independent audit requires them. A digest binds the
+bytes it retains. It does not reconstruct the traces it
+discards, and it does not establish the generator's
+coverage: the fold speaks about the record, not about
+what the campaign reached. Kept that way, a smaller
+record can serve the proof better than the full log
+does, by making the witnesses and the assumptions easier
+to inspect. The 677,562 is the folded record's size, a
+statement about representation: it measures neither the
+log's information nor its coverage, and no share of the
+log is pronounced empty on its strength.
+
 ## Where the project stands
 
 The longer series changes what the shape can say. Across the
@@ -510,7 +612,7 @@ The longer series changes what the shape can say. Across the
 the tree grew from 447,477 security tokens to 26,451,259,
 and since the fourth snapshot every point of that series is
 a count of the tagged tree, with nothing implied. The
-history behind it stands at <!--hp-fig:commits-->6,655<!--/hp-fig--> commits at the measure
+history behind it stands at <!--hp-fig:commits-->6,661<!--/hp-fig--> commits at the measure
 recorded at the top of this record; it stood at 6,004 at the
 v3.16.26.29 measure.
 
