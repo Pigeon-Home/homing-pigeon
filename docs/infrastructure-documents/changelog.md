@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.7 - 2026-11-24
+
+- The 3.18.34.6 number stands spent at its gate; this release is its replacement.
+- The Windows AppContainer DACL residue fix: ancestor grants stop below the drive root, failed spawns restore the prior DACL, and the startup gate names the residue shape.
+- The conditional theorems and the concrete induction over 22 atoms and 4 joiners, the safety shortcut boundary narrowed to universal pairs.
+- The statistics record on two axes, with three chart candidates on a page of their own.
+- The fix-forward: recorded figures, as-assembled core pins, and the mutation oracle selection re-measured on the current tree.
+
 ## 3.18.34.6 - 2026-11-24
 
 - windows: the DACL residue fix — the ancestor grant walk stops below the drive root, failed spawns restore the prior DACL from snapshots, and the startup gate names the residue shape when the floor trial dies 0xC0000135
