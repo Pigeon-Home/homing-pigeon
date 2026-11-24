@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.25 - 2026-11-24
+
+- Land on main (since 3.18.34.24) -- DRU's two FAQ updates adding the P vs NP entry to docs/FAQ.md
+
 ## 3.18.34.24 - 2026-11-24
 
 - Land on main (since 3.18.34.23) -- the nightly upstream pins refresh for the osquery, softflowd, suricata and zeek feed extensions, each upstream ref resolved to its current tip with the pinned files refetched and the drift tests green against them
