@@ -405,3 +405,10 @@ install and at startup. The check is a speed bump, not a
 protection. It exists so the assistant and the human both see
 it. What happens next is on them, and on the vendor who said
 their model could handle it.
+
+## P vs NP
+
+"I have an elegant proof, but it won't fit in the token budget. It's Fermat 2.0"
+- [claybabe](https://github.com/claybabe)
+
+
