@@ -650,7 +650,27 @@ def _check_decomposition(bags, parent, clause_at, clauses,
     the root that reaches every bag exactly once, and
     clause assignments only under valid bag keys, since
     a key outside the bags would hide its clauses from
-    the checker and the solver alike."""
+    the checker and the solver alike.
+
+    The variable list is held to the same standard,
+    against what the bags and the clauses actually use.
+    A list that omits a variable leaves that variable's
+    occurrences unexamined: on bags [('x',), ('y',),
+    ('y',)] with parents [None, 0, 0], the positive unit
+    on y of weight 2 in one child bag and the negative
+    unit on y of weight 3 in the other, a caller
+    supplying ['x'] was told the decomposition was
+    sound. The elimination reported cost 0, pricing the
+    2 child tables independently where exhaustive
+    scoring gives optimum 2, and its reconstructed
+    assignment scored 3. So the checked set is derived
+    rather than trusted: every variable in any bag or
+    any clause has to be named in the supplied list,
+    and coverage and running intersection run over the
+    derived set. A declared variable that no bag and
+    no clause uses is isolated and stands accepted: it
+    constrains nothing, and the elimination has
+    nothing to price for it."""
     n = len(bags)
     if n == 0 or len(parent) != n:
         return False
@@ -686,7 +706,20 @@ def _check_decomposition(bags, parent, clause_at, clauses,
         if parent[b] is not None:
             adjacency[b].append(parent[b])
             adjacency[parent[b]].append(b)
-    for v in variables:
+    in_bags = set()
+    for bag in bags:
+        in_bags.update(bag)
+    in_clauses = set()
+    for _, lits in clauses:
+        for v, _ in lits:
+            in_clauses.add(v)
+    used = in_bags | in_clauses
+    if not used.issubset(variables):
+        return False
+    checked = used | set(variables)
+    for v in checked:
+        if v not in in_bags:
+            continue
         holders = [b for b in range(n) if v in bags[b]]
         if not holders:
             return False
@@ -991,6 +1024,166 @@ class DecompositionTopologyTest(unittest.TestCase):
         self.assertEqual(_wcost(clauses, witness), 0)
         self.assertEqual(set(witness), set(range(n)))
         self.assertLessEqual(rows, 8 * n)
+
+
+class DecompositionVariableSetTest(unittest.TestCase):
+    """The checker derives its variable set from the
+    bags and the clauses, and holds the supplied list
+    to it. The family around the reported failure: a
+    variable the list omits was never examined, so its
+    occurrences could sit disconnected in the tree
+    while the elimination priced them independently
+    and the checker still said sound."""
+
+    def _reported_case(self):
+        # The reported case, exactly as it arrived:
+        # bags [('x',), ('y',), ('y',)] with parents
+        # [None, 0, 0], the positive unit on y of
+        # weight 2 in one child bag and the negative
+        # unit on y of weight 3 in the other.
+        pos = (2, (("y", True),))
+        neg = (3, (("y", False),))
+        bags = [("x",), ("y",), ("y",)]
+        parent = [None, 0, 0]
+        clause_at = {1: [pos], 2: [neg]}
+        clauses = [pos, neg]
+        return bags, parent, clause_at, clauses
+
+    def test_the_reported_case_is_refused(self):
+        bags, parent, clause_at, clauses = (
+            self._reported_case())
+        # The supposition, from exhaustive scoring
+        # alone, stated before the checker is asked:
+        # the optimum over x and y is 2.
+        brute, _ = _wopt(clauses, ["x", "y"])
+        self.assertEqual(brute, 2)
+        # The stakes, pinned on the unchecked path the
+        # caller used to take: the elimination reports
+        # 0 and its reconstructed assignment scores 3.
+        opt, witness, _ = _tree_dp(bags, parent,
+                                    clause_at)
+        self.assertEqual(opt, 0)
+        self.assertEqual(_wcost(clauses, witness), 3)
+        # With ['x'] supplied, the y occurrences were
+        # never checked. Now the case is refused.
+        self.assertFalse(_check_decomposition(
+            bags, parent, clause_at, clauses, ["x"]))
+
+    def test_the_reported_case_stays_refused_on_the_full_list(
+            self):
+        # Naming y does not save the decomposition
+        # either: the bags holding y are joined only
+        # through a bag that does not hold it, so the
+        # running intersection property fails for y.
+        bags, parent, clause_at, clauses = (
+            self._reported_case())
+        self.assertFalse(_check_decomposition(
+            bags, parent, clause_at, clauses,
+            ["x", "y"]))
+
+    def test_a_variable_in_a_bag_only_missing_from_the_list(
+            self):
+        bags = [("x", "y")]
+        parent = [None]
+        self.assertFalse(_check_decomposition(
+            bags, parent, {}, [], ["x"]))
+        self.assertTrue(_check_decomposition(
+            bags, parent, {}, [], ["x", "y"]))
+
+    def test_a_variable_named_by_a_clause_missing_from_the_list(
+            self):
+        clause = (2, (("y", True),))
+        bags = [("x", "y")]
+        parent = [None]
+        clause_at = {0: [clause]}
+        self.assertFalse(_check_decomposition(
+            bags, parent, clause_at, [clause], ["x"]))
+        self.assertTrue(_check_decomposition(
+            bags, parent, clause_at, [clause],
+            ["x", "y"]))
+        opt, witness, _ = _tree_dp(bags, parent,
+                                    clause_at)
+        brute, _ = _wopt([clause], ["x", "y"])
+        self.assertEqual(opt, brute)
+        self.assertEqual(_wcost([clause], witness), opt)
+
+    def test_a_variable_in_bags_and_clauses_missing_from_the_list(
+            self):
+        clause = (5, (("y", False),))
+        bags = [("x",), ("x", "y")]
+        parent = [None, 0]
+        clause_at = {1: [clause]}
+        self.assertFalse(_check_decomposition(
+            bags, parent, clause_at, [clause], ["x"]))
+        self.assertTrue(_check_decomposition(
+            bags, parent, clause_at, [clause],
+            ["x", "y"]))
+        opt, witness, _ = _tree_dp(bags, parent,
+                                    clause_at)
+        brute, _ = _wopt([clause], ["x", "y"])
+        self.assertEqual(opt, brute)
+        self.assertEqual(_wcost([clause], witness),
+                         opt)
+
+    def test_disconnected_occurrences_are_refused(self):
+        bags = [("x",), ("y",), ("y",)]
+        parent = [None, 0, 0]
+        self.assertFalse(_check_decomposition(
+            bags, parent, {}, [], ["x", "y"]))
+
+    def test_connected_occurrences_still_pass(self):
+        bags = [("x", "y"), ("y",), ("y",)]
+        parent = [None, 0, 0]
+        self.assertTrue(_check_decomposition(
+            bags, parent, {}, [], ["x", "y"]))
+
+    def test_a_declared_isolated_variable_in_a_bag_passes(
+            self):
+        clause = (2, (("x", True),))
+        bags = [("x", "z")]
+        parent = [None]
+        clause_at = {0: [clause]}
+        self.assertTrue(_check_decomposition(
+            bags, parent, clause_at, [clause],
+            ["x", "z"]))
+
+    def test_a_declared_isolated_variable_with_no_bag_passes(
+            self):
+        clause = (2, (("x", True),))
+        bags = [("x",)]
+        parent = [None]
+        clause_at = {0: [clause]}
+        self.assertTrue(_check_decomposition(
+            bags, parent, clause_at, [clause],
+            ["x", "z"]))
+
+    def test_dropping_any_variable_from_a_sound_list_is_refused(
+            self):
+        rng = random.Random(20261127)
+        for _ in range(60):
+            bags, parent, clause_at, clauses, variables = (
+                _rooted_tree_instance(
+                    rng, rng.randrange(1, 9)))
+            self.assertTrue(_check_decomposition(
+                bags, parent, clause_at, clauses,
+                variables))
+            for dropped in variables:
+                shorter = [v for v in variables
+                           if v != dropped]
+                self.assertFalse(_check_decomposition(
+                    bags, parent, clause_at, clauses,
+                    shorter))
+
+    def test_an_extra_declared_isolated_variable_stays_accepted(
+            self):
+        rng = random.Random(20261128)
+        for _ in range(20):
+            bags, parent, clause_at, clauses, variables = (
+                _rooted_tree_instance(
+                    rng, rng.randrange(1, 9)))
+            self.assertTrue(_check_decomposition(
+                bags, parent, clause_at, clauses,
+                variables + ["isolated"]))
 
 
 # ----------------------------------------------------------------
