@@ -210,8 +210,43 @@ list passes the width.
 
 ## Conclusions against the supposition
 
-(Written after the tests ran; the run's own words stand
-in the commit that carries the tests.)
+(Written after the tests ran.)
+
+Every expectation in the supposition held, at the sizes
+the tests name.
+
+- The exact compressor kept the contract at every round
+  of every run the tests made: the seeded batch, the unit
+  clause family, and the equality family under both
+  orders.
+- On the seeded batch (seed 20261123; 40 instances at 20
+  clauses, 40 at 43, all on 10 variables) the exact
+  compressor's verdict agreed with brute force on all 80
+  instances, the contract held at every round, and every
+  satisfiable verdict carried a witness that satisfies
+  its formula. The batch was a real mix: both verdicts
+  occurred.
+- The keep first compressor failed exactly where the
+  supposition put the failure: at w of 1 the contract
+  broke at the first round, on the 3 variable instance;
+  at w of 4 at the third round, on the 6 variable
+  instance; at w of 16 at the fifth round, on the 8
+  variable instance. Each time the verdict read
+  unsatisfiable on a satisfiable formula, and the exact
+  compressor answered the same instances correctly with
+  the contract intact.
+- On the equality family the retained counts under the
+  exact compressor equal the residual counts computed
+  from the definition, for m from 1 to 4 under both
+  orders: the grouped cut stands at exactly 2^m, and the
+  interleaved counts never pass 3 and reach 3 for m from
+  2 to 4.
+
+One pin of this page failed on its first run and is
+worth recording: the test looked for a phrase of the
+conditional theorem in the wrong case, and the
+correction was to the test, not to the page. The
+mathematics of the supposition needed no correction.
 
 ## What this artifact does not establish
 
