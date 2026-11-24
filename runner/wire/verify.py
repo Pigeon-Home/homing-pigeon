@@ -140,7 +140,16 @@ _OPENER_EDGE = 16
 # costs time and never an answer.
 _OPENER_SETTLED = ("Expecting ", "Invalid ", "Extra data",
                    "Illegal trailing comma")
-_RAW_CONTROLS = re.compile("[\x00-\x08\x0a-\x1f]")
+# The raw control characters the looks strip: every C0 control
+# except the tab, which _strip_controls keeps, named one by one.
+# The class is spelled out in full, with no ranges, so its extent
+# is exactly what it reads as: the ranged spelling of this same
+# set drew code scanning alert 48 (an overly permissive range),
+# and the set itself is unchanged, character for character.
+_RAW_CONTROLS = re.compile(
+    "[\x00\x01\x02\x03\x04\x05\x06\x07\x08"
+    "\x0a\x0b\x0c\x0d\x0e\x0f\x10\x11\x12\x13\x14\x15"
+    "\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f]")
 
 
 def _opens_object(norm: str, start: int, sig_at: int) -> bool:
