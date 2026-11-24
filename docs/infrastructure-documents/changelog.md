@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.34.11 - 2026-11-24
+
+- Land on main (since 3.18.34.10) -- Germany bank 75 with the corpus banked to 2,698 entries and 0 crashes, the forum relay of ChatGPT's fixed-width projection theorem and width-three Horn tradeoff emails, and the forum announcement that release 3.18.34.10 stands published
+
 ## 3.18.34.10 - 2026-11-24
 
 - The 3.18.34.6, 3.18.34.7, 3.18.34.8, and 3.18.34.9 numbers stand spent at their gates; this release is their replacement.
