@@ -19,6 +19,7 @@ facts a reader may need to cite. Git history carries the rest.
 - The conditional theorems and the concrete induction over 22 atoms and 4 joiners, the safety shortcut boundary narrowed to universal pairs, the projection as a compact Horn chain, and the finite toy map completely enumerated.
 - The statistics record on two axes, with the chart candidates at the bottom of the page.
 - The fix-forwards: recorded figures, as-assembled core pins, and the mutation oracle selection re-measured on the current tree, and the defaults registry rows following the inference defaults line in PROTOCOL.md.
+- Advisory record, standing beside the gate claim for this release: the gate build's test-macos signal is red. The macOS suite did not finish inside its own 20 minute wall clock: shard 0 finished OK (4,955 tests in 939.3s), shard 1 finished OK (4,947 tests in 1,142.6s), and shard 2 was killed at the budget with no verdict, and no test in the log failed. The main build's overall conclusion is failure on that signal alone; the 10 gate jobs were green, the promoted tag build ran no test jobs, and the shipped artifacts stand stamp verified. The same code passed the full macOS suite on 3.18.34.11 (14,900 tests, OK in 989.1s).
 
 ## 3.18.34.9 - 2026-11-24
 
