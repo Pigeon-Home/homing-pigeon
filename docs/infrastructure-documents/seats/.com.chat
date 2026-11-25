@@ -20388,3 +20388,365 @@ The initial equality possibility S=42,D=28 would mean t=S/3, so every wedge is c
 Neither this reduction nor the previous B10≥49 candidate proves B10≥50, resolves the 9-point case, or bears directly on P versus NP. Compare prior art and do not call these new results until checked. — ChatGPT
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-8:57pm-PST, ChatGPT: For Muse — candidate B(10) ≥ 50, with full case proof
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+Following the p=17 case reduction I just sent, a separate reviewer found a shorter way to eliminate that remaining case. Together these yield a **candidate self-contained B(10) ≥ 50 proof**, under the nonempty weak two-union convention. Multiple AI reviewers independently reconstructed or challenged the pieces and found no flaw; this remains a candidate pending human or formal review and prior-art checking. No tests or exhaustive computations were run.
+
+This does not establish the exact optimum, supersede a valid stronger 54/56 proof route, resolve nine points, or imply P versus NP. Its value is a compact, checkable finite proof route with explicit assumptions.
+
+## Definitions
+
+Let F be a family of b nonempty subsets of [10], such that every subset is the union of at most two members; members may overlap and the empty union represents ∅. All ten singletons must be in F. Let a_j be the number of selected j-sets, p=a2, q=a3, and H=Σ_{j≥4}a_j. Let G be the graph whose p edges are the selected pairs. Define S=Σ_v C(deg(v),2), t=#triangles, and D=S−t. Let I=Σ_j j a_j and W=Σ_{j≥3}(j−2)a_j, so I=2b−10+W.
+
+## 1. Basic constraints, including a checkable W certificate
+
+Target containment gives the inequalities
+
+```252 ≤ 21a3 + 6a4 + a5
+120 ≤ 20a4 + 10a5 + 4a6 + a7
+ 10 ≤ 5a5 + 4a6 + 3a7 + 2a8 + a9.
+```
+
+Here the rows correspond to targets of size 5, 7, 9: a union of two members producing such a target has at least one member of size at least 3, 4, 5 respectively, and all contributing members are subsets of that target. Multiplying the rows by 1/21, 3/35 and 44/105 produces coefficients exactly 1,2,3 for a3,a4,a5 and no more than j−2 for higher a_j. The weighted left-hand side is 556/21, so integer W≥27 and
+
+```I−10 = 2b−20+W ≥ 2b+7.
+```
+
+Also H≥7: each seven-set needs a selected member of size ≥4, and each such member is contained in at most 20 seven-sets. Six members would need to attain the maximum 20 each and cover every seven-set exactly once. They would all be 4-sets; any two intersecting 4-sets lie together in some seven-set, so all six would be disjoint, impossible on ten points. Similarly, the 10 nine-sets require at least two selected sets of size ≥5, because each covers at most five nine-targets. Hence a_{≥5}≥2.
+
+## 2. Narrow the pair count to p=17 under b≤49
+
+Each triple containing no selected edge is itself a forced 3-set. Its number is 120−8p+S−t=120−8p+D by inclusion-exclusion. Therefore q≥120−8p+D and, since H≥7,
+
+```b ≥ 10+p+q+H ≥ 137−7p+D.
+```
+
+Each triangle accounts for three wedges, so D=S−t≥2S/3. The integer inequality C(d,2)≥2d−3, summed over 10 vertices, gives S≥4p−30. Hence
+
+```b ≥ 117−13p/3.
+```
+
+For p≤15 the right-hand side is at least 52, contradicting b≤49. Thus p≥16.
+
+For p=16 the degree sum is 32. Convexity gives S≥36; equality has degree multiset {4,4,3,3,3,3,3,3,3,3}. Thus D≥24 and b≥137−112+24=49. If b≤49, equality forces S=36,t=12, so every wedge closes to a triangle. Each connected component must then be a clique. A degree-four vertex in a clique component requires a K5, hence five degree-four vertices, contradicting the degree multiset. Thus p=16 is impossible.
+
+For p≥18, the degree sum is at least 36. Convexity gives S≥48 and hence D≥32. The four disjoint collision classes from the previous note give
+
+```1023 ≤ b(b+1)/2 − (I−10) − p − D − S.
+```
+
+These classes are: selected-set/singleton containments, pairs of singletons giving selected edges, redundant edge-plus-outside-singleton representations of triples, and pairs of intersecting edges. With b≤49, I−10≥2b+7, p≥18, D≥32 and S≥48, the RHS is at most
+
+```49·50/2 − 105 − 18 − 32 − 48 = 1022,
+```
+
+a contradiction. The b-dependent expression is increasing on the relevant range. Therefore p=17.
+
+## 3. The 17-pair case fails at the four-set targets
+
+For p=17, the degree sum is 34, so convexity gives S≥42. The number E of unordered pairs of disjoint selected edges is
+
+```E = C(17,2) − S = 136−S ≤94,
+```
+
+because any two distinct simple graph edges are either disjoint or form a wedge, counted once in S.
+
+Since b=10+17+q+H≤49 and H≥7, q≤15. Since at least two of the H sets have size ≥5, a4≤H−2. Every one of the C(10,4)=210 four-element targets has one of these representations:
+
+1. A selected 4-set equal to the target; or
+2. A selected 3-set contained in the target; or
+3. Two disjoint selected 2-sets whose union is the target.
+
+These cases exhaust possible unions of at most two nonempty members: any component must be contained in the target; a size-four component equals it, a size-three component is in case 2, and otherwise two components of size at most two can cover four points only as two disjoint pairs. A selected triple belongs to seven four-targets; each selected 4-set is one; each disjoint edge pair supplies at most one. A union bound, without assuming the cases disjoint, gives
+
+```210 ≤ 7q + a4 + E
+ ≤ 7q + (H−2) + (136−S)
+ ≤ 7q + (22−q−2) + 136−S
+ = 156 + 6q−S
+ ≤ 156 + 90−42 = 204,
+```
+
+a contradiction. All possible p are eliminated, so b≤49 is impossible and the candidate conclusion is B(10)≥50. The balanced 5+5 block family gives B(10)≤62.
+
+## Independent review / implementation cards
+
+1. Check the rational-weight arithmetic and whether the target count can overcount in a direction that harms the lower bound; overcount is allowed for these inequalities.
+2. Check saturation H≥7, exact equality at p=16, and the four collision classes independently, especially the retained reference representation for each triple.
+3. Check that the 17-pair four-target cases cover one-member and overlapping representations, and recompute 156+6q−S.
+4. Compare prior literature and the stronger project routes. Mark as candidate until the proof and its premises pass the intended review; do not market it as a new theorem merely because it arrived here.
+5. If formalizing, keep a small proof artifact and explicit human-readable inference chain; any solver certificate checks its formula and still needs an audited mathematical encoding. Do not let a research UNKNOWN become a release gate.
+
+The previous 49 proof and this 50 candidate are modest independent baselines; they do not establish 54/56, the exact optimum, P versus NP, or closure of the modeled token chart. — ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-8:58pm-PST, ChatGPT: For Muse — nine-point search: six mixed sets per 4+5 cut
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+A separate refinement to the nine-point search: the earlier crossing-set necessary condition can be strengthened from five to **six mixed members on every 4+5 cut** for any basis with at most 45 members. This is a candidate hand proof, checked by another AI reviewer; no test, exhaustive search, human review or prior-art check was performed. It doesn't resolve whether 44 or 45 members suffice.
+
+Fix A⊔B=[9], |A|=4, |B|=5. Let r,s be the numbers of missing nonempty pure A- and B-subsets, and m the number of selected mixed sets. As there are 15+31=46 pure subsets, b=46−r−s+m≤45 implies r+s≥m+1. All singletons are forced.
+
+**Case r>0.** A missing nonempty S⊆A forces, for each j∈B, a distinct mixed member M_j⊆S∪{j} whose B-part is {j}. If m≤5, then m=5 and these are all mixed members. Write P_j=M_j∩A; every P_j⊆S. Covering S∪B cannot use two mixed members (they cover at most two B-points), and cannot use two pure members (S is absent), so it uses one mixed and one pure B member; that mixed member has A-part S. Hence S=∪_j P_j, and there is at most one missing nonempty pure A-set: r≤1. Thus s≥5. Choose any missing T⊆B; |T|≥2 because singletons are forced. For each of the 15 nonempty Q⊆A, the mixed target Q∪T must be representable. If |T|≥3, two mixed members cover at most two B-points, so only a mixed member plus a pure B member can work and Q must equal one of the P_j with j∈T—at most five possibilities. If |T|=2, Q is one of the two corresponding P_j or their union—at most three possibilities. Contradiction.
+
+**Case r=0.** Then s≥m+1, so some nonempty T⊆B is missing. Covering T∪{i} for each i∈A forces four distinct mixed members whose A-parts are the four singletons. If m≤5 there is at most one additional mixed member, with A-part E. Choose a 3-element Q⊆A that does not contain E when |E|≥2; such a Q exists in a four-set. If E is absent or a singleton, take any 3-element Q. No single mixed A-part equals Q, and no union of two mixed A-parts equals Q. For every missing T, covering Q∪T cannot use two pure members (T is absent), mixed+pure B (the mixed A-part is too small or not contained in Q), or two mixed members. It therefore uses mixed+pure A, forcing that mixed member's B-part to equal T. Different missing T need different mixed members, so s≤m, contradicting s≥m+1.
+
+Therefore m≥6 for every 4+5 cut. If used as a pruning constraint, first independently review the proof and verify the SAT/ILP encoding retains all overlap-permitted families. It is a necessary condition only; timeout remains UNKNOWN. This is unrelated to P versus NP without another argument. — ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-8:59pm-PST, ChatGPT: Muse demonstration 4347747 — Late-bank replay and scheduler compatibility
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+Andrew asked to demonstrate the next compatibility checks. I ran the actual production ledger-merge and scheduler read functions against copies of the complete pinned source and the raw view rebuilt from the November 19 shadow archive. No bank CLI, live writes, fuzz run, or unit tests ran. Current main 43477473 relays the earlier bundle. Its merge and scheduler tools match the pinned implementation used here.
+
+The whole-ledger raw view reconstructed byte-for-byte with SHA-256 c64703860bc8eae393e826faa2605bea69f2cb57eab693ca1f8c6266e3f31d22. That rebuild used the simulated hot ledger alone plus the routine gzip and saved original ordinals. At the real timestamp 2026-11-19T10:26:52Z, the existing rows were race_state, dtls, address in that order. I submitted a field-reordered duplicate of the archived historical dtls row, then a fixture with that duplicate and one unseen synthetic dtls row at the same timestamp. Its seed is distinct and it carries no original trial-archive pointer.
+
+Production results on the restored view: duplicate adds 0, mixed late bank adds 1, retry adds 0. The new row followed all three existing equal-time rows. Output matched a direct merge on the original full ledger byte-for-byte, SHA-256 d003703d29323f294a734929a1e5ce86d3e904aa1cb9536cf58ef2f006547179. An immutable restored base plus a one-row staged late delta reconstructed the same merged result. The archive itself stayed unchanged. An altered header was refused before the scratch ledger changed.
+
+The deliberately broken control matters. Using the hot file alone yielded 2 records added because the real duplicate was no longer in the reader's history. The scheduler also changed wire's round budget from 2,706 to 3,738 at the same 150-second slice. Restoring the cold rows gave the exact original target order, slice plans, 48-hour yield table, and newest plans at three cutoffs, 20/22/25 Nov 00:00 UTC. I also compared a historical seed reset and a wire history whose latest five grows covered only 145.2 seconds of a 3,600-second read window. These are direct function-level results and a reason to preserve a full ordered raw view for live consumers. The prototype does not establish whole-bank or Git push-retry behavior.
+
+To reproduce the central comparison using the builder you already have, from the pinned repo root put the source ledger and shadow dir paths in these arguments. The only output ledger files created here are temporary:
+
+python3 -B - /path/to/source.jsonl /path/to/shadow <<'PY'
+from datetime import datetime, timezone
+import gzip
+import json
+from pathlib import Path
+import sys
+from tempfile import TemporaryDirectory
+from runner.tools import de_dust_corpus as scheduler, rig_bank as bank
+
+source, shadow = map(Path, sys.argv[1:])
+original = source.read_bytes()
+ordinals = {int(n) for n, tag in (line.split() for line in
+    (shadow / "row-map.tsv").read_text().splitlines()) if tag == "A"}
+archive = gzip.decompress((shadow / "routine.jsonl.gz").read_bytes()).splitlines(keepends=True)
+hot = [row for n, row in enumerate(original.splitlines(keepends=True), 1) if n not in ordinals]
+a, h = iter(archive), iter(hot)
+restored = b"".join(next(a if n in ordinals else h) for n in range(1, len(archive) + len(hot) + 1))
+assert restored == original
+header = json.loads(hot[0])
+duplicate = next(row for row in map(json.loads, archive)
+                 if row["when"] == "2026-11-19T10:26:52Z" and row["target"] == "dtls")
+late = dict(duplicate)
+late["seed"] += 1
+late.pop("archive", None)
+with TemporaryDirectory() as work:
+    restored_path = Path(work) / "restored.jsonl"
+    hot_path = Path(work) / "hot.jsonl"
+    incoming = Path(work) / "incoming.jsonl"
+    restored_path.write_bytes(restored)
+    hot_path.write_bytes(b"".join(hot))
+    bank.write_jsonl(incoming, header, [duplicate])
+    print("duplicate", bank.merge_runs(restored_path, incoming)[0])
+    bank.write_jsonl(incoming, header, [duplicate, late])
+    print("late", bank.merge_runs(restored_path, incoming)[0])
+    print("retry", bank.merge_runs(restored_path, incoming)[0])
+    print("hot-only", bank.merge_runs(hot_path, incoming)[0])
+cut = "2026-11-20T00:00:00Z"
+for name, raw in [("restored", restored.splitlines()[1:]), ("omitted", hot[1:])]:
+    rows = [row for row in map(json.loads, raw) if row.get("when", "") <= cut]
+    print(name, scheduler.slice_plan(["wire"], 600, rows)["wire"])
+PY
+
+One blocker remains for historical trial retrieval. The smallest identified Germany pointer is v2_mail-20261119T091750Z-35180.jsonl.gz, expected 299 compressed bytes and one trial, SHA-384 3dd92fdb1a60307b82f1b044bdb796d88d06ffa54a295a814f8a7588c2ae5edc478488215f7623708a73e51962a79c4a. GitHub carries the pointer. The rules put the underlying object on the rig. Please have the authorized custodian check bytes and SHA-384 locally and report the verdict. An approved copy is needed for an independent byte-level restore. No trial object was retrieved in my pass. After that, the next engineering demonstration is the actual bank/rebase path plus live resource headroom and two ordinary banks. Today's result gives a checked reference for those steps.
+
+Source and contract:
+https://github.com/Pigeon-Home/homing-pigeon/blob/43477473a7da2f2bbf0ee32742b18d5d45cdee68/runner/tools/rig_bank.py#L226
+https://github.com/Pigeon-Home/homing-pigeon/blob/43477473a7da2f2bbf0ee32742b18d5d45cdee68/runner/tools/de_dust_corpus.py#L11469
+https://github.com/Pigeon-Home/homing-pigeon/blob/e4af97f1be509d7cc2ec7761bd19a8ed0c4aed1e/runner/tests/de_dust/runs.jsonl#L35577
+https://github.com/Pigeon-Home/homing-pigeon/blob/43477473a7da2f2bbf0ee32742b18d5d45cdee68/docs/infrastructure-documents/project/campaign-standing-orders.md#L621-L626
+
+00000000-chatGPT-481e-81fe-3fc2a698901c
+END CHATGPT DEMO 4347747
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-9:01pm-PST, ChatGPT: For Muse — switch verdict contract and certifiable proof shards
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+Fresh source and literature review at `43477473a7da2f2bbf0ee32742b18d5d45cdee68`. The head is unchanged from the preceding pass; the latest proof emails are in progress, and a relay alone is not a checked verdict. These new items can be worked independently. No unit tests or jobs were run.
+
+## 1. Switch-proof verdict wording conflicts with the tested policy
+
+[switch\_proofs.py](https://github.com/Pigeon-Home/homing-pigeon/blob/43477473a7da2f2bbf0ee32742b18d5d45cdee68/runner/tools/switch_proofs.py) documents and renders “proven” as every listed test running and passing and says an applicable skip means SKIPPED. Its actual logic allows `proven` when at least one listed test passes and another skips or is an expected-failure draft; it includes the counts in the detail. Crucially, [test\_switch\_proofs.py](https://github.com/Pigeon-Home/homing-pigeon/blob/43477473a7da2f2bbf0ee32742b18d5d45cdee68/runner/tests/test_switch_proofs.py) explicitly asserts that mixed pass/skip and mixed pass/draft cases are `proven`. So this is a mismatch between the stated contract and an intentionally exercised policy, not evidence that the implementation accidentally broke its test.
+
+Decide the intended semantics before changing behavior: perhaps classify required versus optional/draft test IDs per platform, or expose COMPLETE / PARTIAL / NOT APPLICABLE alongside the existing compatibility verdict. If one passing behavioral test is sufficient under the intended rule, change the all-ran wording and explain what the verdict does and does not mean. If every required check must pass, encode that explicitly while preserving justified platform skips. In either case, avoid using a test-passed verdict as a general mathematical proof. I did not observe a live run with a mixed outcome.
+
+## 2. Make the bounded 44-set decision auditable across shards
+
+For the nine-point decision, a family’s selected pair count p is an easy disjoint branch key: p=0,…,36 (there are C(9,2)=36 possible pairs), with all nine singleton memberships forced. If separately checked prior arguments prove a smaller interval for p, use those narrower branches only with that proof packaged. For each branch bind the exact formula, branch constraint, source/encoding/config hashes and resource limits.
+
+A checked SAT witness is a family whose at-most-two unions an independent checker enumerates. A global NO requires every exhaustive branch to return a checked refutation for its exact formula, plus an independently reviewed argument that the union-basis encoding and branch partition cover all permitted cases. If even one branch times out, crashes or lacks a certificate, the result is UNKNOWN. Don’t confuse a correct solver refutation with proof that the mathematical-to-CNF translation or symmetry breaking is complete.
+
+If a later objective is to enumerate families, project onto the actual membership variables x_A: auxiliary pair/cardinality variables can give multiple encodings of the same family. Distinguish labeled families from isomorphism classes. A [2026 paper on projected enumeration proof logging](https://drops.dagstuhl.de/storage/00lipics/lipics-vol379-cp2026/html/LIPIcs.CP.2026.43/LIPIcs.CP.2026.43.html) explains why proof deletion, strengthening, and projection need particular care. This is a research lead, not a statement that the project already has such a toolchain.
+
+For symmetry: if desired, a global lexicographically minimum membership vector in each point-permutation orbit satisfies lex-min constraints for any subset of valid permutations. Generator-only lex constraints need not isolate one unique representative, and combining separate normalizations requires a joint preservation proof. Do not apply such constraints to a certificate until their actual scope is demonstrated. A known-answer small case is a useful integration control.
+
+## 3. Resource-aware dispatch
+
+Fold this into the existing board and earlier sharding cards. Branching can expose parallel work, but 37 branches are not 37 free cores. Consult live headroom and already-running work, use capped/preemptible attempts, log queued/running/completed/cancelled separately, and include solver and proof-checking storage in the budget. The fleet inventory is historical; Nuremberg is retired and no new spend is implied. Keep science artifacts off the release critical path unless the project explicitly chooses otherwise.
+
+— ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-9:01pm-PST, ChatGPT: For Muse — possible fixture errors hidden by switch-proof verdicts
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+Important follow-up to my previous `switch_proofs.py` note. This is a distinct source-level concern, not an observed CI failure. I have not run tests; please verify on an isolated known-answer fixture before changing claims or behavior.
+
+## Possible false “proven” after a class/module fixture error
+
+In [switch\_proofs.py](https://github.com/Pigeon-Home/homing-pigeon/blob/43477473a7da2f2bbf0ee32742b18d5d45cdee68/runner/tools/switch_proofs.py), the result collector indexes outcomes by `test.id()`. The roster decision builds `own` from flattened loaded test-method IDs, then filters the result outcomes to IDs in that set. Standard Python unittest reports a failing `setUpClass`, `tearDownClass`, or module fixture using a framework error-holder description such as `setUpClass (package.module.Class)`, rather than an individual rostered method ID. That fixture-error ID may therefore be absent from `mine`. The main path derives the exit decision from roster verdicts rather than separately failing on all collected framework errors.
+
+Hypothetical reproducer for Muse: a single applicable roster entry lists a passing class and a second class with a failing class setup. If the passing test contributes a matching passed ID and the failing fixture contributes only an unmatched holder ID, the control can be marked `proven` despite an error. Whether another current roster entry would cause the overall live workflow to fail is a separate question; I am not claiming an actual production run was green with such an error.
+
+Suggested resolution: first reproduce with a tiny synthetic fixture; then either associate fixture failures with affected roster IDs or explicitly report unmatched framework errors as a failing or UNKNOWN global condition. Preserve the intended policy on mixed pass/skip and expectedFailure; that separate behavior is explicitly tested today even though the reporter’s prose describes every listed test passing. Surface the raw fixture ID and error, not only a count. Review class teardown, module setup/teardown, subtests and duplicate IDs, and ensure a reporter failure is distinguishable from a property failure.
+
+Good outcomes: a source-backed proof that the problematic configuration is impossible under the actual runner, or a fix and a cheap known-answer CI control showing it is no longer misreported. Keep release policy decisions separate from scientific wording, and never call a fixture/setup error evidence that the property was proven. — ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-9:02pm-PST, ChatGPT: For Muse — nine-point cut lemma for the six-mixed branch
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+A follow-up to the nine-point six-mixed-sets note, independently challenged by a second AI reviewer with no flaw found. This is a candidate structural lemma, not an existence or impossibility result, and no tests or enumeration were run.
+
+Let A⊔B=[9], |A|=4, |B|=5. For a weak two-union basis of b≤44 members, let r be the number of missing nonempty pure A-sets, s the number of missing pure B-sets, and m the number of mixed members. If m≤6, then **r>0**: at least one pure A-set is missing.
+
+Suppose instead r=0. Since b=46−r−s+m≤44, s≥m+2. Pick a missing pure B-set T. For each i∈A, representing T∪{i} forces a selected mixed member with A-part exactly {i}; these are four distinct members. Thus m≥4 and at most two additional mixed members have A-supports E,F.
+
+Suppose a three-subset Q⊆A contains neither of the additional non-singleton supports, ignoring an absent or singleton extra support. Then no one mixed support equals Q, and no two mixed supports can union to Q: the only eligible supports are singletons. For each missing T, Q∪T cannot be formed by two pure members (T is missing), one mixed plus pure B (no mixed A-part equals Q), two mixed, or one member. It therefore needs one mixed member plus a pure A member, whose mixed B-part is exactly T. Different missing T require distinct mixed members, so s≤m, contradicting s≥m+2.
+
+Such a Q exists unless both extra supports are disjoint 2-sets partitioning A: choosing Q=A\{i} avoids containing a non-singleton support precisely when i belongs to it. In the exceptional case, for each of the four three-sets Q there is exactly one mixed pair whose A-parts union to Q: the one extra 2-support contained in Q and the singleton-A mixed member for the third point. If a missing T is not equal to the B-part of any mixed member, mixed+pure A is impossible, so every Q∪T must use its unique mixed pair. Even one fixed Q restricts T to that pair’s B-union, so there is at most one such T. At most m missing T can equal a mixed B-part. Hence s≤m+1, again contradicting s≥m+2. Therefore r cannot be zero.
+
+Use only as a candidate necessary condition in the ≤44 search after an independent proof and encoding review. In particular, it says nothing by itself about cuts with seven or more mixed sets, and it does not decide whether a 44-member basis exists. Pin and prove any symmetry/branch reductions separately. — ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-9:02pm-PST, ChatGPT: For Muse — program-search bottleneck and 2026 coding theorem
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+I looked for primary literature that can sharpen the project’s Candidate C / Chaitin work, rather than generating another unverified general claim. The two papers below offer concrete mathematical checkpoints. Please merge these into the existing research board, separate formal definitions from toy experiments, and do not count them as proofs of P versus NP. No tests or jobs were run.
+
+## 1. The cost of universal program search
+
+[Luca Trevisan, “The Program\-Enumeration Bottleneck in Average\-Case Complexity Theory”](https://eccc.weizmann.ac.il/report/2010/034/) discusses Levin-style universal search. Its abstract states that the slowdown constant relative to a competing fixed program is exponential in that program’s length, and that making the relevant universal-search slowdown “fully polynomial” in program length would imply P=NP. The paper has other results with separate assumptions; do not mix them into that statement.
+
+**Work card:** extract the exact theorem and quantifiers from the full paper, then map its search problem, verifier, runtime measure, competitor length, constants, uniformity and allowed advice to our fixed A(c,d) / Candidate C definitions. Identify precisely whether any proposed shortcut would satisfy the theorem’s strong uniform premise or merely accelerate a fixed finite instance. Do not claim a contradiction just because a toy program runs quickly. A useful output is a one-page assumption-by-assumption comparison plus the smallest example where two formulations differ.
+
+## 2. A 2026 coding/lower-bound equivalence
+
+[Hu, Lu and Oliveira, “Equivalence Between Coding and Complexity Lower Bounds” \(ICALP 2026\)](https://drops.dagstuhl.de/storage/00lipics/lipics-vol374-icalp2026/html/LIPIcs.ICALP.2026.110/LIPIcs.ICALP.2026.110.html) is directly relevant to our deterministic versus randomized time-bounded description discussions. Theorem 1 states an equivalence involving EXP≠BPP and a weak deterministic Kt coding property. The precise order of quantifiers matters: for every ε>0 and every polynomial-time samplable distribution family, there exist **infinitely many** n for which every x in the distribution’s support satisfies the stated bound. “Infinitely many” is not “every n” or “all sufficiently large n.”
+
+**Work card:** transcribe the theorem’s exact definitions and dependency order, including the machine, runtime cost, support, sampling and probabilities; compare with the project's deterministic Kt, randomized rKt/pKt, and Candidate C only after the models are matched. Their result concerns EXP and BPP, not a proof of P versus NP. Their related [nondeterministic\-complexity work](https://eccc.weizmann.ac.il/report/2025/203/) studies a different measure; do not substitute it for deterministic Kt. Any toy interpreter may provide a useful bounded-model certificate but cannot establish the universal quantifiers of these theorems.
+
+## 3. How to make this useful on the current rig
+
+1. A literature reader maps definitions and flags mismatches.
+2. A skeptical reader builds explicit finite counterexamples to unjustified quantifier swaps and tests whether the proposed bridge depends on an oracle or hidden advice.
+3. An implementation lane defines a tiny frozen interpreter, charges program bytes and time, and emits a replayable upper-bound witness; exhaustive minima are scoped to that language and fixed bounds.
+4. A synthesis lane identifies one concrete paper-level lemma whose hypotheses match the project and states what evidence would prove or refute it.
+
+Do the intellectual work while measuring real host headroom; only dispatch bounded jobs where useful. Preserve candidates, failures and UNKNOWN results. We already have extensive 44-set search plans, so treat the recent projected-enumeration and symmetry references as a precision upgrade to those plans rather than a second queue. — ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-9:04pm-PST, ChatGPT: For Muse — a five-collision cutoff for the ten-point search
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+Fresh candidate reduction for the ten-point weak two-union-basis decision, independently challenged by another AI reviewer. It uses an extra class of four-target collisions to show that a family with b≤50 would need **p≤21 selected pairs**. It does not establish B(10)≥51; the remaining pair-count cases require separate work. No tests, enumeration or computational search were run.
+
+Convention: F is b nonempty subsets of [10], every target is the union of at most two members, overlaps allowed, empty union allowed. Let p=a2, q=a3, H=a≥4, I=Σ_j j a_j, and W=Σ_{j≥3}(j−2)a_j, so I−10=2b−20+W. Let G be the graph of selected pairs, S=Σ_v C(deg(v),2) its number of wedges, t its triangle count, and D=S−t.
+
+## 1. Lower-bound incidence using forced triples
+
+Earlier target counts give H≥7 and a≥5≥2. Every triple with no selected pair must be selected, and inclusion-exclusion gives q≥120−8p+D. Each 3-set contributes one to W; each member of size ≥4 contributes at least two; and each member of size ≥5 contributes one more. Thus
+
+```W ≥ q+2H+a≥5 ≥ q+16 ≥ 136−8p+D.
+```
+
+The four earlier disjoint classes of redundant nonempty union representations were: containment pairs {A,{i}}, singleton pairs producing selected edges, all but one edge+outside-singleton representation of each covered triple, and pairs of adjacent selected edges. They total at least (I−10)+p+D+S.
+
+## 2. A fifth class from four-cycles
+
+For each 4-set Q let c_Q be the number of perfect matchings of Q whose two edges are selected. Each matching is a pair of *disjoint* selected edges with union Q. Keep one such representation and discard the remaining max(c_Q−1,0). Let
+
+```D4 = Σ_Q max(c_Q−1,0).
+```
+
+These pairs are not in the earlier classes: the earlier edge-edge pairs are adjacent, and the other classes use a singleton. Since 0≤c_Q≤3, max(c_Q−1,0)≥(2/3) C(c_Q,2). Each pair of perfect matchings on the same Q forms one 4-cycle, including all three distinct 4-cycles in a K4. If K is the number of 4-cycles,
+
+```D4 ≥ (2/3) K.
+```
+
+Let λ_uv be the number of common neighbors of vertices u,v. Every 4-cycle has two pairs of opposite vertices, so 2K=Σ_{u<v} C(λ_uv,2). For every integer z≥0, C(z,2)≥z−1. Summing only over selected edges and using Σ_{uv∈E} λ_uv=3t gives
+
+```2K ≥ Σ_{uv∈E}(λ_uv−1) = 3t−p,
+so D4 ≥ t−p/3.
+```
+
+The last lower bound may be negative; D4 remains nonnegative. It is still valid for the subsequent inequality.
+
+## 3. Derive the pair-count cutoff
+
+Every one of the 1023 nonempty targets must occur among the b singles and C(b,2) unordered distinct pairs. Subtract the five disjoint redundant representation classes:
+
+```1023 ≤ b(b+1)/2 − (I−10) − p − D − S − D4.
+```
+
+For b≤50, the b-dependent part b(b+1)/2−2b+20 is at most 1195. Substitute the W lower bound:
+
+```1023 ≤ 1195 − (136−8p+D) − p − D − S − D4
+ = 1059 + 7p − 2D − S − D4,
+hence 2D+S+D4 ≤ 7p+36.
+```
+
+Meanwhile 3t≤S gives D=S−t≥2S/3, and D4≥t−p/3, so
+
+```2D+S+D4 ≥ 2(S−t)+S+t−p/3
+ = 2S+D−p/3
+ ≥ 8S/3−p/3.
+```
+
+Combining yields S≤(11p+54)/4. For every integer d≥0, C(d,2)≥4d−10 because (d−4)(d−5)≥0. Summing over ten vertices gives S≥8p−100. Thus
+
+```8p−100 ≤ (11p+54)/4,
+so 21p ≤ 454.
+```
+
+For integral p this gives **p≤21**: every p≥22 is excluded if b≤50.
+
+## 4. What remains and how to check
+
+This is only a pair-count reduction. It relies on the earlier H≥7 and a≥5≥2 target arguments, the exact four-class collision count, and the new fifth class. Separately proposed p=16,17 and 18 eliminations need their own review; do not combine them as a finished global bound until every case is independently justified. A possible case tree should name exactly which p remain and which cited lemmas are actually accepted.
+
+Review in parallel: (1) classify every representation discarded and prove no two classes overlap; (2) verify 4-cycle and codegree identities on K4 by hand; (3) check W and all rounding/inequality directions; (4) look for prior art; (5) formalize the finite arithmetic in a small independent checker if useful. A solver timeout or feasible relaxation is UNKNOWN. No P-versus-NP or novelty claim is made. — ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
