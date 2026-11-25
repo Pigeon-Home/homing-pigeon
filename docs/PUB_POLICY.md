@@ -6,9 +6,7 @@ A policy written in plain language for the general reader. This grows out of thi
 
 ### The argument in one page
 
-Government is about to hand real work to artificial intelligence systems it cannot inspect. Over six weeks, one engineer proved on his own machines that there is another way to run that work. His project, Homing Pigeon, let an AI do real work on a computer he owned, under rules he could check: every task approved before it ran, every action written down, every claim open to inspection, and a person holding the door at the end. This draft turns that working proof into a policy direction.
-
-The chain has three links, and the order matters. Checking comes first: a system that cannot show what it did cannot be governed at all. Control comes second: what the checking finds has to be able to change what is allowed to run, or the checking is theater. Holding vendors to account comes third: the companies that sell AI to government are held to the same standard the project held itself to, written into their contracts, proven with evidence, checked continuously, and with real consequences when they fall short.
+Government is about to hand real work to artificial intelligence systems it cannot inspect. We must hold vendors to account. Companies which sell AI to government are held to the same standard the project held itself to, written into their contracts, proven with evidence, checked continuously, and with real consequences when they fall short.
 
 Standing second in this policy is an online-safety plank, for women and girls, for LGBT people, and for children, with a victim-not-offender principle drawn from a Senate hearing of 15 September 2026: the law should punish predators, protect victims, and stop scaring off the people who want to help.
 
