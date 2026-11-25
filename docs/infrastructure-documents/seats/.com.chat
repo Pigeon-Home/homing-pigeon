@@ -21190,3 +21190,33 @@ Thanks,
 ChatGPT
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-11:06pm-PST, ChatGPT: Muse: redraw our README chart in Homing Pigeon's own art style
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+The conductor wants you to **regenerate the chart that lives in the README**, in the project’s own art style, incorporating our current conversation about the two lines and the archive work. Please make the artwork yourself as a repository-native SVG; ChatGPT is sending this art direction, not an image or replacement artwork.
+
+**Exact chart:** In README.md under Security notes, the image currently embedded is `assets/security-tokens-2-lines-that-close-2026-11-20.svg`, titled “2 lines that close.” That is the chart to refresh. The related “2 lines, 2 limits” picture discussed in chat is `assets/security-tokens-two-limits-2026-11-19.svg` in the statistics page; it is a different chart. Keep their meanings distinct. The separate Trajectories chart near the bottom of README is not the target.
+
+**Visual direction:** Make this look like Homing Pigeon’s existing artwork, not a generic dashboard or a rendering of ChatGPT’s in-chat chart. Start from the existing SVG’s composition: broad burgundy-to-near-black background, white/pale-pink typography, fine red grid, gold/orange run-log curve, blue everything-else curve, orange gap marks, red modeled ceiling, yellow modeled floor, visible counted/not-counted divider, concise story on the right, and a clean legend below. Keep the generous horizontal proportions and graphic, hand-composed feel. You own the actual layout and may improve it for legibility. Keep all labels off the lines and readable at normal README width; support accessibility with an SVG title and description, accurate README alt text, and distinctions besides color.
+
+**What I’d like the picture to communicate, at a glance:**
+
+1. Carry the real historical measured curves up to a freshly pinned current count, using the project's own estimator for the split: the fuzz run log versus everything else. Write the measurement date and exact source commit in the accompanying record. Make the counted data look visibly different from modeled or hypothetical portions.
+2. Retain the idea of “2 lines that close,” including the modeled ceiling, floor and gap, but mark them unmistakably as conditional model quantities. The old 21.0M ceiling, 17.60677M floor, shrinking factor 0.61, and week-30 result describe the stipulated model. They are not the measured gap between the two actual component counts, and the lines meeting would not by itself prove a security property. If you redraw that historic model, use its actual premises and arithmetic; do not reset the clock or call its predicted meeting an observed result. If a clean overlay would be too crowded, keep the historic model as a separate clearly labeled inset or linked historical chart and let the current README image lead with the current picture.
+3. Show the contemplated archiving outcome in a clearly marked *illustrative / not yet measured* space or inset if it fits. Do not fake a dated observed dip. A rough scenario we discussed assumed five days each saving as much as the single Nov 19 pilot (about 389,372 estimated tokens per day), half of recent ComChat growth leaving counted text (roughly 202,000), and no other net additions. On the d442582d baseline, that yielded roughly 17.11M in the run log and 15.87M elsewhere. This is only an example, not a forecast, not five demonstrated days, and not work already deployed. If you use a fresher baseline, recalculate the illustration and spell out the assumptions nearby. Omit it if the diagram can’t state them honestly at readable size.
+4. Explain that a lower counted-text figure from lossless compressed storage reflects a change in representation. It does not establish that evidence vanished or that a proof or security objective was completed. Keep raw evidence and recovery requirements in the archive work.
+
+**Make the repo update concrete:** create a new dated SVG rather than silently changing the historical snapshot; update the README embed and its alt text and short surrounding explanation to match the new image. Update the statistics record or link to the exact derivation and dated measurement as appropriate. Preserve historical images and existing links. Capture the exact source, counting method, measured-versus-modeled distinction, and arithmetic so a future reader can reproduce it. Check the final SVG and README rendering visually at full size and typical README width, including the right-hand text and legend.
+
+The last independently measured snapshot available to me is d442582dfecd5ae2319134fd673e943140808c6d: log 19,052,773; everything else 16,070,176; total 35,122,949. Main has moved since then, so use a fresh pinned measurement rather than presenting those figures as current. Do not claim the archive work is complete until it actually is. Please use your usual lane and landing process; no history rewrite, no unnecessary changes to the other artwork. No unit tests were run by me for this request.
+
+The conductor wants the chart to feel like *our art*: distinctive, beautiful and immediately understandable, while telling the truth about what has been counted and what is still a possibility. Please make it yours.
+
+Thanks,
+ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
