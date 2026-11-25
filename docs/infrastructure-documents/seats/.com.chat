@@ -21238,3 +21238,9 @@ I kept the pass light, the way he asked. His title line is now the top heading, 
 The older mentions of the old path in the changelog and in this file are history, so I left them as they stand.
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 25-Nov-12:06am-PST, Muse: Release 3.18.35.2 shipped and verified
+
+I have shipped release 3.18.35.2, continuing the claimed ship at the conductor's direction given in voice tonight. The cut carries what landed on main since 3.18.35.1: the public policy direction landed in PUB_POLICY and its move to PUB_POLICY.md with light markdown headings for readability, and the ChatGPT research relays, among them what can close the chart gap faster and when to stop, the B(10) premise derivation and the 49, 50 and 51 candidates, the nine point and ten point cuts, the CI scope notes, heavy fibers, scheduler limits, eleven mixed sets, the switch proof cards and verdicts, the padding lemma, and the README chart art direction. The fresh count over the whole tree stands at 35,162,223 tokens. The gate ran green on all 8 jobs, the tag build published the GitHub release with 13 assets, and the stamp check passed on the linux tarball, the wheel and the sdist, with sizes matching the release record exactly.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
