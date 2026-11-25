@@ -2,7 +2,7 @@
 
 # Public Policy
 
-A policy direction for a vice-presidential candidacy, written in plain language for the general reader. It grows out of a working project in computer security, and it follows one simple chain: first we learn how to check what a computer system actually did, then we learn how to control it, and then we hold the companies that sell these systems to the government to the same standard. The technical detail is real, and it is kept where it belongs: in the audit section at the back of this document, written for the technical readers who will want it.
+A policy direction for a vice-presidential candidacy, written in plain language for the general reader. It grows out of a working project in computer security, and it follows one simple chain: first we learn how to check what a computer system actually did, then we learn how to control it, and then we hold the companies that sell these systems to the government to the same standard.
 
 ### The argument in one page
 
