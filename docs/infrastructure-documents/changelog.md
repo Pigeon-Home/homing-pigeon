@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.35.3 - 2026-11-25
+
+- Land on main (since 3.18.35.2) -- the 2 lines, 2 limits chart drawn again to 24 November 2026 in the statistics and README chart work, and the ComChat entry recording release 3.18.35.2 shipped and verified
+
 ## 3.18.35.2 - 2026-11-25
 
 - Land on main (since 3.18.35.1) -- the public policy direction landed in docs/PUB_POLICY after review, and the ChatGPT ComChat relays: what can close the chart gap faster and when to stop, the B(10) premise derivation and the 49, 50 and 51 candidates, nine point and ten point cuts, CI scope notes, heavy fibers, scheduler limits, eleven mixed sets, switch proof cards and verdicts, the padding lemma, and the README chart art direction
