@@ -446,7 +446,7 @@ The runner is fully inspectable, so audit what it would do before it does it, an
   [the statistics record](docs/infrastructure-documents/project/statistics.md);
   the chart itself:
 
-![2 lines that close: a ceiling for the fuzz run log at 21.0 million closing by 0.61 a week onto the line of everything else at 17.6 million, the gap of 3,393,230 between them closing to 0 in 30 weeks, and the whole tree at 35.2 million where the 2 lines meet](assets/security-tokens-2-lines-that-close-2026-11-20.svg)
+![2 lines that close: a ceiling for the fuzz run log at 21.0 million closing by 0.61 a week onto the line of everything else at 17.9 million, the gap of 3,056,466 between them closing to 0 in 30 weeks, and the whole tree at 35.9 million where the 2 lines meet](assets/security-tokens-2-lines-that-close-2026-11-20.svg)
 
 - The same count, opened in its 2 parts and read for the limit a
   rule gives each, drawn again on 2026-11-24:

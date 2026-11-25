@@ -480,33 +480,71 @@ class TestFifthSnapshot(unittest.TestCase):
     def test_the_closing_chart_of_20_november_stands_in_the_tree(self):
         # The closing chart of 2026-11-20 closes this view:
         # a ceiling for the run log at 21.0 million, closing
-        # by 0.61 a week onto the line of everything else at
-        # 17.6 million, the gap between the 2 lines closing
-        # to 0, and the whole at 35.2 million where they meet.
-        # The chart was drawn with numbers by the research
-        # zipped in the archive, and it carries that reading's
-        # own figures. Its 2 line labels were reworded for a
-        # cold reader on 2026-11-21 (they named the lines by
-        # their colours, addressed to the drawing's maker);
-        # the pins below carry the new wording.
+        # by 0.61 a week onto the line of everything else,
+        # the gap between the 2 lines closing to 0, and the
+        # whole where they meet. The chart was drawn with
+        # numbers by the research zipped in the archive, and
+        # it carries that reading's own figures. Its 2 line
+        # labels were reworded for a cold reader on
+        # 2026-11-21 (they named the lines by their colours,
+        # addressed to the drawing's maker); the pins below
+        # carry the new wording. The chart was drawn again
+        # on 2026-11-25, counted to 2026-11-24: the floor
+        # the rule gives everything else from that count is
+        # 17,943,534, the gap is 3,056,466, the whole at the
+        # meeting is 35.9 million, and the counted end of
+        # the run log, 19,052,773, stands above the floor
+        # line, where the drawing of 2026-11-20 had it
+        # below the floor of its day.
         text = _read(STATISTICS)
         self.assertIn(self.CLOSING_CHART, text)
         path = os.path.join(REPO, "assets", self.CLOSING_CHART)
         self.assertTrue(os.path.isfile(path), self.CLOSING_CHART)
         chart = _read(path)
         for stated in ("21.0M: the run log's ceiling",
-                       "17.6M: everything else's floor",
-                       "3.39M", "35.2M",
+                       "17.9M: everything else's floor",
+                       "3.06M", "35.9M",
+                       "the gap on 24 November",
+                       "from the count of 24 November 2026",
+                       "27.5M: the run log's own line, with no bend",
                        "gap 1 at week 29, 0 at week 30",
                        "a faster closing reaches 0 sooner"):
             self.assertIn(stated, chart, stated)
+        # The README carries the same chart under the same
+        # figures, so the front page and this record agree.
+        readme = _read(os.path.join(REPO, "README.md"))
+        self.assertIn("assets/" + self.CLOSING_CHART, readme)
+        self.assertIn("the gap of 3,056,466 between them", readme)
         lines = text.splitlines()
         section = "\n".join(lines[lines.index(self.HEADING):
                                   lines.index("## Where the project stands")])
-        self.assertIn("The gap between the 2 lines is 3,393,230", section)
-        self.assertIn("the whole tree at 35.2 million", section)
+        self.assertIn("The gap between the 2 lines is 3,056,466", section)
+        self.assertIn("the whole tree at 35.9 million", section)
         self.assertIn("is guaranteed by week 30", section)
         self.assertIn("stands at 1 in week 29 and at 0 in week", section)
+
+    def test_the_closing_chart_s_run_log_dot_stands_above_the_floor(
+            self):
+        # The counted end of the run log is the amber dot at
+        # the counted edge; the floor is the yellow line.
+        # On the chart's own geometry the dot's centre must
+        # stand above the line (a smaller y is higher), and
+        # the values behind the geometry are the count of
+        # 2026-11-24: the run log at 19,052,773 against the
+        # floor at 17,943,534.
+        chart = _read(os.path.join(REPO, "assets", self.CLOSING_CHART))
+        floor = re.search(
+            r'<path d="M 80 ([\d.]+) L 704 \1" fill="none" '
+            r'stroke="#ffe14a"', chart)
+        self.assertIsNotNone(floor, "the yellow floor line")
+        dot = re.search(
+            r'<circle cx="([\d.]+)" cy="([\d.]+)" r="6.5" '
+            r'fill="#c98500"', chart)
+        self.assertIsNotNone(dot, "the run log's counted dot")
+        self.assertLess(float(dot.group(2)), float(floor.group(1)))
+        # The counted edge is the count of 2026-11-24: day
+        # 40 of the 77 days to 31 December, at x 404.2.
+        self.assertEqual("404.2", dot.group(1))
 
 
 class TestSixthSnapshot(unittest.TestCase):

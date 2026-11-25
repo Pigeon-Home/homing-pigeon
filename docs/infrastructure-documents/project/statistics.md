@@ -522,25 +522,35 @@ with the research that supports it. The view above lets
 the run log keep its own line toward 28.4 million. This
 reading bends that line down instead: a ceiling for the
 log at 21.0 million, closing onto the
-line of everything else at 17.6 million by at least
+line of everything else at 17.9 million by at least
 0.39 of the gap a week.
-The gap between the 2 lines is 3,393,230 at the count
-of 2026-11-19, and at that minimum rate of closing 0
+The gap between the 2 lines is 3,056,466 at the count
+of 2026-11-24, and at that minimum rate of closing 0
 is guaranteed by week 30: the slowest trajectory the
 rule allows stands at 1 in week 29 and at 0 in week
 30, and a faster closing the rule also allows may
-arrive earlier. Where the 2 lines meet, both parts stand at 17.6
-million and the whole tree at 35.2 million. This reading
+arrive earlier. Where the 2 lines meet, both parts stand at 17.9
+million and the whole tree at 35.9 million. This reading
 names no limit first either: the 2 starting lines and
 the rate are given, and the meeting point follows from
 them.
 
-![2 lines that close: a ceiling for the fuzz run log at 21.0 million closing onto the line of everything else at 17.6 million by at least 0.39 of the gap a week, the gap of 3,393,230 between them closing to 0 by week 30 at the latest, and the whole tree at 35.2 million where the 2 lines meet](../../../assets/security-tokens-2-lines-that-close-2026-11-20.svg)
+The closing chart was drawn again on 2026-11-25,
+counted to 2026-11-24, the count of the sixth snapshot
+below: the run log stood at 19,052,773 and everything
+else at 16,080,421, the floor the rule gives everything
+else from those counts is 17,943,534, and the counted
+end of the run log stands above that line on the chart,
+where the drawing of 2026-11-20 had it below the floor
+of its day. Every figure of this section is read off
+that count.
+
+![2 lines that close: a ceiling for the fuzz run log at 21.0 million closing onto the line of everything else at 17.9 million by at least 0.39 of the gap a week, the gap of 3,056,466 between them closing to 0 by week 30 at the latest, and the whole tree at 35.9 million where the 2 lines meet](../../../assets/security-tokens-2-lines-that-close-2026-11-20.svg)
 
 What the 0 means. Zero is where the gap closes: nothing
 of the run log stands above the line of everything else,
 the 2 parts stand at 1 figure, and the whole tree stands
-at 35.2 million. It is reached, not only approached.
+at 35.9 million. It is reached, not only approached.
 Tokens are whole numbers, and a gap of whole tokens that
 closes by at least 0.39 of itself each week, so it never
 stands above 0.61 of itself from one week to the next,
@@ -584,7 +594,7 @@ everything else would by itself prove nothing about the
 2 counts. And the meeting point follows from the floor
 being fixed: the line of everything else stands at its
 limit while the ceiling descends to it, so the 2 lines
-meet at 17,606,770 and the whole there is 35,213,540,
+meet at 17,943,534 and the whole there is 35,887,068,
 twice the point. With both lines free to move, the
 meeting point is not unique, and the total at the
 meeting requires the 2 actual counts to meet at the
