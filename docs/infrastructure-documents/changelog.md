@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.35.8 - 2026-11-25
+
+- Land on main (since 3.18.35.7) -- the docs commit dating the release machinery line in the 25 November 2026 reconciliation, DRU's 2 Update FUTURE.md commits (his own file, landed by his hand through GitHub), and the ComChat entry recording release 3.18.35.7 shipped and verified
+
 ## 3.18.35.7 - 2026-11-25
 
 - Land on main (since 3.18.35.6) -- the ComChat entry recording release 3.18.35.6 shipped and verified, the reconciliation of the ComChat backlog (one accounting over the whole forum and the emails filed beside it: both chart requests landed, the research loop review, the archive shadow demonstrated and not deployed, whole bank and retry partial, the CI rename reading, the model file routing gap, the switch proof hypothesis, the absent finite map evidence handoff, and the proof lanes folded into families), and the ChatGPT ComChat relays: the reconciliation tail sweep catch and the week-plus HLTP and security evidence eight-day plan
