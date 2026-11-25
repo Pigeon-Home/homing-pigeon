@@ -19691,3 +19691,31 @@ The user's question was about making progress faster: parallelizing verifier, mo
 — ChatGPT
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-7:47pm-PST, ChatGPT: Muse token gap ec17210 — What closes the chart faster
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+Andrew asked whether the last two or three days of work can make the “2 lines that close” gap close faster. My answer is yes through a verified run-log fold. The proof work provides a concrete way to preserve the evidence while folding, and the latest release does not land a fold.
+
+I reviewed main at ec1721005326411ede5c403f7a560af139ff49ec, release 3.18.35.1. Its statistics publish 35,096,326 tokens at the measured source commit e4af97f1. I counted the pinned runs.jsonl with the project estimator: 19,052,773. Subtracting that from the published whole gives 16,043,553 for the rest and an actual difference of about 3.01M. The Nov 21 measured split was 16,740,539 and 15,331,349, an actual difference of about 1.41M. The change over that interval is about 1.60M wider: the log added 2.31M and the rest added 0.71M. The whole is now close to the chart's eventual combined total, but the actual parts are still apart. The log blob did not change between the two latest pinned research snapshots. The narrowing across that narrower interval came from growth outside the log. First compare at a pinned ref with the same metric before labeling any change as savings.
+
+The image's starting 3,393,230 is a different quantity: the modeled 21,000,000 log ceiling minus the 17,606,770 non-log floor. The chart reaches zero by week 30 under a guaranteed minimum weekly closing rule of 39%. If a deployed policy achieved 50% every week from the same starting gap, the integer recurrence would close in 22 weeks. At 60% it would close in 17. These are conditional calculations. Keep the date used for a weekly policy explicit: the SVG labels Nov 21, while the historical archive uses a Nov 19 snapshot for its dated weekly examples. A real fold can bring the log below the modeled floor before those schedules, without producing actual equality of the two components. From the pinned measured log, crossing down to that modeled floor requires about 1.45M net log-token savings, after new ingestion. Equaling the currently measured non-log count would require about 3.01M at that snapshot.
+
+Start with one cold completed day or week. The existing archive prototype estimated 677,562 tokens for a folded representation of the Nov 19 log of 16,318,728. It is a historical sizing result. Its “new arcs or entries” predicate does not establish that everything else is safe to aggregate. Keep findings, crashes, slow and anomalous cases, unique obligation witnesses, exact counts, and a durable pointer to replayable raw records. Keep recent raw history for scheduling and avoid grouping across incompatible build, target, rig, config, schema, or oracle scope. Do a shadow comparison before replacing anything. In the current bindings reader a grow row contributes 1 run plus tried and outcome counts. A summary must supply its original grow_count or the reader will undercount. The exact quotient in the newly landed research review gives the right pattern: name what an observer reads, prove the summary preserves that projection, and keep promised ordering or individual replay access through the retained raw ledger. Its tiny model check is separate from runner conformance.
+
+Give one owner the cold shard and inventory of consumers, one the independently checked totals and witness IDs, and one the before/after token and archive-byte measurement. A useful first checkpoint is a per-shard net saving with verified findings, totals and replay. Keep archive size reported separately under the same storage boundary. The next step can cap hot-log growth with automatic summaries for completed shards while preserving raw replay. The recorded Nov 13 fold also demonstrates that storage representation can move the measured total. The current SAT bounds and randomized clocks shorten bounded research jobs in their own scopes. The near-term lever for this particular chart is the log representation.
+
+Sources:
+https://github.com/Pigeon-Home/homing-pigeon/commit/ec1721005326411ede5c403f7a560af139ff49ec
+https://github.com/Pigeon-Home/homing-pigeon/blob/ec1721005326411ede5c403f7a560af139ff49ec/docs/infrastructure-documents/project/statistics.md
+https://github.com/Pigeon-Home/homing-pigeon/blob/e4af97f1be509d7cc2ec7761bd19a8ed0c4aed1e/docs/archive/2-lines-that-close-2026-11-20.zip
+https://github.com/Pigeon-Home/homing-pigeon/blob/e4af97f1be509d7cc2ec7761bd19a8ed0c4aed1e/docs/infrastructure-documents/proofs/research-loops-review-2026-11-24.md
+https://github.com/Pigeon-Home/homing-pigeon/blob/e4af97f1be509d7cc2ec7761bd19a8ed0c4aed1e/runner/tests/test_v4_bindings.py#L275
+
+00000000-chatGPT-481e-81fe-3fc2a698901c
+END CHATGPT TOKEN GAP ec17210
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
