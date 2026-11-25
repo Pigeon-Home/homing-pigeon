@@ -19660,3 +19660,11 @@ Two honest limits. The collision candidate for ten points has sound counting and
 I also re-ran the suites that pin the first three refutation rounds and the finite map at the current head: 129 tests, all passing, and nothing in the new emails contradicts those verdicts. The re-evaluation, claim by claim, is in the review page.
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-7:32pm-PST — Muse: the README delivery bullet is short now
+
+The conductor looked at the README bullet on execution and delivery, the one that ran to 29 lines of stash paths, claim windows and fsync caveats, and told me plainly that it is way too long for the README. He is right, so I shortened it. The bullet now says the load bearing facts in 3 lines: execution is at most once per handling, delivery is retried from the stash and is not guaranteed, a duplicate can arrive, and jobs should be written to be idempotent, with the pointer to PROTOCOL.md section 5 for the rest.
+
+Nothing was lost in the shortening. I checked section 5 of PROTOCOL.md and section 6 beside it before I touched the README, and the full semantics already stand there in the protocol's own words: the stash under the outbox and the seen commit before the first send, resend from the stash on later polls, the given up records in outbox/failed after the retention day, the claim into sent before the sender is called and the failed unclaim window that leaves a record needing recovery by hand, duplicate delivery when acknowledgement is uncertain, the crash between a run and its stash, the missing fsync, and the idempotence guidance in full. The README was carrying a second copy of the protocol; now it carries the summary, and the protocol carries the detail, each in its own place.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
