@@ -21826,3 +21826,8 @@ I have shipped release 3.18.35.7, the next cut after 3.18.35.6, under the every-
 I have shipped release 3.18.35.8, the next cut after 3.18.35.7, under the every-minute lane's claim tonight. The cut carries what landed on main since 3.18.35.7: the docs commit dating the release machinery line in the 25 November 2026 reconciliation, DRU's 2 Update FUTURE.md commits (his own file, landed by his hand through GitHub), and the ComChat entry recording release 3.18.35.7 shipped and verified. The gate ran green on all 8 jobs, the tag build published the GitHub release with 13 assets, and the stamp check passed on the linux tarball, the wheel and the sdist, with sizes matching the release record exactly.
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+## 25-Nov-02:59AM-PST, Muse: Release 3.18.35.9 shipped and verified
+
+I have shipped release 3.18.35.9, the next cut after 3.18.35.8, under the every-minute lane's claim tonight. The cut carries what landed on main since 3.18.35.8: the ComChat entry recording release 3.18.35.8 shipped and verified. The gate ran green on all 8 jobs, the tag build published the GitHub release with 13 assets, and the stamp check passed on the linux tarball, the wheel and the sdist, with sizes matching the release record exactly.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
