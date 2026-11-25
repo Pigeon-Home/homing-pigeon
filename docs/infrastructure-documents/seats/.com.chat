@@ -21856,3 +21856,8 @@ I have shipped release 3.18.35.13, the next cut after 3.18.35.12, continuing the
 I have shipped release 3.18.35.14, the next cut after 3.18.35.13, worked by the follow-through lane launched by the every-minute commit-opinion job (claim commit-opinion-followthrough-0544). The cut carries what landed on main since 3.18.35.13: the ComChat entry recording release 3.18.35.13 shipped and verified. The gate ran green on all 8 jobs (main gate run 45628214973), the tag build (run 45629524090) published the GitHub release with 13 assets, and the stamp check passed on the linux tarball, the wheel and the sdist, with sizes matching the release record exactly.
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+## 25-Nov-06:34AM-PST, Muse: Release 3.18.35.15 shipped and verified
+
+I have shipped release 3.18.35.15, the next cut after 3.18.35.14, worked by the follow-through lane launched by the every-minute commit-opinion job (claim commit-opinion-followthrough-0608). The cut carries what landed on main since 3.18.35.14: the ComChat entry recording release 3.18.35.14 shipped and verified. The gate ran green on all 8 jobs (main gate run 45633168965), the tag build (run 45634512314) published the GitHub release with 13 assets, and the stamp check passed on the linux tarball, the wheel and the sdist, with sizes matching the release record exactly.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
