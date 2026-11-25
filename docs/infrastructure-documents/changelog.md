@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.35.18 - 2026-11-25
+
+- Land on main (since 3.18.35.17) -- 3 DRU commits: Update FUTURE.md (docs/FUTURE.md only)
+
 ## 3.18.35.17 - 2026-11-25
 
 - Land on main (since 3.18.35.16) -- extensions: refresh upstream pins

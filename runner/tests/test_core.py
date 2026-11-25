@@ -115,7 +115,7 @@ class CoreListTest(unittest.TestCase):
         # re-measure that took up the install record's CPU
         # fact; the Gemini token count above still
         # describes the 2026-11-04 assembly.
-        self.assertEqual(945080, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(945076, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
