@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.35.2 - 2026-11-25
+
+- Land on main (since 3.18.35.1) -- the public policy direction landed in docs/PUB_POLICY after review, and the ChatGPT ComChat relays: what can close the chart gap faster and when to stop, the B(10) premise derivation and the 49, 50 and 51 candidates, nine point and ten point cuts, CI scope notes, heavy fibers, scheduler limits, eleven mixed sets, switch proof cards and verdicts, the padding lemma, and the README chart art direction
+
 ## 3.18.35.1 - 2026-11-25
 
 - Land on main (since 3.18.34.25) -- ChatGPT research relays (loops 3414840 and 379cfc6, the simulation pair, CI reviews, For Muse 2/3 and 3/3), Muse's checked review of the November research loops with a re-evaluation of rounds 1 to 3 (25 tests), DRU's FAQ PGP wording edit, and the README delivery bullet shortened to its load bearing facts with the full semantics standing in PROTOCOL.md section 5
