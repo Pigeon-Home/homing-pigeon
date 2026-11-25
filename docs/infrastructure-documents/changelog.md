@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.35.1 - 2026-11-25
+
+- Land on main (since 3.18.34.25) -- ChatGPT research relays (loops 3414840 and 379cfc6, the simulation pair, CI reviews, For Muse 2/3 and 3/3), Muse's checked review of the November research loops with a re-evaluation of rounds 1 to 3 (25 tests), DRU's FAQ PGP wording edit, and the README delivery bullet shortened to its load bearing facts with the full semantics standing in PROTOCOL.md section 5
+
 ## 3.18.34.25 - 2026-11-24
 
 - Land on main (since 3.18.34.24) -- DRU's two FAQ updates adding the P vs NP entry to docs/FAQ.md

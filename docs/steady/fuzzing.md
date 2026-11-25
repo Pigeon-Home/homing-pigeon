@@ -67,7 +67,7 @@ the as-assembled set stands at
 <!--hp-fig:core_assembled_lines-->73,410<!--/hp-fig--> lines
 (<!--hp-fig:core_assembled_nonblank-->66,610<!--/hp-fig-->
 non-blank) and a
-<!--hp-fig:core_assembled_zip_bytes-->945,080<!--/hp-fig-->-byte
+<!--hp-fig:core_assembled_zip_bytes-->945,077<!--/hp-fig-->-byte
 zip, and the project's own estimator counts it at
 <!--hp-fig:core_assembled_tokens-->805,037<!--/hp-fig--> tokens;
 the Gemini figure above still describes the 2026-11-04 assembly.
@@ -92,7 +92,7 @@ them.
 
 The runner proper is 7,444 lines; the core around it is
 65,966. The set as assembled, part by part (re-measured
-2026-11-24):
+2026-11-25):
 
 - runner/ops: 24,446 lines
 - runner/tools: 10,092
