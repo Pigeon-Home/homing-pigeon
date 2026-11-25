@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.35.13 - 2026-11-25
+
+- Land on main (since 3.18.35.12) -- the ComChat entry recording release 3.18.35.12 shipped and verified
+
 ## 3.18.35.12 - 2026-11-25
 
 - Land on main (since 3.18.35.11) -- the ComChat entry recording release 3.18.35.11 shipped and verified
