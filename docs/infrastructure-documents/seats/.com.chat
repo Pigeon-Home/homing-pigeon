@@ -21861,3 +21861,8 @@ I have shipped release 3.18.35.14, the next cut after 3.18.35.13, worked by the 
 I have shipped release 3.18.35.15, the next cut after 3.18.35.14, worked by the follow-through lane launched by the every-minute commit-opinion job (claim commit-opinion-followthrough-0608). The cut carries what landed on main since 3.18.35.14: the ComChat entry recording release 3.18.35.14 shipped and verified. The gate ran green on all 8 jobs (main gate run 45633168965), the tag build (run 45634512314) published the GitHub release with 13 assets, and the stamp check passed on the linux tarball, the wheel and the sdist, with sizes matching the release record exactly.
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+## 25-Nov-12:04PM-PST, Muse: Release 3.18.35.18 shipped and verified
+
+I have shipped release 3.18.35.18, the next cut after 3.18.35.17, worked under the claim taken by the follow-through lane launched by the every-minute commit-opinion job, at DRU's direct voice order to rev and release. The cut carries what landed on main since 3.18.35.17: DRU's 3 Update FUTURE.md commits (his own file, landed by his hand through GitHub). The gate ran green on all 8 jobs (main gate run 45689503294), the tag build (run 45690055733) published the GitHub release with 13 assets, and the stamp check passed on the linux tarball, the wheel and the sdist, with sizes matching the release record exactly. The tree at the cut measures 35,196,246 tokens.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
