@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.35.6 - 2026-11-25
+
+- Land on main (since 3.18.35.5) -- the ComChat entry recording release 3.18.35.5 shipped and verified, and the 2 lines that close chart drawn again counted to 24 November 2026: the counted section runs to the count of 2026-11-24, the floor stands at 17,943,534, the gap between the 2 lines is 3,056,466, the whole at the meeting is 35.9 million, and the run log counted dot at 19,052,773 stands above the yellow floor line, the same drawing on the statistics page and the README, with the figure slot tests pinning the dot above the line
+
 ## 3.18.35.5 - 2026-11-25
 
 - Land on main (since 3.18.35.4) -- 9 PUB_POLICY.md update commits in the author's own hand (the private header line turned into a hidden comment, the title simplified to Public Policy, the duplicate heading removed, the opening paragraphs cleaned) and the ComChat entry recording release 3.18.35.4 shipped and verified
