@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.35.9 - 2026-11-25
+
+- Land on main (since 3.18.35.8) -- the ComChat entry recording release 3.18.35.8 shipped and verified
+
 ## 3.18.35.8 - 2026-11-25
 
 - Land on main (since 3.18.35.7) -- the docs commit dating the release machinery line in the 25 November 2026 reconciliation, DRU's 2 Update FUTURE.md commits (his own file, landed by his hand through GitHub), and the ComChat entry recording release 3.18.35.7 shipped and verified
