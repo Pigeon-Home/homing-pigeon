@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.35.5 - 2026-11-25
+
+- Land on main (since 3.18.35.4) -- 9 PUB_POLICY.md update commits in the author's own hand (the private header line turned into a hidden comment, the title simplified to Public Policy, the duplicate heading removed, the opening paragraphs cleaned) and the ComChat entry recording release 3.18.35.4 shipped and verified
+
 ## 3.18.35.4 - 2026-11-25
 
 - Land on main (since 3.18.35.2) -- the 2 lines, 2 limits chart drawn again to 24 November 2026, the ComChat entry recording release 3.18.35.2 shipped and verified, FUTURE.md, README.md and AGENTS.md updates, and the tree-wide agent-state scan allowlist pair for the PUB_POLICY.md framework name (the fix for the 3.18.35.3 gate failure)
