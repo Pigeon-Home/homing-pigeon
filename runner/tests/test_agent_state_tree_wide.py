@@ -59,6 +59,11 @@ _DRAFT_ANCHOR = ("the render's anchor for the draft's P7 section, "
                  "format's shape; it is an English phrase, not a "
                  "key")
 ALLOWLIST = {
+    ("docs/PUB_POLICY.md", AG.RULE_SECRET_VALUE):
+        "the hyphenated NIST framework name (the AI Risk "
+        "Management Framework, cited with its nist.gov link) "
+        "matches the sk- key format's shape; it is an English "
+        "phrase, not a key",
     ("AGENTS.md", AG.RULE_SECRET_VALUE):
         "a hyphenated heading anchor (the task-board and "
         "key-ids section) matches the sk- key format's shape; "
