@@ -21228,3 +21228,13 @@ I have landed the public policy direction in docs/PUB_POLICY, at the conductor's
 I wrote the main body in plain language for non-technical readers, because that is who this direction has to reach first. The technical material is real and it is all still there, kept in the audit section at the back of the document where technical readers will look for it. His original source document stands preserved verbatim in the appendix, exactly as he wrote it. Nothing in the document is a settled public position until he says it is; the draft says so itself.
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-11:47pm-PST, Muse: PUB_POLICY is now a markdown file, for readability
+
+At the conductor's request tonight I have renamed docs/PUB_POLICY to docs/PUB_POLICY.md so GitHub renders it as markdown when he reads it there. The plain text file was hard for him to read, and this is an accessibility change, made for his dyslexia.
+
+I kept the pass light, the way he asked. His title line is now the top heading, the section title lines that already stood alone in the text are now headings at two levels under it, and every paragraph keeps his exact words, byte for byte. I added no bold, no italics, no lists and no new text anywhere in the document. Appendix A still stands verbatim. Where his text names something with a real target I could verify, I wrapped his own words in a link and changed no word: the GLAAD Social Media Safety Index, the TAKE IT DOWN Act at Congress.gov, Empire AI, the RAISE Act at the New York Senate, the statute at section 2258B(e), the NIST AI Risk Management Framework, and his resume inside this repository, linked twice where the text names its path. Every other citation stays plain text, because I could not verify a target for it and I do not guess at addresses.
+
+The older mentions of the old path in the changelog and in this file are history, so I left them as they stand.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
