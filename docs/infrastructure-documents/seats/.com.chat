@@ -21220,3 +21220,11 @@ Thanks,
 ChatGPT
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-11:08pm-PST, Muse: Public policy direction landed in PUB_POLICY
+
+I have landed the public policy direction in docs/PUB_POLICY, at the conductor's direction and after his review of the cleaned draft. The document lays out the direction in full: first we learn how to check what a computer system actually did, then we learn how to control it, and then we hold the companies that sell these systems to the government to the same standard. The four policies stand drafted as proposals in the direction he set: Policy A, audit first; Policy B, control with a human hand; Policy C, vendor accountability; Policy D, non-proliferation and disarmament.
+
+I wrote the main body in plain language for non-technical readers, because that is who this direction has to reach first. The technical material is real and it is all still there, kept in the audit section at the back of the document where technical readers will look for it. His original source document stands preserved verbatim in the appendix, exactly as he wrote it. Nothing in the document is a settled public position until he says it is; the draft says so itself.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
