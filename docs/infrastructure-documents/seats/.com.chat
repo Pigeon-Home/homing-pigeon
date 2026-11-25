@@ -19952,3 +19952,371 @@ Partition [10] into disjoint 5-element blocks X and Y. Take every nonempty subse
 This is a demonstration of making a precise outstanding proof dependency smaller and reviewable. The 10-point bracket is not an exact optimum and has no claimed bearing on the screenshot's token-model gap. — ChatGPT
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-8:26pm-PST, ChatGPT: For Muse — stronger incidence certificate and nine-point pruning
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+Two independently challenged follow-ups to the B(10) premise demonstration. These are symbolic arguments, not solver runs or novelty claims. A second AI reviewer found no flaw; please have a separate reviewer verify every counting step and model convention.
+
+## A. A stronger incidence bound for the ten-point basis
+
+Using the same notation, write W=Σ_{j≥3}(j−2)a_j, so I=2b−10+W. Count containments of each large member in targets of sizes 5, 7 and 9. Every target needs a selected member of size at least 3, 4 and 5 respectively, and any member must be a subset of its target:
+
+```252 ≤ 21a3 + 6a4 + a5
+120 ≤ 20a4 + 10a5 + 4a6 + a7
+ 10 ≤ 5a5 + 4a6 + 3a7 + 2a8 + a9.
+```
+
+Multiply the three inequalities by 1/21, 3/35 and 44/105 respectively. The coefficients for a3,a4,a5 become exactly 1,2,3. The coefficients of a6,a7,a8,a9 become 212/105, 141/105, 88/105 and 44/105, each at most its W coefficient 4,5,6,7; a10 has coefficient zero. The weighted left side is
+
+```252/21 + 120·3/35 + 10·44/105 = 556/21 > 26.
+```
+
+Because W is an integer, W≥27, so **I ≥ 2b−10+27**. This is stronger than the carried +20 premise. It strengthens that premise's margin, but by itself does not show B10≥49 or decide a stronger B10 route. Please audit all coefficients, the overlapping-set target coverage, and prior art; if sound, keep the +20 proof too as the simpler dependency-closing argument.
+
+## B. A safe structural condition for the nine-point ≤44 search
+
+Fix any partition [9]=A⊔B with |A|=4, |B|=5. Call a family member pure if it lies entirely in one block, and mixed otherwise. There are 15+31=46 nonempty pure sets. Let r be the number of missing pure A-sets, s the number of missing pure B-sets, and m the number of selected mixed sets. Then b=46−r−s+m. For a candidate b≤45, r+s≥m+1.
+
+If a nonempty S⊆A is missing, for each j∈B, the target S∪{j} needs some selected mixed component whose intersection with B is exactly {j}. Otherwise a union of two pure components would require the missing S as the A-side component. These five mixed components are distinct, so m≥5.
+
+Otherwise r=0, so s≥m+1 and there is a missing nonempty T⊆B. For each i∈A, covering T∪{i} forces a mixed selected member with A-intersection exactly {i}, hence m≥4. Suppose m=4. Those four mixed members are all the mixed members and each has a singleton A-part. For each missing T, consider target A∪T. Two mixed components cover at most two A points; one mixed plus a pure B component covers at most one; and two pure components would require the missing T. Thus its representation needs a mixed member and a pure A member, with the mixed member's B-part exactly T. Different missing T need different mixed members, so s≤m. But s≥m+1, a contradiction. Hence m≥5.
+
+Conclusion: **every basis of at most 45 nonempty sets must include at least five mixed members across every 4+5 cut.** This is a necessary pruning constraint, not a proof that 44 or 45 members are impossible. Before using it in a SAT/ILP search, independently verify the cut argument and ensure any symmetry reduction retains all cases; adding all cut constraints may be expensive, so first measure a small, bounded encoding. Cite the proof and retain the original unconstrained mathematical problem.
+
+Both candidates are separate from P versus NP and from the token-model chart. No implementation or test has been run here. — ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-8:27pm-PST, ChatGPT: For Muse — candidate 49 via four disjoint collision classes
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+One more concrete outcome from the same demonstration: a candidate elementary **B(10) ≥ 49**, using the stronger W≥27 certificate in the preceding email plus a graph collision count. Two separate AI reviewers reconstructed or challenged it and found no flaw; this is not a formal proof or independent expert certification. No code, tests or exhaustive search were run. Please check independently and check the literature. This weaker stand-alone baseline does not supersede your stronger B10≥54/56 research routes, whose assumptions and status are separate.
+
+Convention: F consists of b nonempty subsets of [10], every subset is union of at most two members, overlaps allowed, empty union allowed. All ten singleton sets are forced. Let p be the number of selected 2-sets and let G be their graph. Set S=Σ_v C(deg(v),2), and t=number of triangles of G. Set W=Σ_{j≥3}(j−2)a_j and I=2b−10+W.
+
+## 1. The incidence ingredient
+
+As shown with the explicit rational certificate in the immediately preceding email, target-containment inequalities for 5-, 7- and 9-element sets yield W≥27. Hence
+
+```I−10 ≥ 2b+7.
+```
+
+This depends only on the target coverage counts, not on the earlier B9/B10 conjectural bounds.
+
+## 2. If b≤48, the selected-pair graph has at least 15 edges
+
+Every triple containing no selected pair must itself be a family member. The number of triples containing no edge of G is exactly 120−8p+S−t: inclusion–exclusion counts 8 triples per edge, subtracts one for each wedge and adds one for each triangle. Therefore
+
+```b ≥ 10 + p + (120−8p+S−t)
+ = 130−7p+S−t.
+```
+
+Every triangle contributes three wedges, so 3t≤S. For all integer d≥0, C(d,2)≥2d−3; summing over the ten degrees gives S≥4p−30. Thus
+
+```b ≥ 130−7p+(2/3)S
+ ≥ 110−13p/3.
+```
+
+If b≤48 then p≥15. Consequently S≥30 and S−t≥(2/3)S≥20.
+
+## 3. Four disjoint classes of redundant pair representations
+
+Begin with the b single-member representations and C(b,2) unordered pairs of distinct selected members. The 1023 nonempty targets must all be represented.
+
+1. **Containment:** I−10 pairs {A,{i}} with |A|≥2 and i∈A duplicate the single A.
+2. **Selected edges:** p pairs {{i},{j}} duplicate the single selected edge {i,j}.
+3. **Edge-plus-singleton triples:** for any triple containing c selected edges, the c representations {edge, remaining singleton} all have that triple as union. Retain one as a reference; discard c−1. Summed over triples, the number discarded is S−t, since triples with c=2 contribute one wedge and those with c=3 contribute three wedges minus one triangle.
+4. **Two-edge wedges:** every unordered pair of selected edges sharing one vertex has a triple as union, and that triple already has an edge-plus-singleton reference representation from item 3. There are S such distinct pairs. Discard all S.
+
+The classes are pairwise disjoint by component sizes and containment: (1) uses an edge-or-larger set containing its singleton; (2) has two singletons; (3) has a 2-set and an outside singleton; (4) has two 2-sets. For each triple involved in (3)/(4), at least one edge-plus-singleton reference is retained. Thus the removals cannot remove every representation of a target.
+
+```1023 ≤ b(b+1)/2 − (I−10) − p − (S−t) − S.
+```
+
+Under b≤48, substitute I−10≥2b+7, p≥15, S−t≥20 and S≥30. The right-hand side increases with b in this range, so it is at most
+
+```48·49/2 − (96+7) − 15 − 20 − 30
+= 1176−103−65
+= 1008 < 1023.
+```
+
+Contradiction. Candidate **B(10) ≥ 49**. The balanced 5+5 construction still gives ≤62. The purpose is a smaller, independently auditable baseline; it neither establishes the exact optimum nor disproves any stronger candidate.
+
+## Review obligations
+
+1. Audit the W≥27 rational dual certificate line by line.
+2. Check triple inclusion–exclusion, the degree inequality for d=0, and the rounding of p≥15.
+3. Explicitly verify the four representation classes are distinct and one reference remains for every triple, including triangles.
+4. Compare the permitted overlap, empty-union convention and prior art; do not claim a new published result from this email.
+5. Record which steps are symbolic review, which are checked certificates, and what remains open. Treat this as unrelated to P versus NP or the modeled token gap unless a separate bridge is proved.
+
+— ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-8:28pm-PST, ChatGPT: Muse Go 7e90c99 — Nine-point branch closures at budget 44
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+Andrew said go on the previous recommendation. I kept the archive pilot separate from the live ledger. Here is the handoff for the finite proof decision. The question is still: does an ordinary weak 2-union basis on nine points exist with at most 44 nonempty sets? Overlapping components are allowed. This work eliminates the first two previously live pair-count branches and narrows the next one on paper.
+
+Pad a putative family to exactly 44 if needed. Write p for selected pairs, t for triples, q for fours, and h for supports of size at least five, so p+t+q+h=35 after the mandatory singletons. From the earlier review p≥10. In the selected pair graph, let S=Σ_v binom(deg(v),2), and T be its triangle count. The number of forced triples is u=84−7p+S−T. A forced triple has no selected pair. Always T≤S/3. A 7-target avoiding all highs must contain a four, and there are at least 36−6h such targets. An 8-target avoiding all highs must be the union of two disjoint fours, and there are at least 9−4h. These capacity estimates count omitted points, since a high support of size at least five has complement of size at most four.
+
+1. No p=10. Balanced degrees give S≥13, so u≥84−70+ceil(2·13/3)=23. Thus q+h≤2 and h≥1. At most one four leaves no low 8-target cover. The at most two high supports can cover at most eight distinct 8-targets, so this branch is impossible.
+
+2. No p=11. Balanced degrees give S≥17. For S≥19, S−T≥13. At S=17 the degrees are four 3s and five 2s. If T≥5 there are at most two open wedges, so some degree-three vertex has all three wedges closed. Its closed neighborhood forms an isolated K4, and the other five degree-two vertices form C5, which gives only four triangles. At S=18, a violation of S−T≥13 would force T=6 and all wedges closed. The graph would be a disjoint union of cliques. At max clique size four on nine vertices, eleven edges cannot occur: two K4s already give twelve, one gives at most ten with the rest, and no K4 gives at most nine. The only way with a K5 is K5 and K2 plus isolates, giving 30 wedges. Thus u≥20 and q+h≤4. When h=1 the at most three fours cannot produce the five or more low 8-targets. When h=2, two fours are necessary and must be disjoint. Their five-point complements meet in one point. Every low 7-target would require a distinct triple alongside one of the two fours, hence at most 20 such targets, below 24. When h=3, at most one four gives at most 10 low 7-targets, below 18. When h=4 there are no fours and at least 12 low 7-targets. Therefore p≥12.
+
+3. The p=12 shard has a smaller table. Independently audit this before hard-coding it. Balanced degrees give S≥21. At S=21, T≥6 leaves at most three open wedges. One of the six degree-three vertices has a closed neighborhood, giving an isolated K4. The remaining five vertices have six edges, minimum degree two and maximum degree three. Two triangles there would meet in an edge (meeting in one vertex gives degree four). Five edges of such a pair already use four vertices, leaving the fifth with at most one edge, impossible. Hence T≤5. At S=22, T≥7 leaves exactly one open wedge a-b-c. Any additional neighbor of an end vertex either creates a second wedge or would have to be adjacent to all three vertices, which also gives another open wedge. The ends therefore both have degree one. But Σ_v(deg(v)−3)^2=5 at S=22 and degree sum 24, incompatible with two degree-one vertices. S≥23 gives S−T≥ceil(2S/3)≥16 directly. So t≥u≥16 and q+h≤7. A small independent finite formulation can now focus on p=12 with its printed p, q, h and forced triples. The proof of p≥12 above is usable independently of any further p=12 casework.
+
+Pilot acceptance is one checked family, one certificate for an exactly named shard, or a capped checkpoint listing what remains. A reviewed degree-count pruning artifact can close p<12 before paying for the SAT solver. Then use a binary partition of pair choices, preserve the branch conditions and pre-input digests, and give another worker the coverage-tree and output checker. Keep every branch out of a global lower bound until covered by a checked result. No solver or unit test ran in this pass.
+
+Standing repo status and bounds:
+https://github.com/Pigeon-Home/homing-pigeon/blob/7e90c996ebe141ff34516dabada94dfd1ac654e5/docs/infrastructure-documents/proofs/research-loops-review-2026-11-24.md#L411
+
+00000000-chatGPT-481e-81fe-3fc2a698901c
+END CHATGPT GO 7e90c99 B9
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-8:28pm-PST, ChatGPT: Muse Go 7e90c99 — Candidate C padding lemma with a fixed codec
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+Here is the paper lane Andrew authorized. The previous review left Candidate C padding as a conditional shape waiting for an exact encoding. I pinned a transparent codec and wrote the transfer with both budget constants explicit. It is a scoped paper lemma, pending the independent interpreter/encoding check below.
+
+Let E(F) be a fixed efficient canonical encoding of a SAT formula and use legal inputs x=0^q 1 E(F), q≥0. The parser removes zeros up to the delimiter and decodes E(F). Use the same canonical active-variable witness representation for every padding of a given formula. For legal x of length n and N≥n, Pad(x,N)=0^(N−n)x is a legal exact-length string, with the same witnesses and a polynomial-time validator. Define A_U(c,d) using length cap floor(c log₂(n+2)) and clock (n+2)^d as in Candidate C. U must support a compiler for a fixed wrapper with O(payload length + 1) description cost and polynomial simulation overhead. Just semantic universality, without the description or time bound, does not license this lemma.
+
+Theorem. For fixed weak parameters c,d≥0 and fixed integer r≥1, there are fixed C,D with the following property. For every legal satisfiable input x of length n, if A_U(C,D) is proved to fail on x, then A_U(c,d) fails on Pad(x,N) for each n≤N≤(n+2)^r−2.
+
+Proof. Suppose p succeeds on one of these padded inputs at the weak budget. On input x, a fixed wrapper carries N, the length of p, and p as a self-delimiting payload. It constructs Pad(x,N), simulates U(p,Pad(x,N)), and returns the same verified witness. A code of length O(log(N+2)) suffices for N. Framing p contributes O(log(|p|+2)). Total pre-compiler size is |p|+O(log(N+2)+log(|p|+2))=O(log(n+2)), using |p|≤c log₂(N+2) and the window. The linear-length compiler keeps that within C log₂(n+2) for a fixed C. The wrapper materializes N symbols, then simulates at most (N+2)^d steps for this successful p and validates its output. With fixed polynomial overhead that all fits in (n+2)^D for a fixed D. Constants can be absorbed by increasing C,D. Neither parameter needs to vary by input. The purported stronger failure is contradicted. The proof establishes only the indicated direction because the wrapper pays both description and time.
+
+Corollary A. Under P≠NP, this yields arbitrarily large windows of legal lengths containing a weak-budget defeat at every length in the window. A bounded-length set of satisfiable misses of the stronger fixed procedure could be patched by a finite table and give a polynomial solver. Each large stronger failure then witnesses a whole window via the proof. The failure may be a different padded input at each length. The lemma yields no defeat against a larger budget from a smaller one.
+
+Corollary B. If every sufficiently large window has at least one fully passing legal length for the weak pair, SAT is in P. On any x, try the weak algorithm on all polynomially many lengths in its window, validating each output. A satisfiable formula gets a witness at the fully passing length, and an unsatisfiable one never does. A finite lower range can be handled separately. Finding out which length is fully good is unnecessary.
+
+Small paper review handoff. Assign one reader the exact language and decoder, including canonical active-variable numbering. Assign a separate reader the compiler overhead and verification clock for the named U. A third checks the quantifiers in both corollaries and makes an explicit advice-bearing padding control. Arbitrary inert filler can encode a satisfying assignment, so this proof only uses the stated neutral zero-prefix rule. The work ends with a checked conditional lemma for this codec and U, or an exact unmet encoding or simulation premise. Do not import U0 numerical thresholds into it. The finite readout can store one certified stronger defeat, the two budgets, and its implied weaker-length interval. It can reuse the logical consequence without claiming an empirical speed improvement.
+
+Repo plane and previous paper scope:
+https://github.com/Pigeon-Home/homing-pigeon/blob/7e90c996ebe141ff34516dabada94dfd1ac654e5/docs/infrastructure-documents/project/three-chart-candidates-2026-11-23.md#candidate-c-the-c-d-plane
+https://github.com/Pigeon-Home/homing-pigeon/blob/7e90c996ebe141ff34516dabada94dfd1ac654e5/docs/infrastructure-documents/proofs/research-loops-review-2026-11-24.md
+
+00000000-chatGPT-481e-81fe-3fc2a698901c
+END CHATGPT GO 7e90c99 PADDING
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-8:29pm-PST, ChatGPT: Muse Go 7e90c99 — Independently verified archive shard
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+Andrew said go. The November 19 UTC shadow archive is built and independently verified. This is the first archival shard for you to inspect. The live ledger and bank have not been changed. Separate messages contain the finite B9 decision handoff and Candidate C paper lemma. The companion archive message contains the exact standalone builder and pinned raw source URL so your seat can recreate the files.
+
+Result on e4af97f1be509d7cc2ec7761bd19a8ed0c4aed1e:
+- 974 day rows restored byte-for-byte from the gzip and retained stream using an original line-number map.
+- 899 routine grow records archived losslessly. 75 rows kept byte-for-byte, including 21 grows with gains and 37 kept entries, 53 plan records, and one seed.
+- All 64 exact aggregate scopes independently compared to the separately fetched source.
+- The raw routine rows occupy 398,996 estimator tokens. The summary, row map and manifest together occupy 9,624. The resulting potential tracked-text reduction is 389,372 tokens. This is the packaged figure after provenance and index overhead.
+- The compressed routine file is 151,752 bytes, from 901,139 raw bytes. The trial archives referenced by the rows are different objects. The checker verified their 899 pointer records and did not fetch any underlying trial object.
+- Preserve distinct tried and outcomes totals. The selected rows have 22,856,825 tried, 3,661,007 accepted, and 19,261,758 refused. The 65,940 difference is exactly the sum of entries_before, reflecting the baseline corpus replay.
+
+Pinned hash coordinates:
+Source Git blob ba50b24c91672464f11341c76ff6003c03a7526e
+Source SHA-256 c64703860bc8eae393e826faa2605bea69f2cb57eab693ca1f8c6266e3f31d22
+Routine raw SHA-256 afb361e758e49ac212c739ec177ac7aaec5a72ba3624e1876e653135cfcb79ad
+Restored complete day SHA-256 ae1a2821493521c88db512228fc8b452102c9b02e0077f716d16fb7c25f3469b
+Local manifest SHA-256 b02f5709af797407acfde0a888e8826f58bdf8507ccf0fa570d0a81be842895e
+Local bundle SHA-256 53affeffe52d7e93b7e421ce079bbc7e650422a7a60cda3414c453a1733395e9
+
+An independent reader fetched the source directly from the pinned raw URL. It recomputed row eligibility and the counters without importing the builder, restored the original order with row-map.tsv, and compared exact bytes. I also rebuilt the output from that separate source, compared all files, and verified the unpacked local bundle again. On another platform different gzip library headers may change the compressed or manifest hash. The raw day and routine hashes, the row map and the exact counts remain the correct comparisons. The shadow bundle includes the original header, gzip, retained JSONL, line map, summaries, manifest, both tools, and the verification record.
+
+Next step for Muse: inspect one recoverable trial/witness lookup from a clean worker, then compare any proposed compatibility view against the live raw consumers for recent and sparse-target scheduler windows. Replay a matching-header bank containing an archived duplicate plus an unseen late row with the same timestamp, and retry it. Expect adds 0, 1, and 0 respectively for those operations and the same tie ordering as today. Keep the pinned base immutable and stage the late row as a distinct generation. The live switch depends on those compatibility and retention checks, with measured restore scratch and headroom. The established resource watch uses corpus and temp disk thresholds and configured RAM floors. No CI run, bank invocation, or unit test was needed for this pilot.
+
+Pinned raw source:
+https://raw.githubusercontent.com/Pigeon-Home/homing-pigeon/e4af97f1be509d7cc2ec7761bd19a8ed0c4aed1e/runner/tests/de_dust/runs.jsonl
+Existing bank and scheduler:
+https://github.com/Pigeon-Home/homing-pigeon/blob/7e90c996ebe141ff34516dabada94dfd1ac654e5/runner/tools/rig_bank.py#L226
+https://github.com/Pigeon-Home/homing-pigeon/blob/7e90c996ebe141ff34516dabada94dfd1ac654e5/runner/tools/de_dust_corpus.py#L11469
+https://github.com/Pigeon-Home/homing-pigeon/blob/7e90c996ebe141ff34516dabada94dfd1ac654e5/runner/tools/de_dust_corpus.py#L12106
+
+00000000-chatGPT-481e-81fe-3fc2a698901c
+END CHATGPT GO 7e90c99 ARCHIVE EVIDENCE
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-8:29pm-PST, ChatGPT: Muse Go 7e90c99 — Standalone source for exact archive replay
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+This is the portable source companion to the independently verified November 19 UTC shadow archive. Save the text between the code markers as build_pilot.py. Use a new output directory. These commands fetch only the public pinned Git blob and build local shadow files.
+
+curl -fL -o source.jsonl https://raw.githubusercontent.com/Pigeon-Home/homing-pigeon/e4af97f1be509d7cc2ec7761bd19a8ed0c4aed1e/runner/tests/de_dust/runs.jsonl
+python3 build_pilot.py source.jsonl shadow
+
+Expected 974 rows, 899 archived, 75 retained, 64 groups. To independently verify, compare the decompressed routine stream and retained rows interleaved by row-map.tsv to the pinned source day, and independently tally each group from the selected source rows. See the companion evidence message for exact raw hashes. This script writes its own manifest for the output it generated.
+
+BEGIN build_pilot.py
+#!/usr/bin/env python3
+"""Build an offline shadow archive from one pinned Homing Pigeon ledger."""
+
+from collections import Counter, defaultdict
+import argparse
+import gzip
+import hashlib
+import json
+from pathlib import Path
+import re
+
+
+SOURCE_COMMIT = "e4af97f1be509d7cc2ec7761bd19a8ed0c4aed1e"
+SOURCE_PATH = "runner/tests/de_dust/runs.jsonl"
+SOURCE_BLOB = "ba50b24c91672464f11341c76ff6003c03a7526e"
+DAY = "2026-11-19"
+SCOPE = ("target", "rig", "head", "platform", "python", "technique")
+OUTCOMES = ("accepted", "refused", "crash", "slow")
+TOKEN = re.compile(r"[A-Za-z]+|[0-9]+|[^\sA-Za-z0-9]")
+
+
+def digest(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def tokens(data):
+    return len(TOKEN.findall(data.decode("utf-8")))
+
+
+def line(value):
+    return (json.dumps(value, separators=(",", ":"), sort_keys=True) + "\n").encode()
+
+
+def routine(row):
+    return (
+        row.get("kind") == "grow"
+        and row["kept"] == []
+        and row["crashes"] == row["slow"] == 0
+        and row["outcomes"]["crash"] == row["outcomes"]["slow"] == 0
+        and row["arcs_before"] == row["arcs_after"]
+        and row["entries_before"] == row["entries_after"]
+        and row.get("stopped") in (None, "budget")
+    )
+
+
+def build(source, output):
+    blob_hash = hashlib.sha1(f"blob {source.stat().st_size}\0".encode())
+    source_hash = hashlib.sha256()
+    archived, retained, row_map, day_rows = [], [], [], []
+    totals = defaultdict(Counter)
+    header = b""
+    with source.open("rb") as handle:
+        for ordinal, record in enumerate(handle, 1):
+            blob_hash.update(record)
+            source_hash.update(record)
+            if ordinal == 1:
+                header = record
+            row = json.loads(record)
+            stamp = row.get("when", "")
+            if not stamp.startswith(DAY + "T"):
+                continue
+            if not stamp.endswith("Z"):
+                raise ValueError(f"Source line {ordinal} is outside the pilot's UTC convention")
+            day_rows.append(record)
+            if routine(row):
+                if set(row["outcomes"]) != set(OUTCOMES):
+                    raise ValueError(f"Unexpected outcome schema on source line {ordinal}")
+                scope = tuple(row[key] for key in SCOPE)
+                if not all(isinstance(value, str) and value for value in scope):
+                    raise ValueError(f"Incomplete scope on source line {ordinal}")
+                archived.append(record)
+                row_map.append(f"{ordinal}\tA\n")
+                totals[scope].update(row["outcomes"])
+                totals[scope]["grow_count"] += 1
+                totals[scope]["tried"] += row["tried"]
+            else:
+                retained.append(record)
+                row_map.append(f"{ordinal}\tR\n")
+
+    if blob_hash.hexdigest() != SOURCE_BLOB:
+        raise ValueError(f"Expected Git blob {SOURCE_BLOB}, got {blob_hash.hexdigest()}")
+
+    if not archived or not retained:
+        raise ValueError("Expected both archived and retained rows for the pinned day")
+
+    archive = b"".join(archived)
+    summaries = b"".join(
+        line({"scope": dict(zip(SCOPE, scope)), "counts": counts})
+        for scope, counts in sorted(totals.items())
+    )
+    files = {
+        "ledger-header.jsonl": header,
+        "routine.jsonl.gz": gzip.compress(archive, mtime=0),
+        "retained.jsonl": b"".join(retained),
+        "row-map.tsv": "".join(row_map).encode(),
+        "summaries.jsonl": summaries,
+    }
+    manifest = {
+        "schema": "homing-pigeon-shadow-archive-v1",
+        "scope": {
+            "commit": SOURCE_COMMIT, "path": SOURCE_PATH, "git_blob": SOURCE_BLOB,
+            "utc_day": DAY, "source_sha256": source_hash.hexdigest(),
+        },
+        "rows": {
+            "day": len(day_rows), "archived": len(archived), "retained": len(retained),
+            "summary_groups": len(totals),
+        },
+        "checksums": {
+            "day_raw_sha256": digest(b"".join(day_rows)),
+            "routine_raw_sha256": digest(archive),
+            "files_sha256": {name: digest(data) for name, data in files.items()},
+        },
+        "measures": {
+            "routine_raw_bytes": len(archive),
+            "routine_gzip_bytes": len(files["routine.jsonl.gz"]),
+            "routine_text_tokens": tokens(archive),
+            "summary_text_tokens": tokens(summaries),
+            "row_map_text_tokens": tokens(files["row-map.tsv"]),
+        },
+        "row_map": "Each line is a 1-based original source line number, tab, and A (archive) or R (retained). Both streams keep source order.",
+        "status": "Shadow archive. No source or live consumer changes.",
+    }
+    files["manifest.json"] = (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode()
+
+    output.mkdir()
+    for name, data in files.items():
+        (output / name).write_bytes(data)
+    reduction = tokens(archive) - sum(
+        tokens(files[name]) for name in ("manifest.json", "row-map.tsv", "summaries.jsonl")
+    )
+    print(f"Archived {len(archived)} of {len(day_rows)} rows. Kept {len(retained)}.")
+    print(f"Potential tracked-text reduction after summary, map, and manifest: {reduction:,} tokens.")
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("source", type=Path, help="Unmodified JSONL from the source Git blob")
+    parser.add_argument("output", type=Path, help="New output directory (must not exist)")
+    args = parser.parse_args()
+    build(args.source, args.output)
+
+
+if __name__ == "__main__":
+    main()
+END build_pilot.py
+
+00000000-chatGPT-481e-81fe-3fc2a698901c
+END CHATGPT GO 7e90c99 ARCHIVE SOURCE
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
