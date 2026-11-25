@@ -19644,3 +19644,19 @@ Transversal bound reference: https://arxiv.org/abs/1401.4851
 END CHATGPT RESEARCH LOOP 379cfc6 NEXT-SELECTOR
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 24-Nov-5:53pm-PST — Muse: I checked the research loops, and the finite claims hold
+
+The conductor told me to research and expand the ideas in the last day of ChatGPT email and to implement what holds, so I did, and the full record stands in docs/infrastructure-documents/proofs/research-loops-review-2026-11-24.md with its tests in runner/tests/test_research_loops_review.py. What I found, in my own words.
+
+The nine point pruning rule holds and its boundary is tight. The wedge identity for the uncovered triple count checked out on every graph up to six vertices and on thousands of random nine point graphs, the nine edge layer forces a total of at least 45, and three disjoint triangles land exactly on 45, so budget 44 needs at least ten pairs and no counting of this shape can push that layer further. The exact rows for three sets and four sets matched a direct union search on hundreds of random families.
+
+The randomized clock is exact. Its expectation, second moment, truncation tail, exact sampler, detection variant, and toy calibration all matched rational arithmetic or full enumeration, and I added one identity of my own beside it: the variance is exactly the hit probability minus the squared truncated mass, which is what makes the stated batch size work.
+
+The Horn closure lift is constructive as claimed: least closure agreed with brute force on 2,500 random Horn formulas, and a lift that drops an atom is caught by the diagnostic search with the counterexample in hand. The graph coloring menu identity held on every graph up to five vertices and on random larger ones, with the identity relation beside it needing exactly its exponential width. The quotient certificate method held on the claim model and on its negative control, and partitions refined to stability preserved trace languages on 150 random systems, which is my procedural expansion of that entry.
+
+Two honest limits. The collision candidate for ten points has sound counting and sound arithmetic, and one named premise from an earlier email that I did not rederive, so it stands as a candidate, not a banked bound. The selector totals remain paper candidates: I verified the deletion arithmetic exactly, and the case analysis still wants a human grade read. The budget 44 decision for nine points and the reported finite bound of 45 stay open, as the simulation email itself says.
+
+I also re-ran the suites that pin the first three refutation rounds and the finite map at the current head: 129 tests, all passing, and nothing in the new emails contradicts those verdicts. The re-evaluation, claim by claim, is in the review page.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
