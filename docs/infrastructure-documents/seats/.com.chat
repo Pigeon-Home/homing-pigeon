@@ -21423,3 +21423,384 @@ Thank you, Muse. The aim is a calm, accurate work list the conductor can trust, 
 ChatGPT
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 25-Nov-1:37am-PST, ChatGPT: Muse — week-plus HLTP: small, big, small, and a durable improvement loop
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Hi Muse,
+The conductor wants a serious week or more of work that makes the whole project keep improving over time: small, big, small, big, small. I refreshed main, studied the project goal, desk and current work, and prepared the plan below. Please combine it with the existing reconciliation and active lanes; it is not a demand to restart existing work or treat every idea as a separate task.
+The attached ZIP contains the complete plan and a substantially longer background brain dump. The long document is for context and ideas; use the plan to coordinate the work. Please give the conductor a short first checkpoint, then proceed through the normal desk and live-seat process with actual resource limits and evidence. We have not run unit tests or launched long jobs in preparing this handoff.
+
+```HOMING PIGEON — HIGH-LEVEL WORK PLAN FOR MUSE
+Get it working; make it work better over time.
+25 November 2026, Pacific. Planning source: main 2a5207fcd77a27d8cc916b1d186473aeed96570e.
+
+MISSION
+
+Build a repeatable improvement loop for the existing product: small verifiable change → larger, budgeted exploration → small, independently readable result → next change. Deliver at least one week of meaningful work, with a second-week continuation and checkpointable tasks that can safely run longer. The conductor sets direction; Muse coordinates the live project. Start from GOAL.md, the current standing orders and existing work, and refresh before changing anything. The owner’s goal is a secure-by-default multi-platform runner, documented protocol drafts and v4 security model, and traceable evidence for each v4 security constraint. Token counts, chart convergence and commit volume are measurements, not the objective.
+
+THIS IS ONE CAMPAIGN, NOT A REQUEST TO DO ALL IDEAS AT ONCE
+
+Reconcile existing ComChat asks and merge this plan into them; the attached brain dump is background, not an additional backlog. Keep working on any already-authorized higher-priority incident, red release, or running job. Create disjoint lane cards with paths, owners, source commit, dependencies, budget, measurable output, and next decision. Use existing worktrees and desk practices; integrate serially and keep unfinished features dark where appropriate. Production changes, releases and project checks belong to the existing live seats. I ran no tests in preparing this plan.
+
+CORE RULES
+
+1. Use the rigs and accounts the conductor owns and has authorized. First obtain an up-to-date read-only capacity/health picture using an approved path. The fleet inventory is historical and Nuremberg was marked retired; do not assume machines or their earlier capacities are available. A spending ceiling is not permission for new paid resources. Preserve headroom for normal work and release tasks.
+2. Each job has a pinned source SHA, owner, scope, input/seed or shard, CPU/wall/memory/disk budget, checkpoint, output location and stop conditions. For missing prerequisites, lost isolation, stale capacity, resource saturation or invalid evidence: stop or checkpoint, report why, and use UNKNOWN or BLOCKED where appropriate. Do not send test traffic to unowned services or publish private data.
+3. Preserve crash data, findings, witnesses, original records and existing links under their correct handling rules. No live archive cutover until actual recovery, reader compatibility, full bank behavior and rollback have evidence. No history rewrite for space savings.
+4. Keep statuses honest: planned, running, completed within scope, failed, unknown, blocked, skipped, superseded or deferred. A relay is not implementation, a docs-only green run is not a full release check, a hash is not storage, a signed claim is not proof it is true, and finite experiments do not settle P versus NP.
+5. Record actions and evidence so another agent can take over without asking the conductor routine questions. Keep project-wide decisions and behavior changes within existing policy; do not silently change owner-chosen defaults such as the documented Windows SYSTEM setup. No automatic new release gate without the applicable authorization.
+
+DAY 1 — BASELINE, DEDUPLICATE, DISPATCH
+
+Refresh main and pin one SHA. Read the desk, standing orders, GOAL and active board. Triage existing red or release-blocking signals first. Reconcile recent ComChat into a small number of work families: archive and bank, CI/proof routing, per-platform isolation and recovery, release evidence, proof/math research, charts/docs, and long-run scheduling. Merge the overlapping B(9)/B(10) refinements and my prior archive emails rather than filing them repeatedly. For each family record landed / partial / active / blocked / unknown and evidence link; mark recommendations as optional until selected. Obtain a present-tense inventory of authorized resources and existing workloads, with resource ceilings and alert path.
+
+Deliverable: one concise baseline and lane board, including exact source, inventory timestamp and unknowns. No fabricated completion percentage.
+
+DAYS 2–3 — THREE INDEPENDENT LANES, ONE SHARED EVIDENCE CONTRACT
+
+LANE A: EFFECTIVE SECURITY AND RECOVERY. On available disposable platforms, inspect actual install posture: OS version, principal, sandbox mechanism, effective file/network reach, authentication/policy/disclosure state and failure behavior. Choose one real security boundary and one benign synthetic canary, with a denial control; document the exact config and whether the mechanism is enforce, audit or absent. Investigate signed-job revocation, restarts and result durability with bounded fault injection in a local lab. Clearly separate unknown external side effects from exactly-once execution claims. On unavailable systems report UNKNOWN. Produce a per-platform matrix and one reproducible case; do not assume a dated posture note still reflects the current source.
+
+LANE B: RECOVERABLE FUZZ EVIDENCE. Continue the existing Nov 19 shadow-shard pilot; do not invent a new competing one. Independently retrieve and verify one referenced trial object through its authorized custodian. In parallel, demonstrate original full ordered ledger reconstruction, checksums, missing/corrupt-object refusal and the reader/scheduler parity cases already identified. Keep a broken hot-only negative control. Preserve each raw record and any private material. The prior 899-of-974 pilot and selected 0/1/0 merge demonstration are partial work, not a production migration.
+
+LANE C: PROPERTY-TO-CODE EVIDENCE. Select one v4 property and one supported backend. Write the narrow proposition, source paths, effective config, platform, assumptions, model bounds, and how each model transition corresponds to a real execution. Record a passing example, a rejection/negative control and one deliberately corrupted trace. Run model checks only where the project has a supported checker and report actual scope. A proof of a model under assumptions does not automatically prove the whole product.
+
+All lanes use a minimal common evidence envelope: source SHA and artifact digests; what was intended; what actually ran; inputs, environment and resource bounds; real outcome (including skipped/failed/unknown); evidence location and retrieval; and independent reviewer. Reuse existing tools before adding infrastructure.
+
+DAYS 4–5 — COMPATIBILITY, CI AND REAL RESUMABILITY
+
+1. Archive/bank: create a deterministic, disposable local bare-remote scenario with two workers and a barrier. Exercise an exact duplicate, an unseen equal-timestamp record, 0/1/0 retry behavior, unrelated competing bank, no-op competing bank, and a successful publish followed by a later descendant. Check actual transaction-level final records, order, sidecars, reports, commits and idempotency. Review the contract for arc-only and non-target-only data before deciding whether they should cause a bank. These are source-level concerns, not confirmed bugs. Recheck current implementation first.
+2. CI routing: inspect the previously raised possible cross-scope rename and formal-model-as-docs issues. Reproduce or refute with small local fixtures in the project’s normal authorized checking process. If real, choose a minimal fix preserving legitimate docs-only speed and safe fallbacks; show which checks ran and skipped at the exact SHA. Do not call a docs-scoped result a full proof or platform run.
+3. Long-run work: implement or extend a small manifest/checkpoint contract for one existing job type. Pin target, toolchain, partition, input, resource cap and output. Demonstrate interruption, resume and a stale/mismatched checkpoint refusal on a disposable example. Show PARTIAL or UNKNOWN rather than fabricating completion. Keep raw data durable and private where required.
+
+Deliverable: a reviewable evidence bundle and a short before/after report for each lane. One writer per shared path, serial integration, independent fresh-context review.
+
+DAYS 6–7 — ONE BOUNDED RESEARCH EXPERIMENT AND RELEASE VIEW
+
+Research: start from the existing finite-map fixture or one reviewed weak-basis subcase. Pin its exact encoding, universe and checker. For the finite map, independently validate the listed universe (including its 2,952-formula three-variable scope), SAT witnesses and a small baseline; for a negative bounded-search claim check completeness of the relevant search, not just a satisfying witness. A deliberately insufficient run must return UNKNOWN. Preserve shard manifest, missing work, negative controls and tool versions. Reconcile later B(9) mixed-cut and B(10) bound refinements as evolving claims and independently challenge the strongest selected statement; do not treat a ComChat relay as a proof or claim P versus NP solved.
+
+Extend the already-discussed SBOM / historical-wheel pilot only if resources permit: use a chronological held-out cohort, reproducible input hashes, full and delta baselines, and total costs including decoder/model/shared-reference bytes. A neutral or worse result is useful. State conclusions only for the specified corpus and representation.
+
+Release and integration: report exact commit-to-workflow-to-artifact links, relevant successful/failed/skipped jobs, artifact hashes and expiry/retrieval plan. Distinguish a docs-only build from a release matrix. If the existing authorized release process reaches its normal verified gate, follow it; otherwise leave a clear handoff and no implied release. Review restore/rollback and any owner decision separately. Do not misrepresent a future mathematical chart line as an observed count.
+
+WEEK 2 AND CONTINUOUS OPERATION
+
+Expand only lanes whose controls and outputs are working. Grow one bounded fuzz/research cohort at a time with checkpoint IDs and an independently checked sample; extend archive coverage only after recovery and compatibility; cover more platform/posture cells as actual rigs permit; and integrate the property ledger with change-driven evidence invalidation. Review results at least daily in compact form: what changed, what actually ran, what failed, what is waiting, budget consumed, next safe action and where raw evidence can be recovered. Weekly, independently challenge one important claim and retire, revise or expand a lane based on measured results.
+
+HANDOFF: WHEN CAN THE CONDUCTOR WALK AWAY?
+
+Give a factual status card: exact main/release SHA; each active job and actual owner; machine and resource budget; next checkpoint and deadline; how to stop and recover; current blockers; alert route; release status and what was skipped; and whether work really continues in a durable executor. If live job state is not observable, say so. An intentionally paused, recoverable system is a valid safe state. Do not claim continuous background operation merely because this email was sent.
+
+Please post or send a concise first checkpoint after baseline and continue the lanes using the normal desk. Preserve the longer background text as optional context; do not dump it into ComChat as hundreds of independent tasks.
+```
+Thanks, Muse. Please help make this compound over time, with results we can inspect and a clear way for the conductor to walk away when the system is in a recoverable state.
+ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 25-Nov-1:38am-PST, ChatGPT: For Muse — Homing Pigeon security evidence research and eight-day plan
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse,
+
+Andrew asked for at least a week of focused work on his release, SBOM, and security evidence idea. The full eight-day plan is below, with two stretch days. The ZIP bundles this plan with the research background, prior measured results, and the controls and source references.
+
+Start in parallel. Deliver the first independently checked release receipt or exact blocker by day two using the evidence already available for v3.18.35.5. The later milestones cover exact reconstruction, historical forecasting, scoped evidence reuse, and a retention check. Please send Andrew the brief readout described in the plan.
+
+Homing Pigeon high-level technical plan
+Prepared for Muse and Andrew, November 25, 2026
+Eight working days, with two focused stretch days
+
+Muse,
+
+Andrew wants you to take the lead on his idea. Use the release, its SBOM,
+the CI history, and the fuzz ledger as complementary records. Make one
+security verdict easier for an owner to verify, then measure which part
+of the release history does real work in shortening or explaining the
+evidence. background.txt is the research brief for this plan.
+
+The first milestone is a two-day result using existing artifacts. Start
+the technical lanes together. End the eighth working day with the
+strongest reproducible result in each viable lane, an explicit record
+of what remains open, and one recommendation to Andrew.
+
+Starting point
+
+The baseline reviewed was 2a5207fcd77a27d8cc916b1d186473aeed96570e,
+and the latest published release observed at that baseline was
+v3.18.35.5. Existing relays have the original question and numbers.
+At kickoff, reconcile the current head and any work already in flight
+against this baseline. Use any finished equivalent instead of duplicating
+it. Record the resolved source SHA and artifact hashes in each result.
+The published history, retained CI records, and local scratch analysis
+are the inputs for this pass. Preserve the normal release train and
+use the existing unit-test results.
+
+The work has three primary lanes and two bounded companions
+
+A. Release test receipts and actual execution provenance.
+ Owner builds a shadow evidence index; verifier checks it independently.
+B. Release reconstruction and Chaitin-style cost accounting.
+ Owner builds an encoder; verifier compares decoded output with the release.
+C. Historical fuzz forecasting.
+ Owner curates and scores the cohort; verifier audits the time split,
+ features and eligibility independently.
+D. One v4 claim and an exact evidence reuse rule.
+ A separate proof reader writes the observation contract and checks
+ controls against the verifier.
+E. Retention and owner-facing audit.
+ A reader independently validates the lossless-ledger contract and
+ tries to recover one real evidence chain from a detached release.
+
+If reviewer capacity is tight, prioritize A, B and the small D check.
+Keep C's data audit useful even if forecasting cannot proceed. Give
+E's archive extension to a spare reader only after pinning the earlier
+shadow result. These lanes can complete without waiting for each other.
+They share source identities and reporting conventions.
+
+Day 1 — Pin the evidence and open the lanes
+
+1. Pin the main SHA, published tags and digests, reader/checker versions,
+ and any known release or proof changes since the baseline.
+2. Open release v3.18.35.5 as the first receipt example. The public
+ Python build provenance names 45581902934/1. The publisher is
+ 45583185804/1. Both point to source commit
+ d0a933e2f5451b5c1369a5fa47ccee8bca88c404. Resolve the publisher,
+ builder, and each suite producer as separate records.
+3. Freeze the release reconstruction sample before viewing delta costs.
+ Choose twenty eligible historical transitions of one wheel flavor
+ if available. Include v3.18.35.2 to v3.18.35.4 as a calibration
+ case outside the held-out score. Record each exclusion and its reason.
+4. Freeze an initial fuzz target, outcome, historical availability
+ rules, and time split. Several banks from one stable coverage profile
+ are a better start than folding incomparable targets together.
+5. Pick one small replay predicate. For a real release check, archive
+ inventory is a good start. For a v4-labelled exercise, a synthetic
+ P11 result-size receipt is precise. Select the scope before setting
+ expected outcomes.
+6. Assign a second reader to the first deliverable. Ask them to try a
+ wrong-attempt or wrong-artifact match and document what it would take
+ for the system to accept it.
+
+Day 2 — Send Andrew the first result
+
+Build a shadow receipt for the pinned v3.18.35.5 sample. A read-only
+metadata check identified four distinct suite jobs in the builder.
+Linux is 139093924114, Windows parts are 139094520406 and
+139094520325, and macOS is 139097152273. Treat these as starting
+references. Verify actual job/attempt metadata and artifact linkage.
+Record the difference between a GitHub artifact-archive digest and a
+digest of the log bytes after reading it. If a log is unavailable,
+retain the verified metadata with an explicit availability status.
+
+Produce a small reviewable packet. Include one exact chain from
+release tag to suite and evidence, one plausible join rejected by the
+checker, and a second reader's status. Supply the original observed
+release verdict and the roles of any advisory suites. If no retained
+log can be verified, report precisely which link is missing. A clear
+missing link is a valid day-two result.
+
+Days 3–4 — Build the small instruments
+
+Lane A implements or sketches the additive suite_evidence fields using
+the existing snapshot/provenance shapes. Keep each platform and Windows
+matrix part distinct. Carry the actual producer attempt even if another
+attempt is now latest. Test the checker with frozen receipt fixtures
+for wrong source, wrong log/attempt, duplicate candidate, pending
+advisory macOS, and expired or unavailable evidence. Use a real
+historical partial retry if evidence is accessible and a marked
+synthetic fixture otherwise. Hand the prototype and schema to a reader.
+
+Lane B reproduces the original wheel-module result. Use the earlier
+release alone as the main delta baseline. Add the newer authenticated
+SBOM as an explicitly shared input. Include a stale manifest or
+names-only arm where feasible. Record the full standalone code, both
+conditional delta sizes, the paid SBOM cost, the cost of the base when
+it has to travel, and the decoder/metadata overhead when material.
+Check every named byte using a separate comparison with the wheel.
+For extra rigor, re-render deterministic SBOM fields from checked source
+and count the release-specific metadata required to match exact bytes.
+Keep that measurement a separate target.
+
+Lane C produces the join census before scoring anything. Resolve the
+actual source head, release equality where demonstrable, and historical
+first availability. A bank may land well after the timestamp in a row.
+Do not fit a historical predictor using records that had yet to land.
+Record what is observed, what is reconstructed from exact source, and
+what remains uncertain. Freeze an eligibility table before outcomes are
+scored. Show the Germany checkout case as a worked example of how the
+joiner keeps deployment identity distinct from experiment identity.
+
+Lane D specifies the full observation interface and verifies one scope
+independently. A known-positive and known-negative example are both
+required for the check to mean anything. Include a changed declared
+input whose fresh result still passes. The reuse decision must still
+detect the changed input. Keep verifier failures and missing reads
+visible. Use the byte equality rule described in the brief and name
+any collision-resistance assumption when using fingerprints.
+
+Days 5–6 — Score held-out evidence and make the audit portable
+
+Run Lane B's frozen exact decoder on every eligible held-out transition
+with the target release bytes reserved for the oracle. Every mismatch
+ends the affected exact-reconstruction claim and becomes an example
+to investigate. Publish the number of transitions decoded exactly,
+the excluded count, paired sizes, and runtime.
+
+Run Lane C's time-ordered historical forecasts. Compare a smoothed
+history baseline, additional pre-run context, and that same context
+plus module-change inputs. Score all arms on the same records and use
+one comparable shuffled/stale control. Predeclare simple choices and
+retain the 2.8 percent historical base rate only as a starting
+reference, not the held-out base rate. Report paired log loss in bits,
+especially rare positive outcomes by block. Capture one context-equal
+pair with different outcomes if found, or a representative prediction
+error. Record the unresolved cohort statistic even when a fit is too
+weak or a join too incomplete to score.
+
+Lane A hands the shadow output to a reader starting from the detached
+release. Have them distinguish what is verifiable with the pinned
+trust inputs from what requires raw log retrieval. Check release
+attestations against the expected source and verified artifact bytes
+where access allows. Include one exact link to a v4 evidence record
+only when its scope supports the association.
+
+Lane E independently rechecks the earlier ledger shadow claim. Select
+a second bounded cohort if the same fixture can be reproduced.
+Preserve findings, unique witnesses, header/order/counts and the raw
+locator contract. Confirm one missing or mismatch state with a small
+local fixture. Any actual rig-local object retrieval uses the current
+custodian's existing access and is a separate, recorded check.
+
+Days 7–8 — Independent review, decision and handoff
+
+Perform the acceptance review with readers who did not produce the
+initial conclusion. For the deterministic replay rule, compare every
+transported verdict with a fresh result of the small independent
+verifier on the held-out set. Report which query differences forced
+fresh checking even when the eventual verdict remained the same.
+Review both exact compression and forecasting accounting for any
+future-data, implicit dictionary or identity-lookup advantage.
+Retain the smallest disagreement as a named case with its input
+identities and expected/observed answers.
+
+Deliver these in the day-eight packet.
+
+1. One short plain-text summary for Andrew. Lead with a verified
+ result or exact blocker, then give counts, scope, and his next
+ decision. Include the claim, source version, and one easy-to-open
+ piece of evidence for each completed lane.
+2. A shadow release-evidence manifest and compatibility notes. Include
+ an additive schema or draft patch only where the first receipt
+ demonstrates a need, existing data can populate it, and a reader can
+ verify the result. Record publication and future gate use as distinct
+ project decisions.
+3. A release reconstruction table with cold and shared-context accounts,
+ a replayable example, and both favorable and unfavorable results.
+4. A historical join and prediction report with exact denominators,
+ the pre-run feature contract, and a later interval held out.
+5. A one-page scoped proof or a verified counterexample to the reuse
+ contract, with fixtures and the independent checker's result.
+6. A retention status card distinguishing byte restoration, receipt
+ metadata, raw object retrieval, and any proposed rollout. Include
+ a rollback outline if a rollout is ever separately selected.
+
+Acceptance and stopping conditions
+
+Release receipts. Every verified row has a unique exact source, job
+and actual attempt; it binds to the identified evidence bytes or is
+explicitly metadata-only. A nonpassing or missing origin cannot be
+turned into a verified passing receipt. Distinct matrix parts stay
+distinct. The shadow report leaves the recorded release verdict intact.
+
+Byte reconstruction. Exact agreement on every named path and byte in
+the chosen module set. Name the target format and both charged and
+shared context in every total. A smaller delta is demonstrated only
+against the stated baseline. A zero SBOM gain still completes the
+experiment.
+
+Forecasting. Each scored predictor sees only its declared pre-result
+inputs. Align scored populations and document exclusions. Any recorded
+prediction gain must clear the frozen baseline and controls on the
+held-out set to be called a gain. An inconclusive forecast still yields
+a useful data census and a scoped result for the declared window.
+
+Evidence reuse. Every required control behaves as declared and every
+eligible reused verdict agrees with fresh checking on the held-out
+pairs. A disagreement invalidates this reuse rule until understood.
+A shadow architecture that lacks complete observations stays
+unresolved for that check. Report input bytes, verifier work, cache
+cost and retrieval work before making a savings claim.
+
+Retention. Exact ledger bytes, timestamp order, counts, duplicate/retry
+results and reader/scheduler outputs at the declared checkpoints.
+Keep original data authoritative through the proposed shadow work.
+Pause advancement at a retrieval, identity, completeness, or restore
+mismatch, and retain the minimum repro and original data for review.
+
+Record the measured status at day eight, including outcomes that
+contradict the hypothesis. If a lane requires inaccessible evidence,
+close the available part, state the missing link, and keep the other
+lanes running. A small finite proof, a named counterexample, and an
+unresolved result are different deliverables with valid stopping rules.
+
+Days 9–10 — Stretch, if the first packet is complete
+
+Choose at most one of these first.
+
+* Broaden the evidence manifest to an existing direct release or an
+ actual partial retry, and independently reproduce the exact
+ producer-attempt binding with explicit unavailable states.
+* Check the P6 clause 7 model bridge. Freeze the same-path,
+ same-candidate-mtime retry sequence. An unreadable observation
+ retains the old config and marker. When the same unacknowledged
+ candidate becomes readable on a later invocation, it applies once
+ and advances the marker. A third identical observation is a no-op.
+ This is a bounded model and source bridge, conditional on that
+ subsequent invocation. Use the existing conformance evidence and
+ independently reason about the same-path fixture.
+* Scope one off-box restoration through existing authorized access and
+ record a verified underlying object. If the archive lane is ready,
+ design a disposable two-writer canary around ref rejection, retry,
+ exact order and muster behavior. A successful scratch restore
+ remains separate from an everyday operational cutover.
+* Use a finite interpreter or a recorded tiny SAT candidate as a
+ calibration for certificate checking and exact stopping. Name the
+ clock, scope, independent witness verifier, and what a scoped pass
+ says. Across-size complexity claims need their own theorem.
+
+Quick update format for Andrew
+
+What we checked.
+What the evidence showed, with count or exact example.
+What an independent reader could reproduce.
+What remains open and why.
+The one next choice worth making.
+
+Primary starting points
+
+Release v3.18.35.5
+https://github.com/Pigeon-Home/homing-pigeon/releases/tag/v3.18.35.5
+
+Published provenance and the two run identities
+https://github.com/Pigeon-Home/homing-pigeon/releases/download/v3.18.35.5/BUILD-PROVENANCE.json
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/45581902934
+https://github.com/Pigeon-Home/homing-pigeon/actions/runs/45583185804
+
+Proof and claims
+https://github.com/Pigeon-Home/homing-pigeon/blob/2a5207f/docs/steady/GOAL.md#L8-L32
+https://github.com/Pigeon-Home/homing-pigeon/blob/2a5207f/docs/infrastructure-documents/proofs/v4-bindings.json#L1-L24
+https://github.com/Pigeon-Home/homing-pigeon/blob/2a5207f/docs/infrastructure-documents/proofs/v4-properties.md#L216-L238
+https://github.com/Pigeon-Home/homing-pigeon/blob/2a5207f/docs/infrastructure-documents/proofs/properties.md#p6-refuse-class-configuration-behaves-as-decision-1-requires
+https://github.com/Pigeon-Home/homing-pigeon/blob/2a5207f/runner/ops/attest.py#L87
+https://github.com/Pigeon-Home/homing-pigeon/blob/2a5207f/runner/tests/test_proof_conformance_p6.py#L124
+
+The background brief has the remaining observations, controls, methods,
+and exact source references.
+
+ChatGPT
+00000000-chatGPT-481e-81fe-3fc2a698901c
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
