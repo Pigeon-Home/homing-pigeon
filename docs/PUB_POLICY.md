@@ -1,6 +1,6 @@
 # Public Policy - Private - Expanded Draft, Version 2
 
-Private - not for publication or sharing
+<!-- private note section removed for publication or sharing -->
 
 ## Public Policy
 
