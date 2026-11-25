@@ -448,6 +448,11 @@ The runner is fully inspectable, so audit what it would do before it does it, an
 
 ![2 lines that close: a ceiling for the fuzz run log at 21.0 million closing by 0.61 a week onto the line of everything else at 17.6 million, the gap of 3,393,230 between them closing to 0 in 30 weeks, and the whole tree at 35.2 million where the 2 lines meet](assets/security-tokens-2-lines-that-close-2026-11-20.svg)
 
+- The same count, opened in its 2 parts and read for the limit a
+  rule gives each, drawn again on 2026-11-24:
+
+![2 lines, 2 limits: the 2 parts of the security-token count counted to 24 November 2026, everything else under its line toward 17.9 million and the fuzz run log toward 27.5 million if it keeps the same rule, with the project's estimate on its face that version 3 stands roughly 80% done](assets/security-tokens-two-limits-readme-2026-11-24.svg)
+
 ## Questions people ask
 
 The [FAQ](docs/FAQ.md) is where the odd corners get answered.

@@ -634,6 +634,56 @@ statement about representation: it measures neither the
 log's information nor its coverage, and no share of the
 log is pronounced empty on its strength.
 
+## The 2 lines read again: a sixth snapshot as of 2026-11-24
+
+The 2 limits chart of the fifth snapshot was drawn again
+on 2026-11-24, counted to that day at commit 6aec8f6f4a,
+the head of main at 11:03 p.m. Pacific, the snapshot the
+conductor's own drawing of that evening carries. The
+counts were taken the way the fifth snapshot's were: the
+estimator's rule run over the blobs of each day's last
+landing on the first-parent line of that head, with no
+checkout, 1 row for each day from 2026-10-15.
+
+The counts since the fifth snapshot:
+
+| Date | Counted at | Security tokens | In the run log | In everything else |
+|------|------------|-----------------|----------------|--------------------|
+| 2026-11-20 | commit 0b766f2c3e | 32,069,424 | 16,740,539 | 15,328,885 |
+| 2026-11-21 | commit ad4ae39191 | 33,321,996 | 17,883,363 | 15,438,633 |
+| 2026-11-22 | commit 901459b2b2 | 33,900,236 | 18,437,960 | 15,462,276 |
+| 2026-11-23 | commit d2e4428893 | 34,846,214 | 19,052,773 | 15,793,441 |
+| 2026-11-24 | commit 6aec8f6f4a | 35,133,194 | 19,052,773 | 16,080,421 |
+
+At the last count the whole stands at 35,133,194, and
+the measured gap between the 2 parts is 2,972,352.
+
+![The 2 parts of the security-token count, 15 October to 31 December 2026: counted to 24 November, everything else under its line toward 17.9 million, and the fuzz run log toward 27.5 million if it keeps the same rule](../../../assets/security-tokens-two-limits-2026-11-24.svg)
+
+Read off those counts, the rule gives everything else a
+limit of 17,943,534, and the run log a limit of
+27,547,009 if it keeps the rule from 2026-11-24.
+Everything else has kept the rule since its largest 7
+days ended on 2026-10-31, 24 days at this count. The run
+log has kept no rule yet, so its limit stands on an if,
+as it did at the fifth snapshot. At 31 December the 2
+dashed lines stand at 26.9 million and 17.8 million,
+still short of the limits they bend toward. The limits
+are what the rule allows, not a forecast: 1 coming count
+can show either of them wrong.
+
+The conductor's estimate stands on the chart's face.
+Everything else is counted at 16,080,421. Against the
+roughly 19 million the conductor reads the blue line as
+reaching over the course of version 3, the counted part
+puts version 3 at roughly 80% done. The rule's own limit
+for everything else, read off the counts above, is the
+tighter 17,943,534. The estimate is the conductor's
+reading, stated on the chart as an estimate: the counted
+part is a count, and the rest is the rule's projection,
+not a count. The chart drawn from this one for the
+README carries the same figures and the same estimate.
+
 Three further charts were drawn on 2026-11-23 from the
 work of that day, and they stand together on
 [the candidates page](three-chart-candidates-2026-11-23.md):

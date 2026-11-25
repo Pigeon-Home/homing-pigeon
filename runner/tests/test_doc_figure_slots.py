@@ -276,11 +276,16 @@ class TestFifthSnapshot(unittest.TestCase):
     HEADING = ("## The measure against its lines: a fifth snapshot "
                "as of 2026-11-19")
     CHARTS = ("growth", "split", "two-limits")
+    # The sixth snapshot's section follows this one in the
+    # record since 2026-11-25, so this snapshot's span ends
+    # at its heading, where it ended at the close before.
+    NEXT_HEADING = ("## The 2 lines read again: a sixth snapshot "
+                    "as of 2026-11-24")
 
     def _rows(self):
         lines = _read(STATISTICS).splitlines()
         start = lines.index(self.HEADING)
-        end = lines.index("## Where the project stands")
+        end = lines.index(self.NEXT_HEADING)
         return _split_rows(lines[start:end])
 
     def _chart(self, name):
@@ -408,7 +413,7 @@ class TestFifthSnapshot(unittest.TestCase):
         lines = _read(STATISTICS).splitlines()
         rows = {}
         for line in lines[lines.index(self.HEADING):
-                          lines.index("## Where the project stands")]:
+                          lines.index(self.NEXT_HEADING)]:
             cells = [c.strip() for c in line.strip().strip("|").split("|")]
             if len(cells) == 3 and re.match(r"^\d+\.\dM$", cells[2]):
                 rows[cells[0]] = (int(cells[1].replace(",", "")), cells[2])
@@ -502,6 +507,104 @@ class TestFifthSnapshot(unittest.TestCase):
         self.assertIn("the whole tree at 35.2 million", section)
         self.assertIn("is guaranteed by week 30", section)
         self.assertIn("stands at 1 in week 29 and at 0 in week", section)
+
+
+class TestSixthSnapshot(unittest.TestCase):
+    # The sixth snapshot draws the fifth snapshot's 2 limits
+    # chart again, counted to 2026-11-24 at the head the
+    # conductor's own drawing of that evening names, and
+    # carries his estimate on its face: version 3 stands
+    # roughly 80% done, read off the blue line. Its table is
+    # arithmetic a reader can redo, its stated limits are
+    # the rule's, read off the table's last row by the rule
+    # of the curve's page, and its chart carries the
+    # table's figures. The chart drawn from it for the
+    # README carries the same figures and the same
+    # estimate, under the drawing's own snapshot line.
+    HEADING = ("## The 2 lines read again: a sixth snapshot "
+               "as of 2026-11-24")
+    CHART = "security-tokens-two-limits-2026-11-24.svg"
+    README_CHART = "security-tokens-two-limits-readme-2026-11-24.svg"
+
+    def _rows(self):
+        lines = _read(STATISTICS).splitlines()
+        start = lines.index(self.HEADING)
+        end = lines.index("## Where the project stands")
+        return _split_rows(lines[start:end])
+
+    def _chart(self, name):
+        return _read(os.path.join(REPO, "assets", name))
+
+    def test_the_snapshot_stands_once_between_the_fifth_and_the_close(
+            self):
+        lines = _read(STATISTICS).splitlines()
+        self.assertEqual(1, lines.count(self.HEADING))
+        self.assertLess(lines.index(TestFifthSnapshot.HEADING),
+                        lines.index(self.HEADING))
+        self.assertLess(lines.index(self.HEADING),
+                        lines.index("## Where the project stands"))
+
+    def test_every_row_s_two_parts_make_its_whole(self):
+        rows = self._rows()
+        self.assertEqual(["2026-11-20", "2026-11-21", "2026-11-22",
+                          "2026-11-23", "2026-11-24"],
+                         [r[0] for r in rows])
+        for date, where, total, log, rest in rows:
+            self.assertEqual(total, log + rest, "%s at %s" % (date, where))
+            self.assertRegex(where, r"^commit [0-9a-f]{10}$")
+        for before, after in zip(rows, rows[1:]):
+            self.assertLessEqual(before[3], after[3])
+            self.assertLess(before[2], after[2])
+        # The first row's run log figure is the count the
+        # record already carries for 2026-11-20 in its
+        # reading of 2026-11-21.
+        self.assertEqual(16740539, rows[0][3])
+        last = rows[-1]
+        self.assertEqual((35133194, 19052773, 16080421),
+                         (last[2], last[3], last[4]))
+        self.assertEqual("commit 6aec8f6f4a", last[1])
+
+    def test_the_stated_figures_are_the_table_s_own(self):
+        text = _read(STATISTICS)
+        last = self._rows()[-1]
+        self.assertIn("the measured gap between the 2 parts is %s."
+                      % format(last[3] - last[4], ","), text)
+        # The limits the record states are the rule's, read
+        # off this table's series by the curve test's rule.
+        self.assertIn("limit of 17,943,534", text)
+        self.assertIn("27,547,009 if it keeps the rule from "
+                      "2026-11-24", text)
+
+    def test_the_chart_carries_the_table_s_figures(self):
+        text = _read(STATISTICS)
+        self.assertIn(self.CHART, text)
+        path = os.path.join(REPO, "assets", self.CHART)
+        self.assertTrue(os.path.isfile(path), self.CHART)
+        chart = self._chart(self.CHART)
+        last = self._rows()[-1]
+        for stated in (">%.2fM<" % (27547009 / 1e6),
+                       ">%.2fM<" % (17943534 / 1e6),
+                       ">%.2fM<" % (last[3] / 1e6),
+                       ">%.2fM<" % (last[4] / 1e6),
+                       "the run log: %.1fM," % (last[3] / 1e6),
+                       "Everything else: %.1fM." % (last[4] / 1e6),
+                       "kept the rule 24 days"):
+            self.assertIn(stated, chart, stated)
+        self.assertIn('stroke="#3987e5"', chart)
+        self.assertIn('stroke="#c98500"', chart)
+
+    def test_the_estimate_stands_on_both_charts_as_an_estimate(self):
+        for name in (self.CHART, self.README_CHART):
+            chart = self._chart(name)
+            self.assertIn("Version 3 stands roughly 80% done: "
+                          "the project's estimate", chart, name)
+            self.assertIn("the rest is projection, not count",
+                          chart, name)
+        readme = _read(os.path.join(REPO, "README.md"))
+        self.assertIn("assets/" + self.README_CHART, readme)
+        chart = self._chart(self.README_CHART)
+        self.assertIn("November 24, 2026 · 11:03 p.m. Pacific · "
+                      "GitHub main 6aec8f6", chart)
 
 
 class TestRecordSlots(unittest.TestCase):
