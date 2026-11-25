@@ -2,7 +2,7 @@
 
 # Public Policy
 
-A policy written in plain language for the general reader. It grows out of a working project in computer security, and it follows one simple chain: first we learn how to check what a computer system actually did, then we learn how to control it, and then we hold the companies that sell these systems to the government to the same standard.
+A policy written in plain language for the general reader. This grows out of a working project in computer security.
 
 ### The argument in one page
 
