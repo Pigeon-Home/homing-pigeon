@@ -2,7 +2,7 @@
 
 # Public Policy
 
-A policy written in plain language for the general reader. This grows out of a working project in computer security.
+A policy written in plain language for the general reader. This grows out of this project in computer security.
 
 ### The argument in one page
 
