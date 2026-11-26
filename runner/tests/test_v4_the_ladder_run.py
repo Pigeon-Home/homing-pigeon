@@ -400,42 +400,64 @@ def before_the_gate(place, text, raw):
 
 def inside_the_gate(raw, repeats=3):
     """1 arrival at the real gate, with the execution a stub:
-    (seconds, the gate's own counts, whether the job ran)."""
-    best = None
+    (the wall seconds, the process CPU seconds, the gate's own
+    counts, whether the job ran). Each clock keeps its own best
+    of the repeats. The wall clock counts waiting as well as
+    work, so its best is the repeat that waited least; the CPU
+    clock counts only the time this process spent running, so
+    its best is the repeat that did the least work, and the
+    counts are the same at every repeat."""
+    best_wall = None
+    best_cpu = None
+    out = None
     for _repeat in range(repeats):
         with tempfile.TemporaryDirectory() as folder:
             began = time.perf_counter()
+            cpu_began = time.process_time()
             out = PRE.arrive(raw, folder)
             took = time.perf_counter() - began
-        if best is None or took < best[0]:
-            best = (took, out)
-    took, out = best
+            cpu = time.process_time() - cpu_began
+        if best_wall is None or took < best_wall:
+            best_wall = took
+        if best_cpu is None or cpu < best_cpu:
+            best_cpu = cpu
     counts = {"parsed": out.count.parsed, "hashed": out.count.hashed,
               "macs": out.count.macs,
               "logged": sum(len(note) for note in out.notes),
               "lines": len(out.notes)}
-    return took, counts, len(out.executed) == 1
+    return best_wall, best_cpu, counts, len(out.executed) == 1
 
 
 def gate_ladder(place, first, second, top, payload, job_id,
-                turned=False, budget=2.0):
+                turned=False, budget=2.0, clock="wall"):
     """Climb 1 family through the gate. At each step: the data
     before (the doors), the data ahead (the 2 times before it,
     added), and the data inside (the time and the counts). The
     climb stops when a step takes more than `budget` seconds,
-    or when the data ahead says the next one will."""
-    rows, times = [], {}
+    or when the data ahead says the next one will. The seconds
+    are read on `clock`: the wall clock by default, whose
+    seconds count waiting as well as work, or the process CPU
+    clock, whose seconds count only the work. A row's inside
+    figure and its ratio are on the climb's clock; its wall
+    and cpu figures are always the 2 clocks themselves."""
+    rows, times, cpus = [], {}, {}
     for step, text in words(first, second, top):
         raw = mail(place, text, payload, job_id, turned)
         size = len(text.encode("utf-8", "surrogatepass"))
         ahead = times[step - 1] + times[step - 2] if step >= 3 else None
-        took, counts, ran = inside_the_gate(
+        cpu_ahead = cpus[step - 1] + cpus[step - 2] \
+            if step >= 3 else None
+        wall, cpu, counts, ran = inside_the_gate(
             raw, 3 if size < 60000 else (2 if size < 400000 else 1))
+        took = cpu if clock == "cpu" else wall
         times[step] = took
+        cpus[step] = cpu
         rows.append({"step": step, "size": size, "mail": len(raw),
                      "before": before_the_gate(place, text, raw),
-                     "ahead": ahead, "inside": took,
+                     "ahead": ahead, "inside": took, "cpu": cpu,
+                     "wall": wall,
                      "ratio": took / ahead if ahead else None,
+                     "cpu_ratio": cpu / cpu_ahead if cpu_ahead else None,
                      "counts": counts, "ran": ran, "stopped": ""})
         if took > budget:
             rows[-1]["stopped"] = "over the budget"
@@ -549,6 +571,18 @@ def reading(rows, floor=0.003):
     steps whose time is above the clock's noise."""
     kept = [row["ratio"] for row in rows
             if row["ratio"] and row["inside"] >= floor
+            and row["before"] == "under both doors"][-5:]
+    return statistics.median(kept) if len(kept) >= 2 else None
+
+
+def reading_cpu(rows, floor=0.003):
+    """The same law read on the CPU clock: the middle CPU ratio
+    of the last steps whose CPU time is above the clock's
+    noise. Waiting does not enter a CPU ratio, so this reading
+    stands where the wall reading is squeezed by the load of
+    the machine the climb happens to share."""
+    kept = [row["cpu_ratio"] for row in rows
+            if row["cpu_ratio"] and row["cpu"] >= floor
             and row["before"] == "under both doors"][-5:]
     return statistics.median(kept) if len(kept) >= 2 else None
 
@@ -981,13 +1015,20 @@ class TheGateOnTheLadder(unittest.TestCase):
     def setUpClass(cls):
         cls.payload, cls.job_id = RUNG.honest_job()
 
-    def climb(self, place, unit, top=24, turned=False, budget=2.0):
+    def climb(self, place, unit, top=24, turned=False, budget=2.0,
+              clock="wall"):
         return gate_ladder(place, unit, unit, top, self.payload, self.job_id,
-                           turned=turned, budget=budget)
+                           turned=turned, budget=budget, clock=clock)
 
     def test_the_gate_reads_a_script_in_proportion(self):
+        # The climbs run on the CPU clock: the proportion is a
+        # law of the work, and on the wall clock the waiting of
+        # a loaded machine has been seen to break this test 2
+        # ways with no change in the work (a climb stopped at
+        # step 22 by the wall forecast, and a reading of 1.42
+        # against the 1.35 bar, both on 2026-11-25).
         for unit in ("a", "\n", " \n", "\x01", '"', "{", "€"):
-            rows = self.climb("script", unit)
+            rows = self.climb("script", unit, clock="cpu")
             self.assertEqual(24, rows[-1]["step"], repr(unit))
             self.assertTrue(all(row["ran"] for row in rows), repr(unit))
             self.assertLess(reading(rows), 1.35, repr(unit))
@@ -1006,32 +1047,64 @@ class TheGateOnTheLadder(unittest.TestCase):
         # change, the ladder of line ends stops itself: its own
         # forecast says the next step is over the budget. With
         # the patterns that stand now it climbs to the top.
+        # These 3 climbs run on the process CPU clock, so the
+        # budget and the forecast judge the work of each step
+        # and not the waiting a loaded machine adds to it. On
+        # the wall clock the waiting moves everything this test
+        # reads: it squeezes the proportion between the old
+        # patterns and a plain script toward 1, and it stops
+        # the good climbs short of the top on machines running
+        # at many times their core count in load. The
+        # supposition, stated before the measurement that
+        # settled this, and its conclusions stand in
+        # docs/infrastructure-documents/project/ladder-timing-supposition-2026-11-25.md.
         with mock.patch.object(OPINION, "_BASH_ONLY_RE",
                                LIMIT.WAS_BASH_ONLY), \
                 mock.patch.object(OPINION, "_EXPORT_RE", LIMIT.WAS_EXPORT):
-            was = self.climb("script", "\n", budget=0.5)
-            plain = self.climb("script", "a", budget=0.5)
-        now = self.climb("script", "\n", budget=0.5)
+            was = self.climb("script", "\n", budget=0.5, clock="cpu")
+            plain = self.climb("script", "a", budget=0.5, clock="cpu")
+        now = self.climb("script", "\n", budget=0.5, clock="cpu")
         self.assertLess(was[-1]["step"], 24)
         self.assertLess(was[-1]["size"], 100000)
         self.assertTrue(was[-1]["stopped"])
         self.assertEqual((24, ""), (now[-1]["step"], now[-1]["stopped"]))
         self.assertEqual((24, ""), (plain[-1]["step"], plain[-1]["stopped"]))
         self.assertLess(reading(now), 1.35)
-        # With a budget of half a second the old patterns stop
-        # at 6,765 bytes, where their own work, which grows
-        # with the square, is still mixed with work in
-        # proportion. The reading of a mix is not a law: it
+        # With a budget of half a second of work the old
+        # patterns stop at 6,765 bytes, where their own work,
+        # which grows with the square, is still mixed with work
+        # in proportion. The reading of a mix is not a law: it
         # ran from 1.4 to 1.7 from climb to climb. So no fixed
         # bar is asked of it, only that it stands above the
         # reading of the patterns that stand now. The decision
-        # is by a plain script climbed beside the ladder: at
-        # the step where the old patterns stop they have taken
-        # more than 10 times as long. Measured: 58 to 93
-        # times, quiet and under load.
-        beside = next(row for row in plain
-                      if row["step"] == was[-1]["step"])
-        self.assertGreater(was[-1]["inside"], 10 * beside["inside"])
+        # is by a plain script climbed beside the ladder: the
+        # old patterns have done more than 10 times the work
+        # of the plain script at the same size.
+        # The decision is taken at fixed steps, 19 and 20, and
+        # on the CPU clock. On the wall clock it failed the
+        # main build on 2026-11-25 with a ratio of 6.1 where
+        # the bar is 10, on a range that touches no ladder
+        # code, while the CPU ratio at the same size, measured
+        # the same day on a loaded machine, stood at 104.6.
+        # A fixed step holds the size the same on every
+        # machine, where the stopping step of a climb can be
+        # moved by the load around it. The plain side of each
+        # fixed step is the plain climb's own row there; the
+        # old side is one arrival at that step under the old
+        # patterns. The family below, TheLadderWorkOnTheCpuClock,
+        # pins the same decision and the clock property it
+        # rests on.
+        texts = {step: text for step, text in words("\n", "\n", 24)}
+        with mock.patch.object(OPINION, "_BASH_ONLY_RE",
+                               LIMIT.WAS_BASH_ONLY), \
+                mock.patch.object(OPINION, "_EXPORT_RE", LIMIT.WAS_EXPORT):
+            fixed = {step: inside_the_gate(mail(
+                "script", texts[step], self.payload, self.job_id,
+                False))[1] for step in (19, 20)}
+        for step in (19, 20):
+            beside = next(row for row in plain
+                          if row["step"] == step)
+            self.assertGreater(fixed[step], 10 * beside["cpu"], step)
         self.assertGreater(reading(was), reading(now))
 
     def test_in_front_of_the_signature_the_work_has_a_law(self):
@@ -1059,6 +1132,125 @@ class TheGateOnTheLadder(unittest.TestCase):
         # message, which a few sizes in step with the looks do
         # not.
         self.assertGreater(most, 3.0)
+
+
+class TheLadderWorkOnTheCpuClock(unittest.TestCase):
+    """The 10 times decision of the F14 ladder test, pinned at
+    fixed steps on the CPU clock. A climb's stopping step is
+    chosen by a forecast, so where it falls can move with the
+    machine the climb runs on; a fixed step does not move, and
+    the CPU clock does not count the waiting the load adds."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.payload, cls.job_id = RUNG.honest_job()
+        cls.texts = {step: text for step, text in words("\n", "\n", 24)}
+
+    def gate_cpu(self, text, old=False):
+        raw = mail("script", text, self.payload, self.job_id, False)
+        if old:
+            with mock.patch.object(OPINION, "_BASH_ONLY_RE",
+                                   LIMIT.WAS_BASH_ONLY), \
+                    mock.patch.object(OPINION, "_EXPORT_RE",
+                                      LIMIT.WAS_EXPORT):
+                return inside_the_gate(raw)[1]
+        return inside_the_gate(raw)[1]
+
+    def shape_cpu(self, text, old=False):
+        def read():
+            began = time.process_time()
+            OPINION.script_shape(text)
+            return time.process_time() - began
+
+        if old:
+            with mock.patch.object(OPINION, "_BASH_ONLY_RE",
+                                   LIMIT.WAS_BASH_ONLY), \
+                    mock.patch.object(OPINION, "_EXPORT_RE",
+                                      LIMIT.WAS_EXPORT):
+                return min(read() for _repeat in range(3))
+        return min(read() for _repeat in range(3))
+
+    def test_the_old_patterns_do_more_than_ten_times_the_work_at_fixed_steps(self):
+        # Steps 19 and 20 of the ladder, 4,181 and 6,765 bytes:
+        # the sizes at and around the step where the old
+        # patterns stop in the gate test above. At each, the
+        # old patterns do more than 10 times the CPU work of a
+        # plain script of the same size through the whole gate,
+        # and the advantage grows from the one step to the
+        # next, which is the square law showing at fixed points
+        # instead of at a stopping step the load can move.
+        work = {}
+        for step in (19, 20):
+            text = self.texts[step]
+            work[step] = (self.gate_cpu(text, old=True),
+                          self.gate_cpu("a" * len(text)))
+        for step in (19, 20):
+            old_cpu, plain_cpu = work[step]
+            self.assertGreater(old_cpu, 10 * plain_cpu, step)
+        old_19, plain_19 = work[19]
+        old_20, plain_20 = work[20]
+        self.assertGreater(old_20 * plain_19, old_19 * plain_20)
+
+    def test_the_shape_read_itself_grows_faster_than_the_size(self):
+        # The substrate, read directly: the old patterns on a
+        # ladder of line ends. Their CPU time from step 17
+        # (1,597 bytes) to step 20 (6,765 bytes) grows by more
+        # than 4 times the growth of the size itself would
+        # explain on a proportion law (the sizes grow 4.2
+        # times; the square law expects about 18 times), and
+        # at step 20 the old patterns do more than 10 times
+        # the CPU work of the patterns that stand now on the
+        # same text.
+        old_17 = self.shape_cpu(self.texts[17], old=True)
+        old_20 = self.shape_cpu(self.texts[20], old=True)
+        now_20 = self.shape_cpu(self.texts[20])
+        self.assertGreater(old_20, 4 * old_17)
+        self.assertGreater(old_20, 10 * now_20)
+
+    def test_waiting_counts_on_the_wall_clock_and_not_on_the_cpu_clock(self):
+        # The property the decision rests on, pinned on its
+        # own: a sleep is pure waiting, the shape of what a
+        # loaded machine adds to a wall measurement. It fills
+        # the wall clock and leaves the CPU clock near empty.
+        began = time.perf_counter()
+        cpu_began = time.process_time()
+        time.sleep(0.25)
+        wall = time.perf_counter() - began
+        cpu = time.process_time() - cpu_began
+        self.assertGreater(wall, 0.2)
+        self.assertLess(cpu, 0.05)
+
+    def test_reading_cpu_follows_the_cpu_ratios_when_the_wall_ratios_collapse(self):
+        # Rows whose wall ratios have been squeezed to 1 by
+        # waiting, with their CPU ratios intact: the wall
+        # reading reports the squeeze and the CPU reading
+        # reports the law, each from its own clock's ratios.
+        rows = [{"step": step, "size": step * 1000, "mail": 0,
+                 "before": "under both doors", "ahead": None,
+                 "inside": 0.05, "ratio": 1.0,
+                 "cpu": 0.05, "cpu_ratio": 1.9,
+                 "counts": {}, "ran": True, "stopped": ""}
+                for step in range(1, 9)]
+        self.assertEqual(1.0, reading(rows))
+        self.assertEqual(1.9, reading_cpu(rows))
+
+    def test_reading_cpu_keeps_the_same_doors_and_floor_as_reading(self):
+        # A row over the job door, and a row under the noise
+        # floor, are kept out of the CPU reading the same way
+        # they are kept out of the wall reading: with only
+        # those rows there is no reading at all.
+        rows = [{"step": 1, "size": 1000, "mail": 0,
+                 "before": "over the job door", "ahead": None,
+                 "inside": 0.05, "ratio": 9.0,
+                 "cpu": 0.05, "cpu_ratio": 9.0,
+                 "counts": {}, "ran": True, "stopped": ""},
+                {"step": 2, "size": 2000, "mail": 0,
+                 "before": "under both doors", "ahead": None,
+                 "inside": 0.001, "ratio": 9.0,
+                 "cpu": 0.001, "cpu_ratio": 9.0,
+                 "counts": {}, "ran": True, "stopped": ""}]
+        self.assertIsNone(reading(rows))
+        self.assertIsNone(reading_cpu(rows))
 
 
 class TheGateHasAnAnswerForEveryMail(unittest.TestCase):
