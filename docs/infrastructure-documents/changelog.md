@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.3 - 2026-11-26
+
+- Land on main (since 4.0.35.2) -- 2 commits: PUB_POLICY cleanup (Muse: clean stale private era lines, add the local artifact demarcation in Appendix B) and Update README.md (DRU)
+- The version was computed by runner/ops/version4.py next 4.0.35.2 --fresh on a fresh uncached recount over base head 02009f2e (log ~/workspace/ship-work/recount-40353.log), next = 4.0.35.3
+
 ## 4.0.35.2 - 2026-11-26
 
 - Land on main (since 4.0.35.1) -- 2 Muse commits, ComChat only: relay of ChatGPT public-policy reviews, and the ComChat note that release 4.0.35.1, the milestone release to V4, is published
