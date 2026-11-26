@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.4 - 2026-11-26
+
+- Land on main (since 4.0.35.2) -- PUB_POLICY cleanup (Muse: clean stale private era lines, add the local artifact demarcation in Appendix B), Update README.md (DRU), the spent 4.0.35.3 release commit, and the tree-wide allowlist fix for the NIST framework phrase in the ComChat relay record
+- The version was computed by runner/ops/version4.py next 4.0.35.3 --fresh on a fresh uncached recount over base head 59b720ee (log ~/workspace/ship-work/recount-40354.log), next = 4.0.35.4. Release 4.0.35.3 was spent at its gate (build 45899032797, test leg red on the tree-wide scan) and is never reused
+
 ## 4.0.35.3 - 2026-11-26
 
 - Land on main (since 4.0.35.2) -- 2 commits: PUB_POLICY cleanup (Muse: clean stale private era lines, add the local artifact demarcation in Appendix B) and Update README.md (DRU)
