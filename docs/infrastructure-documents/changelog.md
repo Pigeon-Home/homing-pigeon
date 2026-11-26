@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.1 - 2026-11-26
+
+- Milestone release to V4. The project has a lot of provability, and one fuzz log came over the horizontal asymptote for the security tokens of the blue line; that is a good demarcation point for 4.0.
+- The 4 line opens: version4's deliberate major bump restarts the minor at 0 and the counter at 1, carrying the fresh recount taken at this cut.
+
 ## 3.19.35.3 - 2026-11-26
 
 - Land on main (since 3.19.35.2) -- 1 DRU commit: Update swarm (docs/archive/swarm only, 2 insertions)

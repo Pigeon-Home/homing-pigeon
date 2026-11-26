@@ -3,10 +3,10 @@
 
 The scheme (owner's words, 3-Nov-2026):
 
-- MAJOR is the milestone line (the 3 in 3.19.x). It moves only
+- MAJOR is the milestone line (the 4 in 4.0.x). It moves only
   when a release is deliberately cut on a new major line, and a
   major bump restarts the minor at 0.
-- MINOR is the line as before (the 19 in 3.19.x). It moves only when
+- MINOR is the line as before (the 0 in 4.0.x). It moves only when
   a release is deliberately cut on a new minor line.
 - TOKENS is the size of this repository in tokens, in whole
   millions: the measured token count of the tracked tree, divided

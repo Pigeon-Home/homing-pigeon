@@ -1,7 +1,7 @@
 # The project's statistics: the 35-million-token measure
 
 Dated 2026-11-26. Measured on main at commit
-0655880094cebb725ff32a53c33e4ccc0b92d02d, the head this
+3acdce13e519b4ac1b895db9a45fcc2c7dc5a3ab, the head this
 refresh was measured on.
 
 The recorded line, in the display form settled for publication:
@@ -10,7 +10,7 @@ The recorded line, in the display form settled for publication:
 
 ## What stands behind each figure
 
-- Tokens: <!--hp-fig:tokens_exact-->35,230,013<!--/hp-fig-->, counted over the whole tree by the
+- Tokens: <!--hp-fig:tokens_exact-->35,230,105<!--/hp-fig-->, counted over the whole tree by the
   project's own estimator (runner/ops/version4.py). It is the
   measure the version number's 3rd component carries, in whole
   millions: <!--hp-fig:tokens_millions-->35<!--/hp-fig-->. The component holds its figure when a count
@@ -24,7 +24,7 @@ The recorded line, in the display form settled for publication:
   is sec-tokens. Verify it on any checkout:
   `python3 runner/ops/version4.py measure` prints the count and
   its whole millions.
-- Lines: <!--hp-fig:lines_tracked-->1,656,261<!--/hp-fig--> lines in tracked files at the measured
+- Lines: <!--hp-fig:lines_tracked-->1,656,266<!--/hp-fig--> lines in tracked files at the measured
   head. The display figure, <!--hp-fig:display_lines-->1,700,000<!--/hp-fig-->, is that count rounded.
 - Commits: the display figure, <!--hp-fig:display_commits-->7,000<!--/hp-fig-->, is rounded from a
   full-history count at the measured head, taken from a
@@ -79,10 +79,10 @@ stays their source of truth.
 ```json
 {
   "as_of": "2026-11-26",
-  "commit": "0655880094cebb725ff32a53c33e4ccc0b92d02d",
+  "commit": "3acdce13e519b4ac1b895db9a45fcc2c7dc5a3ab",
   "counter": "runner/ops/version4.py",
-  "tokens": 35230013,
-  "lines_tracked": 1656261,
+  "tokens": 35230105,
+  "lines_tracked": 1656266,
   "commits": 6911,
   "display_commits": 7000,
   "display_lines": 1700000,
@@ -96,7 +96,7 @@ stays their source of truth.
   "core_tokens": 793715,
   "core_assembled_lines": 73435,
   "core_assembled_nonblank": 66635,
-  "core_assembled_zip_bytes": 945253,
+  "core_assembled_zip_bytes": 945249,
   "core_assembled_tokens": 805294
 }
 ```
@@ -104,8 +104,8 @@ stays their source of truth.
 ## The measure on 2 axes: size, and coverage
 
 The headline at the top of this record is the size axis.
-It counts the tree: <!--hp-fig:tokens_exact-->35,230,013<!--/hp-fig--> tokens in
-<!--hp-fig:lines_tracked-->1,656,261<!--/hp-fig--> lines of tracked files, and its
+It counts the tree: <!--hp-fig:tokens_exact-->35,230,105<!--/hp-fig--> tokens in
+<!--hp-fig:lines_tracked-->1,656,266<!--/hp-fig--> lines of tracked files, and its
 denominator is the tree itself. A size says how much
 stands here. It does not say how much of what stands here
 is covered: how many of the project's claims carry
