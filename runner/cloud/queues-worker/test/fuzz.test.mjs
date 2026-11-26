@@ -4022,6 +4022,19 @@ test("shotgun34 cross-route: the same max=0 names one on the pull, the results r
 // was never going to be enough for a bug that took days of CPU
 // to find.
 //
+// Correction, 2026-11-25: the distinction the paragraph above
+// records stood until the owner ordered the two gates unified.
+// The job gate now reads its claim with the same payloadId
+// reader, so an absent job_id on a job makes no claim either,
+// and the tests below that pinned the old refusal for an absent,
+// nested-only, misspelled-key or unreadable claim now pin the
+// acceptance under the subject id instead. The reading this
+// family exists to pin (which text is read, and how) is
+// unchanged, and every present claim keeps its answer. The
+// supposition and measurement stand in
+// docs/infrastructure-documents/project/queues-worker-job-gate-supposition-2026-11-25.md,
+// and the new family is shotgun41, at the end of this file.
+//
 // Proof of work. The unit tests are the 50 tests registered
 // below: 15 hand-written seams, 6 key-spelling tests, 10
 // signed-payload extraction tests, 4 gate-off fallback tests, 8
@@ -4179,14 +4192,14 @@ test("shotgun35: duplicate job_id keys read their last value -- a last mismatch 
   await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_id":"j1","job_id":"j2","kind":"exec"}`));
 });
 
-test("shotgun35: a signed payload with no job_id at all is a mismatch on the job route -- refused", async () => {
+test("shotgun35: a signed payload with no job_id at all makes no claim on the job route -- accepted under the subject id (the absent rule, unified with the results route 2026-11-25)", async () => {
   const env = await sg35Env();
-  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","kind":"exec","script":"echo hi"}`));
+  await sg35Accept(env, "j1", await sg35Signed(`{"v":1,"type":"job","kind":"exec","script":"echo hi"}`));
 });
 
-test("shotgun35: a job_id nested inside another member is not the payload's claim -- refused", async () => {
+test("shotgun35: a job_id nested inside another member is not the payload's claim -- the payload makes no claim and the job is accepted under the subject id", async () => {
   const env = await sg35Env();
-  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job":{"job_id":"j1"},"kind":"exec"}`));
+  await sg35Accept(env, "j1", await sg35Signed(`{"v":1,"type":"job","job":{"job_id":"j1"},"kind":"exec"}`));
 });
 
 test("shotgun35: non-string job_id values -- number, null, boolean, object and array -- are each refused", async () => {
@@ -4198,29 +4211,29 @@ test("shotgun35: non-string job_id values -- number, null, boolean, object and a
 
 // -- 6 key-spelling tests --------------------------------------------
 
-test("shotgun35 spelling jobId: a camelCase key is not the field -- refused", async () => {
+test("shotgun35 spelling jobId: a camelCase key is not the field -- the payload makes no claim and the job is accepted under the subject id", async () => {
   const env = await sg35Env();
-  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","jobId":"j1","kind":"exec"}`));
+  await sg35Accept(env, "j1", await sg35Signed(`{"v":1,"type":"job","jobId":"j1","kind":"exec"}`));
 });
 
-test("shotgun35 spelling JOB_ID: an uppercase key is not the field -- refused", async () => {
+test("shotgun35 spelling JOB_ID: an uppercase key is not the field -- the payload makes no claim and the job is accepted under the subject id", async () => {
   const env = await sg35Env();
-  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","JOB_ID":"j1","kind":"exec"}`));
+  await sg35Accept(env, "j1", await sg35Signed(`{"v":1,"type":"job","JOB_ID":"j1","kind":"exec"}`));
 });
 
-test("shotgun35 spelling job-id: a hyphenated key is not the field -- refused", async () => {
+test("shotgun35 spelling job-id: a hyphenated key is not the field -- the payload makes no claim and the job is accepted under the subject id", async () => {
   const env = await sg35Env();
-  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job-id":"j1","kind":"exec"}`));
+  await sg35Accept(env, "j1", await sg35Signed(`{"v":1,"type":"job","job-id":"j1","kind":"exec"}`));
 });
 
-test("shotgun35 spelling trailing space: a key with a trailing space is not the field -- refused", async () => {
+test("shotgun35 spelling trailing space: a key with a trailing space is not the field -- the payload makes no claim and the job is accepted under the subject id", async () => {
   const env = await sg35Env();
-  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_id ":"j1","kind":"exec"}`));
+  await sg35Accept(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_id ":"j1","kind":"exec"}`));
 });
 
-test("shotgun35 spelling lookalike: a Cyrillic i in the key is not the field -- refused", async () => {
+test("shotgun35 spelling lookalike: a Cyrillic i in the key is not the field -- the payload makes no claim and the job is accepted under the subject id", async () => {
   const env = await sg35Env();
-  await sg35Refuse(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_\u0456d":"j1","kind":"exec"}`));
+  await sg35Accept(env, "j1", await sg35Signed(`{"v":1,"type":"job","job_\u0456d":"j1","kind":"exec"}`));
 });
 
 test("shotgun35 spelling escaped key: the key spelled with a \\u escape decodes to job_id -- accepted", async () => {
@@ -4277,10 +4290,10 @@ test("shotgun35 extraction: a sig-shaped text inside a string field does not div
   await sg35Accept(env, "j1", await sg35Signed(payload));
 });
 
-test("shotgun35 extraction: a raw control byte between payload members passes the sig gate but the id read refuses it", async () => {
+test("shotgun35 extraction: a raw control byte between payload members passes the sig gate and the id read makes no claim from the unreadable payload -- accepted under the subject id", async () => {
   const env = await sg35Env();
   const payload = "{\"v\":1,\"type\":\"job\",\x01\"job_id\":\"j1\",\"kind\":\"exec\"}";
-  await sg35Refuse(env, "j1", await sg35Signed(payload));
+  await sg35Accept(env, "j1", await sg35Signed(payload));
 });
 
 test("shotgun35 extraction: CRLF envelope endings around the signed payload are read the same -- accepted", async () => {
@@ -4319,11 +4332,11 @@ test("shotgun35 gate off: an unsigned body naming another id is refused", async 
   await sg35Refuse(env, "j1", sg35Payload("j2"));
 });
 
-test("shotgun35 gate off: an unsigned body that is not one JSON object -- an array and a bare string -- is refused", async () => {
+test("shotgun35 gate off: an unsigned body that is not one JSON object -- an array and a bare string -- makes no claim and is stored under the subject id", async () => {
   for (const bodyText of [`["job_id","j1"]`, `"j1"`]) {
     const env = await sg35Env();
     env.REJECT_INVALID_HMAC = "false";
-    await sg35Refuse(env, "j1", bodyText);
+    await sg35Accept(env, "j1", bodyText);
   }
 });
 
@@ -7061,6 +7074,17 @@ test("shotgun39 lifecycle: pull-and-ack cycles drain 20 jobs of 1 MB each exactl
 //      mismatch for a job; the signed payload governs over an
 //      unsigned prefix, and duplicate keys read their last
 //      value -- the same reading the runner gives them.
+//      Correction, 2026-11-25: the absent half of that rule was
+//      retired when the owner ordered the job gate unified with
+//      the results route. The claim is now read by payloadId,
+//      the one reader both routes share (bodyJobId is gone), a
+//      present claim that differs or is not a string is still a
+//      400, and an absent claim makes no claim: the job is kept
+//      under the subject id. The absent test below pins the new
+//      answer; the rest of leg C is unchanged. The supposition
+//      and measurement stand in
+//      docs/infrastructure-documents/project/queues-worker-job-gate-supposition-2026-11-25.md,
+//      and the new family is shotgun41, at the end of this file.
 // Bookends: every printable ASCII symbol (all 32 punctuation
 // characters) at the front AND the back of the subject id, as
 // singles, matched pairs, mismatched pairs and symbol-only ids
@@ -7440,14 +7464,15 @@ test("shotgun40 subject: the mismatch runs both ways -- a j1 subject for a body 
   assert.equal(sg40Map(env).size, 0);
 });
 
-test("shotgun40 subject field job_id absent: a signed payload with no job_id is a mismatch for a job", async () => {
+test("shotgun40 subject field job_id absent: a signed payload with no job_id makes no claim for a job and is kept under the subject id (the absent rule, unified with the results route 2026-11-25)", async () => {
   const env = await sg40Env();
   const fields = sg40JobFields("j1");
   delete fields.job_id;
-  const r = await sg40PostJob(env, await sg40Signed("j1", fields));
-  assert.equal(r.status, 400);
-  assert.deepEqual(r.body, { error: "job_id mismatch between subject and body" });
-  assert.equal(sg40Map(env).size, 0);
+  const text = await sg40Signed("j1", fields);
+  const r = await sg40PostJob(env, text);
+  assert.equal(r.status, 202);
+  assert.equal(r.body.id, "j1");
+  assert.equal(sg40Map(env).get("job:j1").envelope, text);
 });
 
 test("shotgun40 subject field job_id numeric: 42, 0 and -1 in a signed payload are each a mismatch", async () => {
@@ -7690,6 +7715,264 @@ test("shotgun40 repeats: the same mismatched envelope posted 10 times is refused
     assert.equal((await sg40PostJob(env, unsafe)).status, 400, `unsafe try ${i}`);
   }
   assert.equal(sg40Map(env).size, 0);
+});
+
+});
+
+// ---------------------------------------------------------------------
+// shotgun41: the job gate treats an absent job_id claim the way the
+// results route always has (absent is not a claim).
+//
+// The finding (Anna pipe build lane, 2026-11-25, reproduced twice in
+// its staging proof and measured again before this fix): the shipped
+// job posting gate compared the signed payload's job_id member
+// against the subject id through a reader that returned undefined
+// when the member was absent, and refused whenever the two differed.
+// An hp_enc envelope, the protocol's default encrypted job, carries
+// no job_id member at the payload level, so every encrypted job was
+// refused with "job_id mismatch between subject and body" and the
+// pipe had to compose signed cleartext jobs instead. The supposition
+// and the measurement stand in
+// docs/infrastructure-documents/project/queues-worker-job-gate-supposition-2026-11-25.md:
+// before the fix, a correctly signed encrypted job measured 400 with
+// the mismatch error and stored nothing, while its signed cleartext
+// twin measured 202 and stored; after the fix the encrypted job
+// measures 202 and stores under the subject id.
+//
+// Proof of work. The unit tests are the 24 tests registered below:
+// 18 hand-written seams, 1 bookend sweep, 1 run-length sweep, 1
+// injection sweep, and 3 lifecycle edges. Per-field enumeration: the
+// gate's surface is fielded -- the subject's id, and the signed
+// payload's job_id one by one (string match, string mismatch,
+// absent beside an hp_enc member, absent with no other member that
+// could carry it, nested under another member, null, boolean,
+// number, object, array, empty, case-shifted, padded), the hp_enc
+// member itself (alone, beside a matching claim, beside a differing
+// claim), and the sig member that decides which payload the gate
+// reads (an unsigned prefix naming either id, a wrong key refused
+// earlier at the signature gate). Bookends: every printable ASCII
+// symbol at the front AND the back of the claimed id, and
+// symbol-only claims. Run lengths: the odd character after an
+// ordinary prefix and before one, ids at the 128 length boundary
+// matching and differing by one character, and the same refused
+// envelope posted 10 times. The fuzzing was executed, not just the
+// tests written: this family runs under the same node --test pass
+// as the rest of this file, and the pre-fix and post-fix gate
+// answers were measured directly against the Worker before the
+// family was pinned. For the .mjs file the Python skip registry
+// does not apply, and this family adds no skips. None of this is
+// exotic: it is combinatorics -- systematically trying the
+// combinations a hand-written list would never reach, then pinning
+// each answer as a test.
+
+async function jgAccept(env, id, text) {
+  const r = await sg40PostJob(env, text);
+  assert.equal(r.status, 202, text);
+  assert.equal(r.body.id, id);
+  assert.equal(sg40Map(env).get(`job:${id}`).envelope, text);
+  return r;
+}
+
+async function jgRefuse(env, id, text) {
+  const before = sg40Map(env).size;
+  const r = await sg40PostJob(env, text);
+  assert.equal(r.status, 400, text);
+  assert.equal(r.body.error, "job_id mismatch between subject and body");
+  assert.ok(!sg40Map(env).has(`job:${id}`), `${id} stored a job`);
+  assert.equal(sg40Map(env).size, before, "a refusal changed storage");
+  return r;
+}
+
+const JG_ENC = { hp_enc: { alg: "AES-256-GCM", nonce: "aa", ct: "bb" } };
+
+describe("shotgun41: the job gate and the absent claim", () => {
+
+// -- 18 hand-written seams ----------------------------------------------
+
+test("shotgun41: an encrypted envelope carries no claim and is stored under the subject id", async () => {
+  const env = await sg40Env();
+  await jgAccept(env, "enc1", await sg40Signed("enc1", JG_ENC));
+});
+
+test("shotgun41: the stored encrypted job is leased to the runner under the subject id, byte for byte", async () => {
+  const env = await sg40Env();
+  const text = await sg40Signed("enc1", JG_ENC);
+  await jgAccept(env, "enc1", text);
+  const r = await worker.fetch(req("/t/alice/jobs?max=5", { token: `Bearer ${RUNNER}` }), env);
+  assert.equal(r.status, 200);
+  const pulled = await r.json();
+  assert.equal(pulled.jobs.length, 1);
+  assert.equal(pulled.jobs[0].id, "enc1");
+  assert.equal(pulled.jobs[0].envelope, text);
+});
+
+test("shotgun41: an encrypted shape beside a mismatched job_id is still refused", async () => {
+  const env = await sg40Env();
+  await jgRefuse(env, "j1", await sg40Signed("j1", { ...JG_ENC, job_id: "j2" }));
+});
+
+test("shotgun41: an encrypted shape beside a matching job_id is stored", async () => {
+  const env = await sg40Env();
+  await jgAccept(env, "j1", await sg40Signed("j1", { ...JG_ENC, job_id: "j1" }));
+});
+
+test("shotgun41: a cleartext job whose body names the subject id is stored (the standing answer)", async () => {
+  const env = await sg40Env();
+  await jgAccept(env, "j1", await sg40Signed("j1", sg40JobFields("j1")));
+});
+
+test("shotgun41: a cleartext job whose body names a different id is refused and stores nothing (the standing answer)", async () => {
+  const env = await sg40Env();
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields("j2")));
+  assert.equal(sg40Map(env).size, 0);
+});
+
+test("shotgun41: a signed payload with no job_id member and no encryption makes no claim and is stored", async () => {
+  const env = await sg40Env();
+  await jgAccept(env, "j1", await sg40Signed("j1", { v: 1, type: "job", kind: "ping" }));
+});
+
+test("shotgun41: a job_id nested under another member is not a claim and the job is stored", async () => {
+  const env = await sg40Env();
+  await jgAccept(env, "j1", await sg40Signed("j1", { v: 1, type: "job", job: { job_id: "j2" } }));
+});
+
+test("shotgun41: a numeric job_id is a claim that is not the subject id and is refused", async () => {
+  const env = await sg40Env();
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields(42)));
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields(0)));
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields(-1)));
+});
+
+test("shotgun41: a null job_id is a claim that is not the subject id and is refused", async () => {
+  const env = await sg40Env();
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields(null)));
+});
+
+test("shotgun41: a boolean job_id is a claim that is not the subject id and is refused", async () => {
+  const env = await sg40Env();
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields(true)));
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields(false)));
+});
+
+test("shotgun41: an object or array job_id is a claim that is not the subject id and is refused", async () => {
+  const env = await sg40Env();
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields({ id: "j1" })));
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields(["j1"])));
+});
+
+test("shotgun41: an empty job_id is a claim that is not the subject id and is refused", async () => {
+  const env = await sg40Env();
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields("")));
+});
+
+test("shotgun41: a case-only difference between the claimed id and the subject id is refused", async () => {
+  const env = await sg40Env();
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields("J1")));
+  await jgRefuse(env, "J1", await sg40Signed("J1", sg40JobFields("j1")));
+});
+
+test("shotgun41: a claimed id padded with spaces or a tab is not the subject id", async () => {
+  const env = await sg40Env();
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields(" j1 ")));
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields("j1\t")));
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields("\tj1")));
+});
+
+test("shotgun41: the signed payload governs -- its different id is refused past an unsigned prefix naming the subject", async () => {
+  const env = await sg40Env();
+  const signed = await sg40Signed("j2", sg40JobFields("j2"));
+  const signedBody = signed.split("\n\n")[1];
+  await jgRefuse(env, "j1", `[HOMING-PIGEON] job j1\n\n{"job_id":"j1"}${signedBody}`);
+});
+
+test("shotgun41: the signed payload governs -- its matching id is stored past an unsigned prefix naming another id", async () => {
+  const env = await sg40Env();
+  const signed = await sg40Signed("j1", sg40JobFields("j1"));
+  const signedBody = signed.split("\n\n")[1];
+  await jgAccept(env, "j1", `[HOMING-PIGEON] job j1\n\n{"job_id":"evil"}${signedBody}`);
+});
+
+test("shotgun41: an encrypted envelope under the wrong key is refused at the signature gate, before the id gate", async () => {
+  const env = await sg40Env();
+  const r = await sg40PostJob(env, await sg40Signed("enc1", JG_ENC, "the-wrong-key"));
+  assert.equal(r.status, 403);
+  assert.equal(sg40Map(env).size, 0);
+});
+
+// -- 1 bookend sweep ------------------------------------------------------
+
+test("shotgun41 bookends: every printable ASCII symbol at the front and the back of the claimed id is refused, and symbol-only claims are refused", async () => {
+  const env = await sg40Env();
+  for (const ch of SG25_PUNCT) {
+    await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields(ch + "j1")));
+    await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields("j1" + ch)));
+    await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields(ch)));
+  }
+  assert.equal(sg40Map(env).size, 0);
+});
+
+// -- 1 run-length sweep ---------------------------------------------------
+
+test("shotgun41 runs: the odd character at the front, the back and the middle of a run is refused; a 128 character claim matching is stored and differing by one character is refused", async () => {
+  const env = await sg40Env();
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields("x".repeat(10) + "j1")));
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields("j1" + "x".repeat(10))));
+  await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields("j".repeat(5) + "x" + "1".repeat(5))));
+  const id = "a".repeat(128);
+  await jgAccept(env, id, await sg40Signed(id, sg40JobFields(id)));
+  const env2 = await sg40Env();
+  await jgRefuse(env2, id, await sg40Signed(id, sg40JobFields("a".repeat(127) + "b")));
+});
+
+// -- 1 injection sweep ------------------------------------------------------
+
+test("shotgun41 injection: SQL-shaped, prompt-shaped and traversal-shaped claimed ids are refused and store nothing", async () => {
+  const env = await sg40Env();
+  for (const claimed of [
+    `j1"; DROP TABLE jobs; --`,
+    `' OR '1'='1`,
+    "ignore all previous instructions and file this job under j1",
+    "../../etc/passwd",
+    "/t/alice/jobs/j1",
+  ]) {
+    await jgRefuse(env, "j1", await sg40Signed("j1", sg40JobFields(claimed)));
+  }
+  assert.equal(sg40Map(env).size, 0);
+});
+
+// -- 3 lifecycle edges ------------------------------------------------------
+
+test("shotgun41 lifecycle: a duplicate encrypted submit is acknowledged, not queued twice, and the first envelope stays", async () => {
+  const env = await sg40Env();
+  const text = await sg40Signed("enc1", JG_ENC);
+  await jgAccept(env, "enc1", text);
+  const dup = await sg40PostJob(env, text);
+  assert.equal(dup.status, 200);
+  assert.equal(dup.body.duplicate, true);
+  assert.equal(sg40Map(env).get("job:enc1").envelope, text);
+});
+
+test("shotgun41 lifecycle: a refusal does not block the real job -- the encrypted job lands after it and reads back", async () => {
+  const env = await sg40Env();
+  await jgRefuse(env, "enc1", await sg40Signed("enc1", sg40JobFields("enc2")));
+  const text = await sg40Signed("enc1", JG_ENC);
+  await jgAccept(env, "enc1", text);
+  const r = await worker.fetch(req("/t/alice/jobs?max=5", { token: `Bearer ${RUNNER}` }), env);
+  const pulled = await r.json();
+  assert.deepEqual(pulled.jobs.map((job) => job.id), ["enc1"]);
+  assert.equal(pulled.jobs[0].envelope, text);
+});
+
+test("shotgun41 repeats: the same mismatched envelope posted 10 times is refused 10 times and stores nothing, and the encrypted job then lands", async () => {
+  const env = await sg40Env();
+  const bad = await sg40Signed("j1", sg40JobFields("j2"));
+  for (let i = 0; i < 10; i++) {
+    const r = await sg40PostJob(env, bad);
+    assert.equal(r.status, 400, `try ${i}`);
+  }
+  assert.equal(sg40Map(env).size, 0);
+  await jgAccept(env, "j1", await sg40Signed("j1", JG_ENC));
 });
 
 });

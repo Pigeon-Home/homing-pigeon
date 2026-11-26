@@ -805,6 +805,18 @@ What does not stand yet, stated just as plainly:
   serving this pipe must be started allowing cleartext.
   Results remain encrypted either way. This is a staging
   posture, not the intended production one.
+  Update, later the same day (2026-11-25): the fix has now
+  landed in this repository. The job posting gate reads the
+  payload's `job_id` claim with the results route's own
+  reader, an absent claim is not a claim on either route, and
+  a present claim that differs still refuses. The supposition,
+  the measurement and the conclusions stand in
+  docs/infrastructure-documents/project/queues-worker-job-gate-supposition-2026-11-25.md,
+  and a new test family (shotgun41) pins the gate's answers.
+  The bridge's cleartext staging posture is therefore no
+  longer forced by this gate; pointing the bridge at encrypted
+  composition belongs to the real runner verification below,
+  which still stands ahead.
 - Nothing has been pushed to Anna, and nothing has been
   submitted. The 0.2.0 project stands built and tested
   locally only. Its manifest was checked against the

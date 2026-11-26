@@ -65,4 +65,38 @@ reported instead.
 
 ## Conclusions
 
-(Appended after the measurement.)
+Measured 2026-11-25, against the shipped Worker code, with a
+signed job posted to the job route under a test tenant. The
+measurement matched the supposition exactly. The signed job
+whose payload is an hp_enc envelope returned 400 with the
+error text "job_id mismatch between subject and body" and
+stored nothing. The same job in signed cleartext with a
+matching job_id returned 202 and was stored under the
+subject's id. The decision rule therefore fires, and the fix
+the supposition named is the change that lands: the job gate
+now reads the payload's job_id claim with the same reader the
+results route uses, and refuses only a present claim that
+differs from the subject's id. The reader it replaces is
+removed; the one reader now serves both routes, so the two
+gates cannot drift apart on this question again.
+
+After the fix, the same measurement reads the other way. The
+signed encrypted job returns 202 and is stored under the
+subject's id, and its cleartext twin then reads as a duplicate
+of the stored envelope, with the first envelope staying, which
+is the queue's standing answer to a second submit of one id. A
+new family of 24 unit tests in the Worker's own fuzz suite
+(shotgun41) pins the gate's answers across the claim shapes
+the supposition named: the encrypted envelope accepted and
+leased back under the subject id, the encrypted shape beside a
+differing claim refused, the absent claim accepted with and
+without encryption, the nested claim treated as no claim, and
+the present claims that are not strings, or differ in case or
+padding or length, refused, with the signed payload governing
+past unsigned prefixes and a refusal leaving the way clear for
+the real job. With the fix landed, the Anna pipe's staging
+posture of signed cleartext jobs is no longer forced by this
+gate; the bridge can compose the protocol's default encrypted
+jobs once its own side is pointed at the fixed Worker, and
+that follow-through belongs to the pipe's real runner
+verification, not to this change.

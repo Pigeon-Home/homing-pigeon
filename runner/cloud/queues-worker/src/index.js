@@ -316,18 +316,6 @@ export function safeJobId(id) {
     && id !== "." && id !== "..";
 }
 
-function bodyJobId(body) {
-  // The id the runner will trust is the one inside the signed payload,
-  // not a second parse of the whole body. Python's parser accepts
-  // NaN and Infinity; JSON.parse rejects the body and used to 400 a
-  // job the runner would run.
-  const ex = extractSigAndPayload(typeof body === "string" ? body : "");
-  let obj;
-  try { obj = pyLoads(ex ? ex.payload : (body || "")); } catch { return undefined; }
-  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return undefined;
-  return typeof obj.job_id === "string" ? obj.job_id : undefined;
-}
-
 // The id the body claims, from the signed payload when there is one.
 // Undefined when that field is absent (an encrypted envelope has none;
 // the SI binds it by decrypting under the subject id). Null when the
@@ -477,7 +465,15 @@ export default {
         if (verdict === "no-sig") return json(400, { error: "body carries no sig member" });
         if (verdict !== "accept") return json(403, { error: "invalid signature" });
       }
-      if (bodyJobId(parsed.body) !== jobId) return json(400, { error: "job_id mismatch between subject and body" });
+      // A job that names a different id in its body is stored under
+      // the subject, and the first envelope stays, so the real job
+      // for that id can never replace it. Absent is not a claim: an
+      // encrypted envelope carries the id in the subject only, and
+      // the runner binds it by decrypting under the subject id.
+      const claimedJobId = payloadId(parsed.body, "job_id");
+      if (claimedJobId !== undefined && claimedJobId !== jobId) {
+        return json(400, { error: "job_id mismatch between subject and body" });
+      }
       return forward("/enqueue", {
         method: "POST",
         headers: { "x-hp-job-id": jobId, "x-hp-quota": JSON.stringify(tenant.quota || DEFAULT_QUOTA) },
