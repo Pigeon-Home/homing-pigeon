@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.2 - 2026-11-26
+
+- Land on main (since 4.0.35.1) -- 2 Muse commits, ComChat only: relay of ChatGPT public-policy reviews, and the ComChat note that release 4.0.35.1, the milestone release to V4, is published
+
 ## 4.0.35.1 - 2026-11-26
 
 - Milestone release to V4. The project has a lot of provability, and one fuzz log came over the horizontal asymptote for the security tokens of the blue line; that is a good demarcation point for 4.0.
