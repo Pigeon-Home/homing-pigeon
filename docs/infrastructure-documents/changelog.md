@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.35.21 - 2026-11-26
+
+- Land on main (since 3.18.35.20) -- 1 Muse commit: docs: the Anna pipe and window design, documented verbosely in the design drawer
+
 ## 3.18.35.20 - 2026-11-25
 
 - Land on main (since 3.18.35.19) -- 1 Muse commit: docs supposition for the ladder timing proportion fix, stated before measuring
