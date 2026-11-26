@@ -1,12 +1,13 @@
 # Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026
 """The 4-component version scheme (runner/ops/version4.py).
 
-MAJOR.MINOR.TOKENS.COUNTER: the major never moves, the third
-component is the repository's size in tokens in whole millions
-(measured at most once every 24 hours for general callers — a
-release cut passes --fresh and takes a fresh recount instead),
-and the counter restarts at 1 whenever a number to its left
-increases.
+MAJOR.MINOR.TOKENS.COUNTER: the major moves only on a deliberate
+major bump, which restarts the minor at 0 and the counter at 1,
+the third component is the repository's size in tokens in whole
+millions (measured at most once every 24 hours for general
+callers — a release cut passes --fresh and takes a fresh recount
+instead), and the counter restarts at 1 whenever a number to its
+left increases.
 """
 import os
 import subprocess
@@ -128,7 +129,7 @@ class NextVersionTest(unittest.TestCase):
             version4.next_version("3.15.6.148", NOW, NOW - 3600, 6,
                                   new_minor=14)
 
-    def test_major_never_moves(self):
+    def test_major_carried_through_without_a_bump(self):
         for got in [
                 version4.next_version("3.15.6.148", NOW, NOW - 3600, 6),
                 version4.next_version("3.15.6.148", NOW, NOW - 90000, 6,
@@ -136,6 +137,31 @@ class NextVersionTest(unittest.TestCase):
                 version4.next_version("3.15.6.148", NOW, NOW - 3600, 6,
                                       new_minor=16)]:
             self.assertEqual(version4.parse(got)[0], 3)
+
+    def test_major_increase_restarts_minor_and_counter(self):
+        got = version4.next_version("3.15.6.148", NOW, NOW - 3600, 6,
+                                    new_major=4)
+        self.assertEqual(got, "4.0.6.1")
+
+    def test_major_increase_uses_fresh_figure_outside_window(self):
+        got = version4.next_version("3.15.6.148", NOW, NOW - 90000, 6,
+                                    fresh_tokens_millions=8, new_major=4)
+        self.assertEqual(got, "4.0.8.1")
+
+    def test_same_major_is_not_a_restart(self):
+        got = version4.next_version("3.15.6.148", NOW, NOW - 3600, 6,
+                                    new_major=3)
+        self.assertEqual(got, "3.15.6.149")
+
+    def test_major_decrease_rejected(self):
+        with self.assertRaises(ValueError):
+            version4.next_version("3.15.6.148", NOW, NOW - 3600, 6,
+                                  new_major=2)
+
+    def test_major_bump_takes_precedence_over_minor_flag(self):
+        got = version4.next_version("3.15.6.148", NOW, NOW - 3600, 6,
+                                    new_major=4, new_minor=16)
+        self.assertEqual(got, "4.0.6.1")
 
     def test_window_boundary(self):
         # 1 second inside the window: reuse, fresh ignored.
@@ -410,6 +436,43 @@ class CliTest(unittest.TestCase):
             ["next", "3.15.0.5", "--root", repo, "--fresh",
              "--now", str(NOW), "--minor", "15"])
         self.assertEqual((code, out), (0, "3.15.0.6"))
+
+    def test_next_command_major_bump_restarts_minor_and_counter(self):
+        # The major rev, driven through the CLI the ship flow
+        # actually calls: --major above the standing line moves
+        # the release to the new major line, restarts the minor
+        # at 0 and the counter at 1, carrying the measured figure.
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        code, out = self._run_main(
+            ["next", "3.15.0.5", "--root", repo, "--fresh",
+             "--now", str(NOW), "--major", "4"])
+        self.assertEqual((code, out), (0, "4.0.0.1"))
+
+    def test_next_command_major_bump_takes_the_fresh_figure(self):
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        self._grow_repo_past_a_million(repo)
+        code, out = self._run_main(
+            ["next", "3.15.0.5", "--root", repo, "--fresh",
+             "--now", str(NOW), "--major", "4"])
+        self.assertEqual((code, out), (0, "4.0.1.1"))
+
+    def test_next_command_same_major_flag_is_not_a_restart(self):
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        code, out = self._run_main(
+            ["next", "3.15.0.5", "--root", repo, "--fresh",
+             "--now", str(NOW), "--major", "3"])
+        self.assertEqual((code, out), (0, "3.15.0.6"))
+
+    def test_next_command_major_decrease_rejected(self):
+        repo = MeasureTest()._repo()
+        self.addCleanup(shutil.rmtree, repo, ignore_errors=True)
+        with self.assertRaises(ValueError):
+            self._run_main(
+                ["next", "3.15.0.5", "--root", repo, "--fresh",
+                 "--now", str(NOW), "--major", "2"])
 
     def test_next_command_minor_decrease_rejected(self):
         # A --minor below the standing line is refused at the CLI

@@ -3,7 +3,9 @@
 
 The scheme (owner's words, 3-Nov-2026):
 
-- MAJOR stays 3. It never moves; it is exempt from the odometer rule.
+- MAJOR is the milestone line (the 3 in 3.19.x). It moves only
+  when a release is deliberately cut on a new major line, and a
+  major bump restarts the minor at 0.
 - MINOR is the line as before (the 19 in 3.19.x). It moves only when
   a release is deliberately cut on a new minor line.
 - TOKENS is the size of this repository in tokens, in whole
@@ -21,9 +23,11 @@ The scheme (owner's words, 3-Nov-2026):
 
 Odometer rule: when a number increases, the numbers to its right
 restart, so any reader can order 2 versions at a glance. Here the
-restart lands on the counter: when the minor increases, or when the
-token figure increases, the counter restarts at 1; otherwise it
-increments by 1. MAJOR is exempt and is carried through unchanged.
+restart lands on the counter: when the major increases, the minor
+restarts at 0 and the counter at 1; when the minor increases, or
+when the token figure increases, the counter restarts at 1;
+otherwise it increments by 1. A major or minor below the standing
+one is refused: the odometer never runs backwards.
 The token figure never decreases inside a minor line: a fresh
 measurement lower than the current figure is held (the current
 figure stays, the counter increments), so the ordering a reader
@@ -47,7 +51,8 @@ The release machinery's single entry point is the CLI:
         Print "<tokens> <millions>" for the tree at --root.
 
     python3 runner/ops/version4.py next CURRENT [--root .]
-            [--cache PATH] [--minor N] [--now EPOCH] [--fresh]
+            [--cache PATH] [--minor N] [--major N] [--now EPOCH]
+            [--fresh]
         Print the next version after CURRENT, measuring the tree
         at --root only when the measure cache at --cache is
         missing or older than 24 hours (and rewriting the cache
@@ -222,7 +227,8 @@ def next_version(current: str,
                  last_measured_at: Optional[float],
                  last_tokens_millions: Optional[int],
                  fresh_tokens_millions: Optional[int] = None,
-                 new_minor: Optional[int] = None) -> str:
+                 new_minor: Optional[int] = None,
+                 new_major: Optional[int] = None) -> str:
     """The version after `current`, under the scheme's rules.
 
     now and last_measured_at are epoch seconds. The 24-hour rule:
@@ -234,11 +240,14 @@ def next_version(current: str,
     measured), fresh_tokens_millions is required and becomes the
     figure; passing none raises ValueError.
 
-    The odometer rule: new_minor above the current minor restarts
-    the counter at 1 on the new line; a token figure above the
-    current one restarts the counter at 1; anything else
-    increments the counter, and a lower fresh figure is held (the
-    current figure stays). MAJOR is carried through, never moved.
+    The odometer rule: new_major above the current major restarts
+    the minor at 0 and the counter at 1 on the new major line,
+    carrying the measured figure; new_minor above the current
+    minor restarts the counter at 1 on the new line; a token
+    figure above the current one restarts the counter at 1;
+    anything else increments the counter, and a lower fresh
+    figure is held (the current figure stays). A new_major or
+    new_minor below the standing one is refused.
     """
     major, minor, cur_tokens, counter = parse(current)
     if last_tokens_millions is not None:
@@ -265,6 +274,17 @@ def next_version(current: str,
                 "outside the 24-hour window: a fresh measurement is "
                 "required (fresh_tokens_millions is None)")
         figure = fresh_tokens_millions
+    if new_major is not None:
+        if not isinstance(new_major, int) or new_major < 0:
+            raise ValueError(
+                "new major must be a non-negative int, got %r"
+                % (new_major,))
+        if new_major < major:
+            raise ValueError(
+                "new major %d is below the current major %d"
+                % (new_major, major))
+        if new_major > major:
+            return format_version((new_major, 0, figure, 1))
     if new_minor is not None:
         if not isinstance(new_minor, int) or new_minor < 0:
             raise ValueError(
@@ -309,12 +329,13 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not args:
         print("usage: version4.py measure [--root .] | "
               "next CURRENT [--root .] [--cache PATH] [--minor N] "
-              "[--now EPOCH] [--fresh]", file=sys.stderr)
+              "[--major N] [--now EPOCH] [--fresh]", file=sys.stderr)
         return 2
     command, rest = args[0], args[1:]
     root = "."
     cache = None
     minor = None
+    major = None
     now = None
     force_fresh = False
     positional = []
@@ -329,6 +350,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             i += 2
         elif arg == "--minor" and i + 1 < len(rest):
             minor = int(rest[i + 1])
+            i += 2
+        elif arg == "--major" and i + 1 < len(rest):
+            major = int(rest[i + 1])
             i += 2
         elif arg == "--now" and i + 1 < len(rest):
             now = float(rest[i + 1])
@@ -359,7 +383,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         if measured:
             fresh = tokens_millions(measure_repo_tokens(root))
         result = next_version(positional[0], now, last_at, last_millions,
-                              fresh_tokens_millions=fresh, new_minor=minor)
+                              fresh_tokens_millions=fresh, new_minor=minor,
+                              new_major=major)
         if measured and cache and fresh is not None:
             # The cache records the measure just taken — its epoch
             # and the millions that measure produced — whether or
