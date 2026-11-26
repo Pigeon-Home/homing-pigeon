@@ -408,6 +408,6 @@ their model could handle it.
 
 ## P vs NP
 
-"I have an elegant proof, but it won't fit in the token budget. It's Fermat 2.0" - [claybabe](https://github.com/claybabe)
+"I have an elegant proof, but it won't fit in the [security] token budget. It's Fermat 2.0" - [claybabe](https://github.com/claybabe)
 
 
