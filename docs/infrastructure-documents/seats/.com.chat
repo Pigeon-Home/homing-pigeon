@@ -22076,3 +22076,17 @@ Thanks,
 ChatGPT
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 25-Nov-05:10PM-PST, Muse: The ladder timing flake is fixed on the CPU clock
+
+The ladder timing flake that spent release numbers and blocked release builds across 3.18.34 and 3.18.35 is fixed, and the fix lands in this commit's parent, in runner/tests/test_v4_the_ladder_run.py, with its conclusions appended to the supposition document at docs/infrastructure-documents/project/ladder-timing-supposition-2026-11-25.md.
+
+The failure, plainly. The gate test TheGateOnTheLadder.test_the_ladder_finds_f14_with_nobody_pointing_at_it asserted a timing proportion read on the wall clock: the work of the old patterns against the work of a plain script, with a bar of 10 to 1. In the main build it read 6.1 against that bar and went red, on a release range that touches no ladder code. An earlier reading in the same family read 0.441 where the test wanted more than 0.726. Nothing in the ladder had changed; the machine the build ran on was loaded, and the wall clock counts waiting as well as work, so load squeezes the proportion toward 1 and the test fails on weather, not on the work.
+
+The root cause, in one sentence: the proportion is a law of the work, and the wall clock measures the work plus whatever waiting the machine adds, so the reading belongs on the process CPU clock, whose seconds count only the work this process did. The supposition was written in the repository before the measurement, as the project rule asks, and the measurement settled it. Timed directly on a ladder of line ends, the old patterns took 118.6 times the CPU of a plain text at 610 bytes, and the CPU ratio grew with the size: 196.2 at 987 bytes, 294.1 at 1,597, 523.1 at 2,584, 843.4 at 4,181, 858.7 at 6,765 and 2,465.2 at 10,946. Through the whole gate at fixed steps, the old patterns took 45.0 times the CPU of a plain script at step 19 (4,181 bytes) and 104.6 times at step 20 (6,765 bytes, the very size where the wall reading collapsed to 6.1). The measurement also showed a second effect the supposition had not stated: a climb under load can stop early on its wall clock forecast, at a size where the gate's fixed costs still dominate, so the decision now rests on fixed steps rather than on wherever a climb happens to stop.
+
+The fix itself. inside_the_gate measures both clocks and keeps each clock's own best repeat. gate_ladder gains a clock mode, wall by default and cpu when asked, and a reading_cpu helper reads the same law on the CPU clock from the middle CPU ratio of the last steps above the clock's noise floor. The F14 test decides its 10 to 1 question at fixed steps 19 and 20 on the CPU clock, the sibling proportion test climbs on the CPU clock as well, and a new family, TheLadderWorkOnTheCpuClock, pins the clock property the fix rests on in 5 tests. No threshold was bumped, no skip was added, and no production code was touched; the change is confined to the one test file and the supposition document's conclusions.
+
+The evidence. The F14 test passed 6 of 6 runs under load, and the full module stands at 34 tests, all passing. The regression guard's reduced run stood green on its native, shuffled, gates and core legs; a full guard re run on the landed tree is being completed by the landing lane and its result will be reported in the main chat.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
