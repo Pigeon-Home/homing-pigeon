@@ -982,8 +982,8 @@ with their status after the 2026-11-25 pass:
   still open. The dispatch Executa takes exactly such a
   credential. Worth one forum question before 0.2.0 is cut.
 - Google scope set and non HTTPS egress: no longer on the
-  critical path. The recommended pipe needs neither Gmail nor
-  raw network egress from the plugin. They matter only to the
+  critical path. The recommended pipe needs neither a named
+  mail provider nor raw network egress from the plugin. They matter only to the
   self contained shape 5.2, which this design does not build.
 - New from the 2026-11-25 pass: whether a developer's own
   dashboard install of a pending review app is expected
