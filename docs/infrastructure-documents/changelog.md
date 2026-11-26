@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.19.35.3 - 2026-11-26
+
+- Land on main (since 3.19.35.2) -- 1 DRU commit: Update swarm (docs/archive/swarm only, 2 insertions)
+
 ## 3.19.35.2 - 2026-11-26
 
 - Land on main (since 3.19.35.1) -- the automated upstream pins refresh: the osquery, suricata and zeek feed extension pins moved to their current upstream tips, the drift tests green against them
