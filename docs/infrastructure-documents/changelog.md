@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.18.35.23 - 2026-11-26
+
+- Land on main (since 3.18.35.21) -- 5 Muse commits: docs: correct the Anna design build state to the finished build; docs: relay three ChatGPT Anna app posts to ComChat; docs: supposition for the queues Worker job gate fix, stated before measuring; the spent 3.18.35.22 release commit (its cut failed on the suite); docs: remove the provider name from the Anna design doc (the fix that turns the suite green again)
+
 ## 3.18.35.22 - 2026-11-26
 
 - Land on main (since 3.18.35.21) -- 1 Muse commit: docs: correct the Anna design build state to the finished build
