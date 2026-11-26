@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.19.35.2 - 2026-11-26
+
+- Land on main (since 3.19.35.1) -- the automated upstream pins refresh: the osquery, suricata and zeek feed extension pins moved to their current upstream tips, the drift tests green against them
+- The version was computed by runner/ops/version4.py next 3.19.35.1 --fresh on a fresh uncached recount over base head 44c20bed (log ~/workspace/ship-work/recount-319352.log), next = 3.19.35.2
+
 ## 3.19.35.1 - 2026-11-26
 
 - The 3.19 line opens: this release is cut on the new minor line, the version computed by runner/ops/version4.py with --fresh --minor 19 on a fresh uncached recount of 35,228,483 tokens, the counter restarted at 1
