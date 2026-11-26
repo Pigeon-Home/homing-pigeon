@@ -496,7 +496,7 @@ Where the two converge, and the counterweight. Both frameworks point at the same
 
 ## Limits of this draft, and open questions
 
-This is a private working draft, staged for the candidate's review, and its limits are part of its content. Its intended destination is public: it is his campaign platform, to be attached to his GitHub repository, on a branch or in a docs location, at his choice. Nothing in it goes public until he has seen it and approved it, and nothing has been published, pushed, or landed anywhere. The review flow he settled governs the next steps: before any branch is put up, he first receives a general overview of what the document contains; the branch comes only after that overview and his go-ahead. Policies A to D are drafted proposals in the candidate's stated direction, not settled positions. The New York material is a campaign avenue, not a claim that the candidate holds any New York office or relationship. Nothing here has been shared outside this private artifact.
+This is a public working draft, and its limits are part of its content. It stands in the project's public repository, published by its author, who may revise or remove it at any time. It is his campaign platform. Policies A to D are drafted proposals in the candidate's stated direction, not settled positions. The New York material is a campaign avenue, not a claim that the candidate holds any New York office or relationship.
 
 ### Questions for the candidate, noted rather than guessed at
 
@@ -508,7 +508,7 @@ One point from the conversation remains exactly as he stated it, without more de
 
 Scope of the vendor programme: should the five requirements apply to all federal AI procurement at once, or begin with high-risk and public-facing systems, on the New York model?
 
-The Patel quotations: every direct quote in the victim plank is flagged in the review copy as pending a check against the official hearing transcript, which the research could not open. Does the candidate want the quotes held entirely until that check is done, or carried flagged, as here?
+The Patel quotations: every direct quote in the victim plank is flagged in this draft as pending a check against the official hearing transcript, which the research could not open. Does the candidate want the quotes held entirely until that check is done, or carried flagged, as here?
 
 New York deadlines: does the campaign publicly track the 30 and 31 December 2026 inventory and SUNY policy deadlines, which arrive within weeks?
 
@@ -594,6 +594,10 @@ The vendor-programme instruments are: Office of Management and Budget memorandum
 
 ## Appendix B: sources a reader can check
 
+### Where the public document ends
+
+This document is the public draft, and everything in it is public. It stands in the project's public repository, published by its author, who may revise or remove it at any time. A separate artifact is held locally by the author. That artifact is not part of this document, it is not published, and nothing from it is included here or anywhere else in this repository. This short note is the only reference to it in the public record, and it carries no contents, no names, and no details. The line between the two is deliberate, and it is the whole arrangement: the public draft in the open, the local artifact at home.
+
 ### The project record
 
 The goal page, written 19 November 2026: a person runs the project on their own machine; a cloud AI works there through signed messages; secure by default, checkable, proven.
@@ -626,7 +630,7 @@ The RAISE Act: signed 19 December 2025, chapter amendment signed 27 March 2026, 
 
 Appendix C-AI, New York's standard vendor terms for AI purchases: bias audits discretionary. New York City Local Law 144: an annual independent bias audit, mandatory, for automated employment tools.
 
-Private artifact. Expanded working draft of the Public Policy brief, built from PUB_POLICY, the project record, the conversation of 24 November 2026, and the campaign's New York research. Not for publication or sharing.
+Expanded working draft of the Public Policy brief, built from PUB_POLICY, the project record, the conversation of 24 November 2026, and the campaign's New York research. It stands in the project's public repository, published by its author, who may revise or remove it at any time.
 
 ## Appendix B, continued: sources for the new planks
 
@@ -680,11 +684,11 @@ Cato Institute and YouGov (July 2020): 62 percent self-censor. FIRE and College 
 
 Howard Zinn, A People's History of the United States (1980), and Manufacturing Consent (1988), by Edward S. Herman and his co-author, is cited for its documented framework only. The view-from-Mars section is an interpretive exercise applying those frameworks; no joint text exists and nothing in it is a quotation.
 
-## Review copy only - remove before anything is posted
+## Notes for the candidate
 
 ### What a careful reader will notice: the candidacy signals
 
-Not part of the public draft. For the candidate's own review: the passages that most plainly signal a vice-presidential candidacy, so he can judge what a smart family member would notice before anything is posted.
+For the candidate's own review: the passages that most plainly signal a vice-presidential candidacy, so he can judge what a smart family member would notice.
 
 The cover line and the candidacy section. The subtitle calls the document "a policy direction for a vice-presidential candidacy," and the opening section states the run at local, state, and federal levels, names Abdul as President in the framing and the author as Vice President, and names the next step: a meeting with a senator or the New York Attorney General.
 
@@ -694,7 +698,7 @@ The disarmament sequence. Policy D records the intention to talk to the future p
 
 The stance, stated as a career commitment. The help-and-strength section says the candidate "will lead with" the stance "as part of his political career": a national platform commitment, not a local one.
 
-The new planks and their flags. The online-safety plank stands second in the policy, the victim-not-offender principle follows it, the section on AI-generated imagery corrects the court record in print (no Supreme Court ruling; Anderegg is Seventh Circuit), and Jensen is cited as a contested radical-feminist voice. Every direct Patel quotation in the review copy is marked pending a check against the official hearing transcript before anything is posted; the unpublished June 2026 FBI memo is carried as CBS reporting, not as the memo's text.
+The new planks and their flags. The online-safety plank stands second in the policy, the victim-not-offender principle follows it, the section on AI-generated imagery corrects the court record in print (no Supreme Court ruling; Anderegg is Seventh Circuit), and Jensen is cited as a contested radical-feminist voice. Every direct Patel quotation in this draft is marked pending a check against the official hearing transcript; the unpublished June 2026 FBI memo is carried as CBS reporting, not as the memo's text.
 
 The companionship and language planks. The companionship section is research and policy only, with nothing personal in it: the GUARD Act is labelled proposed, not law, the FTC study is carried as an inquiry with no verified findings, and the harm evidence is stated with causality unresolved. The language plank uses Carlin's actual 2004 line and excludes the misattributed fascism-comparison line entirely. The view-from-Mars section is labelled in its own text as an interpretive exercise in Zinn's and the second critic's documented frameworks, with no joint text claimed and nothing presented as their quotation; that labelled exercise is the only place Zinn is named in the policy, and the second framework is applied there without naming its author.
 
