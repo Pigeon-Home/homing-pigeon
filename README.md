@@ -1,4 +1,4 @@
-# HOMING PIGEON
+# HOMING PIGEON by Andrew Slutsky
 
 Homing Pigeon gives cloud AI like ChatGPT, Claude, Gemini a secure and signed channel to your machine or network.
 
@@ -13,6 +13,7 @@ The Homing Pigeon runner, like a GitHub runner, polls and executes signed jobs f
 Setup walks you through connecting a dedicated mailbox. The recommended path is a browser sign-in,
 so the account password never lands in a config.
 
+[![Homing Pigeon — how it fits together](assets/how-it-fits-together-wide.svg)](https://raw.githubusercontent.com/Pigeon-Home/homing-pigeon/main/assets/how-it-fits-together.svg)
 
 ## Homing Pigeon IETF Internet-Drafts:
 -  Version 1 Symmetric Signed Exchanged
@@ -21,10 +22,6 @@ so the account password never lands in a config.
     -  https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v2/
 -  Version 3 Post-Quantum Security with PFS
     -  https://datatracker.ietf.org/doc/draft-slutsky-homing-pigeon-v3/
-  
-
-[![Homing Pigeon — how it fits together](assets/how-it-fits-together-wide.svg)](https://raw.githubusercontent.com/Pigeon-Home/homing-pigeon/main/assets/how-it-fits-together.svg)
-
 
 ## What this is for
 
