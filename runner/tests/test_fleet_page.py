@@ -388,7 +388,7 @@ class DocsPublicAddressTest(unittest.TestCase):
     def test_the_scan_allows_versions_and_non_global_quads(self):
         lines = _declared_version_lines()
         for quad in ("3.16.25.5", "3.15.18.7", "3.17.25.5",
-                     "3.18.25.5", "127.0.0.1", "10.0.0.5",
+                     "3.18.25.5", "3.19.25.5", "127.0.0.1", "10.0.0.5",
                      "192.0.2.1", "0.0.0.0"):
             self.assertEqual(
                 [], _public_addresses_in("x %s y" % quad, lines),
@@ -398,9 +398,9 @@ class DocsPublicAddressTest(unittest.TestCase):
         lines = _declared_version_lines()
         # A quad on no declared version line is an address,
         # however version-shaped it looks. The example stood
-        # on the 18 line until the 3.18 line opened with
-        # 3.18.33.1; it stands on the 19 line now.
-        for quad in ("3.19.25.5", "2.28.30.118"):
+        # on the 19 line until the 3.19 line opened with
+        # 3.19.35.1; it stands on the 20 line now.
+        for quad in ("3.20.25.5", "2.28.30.118"):
             self.assertEqual(
                 [quad], _public_addresses_in("x %s y" % quad, lines),
                 quad)
@@ -411,7 +411,8 @@ class DocsPublicAddressTest(unittest.TestCase):
         self.assertTrue(_is_project_version("3.16.25.5", lines))
         self.assertTrue(_is_project_version("3.17.25.5", lines))
         self.assertTrue(_is_project_version("3.18.25.5", lines))
-        self.assertFalse(_is_project_version("3.19.25.5", lines))
+        self.assertTrue(_is_project_version("3.19.25.5", lines))
+        self.assertFalse(_is_project_version("3.20.25.5", lines))
 
     def test_the_scan_leaves_sys_path_unchanged(self):
         # Q174 third case: classification used to insert REPO
