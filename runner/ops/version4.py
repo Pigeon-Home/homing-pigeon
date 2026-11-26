@@ -4,7 +4,7 @@
 The scheme (owner's words, 3-Nov-2026):
 
 - MAJOR stays 3. It never moves; it is exempt from the odometer rule.
-- MINOR is the line as before (the 17 in 3.17.x). It moves only when
+- MINOR is the line as before (the 19 in 3.19.x). It moves only when
   a release is deliberately cut on a new minor line.
 - TOKENS is the size of this repository in tokens, in whole
   millions: the measured token count of the tracked tree, divided
