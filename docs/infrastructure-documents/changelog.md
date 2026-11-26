@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.6 - 2026-11-26
+
+- Land on main (since 4.0.35.5) -- 1 commit: DRU Update FUTURE.md, adding the bitcoin race to zero scenario outlined (QRL) line to docs/FUTURE.md (docs only, 1 line)
+- The version was computed by runner/ops/version4.py next 4.0.35.5 --fresh on a fresh uncached recount over base head d0a439eb (log ~/workspace/ship-work/recount-40356.log), next = 4.0.35.6
+
 ## 4.0.35.5 - 2026-11-26
 
 - Land on main (since 4.0.35.4) -- 1 commit: ComChat record that release 4.0.35.4, carrying the public policy update, is published (Muse, docs only)
