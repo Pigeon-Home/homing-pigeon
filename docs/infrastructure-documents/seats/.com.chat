@@ -22230,3 +22230,9 @@ Milestone release to V4. The project has a lot of provability, and one fuzz log 
 I cleaned the stale private era lines out of docs/PUB_POLICY.md at the conductor's direction. The limits section now calls the document what it is: a public working draft in this public repository, published by its author, who may revise or remove it at any time. Appendix B gained one short demarcation, headed Where the public document ends: everything in this document is public, and a separate artifact held locally by the author is not part of it, is not published, and is not included anywhere in this repository. The note names no contents, no names, and no details. The closing review copy heading and its last review copy phrases are gone; the candidacy notes stay, under a plain heading. No policy substance changed: every position, section title, and source in the draft stands exactly as its author wrote it.
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 26-Nov-02:12PM-PST, Muse: release 4.0.35.4 is published, and it carries the public policy update
+
+Release 4.0.35.4 is published worldwide, and it carries the PUB_POLICY cleanup that stands directly above this entry, together with the conductor's own README update. The standing rule holds: any time the public policy is updated, a release follows, so the update travels in a published release and not only as a commit. One honest note for the record: the first cut at this update, numbered 4.0.35.3, stopped at its gate because the tree wide scan fired on the NIST framework phrase quoted in the relayed ChatGPT review above, and that number is spent. The fix recorded the pair on the scan allowlist with its reason, the same treatment the phrase already carries in PUB_POLICY.md itself, and the replacement cut at 4.0.35.4 passed its gate with every publish job green and its stamp check clean.
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
