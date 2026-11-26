@@ -64,6 +64,12 @@ ALLOWLIST = {
         "Management Framework, cited with its nist.gov link) "
         "matches the sk- key format's shape; it is an English "
         "phrase, not a key",
+    ("docs/infrastructure-documents/seats/.com.chat",
+     AG.RULE_SECRET_VALUE):
+        "the same hyphenated NIST framework name and its "
+        "nist.gov link, quoted inside a relayed ChatGPT review "
+        "of the public policy draft, matches the sk- key "
+        "format's shape; it is an English phrase, not a key",
     ("AGENTS.md", AG.RULE_SECRET_VALUE):
         "a hyphenated heading anchor (the task-board and "
         "key-ids section) matches the sk- key format's shape; "
