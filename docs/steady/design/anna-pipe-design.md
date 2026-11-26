@@ -7,8 +7,9 @@ result comes back, and how the app grows a real window a user can
 open and work in. Written 2026-11-25 at the owner's direct order
 that the design be represented in the repository and documented
 verbosely. The research behind it was done the same day; the
-build it describes is in progress, and section 16 states exactly
-what stands and what does not.
+build it describes was in progress when the first version of
+this document landed and has since been built locally, and
+section 17 states exactly what stands and what does not.
 
 Related reading in this tree: `docs/steady/design/cs_canoe.md`
 for the hosted service the bridge belongs to,
@@ -697,13 +698,41 @@ a same machine edition.
 ## 17. Build state at the time of writing
 
 Written 2026-11-25, late afternoon Pacific, from the build
-tree itself. The build lives outside this repository, in the
-Anna preparation folder's pipe-build tree, until its pieces
-are ready to land as product. What stands:
+tree itself, and corrected the same evening, when the build
+lane finished. The first writing of this section said the
+dispatch Executa folder and the bundle folder were still
+empty and that no 0.2.0 manifest existed. That was true when
+written and stopped being true within the hour, and this
+section now states the finished build. The build lives
+outside this repository, in the Anna preparation folder's
+pipe-build tree, until its pieces are ready to land as
+product. What stands:
 
 - The bridge stands: one standard library Python file
   implementing the contract and trust shape of section 9,
   importing the repository's own sending code as a library.
+  Its unit suite stands at 7 tests, all passing.
+- The 0.2.0 app project stands: a schema 4 manifest with a
+  `ui` section, its bundle entry naming the window, and three
+  declared views, `main` as the default, `dispatch` and
+  `results`; a rewritten system prompt addendum teaching the
+  asynchronous rhythm of section 10; and the app listing
+  carried over unchanged.
+- The dispatch Executa stands, at version 0.2.0, as one
+  plugin with 6 tools: the original 3 local tools,
+  `runner_status`, `run_poll_cycle` and `runner_posture`,
+  plus the 3 dispatch tools of section 10, `dispatch_job`,
+  `check_jobs` and `ask_oracle`. Its own manifest is
+  regenerated from its describe output. Its suite stands at
+  28 tests, all passing, including the checks that the plugin
+  holds no signing code and no shared secret, and that the
+  Canoe credential never appears in any return value.
+- The window bundle stands: one static single page app in
+  the project tree, built to the model of section 13, driving
+  the Executa through the Host API's asynchronous invoke and
+  job read calls only. It holds no credential and never
+  fetches the bridge. 10 static tests pin its layout and its
+  trust contract, all passing.
 - The staging harness stands: a local server that runs the
   shipped queue Worker code on loopback, a tenant minting
   script, the staging tenant configuration, and the proof
@@ -753,20 +782,38 @@ are ready to land as product. What stands:
 
 What does not stand yet, stated just as plainly:
 
-- The dispatch tools are not yet built into the Anna Executa.
-  The pipe-build tree's executa folder is empty at the time of
-  writing; section 10 is a specification the staging bridge
-  already satisfies from its side, not a shipped plugin.
-- The window bundle is not yet built. The bundle folder is
-  empty; sections 12 and 13 are its design.
 - The staging proof ran on loopback, on one machine, with the
   test double standing in for the runner. Pointing a real
   runner configuration at staging, with the queues transport
   only, is steps 2 and 3 of the test plan below and remains
-  ahead.
-- No 0.2.0 manifest has been cut, nothing has been pushed to
-  Anna, and nothing has been submitted. The owner's console
-  steps in section 18 are untouched.
+  ahead. The double proves the wire and the bridge; it does
+  not prove the product's confinement or its Oracle.
+- One finding against shipped code stands open. The shipped
+  queue Worker's job posting gate refuses the protocol's
+  default encrypted envelope: the gate compares the body's
+  `job_id` against the subject id, and an encrypted envelope
+  carries no `job_id` member to read, so the answer is a 400
+  naming a job_id mismatch between subject and body. The
+  staging proof pins that refusal as a passing finding check,
+  the gate check in the proof groups above. The recommended
+  fix stands as a recommendation, not a landing: give the job
+  posting gate the results route's treatment, where an absent
+  payload id is not a claim and the subject id binds an
+  encrypted envelope, while a present and different `job_id`
+  stays a refusal. Until that fix lands in this repository,
+  the bridge composes signed cleartext jobs, and a runner
+  serving this pipe must be started allowing cleartext.
+  Results remain encrypted either way. This is a staging
+  posture, not the intended production one.
+- Nothing has been pushed to Anna, and nothing has been
+  submitted. The 0.2.0 project stands built and tested
+  locally only. Its manifest was checked against the
+  documented schema by the bundle tests; the Anna command
+  line validation has not been run, because that tool was not
+  installed in the build lane. The staging Worker has not
+  been deployed for real, and the bridge is not yet hosted at
+  the origin the manifest declares. The owner's console steps
+  in section 18 are untouched.
 
 The standing verification requirement, set by the owner on
 2026-11-25, governs how all of this gets reported: once any
@@ -777,10 +824,11 @@ raw Executa returns to prove nothing beyond the attested view
 crosses to Anna, before anything is reported as working. A
 piece that has not passed that proof is reported as built, not
 as working. The staging proof above is the bridge half of that
-verification. The full verification, against a real runner and
-then once against production Anna with the owner watching,
-remains ahead, and this document will be updated when it
-stands.
+verification, and the plugin and the bundle now stand built
+and unit tested on the Anna side of it. The full verification,
+against a real runner and then once against production Anna
+with the owner watching, remains ahead, and this document
+will be updated when it stands.
 
 ## 18. Test plan
 
