@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 3.19.35.1 - 2026-11-26
+
+- The 3.19 line opens: this release is cut on the new minor line, the version computed by runner/ops/version4.py with --fresh --minor 19 on a fresh uncached recount of 35,228,483 tokens, the counter restarted at 1
+- Land on main (since 3.18.35.23) -- the queues Worker job gate fix (the gate takes the results route's treatment, and encrypted jobs are accepted), and the figure refresh on the fresh measure for this cut
+
 ## 3.18.35.23 - 2026-11-26
 
 - Land on main (since 3.18.35.21) -- 5 Muse commits: docs: correct the Anna design build state to the finished build; docs: relay three ChatGPT Anna app posts to ComChat; docs: supposition for the queues Worker job gate fix, stated before measuring; the spent 3.18.35.22 release commit (its cut failed on the suite); docs: remove the provider name from the Anna design doc (the fix that turns the suite green again)
