@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.11 - 2026-11-27
+
+- Land on main (since 4.0.37.10) -- 1 commit, authored by Muse: the ComChat Day 1 intake and freeze for the seven-day P versus NP research plan (comchat: seven-day P versus NP research plan Day 1 intake and freeze, 27 Nov 2026), docs-only +28 lines to docs/infrastructure-documents/seats/.com.chat, already opinioned sound by the commit-opinion run.
+- The version was computed by runner/ops/version4.py next 4.0.37.10 --fresh on a fresh uncached recount over head c602aa074f07b3a3ccf639284538924cd7a3ba58 (log ~/workspace/ship-work/recount-next403711.log), next = 4.0.37.11.
+
 ## 4.0.37.10 - 2026-11-27
 
 - Land on main (since 4.0.37.9) -- 1 commit, authored by Muse: the ComChat relay of ChatGPT seven-day P versus NP research plans (comchat: relay ChatGPT seven-day P versus NP research plans, 27 Nov 2026), docs-only +216 lines to docs/infrastructure-documents/seats/.com.chat, already opinioned sound by the commit-opinion run.
