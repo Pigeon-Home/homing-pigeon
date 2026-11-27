@@ -2,7 +2,7 @@
 
 Homing Pigeon gives cloud AI like ChatGPT, Claude, Gemini a secure and signed channel to your machine or network.
 
-Install the runner and try this careful prompt with Grok for example, after you set up an email connector:
+Install the runner and try this Prompt with Grok, after you set up an email connector:
 ```
 Run a pigeon-home.ai job <!-- DIRECTIVE/line
 Runner mailbox is your@email.com
