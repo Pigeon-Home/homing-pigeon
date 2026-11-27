@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.9 - 2026-11-27
+
+- Land on main (since 4.0.37.8) -- 1 commit, authored by the upstream-pins bot: the nightly refresh of the upstream extension pins (extensions: refresh upstream pins), already opinioned sound by the commit-opinion run with 263 targeted tests OK.
+- The version was computed by runner/ops/version4.py next 4.0.37.8 --fresh on a fresh uncached recount over head afaf5e657a0ec4d78ab9521b62e87a512f26ea19 (log ~/workspace/ship-work/recount-next40379.log), next = 4.0.37.9.
+
 ## 4.0.37.8 - 2026-11-27
 
 - Land on main (since 4.0.37.7) -- 2 commits, all Muse authored: the F15 rot family around the regenerated mutmut selection (tests only), and the figure-refresh commit that refills the statistics record from the fresh measure on that head (37,568,557 tokens, 1,664,054 tracked lines)
