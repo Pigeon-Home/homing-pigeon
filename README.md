@@ -1,6 +1,6 @@
 # HOMING PIGEON by Andrew Slutsky
 
-This native python runner gives cloud AI like ChatGPT or Claude a secure and signed channel to a system you control behind a NAT on your home network or WHEREVER.
+This native python runner gives cloud AI like ChatGPT or Claude a secure and signed channel to a system you control. It could be a Raspberry Pi on your home network, or your personal laptop.
 
 Install the runner and try this Prompt with Grok, after you set up an email connector:
 ```
