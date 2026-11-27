@@ -11,7 +11,7 @@ Retrieve the system clock and display it
 
 The DIRECTIVE line simply tells your AI which public/secure protocol to use.
 
-Your information never goes to pigeon-home.ai, [witingly](https://www.govinfo.gov/content/pkg/CHRG-113shrg82721/pdf/CHRG-113shrg82721.pdf). 
+Your information never goes to pigeon-home.ai, [witingly](https://www.govinfo.gov/content/pkg/CHRG-113shrg82721/pdf/CHRG-113shrg82721.pdf). SMB. Nice protocol. 
 
 The Homing Pigeon runner, like a GitHub runner, polls and executes signed jobs from a source in the cloud.
 Setup walks you through connecting a dedicated mailbox. The recommended path is a browser sign-in,
