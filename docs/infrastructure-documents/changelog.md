@@ -4,6 +4,14 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.10 - 2026-11-27
+
+- Land on main (since 4.0.35.9) -- 15 commits: 12 by DRU, all Update FUTURE.md (docs only), the evening's FUTURE.md program as it grew sentence by sentence: the robots and self referential reflexives item, the closing bullet asking friends and mom to define SI for the IETF work, and the OKLETSGO line (net docs/FUTURE.md 7 insertions, 4 deletions against the 4.0.35.9 tree)
+- Seat cards for the v1 diagram (docs/steady/design/seat-cards-v1-diagram.md) with coverage test runner/tests/test_seat_cards.py: one card per labeled part of the diagram, each answering the reflexive set from its own seat; the test parses the diagram itself and fails if a label and its card drift apart, if a card loses a field, or if the pinned facts (the Oracle is not Muse; the You seat stands outside the box) are dropped
+- The reflexive round (docs/steady/design/reflexive-round-v1-diagram.md): the same 4 questions answered from inside every labeled seat of the v1 diagram, with the cross seat findings at the end; the summary of the round stands as an entry in ComChat (docs/infrastructure-documents/seats/.com.chat)
+- AGENTS.md gains a house note for every house (Muse and Meta, Claude and Anthropic, a second note for ChatGPT and OpenAI, Gemini and Argon and Google, Grok and xAI) beside the existing ChatGPT and OpenAI note, each stating the seat binding finding in general terms only: when several seats share one vocabulary, bind the seat before answering
+- The version was computed by runner/ops/version4.py next 4.0.35.9 --fresh on a fresh uncached recount over base head 23b9292941e89c98071b727f65bb287f0185094b (log ~/workspace/ship-work/recount-403510.log), next = 4.0.35.10
+
 ## 4.0.35.9 - 2026-11-27
 
 - Land on main (since 4.0.35.8) -- 2 commits, both DRU Update FUTURE.md (docs only): docs/FUTURE.md tail line extended in two steps, first adding the tag vendors in AGENTS.md clause, then correcting Dilinate to Delineate and adding the file bugs they do not understand clause (net 1 insertion, 1 deletion against the 4.0.35.8 tree)
