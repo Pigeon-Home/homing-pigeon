@@ -1,5 +1,5 @@
 - Anna AI OS Founding Builder Program 2026 research (https://luma.com/kmc1ddf9) [funding secured] Registration confirmed!
-- Notify major cloud AI and SI vendors (Update WAR with app store "requirement" re: reqs-for-corps)
+- Notify all legal entities providing AI and notify senate regarding SI vendors (Update WAR with app store "requirement" re: reqs-for-corps)
 - Email agenda to info@abdulforsenate.com finalize ask/earn endorsement - Show and Tell (display my super-secret ChatGPT emails post medical stuff) my research/campaign/stances on mental-health-issues and AI
 - https://slashdot.org/story/21/11/15/220255/nyc-passes-bill-requiring-bias-audits-of-ai-hiring-tech
 - https://regulations.ai/regulations/RAI-US-NY-S1169A0-2025 (CC https://ag.ny.gov/contact-ag)
