@@ -17,4 +17,4 @@ December 2021
 oracle root CA (PQC) self-signed, pigeon-home.ai mint, or 'OTHER' like earlier OTP gate idea for job-approval to perform certain RCE in high security or 'attested' cloud or air gapped env. OTP can be software or harwdware ish
 - Content reporting/blocking tools for routing to proper agencies: international, federal, state and local
 - bitcoin race to zero scenario outlined (QRL)
-- ask robots techinical self-referencal-reflexives about themeselves. Dilinate results for parlele construction of reports to "accessability" team(s).
+- ask robots technical self-referential-reflexives about themselves. Dilinate results for parallel construction of reports to "accessibility" team(s)
