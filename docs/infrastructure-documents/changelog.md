@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.5 - 2026-11-27
+
+- Land on main (since 4.0.37.4) -- 1 commit: 1 Muse-authored commit: project: F15 generalization supposition, before measurement (docs supposition file docs/infrastructure-documents/project/f15-recursion-generalization-supposition-2026-11-27.md, 78 insertions)
+- The version was computed by runner/ops/version4.py next 4.0.37.4 --fresh on a fresh uncached recount over head 66cb1273bd7d4d630fe718d2f77f1d69dbe3be21 (log ~/workspace/ship-work/recount-next40374.log), next = 4.0.37.5
+
 ## 4.0.37.4 - 2026-11-27
 
 - Land on main (since 4.0.37.3) -- 1 commit: 1 Muse-authored commit: rig_bank: the bank states crashes filed and crash events as two numbers (runner/tools/rig_bank.py split the merge report into crashes and slow keys and states distinct filed records apart from crash events; runner/tests/test_rig_bank.py expectations updated with filed-versus-events tests; supposition conclusions appended to docs/infrastructure-documents/project/bank-crash-accounting-supposition-2026-11-27.md)
