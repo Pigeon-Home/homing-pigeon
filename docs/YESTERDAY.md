@@ -1,4 +1,4 @@
-# Overkill
+# Overkill (cut)
 - define runner HOST boundry for Oracle to dispatch patrols: repair, hdd, audit, security_patrols
 - oracle key distribution based on IETF and Committee on National Security Systems:
 INSTRUCTION FOR
