@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.10 - 2026-11-27
+
+- Land on main (since 4.0.37.9) -- 1 commit, authored by Muse: the ComChat relay of ChatGPT seven-day P versus NP research plans (comchat: relay ChatGPT seven-day P versus NP research plans, 27 Nov 2026), docs-only +216 lines to docs/infrastructure-documents/seats/.com.chat, already opinioned sound by the commit-opinion run.
+- The version was computed by runner/ops/version4.py next 4.0.37.9 --fresh on a fresh uncached recount over head 44d3ec41e4eea82e6d2e863efbd126ffaab78083 (log ~/workspace/ship-work/recount-next403710.log), next = 4.0.37.10.
+
 ## 4.0.37.9 - 2026-11-27
 
 - Land on main (since 4.0.37.8) -- 1 commit, authored by the upstream-pins bot: the nightly refresh of the upstream extension pins (extensions: refresh upstream pins), already opinioned sound by the commit-opinion run with 263 targeted tests OK.
