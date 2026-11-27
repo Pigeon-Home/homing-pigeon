@@ -9,9 +9,8 @@ Runner mailbox is your@email.com
 Retrieve the system clock and display it
 ```
 
-The DIRECTIVE strike line simply tells your AI which secure protocol to use. The other thing is your email address, which you control.
-
-The things you need to try this is a device: [docs/steady/use/own-cloud.md](docs/steady/use/own-cloud.md) 
+- The DIRECTIVE strike line simply tells your AI which secure protocol to use. The other thing is your email address, which you control.
+- Try it with a cheap or free device: [docs/steady/use/own-cloud.md](docs/steady/use/own-cloud.md) 
 
 The Homing Pigeon runner, like a GitHub runner, polls and executes signed jobs from a source in the cloud.
 Setup walks you through connecting a dedicated mailbox. The recommended path is a browser sign-in,
