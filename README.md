@@ -9,7 +9,7 @@ Runner mailbox is your@email.com
 Retrieve the system clock and display it
 ```
 
-The DIRECTIVE/line simply tells your AI which public/secure protocol to use. The other thing is your email address, which you control.
+The DIRECTIVE strike line simply tells your AI which public/secure protocol to use. The other thing is your email address, which you control.
 
 The things you need to try this is a device: [docs/steady/use/own-cloud.md](docs/steady/use/own-cloud.md) 
 
