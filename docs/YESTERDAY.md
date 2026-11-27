@@ -1,0 +1,13 @@
+# Overkill
+- define runner HOST boundry for Oracle to dispatch patrols: repair, hdd, audit, security_patrols
+- oracle key distribution based on IETF and Committee on National Security Systems:
+INSTRUCTION FOR
+SECRET NATIONAL SECURITY SYSTEMS
+PUBLIC KEY INFRASTRUCTURE
+X.509 CERTIFICATE POLICY
+THIS DOCUMENT PRESCRIBES MINIMUM STANDARDS
+YOUR DEPARTMENT OR AGENCY MAY REQUIRE FURTHER
+IMPLEMENTATION
+December 2021
+(https://www.cnss.gov/CNSS/openDoc.cfm?a=0C7CB49931A0B4EAC2B70DFB7D884BDF&b=E6C0C60D0EA57F192C272BB48DD48FAA326E06B63C7B577007CFE8FD56B69835C9F2E02DF45D55166D54040E0B92F01C)
+oracle root CA (PQC) self-signed, pigeon-home.ai mint, or 'OTHER' like earlier OTP gate idea for job-approval to perform certain RCE in high-security or 'attested' cloud or air gapped env. OTP can be software or harwdware ish
