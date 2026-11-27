@@ -53,3 +53,38 @@ If the check mode output shows any difference beyond that
 one file, S1 is wrong in part, and the conclusions will
 say so plainly and name every extra difference before any
 fix is landed.
+
+## Conclusions, measured 2026-11-27
+
+S1 holds in full. The release commit tree itself records
+402 modules and does not name the F15 file, checked by
+reading pyproject.toml at that commit. The hosted logs
+name the same single failing test in all three failed
+jobs, with the derivation at 403 and the recorded list at
+402 and the first difference at the F15 file. No other
+test failed in any of the three jobs. The F15 code is not
+implicated: every other job in the run passed, and the
+one failure is the selection pin doing the job it was
+written for.
+
+S2 holds. The regeneration is one line: the F15 module
+inserted at its sorted place in the recorded list, between
+the extreview module and the file names module. With that
+line in place the oracle tool in check mode reports that
+the selection is the derivation, 403 modules, and its two
+direction lists are both empty. The full mutation oracle
+family passes, including the pin that went red.
+
+S3 does not arise: no difference beyond that one file was
+found in either direction.
+
+The regeneration landed on main as the fix commit that
+follows the supposition commit. A family of tests around
+this exact rot shape stands in
+runner/tests/test_mutation_oracle.py, in the class
+RecordedSelectionF15RotFamilyTest: the F15 module pinned
+by name in both lists and at its sorted place, both
+directions pinned empty on the real tree, and fixture
+simulations of a newly landed loader going unrecorded by
+each load style this tree uses. Number 4.0.37.6 stays
+spent; the replacement release takes the next counter.

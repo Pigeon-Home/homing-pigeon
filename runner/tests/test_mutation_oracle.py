@@ -376,6 +376,146 @@ class RecordedSelectionRotFamilyTest(unittest.TestCase):
             self.assertEqual([], only_recorded)
 
 
+class RecordedSelectionF15RotFamilyTest(unittest.TestCase):
+    """The rot family around the 2026-11-27 gate failure.
+
+    Ship 4.0.37.6 went red at the gate (hosted run 46023234083)
+    in the test, test-macos and test-windows (1) jobs, each on
+    the single pin test above: the F15 landing had added one
+    loader module, runner/tests/test_f15_whole_gate.py, and
+    the recorded selection was not regenerated, so the
+    derivation held 403 modules against a recorded 402. The
+    module is pinned by name below, at its sorted place, and
+    the fixture tests simulate the shape that caused it: a
+    newly landed loader, by each load style this tree uses,
+    that nobody recorded.
+    """
+
+    F15_MODULE = "runner/tests/test_f15_whole_gate.py"
+
+    def test_the_f15_module_is_derived(self):
+        derived, _recorded = _real_lists()
+        self.assertIn(self.F15_MODULE, derived)
+
+    def test_the_f15_module_is_recorded(self):
+        _derived, recorded = _real_lists()
+        self.assertIn(self.F15_MODULE, recorded)
+
+    def test_the_f15_module_exists_on_disk(self):
+        self.assertTrue(os.path.isfile(
+            os.path.join(ROOT, self.F15_MODULE)))
+
+    def test_the_f15_module_sits_at_its_sorted_place(self):
+        _derived, recorded = _real_lists()
+        idx = recorded.index(self.F15_MODULE)
+        self.assertEqual("runner/tests/test_extreview.py",
+                         recorded[idx - 1])
+        self.assertEqual("runner/tests/test_file_names.py",
+                         recorded[idx + 1])
+
+    def test_no_module_is_derived_but_unrecorded(self):
+        derived, recorded = _real_lists()
+        self.assertEqual(
+            [], [p for p in derived if p not in recorded])
+
+    def test_no_module_is_recorded_but_underived(self):
+        derived, recorded = _real_lists()
+        self.assertEqual(
+            [], [p for p in recorded if p not in derived])
+
+    def _recorded_fixture(self, root, entries):
+        _fixture_tree(root)
+        _write(root, "pyproject.toml",
+               "[tool.mutmut]\n"
+               "pytest_add_cli_args_test_selection = [\n"
+               + "".join('    "%s",\n' % e for e in entries)
+               + "]\n")
+
+    _FIXTURE_RECORDED = [
+        "runner/tests/test_bare.py",
+        "runner/tests/test_deep.py",
+        "runner/tests/test_direct.py",
+        "runner/tests/test_helper_chain.py",
+        "runner/tests/test_lazy.py",
+        "runner/tests/test_multi.py",
+    ]
+
+    def test_a_new_direct_loader_unrecorded_is_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(tmp, self._FIXTURE_RECORDED)
+            _write(tmp, "runner/tests/test_new_gate.py",
+                   "from runner.guard import security  # noqa\n")
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            self.assertEqual(["runner/tests/test_new_gate.py"],
+                             only_derived)
+            self.assertEqual([], only_recorded)
+
+    def test_a_new_lazy_loader_unrecorded_is_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(tmp, self._FIXTURE_RECORDED)
+            _write(tmp, "runner/tests/test_new_lazy_gate.py",
+                   "from runner.tools import lazytool  # noqa\n")
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            self.assertEqual(
+                ["runner/tests/test_new_lazy_gate.py"], only_derived)
+            self.assertEqual([], only_recorded)
+
+    def test_a_new_helper_chain_loader_unrecorded_is_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(tmp, self._FIXTURE_RECORDED)
+            _write(tmp, "runner/tests/test_new_chain_gate.py",
+                   "from runner.tests.helper import security\n")
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            self.assertEqual(
+                ["runner/tests/test_new_chain_gate.py"], only_derived)
+            self.assertEqual([], only_recorded)
+
+    def test_a_new_bookended_loader_unrecorded_is_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(tmp, self._FIXTURE_RECORDED)
+            _write(tmp, "runner/tests/test_new_noisy_gate.py",
+                   BOOKENDS
+                   + "\nfrom runner.guard import security\n"
+                   + BOOKENDS + "\n")
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            self.assertEqual(
+                ["runner/tests/test_new_noisy_gate.py"], only_derived)
+            self.assertEqual([], only_recorded)
+
+    def test_two_new_loaders_unrecorded_are_both_named(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(tmp, self._FIXTURE_RECORDED)
+            _write(tmp, "runner/tests/test_new_gate.py",
+                   "from runner.guard import security  # noqa\n")
+            _write(tmp, "runner/tests/test_new_lazy_gate.py",
+                   "from runner.tools import lazytool  # noqa\n")
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            self.assertEqual(
+                ["runner/tests/test_new_gate.py",
+                 "runner/tests/test_new_lazy_gate.py"], only_derived)
+            self.assertEqual([], only_recorded)
+
+    def test_a_new_data_only_file_does_not_rot_the_record(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(tmp, self._FIXTURE_RECORDED)
+            _write(tmp, "runner/tests/test_new_data_gate.py",
+                   "from runner.ops import core  # noqa\n")
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            self.assertEqual([], only_derived)
+            self.assertEqual([], only_recorded)
+
+    def test_a_new_loader_recorded_checks_clean(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._recorded_fixture(
+                tmp, self._FIXTURE_RECORDED
+                + ["runner/tests/test_new_gate.py"])
+            _write(tmp, "runner/tests/test_new_gate.py",
+                   "from runner.guard import security  # noqa\n")
+            _d, _r, only_derived, only_recorded = MO.check(tmp)
+            self.assertEqual([], only_derived)
+            self.assertEqual([], only_recorded)
+
+
 class MutantCopyHelperTest(unittest.TestCase):
     def test_outside_a_copy_the_helper_is_a_noop(self):
         with mock.patch.dict(os.environ, {}, clear=True):
