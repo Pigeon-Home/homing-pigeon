@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.13 - 2026-11-27
+
+- Land on main (since 4.0.35.12) -- 4 commits: 2 by DRU (Update README.md, DRU <slutsky5544@gmail.com>, committer GitHub), 1 Muse design commit landing the self-reference program papers, and 1 Muse fix-forward commit syncing the README prompt pin to the owner's lowercase pigeon-home.ai line
+- The version was computed by runner/ops/version4.py next 4.0.35.12 --fresh on a fresh uncached recount over head 75bb67a2f888d61ba4efc2e0540e5a42a28ed0c0 (log ~/workspace/ship-work/recount-403513.log), next = 4.0.35.13
+
 ## 4.0.35.12 - 2026-11-27
 
 - Land on main (since 4.0.35.10) -- 51 commits: 49 by DRU (35 Update README.md, 13 Update FUTURE.md, 1 Create YESTERDAY.md), the spent 4.0.35.11 release commit, and 1 Muse fix-forward commit clearing the two gate failures from the 4.0.35.11 cut (the seat-cards design doc's stale runner/learning.py path corrected to runner/oracle/learning.py, and the readme prompt quote test's pinned block updated to the current README prompt)
