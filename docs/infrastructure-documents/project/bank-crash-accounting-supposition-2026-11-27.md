@@ -66,3 +66,27 @@ change the numbers support. If it comes out small, the numbers
 support no structural change to the suite: the cost is the
 contract work, and the honest move is to record that here and
 size review timeouts to it.
+
+## Conclusions, measured 2026-11-27
+
+S1 holds exactly. Bank 77's commit added 4,664 run records
+whose crashes counters sum to 7,244, and the commit changed
+no crashes file and no slow file at all, so the merge filed
+0 distinct new crash records. The 7,244 was crash events,
+every one a re-hit of a record already on file.
+
+The change S2 names is landed alongside this record. The
+merge counts slow records under their own key, apart from
+crashes. The commit message and the ledger block each state
+two numbers: the distinct records filed, and the crash
+events across the banked runs. The subject line carries the
+filed count.
+
+S3 holds. A parse only pass over the whole corpus, 2,733
+records across 31 targets, took 1.20 seconds. The combined
+corpus and bank suite ran 328 tests in 1,398.9 seconds of
+wall time on a loaded box, of which 150.8 seconds was user
+CPU time, so even 10 full parses would come to under a
+tenth of the suite's own CPU time. The cost is the replay
+itself. No structural change to the suite is supported;
+review timeouts are sized to the contract work.

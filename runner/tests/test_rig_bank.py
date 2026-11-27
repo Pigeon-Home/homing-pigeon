@@ -161,12 +161,15 @@ class MergeRunsTest(unittest.TestCase):
 
 
 class MergeCorpusTest(unittest.TestCase):
-    def _tree(self, root, entries, runs, crashes=None, arcs=None):
+    def _tree(self, root, entries, runs, crashes=None, arcs=None, slow=None):
         os.makedirs(root, exist_ok=True)
         _write(os.path.join(root, "wire.jsonl"), entries, header=ENTRY_HEADER)
         _write(os.path.join(root, "runs.jsonl"), runs, header=HEADER)
         if crashes is not None:
             _write(os.path.join(root, "wire.crashes.jsonl"), crashes,
+                   header=ENTRY_HEADER)
+        if slow is not None:
+            _write(os.path.join(root, "wire.slow.jsonl"), slow,
                    header=ENTRY_HEADER)
         if arcs is not None:
             with open(os.path.join(root, "wire.arcs.json"), "w") as fh:
@@ -184,10 +187,14 @@ class MergeCorpusTest(unittest.TestCase):
                         _run("wire", "2026-10-28T02:00:00Z", 2, 2, 25,
                              crashes=1)],
                        crashes=[{"id": "c1", "target": "wire", "crash": "x"}],
+                       slow=[{"id": "s1", "target": "wire", "slow": "x"}],
                        arcs=[[1, 2], [3, 4]])
             report = rig_bank.merge_corpus(tree, bank)
             self.assertEqual(report["entries"], {"wire.jsonl": ["b"]})
             self.assertEqual(report["crashes"], {"wire.crashes.jsonl": ["c1"]})
+            # Slow records merge under their own key, never the
+            # crash key: a slow finding is a property of the box.
+            self.assertEqual(report["slow"], {"wire.slow.jsonl": ["s1"]})
             self.assertEqual(report["arcs"], 1)
             self.assertEqual(report["runs_added"], 1)
             self.assertEqual(report["totals"], (2, 25))
@@ -233,14 +240,16 @@ class LedgerTest(unittest.TestCase):
             "  de_aztec 9 (Nuremberg): 1501 entries, 5401 arcs, 0 crashes filed.")
 
     def test_ledger_block_shape(self):
-        report = {"totals": (1300, 5001)}
+        report = {"totals": (1300, 5001),
+                  "crashes": {"wire.crashes.jsonl": ["c1", "c2"]}}
         records = [_run("wire", "2026-10-28T02:00:00Z", 77, 2, 25,
-                        tried=1234, crashes=2)]
+                        tried=1234, crashes=5)]
         block = rig_bank.ledger_block("Germany rig", 3, report, records,
                                       resources="box cpu 99%")
         self.assertIn("de_aztec 3 (Germany rig): 1300 entries, 5001 arcs, "
                       "2 crashes filed.", block)
         self.assertIn("1 run records, 1,234 children (seeds 77)", block)
+        self.assertIn("Crash events in the banked runs: 5.", block)
         self.assertIn("Resources: box cpu 99%.", block)
 
     def test_insert_ledger_after_last_summary_block(self):
@@ -287,15 +296,66 @@ class LedgerTest(unittest.TestCase):
         lines = msg.splitlines()
         self.assertEqual(
             lines[0],
-            "San Francisco bank 6: 1,521 entries, 0 crashes, 1 new runs")
+            "San Francisco bank 6: 1,521 entries, 0 crashes filed, 1 new runs")
         self.assertIn("Status after this bank: 1,521 entries and 5,458 "
                       "coverage edges", msg)
         self.assertIn("New in this bank: 1 run records, 17,564 children "
                       "tested.", msg)
         self.assertIn("Crashes filed in this bank: 0.", msg)
+        self.assertIn("Crash events in this bank's runs: 0.", msg)
         self.assertIn("Retired echoes not re-banked: 1.", msg)
         self.assertIn("The rig's git head: 418b67fb5d0e.", msg)
         self.assertTrue(msg.endswith("Agent-Stamp: " + rig_bank.STAMP))
+
+
+class FiledVsEventsTest(unittest.TestCase):
+    """The bank's crash figure is the distinct records filed; the
+    run counters' sum is crash events, stated apart. Bank 77
+    (2026-11-27) printed 7,244 under the word "filed" when the
+    merge had filed 0 distinct records: every event re-hit a
+    family already on file."""
+
+    def test_message_states_both_numbers(self):
+        report = {"totals": (3000, 9000),
+                  "crashes": {"wire.crashes.jsonl": ["c1", "c2"]}}
+        records = [_run("wire", "2026-11-27T01:00:00Z", 5, 3, 30,
+                        crashes=4),
+                   _run("wire", "2026-11-27T02:00:00Z", 6, 3, 30,
+                        crashes=5)]
+        msg = rig_bank.commit_message("Germany rig", 78, report, records)
+        self.assertEqual(
+            msg.splitlines()[0],
+            "Germany rig bank 78: 3,000 entries, 2 crashes filed, 2 new runs")
+        self.assertIn("Crashes filed in this bank: 2.", msg)
+        self.assertIn("Crash events in this bank's runs: 9.", msg)
+
+    def test_ledger_head_counts_filed_not_events(self):
+        report = {"totals": (3000, 9000),
+                  "crashes": {"wire.crashes.jsonl": ["c1"]}}
+        records = [_run("wire", "2026-11-27T01:00:00Z", 5, 3, 30,
+                        crashes=7244)]
+        block = rig_bank.ledger_block("Germany rig", 78, report, records)
+        self.assertIn("1 crashes filed.", block)
+        self.assertIn("Crash events in the banked runs: 7244.", block)
+
+    def test_slow_records_are_not_counted_as_crashes(self):
+        report = {"totals": (3000, 9000),
+                  "slow": {"collect.slow.jsonl": ["s1"]}}
+        records = [_run("collect", "2026-11-27T01:00:00Z", 5, 3, 30,
+                        crashes=3)]
+        msg = rig_bank.commit_message("Germany rig", 78, report, records)
+        self.assertIn("0 crashes filed", msg.splitlines()[0])
+        self.assertIn("Crashes filed in this bank: 0.", msg)
+        self.assertIn("Slow records filed in this bank: 1.", msg)
+        self.assertEqual(rig_bank.filed_count(report, "crashes"), 0)
+        self.assertEqual(rig_bank.filed_count(report, "slow"), 1)
+
+    def test_events_sum_the_run_counters(self):
+        records = [_run("wire", "2026-11-27T01:00:00Z", 5, 3, 30,
+                        crashes=2),
+                   _run("cloud", "2026-11-27T01:30:00Z", 6, 3, 30)]
+        self.assertEqual(rig_bank.crash_events(records), 2)
+        self.assertEqual(rig_bank.filed_count({}, "crashes"), 0)
 
 
 class BankCleanupTest(unittest.TestCase):

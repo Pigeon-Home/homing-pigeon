@@ -264,7 +264,8 @@ def latest_totals(run_objs):
 
 def merge_corpus(tree_dir, bank_dir):
     """Merge bank_dir's corpus into tree_dir. Returns a report dict."""
-    report = {"entries": {}, "crashes": {}, "arcs": 0, "runs_added": 0}
+    report = {"entries": {}, "crashes": {}, "slow": {}, "arcs": 0,
+              "runs_added": 0}
     for name in sorted(os.listdir(bank_dir)):
         bank_path = os.path.join(bank_dir, name)
         tree_path = os.path.join(tree_dir, name)
@@ -275,7 +276,12 @@ def merge_corpus(tree_dir, bank_dir):
         elif name.endswith((".crashes.jsonl", ".slow.jsonl")):
             added, echoes = merge_id_file(tree_path, bank_path)
             if added:
-                report["crashes"][name] = added
+                # Crash records and slow records are counted apart:
+                # a slow finding is a property of the box, not a
+                # broken contract, and one key for both made the
+                # bank's crash figure unreadable either way.
+                key = "slow" if name.endswith(".slow.jsonl") else "crashes"
+                report[key][name] = added
             report["echoes"] = report.get("echoes", 0) + echoes
         elif name.endswith(".jsonl"):
             added, echoes = merge_id_file(tree_path, bank_path)
@@ -303,8 +309,8 @@ def tree_head(corpus_dir):
 
 
 def settle_crashes(clone, report, run=subprocess.run, timeout=900):
-    """Replay the crash records this bank merged at main's own head,
-    inside the clone, with the tool's `promote`: a record that still
+    """Replay the crash and slow records this bank merged at main's
+    own head, inside the clone, with the tool's `promote`: a record that still
     crashes stays a crash (the suite carries it as an expectedFailure
     probe that fails, as it should); one that passes was found by a
     grow on a tree older than the fix, and `promote` moves it into the
@@ -313,7 +319,8 @@ def settle_crashes(clone, report, run=subprocess.run, timeout=900):
     A promote that cannot run leaves the merge as it was: the bank
     still lands, and the suite says what promote would have."""
     out = {}
-    for name in sorted(report.get("crashes") or {}):
+    names = set(report.get("crashes") or {}) | set(report.get("slow") or {})
+    for name in sorted(names):
         target = name.rsplit(".", 2)[0]
         try:
             proc = run([sys.executable, os.path.join("runner", "tools", "de_dust_corpus.py"),
@@ -337,10 +344,29 @@ def banked_records(run_objs, known_keys):
     ]
 
 
+def filed_count(report, key):
+    """Distinct records this bank merged under one report key
+    ("crashes" or "slow"): the merge's own count of new ids, which
+    is what filing means. A grow files a crash only when its id is
+    new, so this is the distinct-findings figure."""
+    return sum(len(ids) for ids in (report.get(key) or {}).values())
+
+
+def crash_events(new_records):
+    """Crash events across the bank's new run records: a run
+    record's crashes counter is its session's crash list, every
+    crashing child counted each time it crashed, so the same input
+    crashing in 10 rounds is 10 events and at most 1 filed record.
+    Stated apart from the filed count wherever the bank reports
+    crashes, so the two are never read as one number."""
+    return sum(o.get("crashes", 0) for o in new_records)
+
+
 def ledger_block(rig, grow_no, report, new_records, resources=None):
     """The grow's ledger block for the standing orders, file-wrapped."""
     entries, arcs = report["totals"]
-    crashes = sum(o.get("crashes", 0) for o in new_records)
+    crashes = filed_count(report, "crashes")
+    events = crash_events(new_records)
     tried = sum(o.get("tried", 0) for o in new_records)
     seeds = sorted({o.get("seed") for o in new_records if o.get("seed") is not None})
     head = f"  {CAMPAIGN} {grow_no} ({rig}): {entries} entries, {arcs} arcs, {crashes} crashes filed."
@@ -349,6 +375,7 @@ def ledger_block(rig, grow_no, report, new_records, resources=None):
         f" item 7: {len(new_records)} run records, {tried:,} children"
         f" (seeds {', '.join(str(s) for s in seeds) if seeds else 'none recorded'});"
         f" totals from the merged tree."
+        f" Crash events in the banked runs: {events}."
     )
     if resources:
         body += f" Resources: {resources}."
@@ -371,14 +398,20 @@ def commit_message(rig, grow_no, report, new_records):
     it carries the status at a glance: which rig, how big the merged
     corpus now stands, how many crashes this bank filed, and how
     many new run records it brought. The body repeats the status in
-    sentences, with the merge's bookkeeping lines after.
+    sentences, with the merge's bookkeeping lines after. The crash
+    figure everywhere here is the distinct records filed; the crash
+    events across the new runs ride on their own line, apart, so a
+    bank whose grows re-hit known families all day reads as 0
+    filed and however many events, never as thousands filed.
     """
     entries, arcs = report["totals"]
-    crashes = sum(o.get("crashes", 0) for o in new_records)
+    crashes = filed_count(report, "crashes")
+    events = crash_events(new_records)
+    slow = filed_count(report, "slow")
     tried = sum(o.get("tried", 0) for o in new_records)
     subject = (
         f"{rig} bank {grow_no}: {entries:,} entries, "
-        f"{crashes} crashes, {len(new_records)} new runs"
+        f"{crashes} crashes filed, {len(new_records)} new runs"
     )
     lines = [
         subject,
@@ -390,7 +423,10 @@ def commit_message(rig, grow_no, report, new_records):
         f"New in this bank: {len(new_records)} run records,"
         f" {tried:,} children tested.",
         f"Crashes filed in this bank: {crashes}.",
+        f"Crash events in this bank's runs: {events}.",
     ]
+    if slow:
+        lines.append(f"Slow records filed in this bank: {slow}.")
     settled = report.get("settled") or {}
     if settled:
         lines.append(
@@ -537,11 +573,12 @@ def _bank_inner(rig, corpus_dir, pat, snap, work, resources, dry_run):
     new_records = banked_records(report["run_objs"], tree_keys)
     fresh = [o for o in new_records
              if json.dumps(o, sort_keys=True) in snap_keys]
-    changed = report["entries"] or report["crashes"] or fresh
+    changed = (report["entries"] or report["crashes"]
+               or report.get("slow") or fresh)
     if not changed:
         print("rig_bank: nothing new to bank")
         return 0
-    if report["crashes"]:
+    if report["crashes"] or report.get("slow"):
         report["settled"] = settle_crashes(clone, report)
     report["rig_head"] = tree_head(corpus_dir)
     block = ledger_block(rig, grow_no, report, fresh, resources)
@@ -581,7 +618,7 @@ def _bank_inner(rig, corpus_dir, pat, snap, work, resources, dry_run):
             new_records = banked_records(report["run_objs"], tree_keys)
             fresh = [o for o in new_records
                      if json.dumps(o, sort_keys=True) in snap_keys]
-            if report["crashes"]:
+            if report["crashes"] or report.get("slow"):
                 report["settled"] = settle_crashes(clone, report)
             report["rig_head"] = tree_head(corpus_dir)
             block = ledger_block(rig, grow_no, report, fresh, resources)
