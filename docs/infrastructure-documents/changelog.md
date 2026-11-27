@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.9 - 2026-11-27
+
+- Land on main (since 4.0.35.8) -- 2 commits, both DRU Update FUTURE.md (docs only): docs/FUTURE.md tail line extended in two steps, first adding the tag vendors in AGENTS.md clause, then correcting Dilinate to Delineate and adding the file bugs they do not understand clause (net 1 insertion, 1 deletion against the 4.0.35.8 tree)
+- The version was computed by runner/ops/version4.py next 4.0.35.8 --fresh on a fresh uncached recount over base head 958723930ee729fb4a4def4672bf623e54e6b881 (log ~/workspace/ship-work/recount-40359.log), next = 4.0.35.9
+
 ## 4.0.35.8 - 2026-11-27
 
 - DRU's FUTURE.md and FAQ.md updates, 26 November 2026
