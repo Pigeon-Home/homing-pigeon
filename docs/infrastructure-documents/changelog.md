@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.8 - 2026-11-27
+
+- Land on main (since 4.0.37.7) -- 2 commits, all Muse authored: the F15 rot family around the regenerated mutmut selection (tests only), and the figure-refresh commit that refills the statistics record from the fresh measure on that head (37,568,557 tokens, 1,664,054 tracked lines)
+- The version was computed by runner/ops/version4.py next 4.0.37.7 --fresh on a fresh uncached recount over head 1338f1d33ad922d10018fb4fc0d5718b43347914 (log ~/workspace/ship-work/recount-next40378.log), next = 4.0.37.8.
+
 ## 4.0.37.7 - 2026-11-27
 
 - Land on main (since 4.0.37.5) -- 4 commits, all Muse authored: the F15 whole gate generalization, the 4.0.37.6 release commit whose number was spent when its gate failed on the mutation selection pin, the mutation selection supposition written before measurement, and the fix that regenerates the recorded mutmut selection so it holds the new whole gate test file (derived 403 modules, recorded 403, the pin family green)
