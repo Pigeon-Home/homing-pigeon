@@ -1,0 +1,13 @@
+{
+ "Agent-Stamp": "50000c8e-1b3d-4f5a-9c7e-8d0b2a4c6e8f",
+ "de_dust": 1,
+ "retired": {
+  "fd6de6446d9a4df4": {
+   "head": "96dc7ffbad5b",
+   "ms": 10.0,
+   "on": "2026-11-27",
+   "why": "fast"
+  }
+ },
+ "target": "collect"
+}
