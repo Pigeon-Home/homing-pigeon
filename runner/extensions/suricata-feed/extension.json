@@ -24,7 +24,7 @@
   "upstream": {
     "repo": "https://github.com/OISF/suricata",
     "ref": "main",
-    "pin": "ca5de3eb41672d030e364e3ea11189d5f2994e85",
+    "pin": "2dd24e7818f996b797e3cd280d5ff7e5d9e2a8a3",
     "paths": [
       "etc/schema.json",
       "LICENSE"

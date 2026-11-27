@@ -1,18 +1,18 @@
 {
-  "bytes": 453018,
-  "fetched_at": "2026-11-26T17:52:55Z",
+  "bytes": 453316,
+  "fetched_at": "2026-11-27T17:38:12Z",
   "files": {
     "LICENSE": {
       "bytes": 18092,
       "sha384": "abd445a31452f3938f977819292c7f18d6858392732558d39d6128ec20aa88c500c3fe7df1b7fc0315f8d1711d75c9d0"
     },
     "etc/schema.json": {
-      "bytes": 434926,
-      "sha384": "cbd1cb24b0c6c2d4ecac545f4eddccf6e52623e843a22efb5be94be120ba23eb3f5bfdb72e97f4b87432d29be2672902"
+      "bytes": 435224,
+      "sha384": "42c7a52dc1cc6cef8479afd9c6eb44e9026e85d43abd3cd11bb6d283873a948e22309e1d6e12f1323ea085b9e2368a5b"
     }
   },
   "license": "GPL-2.0-only",
-  "pin": "ca5de3eb41672d030e364e3ea11189d5f2994e85",
+  "pin": "2dd24e7818f996b797e3cd280d5ff7e5d9e2a8a3",
   "ref": "main",
   "repo": "https://github.com/OISF/suricata"
 }
