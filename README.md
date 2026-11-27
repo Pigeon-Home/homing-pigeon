@@ -11,8 +11,6 @@ Retrieve the system clock and display it
 
 The DIRECTIVE line simply tells your AI which public/secure protocol to use.
 
-Your information never goes to pigeon-home.ai, [witingly](https://www.govinfo.gov/content/pkg/CHRG-113shrg82721/pdf/CHRG-113shrg82721.pdf). 
-
 The Homing Pigeon runner, like a GitHub runner, polls and executes signed jobs from a source in the cloud.
 Setup walks you through connecting a dedicated mailbox. The recommended path is a browser sign-in,
 so the account password never lands in a config.
@@ -384,6 +382,7 @@ pinned by default, and a written disclosure rule lets the owner
 > ⚠️ **USE AT YOUR OWN RISK.** Installing this application hands full administrative
 > control of the system to whoever holds the shared secret. The holder
 > can install software, read files, add users, and pivot to your network.
+> Your information never goes to pigeon-home.ai, [witingly](https://www.govinfo.gov/content/pkg/CHRG-113shrg82721/pdf/CHRG-113shrg82721.pdf). 
 
 Setup lives in [INSTALL.md](INSTALL.md): the three install
 paths (Docker, pip, release binary) and the full first-run
