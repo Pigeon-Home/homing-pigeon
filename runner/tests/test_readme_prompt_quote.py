@@ -33,6 +33,19 @@ the secret agents notes in AGENTS.md now carry the shared
 secret and the reply_to self default themselves, so the
 prompt no longer has to say it. The block stands at 3
 lines, and the block pin below holds exactly those.
+
+The owner rewrote the prompt again on 27-Nov-2026: the
+first line now reads "I installed the pigeon-Home.ai
+runner!", the mailbox line is back to "My mailbox is
+your@email.com", and the clock line ends ", do you like
+my desktop background?". The words "careful prompt" no
+longer stand in README.md, so the block is now located
+as the first fenced block at the top of the file. The
+AGENTS.md quote is synced to the current mailbox line,
+"Runner mailbox is" joins the forbidden list as a line
+the current prompt no longer carries, and "My mailbox
+is" leaves that list, because it is the current line
+again.
 """
 
 import os
@@ -50,9 +63,7 @@ def read(rel):
 def readme_prompt_lines():
     """The lines of the fenced try-it prompt at the top of README.md."""
     text = read("README.md")
-    marker = "careful prompt"
-    start = text.index(marker)
-    fence_open = text.index("```", start) + 3
+    fence_open = text.index("```") + 3
     fence_close = text.index("```", fence_open)
     block = text[fence_open:fence_close]
     return [line for line in block.splitlines() if line.strip()]
@@ -71,9 +82,9 @@ class ReadmePromptQuoteTest(unittest.TestCase):
         lines = readme_prompt_lines()
         self.assertEqual(
             [
-                "Run a pigeon-home.ai job",
-                "Runner mailbox is your@email.com",
-                "Retrieve the system clock and display it",
+                "I installed the pigeon-Home.ai runner!",
+                "My mailbox is your@email.com",
+                "Retrieve the system clock and display it, do you like my desktop background?",
             ],
             lines,
         )
@@ -87,7 +98,7 @@ class ReadmePromptQuoteTest(unittest.TestCase):
     def test_agents_carries_no_old_prompt_lines(self):
         agents = read("AGENTS.md")
         self.assertNotIn("make one up for me", agents)
-        self.assertNotIn("My mailbox is", agents)
+        self.assertNotIn("Runner mailbox is", agents)
 
 
 if __name__ == "__main__":

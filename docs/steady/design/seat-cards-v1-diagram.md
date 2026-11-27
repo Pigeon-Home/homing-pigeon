@@ -287,7 +287,7 @@ not omniscient, and its answers rest on the briefing it was
 handed.
 
 **What it trusts and why:** Verified facts. Its learning ledger,
-in `runner/learning.py`, freezes a prediction before the outcome
+in `runner/oracle/learning.py`, freezes a prediction before the outcome
 is known, scores the reconciliation when the outcome lands, and
 promotes a candidate lesson only on verified corroboration. One
 contradiction retires a candidate permanently.
