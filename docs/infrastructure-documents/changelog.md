@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.7 - 2026-11-27
+
+- Land on main (since 4.0.35.6) -- 6 commits, all DRU Update FUTURE.md (docs only): docs/FUTURE.md reworked at the tail, replacing the content reporting and bitcoin race to zero lines with the ask robots technical self-referential-reflexives line (net 1 insertion, 2 deletions)
+- The version was computed by runner/ops/version4.py next 4.0.35.6 --fresh on a fresh uncached recount over base head cd4061e7 (log ~/workspace/ship-work/recount-40357.log), next = 4.0.35.7
+
 ## 4.0.35.6 - 2026-11-26
 
 - Land on main (since 4.0.35.5) -- 1 commit: DRU Update FUTURE.md, adding the bitcoin race to zero scenario outlined (QRL) line to docs/FUTURE.md (docs only, 1 line)
