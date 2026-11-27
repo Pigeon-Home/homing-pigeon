@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.2 - 2026-11-27
+
+- Land on main (since 4.0.37.1) -- 1 commit: 1 DRU-authored commit (DRU, committer GitHub): Update YESTERDAY.md (docs/YESTERDAY.md, 1 insertion, 1 deletion)
+- The version was computed by runner/ops/version4.py next 4.0.37.1 --fresh on a fresh uncached recount over head 6e5f8ac5b27b7eba6a7d2b44c3a5e15e3c123fa4 (log ~/workspace/ship-work/recount-next40371.log), next = 4.0.37.2
+
 ## 4.0.37.1 - 2026-11-27
 
 - Land on main (since 4.0.35.14) -- 1 commit: 1 Muse data commit banking the Germany rig corpus (Germany bank 77: 2,728 entries, 7,244 crashes, 4,664 new runs)
