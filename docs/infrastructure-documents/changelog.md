@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.1 - 2026-11-27
+
+- Land on main (since 4.0.35.14) -- 1 commit: 1 Muse data commit banking the Germany rig corpus (Germany bank 77: 2,728 entries, 7,244 crashes, 4,664 new runs)
+- The version was computed by runner/ops/version4.py next 4.0.35.14 --fresh on a fresh uncached recount over head d202dc1b9530395f41e6735d56173a4b84513efe (log ~/workspace/ship-work/recount-403515.log), next = 4.0.37.1
+
 ## 4.0.35.14 - 2026-11-27
 
 - Land on main (since 4.0.35.12) -- 6 commits: 2 by DRU (Update README.md), 1 Muse design commit landing the self-reference program papers, 1 Muse fix-forward commit syncing the README prompt pin, the spent 4.0.35.13 release commit, and 1 Muse fix commit correcting the stale runner/learning.py path in the self-reference paper to runner/oracle/learning.py

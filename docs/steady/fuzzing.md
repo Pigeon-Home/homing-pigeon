@@ -67,7 +67,7 @@ the as-assembled set stands at
 <!--hp-fig:core_assembled_lines-->73,435<!--/hp-fig--> lines
 (<!--hp-fig:core_assembled_nonblank-->66,635<!--/hp-fig-->
 non-blank) and a
-<!--hp-fig:core_assembled_zip_bytes-->945,251<!--/hp-fig-->-byte
+<!--hp-fig:core_assembled_zip_bytes-->945,249<!--/hp-fig-->-byte
 zip, and the project's own estimator counts it at
 <!--hp-fig:core_assembled_tokens-->805,294<!--/hp-fig--> tokens;
 the Gemini figure above still describes the 2026-11-04 assembly.
