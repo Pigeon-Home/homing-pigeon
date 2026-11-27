@@ -4,8 +4,8 @@ Homing Pigeon gives cloud AI like ChatGPT or Claude a secure and signed channel 
 
 Install the runner and try this Prompt with Grok, after you set up an email connector:
 ```
-Run a pigeon-home.ai job <!-- DIRECTIVE/line
-Runner mailbox is your@email.com
+I installed the pigeon-Home.ai runner
+My mailbox is your@email.com
 Retrieve the system clock and display it
 ```
 
