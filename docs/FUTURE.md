@@ -1,7 +1,7 @@
 - Anna AI OS Founding Builder Program 2026 research (https://luma.com/kmc1ddf9) [funding secured] Registration confirmed!
 - Update WAR with finished app store "requirements" and my docs on reqs for corps
 - Notify major cloud AI and SI vendors
-- Email agenda to info@abdulforsenate.com finalize ask/earn endorsement - Show and Tell (display ChatGPT emails post suicide attemp(s)) -- research his background, see if he understand or has a background in medicine or AMA or mental health stuff?
+- Email agenda to info@abdulforsenate.com finalize ask/earn endorsement - Show and Tell (display ChatGPT emails post suicide attemp(s)) -- research stances on mental health issue.
 - https://slashdot.org/story/21/11/15/220255/nyc-passes-bill-requiring-bias-audits-of-ai-hiring-tech
 - https://regulations.ai/regulations/RAI-US-NY-S1169A0-2025 (CC https://ag.ny.gov/contact-ag)
 - define runner HOST boundry for Oracle to dispatch patrols: repair, hdd, audit, security_patrols
