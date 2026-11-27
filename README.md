@@ -9,7 +9,7 @@ My mailbox is your@email.com
 Retrieve the system clock and display it
 ```
 
-- Try it with a cheap or free device: [docs/steady/use/own-cloud.md](docs/steady/use/own-cloud.md) 
+- You can try it with a cheap or free device: [docs/steady/use/own-cloud.md](docs/steady/use/own-cloud.md) 
 
 The Homing Pigeon runner, like a GitHub runner, polls and executes signed jobs from a source in the cloud.
 Setup walks you through connecting a dedicated mailbox. The recommended path is a browser sign-in,
