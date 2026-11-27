@@ -9,8 +9,7 @@ Runner mailbox is your@email.com
 Retrieve the system clock and display it
 ```
 
-/* This line simply tells yours AI which public/secure protocol to use.
-\** Here, none of your information ever goes to pigeon-home.ai !
+Footnotes: This line simply tells yours AI which public/secure protocol to use. Here, none of your information ever goes to pigeon-home.ai !
 
 The Homing Pigeon runner, like a GitHub runner, polls and executes signed jobs from a source in the cloud.
 Setup walks you through connecting a dedicated mailbox. The recommended path is a browser sign-in,
