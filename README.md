@@ -11,7 +11,7 @@ Retrieve the system clock and display it
 
 The DIRECTIVE line simply tells your AI which public/secure protocol to use. It's your email address, which you control.
 
-The 2nd is your device: [docs/steady/use/own-cloud.md](docs/steady/use/own-cloud.md) 
+The things you need to try this is a device: [docs/steady/use/own-cloud.md](docs/steady/use/own-cloud.md) 
 
 The Homing Pigeon runner, like a GitHub runner, polls and executes signed jobs from a source in the cloud.
 Setup walks you through connecting a dedicated mailbox. The recommended path is a browser sign-in,
