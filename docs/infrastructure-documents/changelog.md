@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.4 - 2026-11-27
+
+- Land on main (since 4.0.37.3) -- 1 commit: 1 Muse-authored commit: rig_bank: the bank states crashes filed and crash events as two numbers (runner/tools/rig_bank.py split the merge report into crashes and slow keys and states distinct filed records apart from crash events; runner/tests/test_rig_bank.py expectations updated with filed-versus-events tests; supposition conclusions appended to docs/infrastructure-documents/project/bank-crash-accounting-supposition-2026-11-27.md)
+- The version was computed by runner/ops/version4.py next 4.0.37.3 --fresh on a fresh uncached recount over head c16bd83cb31ac2476d2bd5c39bee4adfbcf7962e (log ~/workspace/ship-work/recount-fixship.log), next = 4.0.37.4
+
 ## 4.0.37.3 - 2026-11-27
 
 - Land on main (since 4.0.37.2) -- 1 commit: 1 Muse-authored commit: project: bank crash accounting supposition, before measurement (docs supposition file, 68 insertions)

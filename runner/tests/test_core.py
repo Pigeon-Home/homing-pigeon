@@ -115,7 +115,7 @@ class CoreListTest(unittest.TestCase):
         # re-measure that took up the install record's CPU
         # fact; the Gemini token count above still
         # describes the 2026-11-04 assembly.
-        self.assertEqual(945249, core.AS_ASSEMBLED_ZIP_BYTES)
+        self.assertEqual(945861, core.AS_ASSEMBLED_ZIP_BYTES)
 
     def test_the_recorded_line_measure_stays_named(self):
         # Re-measured 2026-11-05, after the Q-new runner fixes
@@ -281,8 +281,8 @@ class CoreListTest(unittest.TestCase):
         # its hard drive, by 33 lines of
         # runner/ops/setup.py (the setup wizard's system
         # facts).
-        self.assertEqual(73435, core.AS_ASSEMBLED_LINES)
-        self.assertEqual(66635, core.AS_ASSEMBLED_NONBLANK_LINES)
+        self.assertEqual(73472, core.AS_ASSEMBLED_LINES)
+        self.assertEqual(66668, core.AS_ASSEMBLED_NONBLANK_LINES)
         self.assertLess(core.AS_ASSEMBLED_NONBLANK_LINES,
                         core.AS_ASSEMBLED_LINES)
 

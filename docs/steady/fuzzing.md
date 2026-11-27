@@ -64,18 +64,18 @@ lines, which that landing left unrecorded, and again on
 (runner/guard/macos_confine.py) joined the canonical list and
 its wiring grew runner/ops, runner/guard and the runner proper,
 the as-assembled set stands at
-<!--hp-fig:core_assembled_lines-->73,435<!--/hp-fig--> lines
-(<!--hp-fig:core_assembled_nonblank-->66,635<!--/hp-fig-->
+<!--hp-fig:core_assembled_lines-->73,472<!--/hp-fig--> lines
+(<!--hp-fig:core_assembled_nonblank-->66,668<!--/hp-fig-->
 non-blank) and a
-<!--hp-fig:core_assembled_zip_bytes-->945,249<!--/hp-fig-->-byte
+<!--hp-fig:core_assembled_zip_bytes-->945,861<!--/hp-fig-->-byte
 zip, and the project's own estimator counts it at
-<!--hp-fig:core_assembled_tokens-->805,294<!--/hp-fig--> tokens;
+<!--hp-fig:core_assembled_tokens-->805,745<!--/hp-fig--> tokens;
 the Gemini figure above still describes the 2026-11-04 assembly.
 The project's own estimator counts the canonical
 <!--hp-fig:core_files-->139<!--/hp-fig-->-file list at
-<!--hp-fig:core_tokens-->793,715<!--/hp-fig--> tokens across
-<!--hp-fig:core_lines-->72,316<!--/hp-fig--> lines
-(<!--hp-fig:core_lines_nonblank-->65,634<!--/hp-fig-->
+<!--hp-fig:core_tokens-->794,166<!--/hp-fig--> tokens across
+<!--hp-fig:core_lines-->72,353<!--/hp-fig--> lines
+(<!--hp-fig:core_lines_nonblank-->65,667<!--/hp-fig-->
 non-blank); the 2 token counts come from different counters and
 are not interchangeable. 3 of the 133 files were the suite's own
 runners (runner/tools/run_tests_parallel.py,
@@ -91,11 +91,11 @@ no others, and a result reported for core covers exactly
 them.
 
 The runner proper is 7,444 lines; the core around it is
-65,991. The set as assembled, part by part (re-measured
+66,028. The set as assembled, part by part (re-measured
 2026-11-27):
 
 - runner/ops: 24,471 lines
-- runner/tools: 10,092
+- runner/tools: 10,129
 - runner/wire: 9,223
 - runner/runner.py: 7,444
 - runner/oracle: 5,423
@@ -108,7 +108,7 @@ The runner proper is 7,444 lines; the core around it is
 
 The canonical list's breakdown is the same except
 runner/tools, where the 3 excluded suite runners account
-for 1,119 of the lines, leaving 8,973 in the canonical list.
+for 1,119 of the lines, leaving 9,010 in the canonical list.
 The tool prints the
 canonical breakdown live, beside the totals.
 
