@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.8 - 2026-11-27
+
+- DRU's FUTURE.md and FAQ.md updates, 26 November 2026
+
 ## 4.0.35.7 - 2026-11-27
 
 - Land on main (since 4.0.35.6) -- 6 commits, all DRU Update FUTURE.md (docs only): docs/FUTURE.md reworked at the tail, replacing the content reporting and bitcoin race to zero lines with the ask robots technical self-referential-reflexives line (net 1 insertion, 2 deletions)
