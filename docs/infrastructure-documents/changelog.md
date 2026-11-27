@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.12 - 2026-11-27
+
+- Land on main (since 4.0.35.10) -- 51 commits: 49 by DRU (35 Update README.md, 13 Update FUTURE.md, 1 Create YESTERDAY.md), the spent 4.0.35.11 release commit, and 1 Muse fix-forward commit clearing the two gate failures from the 4.0.35.11 cut (the seat-cards design doc's stale runner/learning.py path corrected to runner/oracle/learning.py, and the readme prompt quote test's pinned block updated to the current README prompt)
+- The version was computed by runner/ops/version4.py next 4.0.35.11 --fresh on a fresh uncached recount over head 02fe2bc8b0429c9d0688d11bb6d4e22e9132b48b (log ~/workspace/ship-work/recount-403512.log), next = 4.0.35.12. 4.0.35.11 failed at the gate and its number is spent, never reused
+
 ## 4.0.35.11 - 2026-11-27
 
 - Land on main (since 4.0.35.10) -- 25 commits, all DRU-authored (DRU, committer GitHub): 6 Update FUTURE.md then 19 Update README.md (docs only; net against the 4.0.35.10 tree: README.md 7 insertions 1 deletion in effect via diff stat 7 changed lines, docs/FUTURE.md 1 insertion 1 deletion; total diff stat 2 files, 7 insertions, 2 deletions)
