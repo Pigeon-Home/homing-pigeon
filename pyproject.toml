@@ -199,6 +199,7 @@ pytest_add_cli_args_test_selection = [
     "runner/tests/test_extensions.py",
     "runner/tests/test_extreme_concurrent_poison.py",
     "runner/tests/test_extreview.py",
+    "runner/tests/test_f15_whole_gate.py",
     "runner/tests/test_file_names.py",
     "runner/tests/test_file_transport_operator_path.py",
     "runner/tests/test_first_ping.py",
