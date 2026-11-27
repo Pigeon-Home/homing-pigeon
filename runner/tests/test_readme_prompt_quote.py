@@ -35,8 +35,12 @@ prompt no longer has to say it. The block stands at 3
 lines, and the block pin below holds exactly those.
 
 The owner rewrote the prompt again on 27-Nov-2026: the
-first line now reads "I installed the pigeon-Home.ai
-runner!", the mailbox line is back to "My mailbox is
+first line now reads "I installed the pigeon-home.ai
+runner!" (the owner changed the casing of that first
+line from the capital H form, pigeon-Home.ai, to the
+lowercase pigeon-home.ai form, and the pin below
+follows the lowercase line), the mailbox line is back
+to "My mailbox is
 your@email.com", and the clock line ends ", do you like
 my desktop background?". The words "careful prompt" no
 longer stand in README.md, so the block is now located
@@ -82,7 +86,7 @@ class ReadmePromptQuoteTest(unittest.TestCase):
         lines = readme_prompt_lines()
         self.assertEqual(
             [
-                "I installed the pigeon-Home.ai runner!",
+                "I installed the pigeon-home.ai runner!",
                 "My mailbox is your@email.com",
                 "Retrieve the system clock and display it, do you like my desktop background?",
             ],
