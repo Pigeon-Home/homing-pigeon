@@ -7,7 +7,7 @@ pick beyond the existing fleet remains DRU's.
 
 ## Basis
 
-Phase 0 of ~/workspace/self-reference-emulation-plan.md makes a component
+Phase 0 of docs/steady/design/self-reference-emulation-plan.md makes a component
 eligible for emulation when BOTH stand:
 
 1. Its seat card exists (R1), checked against the code and PROTOCOL.

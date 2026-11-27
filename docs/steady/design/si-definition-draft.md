@@ -1,6 +1,6 @@
 # A working definition of "SI" for standards use: 3 candidates
 ## Drafted 26-Nov-2026, from DRU's FUTURE.md bullet: "Ask friends and mom to define SI, so we can help the IETFv6, ref: PUB_POLICY, and by ref: USGv4 imp" / "OKLETSGO"
-## Local draft only. Nothing committed, nothing sent. For DRU to take into the conversations the bullet names.
+## Draft only. Nothing sent. For DRU to take into the conversations the bullet names.
 
 ## 1. What the project's own usage already says
 

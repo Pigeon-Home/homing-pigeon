@@ -1,8 +1,8 @@
 # Emulation and simulation plan: the v1 components, and PUB_POLICY put through the same
 ## Continuing the self-reference program (R4/R5), from DRU's FUTURE.md closing bullet
-## Drafted 26-Nov-2026. Local working document. Nothing in this plan is bought, landed, or sent; the tier pick is DRU's.
+## Drafted 26-Nov-2026. Nothing in this plan is bought or sent; the tier pick is DRU's.
 
-Source text (docs/FUTURE.md, his hand): after the reflexive round and the think-like-a-component pass, "Maybe ask to emulate item after completion and watch what happens? Them simulate the same and/or with PUB_POLICY and document findings." This plan makes that sentence executable. It builds on ~/workspace/self-reference-and-components-2026-11-26.md (the seat-binding write-up, requirements R1 to R9) and covers R4 (emulate-after-completion) and R5 (simulate the same with PUB_POLICY), plus the goalpost re-measure protocol from R7.
+Source text (docs/FUTURE.md, his hand): after the reflexive round and the think-like-a-component pass, "Maybe ask to emulate item after completion and watch what happens? Them simulate the same and/or with PUB_POLICY and document findings." This plan makes that sentence executable. It builds on docs/steady/design/self-reference-and-components.md (the seat-binding write-up, requirements R1 to R9) and covers R4 (emulate-after-completion) and R5 (simulate the same with PUB_POLICY), plus the goalpost re-measure protocol from R7.
 
 ## 0. Words, used exactly
 
@@ -93,7 +93,7 @@ Each cycle closes the loop the Oracle's machinery already defines:
 
 ## 6. Where findings are documented
 
-- **During the work (local)**: a findings file beside this plan, ~/workspace/self-reference-emulation-findings.md, one entry per cycle: supposition, watch summary, reconciliation verdicts, candidate lessons and their status (candidate / corroborated / promoted / retired). Supposition first, conclusions after, same file.
+- **During the work (local)**: a findings file beside this plan, one entry per cycle: supposition, watch summary, reconciliation verdicts, candidate lessons and their status (candidate / corroborated / promoted / retired). Supposition first, conclusions after, same file.
 - **To the project (on DRU's word)**: delineated results in ComChat and, where a seat card or design doc changes because of a promoted lesson, a design-doc landing checked across the whole doc set, with proof-of-work tests per the standing rules. Nothing from this plan lands unbidden.
 - **Never**: target-identifying or case material from the fuzzing work (the D-Inferno private shelf) is not simulation input and never appears in findings; the PUB_POLICY simulation uses the public document only.
 
@@ -113,7 +113,7 @@ From the write-up's section 7, unchanged in substance. The 2 hard limits stand: 
 - **Tier $100 (one month, roughly)**: no new rigs. The existing fleet (San Francisco, the FreeBSD node, this VM, Germany) re-tasked in parallel lanes. Buys: the full R1 to R5 pass (seat cards, reflexive round, Phase 1 Class A cycles on the existing rig pattern, Phase 2 in full) and the first honest goalpost re-measure. Expected effect: the estimate itself gets honest, which is the first move of the goalpost.
 - **Tier $1,000**: adds 2 dedicated narrow-purpose rigs in the "throw more cores" pattern (~$20/month class each; the tier is mostly time, about a year of them, plus burst), dedicated to emulation lanes: one emulating the runner end to end, one emulating single components. Plus a paid big-window API tier so whole-folder reads are not rate-limited. Buys: Phase 1 running ahead of the real fleet continuously, Class B exchange cycles at volume, simulation results banked daily.
 - **Tier $10,000**: adds a small dedicated fleet (4 to 6 machines) running a permanent emulation mesh: runner instances talking DTLS to each other (Class B at scale), component seats emulated continuously, and a formal-checking lane for the proof candidates with enough CPU to run the large replays and decisions without queueing behind fuzzing. Buys: the goalpost attacked on all 3 fronts at once (parallel, simulated, pruned), with weekly re-measures on the section 7 protocol.
-- **Tier $100,000 (the ceiling DRU named, not a recommendation to spend it)**: burst cloud compute for the combinatorics sweeps at campaign scale, plus the $10,000 fleet kept for a year. Honest note: past the $10,000 tier the marginal week bought per dollar falls off hard, because the binding constraint becomes lesson promotion and verification (human-shaped work), not cores. If the goalpost is to move fastest, the $1,000 and $10,000 tiers do the real work; the rest is insurance.
+- **Tier $100,000 (the ceiling DRU named, not a recommendation to spend it)**: burst cloud compute for the combinatorics sweeps at full scale, plus the $10,000 fleet kept for a year. Honest note: past the $10,000 tier the marginal week bought per dollar falls off hard, because the binding constraint becomes lesson promotion and verification (human-shaped work), not cores. If the goalpost is to move fastest, the $1,000 and $10,000 tiers do the real work; the rest is insurance.
 
 ## 9. Limits of this plan, stated plainly
 
