@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.12 - 2026-11-27
+
+- Land on main (since 4.0.37.11) -- 2 commits, authored by Muse: the proof status consolidation landing (proofs: land the proof status consolidation of 24 November 2026, docs-only, 1 new file, 76 insertions, already opinioned sound by the commit-opinion run) and its ComChat note (comchat: the proof status consolidation is landed in the proofs drawer, 27 Nov 2026, docs-only +14 lines to docs/infrastructure-documents/seats/.com.chat).
+- The version was computed by runner/ops/version4.py next 4.0.37.11 --fresh on a fresh uncached recount over head ed236c4919455ba17072e02305aa5751a43c9692 (log ~/workspace/ship-work/recount-next403712.log), next = 4.0.37.12.
+
 ## 4.0.37.11 - 2026-11-27
 
 - Land on main (since 4.0.37.10) -- 1 commit, authored by Muse: the ComChat Day 1 intake and freeze for the seven-day P versus NP research plan (comchat: seven-day P versus NP research plan Day 1 intake and freeze, 27 Nov 2026), docs-only +28 lines to docs/infrastructure-documents/seats/.com.chat, already opinioned sound by the commit-opinion run.
