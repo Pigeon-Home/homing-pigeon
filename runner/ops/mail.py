@@ -154,8 +154,24 @@ def handle_mail(cfg, imap, smtp, seq, raw: bytes, base_dir: str,
     # The panic step above read it as written, as it always has.
     subject = _decoded_subject(subject)
 
-    dispatched = _runner()._early_dispatch(
-        cfg, imap, smtp, seq, raw, subject, secrets, opts, base_dir, seen)
+    try:
+        dispatched = _runner()._early_dispatch(
+            cfg, imap, smtp, seq, raw, subject, secrets, opts,
+            base_dir, seen)
+    except RecursionError:
+        # Finding F15, generalized: the same answer for every
+        # reader the dispatcher reaches. A door whose own catch
+        # is narrower than the shape it was handed used to let
+        # the raise out of the gate, and the mail was read again
+        # at the next poll, forever. A box already stopped
+        # leaves the mail, as it leaves every other.
+        if R._panic.fired(base_dir):
+            R.vlog(f"ingest: seq {seq}: the box is stopped (panic); "
+                   f"left as it is")
+            return
+        R.log(f"seq {seq}: the mail's shape could not be read", "WARN")
+        _runner()._mark(imap, seq, opts)
+        return
     if dispatched is None:
         return
     job_id, skey = dispatched

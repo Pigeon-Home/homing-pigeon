@@ -87,6 +87,14 @@ def handle_chain_mail(cfg, imap, smtp, seq, raw, subject, secrets,
                       "bad_encryption")
     except ValueError as e:
         return refuse(f"bad signature: {e}", "bad_signature")
+    except RecursionError:
+        # Finding F15, generalized: this door parses the raw
+        # mail a second time, a few calls deeper than the gate's
+        # own parse, and a shape nested in the narrow band
+        # between the two crossed the call limit here alone and
+        # raised out of the gate, unmarked. The door gives the
+        # gate's answer in its own words: refused, and marked.
+        return refuse("the mail's shape could not be read")
     if not encrypted and not R._cleartext_jobs_allowed():
         return refuse(
             "cleartext chain refused: the HMAC-only form is not "

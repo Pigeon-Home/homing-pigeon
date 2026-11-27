@@ -76,3 +76,29 @@ catch is narrow. If the band in S1 measures empty, the
 conclusions will say so plainly, and the widening stands
 only as the consistency its siblings already have, with the
 gate guard as the sentence for any future reader.
+
+## Conclusions, measured 2026-11-27
+
+Measured by driving the real gate, 1 mail at a time, with
+parts nested at every count from 900 to 1010, and the other
+doors sampled at every fifth count over the same range.
+
+S1 holds, and the band is 2 counts wide. A chain mail at
+979 and at 980 raised RecursionError out of the gate and
+was left unmarked. At 978 the chain door's own parse still
+succeeds and the mail is refused in the door's words. At
+981 the gate's first parse raises and the F15 answer
+decides it. The 2 counts between are the whole hole. The
+counts are where this driver's stack puts the band; the
+invariant the tests pin is that every count is decided,
+not the band's address.
+
+S2 holds. At every sampled count the job, cancel, query
+and board mails came back decided and marked.
+
+The change S3 names is landed with this record. The chain
+door refuses a shape it cannot read, in its own words.
+And the dispatcher's call in the gate carries the F15
+answer itself, so a reader the dispatcher reaches is
+decided at the gate whatever its own catch carries, and a
+stopped box still leaves the mail as it is.
