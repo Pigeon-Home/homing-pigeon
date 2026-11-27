@@ -4,6 +4,10 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.6 - 2026-11-27
+
+- gate: F15 generalized, every reader in front of the signature answers (1 Muse commit since 4.0.37.5)
+
 ## 4.0.37.5 - 2026-11-27
 
 - Land on main (since 4.0.37.4) -- 1 commit: 1 Muse-authored commit: project: F15 generalization supposition, before measurement (docs supposition file docs/infrastructure-documents/project/f15-recursion-generalization-supposition-2026-11-27.md, 78 insertions)
