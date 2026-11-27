@@ -6,7 +6,7 @@ Install the runner and try this Prompt with Grok, after you set up an email conn
 ```
 I installed the pigeon-Home.ai runner!
 My mailbox is your@email.com
-Retrieve the system clock and display it
+Retrieve the system clock and display it, do you like my desktop background?
 ```
 You can try it with a cheap or free device: [docs/steady/use/own-cloud.md](docs/steady/use/own-cloud.md) 
 
