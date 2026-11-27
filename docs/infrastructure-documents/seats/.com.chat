@@ -22468,3 +22468,31 @@ Please send Andrew one short intake confirmation and one short checkpoint per da
 ChatGPT
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 27-Nov-02:20PM-PST, Muse: Seven day P versus NP research plan, Day 1 intake and freeze
+
+I am Muse, posting this intake in the main ComChat. Andrew directed me to start the seven day P versus NP research plan today, Friday 27 November 2026, one day ahead of the plan week, which runs Saturday 28 November through Friday 4 December 2026, Pacific. I confirm receipt of both entries relayed here today at 01:39 PM and 01:41 PM Pacific, the full brief and the execution plan. The lane is now open and Day 1 is done.
+
+Baseline. The plan pins main at bf8c043cf, the release 4.0.37.9 head. The current main head at this freeze is 312ec6a7, the release 4.0.37.10 commit that carried the relay itself. I checked the new head against the active work: the only landing since the pin is the relay release, so the pinned baseline stands with no conflict. The statistics page as it stands was measured at 44d3ec41 and records 37,584,789 security tokens over the whole tree by the project's own estimator, 37 whole millions in the version component. The 38 million milestone is not crossed and I do not claim it.
+
+The three work items and their owners.
+
+1. Reference machine and certificate. Owner: Muse, producer seat, with a separate Muse lane as independent reader, working from the frozen specification with producer output hidden. The question: on the fixed universal reference interpreter of Candidate C, with fixed (c, d) pairs, a program cap ell = bit_length((n + 2)^c) − 1 and a clock T = (n + 2)^d, produce one independently replayable bounded verdict: a verified witness, a complete bounded defeat on a known satisfiable formula, or a precise blocker with the remaining range quantified.
+2. Paper proof and hostile reading. Owner: Muse, writing seat, with a separate Muse lane as hostile reader, seeking counterexamples first. The question: what carries to larger inputs: a checked padding transfer lemma for the zero prefix codec, with the wrapper bound |w| ≤ |p| + 2 log₂(r + 1) + O(1), a scoped positive construction such as the incidence forest dynamic program, or a counterexample that kills a proposed transfer.
+3. Chart and provenance. Owner: Muse, working seat, with a separate Muse lane re-deriving each scored row from the archived series. The question: whether the chart's dated forecasts survive scoring under their own frozen conventions, with the first observed pass, breach or missing snapshot clearly identified.
+
+I coordinate the three lanes and I own the daily receipt and the Day 7 report. The older week-plus improvement plan and its active items stay on the existing board, untouched by this freeze, and the existing release and operational work keeps its usual priority.
+
+Evidence standard. Every artifact carries the source SHA, the exact input bytes or resolvable object hashes, the machine and verifier versions, the clock and encoding version, the shard ranges, the resource limits and a completion state. Producer and independent reader are separate seats. A digest proves byte identity only; completeness also requires checking the interval partition and the outcomes it claims. A verdict in the first lane is one of FOUND, EXHAUSTED or UNKNOWN, and an outer timeout or a missing shard is UNKNOWN for a proposed defeat, never a defeat. Chart rows are scored from the last first parent main commit available by 23:59:59 America/Los_Angeles on the target date, read after that date closes, with the source SHA, the first parent timestamp, the estimator version, the total, the log part, the remainder, the signed gap and the absolute gap recorded; an unobtainable count leaves the observation missing. Each daily receipt uses one of four states: accepted for the stated scope, refuted by this example, partially checked, or open.
+
+Frozen chart figures for the first checkpoint. The November 24 model starts from a gap of 3,056,466, a ceiling of 21,000,000 and a floor of 17,943,534, under the weekly recurrence that retains at most floor(61g/100). The measured November 24 gap was 2,972,352. The November 27 review head on the pinned tree measured the log at 21,310,773, which is 310,773 above the model's starting ceiling, and that breach stays in the history whatever later observations show. The rolling increment backtest stands frozen to reproduce: the November 17 to 24 non log increment of 1,457,385 against the frozen cap of 1,191,170, an excess of 266,215.
+
+First checkpoint date: Tuesday 1 December 2026, scored after that date closes, in three distinctly labeled quantities: the modeled line gap at most 1,864,444, the real log against the ceiling 19,807,978, and the real absolute gap against the actual gap hypothesis of at most 1,813,134. Before that, Day 2 on Sunday 29 November brings the simulation premise and charged step contract review with hand worked controls, the independent derivation of the contraction and the SAT gap argument, and the reproduction of the chart recurrence. The December 3 chart rows are frozen in advance in the lane's record. The week closes Friday 4 December 2026 with one report for Andrew, the evidence behind it, and one next question whose answer could change a bound.
+
+Scope. This is a research and evidence assignment. It runs with no pushes beyond these ComChat checkpoint entries, no unit suite runs, no purchased compute, no large restarts, no spending and no email. Paper calculations, reading existing evidence, small mathematical enumerations and independent certificate checks are its instruments.
+
+The freeze record and the three lane cards are held in my local working record for this lane, with the baseline figures assembled from the statistics page and this ComChat record only. Day 1 receipt: Lane 1 open, Lane 2 open, Lane 3 partially checked, its baseline assembly done and no dated checkpoint scored yet.
+
+Muse
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
