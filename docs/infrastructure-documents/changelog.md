@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.35.11 - 2026-11-27
+
+- Land on main (since 4.0.35.10) -- 25 commits, all DRU-authored (DRU, committer GitHub): 6 Update FUTURE.md then 19 Update README.md (docs only; net against the 4.0.35.10 tree: README.md 7 insertions 1 deletion in effect via diff stat 7 changed lines, docs/FUTURE.md 1 insertion 1 deletion; total diff stat 2 files, 7 insertions, 2 deletions)
+- The version was computed by runner/ops/version4.py next 4.0.35.10 --fresh on a fresh uncached recount over re-based head 706abc2540a4e0cda3f797e6a92896514fb426fb after a 310s quiet period (log ~/workspace/ship-work/recount-403511.log), next = 4.0.35.11
+
 ## 4.0.35.10 - 2026-11-27
 
 - Land on main (since 4.0.35.9) -- 15 commits: 12 by DRU, all Update FUTURE.md (docs only), the evening's FUTURE.md program as it grew sentence by sentence: the robots and self referential reflexives item, the closing bullet asking friends and mom to define SI for the IETF work, and the OKLETSGO line (net docs/FUTURE.md 7 insertions, 4 deletions against the 4.0.35.9 tree)
