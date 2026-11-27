@@ -1,6 +1,6 @@
 # HOMING PIGEON by Andrew Slutsky
 
-Homing Pigeon gives cloud AI like ChatGPT, Claude, Gemini a secure and signed channel to your machine or network.
+Homing Pigeon gives cloud AI like ChatGPT or Claude a secure and signed channel to your machine or network.
 
 Install the runner and try this Prompt with Grok, after you set up an email connector:
 ```
