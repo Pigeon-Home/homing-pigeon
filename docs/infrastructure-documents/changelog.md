@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.7 - 2026-11-27
+
+- Land on main (since 4.0.37.5) -- 4 commits, all Muse authored: the F15 whole gate generalization, the 4.0.37.6 release commit whose number was spent when its gate failed on the mutation selection pin, the mutation selection supposition written before measurement, and the fix that regenerates the recorded mutmut selection so it holds the new whole gate test file (derived 403 modules, recorded 403, the pin family green)
+- The version was computed by runner/ops/version4.py next 4.0.37.6 --fresh on a fresh uncached recount over head dc93eee448f63717ee1b3c70e1f3f4a46090931a (log ~/workspace/ship-work/recount-next40376.log), next = 4.0.37.7. A first recount from base 4.0.37.5 returned the spent 4.0.37.6 and was discarded; the spent number is never reused.
+
 ## 4.0.37.6 - 2026-11-27
 
 - gate: F15 generalized, every reader in front of the signature answers (1 Muse commit since 4.0.37.5)
