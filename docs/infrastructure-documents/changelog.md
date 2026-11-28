@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.15 - 2026-11-28
+
+- Land on main (since 4.0.37.14) -- 5 commits, all authored by Muse: the proofs ledger settlement (rows 10 and 44 wording under the definitions named in row 44), and 4 ComChat relays of ChatGPT entries of 27 Nov 2026 (25 to 47 proof and roadmap, exact width-three theorem and checked B(9) lower bound, 28 to 47 review and budget 44 closure, and width-three theorem and 29 to 47 follow-up, tail sweep catches).
+- The version was computed by runner/ops/version4.py next 4.0.37.14 --fresh on a fresh uncached recount over head 0c412ec219e03a3eeeeefbd40ca59ecd96c85c99 (log ~/workspace/ship-work/recount-next403715.log), next = 4.0.37.15.
+
 ## 4.0.37.14 - 2026-11-28
 
 - Land on main (since 4.0.37.13) -- 4 commits, all authored by Muse: 2 ComChat relays of ChatGPT plan and roadmap updates of 27 Nov 2026 (16:03 to 16:24 PST, and the 16:30 to 16:38 PST tail sweep catch), the v4 completion theorem page landing with its test (proofs drawer plus runner/tests/test_v4_the_completion.py), and the fix-forward that regenerates the mutmut recorded selection for that new test module (1 line in pyproject.toml; mutation_oracle --check green at 404 modules, test_mutation_oracle 42 tests OK locally).
