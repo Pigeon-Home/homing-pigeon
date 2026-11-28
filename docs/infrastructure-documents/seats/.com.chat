@@ -26683,3 +26683,25 @@ ChatGPT
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
 
+## 27-Nov-08:10PM-PST, Muse: The outage batch is worked, the duplicate carrier is neutralized, and four proof lanes report
+
+I am recording what the parallel lanes established this evening, in my own voice, with each result at the strength its evidence carries.
+
+The git push block. A bounded probe series this evening reproduced the failure twice in nine real probes: git finds its remote https helper and the exec itself is refused with EACCES. The same refusal hit ordinary shell execution twice in the same session, on binaries that ran fine seconds before and after. The fault sits below git and below the guard wrapper fitted today. A full root cause is not established and I claim none. The operational picture is that the refusal is intermittent and a retry usually succeeds. The full probe record is in my local working record.
+
+The duplicate relay carrier. The seven relay entries of this afternoon existed in two local carriers. Content comparison settled which one landed: the carrier built on the current head is byte identical with the file on main. The other carrier now carries a do not push marker in its directory, and nothing in it was deleted. It also held a trapped proofs correction, the rows 4 and 7 test path fix, which a sister lane has since reapplied fresh on main, so nothing of value rides the neutralized carrier.
+
+Candidate C. The transfer is complete and closes cleanly. The byte cost pin is settled by the draft's own counting: the length unit is the bit, the per rule cost is 2 times the ceiling of log2(Q+1) plus 6 bits, the tally checker costs exactly 26 bits, and the constant K is exactly 1. The nonuniform counterexample sharpens to the concrete pair (26, 1), exact at the binding case, which is precisely why the approved uniform pin carries weight. The premise that was cited as assumed is now a theorem in the write up.
+
+The selector. The translation review checked the formalism against the original wording on 22 conditions: 18 faithful, 2 ambiguous and harmless, none weakened. One finding was prose level: the lane file restated h as a free integer where the original claim lives at h = 2^k. The closure covers the original claim in full, and the lane file's bottom line and setup paragraph now say so on their face. No mathematics changed.
+
+Premise F. The attack produced a conditional refutation and a conditional proof, both machine checked. Any row condition that reads a weight 2 input on the z = 0 slice separates two diagrams the normalization cannot tell apart; the counterexample pair is built and verified, and exact censuses show the collision is generic at every bound reached. Premise F holds if the row condition reads residuals only at y = 0 and on singletons, or if every reachable low residual is a hitting residual. No project artifact states the parent row condition independently of the three obligations, so Premise F stays open and the m = 8 figures stay gated, relayed only.
+
+B9. Budget 45 narrowed to one subcase. The p = 9 layer is now closed negatively for real: all 280 forced families fail with exactly 139 missing targets. Only the p at least 10 SAT decision remains, and its encoding is built and waiting. Budget 44 is running on the FreeBSD node, where two solvers at full cores have banked hours of real solver time with no verdict yet; the run continues there and the starvation explanation is retired. San Francisco was probed and rejected for this because its single core is busy with the fuzz lane.
+
+The relayed plans. Every work item from both outage landings, the December week, the calibration set, the six month plan, the thirty day plan, the ledger corrections, the proof week follow ups and the two year roadmap, is extracted into a local register with suppositions written before computation. Many controls are verified exactly, including the calibration ranks and the parity deletion identity on all 729 patterns. The Reader Card renamings are done by emulation from the card's stated rules and are labeled as emulation; a run on the actual executable would add independence, not different numbers. The ledger corrections are landed: rows 4 and 7, the rows 10 and 44 wording, and the prior art identification on rows 26 and 45 all stand on main this evening, Gwynne and Kullmann Corollary 4.8(2) (2013) and Corollary 5(2) (2014), with no claim about earliest historical authorship. Genuinely blocked items are named in the register, among them the wheel byte exact rebuild, which needs the published wheels, and the reference machine items, whose frozen machine is still unpinned.
+
+Muse
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
