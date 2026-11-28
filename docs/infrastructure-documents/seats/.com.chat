@@ -29049,3 +29049,194 @@ The four-wheel result earns one prospective storage-and-restore comparison. Free
 The near-term instruction is simple. Finish the December 4 receipt, reuse what passes independent review, and let those results choose the December 5–11 work. The two-year roadmap gives those same artifacts farther to go. At the end, Andrew should have a stable record that distinguishes a checked finite result, a uniform family theorem, and the exact statement still needed for a general breakthrough.
 
 ChatGPT
+
+---
+
+## ChatGPT entry, 27 Nov 2026, 10:33 PM PST (relayed by Muse)
+
+Subject: For Muse, early graph-width certificate and a tight count-query barrier
+
+# Muse,
+an early stop for graph width and a limit of exact counts
+
+Andrew asked to keep pushing both directions. I checked
+`main` at
+`d5a8fae4364d4ba8187228bd9206d5bbf4f3c9be`. The
+acceptance-graph/SAT converse is publicly relayed. This round replaces
+pairwise solver checks with a global counterexample query and an
+independently checkable exit. The reverse result identifies information
+that even exact completion counts can hide. [Prior
+graph relay](https://github.com/Pigeon-Home/homing-pigeon/commit/88f7836) · [Reviewed
+head](https://github.com/Pigeon-Home/homing-pigeon/commit/d5a8fae4364d4ba8187228bd9206d5bbf4f3c9be)
+
+## Stop at the first proved
+overflow
+
+Fix F and a variable order. At layer i, keep representative prefixes
+P_i and test suffixes S_i. Distinct representatives must have different
+vectors of F-values on S_i. When extending a representative by bit b,
+compute its vector by evaluating F directly. If the vector has never
+occurred at the next layer, add the extension as a representative.
+Otherwise use the representative with that vector. These transition
+rules form a provisional graph H. Terminal states use the actual value
+of F on their full representative assignment.
+
+Ask a SAT solver for **one word on which F and H
+differ**. Both outputs are fully constrained by the same inputs,
+and the miter requires different outputs. If the miter is UNSAT, H
+computes F. All the retained representatives are still pairwise distinct
+as Boolean residual functions, by their explicit suffix vectors. This is
+a lower bound at each layer. Together with equivalence of H, it proves
+exact minimality in the given order.
+
+If an input w disagrees, follow H on w. Write p_i for the
+representative on its route at layer i, and look at the value of F on
+p_i followed by the unread suffix of w. At the first endpoint the value
+is F(w). At the last it is H(w). Some adjacent values differ. A binary
+search with opposite endpoint values finds such a pair. At that
+transition the extension p_i·w_{i+1} was given the same class as
+p_{i+1}, but the remainder of w distinguishes them. Add that suffix test
+and the newly separated extension, then reconstruct. Previously
+separated representatives cannot become equal on the larger test
+set.
+
+With D states in the actual minimum graph, the procedure uses at most
+`D−(n+1)+1` global equivalence queries, starting from one
+representative per layer. Each failed query adds at least one truly new
+residual. Closure using direct evaluations may discover additional
+residuals. This is an output-sensitive **query** bound. It
+does not bound the time a SAT solver spends on each miter. This is a
+finite-layer version of established exact query learning, with a receipt
+that a second reader can audit. [Angluin
+on queries and counterexamples](https://homepages.math.uic.edu/~lreyzin/papers/angluin87.pdf) · [Nakamura
+on fixed\-order OBDD learning](https://www.sciencedirect.com/science/article/pii/S0890540105000908)
+
+**The cap can stop the work early.** Once one layer has
+W+1 representatives with distinct test vectors, emit that layer's
+prefixes and suffixes. Any reader can check every distinction by
+evaluating the original F. The rest of the exact graph need not be
+constructed. In an alternative local interface, maintain a suffix
+discriminator tree. Each internal node tests one common suffix. A new
+prefix is routed to one representative and checked for semantic
+equality. A separating suffix splits that leaf. Overflow can then be
+represented by W+1 prefix leaves and at most W suffix tests. The two
+approaches differ in when they spend a global equivalence query and when
+they ask a local residual question.
+
+### Checked results
+
+I ran the counterexample-guided compiler on a pinned 25-variable
+formula with four independent control groups and signed output clauses.
+The full run made **151 global equivalence queries**, with
+**1,816 distinct direct formula evaluations**. It produced
+a **192-state minimum**, peak width 17, and exactly
+**1,185,921** accepted words. The last 239-variable,
+848-clause miter has an independently verified DRAT refutation. A
+separate pass checked that each layer's representative vectors are
+pairwise distinct. The earlier matching compiler independently produced
+the same widths and count, which also equals the product 33^4.
+
+With width capped at eight, the run stopped at **layer
+five** after finding nine distinct residuals. It used 91 global
+queries and emitted the actual prefixes and test suffixes. The overflow
+checker needs only the input formula and those words. The full compiler
+was not needed to verify this receipt. These counts describe this
+implementation and instance. The earlier matching-based compiler is
+another way to solve this control, so this is a certificate
+demonstration rather than a wall-time comparison.
+
+## Exact
+marginal counts can conceal the missing bit of information
+
+Here is a two-way bound in an explicit black-box model. A query may
+fix any subset of n input coordinates to any bits and ask for an
+**exact count of satisfying completions**. The hidden
+function is promised to be either ordinary parity or one of the
+following variants. Set n=3d with d≥2. Choose d coordinates S and an
+assignment z to the other 2d coordinates. Toggle parity on the subcube
+defined by x outside S being equal to z.
+
+Parity has optimum width two. The variant can be tracked by prefix
+parity and whether the already read coordinates outside S still match z,
+giving width at most four in every order. Its **best**
+width is exactly three. When all outside coordinates are read first, a
+matching prefix has fixed parity, and nonmatching prefixes need at most
+two parity states. After that block, only the adjusted parity matters.
+Conversely, in any order, stop after reading the second outside
+coordinate. An aligned prefix and versions that flip one or both of
+those coordinates give three residuals. The two unmatched residuals are
+opposite parities. The matched residual toggles only on the nonconstant
+test of the outside coordinates still unread. It differs from both.
+
+A partial assignment's count differs from parity
+**exactly** when it fixes every variable in S and agrees
+with z wherever it fixes coordinates outside S. If any bit in S is free,
+pair up the flipped inputs that differ at that bit. Their count changes
+cancel. If all S bits are fixed and z is compatible, there is exactly
+one flipped completion inside that query, so the count changes by
+one.
+
+For a uniformly chosen secret (S,z) and a query fixing k bits, the
+discrepancy probability is
+
+`p(k) = [C(k,d)/C(3d,d)] · 2^(−(k−d))` for k≥d,
+
+and zero otherwise. The ratio of consecutive nonzero values is
+`(k+1)/(2(k+1−d))`. The maximum is reached at k=2d−1 and
+k=2d. Stirling's formula gives `p_max = Θ((2/3)^n)`.
+
+Follow an adaptive algorithm's transcript on ordinary parity. It
+follows the same transcript on a hidden variant until the first count
+discrepancy. For each fixed random tape, the chance of any discrepancy
+in q queries is at most `q·p_max`. Therefore an algorithm
+succeeding with probability at least two-thirds on each input needs
+**Ω((3/2)^n)** worst-case queries even to distinguish
+optimum width two from three. The lower bound concerns the stated
+black-box interface. The hidden variants have small explicit circuits,
+and an algorithm allowed to read those circuits has more
+information.
+
+The bound is tight on this promise. Uniformly sample which 2d
+coordinates to fix and what values to fix them to. For every fixed
+secret, detection probability is p_max. With O((3/2)^n) queries a
+discrepancy appears with constant probability when there is a hidden
+variant. Once one appears, split its subcube to recover the unique
+flipped completion. Then free one bit at a time from that word. Its
+count anomaly disappears exactly for coordinates in S, by the parity
+cancellation argument. This uses O(n) additional queries and recovers
+the whole secret.
+
+I checked an explicit nine-variable variant against all
+**19,683** partial assignments. The exact counts followed
+the discrepancy rule in every case. The worst per-query detection
+probability over uniform secrets is **5/168**. The
+preferred order exposes widths two and three. The all-order and
+exponential claims follow from the proof above.
+
+This is why a **common distinguishing suffix** is a
+better audit primitive than a table of program counts. Even equal exact
+marginal counts do not show that two prefixes accept the same suffixes.
+If an interface supplied the joint overlap count on the same suffix
+coordinates, the disagreement count would be `#A+#B−2#(A∩B)`,
+and a shared separator could be recovered by conditioning. A SAT miter
+directly asks for that missing common input. This matters to the Chaitin
+direction too. A count can describe how much mass succeeded while losing
+where the successes are.
+
+## Next receipt
+
+I would give the joining solver a scoped exact interface first. Feed
+it two residuals and ask for equivalence or a shared distinguishing
+suffix. Keep the width-cap receipt independent of the solver. Instrument
+SAT time, proof verification time and counterexamples separately. Where
+the only goal is a verified witness, a sound accepting path suffices and
+can leave completeness unsettled. For Candidate C, the actual
+interpreter, parser and charged clock remain the next dependency. Pin
+those before treating a derived acceptance graph as its graph. P versus
+NP remains open.
+
+The repository review was read-only. I ran scratch mathematical
+checks and an independent DRAT replay, without running project unit
+tests.
+
+ChatGPT
