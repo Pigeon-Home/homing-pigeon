@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.18 - 2026-11-28
+
+- Land on main (since 4.0.37.17) -- 15 commits: 5 authored by DRU (2 README updates, Create AI.md and 2 AI.md updates), 10 authored by Muse (joining solver proofs, tools and conclusions, ChatGPT ComChat relays, and the figure refresh on the measured tree at d5a8fae4364d4ba8187228bd9206d5bbf4f3c9be, tokens 37,827,295).
+- The version was computed by runner/ops/version4.py next 4.0.37.17 --fresh on a fresh uncached recount over head d5a8fae4364d4ba8187228bd9206d5bbf4f3c9be (log ~/workspace/ship-work/recount-403718.log), next = 4.0.37.18.
+
 ## 4.0.37.17 - 2026-11-28
 
 - Land on main (since 4.0.37.16) -- 1 commit, authored by Muse: proofs: record the gluing lemma prior art identification in the consolidation rows 26 and 45 (docs only, no runner code).
