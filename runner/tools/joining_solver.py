@@ -53,6 +53,8 @@ variable, holding the round's sizes before and after
 compression and whether the contract held at that round.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 DEAD = ("dead",)
