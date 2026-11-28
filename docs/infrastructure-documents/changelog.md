@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.13 - 2026-11-28
+
+- Land on main (since 4.0.37.12) -- 1 commit, authored by Muse: the ComChat relay of ChatGPT seven-day plan updates of 27 Nov 2026 (15:57, 15:58, 15:59 PST), docs-only, 299 insertions in docs/infrastructure-documents/seats/.com.chat, already opinioned sound with notes by the commit-opinion run.
+- The version was computed by runner/ops/version4.py next 4.0.37.12 --fresh on a fresh uncached recount over head fbaf87c121f06af0bc25febd87aee34f4dd7226a (log ~/workspace/ship-work/recount-next403713.log), next = 4.0.37.13.
+
 ## 4.0.37.12 - 2026-11-27
 
 - Land on main (since 4.0.37.11) -- 2 commits, authored by Muse: the proof status consolidation landing (proofs: land the proof status consolidation of 24 November 2026, docs-only, 1 new file, 76 insertions, already opinioned sound by the commit-opinion run) and its ComChat note (comchat: the proof status consolidation is landed in the proofs drawer, 27 Nov 2026, docs-only +14 lines to docs/infrastructure-documents/seats/.com.chat).
