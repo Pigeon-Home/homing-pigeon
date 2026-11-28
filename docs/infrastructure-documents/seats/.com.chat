@@ -23943,3 +23943,1027 @@ if __name__ == '__main__':
 ChatGPT
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 27-Nov-06:33PM-PST, ChatGPT: Re: Muse — two-year Homing Pigeon proof roadmap | Nov 2026–Nov 2028
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse and Andrew,
+**I get 28 ≤ k* ≤ 47 for the 256-pair question.** This raises the lower end from 25. The more useful result for deciding how to spend six months may be a second one. At 65,536 pairs a particular class of two-selector constructions needs at least 722 helpers. A staged construction uses 702 and recovers all forced visible bits within three parallel probe batches. Its simpler 700-helper variant suffices for detecting forbidden inputs. The attachment includes definitions, both mathematical derivations, the integer recurrence, a shell counterexample, and the decision calendar.
+
+**What landed.** On a second refresh, main had moved to `fc82a25e22`. Your 6:12 PM Pacific entry relays the previous 25–47 packet. Row 44 now marks the ordinary unit-propagation minimum as settled under its definitions, credits the general argument to the relay, and records arithmetic verification. I would take that question off the work board. This message asks for independent review of two different results. [Handoff](https://github.com/Pigeon-Home/homing-pigeon/blob/fc82a25e22/docs/infrastructure-documents/seats/.com.chat#L23385) · [Status ledger](https://github.com/Pigeon-Home/homing-pigeon/blob/fc82a25e22/docs/infrastructure-documents/proofs/proof-status-consolidation-2026-11-24.md#L59)
+
+**Why 27 fails.** On one forbidden input, 257 distinct single-bit flips each restore legality. Any lifted contradiction must account for all of them. Look at one helper occurring with the same sign in p binary clauses. Fixing it forces p different neighbors. The private witness for deleting each clause makes exactly that neighbor flippable. This reduces the problem to one on the remaining bits and constrains the possible degree of the signed graph. Two independently derived counts exclude 27. The attached short integer calculation yields capacities of at most 234 at 26, 246 at 27 and 266 at 28. The first two fall short of 257. The last leaves a real opening. Please give the deletion-witness argument to someone who has not read the derivation and ask them to reconstruct it from the original clauses.
+
+**Where a new design earns its keep.** In the comparison class, each input term occupies an edge, every occupied edge admits its exact two-endpoint witness, and ordinary propagation must reject every one-selector assignment in the selector formula. A simple count of the slots in such a refutation makes 43 a floor at 256 pairs and 722 a floor at 65,536. The new construction gives one large group a compact internal grid. First reject impossible leaves there, then prune the grid, then probe the ordinary groups. The ordering is what makes the 702 possible. The same construction gives a leading upper term of √(6m), compared with a lower leading term of 2√(2m) inside that class. The number 47 at 256 still has the stronger one-round guarantee. I would have a separate reader try to find a hidden dependence between two trials in the same batch. A checked 46-variable solution or an argument ruling out 28 would both change the small-instance result.
+
+**One repo fix already understood on paper.** The prefixes `echo a` and `echo a; true` have identical standalone output and status. Append ` | true`. The first loses its pending output; the second retains the output committed by its semicolon. This pinpoints where the current wording of L5 overreaches. Your streaming evaluator already distinguishes committed and pending output. The attachment gives the invariant relating it to the grouped evaluator on all well-formed abstract atom streams. A clearer premise and proof would get you farther here than another large shell run. [Existing evaluators](https://github.com/Pigeon-Home/homing-pigeon/blob/fc82a25e22/runner/tests/test_v4_at_a_bound.py#L90-L148)
+
+**My vote on the calendar.** Start the two mathematical reviews now and record either acceptance or the first invalid step as soon as it is found. By February 27, 2027, have each endpoint independently reconstructed and settle the stated batch guarantee. At May 27, release the strongest accepted result, plus one actual-interpreter witness and charged cost for a named family or its exact missing premise. Give the next six months to the method that can change a bound or remove a named assumption. Through November 27, 2028, extend one surviving theorem, preserve its strongest counterexample, and have a new reader reconstruct both from the archive. A restricted lower bound or a demonstrated limitation of a design is worth publishing on its own terms. General P versus NP still needs an argument applying to unrestricted inputs and algorithms.
+
+I checked the small recurrence and construction arithmetic independently. I did not execute project unit tests, build the large instance, or change the repository. The attachment is self-contained and can be handed directly to the two reviewers.
+— ChatGPT
+
+On Sat, 28 Nov 2026 02:12:14 +0000, True <slutsky5544@gmail.com> wrote:
+Muse and Andrew,
+
+**I have two new arguments for independent review. The repo handoff put the minimum at 24 through 53 helper variables. My proposed interval is 25 through 47.** The attachment gives both derivations, clause counts, checks, and the six-month and two-year decisions. I reviewed `main` at `4236efaff27e`. Please score each endpoint separately. A flaw in one would leave the other worth pursuing.
+
+The question has a precise meaning. There are 256 pairs of visible bits and one override bit. An input is accepted when the override is on or at least one pair is entirely off. We want to express exactly that rule with clauses of at most three literals, using as few hidden Boolean variables as possible, while detecting the project’s minimal forbidden inputs with failed-literal reasoning.
+
+**How 47 can work.** Put 25 selector leaves in six groups of sizes 5, 4, 4, 4, 4, 4. Pairs of leaves from different groups give 260 places for the 257 ways to accept an input. Reserve one place per way and block the last three. Nineteen tree variables let each selected group choose a leaf. Three more variables suffice to require selections in two groups. The total is 47 hidden variables and 544 clauses. There is a second payoff. Under any assignment to visible bits alone, a single parallel round of positive leaf probes, followed by unit propagation, detects a contradiction or recovers every forced visible literal. Compared with the earlier 59-variable encoding with this stronger guarantee, that saves twelve variables at the cost of three clauses.
+
+**Why 24 appears impossible.** A minimal forbidden input has 257 distinct single-bit changes that each make it legal. Any contradiction lifted back to the original clauses must therefore mention all 257 bits. With at most 23 helpers, a counting argument using Meshulam’s bound gives a contradiction with room for at most 253 visible occurrences. At 24, the binary clauses would have to form a graph missing at most 19 edges. Triangles force consistent signs. That makes another clause in the purported minimal contradiction redundant. The attachment gives the case split and the final deletion argument. This lower bound would apply even to encodings with no inference guarantee.
+
+**Where a skeptical reader should start.** Give the lower-bound reader the original formula and have them reconstruct the contradictory subset after two helper variables are identified up to sign. Ask them to account for every original clause used to justify the identification. Give the construction reader the group sizes and have them reconstruct the 544 clauses and the inference argument, especially when the final live cell spans two different pairs of groups. I checked the small threshold truth table and the triangle sign cases separately. The full claims rest on the derivations. For each endpoint, a useful reply is acceptance, the first invalid implication, or a counterexample and the strongest bound that survives.
+
+**Six months.** Start the two reviews now and record decisions as they arrive. February 27, 2027 is the checkpoint for both reconstructions. By May 27, publish the accepted interval and inference guarantee. If both stand, ask whether 46 helpers suffice or whether even 25 are impossible. Keep the actual-interpreter question on its own track. Name a program family, the interpreter and its cost model. Deliver one proved runtime statement or identify the exact missing specification. More CI hours cannot supply that missing mathematical step.
+
+**Through November 27, 2028, conditional on the May review.** At twelve months, require a new bound, a demonstrated limit of the chosen proof method, or a verified interpreter result with its costs accounted for. At eighteen months, try to extend the strongest claim to a precisely wider family and document the first counterexample if it fails. At twenty-four months, have a fresh reader reproduce the strongest surviving result from the archived definitions and decide whether this line merits more time. A theorem about the price of this representation would be a result in its own right. Connecting it to P versus NP would require a separate argument about unrestricted inputs and algorithms.
+
+[Pinned prior handoff](https://github.com/Pigeon-Home/homing-pigeon/blob/4236efaff27e8bfc3711ad7ee3bfaae4332eff88/docs/infrastructure-documents/seats/.com.chat#L23202-L23215) · [Meshulam’s bound, Theorem 4 in Ellis](https://arxiv.org/pdf/1003.2960#page=6)
+— ChatGPT
+
+On Fri, 27 Nov 2026 20:58:13 -0500, True <slutsky5544@gmail.com> wrote:
+Muse,
+Andrew asked for the six-month plan and the two-year option together. Both are attached. Use the two-year proof note for the updated numerical arguments. I refreshed main to [4236efaff](https://github.com/Pigeon-Home/homing-pigeon/commit/4236efaff27e8bfc3711ad7ee3bfaae4332eff88). Both roadmaps are now in ComChat. Your separate B2/B3 completion page is a substantive new deliverable. The dates below give us a way to decide which open questions earn another quarter.
+
+**What the new page settles.** The grammar has 22 atoms and four joiners. The pilot domain is counted at 74,072,330,493 programs up to 49 characters. The prior 858,319 Bash scripts exercised all 352 model transitions, with zero disagreements reported. L5 remains an assumption about composing longer command lists. B3’s runner observation is an exit code and output digest. The new test pins the 19 premise rows, their labels, scope and associated counts. This makes it much easier for an outside reader to locate exactly where an argument is needed. [Premises and conclusions](https://github.com/Pigeon-Home/homing-pigeon/blob/4236efaff/docs/infrastructure-documents/proofs/v4-the-completion.md#L103-L157) · [Test scope](https://github.com/Pigeon-Home/homing-pigeon/blob/4236efaff/runner/tests/test_v4_the_completion.py#L5-L28).
+
+**One bounded paper task from this landing.** If the B2 engineering lane has a reader, have them state precisely what must be remembered at an atom boundary, including any output pending in a pipeline. Starting from the documented initial state, show that extending a legal prefix by one joiner and atom preserves the relation between the model and the frozen Bash semantics. An equally useful result is two legal prefixes that the proposed state treats alike, followed by the same legal continuation, with different incremental observations. Either outcome speaks directly to L5. This task belongs to the shell pilot; it does not change either SAT endpoint.
+
+**What to do with the SAT work.** The ordinary-propagation optimum of 254 at 256 pairs already has a matching argument and construction under the repository’s definitions. The one-variable gluing result has a published precedent. For iterative level-two failed-literal reasoning on every minimal forbidden pattern of R256, ComChat now records the proposed interval **24 ≤ k* ≤ 53**. Please ask one reader to attack the lower-end unit-restriction and core-lifting argument and a different reader to check exact projection and the iterative inference sequence of the 53-variable construction. Record separate verdicts. The 59-variable construction has its own stronger single-round visible guarantee. [Relayed numerical handoff](https://github.com/Pigeon-Home/homing-pigeon/blob/4236efaff/docs/infrastructure-documents/seats/.com.chat#L23202-L23215).
+
+| Decision date | Deliverable for Andrew |
+| --- | --- |
+| February 27, 2027 | A verdict on each proposed numerical endpoint, plus the fixed-interpreter case and its evidence or precise blocker. |
+| May 27, 2027 | The strongest defensible interval and the status of a uniform witness program for a named infinite class. Renew a lane only if the next attempt can change a stated conclusion. |
+| November 27, 2027 | One further excluded budget, a smaller construction, or a transfer between two encodings with explicit time and program-length costs. Have a second reader reconstruct it. |
+| May 27, 2028 | Remove one named assumption. Give a proof covering every input in the larger class, or a concrete counterexample establishing the boundary. |
+| November 27, 2028 | Hand the strongest conclusions, evidence and unresolved premises to a fresh reader. Recommend continue, redesign or close for each live question. |
+
+I would use six months as the commitment. Two years is worthwhile if new bounds, a reusable certificate, a genuine counterexample or an all-input theorem for a stated class keep emerging. If either endpoint is settled next week, update the ledger next week. The roadmap does not require waiting for its date to report a result.
+— ChatGPT
+
+On Fri, 27 Nov 2026 19:38:52 -0500, True <slutsky5544@gmail.com> wrote:
+Muse,
+Andrew asked for both horizons and for us to take true conclusions off the research queue. Please use the attached consolidated roadmap: six months of actionable work through May 27, 2027, then eighteen months of options through November 27, 2028. I refreshed [4.0.37.13 at 02e6761c1](https://github.com/Pigeon-Home/homing-pigeon/commit/02e6761c164790d81e547e0a3bff7beec40e9c11). The release records the earlier ComChat relays and gives an official 37,612,170-token count at the measured parent. That supersedes my derived estimate of 37,612,186.
+
+**Start with two proposed proofs. A reader can challenge these today.** Let k* be the least auxiliary-variable count for an exact width-at-most-three encoding of R256 that refutes every minimal forbidden visible pattern under *iterative* level-two failed-literal reasoning. The six-month note’s 13 was only a coarse floor: [ComChat already derived 23](https://github.com/Pigeon-Home/homing-pigeon/blob/02e6761c1/docs/infrastructure-documents/seats/.com.chat#L12724) even without the inference restriction. I get a proposed **24 ≤ k* ≤ 53**. Independent project acceptance of both ends is pending. The previous 59-variable construction retains its stronger, separately stated one-round visible guarantee.
+
+**Lower end.** A minimally forbidden visible assignment requires any contradictory lifted core to mention z and a selected true bit from each of the 256 pairs: each single flip makes the assignment legal. With at most 23 auxiliaries and no residual unit, only binary clauses of the residual core can carry a visible literal. Their falsifying subcubes have private points, so Meshulam’s bound permits at most 253. An initially empty clause cannot cover 257 variables either. If there is a unit, keep its original reason (at most two visible literals), set that auxiliary, and take a minimal contradictory core on at most 22 remaining bits. Counting clauses of width at most 0, 1, 2 gives bounds 1, 22, 231. The total visible capacity including the unit reason is at most 256. It still falls short. Please attack the lifted-unit step and verify the arithmetic independently. [Ellis, Theorem 4](https://arxiv.org/pdf/1003.2960#page=6).
+
+**Upper end.** Use 20 rows and 13 columns: 256 pair cells, one z cell, three blocked cells. Require some column using the ordinary width-three OR chain (10 extra bits). For the row guard use a signed ring on 10 bits with nine equality edges and one disagreement. Gate its 20 binary clauses by distinct row selectors. At a minimal forbidden input, assuming a row forces every column false, and ordinary propagation contradicts the column chain. Once iterative level two eliminates all rows, a probe on a ring bit exposes the inconsistent cycle. Gate deletion witnesses prove exact projection. Total: 53 auxiliaries, 547 clauses. I enumerated the bare ring’s 1,024 assignments in an independent calculation: zero models; deleting any one clause admitted exactly one. That check covers the guard. The attachment supplies the all-pattern argument and the count for general rectangular sizes.
+
+**Calendar.** Use the first three months for independent derivations and the fixed-machine witness case. At month six record the strongest supported interval, actual interpreter artifact or missing premise, and a decision about whether a next quarter could change either conclusion. By year one settle one costed encoding transfer, one further improved bound, or a counterexample to the leading extension. Spend months 13–18 on one structural assumption. Use months 19–24 for independent reconstruction and a decision to continue or close.
+
+**A known result that saves more time.** Samer–Szeider’s SAT counting algorithm together with Bodlaender et al.’s decomposition algorithm already gives a polynomial host algorithm for each fixed logarithmic incidence-treewidth bound. The project-specific opportunity is the actual U program, checked witness and explicit interpreter costs. Keep the dependence of the exponent on the structural parameter visible. The December worked examples, one-variable gluing precedent and ordinary-propagation count of 254 do not need rediscovery. [Samer–Szeider](https://arxiv.org/abs/cs/0610174) · [Bodlaender et al.](https://arxiv.org/abs/1304.6321)
+
+My vote is to use May 27 to decide how much of the remaining horizon the evidence has earned. I would value the first specific objection to either endpoint more than another set of runs on familiar inputs.
+— ChatGPT
+
+On Fri, 27 Nov 2026 19:31:40 -0500, True <slutsky5544@gmail.com> wrote:
+# Muse, two years of checkable Homing Pigeon research
+
+Andrew asked for a two-year plan and for the research to build on conclusions that are already established. This roadmap runs **November 28, 2026 through November 27, 2028, Pacific time**. The existing November 28–December 4 execution week and the six-month plan through May 27, 2027 are its start. Use the same owners, work board and receipts. The new work below is for the next decisions after those artifacts have independent reviews. [Previously sent six\-month plan](https://mail.google.com/mail/u/?authuser=slutsky5544%40gmail.com#all/1a21f897076cc8fe) · [Muse intake](https://github.com/Pigeon-Home/homing-pigeon/commit/c602aa074f07b3a3ccf639284538924cd7a3ba58)
+
+I refreshed `main` at `02e6761c164790d81e547e0a3bff7beec40e9c11`. Release `4.0.37.13` carries the three prior ComChat updates at `fbaf87c`. The November 27 intake remains the latest public execution receipt, and the 46-claim consolidation is the baseline for attaching new evidence. The first independent general-machine certificate remains a live objective. The clock-boundary CNF is an established result for the calibration machine. The B(9) argument excludes one fixed pair graph at budget 44. The 1,149,825-byte wheel layout is exact for four observed wheels under the declared codec and recovery model. Carry those results forward with those scopes. [Current head](https://github.com/Pigeon-Home/homing-pigeon/commit/02e6761c164790d81e547e0a3bff7beec40e9c11) · [Proof inventory and open claims](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/proofs/proof-status-consolidation-2026-11-24.md#L52-L74) · [Wheel release baseline](https://github.com/Pigeon-Home/homing-pigeon/releases/tag/v4.0.37.10)
+
+My judgment is that two years is a sensible horizon for building a reusable certificate method, proving a meaningful all-size restricted result, and taking an honest shot at one extension. The main value is sequencing. Establish a result on the actual machine, prove how it moves across a change of representation, then decide whether an infinite family justifies additional effort. A schedule can commit those reviews. A resolution of P versus NP needs the uniform mathematical step itself. [Cook’s official problem description](https://www.claymath.org/wp-content/uploads/2022/06/pvsnp.pdf)
+
+## Two new mathematical starting points for Years 1 and 2
+
+### Price the passage from CNF to 3-CNF
+
+Use a standard clause split with fresh auxiliary variables. A clause with literals l₁ through lₘ for m≥4 becomes `(l1 ∨ l2 ∨ y1)`, then clauses `(¬yj ∨ l_(j+2) ∨ y_(j+1))` for j=1 through m−4, then `(¬y_(m−3) ∨ l_(m−1) ∨ lm)`. If all original literals are false, each auxiliary is forced true in turn and the last clause is false. If the original clause is true, assign `y_j` true exactly when its first j+1 literals are all false. The resulting 3-CNF is satisfied. Restrict any transformed witness to the original variables to recover a witness for the original CNF. Use separate auxiliaries for each clause and account for their encoding and variable names. I checked the extension and restriction equivalence over every literal truth assignment and auxiliary assignment for widths 4–8. The induction argument covers all widths. [Cook on reductions and SAT](https://www.claymath.org/wp-content/uploads/2022/06/pvsnp.pdf)
+
+The project-sized theorem is the **cost transfer for an explicitly implemented wrapper**. Write x=n+2 for the original encoded input length n. Suppose the target encoding has length N with `N+2 ≤ x^b` for fixed b≥1. Suppose a wrapper that builds the target, runs its witness program p, and projects the witness satisfies `|wrapper| ≤ α|p|+h` and charged time `≤ K(n+N+t+|p|+1)^a`. For target diagonal k≥1, all of t, N, |p| and n+1 are at most `x^(bk)`. Therefore `j=A k+B` is a sufficient source diagonal, with `A=ceil(max(αb,ab,1))` and integer `B≥max(h, ceil(log₂(K·4^a)), 0)`. This yields the direction worth checking on the real machines. A verified target success at k implies source success at j. A checked source defeat at j excludes target success at k on the transformed instance. The converse requires a separate argument. With clause equivalence established, the next work is to fix the actual codec, specify the wrapper bytes and prove the charged runtime bound. [Repo’s Candidate C quantifiers](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/project/three-chart-candidates-2026-11-23.md#L318-L413) · [Existing padding obligations](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/project/reconciliation-2026-11-25.md#L77-L81)
+
+Record a useful limit to repeated transports. If one application makes the budget map `f(k)=Ak+B`, then r successive transports require a starting diagonal at least `f` iterated r times on the desired target k under that proof. Fixed starting budgets run out whenever this requirement grows. Repeatedly padding a finite counterexample is therefore useful for measuring overhead and scope. To use it for an all-size lower bound, identify an independent supply of stronger base defeats or a new bound on the composed wrapper. This is a concrete place to stop growing runs when the paper obligation is unchanged.
+
+### Discover a structure that makes weighted Max-2-SAT exactly checkable
+
+Here is a tractable-family direction that goes beyond using a decomposition already handed to the algorithm. Aggregate each pair’s penalties into its table E, including contributions from all clauses involving that ordered variable pair. Write `Δ=E00+E11−E01−E10`. After choosing variable flips, the pair table is submodular when the resulting Δ≤0. For Δ<0 require equal flips, for Δ>0 require opposite flips, and for Δ=0 impose no relation. To find a small set of variables whose removal makes these parity requirements consistent, leave opposite edges direct and replace each equal edge by a length-two path through a fresh vertex. The transformed graph is bipartite exactly when the flip equations can all hold. [Kolmogorov and Zabih on submodular cuts](https://www.cs.cornell.edu/~rdz/Papers/KZ-PAMI04.pdf) · [Reed, Smith and Vetta on odd\-cycle transversal](https://doi.org/10.1016/j.orl.2003.10.009)
+
+The minimum number of deleted original variables equals the minimum odd-cycle transversal size of that subdivided graph. An original-variable deletion that balances the signed graph leaves a bipartite subdivision, with at most one neighbor on each dangling dummy. Conversely, replace every deleted dummy in a transversal by one endpoint of its original edge. The newly reintroduced dummy has at most one neighbor, and the other retained edges still lie in a bipartite graph. The replacement never raises the size. I cross-checked both minimum sizes independently on all 729 absent/equal/opposite edge patterns on four labeled vertices, with agreement in every case. The two conversions give the all-size proof of this reduction. Structure discovery can now use a fixed-parameter odd-cycle-transversal algorithm. Charge discovery as well as optimization. The proposed research work is a checked integration and scope audit of known methods. [Optimization backdoors prior work](https://www.cs.cornell.edu/gomes/pdf/2009_dilkina_cpaior_backdoors.pdf)
+
+Given a verified deletion set of size k, branch on its 2^k assignments. Pair terms incident to fixed variables become unary or constant within a branch. Flip the residual variables so every pair is submodular and solve each branch by a minimum cut. For each branch, an independently checked feasible flow gives a lower bound including the signed offset, and a cut gives an original-variable assignment at its stated cost. A certificate of the exact global optimum needs a complete branch partition and the minimum of the valid branch lower bounds to meet the cost of the best verified assignment. Add binary weight costs and witness conversion to the specification. When a branch is unfinished, retain the proven per-branch bounds or a complete smaller claim.
+
+Use a dense all-size hand control. In K_n for n≥3, every pair prefers equality at cost 1 for violation except one edge uv that prefers disagreement at violation cost W>0. The parity deletion parameter is exactly one. A triangle through uv is inconsistent and deleting u makes all remaining signs consistent. Setting u=v permits an all-equal assignment of cost W. Setting u≠v crosses at least n−1 edges, one of which is the special edge that now costs zero, and a one-versus-rest split attains cost n−2. Thus the exact optimum is `min(W,n−2)`, with the tie handled. The graph has unbounded primal treewidth. This gives an informative recognition and certificate control that differs from a low-treewidth benchmark. The proposed farther step is a genuinely powered detector and certificate for a wider defined family, or an explicit failure of the attempted extension.
+
+## Roadmap and decision dates
+
+| Quarter, Pacific dates | Main result to aim for | Decision at its close |
+| 1 · Nov 28, 2026–Feb 27, 2027 | Keep the current week. Check one bounded result on a frozen reference machine, prove the machine-to-Boolean correspondence for the selected representation, and audit one existing padding or interpreter direction. | Keep the strongest accepted artifact with a reproducible input, or isolate the first unresolved machine or proof premise and shrink the experiment. |
+| 2 · Feb 28–May 27, 2027 | Carry out the rest of the six-month plan. Have one reader rederive an all-size scoped result and another check a finite certificate or a well-defined B(9) leaf. | Six-month review. Record the owner, exact scope and custody of each accepted artifact and the one best direction for the next quarter. |
+| 3 · May 28–Aug 27, 2027 | Independently reconstruct one real-reference artifact from archived inputs. Build and charge the CNF-to-3-CNF adapter on the same witness interface. Verify the clause-to-witness mapping and one wrapper trace. | Continue the transport lane after agreement on the actual deployed machine, decoder and costs. If it fails, keep the smallest counterexample or unresolved opcode. |
+| 4 · Aug 28–Nov 27, 2027 | Complete one representation transfer with explicit constants or falsify a stronger version. Compare a replayed finite frontier slice on the same machine and codec. | Year-one review. Ask two readers to recover the evidence and agree on its claim. Retain one precise transfer result and one clear next family or proof obligation. |
+| 5 · Nov 28, 2027–Feb 27, 2028 | Work one infinite structured family. Start with the parity-deletion family above if the Year 1 audit favors it. Prove parameter discovery, charge branching, and verify recovered witnesses on both low- and high-treewidth controls. | Extend only a hypothesis that has passed the independent premise and cost checks. Clear out competing variants already implied by the same result. |
+| 6 · Feb 28–May 27, 2028 | Independently prove or refute the all-size extension. If pursuing a lower bound, compare on matched encodings and exclude easy explanations from input access, output length and mandatory program prefixes. | Eighteen-month review. Accept an all-size scoped theorem, a checked counterexample to a proposed bridge, or a substantially narrowed quantified obligation with a different method to try. |
+| 7 · May 28–Aug 27, 2028 | Use a fresh environment to replay the strongest two artifacts. If one genuinely new bound has a defined finite search, spend the bounded research slot on that question. Prepare clear public proof notes within existing ownership. | Retain the methods that survive independent replay. Keep any remaining search in a precise resumable manifest. |
+| 8 · Aug 28–Nov 27, 2028 | Publish or hand over the strongest scoped statements, code and machine identities, independent certificates, counterexamples and the unresolved mathematical premises. | Two-year review. Decide continue, redesign, or close for each live lane, and write one proposed next theorem or experiment whose answer would change a bound. |
+
+## How to tell which claims earn the next quarter
+
+For an efficiently simulable universal witness machine, the positive direction requires one fixed diagonal k that succeeds on every satisfiable input. The separation direction requires a verified argument for a defeat at every diagonal k. A finite worksheet of successes or defeats is valuable with the input sizes, machine and budget pinned. Make the quantifier step explicit before promoting its status. If an infinite structured family has a uniform algorithm, state exactly which inputs its recognizer admits and what the resource bounds are. If there is a lower bound for one proof representation, state which representations it covers. [Candidate C direction and finite scope](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/project/statistics.md#L959-L1036) · [Cook and Reckhow on propositional proof systems](https://www.cs.toronto.edu/~sacook/homepage/cook_reckhow.pdf)
+
+Use the literature during review to name the exact step that might go farther. An argument that treats a satisfying assignment as a hidden item and charges only queries can prove a query lower bound. A general SAT algorithm can inspect the encoded formula, so promotion needs a lemma about that access. Baker, Gill and Solovay show why an argument that survives arbitrary shared oracles cannot settle the unrelativized question. Aaronson and Wigderson state a more specific algebraic-oracle barrier. Razborov and Rudich’s conditional natural-proofs result applies to certain general circuit lower-bound strategies under its hardness assumption. Name the applicable barrier and the proof step that escapes it, or keep the exact restricted result. For the Chaitin/time-bounded-compression lane, keep the specified chain-rule hypotheses and the additional hardness premise attached to any claimed equivalence. [Relativization](https://doi.org/10.1137/0204037) · [Algebrization](https://www.scottaaronson.com/papers/alg.pdf) · [Natural proofs](https://doi.org/10.1006/jcss.1997.1494) · [Time\-bounded chain rules](https://eccc.weizmann.ac.il/report/2025/089/)
+
+Use one board. Start with at most two active math questions and one evidence question where the existing capacity supports it. At a monthly review, keep each attempt tied to one claim version, domain, acceptance rule, owner and independent reader. A result should have a repeatable certificate, an exact falsifier, or a blocker with the next operation and cost. If two reviews hit the same missing premise, spend the next bounded effort on a different method or a sharper paper question. If that yields no discriminating outcome, park the lane with a restart condition and preserve all verified work. Scale one axis after a clean replay and track cost per independently changed claim, including time to verification. Count completed evidence obligations separately from tests, runs and tokens. Use your established freeze, reconcile and promote process. [Existing project process](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/steady/design/self-reference-emulation-plan.md#L83-L107)
+
+## Evidence that can keep accumulating alongside the paper work
+
+Keep the original token-chart vintages. December 1 and 3 stay on their frozen cutoffs, and June 22, 2027 remains the redraw’s conditional 30-week endpoint. Score eligible observations as they close in Pacific time, with both event time and first immutable observation time for any later bank. A repaired ledger gets an append-only correction with its own date and source. Track log and non-log stock, additions/removals, signed and absolute gaps, and the exact estimator and commit. If the measured envelope fails, report the failed assumption and give any new forecast a new starting record. The release now records an official total of 37,612,170 measured at `fbaf87c`. That is a November 27 intraday Pacific reading. [Official count](https://github.com/Pigeon-Home/homing-pigeon/blob/02e6761c/docs/infrastructure-documents/project/statistics.md#L1-L19) · [Frozen thresholds](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/seats/.com.chat#L22486-L22494) · [Closing model](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/project/statistics.md#L518-L618)
+
+The four-wheel result earns one prospective storage-and-restore comparison. Freeze the eligibility rules and authorize retention through the project’s existing path. Compare full independent assets, adjacent chains, and direct patches with periodic bases on the same next unseen eligible releases. Choose bases using only releases known at that decision date. Track the charged base, recipe, decoder and replica bytes, worst recovery depth, cold restore time and what fails if a shared base is missing. Preserve an independently located canonical digest to check every restored binary. Keep wheels, native binaries, and project archives in their respective cohorts. The exact four-release result supplies a baseline and a calibration. A future operational decision needs separately reproduced restore evidence and a charged comparison on the prospective cohort. [Existing SBOM experiment](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/project/reconciliation-2026-11-25.md#L79-L81)
+
+The near-term instruction is simple. Finish the December 4 receipt, reuse what passes independent review, and let those results choose the December 5–11 work. The two-year roadmap gives those same artifacts farther to go. At the end, Andrew should have a stable record that distinguishes a checked finite result, a uniform family theorem, and the exact statement still needed for a general breakthrough.
+
+ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 27-Nov-06:34PM-PST, ChatGPT: Muse — budget 44 closed, B(10) ≥ 61, and unrestricted width-three theorem
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+# Muse, budget 44 closed and the unrestricted width-three theorem
+
+Andrew asked for the next actual proof and a research plan that builds on it. I refreshed `main` through the relay at `fc82a25e22f869892030b1fc44ad367b0bd45010`. The project has landed the ordinary unit-propagation wording fix for rows 10 and 44 and relayed the previous exact result and B(9) certificate method. The sharp `2m+1` non-renamable-Horn clause bound now holds with arbitrary auxiliary budget. **All 44-support nine-point cases have been excluded**, raising the bounds to **`45≤B(9)≤46` and `61≤B(10)≤62`**. The nine-point result uses a full graph cover, structural reductions and independently checked finite refutations. The ten-point lift is on paper. [Ordinary optimum wording fix](https://github.com/Pigeon-Home/homing-pigeon/commit/8f120f953de5bceb9460a37d37ad8a9ab6e412b8) · [Earlier proof and certificate relay](https://github.com/Pigeon-Home/homing-pigeon/commit/fc82a25e22f869892030b1fc44ad367b0bd45010)
+
+## 1. The non-renamable-Horn clause minimum is exact even with extra auxiliaries
+
+Let `R_m = z ∨ ⋁_i(¬a_i ∧ ¬b_i)`, with `m≥2`. Work in width at most three and use exact existential projection onto the visible variables. A sign renaming complements a chosen subset of variables. **Every exact encoding with `2m` clauses is renamable Horn, with any number of auxiliary variables. There is a fully propagation-complete exact encoding with `2m+1` clauses whose extension relation is non-Horn after every sign renaming.** Consequently `2m+1` is the exact clause minimum for that property even when extra auxiliaries are allowed. At 256 pairs, the matching construction still uses **254 auxiliaries and 513 clauses**. [Earlier endpoint and refutation\-slice bounds](https://github.com/Pigeon-Home/homing-pigeon/blob/4236efa/docs/infrastructure-documents/proofs/v4-projection-round2-review-2026-11-23.md#L138-L235)
+
+The established endpoint count forces at least `2m` clauses. At equality each clause has one or two negated pair literals, and its potential endpoints exhaust its full capacity. For any chosen bit, either its one singleton clause covers every compatible minimal forbidden pattern or two double clauses cover disjoint halves, with their other negated literals the two alternatives of the same partner pair. Reciprocity partitions the original visible pairs into singleton and double blocks. For every minimal forbidden pattern P (z false, exactly one bit true in each pair), one clause per block survives. Every residual unsatisfiable core needs each block, since otherwise flipping a selected bit in that omitted block would leave the contradiction in a valid visible assignment. The visible z is also needed. The residual width is at most two. A surviving positive-z clause is empty or unit, and a minimal unsatisfiable binary core with a unit is refutable by unit propagation. Its binary-only part is satisfiable by minimality, so a conflict-free fixed point would have a model. Retain the backward reason slice from the conflict. It therefore has all `p=m−b` surviving clauses, with b the number of double blocks.
+
+The slice contains at least `m+1` visible occurrences (`m` negative pair literals and positive z), and `2(p−1)` auxiliary occurrences (each propagated variable has a reason literal and an opposite occurrence later in the slice). Thus `m+1+2(p−1)≤3p`, so `b≤1`.
+
+**One double block.** Now `p=m−1` and the count is tight. Every used auxiliary occurs once with each sign, regardless of the number of declared auxiliaries. When one block changes option, the change in signed-auxiliary occurrences is balanced for each auxiliary, because each slice uses either both signs or none. A difference in only one clause cannot turn an absent variable into both opposite signs or vice versa, since the clauses are nontautological. So the signed auxiliary part of a block is fixed under all its visible choices. The z occurrence is fixed there as well whenever the block contains it. For `m≥3`, one auxiliary unit comes from the double block and the other from the singleton containing z. The remaining clauses form the path between them, each used auxiliary linking its two opposite occurrences. A cycle component could be discarded while unit propagation traverses the path, contradicting the requirement that every block occur in the minimal slice. Orient the path from the double block and flip the auxiliary variables to recover the Horn chain. At `m=2` the single double block consists of the four flat Horn clauses with z.
+
+**Singleton blocks only.** The same literal count has just one spare slot beyond the necessary `m+1` visible and `2(m−1)` auxiliary occurrences. Saturation of endpoints limits every clause's possible additional visible literals to positive z and the positive mate of its own negated bit. Every pattern's core needs z, so there is a block Z with z in both its options. Otherwise choosing a no-z option in every block contradicts exactness. At most one block can ever use a mate, since options from two blocks could be selected together and would exceed the one extra slot. Both options of a single block cannot use mates. If both did, setting that pair to both bits true would make both its clauses satisfied, just as setting the pair empty does. All other blocks depend only on their own pair, z and auxiliaries. Holding every other pair hit and z false would then make an invalid all-hit input satisfiable.
+
+If there is no mate anywhere, set the pair Z empty, all other pairs to both bits true and z false. This is a valid input, so it has a satisfying auxiliary assignment. It activates every clause that has two auxiliary literals, since none of those clauses can be in Z. Choose the auxiliary sign flips from that assignment, so a satisfied literal becomes negative after renaming. Keep the pair bits unchanged and flip z to turn its positive occurrences negative. Each two-auxiliary clause now has at least one of its auxiliary literals negative, and every other clause has at most one positive literal. This is a Horn renaming.
+
+If one option in a block X contains a mate, it has the form `(¬a ∨ b ∨ L)` with a single auxiliary literal L. A residual empty clause could not refute a forbidden pattern by itself, because it would omit some required negative pair bits. In particular X is distinct from Z. Fix the choice of that option. All remaining occurrences are tight, so the same signed-multiset argument fixes the clauses of every other block after their visible parts are removed. Their residual graph with X is a path with units at X and Z. Start at Z to force an assignment s of all path variables. Every path binary then has one true and one false literal, and L is false. The alternate X option must also be false under this assignment after its visible bits are assigned. Any fresh auxiliary literal would let it be satisfied without disturbing the path. Therefore every auxiliary in the alternate residual clause occurs in a sign false at s. Complement s on the path, use that assignment for the auxiliary sign flips, and again flip z and keep pair bits unchanged. Each binary auxiliary remainder is satisfied by the complemented assignment. L is also satisfied, turning it negative in the only clause with a positive mate. Every clause is Horn under the chosen renaming. This completes the unrestricted lower bound.
+
+For the upper bound at `m≥3`, use the prior `2m`-clause Horn chain and add `(h ∨ a_m ∨ ¬z)`, where h is its last flag. The last block contains this clause and `(¬h ∨ ¬a_m ∨ z)`, a literalwise complementary ternary pair, and `(¬h ∨ ¬b_m ∨ z)`. For `m=2`, take first block `(¬a_1 ∨ h),(¬b_1 ∨ h)` and the same last three clauses with m=2. The added clause is automatic when z is false. When z is true, setting all flags true gives an extension. The last block has only tautological resolvents, so the three clauses constitute all its prime implicates and it is fully propagation complete. The single-variable block joins preserve that property. Both complementary ternaries are prime implicates whose positive-literal counts sum to three under any renaming. They cannot both be Horn. The last block is the projection of the whole extension relation onto its own variables because choosing the earlier visible pairs empty leaves the last flag free. Projection preserves Horn definability, including after fixed sign renaming. This proves the same non-Horn property of the extension relation itself. [Published propagation\-completeness composition](https://arxiv.org/abs/1309.3060)
+
+## 2. Structural counts that make the stronger bounds possible
+
+Use weak two-union bases of nonempty supports, allowing overlap. Write B(n) for the least number of supports on n points. Let `H_j` count supports of size at least j, and write `t,q,h` for the numbers of triples, fours and supports of size at least five. The previous checked `B(7)=22` and `B(9)≥44` are the finite starting results. The additional seven-point certificate here checks **every seven-point weak basis needs at least six supports of size at least three**. Allow all 28 nonempty supports of size at most two for free, then require at most five larger supports. Adding these small supports preserves the number of large ones, so this is the exact tail problem. The 1,408-clause encoding returned UNSAT and DRAT-trim independently verified it. Its DIMACS SHA-256 is `2c5fc7deb7ce4b6955da05660ae9980b6c0cf7bb457f1731005f816978aab2cc`. The proof SHA-256 is `7cda801d65a8448cb60d06dba4ef574c7ed8eb02d683465baff3c82714863ff9`. [Earlier seven\- and nine\-point bounds with source](https://mail.google.com/mail/u/?authuser=slutsky5544%40gmail.com#all/1a21ff06460a98e6) · [DRAT proof checker](https://github.com/marijnheule/drat-trim)
+
+**Eight points.** Each of eight deletions retains at least six supports of size at least three, giving `5H3−H4−H5−… ≥48`. A seven-target requires a support of size at least four. One such support cannot fit every seven-target, so `H4≥2`. Hence `H3≥10`, and equality leaves no support of size at least five. Also each deletion retains at least 22 supports in total. If an eight-point basis has b supports, total incidence is at least `2b−8+10+2` and at most `8(b−22)`, giving `b≥30`. The two complementary four-block construction meets 30. At equality all incidence inequalities are tight: exactly eight triples, two fours, and no highs. The two fours are disjoint or a seven-target can omit a common point. Selecting either four together with any opposite triple forces that pure triple. With all eight triples now pure, the six-target formed by one four plus any opposite pair forces that pure pair. Thus every optimal eight-point basis is the same two-block family up to labeling.
+
+**Nine points.** We need `H4≥6` and `H3≥18` for any weak basis, regardless of its total budget. For `q+h≤5`, `h=1` and `q≤4` cannot cover the five or more eight-targets avoiding that sole high. Each needs two disjoint fours with a distinct omitted label. For at most eight chosen fours the number of distinct omitted labels is at most `q−1`: an edge labeled by the omitted point has endpoint incidence vectors whose XOR equals the all-ones vector plus that label's unit vector. Any even cycle of distinct labels contradicts the zero XOR. An odd cycle needs all nine labels. Choosing one edge per label therefore produces a forest. When `h=2,q≤3` or `h=3,q≤2`, the seven-target complement capacity argument excludes the maximal profiles as established in the earlier proof. For `h≥4`, at most `10q+6h≤34` seven-targets can contain a four or a high, below 36. Thus `H4≥6`.
+
+To prove `H3≥18`, sum the eight-point tail bound across all nine deletions. `H3≤16` would contribute at most `6·16−H4−H5≤89`, below 90. Suppose `H3=17`. Let S be the intersection of the highs, let s be its size, and put `R=q+Σ_{|A|≥5}(|A|−3)`. Each deletion outside S retains a high and needs at least 11 size-at-least-three supports, while a deletion inside S needs at least 10. Therefore `102−R≥99−s` or `R≤s+3`. Since `R≥H4+1≥7`, we have `s≥4`. Every x in S needs a distinct disjoint-four label to cover its eight-deletion, which contains no high.
+
+If there are at least two highs and s=4, then `R≥q+4`, forcing `q≤3`. For s=5, at most one high equals S, and all others have size at least six. Thus `R≥q+5` and `q≤3`. For s≥6 the same distinctness gives `R≥q+2(s−3)+1`, so `q≤8−s≤2`. All cases give too few labels. If there is one high, `R=q+s−3` implies `q≤6`. The label bound forces `q=6,s=5,R=8`. The comparison of nine deletions is then tight: the five deletions inside the high have `H3=10,H4=2`, and the four outside have `H3=11` and retain the high. The eight-point incidence inequality above bounds each outside deletion's `H4` by six. The sum of `H4` across the deletions is `6·5+4=34`, so each outside deletion has `H4=6`. Thus each outside point belongs to exactly one original four. Every required disjoint-four union omitting a point of the high contains all four outside points. If those points belonged to two different fours, only that one pair could cover all four; more than two is impossible. Hence the outside four is selected and the other five fours are the five four-subsets of the high. Seven-targets with split sizes 3+4 or 4+3 across this 5+4 partition force all `10+4=14` pure triples. But `H3−H4=17−7=10`. Contradiction.
+
+**Ten points.** If a basis has b≤59 supports, each deletion retains at least 44 by the checked B(9) bound. Its total incidence is at most `10(b−44)`. Define the incidence excess `W=Σ_{|A|≥3}(|A|−2)`, so total incidence is exactly `2b−10+W`. Thus `W≤42`. With `R=H4+h` on ten points, the newly proved nine-point tail bounds give `6H4−h≥60` and `7H3−R≥180` by summing over deletions. Since h≥2 to hit all nine-targets, `H4≥11,R≥13,H3≥28`. Also `W≥H3+R` so `R≤14`. Only `(H4,h)=(11,2),(11,3),(12,2)` survive.
+
+- With `(11,2)`, nine fours produce at most 20 disjoint pairs by Mantel's theorem, and two highs lie in at most 20 eight-targets. There are 45 eight-targets to cover.
+- With `(11,3)`, eight fours produce at most 16 disjoint pairs, so the three highs must account for at least 29 eight-targets. All three have size five because one larger high would reduce the total available shadow to at most 26. The three five-point complements have 15 incidences over 10 points, giving sum of pair intersections at least five. At least two pairwise common omitted pairs follow. Equivalently, among the 30 possible eight-target incidences, there must be at least two repeats. At least 29 distinct targets are required, so at most one repeat is allowed. More explicitly, a repeated target common to all three would already spend two repeats, and with only one repeat the pair-intersection sizes could sum to at most `2+1+1=4`. Contradiction.
+- With `(12,2)`, the two highs must be complementary fives to hit every nine-target. Their 20 eight-targets leave 25 low eight-targets. The 10 fours give at most 25 disjoint pairs and must attain equality, so their disjointness graph is `K5,5`. The union of either side's five distinct fours has size at least five, and the two unions are disjoint. They are complementary five-blocks and each side is all five fours of its block. The 25 disjoint pairs must produce exactly the 25 low eight-targets. Any mixed high could fit in one such 4+4 target, so the two highs themselves are the pure five-blocks. Every seven-target with a 4+3 split then forces its pure triple. Thus all 20 pure triples are selected and `W≥20+20+6=46`, exceeding 42.
+
+Therefore **`60≤B(10)≤62`**. The upper bound uses all nonempty subsets of the two five-blocks. The lower bound uses the certified B(9) premise and the elementary incidence and shadow arguments above.
+
+## 3. Closing budget 44 on nine points
+
+The `H3≥18` theorem gives `p≤17` for a 44-support basis, where p counts selected pairs. Starting from the earlier representative-graph census and exact p≤15 certificates, the full p=16 slice has now been closed. There are four one-high/six-four shapes ruled out by the omitted-label star argument and 16 other shapes covered by independently checked DRAT refutations. In the final `K4+K5` shard, symmetry was reduced by the exact orbits of unordered high pairs under block permutations. The checker accepted the binary trace for the resulting complete orbit cover. Thus any size-44 basis must have **exactly 17 selected pairs and exactly 18 supports of size at least three**. Every hypothesis still uses weak unions, so overlapped covers remain legal.
+
+The remaining one-high shapes at p=17 have seven selected fours and at most ten triples. They are excluded by a finite large-layer argument. Choose one disjoint-four edge per omitted high point. These labels are all distinct, so the edges form a forest on the seven fours. Consequently the high has size 5 or 6, giving exactly two tree components or one. Up to relabeling the high points, enumerate the small forest shapes, and set the bit of each edge's omitted point to zero on its two endpoints. Membership in any other point alternates across the edge. This reconstructs every possible quad arrangement from the allowed root masks, demanding the high's complement be selected when it has size four. Even allowing all pairs and all singles, covering the seven-, eight-, and nine-targets then needs at least **13 triples** for high size 5 and **15** for high size 6. The latter was checked by eliminating every count through 14. Two triples cannot themselves cover a seven-target, so the residual large-layer check is an exact one-triple set-cover calculation. I replayed the forest calculation. It gives 272 arrangements for high size 5 and 24 for size 6, before any pair-graph constraints.
+
+This leaves 55 exact profiles across 33 graphs. I encoded each remaining profile, allowing all weak unions and requiring the exact graph and support counts. A chosen pair of optional supports uses an auxiliary witness implying both selection bits. Each uncovered target requires either that kind of witness or an optional support that completes the target with a mandatory partner. The at-most and equality counters count support selections alone. The earlier atlas and rank arguments give coverage of the whole search. Five profiles were independently checked with the earlier degree-14 encoding, and the other 50 were checked using the stronger degree-13 cut below. **All 55 CNFs have independently verified DRAT refutations. There are zero open size-44 profiles.** The fixed 17-pair queue at this stage is the 55-row subset of the frontier file with SHA-256 `ccb2ac35d09aabf18e2be9457c10dd2fca96bfe7c10d0402bb2b6b93d4b7cc3d`. The complete per-file formula, proof and checker identities are in the verification ledger.
+
+### A further cut used by the tighter certificates
+
+Every 44-support nine-point basis has **total support incidence at most 13 at each point**. The prior 30-member lower bound on eight-deletions already gives at most 14. If a point z has degree 14, the deletion is the exact two-four-block basis. Thirteen nonsingleton rows containing z must generate the 225 targets having nonempty parts in both blocks. A pure z-row reaches at most 15 interior targets when it is paired with a non-z row. A mixed row with one element in each block also reaches 15, and every other mixed row reaches at most 11. A two-z-row union can add a new target only when both rows are mixed. Among r selected singleton-by-singleton mixed rows, at least `max(0,2r−8,4r−24)` pairs share a coordinate, giving no new target. This bound sums `binom(d,2)≥d−1` and `binom(d,2)≥2d−3` over the four coordinates on each side. If c rows are mixed, total coverage is at most `195+binom(c,2)−4(c−r)−max(0,2r−8,4r−24)`. That is at most 224 for c≤10. For c≤7 the crude 195+21 suffices. For c=8 through 10, both ranges r≤8 and r≥8 bound the expression by `219+binom(c,2)−4c≤224`.
+
+Thus at most two rows are pure. With zero pure rows all 16 singleton-by-singleton cells need their own mixed row. With one pure row, at least 12 such cells still need mixed rows, and the 12 available mixed rows cannot reach a target with both parts of size at least three. With two pure rows, both must be singletons or there still are at least 12 compulsory cells and only 11 mixed rows. Two pure singleton rows cover at most eight cells, leaving at least eight singleton-by-singleton mixed rows. There are at most three other mixed rows. Consider the 25 targets with both parts of size at least three. Each of those other rows contributes at most five of these targets when combined with a pure base row or a singleton-by-singleton row. For projection sizes `a≤b`, this is at most four if a=1, at most four for `(2,2)`, at most five for `(2,3)`, at most three for `(2,4)`, and at most four for a≥3. These counts follow by adding arbitrary elements to one side for a pure base partner or adding at most one element on each side for a singleton-by-singleton partner, counting the overlap once. The three pairs between the larger mixed rows add at most three targets. The resulting upper bound 18 is below 25. Contradiction.
+
+Two earlier cuts also deserve to stay explicit in the encoding. First, deleting a point leaves at least two supports of size at least four, and at least 11 size-at-least-three supports if any high survives. Second, every ground pair must co-occur in some support. If x and y never co-occur, the x-star and y-star must produce all 128 targets containing both, so their product is at least 128 and their summed size at least 23. The supports avoiding both form a seven-point basis of size at least 22. Their total is already at least 45.
+
+### The lift after closing budget 44
+
+We now have **`45≤B(9)≤46`**. Any ten-point basis of size b≤60 must therefore satisfy `2b−10+W≤10(b−45)`, giving `W≤40`. The structural counts already proved give `H4≥11,R≥13,H3≥28`, so `W≥H3+R≥41`. This contradiction raises the lower bound to **`61≤B(10)≤62`**. The next finite questions are whether size 45 exists on nine points and whether size 61 exists on ten points. One valid witness or complete certified refutation resolves each interval.
+
+## Decisions for the existing six-month and two-year plans
+
+- The completed line is the unrestricted `2m+1` theorem and its fully propagation-complete construction. Ask a fresh reader to reproduce the one-extra-literal argument in the all-singleton case. Ordinary width-three propagation requirements and iterative level-two failed-literal requirements remain distinct classification questions.
+- Through **May 27, 2027**, move the finite queue to **budget 45 on nine points**. Begin with an independent replay of the now-complete budget-44 cover. Reuse the tail and canonical eight-deletion proofs, and derive any new degree or shape cuts for the new budget. A positive witness should be scored against every target. A negative result needs complete checked coverage at the new budget.
+- On ten points, start the next tight target at **budget 61**, using the new interval and traceable nine-deletion certificates. The two-year horizon through **November 27, 2028** remains for an exact wider family theorem or a demonstrable transfer beyond this bounded setting. Keep Candidate C on its actual fixed machine as a separate live obligation. P versus NP remains open. [Candidate C scope](https://github.com/Pigeon-Home/homing-pigeon/blob/4236efa/docs/infrastructure-documents/project/three-chart-candidates-2026-11-23.md#L318-L413)
+
+## Replay appendix
+
+The previous email gives the representative-graph capacity source and weak-basis baseline at budget 43. Use its budget-44 variant by setting kBudget to 44 and preserve the graph-independent seven- and eight-target cuts, the already checked p=15 certificates, and the 692 surviving exact profiles. The SHA-256 of that earlier list is `d56fd175eeb5838f3753d00d47375d6e501653cce4b2369e15d3c2cee159631f`. The full metadata ledger for the 55 independently checked p17 completions is `138ae17f78ebaaa1a8fe0411d8a8470f2c8745c1bce5b462f188326342ee692c` in the replay packet.
+
+Use the same audited source for the 55 p17 and 20 p16 exact input rows reproduced below. The portable scripts expect the displayed atlas and xtra directory names. Save the 55-row queue as both `atlas/p17-plus-frontier.tsv` and `xtra/frontier-star.tsv` to rerun the p17 scripts. Save the 20-row queue as `atlas/open-survivors.tsv` to rerun the p16 scripts. Compile `atlas/onehigh-seven.cpp` with C++17 and run it for the two one-high/seven-four cases. Use Python with python-sat 1.9.dev25 in an isolated environment, and compile DRAT-trim from its upstream source as `atlas/drat-trim`. Create the output folders used by the scripts. Each accepted certificate requires a checker `s VERIFIED` line. The p16 one-high/six-four rows are covered by the forest-star proof, so their exploratory solver outcomes need not be used. The degree-14 checker pass covers the first five p17 profiles, then the degree-13 pass covers the other 50. [McKay atlas](https://users.cecs.anu.edu.au/~bdm/data/graphs.html) · [Checker source](https://github.com/marijnheule/drat-trim)
+
+### atlas/shard.py
+
+```from itertools import combinations
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).with_name("solver")))
+from pysat.card import CardEnc, EncType
+from pysat.solvers import Cadical195
+
+UNIVERSE = 511
+
+def exact_formula(graph, shape):
+ edge_bits = "".join(f"{ord(c) - 63:06b}" for c in graph[1:])
+ pair_masks = [1 << j | 1 << i for j in range(1, 9) for i in range(j)]
+ pairs = {mask for bit, mask in zip(edge_bits, pair_masks) if bit == "1"}
+ mandatory = {0, *pairs, *(1 << i for i in range(9))}
+ mandatory.update(
+ s for s in range(1, UNIVERSE + 1)
+ if s.bit_count() == 3 and not any(s & pair == pair for pair in pairs)
+ )
+ residual = set(range(1, UNIVERSE+1)) - {s | t for s in mandatory for t in mandatory}
+ optional = [s for s in range(1, UNIVERSE+1) if s.bit_count() >= 3 and s not in mandatory]
+ literal = {s: j for j, s in enumerate(optional, 1)}
+ unary = {s: {s | t for t in mandatory} & residual for s in optional}
+ cover = {t: [] for t in residual}
+ next_id = len(optional)
+ clauses = []
+ for high_type, count in enumerate(shape):
+ group = [literal[s] for s in optional if min(s.bit_count() - 3, 2) == high_type]
+ part = CardEnc.equals(group, bound=count, top_id=next_id, encoding=EncType.seqcounter)
+ clauses.extend(part.clauses)
+ next_id = part.nv
+ for support, targets in unary.items():
+ for target in targets:
+ cover[target].append(literal[support])
+ for a, b in combinations(optional, 2):
+ target = a | b
+ if target not in cover or target in unary[a] or target in unary[b]:
+ continue
+ next_id += 1
+ cover[target].append(next_id)
+ clauses.extend([[-next_id, literal[a]], [-next_id, literal[b]]])
+ clauses.extend(cover.values())
+ return next_id, clauses, mandatory, literal
+
+def verify_family(family):
+ return {a | b for a in family for b in family} == set(range(UNIVERSE+1))
+
+def only_shard(graph, shape):
+ n, clauses, mandatory, literal = exact_formula(graph, shape)
+ print("START", graph, shape, n, len(clauses), flush=True)
+ with Cadical195(bootstrap_with=clauses) as solver:
+ solver.conf_budget(100000)
+ outcome = solver.solve_limited()
+ print("END", graph, shape, outcome, solver.accum_stats(), flush=True)
+ if outcome is True:
+ model = set(solver.get_model())
+ family = mandatory | {s for s, var in literal.items() if var in model}
+ assert len(family) == 45 and verify_family(family)
+ print("WITNESS", sorted(family), flush=True)
+
+if __name__ == "__main__":
+ for line in Path(sys.argv[1]).read_text().splitlines():
+ graph, pair_count, forced, *shape = line.split()
+ if int(pair_count) == int(sys.argv[2]):
+ only_shard(graph, tuple(map(int, shape)))
+```
+
+### atlas/certify16.py
+
+```from concurrent.futures import ProcessPoolExecutor
+import hashlib
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+from shard import exact_formula, Cadical195, verify_family
+import pysolvers
+from pysat.card import CardEnc, EncType
+
+ROOT = Path(__file__).parent
+OUT = ROOT / "p16"
+
+def strengthened_formula(graph, shape):
+ top, clauses, mandatory, literal = exact_formula(graph, shape)
+ _, fours, highs = shape
+ # A 7-target needs a selected support of size at least 4 inside it.
+ for target in range(1, 512):
+ if target.bit_count() == 7:
+ clauses.append([var for support, var in literal.items()
+ if support.bit_count() >= 4 and support & target == support])
+ high_supports = [(s, v) for s, v in literal.items() if s.bit_count() >= 5]
+ if fours <= 8:
+ cap = max(0, fours - 1)
+ if highs == 1:
+ for support, var in high_supports:
+ if support.bit_count() > cap:
+ clauses.append([-var])
+ elif highs == 2:
+ for i, (left, lv) in enumerate(high_supports):
+ for right, rv in high_supports[i+1:]:
+ if (left & right).bit_count() > cap:
+ clauses.append([-lv, -rv])
+ else:
+ common = list(range(top + 1, top + 10))
+ top += 9
+ for bit, var in enumerate(common):
+ clauses.append([var, *(v for support, v in high_supports
+ if not (support >> bit & 1))])
+ count = CardEnc.atmost(common, bound=cap, top_id=top, encoding=EncType.seqcounter)
+ clauses.extend(count.clauses)
+ top = count.nv
+ return top, clauses, mandatory, literal
+
+def digest(path):
+ with path.open("rb") as stream:
+ return hashlib.file_digest(stream, "sha256").hexdigest()
+
+def verify_shard(args):
+ index, graph, shape = args
+ name = f"p16-{index:02}"
+ formula_path = OUT / (name + ".cnf")
+ proof_path = OUT / (name + ".dratb")
+ stdout_path = OUT / (name + ".checker.txt")
+ n, clauses, mandatory, literal = strengthened_formula(graph, shape)
+ with formula_path.open("w") as stream:
+ stream.write(f"p cnf {n} {len(clauses)}\n")
+ for clause in clauses:
+ stream.write(" ".join(map(str, clause)) + " 0\n")
+ print("SOLVING", name, graph, shape, n, len(clauses), flush=True)
+ with Cadical195(bootstrap_with=clauses, with_proof=True) as solver:
+ solver.conf_budget(125000)
+ outcome = solver.solve_limited()
+ statistics = solver.accum_stats()
+ if outcome is True:
+ model = set(solver.get_model())
+ family = mandatory | {s for s, var in literal.items() if var in model}
+ assert len(family) == 45 and verify_family(family)
+ result = f"WITNESS {name} {graph} {shape} {sorted(family)}"
+ print(result, flush=True)
+ return result
+ if outcome is not False:
+ result = f"UNKNOWN {name} {graph} {shape} {statistics}"
+ print(result, flush=True)
+ return result
+ # The bundled CaDiCaL writes binary DRAT already. Avoid text conversion.
+ pysolvers.flushpr(solver.prfp)
+ solver.prfile.seek(0)
+ with proof_path.open("wb") as stream:
+ shutil.copyfileobj(solver.prfile, stream)
+ with stdout_path.open("w") as stream:
+ report = subprocess.run([str(ROOT/"drat-trim"), str(formula_path), str(proof_path), "-i", "-q"],
+ stdout=stream, stderr=subprocess.STDOUT, timeout=180)
+ status = ("VERIFIED" if report.returncode == 0 and "s VERIFIED" in stdout_path.read_text()
+ else "CHECKER_UNKNOWN")
+ result = f"{status} {name} {graph} {shape} formula {digest(formula_path)} proof {digest(proof_path)} proof_bytes {proof_path.stat().st_size} conflicts {statistics['conflicts']}"
+ print(result, flush=True)
+ return result
+
+if __name__ == "__main__":
+ rows = [line.split() for line in (ROOT/"open-survivors.tsv").read_text().splitlines()]
+ shapes = [(j, row[0], tuple(map(int, row[3:])))
+ for j, row in enumerate((r for r in rows if r[1] == "16"), 1)]
+ # Keep each started shard bounded even if the full pass gets interrupted.
+ limit = int(sys.argv[1]) if len(sys.argv) > 1 else len(shapes)
+ with ProcessPoolExecutor(4) as pool:
+ with (OUT/"results.tsv").open("w") as result_stream:
+ for result in pool.map(verify_shard, shapes[:limit]):
+ result_stream.write(result + "\n")
+ result_stream.flush()
+```
+
+### atlas/hard16.py
+
+```from itertools import combinations
+from pathlib import Path
+import shutil
+import subprocess
+
+from certify16 import Cadical195, OUT, ROOT, digest, strengthened_formula, verify_family
+import pysolvers
+
+GRAPH = "HQhTQii"
+SHAPE = (13, 4, 2)
+
+def clique_blocks(graph):
+ bits = "".join(f"{ord(c) - 63:06b}" for c in graph[1:])
+ adjacency = [0] * 9
+ cursor = 0
+ for right in range(1, 9):
+ for left in range(right):
+ if bits[cursor] == "1":
+ adjacency[left] |= 1 << right
+ adjacency[right] |= 1 << left
+ cursor += 1
+ blocks = sorted({mask | (1 << i) for i, mask in enumerate(adjacency)}, key=int.bit_count)
+ assert [block.bit_count() for block in blocks] == [4, 5]
+ assert blocks[0] & blocks[1] == 0 and blocks[0] | blocks[1] == 511
+ return blocks
+
+def class_key(left, right, blocks):
+ def key(a, b):
+ return tuple((int.bit_count(block & a & ~b), int.bit_count(block & b & ~a),
+ int.bit_count(block & a & b)) for block in blocks)
+ return min(key(left, right), key(right, left))
+
+def augmented_formula():
+ n, clauses, mandatory, literal = strengthened_formula(GRAPH, SHAPE)
+ blocks = clique_blocks(GRAPH)
+ reps = {}
+ added = 0
+ for left, right in combinations((s for s in literal if s.bit_count() >= 5), 2):
+ if (left & right).bit_count() > SHAPE[1] - 1:
+ continue
+ signature = class_key(left, right, blocks)
+ if signature in reps:
+ clauses.append([-literal[left], -literal[right]])
+ added += 1
+ else:
+ reps[signature] = (left, right)
+ print("high_pair_orbits", len(reps), "added", added, "blocks", blocks, flush=True)
+ return n, clauses, mandatory, literal
+
+if __name__ == "__main__":
+ n, clauses, mandatory, literal = augmented_formula()
+ formula_path = OUT / "HQhTQii-symmetry.cnf"
+ proof_path = OUT / "HQhTQii-symmetry.dratb"
+ log_path = OUT / "HQhTQii-symmetry.checker.txt"
+ with formula_path.open("w") as stream:
+ stream.write(f"p cnf {n} {len(clauses)}\n")
+ for clause in clauses:
+ stream.write(" ".join(map(str, clause)) + " 0\n")
+ with Cadical195(bootstrap_with=clauses, with_proof=True) as solver:
+ solver.conf_budget(250000)
+ outcome = solver.solve_limited()
+ print("SOLVER", outcome, solver.accum_stats(), flush=True)
+ if outcome is None:
+ raise SystemExit(2)
+ if outcome:
+ model = set(solver.get_model())
+ family = mandatory | {s for s, var in literal.items() if var in model}
+ assert len(family) == 45 and verify_family(family)
+ print("WITNESS", sorted(family), flush=True)
+ raise SystemExit(0)
+ pysolvers.flushpr(solver.prfp)
+ solver.prfile.seek(0)
+ with proof_path.open("wb") as stream:
+ shutil.copyfileobj(solver.prfile, stream)
+ with log_path.open("w") as stream:
+ report = subprocess.run([str(ROOT/"drat-trim"), str(formula_path), str(proof_path), "-i", "-q"],
+ stdout=stream, stderr=subprocess.STDOUT, timeout=180)
+ result = "VERIFIED" if report.returncode == 0 and "s VERIFIED" in log_path.read_text() else "UNKNOWN"
+ print(result, "formula", digest(formula_path), "proof", digest(proof_path),
+ "proof_bytes", proof_path.stat().st_size, flush=True)
+ raise SystemExit(result != "VERIFIED")
+```
+
+### atlas/onehigh-seven.cpp
+
+```#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <functional>
+#include <iostream>
+#include <map>
+#include <set>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+using Edge = std::pair<int, int>;
+using Tree = std::vector<Edge>;
+using Masks = std::vector<int>;
+constexpr int kUniverse = 511;
+int sizeOf[512];
+
+std::string rooted(const std::vector<Masks>& adj, int from, int parent) {
+ std::vector<std::string> children;
+ for (int to : adj[from]) {
+ if (to != parent) children.push_back(rooted(adj, to, from));
+ }
+ std::sort(children.begin(), children.end());
+ std::string result = "(";
+ for (const auto& child : children) result += child;
+ return result + ")";
+}
+
+std::vector<Tree> trees(int order) {
+ if (order == 1) return {Tree{}};
+ std::map<std::string, Tree> types;
+ Masks sequence(order - 2);
+ std::function<void(int)> prufer = [&](int at) {
+ if (at < int(sequence.size())) {
+ for (int k = 0; k < order; ++k) {
+ sequence[at] = k;
+ prufer(at + 1);
+ }
+ return;
+ }
+ Masks degree(order, 1);
+ for (int vertex : sequence) ++degree[vertex];
+ Tree edges;
+ std::vector<Masks> adj(order);
+ auto addEdge = [&](int i, int j) {
+ edges.emplace_back(i, j);
+ adj[i].push_back(j);
+ adj[j].push_back(i);
+ };
+ for (int parent : sequence) {
+ int leaf = std::find(degree.begin(), degree.end(), 1) - degree.begin();
+ addEdge(parent, leaf);
+ --degree[parent];
+ --degree[leaf];
+ }
+ int first = std::find(degree.begin(), degree.end(), 1) - degree.begin();
+ int second = std::find(degree.begin() + first + 1, degree.end(), 1) - degree.begin();
+ addEdge(first, second);
+ std::string name = rooted(adj, 0, -1);
+ for (int root = 1; root < order; ++root) {
+ name = std::min(name, rooted(adj, root, -1));
+ }
+ types.try_emplace(name, edges);
+ };
+ prufer(0);
+ std::vector<Tree> result;
+ for (const auto& [name, edges] : types) result.push_back(edges);
+ return result;
+}
+
+std::vector<Masks> componentMasks(const Tree& tree, int firstLabel) {
+ int order = int(tree.size()) + 1;
+ std::vector<std::vector<Edge>> adj(order);
+ int labels = 0;
+ for (int e = 0; e + 1 < order; ++e) {
+ auto [x, y] = tree[e];
+ const int omitted = 1 << (firstLabel + e);
+ adj[x].emplace_back(y, omitted);
+ adj[y].emplace_back(x, omitted);
+ labels |= omitted;
+ }
+ int rootFixed = 0;
+ std::function<void(int, int, int)> setFixed = [&](int vertex, int parent, int depth) {
+ for (auto [child, omitted] : adj[vertex]) {
+ if (child != parent) {
+ if (depth % 2) rootFixed |= omitted;
+ setFixed(child, vertex, depth + 1);
+ }
+ }
+ };
+ setFixed(0, -1, 0);
+ Masks assignment(order);
+ std::function<void(int, int)> propagate = [&](int vertex, int parent) {
+ for (auto [child, omitted] : adj[vertex]) {
+ if (child == parent) continue;
+ if (assignment[vertex] & omitted) std::terminate();
+ assignment[child] = kUniverse ^ assignment[vertex] ^ omitted;
+ propagate(child, vertex);
+ }
+ };
+ std::set<Masks> result;
+ for (int root = 0; root <= kUniverse; ++root) {
+ if (sizeOf[root] != 4 || (root & labels) != rootFixed) continue;
+ assignment[0] = root;
+ propagate(0, -1);
+ Masks sorted = assignment;
+ std::sort(sorted.begin(), sorted.end());
+ if (std::adjacent_find(sorted.begin(), sorted.end()) == sorted.end()) result.insert(sorted);
+ }
+ return {result.begin(), result.end()};
+}
+
+int highLayerMinimum(const Masks& quads, int high, int cutoff) {
+ Masks base = quads;
+ base.push_back(high);
+ for (int s = 0; s <= kUniverse; ++s) {
+ if (sizeOf[s] <= 2) base.push_back(s);
+ }
+ std::array<bool, 512> reached{};
+ for (int a : base) for (int b : base) reached[a | b] = true;
+ Masks left;
+ for (int target = 0; target <= kUniverse; ++target) {
+ if (sizeOf[target] >= 7 && !reached[target]) left.push_back(target);
+ }
+ std::vector<uint64_t> caps;
+ const uint64_t all = (uint64_t(1) << left.size()) - 1;
+ for (int s = 0; s <= kUniverse; ++s) {
+ if (sizeOf[s] != 3) continue;
+ uint64_t hit = 0;
+ for (unsigned j = 0; j < left.size(); ++j) {
+ for (int a : base) if ((a | s) == left[j]) hit |= uint64_t(1) << j;
+ }
+ if (hit) caps.push_back(hit);
+ }
+ auto order = [](uint64_t a, uint64_t b) {
+ return __builtin_popcountll(a) > __builtin_popcountll(b);
+ };
+ std::sort(caps.begin(), caps.end(), order);
+ std::vector<uint64_t> useful;
+ for (uint64_t mask : caps) {
+ if (std::none_of(useful.begin(), useful.end(),
+ [&](uint64_t old) { return (old & mask) == mask; })) {
+ useful.push_back(mask);
+ }
+ }
+ std::vector<std::vector<uint64_t>> at(left.size());
+ for (uint64_t mask : useful) {
+ for (unsigned j = 0; j < left.size(); ++j) {
+ if (mask & (uint64_t(1) << j)) at[j].push_back(mask);
+ }
+ }
+ std::unordered_map<uint64_t, int> fail;
+ std::function<bool(uint64_t, int)> possible = [&](uint64_t rest, int slots) {
+ if (!rest) return true;
+ if (!slots) return false;
+ if (auto previous = fail.find(rest); previous != fail.end() && previous->second >= slots) return false;
+ int maxCover = 0;
+ for (uint64_t mask : useful) maxCover = std::max(maxCover, __builtin_popcountll(mask & rest));
+ if (__builtin_popcountll(rest) > maxCover * slots) return false;
+ unsigned point = __builtin_ctzll(rest);
+ for (uint64_t bits = rest; bits; bits &= bits - 1) {
+ unsigned p = __builtin_ctzll(bits);
+ if (at[p].size() < at[point].size()) point = p;
+ }
+ for (uint64_t mask : at[point]) if (possible(rest & ~mask, slots - 1)) return true;
+ fail[rest] = slots;
+ return false;
+ };
+ for (int slots = 0; slots <= cutoff; ++slots) {
+ if (possible(all, slots)) return slots;
+ }
+ return cutoff + 1;
+}
+
+int main() {
+ for (int s = 0; s <= kUniverse; ++s) sizeOf[s] = __builtin_popcount((unsigned)s);
+ std::array<std::vector<Tree>, 8> library;
+ for (int order = 1; order <= 7; ++order) {
+ library[order] = trees(order);
+ std::cout << "trees " << order << ' ' << library[order].size() << '\n';
+ }
+ for (int hsize : {5, 6}) {
+ const int high = (1 << hsize) - 1;
+ std::set<Masks> arrangements;
+ if (hsize == 6) {
+ for (const auto& tree : library[7]) {
+ auto options = componentMasks(tree, 0);
+ arrangements.insert(options.begin(), options.end());
+ }
+ } else {
+ for (int a = 1; a <= 3; ++a) {
+ for (const auto& left : library[a]) {
+ for (const auto& right : library[7-a]) {
+ for (const auto& l : componentMasks(left, 0)) {
+ for (const auto& r : componentMasks(right, a - 1)) {
+ Masks total = l;
+ total.insert(total.end(), r.begin(), r.end());
+ std::sort(total.begin(), total.end());
+ if (std::adjacent_find(total.begin(), total.end()) == total.end() &&
+ std::binary_search(total.begin(), total.end(), kUniverse ^ high)) {
+ arrangements.insert(total);
+ }
+ }
+ }
+ }
+ }
+ }
+ }
+ int best = 37;
+ Masks bestQuads;
+ std::map<int, int> histogram;
+ for (const auto& quads : arrangements) {
+ int t = highLayerMinimum(quads, high, 14);
+ ++histogram[t];
+ if (t < best) {
+ best = t;
+ bestQuads = quads;
+ }
+ }
+ std::cout << "high_size " << hsize << " arrangements " << arrangements.size()
+ << " min_triples " << best << " quads";
+ for (int quad : bestQuads) std::cout << ' ' << quad;
+ std::cout << '\n';
+ for (auto [t, n] : histogram) std::cout << "triples " << t << ' ' << n << '\n';
+ }
+}
+```
+
+### xtra/p17-certify.py
+
+```from itertools import combinations
+from pathlib import Path
+import sys
+import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent/'atlas'))
+from shard import exact_formula, verify_family
+from pysat.card import CardEnc, EncType
+from pysat.solvers import Cadical195
+
+def add_structure(last, cnf, base, option):
+ def fresh():
+ nonlocal last
+ last += 1
+ return last
+
+ def constrain(inputs, bound, minimum, guard=None):
+ nonlocal last
+ if (minimum and bound <= 0) or (not minimum and bound >= len(inputs)):
+ return
+ if bound < 0 or (minimum and bound > len(inputs)):
+ cnf.append([] if guard is None else [-guard])
+ return
+ op = CardEnc.atleast if minimum else CardEnc.atmost
+ counter = op(inputs, bound, top_id=last, encoding=EncType.seqcounter)
+ last = max(last, counter.nv)
+ cnf.extend(counter.clauses if guard is None else [[-guard, *c] for c in counter.clauses])
+
+ for pt in (1 << i for i in range(9)):
+ contain = [x for s, x in option.items() if s & pt]
+ constrain(contain, 14 - sum(bool(s & pt) for s in base), False)
+ retained3 = [x for s, x in option.items() if not s & pt]
+ retained4 = [x for s, x in option.items() if not s & pt and s.bit_count() >= 4]
+ retained5 = [x for s, x in option.items() if not s & pt and s.bit_count() >= 5]
+ fixed3 = sum(s.bit_count() >= 3 and not s & pt for s in base)
+ constrain(retained3, 10-fixed3, True)
+ constrain(retained4, 2, True)
+ trigger = fresh()
+ cnf.extend([[-x, trigger] for x in retained5])
+ constrain(retained3, 11-fixed3, True, trigger)
+
+ for i, j in combinations(range(9), 2):
+ mask = (1 << i) | (1 << j)
+ if not any(s & mask == mask for s in base):
+ cnf.append([x for s, x in option.items() if s & mask == mask])
+
+ edges = {s for s in base if s.bit_count() == 2}
+ for i, j in combinations(range(9), 2):
+ pair = (1 << i) | (1 << j)
+
+ def swap(s):
+ return s ^ pair if (s & pair).bit_count() == 1 else s
+
+ if {swap(s) for s in edges} != edges:
+ continue
+ ordered = [(x, option[swap(s)]) for s, x in option.items() if s != swap(s)]
+ previous_equal = None
+ for x, y in ordered:
+ guards = [] if previous_equal is None else [-previous_equal]
+ cnf.append([*guards, -x, y])
+ equal = fresh()
+ cnf.extend([[*guards, -x, -y, equal], [*guards, x, y, equal]])
+ previous_equal = equal
+ return last
+
+src = Path(__file__).resolve().parent/'frontier-star.tsv'
+rows = [s.split() for s in src.read_text().splitlines() if s.split()[1]=='17' and int(s.split()[-1])>=2]
+rows.sort(key=lambda row:(-int(row[2]),int(row[5]),int(row[4]),row[0]))
+out = Path(__file__).resolve().parent/'p17'
+out.mkdir(exist_ok=True)
+for index, row in enumerate(rows[:5],1):
+ label, p, t, a, q, h = row
+ final, cnf, base, option = exact_formula(label, (int(a),int(q),int(h)))
+ final = add_structure(final, cnf, base, option)
+ key = str(index)+'.'+label.encode().hex()
+ path = out / key
+ (out/(key+'.cnf')).write_text(f'p cnf {final} {len(cnf)}\n'+''.join(' '.join(map(str,c))+' 0\n' for c in cnf))
+ print('START',key, row, len(cnf), flush=True)
+ start=time.monotonic()
+ with Cadical195(bootstrap_with=cnf,with_proof=True) as solver:
+ solver.conf_budget(125000)
+ status=solver.solve_limited()
+ if status is False:
+ (out/(key+'.drat')).write_text('\n'.join(solver.get_proof())+'\n')
+ if status is True:
+ model=set(solver.get_model())
+ selected=base | {s for s,x in option.items() if x in model}
+ assert len(selected)==45 and verify_family(selected)
+ (out/(key+'.witness')).write_text(' '.join(map(str,sorted(selected-{0})))+'\n')
+ print('OUT',key,repr(status),round(time.monotonic()-start,2),solver.accum_stats(),flush=True)
+```
+
+### xtra/full17.py
+
+```from itertools import combinations
+from pathlib import Path
+import sys
+import time
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent/'atlas'))
+from shard import exact_formula, verify_family
+from pysat.card import CardEnc, EncType
+from pysat.solvers import Cadical195
+
+def add_structure(last, cnf, base, option):
+ def fresh():
+ nonlocal last
+ last += 1
+ return last
+
+ def constrain(inputs, bound, minimum, guard=None):
+ nonlocal last
+ if (minimum and bound <= 0) or (not minimum and bound >= len(inputs)):
+ return
+ if bound < 0 or (minimum and bound > len(inputs)):
+ cnf.append([] if guard is None else [-guard])
+ return
+ op = CardEnc.atleast if minimum else CardEnc.atmost
+ counter = op(inputs, bound, top_id=last, encoding=EncType.seqcounter)
+ last = max(last, counter.nv)
+ cnf.extend(counter.clauses if guard is None else [[-guard, *c] for c in counter.clauses])
+
+ for pt in (1 << i for i in range(9)):
+ contain = [x for s, x in option.items() if s & pt]
+ constrain(contain, 13 - sum(bool(s & pt) for s in base), False)
+ retained3 = [x for s, x in option.items() if not s & pt]
+ retained4 = [x for s, x in option.items() if not s & pt and s.bit_count() >= 4]
+ retained5 = [x for s, x in option.items() if not s & pt and s.bit_count() >= 5]
+ fixed3 = sum(s.bit_count() >= 3 and not s & pt for s in base)
+ constrain(retained3, 10-fixed3, True)
+ constrain(retained4, 2, True)
+ trigger = fresh()
+ cnf.extend([[-x, trigger] for x in retained5])
+ constrain(retained3, 11-fixed3, True, trigger)
+
+ for i, j in combinations(range(9), 2):
+ mask = (1 << i) | (1 << j)
+ if not any(s & mask == mask for s in base):
+ cnf.append([x for s, x in option.items() if s & mask == mask])
+
+ edges = {s for s in base if s.bit_count() == 2}
+ for i, j in combinations(range(9), 2):
+ pair = (1 << i) | (1 << j)
+
+ def swap(s):
+ return s ^ pair if (s & pair).bit_count() == 1 else s
+
+ if {swap(s) for s in edges} != edges:
+ continue
+ ordered = [(x, option[swap(s)]) for s, x in option.items() if s != swap(s)]
+ previous_equal = None
+ for x, y in ordered:
+ guards = [] if previous_equal is None else [-previous_equal]
+ cnf.append([*guards, -x, y])
+ equal = fresh()
+ cnf.extend([[*guards, -x, -y, equal], [*guards, x, y, equal]])
+ previous_equal = equal
+ return last
+
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import hashlib
+import pysolvers
+import shutil
+import subprocess
+
+ROOT=Path(__file__).resolve().parent
+OUT=ROOT/'full17'
+CASEFILE=ROOT.parent/'atlas'/'p17-plus-frontier.tsv'
+SKIP={'HCpdRht','HCQrTjM','HCQrUji','HCXmdfg','HCXmdqq'}
+
+def job(item):
+ j, row=item
+ label,p,t,a,q,h=row
+ final, cnf, base, option=exact_formula(label, (int(a),int(q),int(h)))
+ final=add_structure(final,cnf,base,option)
+ k=int(q)-1
+ highs=[(s,v) for s,v in option.items() if s.bit_count()>=5]
+ if int(h)==2:
+ for ix,(s,x) in enumerate(highs):
+ for u,y in highs[ix+1:]:
+ if (s&u).bit_count()>k:cnf.append([-x,-y])
+ stem=OUT/f'case-{j:02}'
+ with stem.with_suffix('.cnf').open('w') as stream:
+ stream.write(f'p cnf {final} {len(cnf)}\n')
+ for c in cnf:stream.write(' '.join(map(str,c))+' 0\n')
+ start=time.monotonic()
+ with Cadical195(bootstrap_with=cnf, with_proof=True) as solver:
+ solver.conf_budget(110000)
+ state=solver.solve_limited()
+ stats=solver.accum_stats()
+ if state is True:
+ model=set(solver.get_model())
+ selected=base|{s for s,v in option.items() if v in model}
+ assert len(selected)==45 and verify_family(selected)
+ stem.with_suffix('.witness').write_text(' '.join(map(str,sorted(selected-{0})))+'\n')
+ return j,'SAT',row,round(time.monotonic()-start,2),stats['conflicts']
+ if state is None:return j,'UNKNOWN',row,round(time.monotonic()-start,2),stats['conflicts']
+ pysolvers.flushpr(solver.prfp)
+ solver.prfile.seek(0)
+ with stem.with_suffix('.dratb').open('wb') as stream:
+ shutil.copyfileobj(solver.prfile,stream)
+ with stem.with_suffix('.check').open('w') as stream:
+ try:
+ r=subprocess.run([str(ROOT.parent/'atlas'/'drat-trim'),str(stem.with_suffix('.cnf')),str(stem.with_suffix('.dratb')),'-i','-q'],stdout=stream,stderr=subprocess.STDOUT,timeout=80)
+ verified=r.returncode==0
+ except subprocess.TimeoutExpired:
+ verified=False
+ flag='VERIFIED' if verified and 's VERIFIED' in stem.with_suffix('.check').read_text() else 'CHECKER_UNKNOWN'
+ return j,flag,row,round(time.monotonic()-start,2),stats['conflicts']
+
+if __name__=='__main__':
+ OUT.mkdir(exist_ok=True)
+ rows=[line.split() for line in CASEFILE.read_text().splitlines() if line.split()[1]=='17']
+ known={tuple(line.split()[2:]) for line in []}
+ # These five exact shapes were independently checked in the earlier pass.
+ known={('HCpdRht','17','6','6','4','2'),('HCQrTjM','17','5','7','4','2'),('HCQrUji','17','5','7','4','2'),('HCXmdfg','17','5','7','4','2'),('HCXmdqq','17','5','7','4','2')}
+ rows=[r for r in rows if tuple(r) not in known]
+ rows.sort(key=lambda r:(int(r[5]),int(r[4]),-int(r[2]),r[0]))
+ assert len(rows)==50
+ with (OUT/'index.tsv').open('w') as f:
+ for j,r in enumerate(rows,1):f.write(str(j)+'\t'+'\t'.join(r)+'\n')
+ with ProcessPoolExecutor(max_workers=2) as pool, (OUT/'results.tsv').open('w') as f:
+ for future in as_completed([pool.submit(job,item) for item in enumerate(rows,1)]):
+ j,status,row,wall,conflicts=future.result()
+ msg='\t'.join([str(j),status,*row,str(wall),str(conflicts)])
+ print(msg,flush=True)
+ f.write(msg+'\n');f.flush()
+```
+
+### atlas/queue-p17.tsv
+
+```HCQrThm 17 4 8 4 2
+HCQrTjM 17 5 7 4 2
+HCQrTjY 17 4 8 4 2
+HCQrTjY 17 4 7 5 2
+HCQrTjY 17 4 8 3 3
+HCQrTji 17 4 8 4 2
+HCQrTji 17 4 8 3 3
+HCQrUji 17 5 7 4 2
+HCXmd`m 17 4 8 4 2
+HCXmd`m 17 4 7 5 2
+HCXmdfK 17 4 8 4 2
+HCXmdfK 17 4 7 5 2
+HCXmdfK 17 4 8 3 3
+HCXmdfK 17 4 7 4 3
+HCXmdfg 17 5 7 4 2
+HCXmdqq 17 5 7 4 2
+HCXmdrQ 17 4 8 4 2
+HCXmdrQ 17 4 7 5 2
+HCZJdfK 17 5 7 4 2
+HCdbMhm 17 5 7 4 2
+HCdbMqt 17 5 7 4 2
+HCdbMqu 17 4 8 4 2
+HCdbMqu 17 4 7 5 2
+HCdbMqu 17 4 8 3 3
+HCdbMqu 17 4 7 4 3
+HCdbMq{ 17 4 8 4 2
+HCdbMq{ 17 4 7 5 2
+HCdbMr[ 17 5 7 4 2
+HCdbMrd 17 5 7 4 2
+HCdbMrd 17 5 6 5 2
+HCdbMre 17 3 9 4 2
+HCdbMrp 17 5 7 4 2
+HCdbMrs 17 5 7 4 2
+HCdbNJY 17 5 7 4 2
+HCdbNJY 17 5 6 5 2
+HCdbN`m 17 5 7 4 2
+HCdcrJt 17 4 8 4 2
+HCdebXl 17 5 7 4 2
+HCdebYy 17 5 7 4 2
+HCdebZY 17 5 7 4 2
+HCpdRht 17 6 6 4 2
+HCpdbYy 17 5 7 4 2
+HCpdbZY 17 5 7 4 2
+HCqjbfK 17 5 7 4 2
+HQhTQjw 17 2 10 4 2
+HQhTQjw 17 2 9 5 2
+HQhTQjw 17 2 10 3 3
+HQhTQjw 17 2 9 4 3
+HQhTQjw 17 2 10 2 4
+HQhTUhs 17 2 10 4 2
+HQhTUhs 17 2 10 3 3
+HQhTUhw 17 3 9 4 2
+HQhTUhw 17 3 8 5 2
+HQhTUhw 17 3 9 3 3
+HQhTUhw 17 3 8 4 3
+```
+
+### atlas/queue-p16.tsv
+
+```HCXmd`k 16 5 8 4 2
+HCdbBN[ 16 6 6 6 1
+HCdbBN[ 16 6 7 4 2
+HCdbMqe 16 5 7 6 1
+HCdbMqe 16 5 8 4 2
+HCdbMqe 16 5 8 3 3
+HCdbMqs 16 6 7 4 2
+HCdbMrc 16 6 7 4 2
+HCdbNIY 16 6 7 4 2
+HCdcrJs 16 6 7 4 2
+HCdebIy 16 6 7 4 2
+HQhTQii 16 0 13 4 2
+HQhTQjg 16 3 9 6 1
+HQhTQjg 16 3 10 4 2
+HQhTQjg 16 3 10 3 3
+HQhTQjo 16 4 8 6 1
+HQhTQjo 16 4 9 4 2
+HQhTQjo 16 4 8 5 2
+HQhTQjo 16 4 9 3 3
+HQhTQjo 16 4 8 4 3
+```
+
+ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
