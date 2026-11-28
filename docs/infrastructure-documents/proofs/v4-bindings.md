@@ -298,6 +298,20 @@ nothing, and a job 1 byte past a cap is refused. The
 machinery is shown refusing what it must refuse, on inputs
 built for that answer.
 
+Two completions of that control record, stated plainly.
+The positive control stands on a closed class: the kept
+corpus is a fixed list, 2,664 entries as counted above, and
+the replay runs the whole of that list, no entry added and
+none skipped, so the control speaks for that closed class
+and for no input outside it. And the cost of finding the
+certificate above is charged to the claim it supports: the
+certificate is cheap to read, and it was not cheap to earn.
+It rests on the search that produced it, 35,270 grow runs
+that tried 651,086,719 inputs, with every child held at or
+under 16,384 bytes. That search is the price of the no
+crash claim, and the claim carries it wherever the claim is
+repeated, as the third corpus honesty rule requires.
+
 ## The sizes beside the reach
 
 A tie's count says how many corpus entries enter a function.

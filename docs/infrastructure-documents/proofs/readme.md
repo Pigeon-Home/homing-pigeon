@@ -489,6 +489,21 @@ A finding is most useful when it points at the file and the line
   its named assignment, and a priority check that
   reports what the literature holds. No counterexample
   was found.
+- `v4-the-completion.md`: the hypothetical completion
+  theorem for B2 and B3, piloted at one frozen grammar
+  and environment: the 22 atoms and 4 joiners of the
+  first rung, at most 49 characters, under bash 5.2.21.
+  Its scope is that grammar, that environment, and the
+  observation of exit status and output digest, and its
+  assumptions stand as a premise ledger of 19 rows, each
+  labelled proved, checked, tested, assumed, or open,
+  with every conclusion naming the rows it rests on.
+  The theorem is conditional throughout, stands at
+  strength 1 of the four strengths of assuming future
+  data, and claims nothing about P versus NP.
+  `runner/tests/test_v4_the_completion.py` holds the
+  finite parts: the ledger's rows and labels, and the
+  frozen counts.
 - `v4-the-grammar.md`: the grammar the induction covers. A
   script of the rung is 1 of 22 atoms, or a script of the
   rung, 1 of 4 joiners, and an atom. The induction is a
