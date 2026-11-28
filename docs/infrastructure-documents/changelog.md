@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.20 - 2026-11-28
+
+- Land on main (since 4.0.37.19) -- 2 commits: 1 authored by DRU (Update README.md), 1 authored by Muse (the figure refresh on the measured tree at 02d1f6bfa81977a5db1bbac22f7a2461cf0f5fe9, tokens 37,855,678).
+- The version was computed by runner/ops/version4.py next 4.0.37.19 --fresh on a fresh uncached recount over head 02d1f6bfa81977a5db1bbac22f7a2461cf0f5fe9 (log ~/workspace/ship-work/recount-403720.log), next = 4.0.37.20.
+
 ## 4.0.37.19 - 2026-11-28
 
 - Land on main (since 4.0.37.17) -- 20 commits: 5 authored by DRU (2 README updates, Create AI.md and 2 AI.md updates), 15 authored by Muse (joining solver proofs, tools and conclusions, ChatGPT ComChat relays, the spent 4.0.37.18 release commit and its figure refresh, the joining solver PEP 604 floor fix, and the figure refresh on the measured tree at 271bf3c67af952ccc11c5a2db1214a6628dca470, tokens 37,855,374).
