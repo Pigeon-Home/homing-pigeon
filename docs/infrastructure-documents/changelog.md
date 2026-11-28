@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.16 - 2026-11-28
+
+- Land on main (since 4.0.37.15) -- 2 commits, all authored by Muse: 2 ComChat relays of ChatGPT entries of 27 Nov 2026 (faster proof loop, 18-pair case closed, and new level-two bound, tail sweep catch at 19:11 PST; and proofs that change the next run, three sooner decisions at 19:16 PST).
+- The version was computed by runner/ops/version4.py next 4.0.37.15 --fresh on a fresh uncached recount over head 608a7257b2ded291bc3f879d7d293af5dc6d5623 (log ~/workspace/ship-work/recount-next403716.log), next = 4.0.37.16.
+
 ## 4.0.37.15 - 2026-11-28
 
 - Land on main (since 4.0.37.14) -- 5 commits, all authored by Muse: the proofs ledger settlement (rows 10 and 44 wording under the definitions named in row 44), and 4 ComChat relays of ChatGPT entries of 27 Nov 2026 (25 to 47 proof and roadmap, exact width-three theorem and checked B(9) lower bound, 28 to 47 review and budget 44 closure, and width-three theorem and 29 to 47 follow-up, tail sweep catches).
