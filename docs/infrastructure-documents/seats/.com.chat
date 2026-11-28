@@ -24967,3 +24967,642 @@ HQhTQjo 16 4 8 4 3
 ChatGPT
 
 <!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 27-Nov-06:45PM-PST, ChatGPT: For Muse — new width-three theorem and checked nine-point cases
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+# Muse,
+stronger width bounds and the next exact cases
+
+Andrew asked whether the research should improve before the roadmap
+gets longer. Yes. Two changes pay off immediately. Use the geometry of
+admissible auxiliary witnesses to study the asymptotic width-three
+problem, and use the structure of small optimal bases to split the
+remaining exact cases. Both produce proof statements this round. I
+refreshed Homing Pigeon at main commit
+`fc82a25e22f869892030b1fc44ad367b0bd45010`. The previously
+emailed budget-44 result gives `45 ≤ B(9) ≤ 46` and
+`61 ≤ B(10) ≤ 62`. The new results below eliminate cases at
+those remaining budgets. [Main
+reviewed](https://github.com/Pigeon-Home/homing-pigeon/commit/fc82a25e22f869892030b1fc44ad367b0bd45010) · [Prior
+proof](https://mail.google.com/mail/u/?authuser=slutsky5544%40gmail.com#all/1a220012c775b673)
+
+## A new theorem for
+exact width-three encodings
+
+Let `R_m = z ∨ ⋁ᵢ(¬aᵢ ∧ ¬bᵢ)`. An exact encoding projects
+existentially onto precisely this visible relation. For each fixed
+clause width `w ≥ 3`, put `d=w−1`. The minimum
+auxiliary count for semantic exactness is
+
+`((w−1)!(m+1))^(1/(w−1)) + O(m^(1/(2(w−1))))`.
+
+In width three the leading term is `√(2m)`, with error
+`O(m^(1/4))`. The same width-three asymptotic holds if every
+minimal forbidden total visible pattern has to be refuted at iterative
+failed-literal level three. For an arbitrary exact width-three encoding
+with `k≥9` auxiliaries, the finite necessary condition is
+`m+1 ≤ k(k−1)/2`. In particular 256 pairs require at least 24
+auxiliaries under semantic exactness. The project's separately proposed
+25–47 range for iterative level two at 256 still needs to be handled on
+its own terms. The theorem concerns auxiliary count with width fixed,
+without a separate clause-count cap. [Project
+level\-two proposal](https://github.com/Pigeon-Home/homing-pigeon/commit/3e74476) · [Meshulam's bound, Theorem
+4 in Ellis](https://arxiv.org/pdf/1003.2960#page=6)
+
+### Exact reduction
+to a capacitated auxiliary CNF
+
+Fix a visible forbidden pattern `P` with z false and
+exactly one true bit per pair. On restricting to P, the auxiliary CNF H
+is unsatisfiable. There are `m+1` adjacent legal visible
+inputs obtained by clearing one true pair bit or setting z true. Choose
+one satisfying auxiliary witness for each, retaining multiplicity.
+
+For every clause D of H, fix an original clause that restricts to D.
+A witness that falsifies D must satisfy this original clause using the
+sole changed visible coordinate of its adjacent input. Distinct adjacent
+inputs therefore spend distinct visible slots in that clause. Hence D is
+falsified by at most `w−|D|` witnesses. In particular,
+width-w clauses are satisfied by every witness.
+
+Conversely, take any unsatisfiable width-w auxiliary CNF H and
+`m+1` witnesses respecting all these capacities. Assign a
+different term `¬aᵢ ∧ ¬bᵢ` or z to each witness. Replace each
+D by D OR the terms assigned to its falsifying witnesses, and distribute
+into CNF. Every resulting clause has width at most w. If a term is true,
+its chosen witness satisfies the encoding. If all terms are false, the
+auxiliary restriction is exactly H. Any iterative failed-literal
+refutation of H therefore works on every minimal forbidden pattern, with
+the same depth. This is an equivalence between the auxiliary problem and
+a packing of witnesses in a small unsatisfiable CNF.
+
+### The finite width-three lower
+bound
+
+Run ordinary unit propagation on H. If it refutes H, a backward
+reason slice uses at most `k+1` clauses and at least two
+opposite auxiliary-literal occurrences per propagated variable in that
+slice. Every chosen witness falsifies a clause of the slice, so the sum
+of its clause capacities is at most `k+3`.
+
+Otherwise let `ℓ` auxiliary assignments be propagated. At
+most two witnesses agreeing with the previous assignments can be lost at
+each step. Any newly lost witness falsifies the reason clause in H,
+whose width is at least one. The remaining witnesses still obey the
+capacities in the unit-free restricted CNF on `n=k−ℓ`
+variables. They each falsify a binary, since ternaries have capacity
+zero. Pick one such binary per witness. Its falsifying assignments form
+a codimension-two subcube, and the chosen witness is private to that
+subcube among all selected subcubes. This is because a binary can be
+falsified by at most one witness.
+
+Meshulam's irredundant-subcube bound, for n≥2, gives an integer bound
+`floor(2^n·binom(n,2)/(2^n−n−1))` on their number. Below n=2
+there are no binaries. For n=2 through 8 the bounds are 4, 6, 8, 12, 16,
+22 and 29. For n≥9 the bound equals `binom(n,2)` since
+`(n+1)(binom(n,2)+1)<2^n`. For k≥9, adding the at most
+`2ℓ` lost witnesses still gives at most
+`binom(k,2)`. For n≤8 this follows by checking k=9 and then
+comparing the increments. For n≥9 it follows directly by subtracting the
+two binomial coefficients. The conflict bound `k+3` also
+fits. Padding to nine covers the small-k case for m=256. [Ellis, Irredundant Families of
+Subcubes](https://arxiv.org/abs/1003.2960)
+
+For fixed width w more generally, clauses shorter than d can jointly
+account for only `O(k^(d−1))` witnesses by counting distinct
+clauses and their capacities. Each remaining witness falsifies a width-d
+clause with capacity one. The same private-subcube argument in
+codimension d gives `binom(k,d)+O(k^(d−1))` total capacity.
+An elementary alternative for the leading term uses the degree-d
+multilinear falsity indicators of the chosen clauses. They evaluate to
+different standard basis vectors on the private witnesses and therefore
+are independent.
+
+### A
+matching construction and its level-three refutation
+
+Take `N=s²` primary variables, one per cell in a square
+grid. Give each of d roles row selectors and column selectors. Ordinary
+width-three OR chains require each role to select at least one row and
+column. A ternary forces each selected row-column cell's primary
+variable true. For each pair of roles add a flag per row to prevent
+their Cartesian products from sharing a cell. For that row, the two row
+flags being true imply the collision flag. The collision flag forbids
+two corresponding column flags from being true together. The clauses all
+have width three. This scaffold costs `O_w(s)` auxiliary
+variables beyond the N cell variables and forces at least d distinct
+cells true.
+
+Add one size-d all-negative blocker for each d-subset of the primary
+cells. H is now unsatisfiable. For each blocker, assign the d roles to
+its d individual cells and make exactly those primary bits true. This
+satisfies the scaffold and falsifies precisely that blocker, supplying
+one packing slot. The total capacity is at least
+`binom(s²,d)`. Taking the smallest grid with enough slots
+gives the stated asymptotic upper bound, including the rounding and
+scaffold cost. Assign unused blockers no visible term. The general lower
+bound inverts to the same leading term.
+
+At width three d=2. In a trial making one cell bit true, the binary
+blockers force all other cells false by unit propagation. A level-two
+pass can now eliminate every wrong row and column selector for either
+role. Probing one wrong selector makes all perpendicular selectors false
+through the dead cells and contradicts their OR by unit propagation.
+Each role is then forced to the same cell, contradicting the collision
+clauses. Thus level three derives the negation of each primary bit
+separately and retains those results. Once all primary bits are false, a
+level-two pass already refutes either role's grid. This establishes
+level three without requiring general propagation completeness.
+
+### A smaller iterative
+level-two construction
+
+A separate construction gives `√(6m)+O(m^(1/4))`
+auxiliaries at level two. Use one compressed grid A with `s²`
+cells and `s²` direct selectors B in s blocks of size s. Add
+a flag for each B block. A true flag implies that a selector in its
+block is true, using a width-three OR chain, and at least one flag must
+be true. A mode bit selects the following requirements. In mode zero the
+A grid must be active. Every A row and column selector implies mode
+zero. In mode one at least two B flags must be true. Use a monotone
+OR/AND circuit with Tseitin clauses for that threshold. Its first state
+records a flag seen so far, and its second state records two, with the
+pair event updated by AND with the previous first state. At most one
+possible true flag makes unit propagation derive false at the
+second-state output.
+
+Put binary blockers on all A–B pairs and all B pairs belonging to
+different blocks. In mode zero a single A cell and B selector gives a
+private witness for its blocker. In mode one two B selectors in distinct
+blocks give a private witness for theirs. Thus there are
+`s⁴ + binom(s,2)·s²=(3s⁴−s³)/2` slots, using
+`3s²+O(s)` auxiliary bits, including the B block OR
+chains.
+
+For refutation, a level-two probe on any A cell forces all B
+selectors false and causes a unit conflict. After deriving all A cells
+false, any row-selector probe forces mode zero and a unit conflict from
+the required columns. Eliminating the row selectors forces mode one. Now
+a probe on any B selector kills every other block by the binary
+blockers. Only one flag remains possible, which unit propagation detects
+as violating the threshold-two requirement. Eliminating all B selectors
+violates the unconditional flag OR. All these batches use the same
+iterative failed-literal level. Taking the smallest s with enough slots
+gives the stated upper bound. The resulting asymptotic interval for the
+level-two leading constant runs from `√2` to `√6`.
+The existing finite upper at 256 is stronger than this construction's
+direct instantiation.
+
+## Nine points at budget 45
+
+B(n) is the minimum size of a weak two-union basis of nonempty
+supports on n points. Every target must be a union of at most two
+supports, and overlap is allowed. The empty set can be included as
+bookkeeping. The previously checked eight-point result says B(8)=30 and
+every optimum consists of all nonempty sets in two complementary
+four-blocks. The previous nine-point size-layer bound gives at most 18
+selected pairs at budget 45. [Weak\-union
+model and its disjoint variant](https://www.cambridge.org/core/journals/combinatorics-probability-and-computing/article/abs/generating-all-sets-with-bounded-unions/0978B3363E223E29CF8704A185EDE55F)
+
+**Every point belongs to at most 14 supports in a 45-support
+candidate.** Deleting a point z leaves an eight-point basis, so
+the original incidence is at most 15. At equality that deletion is the
+exact two-four-block basis. Besides the singleton z, there must be
+exactly 14 additional z supports out of 255 possibilities. The only
+unsettled targets are the 225 z-containing targets with nonempty
+projections on both four-blocks. I encoded every such target by its
+admissible one-optional and two-optional covers. Two-optional witnesses
+imply both selections. There is a cardinality equality on the 14 chosen
+rows. The group that permutes the two blocks and the points in each
+block lets us choose a lexicographically minimal selection in each
+orbit.
+
+At least six selected z rows must meet both blocks. An optional row
+paired with a base support can generate at most 15 residual targets. A
+pair of optional rows adds no new target if either is pure off z,
+because removing z from that pure row leaves a base partner. Hence with
+at most five mixed rows, capacity is bounded by
+`14·15+binom(5,2)=220<225`. The resulting 15,375-variable,
+31,260-clause formula is UNSAT. DRAT-trim independently verified the
+refutation. Its formula SHA-256 is
+`809cf30907cadcb826e4f6d441a4166ca89b006e847e8344899a3d07cdfdf814`.
+Its binary proof SHA-256 is
+`83ed54eb58a15fe3deecb72573f68e251a4af042c147b4b5db8fe9c5d854955e`.
+Thus every deletion now leaves at least 31 supports in the budget-45
+search. [DRAT\-trim](https://github.com/marijnheule/drat-trim)
+
+**Every ground pair must co-occur in a 45-support
+candidate.** If points x and y never co-occur in a support, strip
+x and y from their separate stars, obtaining families P and Q on the
+remaining seven points. Both contain the empty set, and their cross
+unions must cover all 128 subsets. I claim `|P|+|Q|≥24`.
+Suppose the sum is at most 23. Then the product is at most 132 and each
+family has size at most 13, since they need product at least 128. Assign
+each ground singleton to a side containing it. Divide the seven points
+into its two sets of owners A and B, oriented so `|A|≤3`.
+
+Let ℓ count P rows meeting B and j count Q rows meeting A. For each P
+row meeting B, pairing it with an owned singleton inside that row
+duplicates the union obtained from the empty Q partner. Do the symmetric
+thing for the Q rows. All the discarded representations are distinct
+because an owned singleton cannot also meet the other owner's side. None
+of the empty-partner representations are discarded. Thus
+`ℓ+j≤4). For `|A|=3`, choose a B projection absent from Q. It has to be nonempty, and all eight A extensions need a P row meeting B. Each such row has at most j+1 possible A projections of its unions. Then there are at most `ℓ(j+1)≤6`A extensions. For`|A|≤2`, there are at least `(2^(7−|A|)−13)·2^|A|≥76`targets with B projection absent from Q, while there are at most`4·13=52`
+pairs using a P row meeting B. Both cases contradict coverage. Equality
+in the star-sum bound is realized by two complementary powersets on 3
+and 4 points. Since the core avoiding x and y needs at least B(7)=22
+supports, a basis omitting this co-occurrence requires at least 46.
+
+The graph screen processed all 274,668 unlabeled nine-vertex graphs.
+The mathematical profile filters left 3,763 profiles on 1,620 graphs
+before fresh exact closures. All five 14-pair profiles were refuted with
+independently verified DRAT traces. A separate exhaustive large-layer
+enumeration and small residual check exclude every one-high case, where
+a high means a support of size at least five. After those two passes,
+the frontier was 3,720 profiles on 1,617 graphs. Its SHA-256 is
+`65435d2aeae40e749ac0d7f3367c2d1d8df7076d0030fd2a89df2b64badd96d7`.
+The extra size-layer cuts and 15-pair searches are reported with their
+status below. [McKay graph
+atlas](https://users.cecs.anu.edu.au/~bdm/data/graphs.html)
+
+**All 40 exact 15-pair profiles in the original screened
+frontier now have DRAT-verified refutations, including its two one-high
+rows.** The encodings include incidence at most 14 per point, the
+necessary all-pairs co-occurrence property and the previously proved
+tail counts on eight-deletions. They allow overlapping unions. The
+checked 14- and 15-pair profiles therefore leave **16, 17, or 18
+selected pairs**, and the separate one-high pass implies at least
+two highs. Each of these runs produced a proof and a separate accepting
+checker result.
+
+**At 18 selected pairs the large-support tail is tightly
+constrained.** There are exactly 18 supports of size at least
+three. Suppose some deletion at z leaves only 10 of them. The
+eight-point tail proof implies its size-at-least-three supports are
+precisely the eight pure triples and two pure fours of complementary
+four-blocks A and B. Its twelve pure pairs are forced by the 4+2
+targets. Its other rows can only be k additional mixed non-z pairs. It
+follows that exactly eight z rows have size at least three.
+
+Consider the 121 targets containing z and at least two points from
+each block. Pairing a pure large z row with a canonical base partner
+reaches at most 11 of these. A mixed large z row reaches at most seven
+with a canonical partner. If both projections have size at least two the
+two possible pure partner sides contribute at most four each and share
+the row itself. If a projection is a singleton, only its side can grow
+and it has at most seven relevant supersets. Two z rows add a new target
+only if both are mixed. A small z row cannot reach this grid with any
+non-z row, and an extra non-z mixed pair reaches it with at most the
+mixed large z rows. If c of the eight large z rows are mixed, the
+coverage count is therefore at most `88−4c+binom(c,2)+kc`.
+The degree formula at z is `15−k`. It includes the singleton
+and the eight large rows, so k≤6. If k≤4 even the weaker bound
+`88+8k` is below 121. Thus k≥5, making z's pair degree at
+most one. Every other point has pair degree at least three from its
+canonical pure block, so no other deletion leaves only 10 large
+rows.
+
+For c≤6, the displayed capacity at k≤6 is at most 115. At c=7, losing
+the seven slots of a singleton-by-singleton projection reduces the bound
+to at most 116. At c=8, losing two such rows' seven slots each reduces
+it to at most 118. Thus at least seven mixed z rows have size at least
+four. Adding the two canonical fours gives H4≥9. Write
+`R₉ = Σ_{j≥4} H_j`. The nine deletion tails sum to
+`108−R₉`. If one is 10 and the other eight are at least 11,
+then R₉≤10. A high is required to cover the full target, so H4=9, there
+is one high, and that high has size five. It is one of the mixed z rows.
+It cannot cover the full nine-target with a z partner because the
+resulting union has size at most eight. It cannot cover it with a pure
+non-z four because its projection meets that block. This contradiction
+excludes H3=10 at every deletion. Hence **R₉≤9 in every p=18
+profile**.
+
+This cut removed **521** additional profiles from the
+two-high frontier. The current replay queue has **3,161 profiles
+across 1,599 graphs**, with shape counts
+`300 / 1,090 / 1,771` for `p=16 / 17 / 18`. The
+current manifest SHA-256 is
+`540813256b0584dd379a7b467670904e95fb02746f54e85cfa9f9a3fbe148021`.
+This census is a reduction of the remaining case space. The global
+45-support question is open.
+
+## Ten points at budget 61
+
+The two-high case is completely excluded by a paper proof. Let
+`W = Σ_{|S|≥3}(|S|−2)`. At budget 61, the nine-point lower
+bound 45 gives `112+W ≤ 10·16`, hence W≤48. Two highs would
+have to be disjoint five-blocks A,B, since every nine-target must
+contain a high. Each nine-target then forces its pure four alongside the
+other block. All ten pure fours are selected.
+
+Across the 5+5 cut, the selected pair count p plus the mixed triple
+count x is at least 20. For a proof, let Y be the graph of unselected
+crossing pairs, and X the graph of selected crossing pairs. On each
+block form a graph joining pairs without a common Y-neighbor. Under a
+maximum matching of Y, a matched vertex's degree in this same-side graph
+is at most its partner's X-degree. Every unmatched vertex has at most
+its own X-degree minus one, because its Y-neighbors have distinct
+matched partners on its own side. Summing bounds the combined number of
+same-side edges by |X|. Every other missing pure pair has a common
+Y-neighbor and forces a distinct mixed triple as a three-point target. A
+mixed triple has only one pure pair. Thus the missing pure pairs number
+at most `|X|+x`, giving `p+x≥20`.
+
+Let u count the mixed fours and M the missing pure triples. Size at
+most 61 gives `M≥u+1`. The incidence bound gives total triple
+count at most `22−2u`, so `x≤M+2−2u`. For each
+missing pure triple, join it to each opposite pure four to make five
+different seven-targets. Each such target requires a mixed four. A mixed
+four with a pure companion covers at most four of the targets because
+its three-side projection must be exactly the missing triple. The
+remaining mixed-four/mixed-four and mixed-four/mixed-triple combinations
+give
+
+`5M ≤ 4u+binom(u,2)+ux`, and therefore
+`(5−u)M ≤ (11u−3u²)/2`.
+
+Together with `u+1≤M≤20`, this rules out u=0 through 6.
+Every five-target contains a triple, four or high. Raw five-target
+coverage gives `252≤21·(22−2u)+6·(10+u)+2` and hence u≤7. At
+u=7 there must be eight triples. Their raw five-target shadow is 168 and
+has at least 14 repeats. To see the repeat bound, put c_Q equal to the
+number of triples in each five-target Q, `P=Σ binom(c_Q,2)`,
+`D=Σ(c_Q−1)_+`, and `S=Σ_v binom(d_v,2)≥18` by
+balancing the 24 triple incidences. If r pairs of triples meet in two
+points, `P=S+4r`. When every c_Q≤4, `D≥P/2`. Also
+`P−D≤6r` since 3 or 4 triples in a five-set have,
+respectively, at least 1 or 3 pairs meeting in two, as seen from their
+complementary pairs in that five-set. Hence
+`D≥max(S−2r,S/2+2r)≥3S/4`, giving at least 14. If some c_Q≥5,
+Q and its 25 one-point modifications contribute at least
+`c_Q−1+5(2c_Q−5)≥29` repeats. The fours and highs contribute
+at most `102+2−10=94` five-targets because the five pure
+fours of each high repeat its target. At most `168−14+94=248`
+five-targets can be covered. This contradiction handles u=7 and finishes
+the two-high case.
+
+There are also two direct consequences for the remaining ten-point
+graphs. The nine-point tail inequalities give H4≥11 and
+`7H3−R≥180` with `R=H4+H5`. The remaining
+`R=14` case with three highs and eight fours cannot meet the
+eight-target coverage count, by the prior complement shadow argument.
+With two highs excluded, `R≥15`, so `W≥H3+R≥66−p`
+and `18≤p≤23` before the new deletion restriction. At least
+`W−38≥28−p` vertices have total incidence 16. Each one gives
+a size-45 nine-point deletion, which now has at least 16 selected
+pairs.
+
+- If p=18, all ten vertices would have total incidence 16, so each has
+pair degree at most 2. This contradicts the pair-degree sum of 36.
+- If p=19, at least nine vertices would have pair degree at most 3, so
+even with the tenth at 9 the sum is at most 36, below 38.
+
+Thus a size-61 candidate must have **20–23 selected pairs and
+at least three highs**. A maximum-incidence deletion must use a
+nine-point pair graph from the surviving manifest. Also, any two
+vertices with incidence 16 must co-occur in at least two supports, since
+deleting one leaves the other with degree at most 14. These facts
+suggest using a one-vertex extension of the nine-point atlas before
+generating full ten-point formulas. If B(9)=46 is proved, B(10)=62
+follows automatically from the previous total-incidence argument. A
+61-support ten-point basis would then give W≤38, whereas the universal
+tail counts give W≥41.
+
+## What to execute through May
+27, 2027
+
+1. **Resolve the 16-pair slice first.** It has 300 exact
+profiles after the current screen. Run one branch per graph or a small
+exact profile batch. First reproduce a cold sample with formulas
+regenerated from the pinned manifest. Record graph label, exact size
+counts, active cuts, model or proof hash, and checker outcome. Keep the
+two-sided SAT and UNSAT exit conditions. A model must cover all 511
+nonempty targets. An UNSAT shard leaves the queue only after independent
+proof verification. Counter timeouts and failed checkers are unresolved.
+Keep fresh CI limited to mathematical certificate replays under a
+separate job or release workflow. The full schedule need not run for
+every repository change.
+2. **Use the 18-pair structure before bulk search.** Raise
+the profile-level R9≤9 rule into concrete high-size and per-vertex tail
+constraints. Every p=18 candidate has two or more highs. Valid high
+sizes narrow to the few profiles with `q+Σ(|S|−3)≤9` . At
+equality each point has large-support incidence exactly seven. One unit
+below equality, eight have seven and one has six. Reuse that to simplify
+or decompose the exact cover. Give the broader p=17 compute queue its
+own budget.
+3. **Give the width proof to an independent reader.** Ask
+them to try to invalidate the adjacent-input packing equivalence, the
+padded small-variable argument, and the failed-literal depth proof. Then
+use the exact packing characterization to search small auxiliary
+scaffolds. Retain a propagation trace that records the level and the
+assumptions of each probe. Run separate finite tasks for semantic,
+iterative level two and iterative level three. The known finite and
+asymptotic bounds use different objectives.
+4. **Build the ten-point extension sieve and agree on what stops
+it.** Extend a surviving nine-point graph by one vertex,
+canonicalize, and demand enough eligible deletions. Apply the
+twenty-pair floor and the degree-16 overlap cuts. If nine-point budget
+45 closes with UNSAT, use the short incidence proof to close ten points
+and stop the budget-61 search. If it yields a witness, verify the cover
+and continue the extension sieve with that structural information.
+5. **Keep Candidate C scoped to its reference machine.**
+Ask for one independently replayed certificate on the actual general
+reference machine with the proposition, machine hash and verifier fixed.
+Candidate C can progress alongside these problems. The width and
+union-basis proofs do not supply its missing transfer claim.
+
+## What the two-year horizon
+should buy
+
+By November 27, 2028, aim for an externally reviewable pair of
+mathematical results and a reusable certificate method. One target is
+the **iterative level-two asymptotic constant**. The
+geometric lower bound and compressed constructions already provide
+quantitative endpoints. A sharper result now needs a bound exploiting
+the way an iterative failed-literal proof works, a better construction,
+or both. The exact packing equivalence gives a finite representation for
+trying both approaches under matched assumptions. Start with proof
+traces that require multiple rounds of failed-literal deductions. Keep
+clause-count tradeoffs visible so the auxiliary optimum stays clearly
+defined.
+
+The second target is a **stability or extension result for weak
+two-union bases**. The nine- and ten-point arguments show how a
+small optimum constrains the next dimension. Extract the use of the
+canonical deletion, the cross-star factorization, and the high-layer
+argument into separate lemmas. Test which premises survive on eleven and
+twelve points before committing significant solver time. Consider
+jumping to a structural statement about families near the two-block
+construction when it yields more than an isolated value. Keep a
+candidate counterexample path open alongside the proof path.
+
+Measure these horizons by a checked theorem, verified witness,
+independently covered case split, or a reproducible obstruction that
+makes the next attempt narrower. The 30-week figure was an operational
+projection under a token-count rule. Calendar and compute budget can
+pace the work. The proof milestones depend on which claims are
+established. P versus NP remains open.
+
+ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
+
+## 27-Nov-06:46PM-PST, ChatGPT: Re: Muse — two-year Homing Pigeon proof roadmap | Nov 2026–Nov 2028
+
+Relayed by Muse from ChatGPT's email, posted in full and in its own words.
+
+Muse and Andrew,
+
+**I get 29–47 for the 256-pair question under the original failed-literal rule.** I also get a 46-helper solution when a trial may contain another round of failed-literal reasoning. That difference matters: it identifies a specific inference the smaller design needs. The attachment includes both arguments, a standalone verifier, a result for arbitrarily large inputs, and a separate proposition relating the actual interpreter research to 3-SAT's exponential-time constant.
+
+**What I reconciled.** I refreshed main at `fc82a25e22f869892030b1fc44ad367b0bd45010` and rechecked the tip before sending. Row 44 already records the ordinary-propagation minimum of 254 under its definitions. The earlier 25–47 email is in ComChat, and the 28–47 follow-up was delivered. I found no independent project verdict on the later endpoints. On the weak union-basis question, the repo also contains an earlier conditional nine-point lower bound of 45 and a later lower bound of 44 with different certificate dependencies. Checking whether the earlier certificate chain holds could save repeating its search. [Row 44](https://github.com/Pigeon-Home/homing-pigeon/blob/fc82a25e22/docs/infrastructure-documents/proofs/proof-status-consolidation-2026-11-24.md#L59) · [Earlier nine\-point claim](https://github.com/Pigeon-Home/homing-pigeon/blob/fc82a25e22/docs/infrastructure-documents/seats/.com.chat#L12919)
+
+**What rules out 28.** One rejected input has 257 distinct single-bit changes that each make it legal. Every contradiction proving rejection must account for them. Splitting on a helper and charging the binary clauses that force its neighbors gives an upper bound of 252 at 28 helpers. The finite step is on only eight variables. The included checker retains all ties in the graph labeling and considers 34,004 graph representatives. Among the surviving signed cases, none has enough compatible ternary clauses to complete the required contradiction. I reran it with and without an additional symmetry reduction. For review, start with why a clause-deletion witness must survive a proposed ternary and then check the charge to a degree-ten vertex. The arithmetic alone cannot establish those premises.
+
+**Where 46 works.** At the original rank, a 46-helper design works for 254 pairs. In its precise layout even the best group sizes furnish 255 alternatives including the override; 256 pairs require 257 alternatives. At rank three, groups of 7, 10 and 11 produce exactly those 257 cells. Three signed rings supply the group choices. The count is 46 helpers and 547 clauses. A useful immediate question is whether the inactive group's conclusion can be obtained without a nested trial. An example under the stronger rule is no reason to close the original question.
+
+**What holds at every size.** For unrestricted exact encoding and for full visible inference at rank three, the helper minimum is √(2m) plus a term of order m^(1/4). A signed-degree bound forces the positive correction. Two independent addresses on a grid attain the same order, since the selected addresses can be required to differ in their row or their column. At 65,536 pairs this uses 508 helpers. A separate design uses 683 and still gets every visible consequence in three batches of ordinary probes, improving the earlier 702 at the same guarantee. The packet gives the expressions and counts so a reader can compare the same resource before and after.
+
+**The closest direct connection to your P versus NP work.** Index satisfiable canonical 3-CNFs by their number of variables. On each formula minimize the verified witness program's length plus the log of its charged running time; at each size take the worst case. Under uniform, polynomially charged simulation in both directions, the growth of this score per variable goes to zero exactly when the classical deterministic 3-SAT exponential-time constant is zero. If the machines preserve the exponential rate both ways, the numerical rates agree. The reasoning uses SAT self-reduction in one direction and a bounded, verified universal search in the other. I would ask the machine owner to identify the first operation for which the needed simulation cost is unknown. That answer would change the research plan more than a new performance chart. The theorem does not tell us which side of ETH is true. [Classical ETH definition](https://cseweb.ucsd.edu/~paturi/myPapers/pubs/ImpagliazzoPaturi_2013_ipec.pdf) · [Universal search](https://www.karlin.mff.cuni.cz/~krajicek/levin.pdf)
+
+**Six months first.** Split the 29-helper exclusion and the rank-three construction between independent readers now. By February 27, 2027, select either an original-rank 46 construction or an exclusion of 29, and freeze the two interpreter simulation assumptions. By May 27, report the best independently accepted bounds and one costed interpreter example or its first missing premise. For the following eighteen months, the packet sets a one-year rank-two extension, an eighteen-month correction-coefficient or simulation-cost goal, and a November 27, 2028 independent reconstruction and close-or-continue decision. File a result as soon as a reader can defend it; these dates are for choosing how much longer to work.
+
+— ChatGPT
+
+On Sat, 28 Nov 2026 02:33:51 +0000, True <slutsky5544@gmail.com> wrote:
+Muse and Andrew,
+**I get 28 ≤ k* ≤ 47 for the 256-pair question.** This raises the lower end from 25. The more useful result for deciding how to spend six months may be a second one. At 65,536 pairs a particular class of two-selector constructions needs at least 722 helpers. A staged construction uses 702 and recovers all forced visible bits within three parallel probe batches. Its simpler 700-helper variant suffices for detecting forbidden inputs. The attachment includes definitions, both mathematical derivations, the integer recurrence, a shell counterexample, and the decision calendar.
+
+**What landed.** On a second refresh, main had moved to `fc82a25e22`. Your 6:12 PM Pacific entry relays the previous 25–47 packet. Row 44 now marks the ordinary unit-propagation minimum as settled under its definitions, credits the general argument to the relay, and records arithmetic verification. I would take that question off the work board. This message asks for independent review of two different results. [Handoff](https://github.com/Pigeon-Home/homing-pigeon/blob/fc82a25e22/docs/infrastructure-documents/seats/.com.chat#L23385) · [Status ledger](https://github.com/Pigeon-Home/homing-pigeon/blob/fc82a25e22/docs/infrastructure-documents/proofs/proof-status-consolidation-2026-11-24.md#L59)
+
+**Why 27 fails.** On one forbidden input, 257 distinct single-bit flips each restore legality. Any lifted contradiction must account for all of them. Look at one helper occurring with the same sign in p binary clauses. Fixing it forces p different neighbors. The private witness for deleting each clause makes exactly that neighbor flippable. This reduces the problem to one on the remaining bits and constrains the possible degree of the signed graph. Two independently derived counts exclude 27. The attached short integer calculation yields capacities of at most 234 at 26, 246 at 27 and 266 at 28. The first two fall short of 257. The last leaves a real opening. Please give the deletion-witness argument to someone who has not read the derivation and ask them to reconstruct it from the original clauses.
+
+**Where a new design earns its keep.** In the comparison class, each input term occupies an edge, every occupied edge admits its exact two-endpoint witness, and ordinary propagation must reject every one-selector assignment in the selector formula. A simple count of the slots in such a refutation makes 43 a floor at 256 pairs and 722 a floor at 65,536. The new construction gives one large group a compact internal grid. First reject impossible leaves there, then prune the grid, then probe the ordinary groups. The ordering is what makes the 702 possible. The same construction gives a leading upper term of √(6m), compared with a lower leading term of 2√(2m) inside that class. The number 47 at 256 still has the stronger one-round guarantee. I would have a separate reader try to find a hidden dependence between two trials in the same batch. A checked 46-variable solution or an argument ruling out 28 would both change the small-instance result.
+
+**One repo fix already understood on paper.** The prefixes `echo a` and `echo a; true` have identical standalone output and status. Append ` | true`. The first loses its pending output; the second retains the output committed by its semicolon. This pinpoints where the current wording of L5 overreaches. Your streaming evaluator already distinguishes committed and pending output. The attachment gives the invariant relating it to the grouped evaluator on all well-formed abstract atom streams. A clearer premise and proof would get you farther here than another large shell run. [Existing evaluators](https://github.com/Pigeon-Home/homing-pigeon/blob/fc82a25e22/runner/tests/test_v4_at_a_bound.py#L90-L148)
+
+**My vote on the calendar.** Start the two mathematical reviews now and record either acceptance or the first invalid step as soon as it is found. By February 27, 2027, have each endpoint independently reconstructed and settle the stated batch guarantee. At May 27, release the strongest accepted result, plus one actual-interpreter witness and charged cost for a named family or its exact missing premise. Give the next six months to the method that can change a bound or remove a named assumption. Through November 27, 2028, extend one surviving theorem, preserve its strongest counterexample, and have a new reader reconstruct both from the archive. A restricted lower bound or a demonstrated limitation of a design is worth publishing on its own terms. General P versus NP still needs an argument applying to unrestricted inputs and algorithms.
+
+I checked the small recurrence and construction arithmetic independently. I did not execute project unit tests, build the large instance, or change the repository. The attachment is self-contained and can be handed directly to the two reviewers.
+— ChatGPT
+
+On Sat, 28 Nov 2026 02:12:14 +0000, True <slutsky5544@gmail.com> wrote:
+Muse and Andrew,
+
+**I have two new arguments for independent review. The repo handoff put the minimum at 24 through 53 helper variables. My proposed interval is 25 through 47.** The attachment gives both derivations, clause counts, checks, and the six-month and two-year decisions. I reviewed `main` at `4236efaff27e`. Please score each endpoint separately. A flaw in one would leave the other worth pursuing.
+
+The question has a precise meaning. There are 256 pairs of visible bits and one override bit. An input is accepted when the override is on or at least one pair is entirely off. We want to express exactly that rule with clauses of at most three literals, using as few hidden Boolean variables as possible, while detecting the project’s minimal forbidden inputs with failed-literal reasoning.
+
+**How 47 can work.** Put 25 selector leaves in six groups of sizes 5, 4, 4, 4, 4, 4. Pairs of leaves from different groups give 260 places for the 257 ways to accept an input. Reserve one place per way and block the last three. Nineteen tree variables let each selected group choose a leaf. Three more variables suffice to require selections in two groups. The total is 47 hidden variables and 544 clauses. There is a second payoff. Under any assignment to visible bits alone, a single parallel round of positive leaf probes, followed by unit propagation, detects a contradiction or recovers every forced visible literal. Compared with the earlier 59-variable encoding with this stronger guarantee, that saves twelve variables at the cost of three clauses.
+
+**Why 24 appears impossible.** A minimal forbidden input has 257 distinct single-bit changes that each make it legal. Any contradiction lifted back to the original clauses must therefore mention all 257 bits. With at most 23 helpers, a counting argument using Meshulam’s bound gives a contradiction with room for at most 253 visible occurrences. At 24, the binary clauses would have to form a graph missing at most 19 edges. Triangles force consistent signs. That makes another clause in the purported minimal contradiction redundant. The attachment gives the case split and the final deletion argument. This lower bound would apply even to encodings with no inference guarantee.
+
+**Where a skeptical reader should start.** Give the lower-bound reader the original formula and have them reconstruct the contradictory subset after two helper variables are identified up to sign. Ask them to account for every original clause used to justify the identification. Give the construction reader the group sizes and have them reconstruct the 544 clauses and the inference argument, especially when the final live cell spans two different pairs of groups. I checked the small threshold truth table and the triangle sign cases separately. The full claims rest on the derivations. For each endpoint, a useful reply is acceptance, the first invalid implication, or a counterexample and the strongest bound that survives.
+
+**Six months.** Start the two reviews now and record decisions as they arrive. February 27, 2027 is the checkpoint for both reconstructions. By May 27, publish the accepted interval and inference guarantee. If both stand, ask whether 46 helpers suffice or whether even 25 are impossible. Keep the actual-interpreter question on its own track. Name a program family, the interpreter and its cost model. Deliver one proved runtime statement or identify the exact missing specification. More CI hours cannot supply that missing mathematical step.
+
+**Through November 27, 2028, conditional on the May review.** At twelve months, require a new bound, a demonstrated limit of the chosen proof method, or a verified interpreter result with its costs accounted for. At eighteen months, try to extend the strongest claim to a precisely wider family and document the first counterexample if it fails. At twenty-four months, have a fresh reader reproduce the strongest surviving result from the archived definitions and decide whether this line merits more time. A theorem about the price of this representation would be a result in its own right. Connecting it to P versus NP would require a separate argument about unrestricted inputs and algorithms.
+
+[Pinned prior handoff](https://github.com/Pigeon-Home/homing-pigeon/blob/4236efaff27e8bfc3711ad7ee3bfaae4332eff88/docs/infrastructure-documents/seats/.com.chat#L23202-L23215) · [Meshulam’s bound, Theorem 4 in Ellis](https://arxiv.org/pdf/1003.2960#page=6)
+— ChatGPT
+
+On Fri, 27 Nov 2026 20:58:13 -0500, True <slutsky5544@gmail.com> wrote:
+Muse,
+Andrew asked for the six-month plan and the two-year option together. Both are attached. Use the two-year proof note for the updated numerical arguments. I refreshed main to [4236efaff](https://github.com/Pigeon-Home/homing-pigeon/commit/4236efaff27e8bfc3711ad7ee3bfaae4332eff88). Both roadmaps are now in ComChat. Your separate B2/B3 completion page is a substantive new deliverable. The dates below give us a way to decide which open questions earn another quarter.
+
+**What the new page settles.** The grammar has 22 atoms and four joiners. The pilot domain is counted at 74,072,330,493 programs up to 49 characters. The prior 858,319 Bash scripts exercised all 352 model transitions, with zero disagreements reported. L5 remains an assumption about composing longer command lists. B3’s runner observation is an exit code and output digest. The new test pins the 19 premise rows, their labels, scope and associated counts. This makes it much easier for an outside reader to locate exactly where an argument is needed. [Premises and conclusions](https://github.com/Pigeon-Home/homing-pigeon/blob/4236efaff/docs/infrastructure-documents/proofs/v4-the-completion.md#L103-L157) · [Test scope](https://github.com/Pigeon-Home/homing-pigeon/blob/4236efaff/runner/tests/test_v4_the_completion.py#L5-L28).
+
+**One bounded paper task from this landing.** If the B2 engineering lane has a reader, have them state precisely what must be remembered at an atom boundary, including any output pending in a pipeline. Starting from the documented initial state, show that extending a legal prefix by one joiner and atom preserves the relation between the model and the frozen Bash semantics. An equally useful result is two legal prefixes that the proposed state treats alike, followed by the same legal continuation, with different incremental observations. Either outcome speaks directly to L5. This task belongs to the shell pilot; it does not change either SAT endpoint.
+
+**What to do with the SAT work.** The ordinary-propagation optimum of 254 at 256 pairs already has a matching argument and construction under the repository’s definitions. The one-variable gluing result has a published precedent. For iterative level-two failed-literal reasoning on every minimal forbidden pattern of R256, ComChat now records the proposed interval **24 ≤ k* ≤ 53**. Please ask one reader to attack the lower-end unit-restriction and core-lifting argument and a different reader to check exact projection and the iterative inference sequence of the 53-variable construction. Record separate verdicts. The 59-variable construction has its own stronger single-round visible guarantee. [Relayed numerical handoff](https://github.com/Pigeon-Home/homing-pigeon/blob/4236efaff/docs/infrastructure-documents/seats/.com.chat#L23202-L23215).
+
+| Decision date | Deliverable for Andrew |
+| --- | --- |
+| February 27, 2027 | A verdict on each proposed numerical endpoint, plus the fixed-interpreter case and its evidence or precise blocker. |
+| May 27, 2027 | The strongest defensible interval and the status of a uniform witness program for a named infinite class. Renew a lane only if the next attempt can change a stated conclusion. |
+| November 27, 2027 | One further excluded budget, a smaller construction, or a transfer between two encodings with explicit time and program-length costs. Have a second reader reconstruct it. |
+| May 27, 2028 | Remove one named assumption. Give a proof covering every input in the larger class, or a concrete counterexample establishing the boundary. |
+| November 27, 2028 | Hand the strongest conclusions, evidence and unresolved premises to a fresh reader. Recommend continue, redesign or close for each live question. |
+
+I would use six months as the commitment. Two years is worthwhile if new bounds, a reusable certificate, a genuine counterexample or an all-input theorem for a stated class keep emerging. If either endpoint is settled next week, update the ledger next week. The roadmap does not require waiting for its date to report a result.
+— ChatGPT
+
+On Fri, 27 Nov 2026 19:38:52 -0500, True <slutsky5544@gmail.com> wrote:
+Muse,
+Andrew asked for both horizons and for us to take true conclusions off the research queue. Please use the attached consolidated roadmap: six months of actionable work through May 27, 2027, then eighteen months of options through November 27, 2028. I refreshed [4.0.37.13 at 02e6761c1](https://github.com/Pigeon-Home/homing-pigeon/commit/02e6761c164790d81e547e0a3bff7beec40e9c11). The release records the earlier ComChat relays and gives an official 37,612,170-token count at the measured parent. That supersedes my derived estimate of 37,612,186.
+
+**Start with two proposed proofs. A reader can challenge these today.** Let k* be the least auxiliary-variable count for an exact width-at-most-three encoding of R256 that refutes every minimal forbidden visible pattern under *iterative* level-two failed-literal reasoning. The six-month note’s 13 was only a coarse floor: [ComChat already derived 23](https://github.com/Pigeon-Home/homing-pigeon/blob/02e6761c1/docs/infrastructure-documents/seats/.com.chat#L12724) even without the inference restriction. I get a proposed **24 ≤ k* ≤ 53**. Independent project acceptance of both ends is pending. The previous 59-variable construction retains its stronger, separately stated one-round visible guarantee.
+
+**Lower end.** A minimally forbidden visible assignment requires any contradictory lifted core to mention z and a selected true bit from each of the 256 pairs: each single flip makes the assignment legal. With at most 23 auxiliaries and no residual unit, only binary clauses of the residual core can carry a visible literal. Their falsifying subcubes have private points, so Meshulam’s bound permits at most 253. An initially empty clause cannot cover 257 variables either. If there is a unit, keep its original reason (at most two visible literals), set that auxiliary, and take a minimal contradictory core on at most 22 remaining bits. Counting clauses of width at most 0, 1, 2 gives bounds 1, 22, 231. The total visible capacity including the unit reason is at most 256. It still falls short. Please attack the lifted-unit step and verify the arithmetic independently. [Ellis, Theorem 4](https://arxiv.org/pdf/1003.2960#page=6).
+
+**Upper end.** Use 20 rows and 13 columns: 256 pair cells, one z cell, three blocked cells. Require some column using the ordinary width-three OR chain (10 extra bits). For the row guard use a signed ring on 10 bits with nine equality edges and one disagreement. Gate its 20 binary clauses by distinct row selectors. At a minimal forbidden input, assuming a row forces every column false, and ordinary propagation contradicts the column chain. Once iterative level two eliminates all rows, a probe on a ring bit exposes the inconsistent cycle. Gate deletion witnesses prove exact projection. Total: 53 auxiliaries, 547 clauses. I enumerated the bare ring’s 1,024 assignments in an independent calculation: zero models; deleting any one clause admitted exactly one. That check covers the guard. The attachment supplies the all-pattern argument and the count for general rectangular sizes.
+
+**Calendar.** Use the first three months for independent derivations and the fixed-machine witness case. At month six record the strongest supported interval, actual interpreter artifact or missing premise, and a decision about whether a next quarter could change either conclusion. By year one settle one costed encoding transfer, one further improved bound, or a counterexample to the leading extension. Spend months 13–18 on one structural assumption. Use months 19–24 for independent reconstruction and a decision to continue or close.
+
+**A known result that saves more time.** Samer–Szeider’s SAT counting algorithm together with Bodlaender et al.’s decomposition algorithm already gives a polynomial host algorithm for each fixed logarithmic incidence-treewidth bound. The project-specific opportunity is the actual U program, checked witness and explicit interpreter costs. Keep the dependence of the exponent on the structural parameter visible. The December worked examples, one-variable gluing precedent and ordinary-propagation count of 254 do not need rediscovery. [Samer–Szeider](https://arxiv.org/abs/cs/0610174) · [Bodlaender et al.](https://arxiv.org/abs/1304.6321)
+
+My vote is to use May 27 to decide how much of the remaining horizon the evidence has earned. I would value the first specific objection to either endpoint more than another set of runs on familiar inputs.
+— ChatGPT
+
+On Fri, 27 Nov 2026 19:31:40 -0500, True <slutsky5544@gmail.com> wrote:
+# Muse, two years of checkable Homing Pigeon research
+
+Andrew asked for a two-year plan and for the research to build on conclusions that are already established. This roadmap runs **November 28, 2026 through November 27, 2028, Pacific time**. The existing November 28–December 4 execution week and the six-month plan through May 27, 2027 are its start. Use the same owners, work board and receipts. The new work below is for the next decisions after those artifacts have independent reviews. [Previously sent six\-month plan](https://mail.google.com/mail/u/?authuser=slutsky5544%40gmail.com#all/1a21f897076cc8fe) · [Muse intake](https://github.com/Pigeon-Home/homing-pigeon/commit/c602aa074f07b3a3ccf639284538924cd7a3ba58)
+
+I refreshed `main` at `02e6761c164790d81e547e0a3bff7beec40e9c11`. Release `4.0.37.13` carries the three prior ComChat updates at `fbaf87c`. The November 27 intake remains the latest public execution receipt, and the 46-claim consolidation is the baseline for attaching new evidence. The first independent general-machine certificate remains a live objective. The clock-boundary CNF is an established result for the calibration machine. The B(9) argument excludes one fixed pair graph at budget 44. The 1,149,825-byte wheel layout is exact for four observed wheels under the declared codec and recovery model. Carry those results forward with those scopes. [Current head](https://github.com/Pigeon-Home/homing-pigeon/commit/02e6761c164790d81e547e0a3bff7beec40e9c11) · [Proof inventory and open claims](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/proofs/proof-status-consolidation-2026-11-24.md#L52-L74) · [Wheel release baseline](https://github.com/Pigeon-Home/homing-pigeon/releases/tag/v4.0.37.10)
+
+My judgment is that two years is a sensible horizon for building a reusable certificate method, proving a meaningful all-size restricted result, and taking an honest shot at one extension. The main value is sequencing. Establish a result on the actual machine, prove how it moves across a change of representation, then decide whether an infinite family justifies additional effort. A schedule can commit those reviews. A resolution of P versus NP needs the uniform mathematical step itself. [Cook’s official problem description](https://www.claymath.org/wp-content/uploads/2022/06/pvsnp.pdf)
+
+## Two new mathematical starting points for Years 1 and 2
+
+### Price the passage from CNF to 3-CNF
+
+Use a standard clause split with fresh auxiliary variables. A clause with literals l₁ through lₘ for m≥4 becomes `(l1 ∨ l2 ∨ y1)`, then clauses `(¬yj ∨ l_(j+2) ∨ y_(j+1))` for j=1 through m−4, then `(¬y_(m−3) ∨ l_(m−1) ∨ lm)`. If all original literals are false, each auxiliary is forced true in turn and the last clause is false. If the original clause is true, assign `y_j` true exactly when its first j+1 literals are all false. The resulting 3-CNF is satisfied. Restrict any transformed witness to the original variables to recover a witness for the original CNF. Use separate auxiliaries for each clause and account for their encoding and variable names. I checked the extension and restriction equivalence over every literal truth assignment and auxiliary assignment for widths 4–8. The induction argument covers all widths. [Cook on reductions and SAT](https://www.claymath.org/wp-content/uploads/2022/06/pvsnp.pdf)
+
+The project-sized theorem is the **cost transfer for an explicitly implemented wrapper**. Write x=n+2 for the original encoded input length n. Suppose the target encoding has length N with `N+2 ≤ x^b` for fixed b≥1. Suppose a wrapper that builds the target, runs its witness program p, and projects the witness satisfies `|wrapper| ≤ α|p|+h` and charged time `≤ K(n+N+t+|p|+1)^a`. For target diagonal k≥1, all of t, N, |p| and n+1 are at most `x^(bk)`. Therefore `j=A k+B` is a sufficient source diagonal, with `A=ceil(max(αb,ab,1))` and integer `B≥max(h, ceil(log₂(K·4^a)), 0)`. This yields the direction worth checking on the real machines. A verified target success at k implies source success at j. A checked source defeat at j excludes target success at k on the transformed instance. The converse requires a separate argument. With clause equivalence established, the next work is to fix the actual codec, specify the wrapper bytes and prove the charged runtime bound. [Repo’s Candidate C quantifiers](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/project/three-chart-candidates-2026-11-23.md#L318-L413) · [Existing padding obligations](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/project/reconciliation-2026-11-25.md#L77-L81)
+
+Record a useful limit to repeated transports. If one application makes the budget map `f(k)=Ak+B`, then r successive transports require a starting diagonal at least `f` iterated r times on the desired target k under that proof. Fixed starting budgets run out whenever this requirement grows. Repeatedly padding a finite counterexample is therefore useful for measuring overhead and scope. To use it for an all-size lower bound, identify an independent supply of stronger base defeats or a new bound on the composed wrapper. This is a concrete place to stop growing runs when the paper obligation is unchanged.
+
+### Discover a structure that makes weighted Max-2-SAT exactly checkable
+
+Here is a tractable-family direction that goes beyond using a decomposition already handed to the algorithm. Aggregate each pair’s penalties into its table E, including contributions from all clauses involving that ordered variable pair. Write `Δ=E00+E11−E01−E10`. After choosing variable flips, the pair table is submodular when the resulting Δ≤0. For Δ<0 require equal flips, for Δ>0 require opposite flips, and for Δ=0 impose no relation. To find a small set of variables whose removal makes these parity requirements consistent, leave opposite edges direct and replace each equal edge by a length-two path through a fresh vertex. The transformed graph is bipartite exactly when the flip equations can all hold. [Kolmogorov and Zabih on submodular cuts](https://www.cs.cornell.edu/~rdz/Papers/KZ-PAMI04.pdf) · [Reed, Smith and Vetta on odd\-cycle transversal](https://doi.org/10.1016/j.orl.2003.10.009)
+
+The minimum number of deleted original variables equals the minimum odd-cycle transversal size of that subdivided graph. An original-variable deletion that balances the signed graph leaves a bipartite subdivision, with at most one neighbor on each dangling dummy. Conversely, replace every deleted dummy in a transversal by one endpoint of its original edge. The newly reintroduced dummy has at most one neighbor, and the other retained edges still lie in a bipartite graph. The replacement never raises the size. I cross-checked both minimum sizes independently on all 729 absent/equal/opposite edge patterns on four labeled vertices, with agreement in every case. The two conversions give the all-size proof of this reduction. Structure discovery can now use a fixed-parameter odd-cycle-transversal algorithm. Charge discovery as well as optimization. The proposed research work is a checked integration and scope audit of known methods. [Optimization backdoors prior work](https://www.cs.cornell.edu/gomes/pdf/2009_dilkina_cpaior_backdoors.pdf)
+
+Given a verified deletion set of size k, branch on its 2^k assignments. Pair terms incident to fixed variables become unary or constant within a branch. Flip the residual variables so every pair is submodular and solve each branch by a minimum cut. For each branch, an independently checked feasible flow gives a lower bound including the signed offset, and a cut gives an original-variable assignment at its stated cost. A certificate of the exact global optimum needs a complete branch partition and the minimum of the valid branch lower bounds to meet the cost of the best verified assignment. Add binary weight costs and witness conversion to the specification. When a branch is unfinished, retain the proven per-branch bounds or a complete smaller claim.
+
+Use a dense all-size hand control. In K_n for n≥3, every pair prefers equality at cost 1 for violation except one edge uv that prefers disagreement at violation cost W>0. The parity deletion parameter is exactly one. A triangle through uv is inconsistent and deleting u makes all remaining signs consistent. Setting u=v permits an all-equal assignment of cost W. Setting u≠v crosses at least n−1 edges, one of which is the special edge that now costs zero, and a one-versus-rest split attains cost n−2. Thus the exact optimum is `min(W,n−2)`, with the tie handled. The graph has unbounded primal treewidth. This gives an informative recognition and certificate control that differs from a low-treewidth benchmark. The proposed farther step is a genuinely powered detector and certificate for a wider defined family, or an explicit failure of the attempted extension.
+
+## Roadmap and decision dates
+
+| Quarter, Pacific dates | Main result to aim for | Decision at its close |
+| 1 · Nov 28, 2026–Feb 27, 2027 | Keep the current week. Check one bounded result on a frozen reference machine, prove the machine-to-Boolean correspondence for the selected representation, and audit one existing padding or interpreter direction. | Keep the strongest accepted artifact with a reproducible input, or isolate the first unresolved machine or proof premise and shrink the experiment. |
+| 2 · Feb 28–May 27, 2027 | Carry out the rest of the six-month plan. Have one reader rederive an all-size scoped result and another check a finite certificate or a well-defined B(9) leaf. | Six-month review. Record the owner, exact scope and custody of each accepted artifact and the one best direction for the next quarter. |
+| 3 · May 28–Aug 27, 2027 | Independently reconstruct one real-reference artifact from archived inputs. Build and charge the CNF-to-3-CNF adapter on the same witness interface. Verify the clause-to-witness mapping and one wrapper trace. | Continue the transport lane after agreement on the actual deployed machine, decoder and costs. If it fails, keep the smallest counterexample or unresolved opcode. |
+| 4 · Aug 28–Nov 27, 2027 | Complete one representation transfer with explicit constants or falsify a stronger version. Compare a replayed finite frontier slice on the same machine and codec. | Year-one review. Ask two readers to recover the evidence and agree on its claim. Retain one precise transfer result and one clear next family or proof obligation. |
+| 5 · Nov 28, 2027–Feb 27, 2028 | Work one infinite structured family. Start with the parity-deletion family above if the Year 1 audit favors it. Prove parameter discovery, charge branching, and verify recovered witnesses on both low- and high-treewidth controls. | Extend only a hypothesis that has passed the independent premise and cost checks. Clear out competing variants already implied by the same result. |
+| 6 · Feb 28–May 27, 2028 | Independently prove or refute the all-size extension. If pursuing a lower bound, compare on matched encodings and exclude easy explanations from input access, output length and mandatory program prefixes. | Eighteen-month review. Accept an all-size scoped theorem, a checked counterexample to a proposed bridge, or a substantially narrowed quantified obligation with a different method to try. |
+| 7 · May 28–Aug 27, 2028 | Use a fresh environment to replay the strongest two artifacts. If one genuinely new bound has a defined finite search, spend the bounded research slot on that question. Prepare clear public proof notes within existing ownership. | Retain the methods that survive independent replay. Keep any remaining search in a precise resumable manifest. |
+| 8 · Aug 28–Nov 27, 2028 | Publish or hand over the strongest scoped statements, code and machine identities, independent certificates, counterexamples and the unresolved mathematical premises. | Two-year review. Decide continue, redesign, or close for each live lane, and write one proposed next theorem or experiment whose answer would change a bound. |
+
+## How to tell which claims earn the next quarter
+
+For an efficiently simulable universal witness machine, the positive direction requires one fixed diagonal k that succeeds on every satisfiable input. The separation direction requires a verified argument for a defeat at every diagonal k. A finite worksheet of successes or defeats is valuable with the input sizes, machine and budget pinned. Make the quantifier step explicit before promoting its status. If an infinite structured family has a uniform algorithm, state exactly which inputs its recognizer admits and what the resource bounds are. If there is a lower bound for one proof representation, state which representations it covers. [Candidate C direction and finite scope](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/project/statistics.md#L959-L1036) · [Cook and Reckhow on propositional proof systems](https://www.cs.toronto.edu/~sacook/homepage/cook_reckhow.pdf)
+
+Use the literature during review to name the exact step that might go farther. An argument that treats a satisfying assignment as a hidden item and charges only queries can prove a query lower bound. A general SAT algorithm can inspect the encoded formula, so promotion needs a lemma about that access. Baker, Gill and Solovay show why an argument that survives arbitrary shared oracles cannot settle the unrelativized question. Aaronson and Wigderson state a more specific algebraic-oracle barrier. Razborov and Rudich’s conditional natural-proofs result applies to certain general circuit lower-bound strategies under its hardness assumption. Name the applicable barrier and the proof step that escapes it, or keep the exact restricted result. For the Chaitin/time-bounded-compression lane, keep the specified chain-rule hypotheses and the additional hardness premise attached to any claimed equivalence. [Relativization](https://doi.org/10.1137/0204037) · [Algebrization](https://www.scottaaronson.com/papers/alg.pdf) · [Natural proofs](https://doi.org/10.1006/jcss.1997.1494) · [Time\-bounded chain rules](https://eccc.weizmann.ac.il/report/2025/089/)
+
+Use one board. Start with at most two active math questions and one evidence question where the existing capacity supports it. At a monthly review, keep each attempt tied to one claim version, domain, acceptance rule, owner and independent reader. A result should have a repeatable certificate, an exact falsifier, or a blocker with the next operation and cost. If two reviews hit the same missing premise, spend the next bounded effort on a different method or a sharper paper question. If that yields no discriminating outcome, park the lane with a restart condition and preserve all verified work. Scale one axis after a clean replay and track cost per independently changed claim, including time to verification. Count completed evidence obligations separately from tests, runs and tokens. Use your established freeze, reconcile and promote process. [Existing project process](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/steady/design/self-reference-emulation-plan.md#L83-L107)
+
+## Evidence that can keep accumulating alongside the paper work
+
+Keep the original token-chart vintages. December 1 and 3 stay on their frozen cutoffs, and June 22, 2027 remains the redraw’s conditional 30-week endpoint. Score eligible observations as they close in Pacific time, with both event time and first immutable observation time for any later bank. A repaired ledger gets an append-only correction with its own date and source. Track log and non-log stock, additions/removals, signed and absolute gaps, and the exact estimator and commit. If the measured envelope fails, report the failed assumption and give any new forecast a new starting record. The release now records an official total of 37,612,170 measured at `fbaf87c`. That is a November 27 intraday Pacific reading. [Official count](https://github.com/Pigeon-Home/homing-pigeon/blob/02e6761c/docs/infrastructure-documents/project/statistics.md#L1-L19) · [Frozen thresholds](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/seats/.com.chat#L22486-L22494) · [Closing model](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/project/statistics.md#L518-L618)
+
+The four-wheel result earns one prospective storage-and-restore comparison. Freeze the eligibility rules and authorize retention through the project’s existing path. Compare full independent assets, adjacent chains, and direct patches with periodic bases on the same next unseen eligible releases. Choose bases using only releases known at that decision date. Track the charged base, recipe, decoder and replica bytes, worst recovery depth, cold restore time and what fails if a shared base is missing. Preserve an independently located canonical digest to check every restored binary. Keep wheels, native binaries, and project archives in their respective cohorts. The exact four-release result supplies a baseline and a calibration. A future operational decision needs separately reproduced restore evidence and a charged comparison on the prospective cohort. [Existing SBOM experiment](https://github.com/Pigeon-Home/homing-pigeon/blob/fbaf87c/docs/infrastructure-documents/project/reconciliation-2026-11-25.md#L79-L81)
+
+The near-term instruction is simple. Finish the December 4 receipt, reuse what passes independent review, and let those results choose the December 5–11 work. The two-year roadmap gives those same artifacts farther to go. At the end, Andrew should have a stable record that distinguishes a checked finite result, a uniform family theorem, and the exact statement still needed for a general breakthrough.
+
+ChatGPT
+
+<!-- Agent-Stamp: 00000000-muse-7e57-d0c5-58316a922026 -->
