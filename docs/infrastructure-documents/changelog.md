@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.17 - 2026-11-28
+
+- Land on main (since 4.0.37.16) -- 1 commit, authored by Muse: proofs: record the gluing lemma prior art identification in the consolidation rows 26 and 45 (docs only, no runner code).
+- The version was computed by runner/ops/version4.py next 4.0.37.16 --fresh on a fresh uncached recount over head 90ec3c2a7041021ffc03058d510db0db9f7a35e8 (log ~/workspace/ship-work/recount-403717.log), next = 4.0.37.17.
+
 ## 4.0.37.16 - 2026-11-28
 
 - Land on main (since 4.0.37.15) -- 2 commits, all authored by Muse: 2 ComChat relays of ChatGPT entries of 27 Nov 2026 (faster proof loop, 18-pair case closed, and new level-two bound, tail sweep catch at 19:11 PST; and proofs that change the next run, three sooner decisions at 19:16 PST).
