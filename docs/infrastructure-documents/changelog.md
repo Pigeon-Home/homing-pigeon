@@ -4,6 +4,12 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.19 - 2026-11-28
+
+- Land on main (since 4.0.37.17) -- 20 commits: 5 authored by DRU (2 README updates, Create AI.md and 2 AI.md updates), 15 authored by Muse (joining solver proofs, tools and conclusions, ChatGPT ComChat relays, the spent 4.0.37.18 release commit and its figure refresh, the joining solver PEP 604 floor fix, and the figure refresh on the measured tree at 271bf3c67af952ccc11c5a2db1214a6628dca470, tokens 37,855,374).
+- Replacement for 4.0.37.18, which failed at the gate (run 46117740807, test_no_runtime_pep604_annotations_without_future_import on runner/tools/joining_solver.py) and is spent, never reused; the fix landed as 271bf3c67af952ccc11c5a2db1214a6628dca470.
+- The version was computed by runner/ops/version4.py next 4.0.37.18 --fresh on a fresh uncached recount over head 271bf3c67af952ccc11c5a2db1214a6628dca470 (log ~/workspace/ship-work/recount-403719.log), next = 4.0.37.19.
+
 ## 4.0.37.18 - 2026-11-28
 
 - Land on main (since 4.0.37.17) -- 15 commits: 5 authored by DRU (2 README updates, Create AI.md and 2 AI.md updates), 10 authored by Muse (joining solver proofs, tools and conclusions, ChatGPT ComChat relays, and the figure refresh on the measured tree at d5a8fae4364d4ba8187228bd9206d5bbf4f3c9be, tokens 37,827,295).
