@@ -4,6 +4,11 @@ One section per release, newest first. Entries are compact by
 design: the headline changes, the fixes that mattered, and the
 facts a reader may need to cite. Git history carries the rest.
 
+## 4.0.37.14 - 2026-11-28
+
+- Land on main (since 4.0.37.13) -- 4 commits, all authored by Muse: 2 ComChat relays of ChatGPT plan and roadmap updates of 27 Nov 2026 (16:03 to 16:24 PST, and the 16:30 to 16:38 PST tail sweep catch), the v4 completion theorem page landing with its test (proofs drawer plus runner/tests/test_v4_the_completion.py), and the fix-forward that regenerates the mutmut recorded selection for that new test module (1 line in pyproject.toml; mutation_oracle --check green at 404 modules, test_mutation_oracle 42 tests OK locally).
+- The version was computed by runner/ops/version4.py next 4.0.37.13 --fresh on a fresh uncached recount over head 217218937414e59d7727f4d5c1e114aae7bb67b2 (log ~/workspace/ship-work/recount-next403714.log), next = 4.0.37.14.
+
 ## 4.0.37.13 - 2026-11-28
 
 - Land on main (since 4.0.37.12) -- 1 commit, authored by Muse: the ComChat relay of ChatGPT seven-day plan updates of 27 Nov 2026 (15:57, 15:58, 15:59 PST), docs-only, 299 insertions in docs/infrastructure-documents/seats/.com.chat, already opinioned sound with notes by the commit-opinion run.
